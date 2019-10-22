@@ -65,9 +65,8 @@ namespace Pulumi
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
-
-        internal readonly UrnOutputCompletionSource _urn;
-        public Output<string> Urn => _urn.Output;
+        [Property("urn")]
+        public Output<string> Urn { get; private set; } = null!;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -101,15 +100,15 @@ namespace Pulumi
         /// </summary>
         private readonly ImmutableDictionary<string, ProviderResource> _providers;
 
-        /// <summary>
-        /// TaskCompletionSource that our subclasses need to signal when they are done running their
-        /// construction logic.  This is necessary as we cannot actually register this Resource
-        /// until the derived-class constructors finish.  If we did, we might get our output results
-        /// back prior to the contruct finishing.  In which case, we'd have no way to set the output
-        /// fields of this instance since the <see cref="OutputCompletionSource{T}"/>s for them will
-        /// not have been instantiated yet.
-        /// </summary>
-        internal readonly TaskCompletionSource<bool> _onConstructorFinished = new TaskCompletionSource<bool>();
+        ///// <summary>
+        ///// TaskCompletionSource that our subclasses need to signal when they are done running their
+        ///// construction logic.  This is necessary as we cannot actually register this Resource
+        ///// until the derived-class constructors finish.  If we did, we might get our output results
+        ///// back prior to the contruct finishing.  In which case, we'd have no way to set the output
+        ///// fields of this instance since the <see cref="OutputCompletionSource{T}"/>s for them will
+        ///// not have been instantiated yet.
+        ///// </summary>
+        //internal readonly TaskCompletionSource<bool> _onConstructorFinished = new TaskCompletionSource<bool>();
 
         /// <summary>
         /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
@@ -141,7 +140,6 @@ namespace Pulumi
 
             _type = type;
             _name = name;
-            _urn = new UrnOutputCompletionSource(this);
 
             var transformations = ImmutableArray.CreateBuilder<ResourceTransformation>();
             transformations.AddRange(options.ResourceTransformations);
@@ -278,8 +276,8 @@ namespace Pulumi
             }
         }
 
-        protected void OnConstructorCompleted()
-            => _onConstructorFinished.TrySetResult(true);
+        //protected void OnConstructorCompleted()
+        //    => _onConstructorFinished.TrySetResult(true);
 
         /// <summary>
         /// Fetches the provider for the given module member, if any.

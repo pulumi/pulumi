@@ -26,15 +26,10 @@ namespace Pulumi
             // something that does happen and has to be accounted for.
             this.RegisterTask(
                 $"{nameof(IDeploymentInternal.ReadResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                resource._onConstructorFinished.Task.ContinueWith(
-                    _ => ReadResourceAsync(resource, args, options),
-                    CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
+                CompleteResourceAsync(resource, () => ReadResourceAsync(resource, args, options)));
         }
 
-        private Task ReadResourceAsync(Resource resource, ResourceArgs args, ResourceOptions options)
-            => CompleteResourceAsync(resource, () => ReadResourceWorkerAsync(resource, args, options));
-
-        private async Task<(string urn, string id, Struct data)> ReadResourceWorkerAsync(Resource resource, ResourceArgs args, ResourceOptions options)
+        private async Task<(string urn, string id, Struct data)> ReadResourceAsync(Resource resource, ResourceArgs args, ResourceOptions options)
         {
             var id = options.Id;
             if (options.Id == null)

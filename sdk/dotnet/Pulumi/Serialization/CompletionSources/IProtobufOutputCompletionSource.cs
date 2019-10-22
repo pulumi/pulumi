@@ -1,13 +1,13 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿//// Copyright 2016-2019, Pulumi Corporation
 
-#nullable enable
+//#nullable enable
 
-using Google.Protobuf.WellKnownTypes;
+//using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi.Serialization
-{
-    internal interface IProtobufOutputCompletionSource : IOutputCompletionSource
-    {
-        void SetResult(Value value);
-    }
-}
+//namespace Pulumi.Serialization
+//{
+//    internal interface IProtobufOutputCompletionSource : IOutputCompletionSource
+//    {
+//        void SetResult(Value value);
+//    }
+//}

@@ -1,14 +1,14 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿//// Copyright 2016-2019, Pulumi Corporation
 
-#nullable enable
+//#nullable enable
 
-namespace Pulumi.Serialization
-{
-    public sealed class StringOutputCompletionSource : ProtobufOutputCompletionSource<string>
-    {
-        public StringOutputCompletionSource(Resource resource)
-            : base(resource, Deserializers.StringDeserializer)
-        {
-        }
-    }
-}
+//namespace Pulumi.Serialization
+//{
+//    public sealed class StringOutputCompletionSource : ProtobufOutputCompletionSource<string>
+//    {
+//        public StringOutputCompletionSource(Resource resource)
+//            : base(resource, Deserializers.StringDeserializer)
+//        {
+//        }
+//    }
+//}

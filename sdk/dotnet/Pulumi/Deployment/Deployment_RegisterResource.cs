@@ -30,47 +30,10 @@ namespace Pulumi
             // something that does happen and has to be accounted for.
             this.RegisterTask(
                 $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                resource._onConstructorFinished.Task.ContinueWith(
-                    _ => RegisterResourceAsync(resource, custom, args, options),
-                    CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap());
+                CompleteResourceAsync(resource, () => RegisterResourceAsync(resource, custom, args, options)));
         }
 
-        private static ImmutableDictionary<string, IOutputCompletionSource> GetOutputCompletionSources(
-            Resource resource)
-        {
-            var name = resource.GetResourceName();
-            var type = resource.GetResourceType();
-
-            var query = from field in resource.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-                        let attr = field.GetCustomAttribute<ResourceFieldAttribute>()
-                        where attr != null
-                        select (field, attr);
-
-            var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
-            foreach (var (field, attr) in query.ToList())
-            {
-                var completionSource = (IOutputCompletionSource?)field.GetValue(resource);
-                if (completionSource == null)
-                {
-                    throw new InvalidOperationException("[ResourceField] attribute was placed on a null field.");
-                }
-
-                result.Add(attr.Name, completionSource);
-            }
-
-            result.Add("urn", resource._urn);
-            if (resource is CustomResource customResource)
-                result.Add("id", customResource._id);
-            
-            Log.Debug("Fields to assign: " + new JArray(result.Keys), resource);
-            return result.ToImmutable();
-        }
-
-        private Task RegisterResourceAsync(Resource resource, bool custom, ResourceArgs args, ResourceOptions options)
-            => CompleteResourceAsync(
-                resource, () => RegisterResourceWorkerAsync(resource, custom, args, options));
-
-        private async Task<(string urn, string id, Struct data)> RegisterResourceWorkerAsync(
+        private async Task<(string urn, string id, Struct data)> RegisterResourceAsync(
             Resource resource, bool custom,
             ResourceArgs args, ResourceOptions options)
         {

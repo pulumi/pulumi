@@ -9,7 +9,7 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
 {
-    public static class Deserializers
+    internal static class Deserializers
     {
         private static Deserializer<T> CreatePrimitiveDeserializer<T>(Value.KindOneofCase kind, Func<Value, T> func)
             => CreateDeserializer(kind, v => OutputData.Create(func(v), isKnown: true, isSecret: false));
@@ -35,27 +35,27 @@ namespace Pulumi.Serialization
                 return OutputData.Create(innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
             };
 
-        public static readonly Deserializer<bool> BoolDeserializer =
+        private static readonly Deserializer<bool> BoolDeserializer =
             CreatePrimitiveDeserializer(Value.KindOneofCase.BoolValue, v => v.BoolValue);
 
-        public static readonly Deserializer<string> StringDeserializer =
+        private static readonly Deserializer<string> StringDeserializer =
             CreatePrimitiveDeserializer(Value.KindOneofCase.StringValue, v => v.StringValue);
 
-        public static readonly Deserializer<int> Int32Deserializer =
-            CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => (int)v.NumberValue);
+        //private static readonly Deserializer<int> Int32Deserializer =
+        //    CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => (int)v.NumberValue);
 
-        public static readonly Deserializer<double> DoubleDeserializer =
+        private static readonly Deserializer<double> DoubleDeserializer =
             CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => v.NumberValue);
 
-        public static readonly Deserializer<object> NumberDeserializer =
-            CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => ConvertNumberToInt32OrDouble(v.NumberValue));
+        //public static readonly Deserializer<object> NumberDeserializer =
+        //    CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => ConvertNumberToInt32OrDouble(v.NumberValue));
 
-        private static object ConvertNumberToInt32OrDouble(double numberValue)
-            => unchecked((int)numberValue == numberValue
-                ? (object)(int)numberValue
-                : numberValue);
+        //private static object ConvertNumberToInt32OrDouble(double numberValue)
+        //    => unchecked((int)numberValue == numberValue
+        //        ? (object)(int)numberValue
+        //        : numberValue);
 
-        public static Deserializer<ImmutableArray<T>> CreateListDeserializer<T>(Deserializer<T> elementDeserializer)
+        private static Deserializer<ImmutableArray<T>> CreateListDeserializer<T>(Deserializer<T> elementDeserializer)
             => CreateDeserializer(Value.KindOneofCase.ListValue,
                 v =>
                 {
@@ -78,7 +78,7 @@ namespace Pulumi.Serialization
                     return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
                 });
 
-        public static Deserializer<ImmutableDictionary<string, T>> CreateStructDeserializer<T>(Deserializer<T> elementDeserializer)
+        private static Deserializer<ImmutableDictionary<string, T>> CreateStructDeserializer<T>(Deserializer<T> elementDeserializer)
             => CreateDeserializer(Value.KindOneofCase.StructValue,
                 v =>
                 {
@@ -101,11 +101,11 @@ namespace Pulumi.Serialization
                     return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
                 });
 
-        public static readonly Deserializer<object> GenericDeserializer =
+        public static readonly Deserializer<object?> GenericDeserializer =
             CreateDeserializer(
                 v => v.KindCase switch
                 {
-                    Value.KindOneofCase.NumberValue => NumberDeserializer(v),
+                    Value.KindOneofCase.NumberValue => DoubleDeserializer(v),
                     Value.KindOneofCase.StringValue => StringDeserializer(v),
                     Value.KindOneofCase.BoolValue => BoolDeserializer(v),
                     Value.KindOneofCase.StructValue => GenericStructDeserializer(v),
@@ -115,11 +115,11 @@ namespace Pulumi.Serialization
                     _ => throw new InvalidOperationException("Unknown type when deserialized protobug: " + v.KindCase),
                 });
 
-        public static readonly Deserializer<ImmutableArray<object>> GenericListDeserializer =
+        private static readonly Deserializer<ImmutableArray<object?>> GenericListDeserializer =
             CreateListDeserializer(GenericDeserializer);
 
         public static readonly Deserializer<ImmutableDictionary<string, object>> GenericStructDeserializer =
-            CreateStructDeserializer(GenericDeserializer);
+            CreateStructDeserializer(GenericDeserializer)!;
 
         internal static (Value unwrapped, bool isSecret) UnwrapSecret(Value value)
         {
