@@ -4,9 +4,9 @@
 
 namespace Pulumi.Rpc
 {
-    public sealed class BoolOutputCompletionSource : ProtobufOutputCompletionSource<bool>
+    public sealed class BooleanOutputCompletionSource : ProtobufOutputCompletionSource<bool>
     {
-        public BoolOutputCompletionSource(Resource resource)
+        public BooleanOutputCompletionSource(Resource? resource)
             : base(resource, Deserializers.BoolDeserializer)
         {
         }

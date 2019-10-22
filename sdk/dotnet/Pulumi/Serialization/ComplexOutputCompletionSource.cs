@@ -19,8 +19,10 @@ namespace Pulumi.Rpc
         private static Deserializer<T> CreateDeserializeFunction(Func<IDictionary<string, object>, T> convert)
             => v =>
             {
-                var (unwrapped, isSecret) = Deserializers.GenericStructDeserializer(v);
-                return (convert(unwrapped), isSecret);
+                var (unwrapped, isKnown, isSecret) = Deserializers.GenericStructDeserializer(v);
+                return !isKnown
+                    ? OutputData.Create<T>(default!, isKnown: false, isSecret)
+                    : OutputData.Create(convert(unwrapped), isKnown, isSecret);
             };
     }
 }

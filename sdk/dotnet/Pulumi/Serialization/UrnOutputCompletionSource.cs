@@ -12,6 +12,6 @@ namespace Pulumi.Rpc
         }
 
         public void SetResult(string urn)
-            => SetResult(new OutputData<string>(urn, isKnown: true, isSecret: false));
+            => SetResult(OutputData.Create(urn, isKnown: true, isSecret: false));
     }
 }

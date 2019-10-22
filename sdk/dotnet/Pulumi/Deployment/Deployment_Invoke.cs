@@ -80,8 +80,8 @@ namespace Pulumi
                 throw new InvokeException($"Invoke of '{token}' failed: {reasons}");
             }
 
-            var (deserialized, _) = Deserializers.GenericStructDeserializer(new Value { StructValue = result.Return });
-            return convert(deserialized);
+            var data = Deserializers.GenericStructDeserializer(new Value { StructValue = result.Return });
+            return convert(data.Value);
         }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)

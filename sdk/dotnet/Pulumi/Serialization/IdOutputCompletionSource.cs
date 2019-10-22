@@ -12,9 +12,9 @@ namespace Pulumi.Rpc
         }
 
         public void SetResult(string id)
-            => SetResult(new OutputData<string>(id, isKnown: true, isSecret: false));
+            => SetResult(OutputData.Create(id, isKnown: true, isSecret: false));
 
         public void SetUnknownResult()
-            => SetResult(new OutputData<string>("", isKnown: false, isSecret: false));
+            => SetResult(OutputData.Create("", isKnown: false, isSecret: false));
     }
 }

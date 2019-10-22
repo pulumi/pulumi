@@ -11,34 +11,44 @@ namespace Pulumi.Rpc
 {
     public static class Deserializers
     {
-        private static Deserializer<T> CreateSimpleDeserializer<T>(
-            Value.KindOneofCase kind, Func<Value, T> func)
-        {
-            return v =>
+        private static Deserializer<T> CreatePrimitiveDeserializer<T>(Value.KindOneofCase kind, Func<Value, T> func)
+            => CreateDeserializer(kind, v => OutputData.Create(func(v), isKnown: true, isSecret: false));
+
+        private static Deserializer<T> CreateDeserializer<T>(Value.KindOneofCase kind, Func<Value, OutputData<T>> func)
+            => CreateDeserializer(v =>
+                v.KindCase == kind ? func(v) : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a {kind}"));
+
+        private static Deserializer<T> CreateDeserializer<T>(Func<Value, OutputData<T>> func)
+            => v =>
             {
                 var (innerVal, isSecret) = UnwrapSecret(v);
                 v = innerVal;
 
-                return v.KindCase == kind
-                    ? (func(v), isSecret)
-                    : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a {kind}");
+                if (v.KindCase == Value.KindOneofCase.StringValue &&
+                    v.StringValue == Constants.UnknownValue)
+                {
+                    // always deserialize unknown as the null value.
+                    return new OutputData<T>(default!, isKnown: false, isSecret);
+                }
+
+                var innerData = func(v);
+                return OutputData.Create(innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
             };
-        }
 
         public static readonly Deserializer<bool> BoolDeserializer =
-            CreateSimpleDeserializer(Value.KindOneofCase.BoolValue, v => v.BoolValue);
+            CreatePrimitiveDeserializer(Value.KindOneofCase.BoolValue, v => v.BoolValue);
 
         public static readonly Deserializer<string> StringDeserializer =
-            CreateSimpleDeserializer(Value.KindOneofCase.StringValue, v => v.StringValue);
+            CreatePrimitiveDeserializer(Value.KindOneofCase.StringValue, v => v.StringValue);
 
         public static readonly Deserializer<int> Int32Deserializer =
-            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => (int)v.NumberValue);
+            CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => (int)v.NumberValue);
 
         public static readonly Deserializer<double> DoubleDeserializer =
-            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => v.NumberValue);
+            CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => v.NumberValue);
 
         public static readonly Deserializer<object> NumberDeserializer =
-            CreateSimpleDeserializer(Value.KindOneofCase.NumberValue, v => ConvertNumberToInt32OrDouble(v.NumberValue));
+            CreatePrimitiveDeserializer(Value.KindOneofCase.NumberValue, v => ConvertNumberToInt32OrDouble(v.NumberValue));
 
         private static object ConvertNumberToInt32OrDouble(double numberValue)
             => unchecked((int)numberValue == numberValue
@@ -46,85 +56,70 @@ namespace Pulumi.Rpc
                 : numberValue);
 
         public static Deserializer<ImmutableArray<T>> CreateListDeserializer<T>(Deserializer<T> elementDeserializer)
-            => v =>
-            {
-                var (innerVal, isSecret) = UnwrapSecret(v);
-                v = innerVal;
-
-                if (v.KindCase != Value.KindOneofCase.ListValue)
-                    throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a list");
-
-                var result = ImmutableArray.CreateBuilder<T>();
-
-                foreach (var element in v.ListValue.Values)
+            => CreateDeserializer(Value.KindOneofCase.ListValue,
+                v =>
                 {
-                    var (unwrapped, innerIsSecret) = elementDeserializer(element);
+                    var result = ImmutableArray.CreateBuilder<T>();
+                    var isKnown = true;
+                    var isSecret = false;
 
-                    // ignore any child elements that are null
-                    if (unwrapped != null)
+                    foreach (var element in v.ListValue.Values)
                     {
-                        isSecret |= innerIsSecret;
-                        result.Add(unwrapped);
-                    }
-                }
+                        var elementData = elementDeserializer(element);
 
-                return (result.ToImmutable(), isSecret);
-            };
+                        // ignore any child elements that are null
+                        if (elementData.Value != null)
+                        {
+                            (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
+                            result.Add(elementData.Value);
+                        }
+                    }
+
+                    return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
+                });
 
         public static Deserializer<ImmutableDictionary<string, T>> CreateStructDeserializer<T>(Deserializer<T> elementDeserializer)
-            => v =>
-            {
-                var (innerVal, isSecret) = UnwrapSecret(v);
-                v = innerVal;
-
-                if (v.KindCase != Value.KindOneofCase.StructValue)
-                    throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a struct");
-
-                var result = ImmutableDictionary.CreateBuilder<string, T>();
-
-                foreach (var (key, element) in v.StructValue.Fields)
+            => CreateDeserializer(Value.KindOneofCase.StructValue,
+                v =>
                 {
-                    var (unwrapped, innerIsSecret) = elementDeserializer(element);
+                    var result = ImmutableDictionary.CreateBuilder<string, T>();
+                    var isKnown = true;
+                    var isSecret = false;
 
-                    // ignore any child elements that are null
-                    if (unwrapped != null)
+                    foreach (var (key, element) in v.StructValue.Fields)
                     {
-                        isSecret |= innerIsSecret;
-                        result.Add(key, unwrapped);
+                        var elementData = elementDeserializer(element);
+
+                        // ignore any child elements that are null
+                        if (elementData.Value != null)
+                        {
+                            (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
+                            result.Add(key, elementData.Value);
+                        }
                     }
-                }
 
-                return (result.ToImmutable(), isSecret);
-            };
+                    return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
+                });
 
-        public static readonly Deserializer<object?> GenericDeserializer =
-            v =>
-            {
-                var (unwrapped, isSecret) = UnwrapSecret(v);
-                if (isSecret)
+        public static readonly Deserializer<object> GenericDeserializer =
+            CreateDeserializer(
+                v => v.KindCase switch
                 {
-                    var (innerValue, innerIsSecret) = GenericDeserializer(unwrapped);
-                    return (innerValue, isSecret || innerIsSecret);
-                }
-
-                return v.KindCase switch
-                {
-                    Value.KindOneofCase.NullValue => (null, isSecret: false),
                     Value.KindOneofCase.NumberValue => NumberDeserializer(v),
                     Value.KindOneofCase.StringValue => StringDeserializer(v),
                     Value.KindOneofCase.BoolValue => BoolDeserializer(v),
                     Value.KindOneofCase.StructValue => GenericStructDeserializer(v),
                     Value.KindOneofCase.ListValue => GenericListDeserializer(v),
+                    Value.KindOneofCase.NullValue => new OutputData<object?>(null, isKnown: true, isSecret: false),
                     Value.KindOneofCase.None => throw new InvalidOperationException("Should never get 'None' type when deserializing protobuf"),
                     _ => throw new InvalidOperationException("Unknown type when deserialized protobug: " + v.KindCase),
-                };
-            };
+                });
 
         public static readonly Deserializer<ImmutableArray<object>> GenericListDeserializer =
-            CreateListDeserializer<object>(GenericDeserializer!);
+            CreateListDeserializer(GenericDeserializer);
 
         public static readonly Deserializer<ImmutableDictionary<string, object>> GenericStructDeserializer =
-            CreateStructDeserializer<object>(GenericDeserializer!);
+            CreateStructDeserializer(GenericDeserializer);
 
         internal static (Value unwrapped, bool isSecret) UnwrapSecret(Value value)
         {

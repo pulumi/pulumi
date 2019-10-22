@@ -11,13 +11,13 @@ namespace Pulumi.Rpc
         private readonly Deserializer<T> _deserialize;
 
         private protected ProtobufOutputCompletionSource(
-            Resource resource, Deserializer<T> deserialize)
+            Resource? resource, Deserializer<T> deserialize)
             : base(resource)
         {
             _deserialize = deserialize;
         }
 
-        void IProtobufOutputCompletionSource.SetResult(Value value)
+        internal void SetResult(Value value)
         {
             // First, special case if this property points to null.  We need to handle that as that
             // is common in preview, and we want to map this to an unknown output if so.
@@ -36,8 +36,10 @@ namespace Pulumi.Rpc
             // non-null value.  this is always 'known' regardless of if we're in preview or not.
             // Defer to subclass to figure out what this value actually is. Note: we can just call
             // this on the top value again.  Deserialization functions will unwrap secrets as well.
-            var (deserialized, innerIsSecret) = _deserialize(value);
-            this.SetResult(new OutputData<T>(deserialized, isKnown: true, innerIsSecret));
+            this.SetResult(_deserialize(value));
         }
+
+        void IProtobufOutputCompletionSource.SetResult(Value value)
+            => SetResult(value);
     }
 }

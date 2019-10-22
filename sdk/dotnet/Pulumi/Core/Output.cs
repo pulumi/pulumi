@@ -8,6 +8,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
@@ -107,7 +108,7 @@ namespace Pulumi
             }
 
             var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => new OutputData<T>(t, isKnown: true, isSecret: false));
+            value.Assign(tcs, t => OutputData.Create(t, isKnown: true, isSecret: false));
             return new Output<T>(ImmutableHashSet<Resource>.Empty, tcs.Task);
         }
 
@@ -132,7 +133,7 @@ namespace Pulumi
             var inner = func(data.Value);
             var innerData = await inner.DataTask.ConfigureAwait(false);
 
-            return new OutputData<U>(
+            return OutputData.Create(
                 innerData.Value, data.IsKnown && innerData.IsKnown, data.IsSecret || innerData.IsSecret);
         }
 
@@ -150,14 +151,11 @@ namespace Pulumi
                 var data = await output.DataTask.ConfigureAwait(false);
 
                 values.Add(data.Value);
-                (isKnown, isSecret) = Combine(data, isKnown, isSecret);
+                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
-            return new OutputData<ImmutableArray<T>>(values.MoveToImmutable(), isKnown, isSecret);
+            return OutputData.Create(values.MoveToImmutable(), isKnown, isSecret);
         }
-
-        private static (bool isKnown, bool isSecret) Combine<X>(OutputData<X> data, bool isKnown, bool isSecret)
-            => (isKnown && data.IsKnown, isSecret || data.IsSecret);
 
         internal static Output<(X, Y, Z)> Tuple<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
             => new Output<(X, Y, Z)>(
@@ -177,41 +175,24 @@ namespace Pulumi
                 var output = (Output<X>)item1;
                 var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item1 = data.Value;
-                (isKnown, isSecret) = Combine(data, isKnown, isSecret);
+                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
             {
                 var output = (Output<Y>)item2;
                 var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item2 = data.Value;
-                (isKnown, isSecret) = Combine(data, isKnown, isSecret);
+                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
             {
                 var output = (Output<Z>)item3;
                 var data = await output.DataTask.ConfigureAwait(false);
                 tuple.Item3 = data.Value;
-                (isKnown, isSecret) = Combine(data, isKnown, isSecret);
+                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
-            return new OutputData<(X, Y, Z)>(tuple, isKnown, isSecret);
+            return OutputData.Create(tuple, isKnown, isSecret);
         }
-    }
-
-    internal struct OutputData<X>
-    {
-        public readonly X Value;
-        public readonly bool IsKnown;
-        public readonly bool IsSecret;
-
-        public OutputData(X value, bool isKnown, bool isSecret)
-        {
-            Value = value;
-            IsKnown = isKnown;
-            IsSecret = isSecret;
-        }
-
-        public static implicit operator OutputData<object?>(OutputData<X> data)
-            => new OutputData<object?>(data.Value, data.IsKnown, data.IsSecret);
     }
 }

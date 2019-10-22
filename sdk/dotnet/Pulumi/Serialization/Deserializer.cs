@@ -6,5 +6,5 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Rpc
 {
-    public delegate (T deserialized, bool isSecret) Deserializer<T>(Value value);
+    public delegate OutputData<T> Deserializer<T>(Value value);
 }

@@ -493,7 +493,7 @@
         <member name="M:Pulumi.IOutput.GetDataAsync">
             <summary>
             Returns an <see cref="T:Pulumi.Output`1"/> equivalent to this, except with our
-            <see cref="F:Pulumi.OutputData`1.Value"/> casted to an object.
+            <see cref="F:Pulumi.Rpc.OutputData`1.Value"/> casted to an object.
             </summary>
         </member>
         <member name="T:Pulumi.Output`1">

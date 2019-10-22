@@ -2,34 +2,21 @@
 
 #nullable enable
 
-using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Moq;
+using Pulumi.Rpc;
 using Xunit;
 
 namespace Pulumi.Tests.Core
 {
-    public partial class OutputTests
+    public partial class OutputTests : PulumiTest
     {
         private static Output<T> CreateOutput<T>(T value, bool isKnown, bool isSecret = false)
             => new Output<T>(ImmutableHashSet<Resource>.Empty,
-                Task.FromResult(new OutputData<T>(value, isKnown, isSecret)));
-
-        private static async Task Run(Func<Task> func, bool dryRun)
-        {
-            var mock = new Mock<IDeployment>(MockBehavior.Strict);
-            mock.Setup(d => d.IsDryRun).Returns(dryRun);
-
-            Deployment.Instance = mock.Object;
-            await func().ConfigureAwait(false);
-        }
+                Task.FromResult(OutputData.Create(value, isKnown, isSecret)));
 
         public class PreviewTests
         {
-            private static Task RunInPreview(Func<Task> func)
-                => Run(func, dryRun: true);
-
             [Fact]
             public Task ApplyCanRunOnKnownValue()
                 => RunInPreview(async () =>
@@ -79,9 +66,6 @@ namespace Pulumi.Tests.Core
 
         public class NormalTests
         {
-            private static Task RunInNormal(Func<Task> func)
-                => Run(func, dryRun: false);
-
             [Fact]
             public Task ApplyCanRunOnKnownValue()
                 => RunInNormal(async () =>

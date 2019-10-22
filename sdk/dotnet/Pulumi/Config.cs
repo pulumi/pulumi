@@ -6,6 +6,7 @@ using System;
 using System.Collections.Immutable;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Pulumi.Rpc;
 
 namespace Pulumi
 {
@@ -45,7 +46,7 @@ namespace Pulumi
         {
             return new Output<T>(
                 ImmutableHashSet<Resource>.Empty,
-                Task.FromResult(new OutputData<T>(value, isKnown: true, isSecret: true)));
+                Task.FromResult(OutputData.Create(value, isKnown: true, isSecret: true)));
         }
 
         /// <summary>

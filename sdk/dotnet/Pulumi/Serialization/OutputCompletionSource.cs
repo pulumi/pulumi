@@ -14,10 +14,10 @@ namespace Pulumi.Rpc
 
         public Output<T> Output { get; }
 
-        protected OutputCompletionSource(Resource resource)
-        {
-            this.Output = new Output<T>(ImmutableHashSet.Create(resource), _tcs.Task);
-        }
+        protected OutputCompletionSource(Resource? resource)
+            => this.Output = new Output<T>(
+                resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource),
+                _tcs.Task);
 
         private protected void SetResult(OutputData<T> data)
             => _tcs.SetResult(data);
