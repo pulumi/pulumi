@@ -188,46 +188,8 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 
 	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 
-	// Instead of sending to the source channel directly, buffer events to account for slow receivers.
-	//
-	// Buffering is done by a goroutine that concurrently receives from the senders and attempts to send events to the
-	// receiver. Events that are received while waiting for the receiver to catch up are buffered in a slice.
-	//
-	// We do not use a buffered channel because it is empirically less likely that the goroutine reading from a
-	// buffered channel will be scheduled when new data is placed in the channel.
 	buffer, done := make(chan Event), make(chan bool)
-	go func() {
-		defer close(done)
-
-		var queue []Event
-		for {
-			contract.Assert(buffer != nil)
-
-			e, ok := <-buffer
-			if !ok {
-				return
-			}
-			queue = append(queue, e)
-
-			// While there are events in the queue, attempt to send them to the waiting receiver. If the receiver is
-			// blocked and an event is received from the event senders, stick that event in the queue.
-			for len(queue) > 0 {
-				select {
-				case e, ok := <-buffer:
-					if !ok {
-						// If the event source has been closed, flush the queue.
-						for _, e := range queue {
-							events <- e
-						}
-						return
-					}
-					queue = append(queue, e)
-				case events <- queue[0]:
-					queue = queue[1:]
-				}
-			}
-		}
-	}()
+	go queueEvents(events, buffer, done)
 
 	return eventEmitter{
 		done: done,
@@ -236,14 +198,60 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 }
 
 func makeQueryEventEmitter(events chan<- Event) (eventEmitter, error) {
+	buffer, done := make(chan Event), make(chan bool)
+
+	go queueEvents(events, buffer, done)
+
 	return eventEmitter{
-		ch: events,
+		done: done,
+		ch:   buffer,
 	}, nil
 }
 
 type eventEmitter struct {
 	done <-chan bool
 	ch   chan<- Event
+}
+
+func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
+	// Instead of sending to the source channel directly, buffer events to account for slow receivers.
+	//
+	// Buffering is done by a goroutine that concurrently receives from the senders and attempts to send events to the
+	// receiver. Events that are received while waiting for the receiver to catch up are buffered in a slice.
+	//
+	// We do not use a buffered channel because it is empirically less likely that the goroutine reading from a
+	// buffered channel will be scheduled when new data is placed in the channel.
+
+	defer close(done)
+
+	var queue []Event
+	for {
+		contract.Assert(buffer != nil)
+
+		e, ok := <-buffer
+		if !ok {
+			return
+		}
+		queue = append(queue, e)
+
+		// While there are events in the queue, attempt to send them to the waiting receiver. If the receiver is
+		// blocked and an event is received from the event senders, stick that event in the queue.
+		for len(queue) > 0 {
+			select {
+			case e, ok := <-buffer:
+				if !ok {
+					// If the event source has been closed, flush the queue.
+					for _, e := range queue {
+						events <- e
+					}
+					return
+				}
+				queue = append(queue, e)
+			case events <- queue[0]:
+				queue = queue[1:]
+			}
+		}
+	}
 }
 
 func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
