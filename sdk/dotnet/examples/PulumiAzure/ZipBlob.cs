@@ -46,25 +46,27 @@ namespace Pulumi.Azure.Storage
         {
             return Output
                 .All<string>(account.Name, account.PrimaryConnectionString, blob.StorageContainerName, blob.Name)
-                .Apply(values =>
+                .ApplyAsync(async values =>
                 {
-                    // TODO 
-                    //const sas = await storage.getAccountBlobContainerSAS({
-                    //    connectionString,
-                    //    containerName,
-                    //    start: "2019-01-01",
-                    //    expiry: signatureExpiration,
-                    //    permissions:
-                    //        {
-                    //        read: true,
-                    //        write: false,
-                    //        delete: false,
-                    //        list: false,
-                    //        add: false,
-                    //        create: false,
-                    //    },
-                    //}, { async: true });
-                    return $"https://{values[0]}.blob.core.windows.net/{values[2]}/{values[3]}?st=2019-10-21T14%3A32%3A52Z&se=2020-10-22T11%3A10%3A00Z&sp=r&sv=2018-03-28&sr=b&sig=gZmY3QZHdGzAIwzh5WpgC%2FkNtFsvbRKGSfBJZTq078E%3D";
+                    var sas = await DataSource.GetAccountBlobContainerSAS(
+                        new GetAccountBlobContainerSASArgs
+                        {
+                            ConnectionString = values[1],
+                            ContainerName = values[2],
+                            Start = "2019-01-01",
+                            Expiry = "2100-01-01",
+                            Permissions = new GetAccountBlobContainerSASPermissions
+                            {
+                                Read = true,
+                                Write = false,
+                                Delete = false,
+                                List = false,
+                                Add = false,
+                                Create = false,
+                            },
+                        }
+                    );
+                    return $"https://{values[0]}.blob.core.windows.net/{values[2]}/{values[3]}{sas}";
                 });
         }
     }
