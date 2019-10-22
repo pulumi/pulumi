@@ -74,6 +74,9 @@ namespace Pulumi
         public static implicit operator InputMap<V>(Output<Dictionary<string, V>> values)
             => values.Apply(d => ImmutableDictionary.CreateRange(d));
 
+        public static implicit operator InputMap<V>(Output<IDictionary<string, V>> values)
+            => values.Apply(d => ImmutableDictionary.CreateRange(d));
+
         public static implicit operator InputMap<V>(Output<ImmutableDictionary<string, V>> values)
             => new InputMap<V>(values);
 

@@ -129,6 +129,9 @@ namespace Pulumi
         public static implicit operator InputList<T>(Output<List<T>> values)
             => values.Apply(a => ImmutableArray.CreateRange(a));
 
+        public static implicit operator InputList<T>(Output<IEnumerable<T>> values)
+            => values.Apply(a => ImmutableArray.CreateRange(a));
+
         public static implicit operator InputList<T>(Output<ImmutableArray<T>> values)
             => new InputList<T>(values);
 
