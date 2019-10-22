@@ -11,7 +11,7 @@ namespace Pulumi.Azure.AppService
         private readonly StringOutputCompletionSource _defaultSiteHostname;
         public Output<string> DefaultSiteHostname => _defaultSiteHostname.Output;
         
-        public AppService(string name, AppServiceArgs args = default, ResourceOptions opts = default)
+        public AppService(string name, AppServiceArgs args, ResourceOptions opts = null)
             : base("azure:appservice/appService:AppService", name, args, opts)
         {
             _defaultSiteHostname = new StringOutputCompletionSource(this);
@@ -32,7 +32,7 @@ namespace Pulumi.Azure.AppService
             get => _appSettings ?? (_appSettings = new Dictionary<string, string>());
             set => _appSettings = value;
         }
-        private InputList<ConnectionStringArgs>? _connectionStrings;
+        private InputList<ConnectionStringArgs> _connectionStrings;
         public InputList<ConnectionStringArgs> ConnectionStrings
         {
             get => _connectionStrings ?? (_connectionStrings = new List<ConnectionStringArgs>());

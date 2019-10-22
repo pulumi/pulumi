@@ -10,7 +10,7 @@ namespace Pulumi.Azure.Core
 
         [ResourceField("name")]
         private readonly StringOutputCompletionSource _name;
-        public new Output<string> Name => _name.Output;
+        public Output<string> Name => _name.Output;
 
         public ResourceGroup(string name, ResourceGroupArgs args = default, ResourceOptions opts = default) 
             : base("azure:core/resourceGroup:ResourceGroup", name, args, opts)
