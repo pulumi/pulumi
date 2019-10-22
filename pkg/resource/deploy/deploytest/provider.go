@@ -15,6 +15,8 @@
 package deploytest
 
 import (
+	"fmt"
+
 	"github.com/blang/semver"
 	uuid "github.com/satori/go.uuid"
 
@@ -154,4 +156,11 @@ func (prov *Provider) Invoke(tok tokens.ModuleMember,
 		return resource.PropertyMap{}, nil, nil
 	}
 	return prov.InvokeF(tok, args)
+}
+
+func (prov *Provider) StreamInvoke(
+	tok tokens.ModuleMember, args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+
+	return nil, fmt.Errorf("not implemented")
 }
