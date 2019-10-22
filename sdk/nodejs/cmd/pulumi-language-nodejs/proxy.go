@@ -109,9 +109,17 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 				logging.V(10).Infof("Sync invoke: Invoking: %s", req.GetTok())
 				res, err := target.Invoke(ctx, &req)
-				if err != nil {
+				if err != nil  {
 					logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
-					return err
+					logging.V(10).Infof("Sync invoke: Converting error to response.\n")
+					if res == nil {
+						res = &pulumirpc.InvokeResponse{}
+					}
+
+					res.Failures = append(res.Failures, &pulumirpc.CheckFailure{
+						Property: "",
+						Reason: err.Error(),
+					})
 				}
 
 				// encode the response
