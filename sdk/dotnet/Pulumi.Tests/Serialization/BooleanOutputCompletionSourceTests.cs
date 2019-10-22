@@ -82,6 +82,20 @@ namespace Pulumi.Tests.Serialization
         }
 
         [Fact]
+        public Task NullInNormalProducesFalseKnown()
+        {
+            return RunInNormal(async () =>
+            {
+                var source = new BooleanOutputCompletionSource(resource: null);
+                source.SetResult(new Value { NullValue = NullValue.NullValue });
+
+                var data = await source.Output.DataTask;
+                Assert.False(data.Value);
+                Assert.True(data.IsKnown);
+            });
+        }
+
+        [Fact]
         public async Task UnknownProducesFalseUnknown()
         {
             var source = new BooleanOutputCompletionSource(resource: null);
