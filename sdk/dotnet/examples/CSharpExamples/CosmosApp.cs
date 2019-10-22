@@ -6,10 +6,50 @@ using System.Collections.Generic;
 using Pulumi.Azure.Core;
 using Pulumi.Azure.AppService;
 using Pulumi.Azure.Storage;
+using CosmosDB = Pulumi.Azure.CosmosDB;
+using System;
+using System.Linq;
 
 namespace Pulumi.CSharpExamples
 {
-    public class WebApp
+    public class CosmosAppArgs
+    {
+        public Input<string>? ResourceGroupName { get; set; }
+        public InputList<string>? Locations { get; set; }
+        public Input<string>? DatabaseName { get; set; }
+        public Input<string>? ContainerName { get; set; }
+    }
+
+    public class CosmosApp : ComponentResource
+    {
+        public CosmosApp(string name, CosmosAppArgs args, ResourceOptions? options = null)
+            : base("examples:azure:CosmosApp", name, options)
+        {
+            if (args.Locations == null)
+            {
+                throw new ArgumentException(nameof(args.Locations));
+            }
+
+            var primaryLocation = args.Locations.ToOutput().Apply(ls => ls[0]);
+
+            var cosmosAccount = new CosmosDB.Account($"cosmos-{name}",
+                new CosmosDB.AccountArgs
+                {
+                    ResourceGroupName = args.ResourceGroupName,
+                    Location = primaryLocation,
+                    //GeoLocations = args.Locations.ToOutput().Apply(ls => ls.Select((location, failoverPriority) => ({ location, failoverPriority }))),
+                    OfferType = "Standard",
+                    //consistencyPolicy = new 
+                    //{
+                    //    consistencyLevel: "Session",
+                    //    maxIntervalInSeconds: 300,
+                    //    maxStalenessPrefix: 100000,
+                    //},
+                });
+        }
+    }
+
+    public class GlobalApp
     {
         public static Dictionary<string, object> Run()
         {
@@ -69,7 +109,7 @@ namespace Pulumi.CSharpExamples
             //    RequestedServiceObjectiveName = "S0",
             //});
 
-            var app = new AppService("app2", new AppServiceArgs
+            var app = new AppService("app", new AppServiceArgs
             {
                 ResourceGroupName = resourceGroup.Name,
                 AppServicePlanId = appServicePlan.Id,

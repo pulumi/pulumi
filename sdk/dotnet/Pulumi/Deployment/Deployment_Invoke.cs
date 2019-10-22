@@ -52,7 +52,7 @@ namespace Pulumi
             var result = await monitor.InvokeAsync(new InvokeRequest
             {
                 Tok = token,
-                Provider = provider,
+                Provider = provider ?? "",
                 Version = options?.Version ?? "",
                 Args = serialized,
             });
