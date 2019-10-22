@@ -44,7 +44,7 @@ namespace Pulumi.Azure.Storage
         {
             return Output
                 .All<string>(account.Name, account.PrimaryConnectionString, blob.StorageContainerName, blob.Name)
-                .ApplyAsync(async values =>
+                .Apply(async values =>
                 {
                     var sas = await DataSource.GetAccountBlobContainerSAS(
                         new GetAccountBlobContainerSASArgs

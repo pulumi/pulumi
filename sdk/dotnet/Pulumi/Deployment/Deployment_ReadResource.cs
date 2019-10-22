@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi
@@ -50,8 +51,8 @@ namespace Pulumi
             var prepareResult = await this.PrepareResourceAsync(
                 label, resource, custom: true, args, options).ConfigureAwait(false);
 
-            var resolvedID = (string)(await SerializePropertyAsync(
-                label, id, dependentResources: new HashSet<Resource>()).ConfigureAwait(false))!;
+            var serializer = new Serializer(_excessiveDebugOutput);
+            var resolvedID = (string)(await serializer.SerializeAsync(label, id).ConfigureAwait(false))!;
             Log.Debug($"ReadResource RPC prepared: id={resolvedID}, t={type}, name={name}" +
                 (_excessiveDebugOutput ? $", obj={prepareResult.SerializedProps}" : ""));
 

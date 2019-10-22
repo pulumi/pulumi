@@ -115,6 +115,9 @@ namespace Pulumi
         public Output<U> Apply<U>(Func<T, U> func)
             => Apply(t => Output.Create(func(t)));
 
+        public Output<U> Apply<U>(Func<T, Task<U>> func)
+            => Apply(t => Output.Create(func(t)));
+
         public Output<U> Apply<U>(Func<T, Output<U>> func)
             => new Output<U>(Resources, ApplyHelperAsync(DataTask, func));
 
