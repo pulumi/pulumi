@@ -59,15 +59,15 @@ namespace Pulumi.Tests.Serialization
         }
 
         [Fact]
-        public async Task SecretListWithUnknownElement()
+        public async Task ListWithUnknownElement()
         {
             var source = new ListOutputCompletionSource<bool>(resource: null, Deserializers.BoolDeserializer);
             source.SetResult(await SerializeToValueAsync(new List<object> { CreateUnknownOutput(true) }));
 
             var data = await source.Output.DataTask;
-            AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
+            AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(false), data.Value);
             Assert.False(data.IsKnown);
-            Assert.True(data.IsSecret);
+            Assert.False(data.IsSecret);
         }
     }
 }

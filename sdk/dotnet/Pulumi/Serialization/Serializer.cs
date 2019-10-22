@@ -131,11 +131,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 if (isSecret)
                 {
-                    return new Dictionary<string, object?>
-                    {
-                        { Constants.SpecialSigKey, Constants.SpecialSecretSig },
-                        { "value", value },
-                    };
+                    var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+                    builder.Add(Constants.SpecialSigKey, Constants.SpecialSecretSig);
+                    builder.Add(Constants.SecretValueName, value);
+                    return builder.ToImmutable();
                 }
 
                 return value;
