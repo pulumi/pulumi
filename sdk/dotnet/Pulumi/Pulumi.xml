@@ -1102,6 +1102,54 @@
             specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
             </summary>
         </member>
+        <member name="M:Pulumi.Serialization.Serializer.SerializeAsync(System.String,System.Object)">
+            <summary>
+            Takes in an arbitrary object and serializes it into a uniform form that can converted
+            trivially to a protobuf to be passed to the Pulumi engine.
+            
+            The allowed 'basis' forms that can be serialized are:
+                1. <see langword="null"/>s
+                2. <see cref="T:System.Boolean"/>s
+                3. <see cref="T:System.Int32"/>s
+                4. <see cref="T:System.Double"/>s
+                5. <see cref="T:System.String"/>s
+                6. <see cref="T:Pulumi.Asset"/>s
+                7. <see cref="T:Pulumi.Archive"/>s
+                8. <see cref="T:Pulumi.Resource"/>s
+                9. <see cref="T:Pulumi.ResourceArgs"/>s
+                
+            Additionally, other more complex objects can be serialized as long as they are built
+            out of serializable objects.  These complex objects include:
+            
+                1. <see cref="T:Pulumi.Input`1"/>s.  As long as they are an Input of a serializable type.
+                2. <see cref="T:Pulumi.Output`1"/>s.  As long as they are an Output of a serializable type.
+                3. <see cref="T:System.Collections.IList"/>s.  As long as all elements in the list are serializable.
+                4. <see cref="T:System.Collections.IDictionary"/>.  As long as the key of the dictionary
+                   are <see cref="T:System.String"/>s and as long as the value are all serializable.
+            
+            No other forms are allowed.
+            
+            This function will only return values of a very specific shape.  Specifically, the
+            result values returned will *only* be one of:
+            
+                1. <see langword="null"/>
+                2. <see cref="T:System.Boolean"/>
+                3. <see cref="T:System.Int32"/>
+                4. <see cref="T:System.Double"/>
+                5. <see cref="T:System.String"/>
+                6. An <see cref="T:System.Collections.Immutable.ImmutableArray`1"/> containing only these result value types.
+                7. An <see cref="T:System.Collections.Immutable.IImmutableDictionary`2"/> where the keys are strings
+                   and the values are only these result value types.
+            
+            No other result type are allowed to be returned.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Serialization.Serializer.CreateStruct(System.Collections.Immutable.ImmutableDictionary{System.String,System.Object})">
+            <summary>
+            Given a <see cref="T:System.Collections.Immutable.ImmutableDictionary`2"/> produced by <see cref="M:Pulumi.Serialization.Serializer.SerializeAsync(System.Object)"/>,
+            produces the equivalent <see cref="T:Google.Protobuf.WellKnownTypes.Struct"/> that can be passed to the Pulumi engine.
+            </summary>
+        </member>
         <member name="T:Pulumi.Stack">
             <summary>
             Stack is the root resource for a Pulumi stack. Before invoking the <c>init</c> callback, it

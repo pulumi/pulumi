@@ -6,7 +6,9 @@ using System;
 using System.Collections;
 using System.Collections.Immutable;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
 {
@@ -25,6 +27,46 @@ namespace Pulumi.Serialization
         public Task<object?> SerializeAsync(object? prop)
             => SerializeAsync(ctx: "", prop);
 
+        /// <summary>
+        /// Takes in an arbitrary object and serializes it into a uniform form that can converted
+        /// trivially to a protobuf to be passed to the Pulumi engine.
+        /// 
+        /// The allowed 'basis' forms that can be serialized are:
+        ///     1. <see langword="null"/>s
+        ///     2. <see cref="bool"/>s
+        ///     3. <see cref="int"/>s
+        ///     4. <see cref="double"/>s
+        ///     5. <see cref="string"/>s
+        ///     6. <see cref="Asset"/>s
+        ///     7. <see cref="Archive"/>s
+        ///     8. <see cref="Resource"/>s
+        ///     9. <see cref="ResourceArgs"/>s
+        ///     
+        /// Additionally, other more complex objects can be serialized as long as they are built
+        /// out of serializable objects.  These complex objects include:
+        /// 
+        ///     1. <see cref="Input{T}"/>s.  As long as they are an Input of a serializable type.
+        ///     2. <see cref="Output{T}"/>s.  As long as they are an Output of a serializable type.
+        ///     3. <see cref="IList"/>s.  As long as all elements in the list are serializable.
+        ///     4. <see cref="IDictionary"/>.  As long as the key of the dictionary
+        ///        are <see cref="string"/>s and as long as the value are all serializable.
+        /// 
+        /// No other forms are allowed.
+        /// 
+        /// This function will only return values of a very specific shape.  Specifically, the
+        /// result values returned will *only* be one of:
+        /// 
+        ///     1. <see langword="null"/>
+        ///     2. <see cref="bool"/>
+        ///     3. <see cref="int"/>
+        ///     4. <see cref="double"/>
+        ///     5. <see cref="string"/>
+        ///     6. An <see cref="ImmutableArray{T}"/> containing only these result value types.
+        ///     7. An <see cref="IImmutableDictionary{TKey, TValue}"/> where the keys are strings
+        ///        and the values are only these result value types.
+        /// 
+        /// No other result type are allowed to be returned.
+        /// </summary>
         public async Task<object?> SerializeAsync(string ctx, object? prop)
         {
             // IMPORTANT:
@@ -233,6 +275,33 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             return result.ToImmutable();
+        }
+
+        private static Value CreateValue(object? value)
+            => value switch
+            {
+                null => Value.ForNull(),
+                int i => Value.ForNumber(i),
+                double d => Value.ForNumber(d),
+                bool b => Value.ForBool(b),
+                string s => Value.ForString(s),
+                ImmutableArray<object> list => Value.ForList(list.Select(v => CreateValue(v)).ToArray()),
+                ImmutableDictionary<string, object> dict => Value.ForStruct(CreateStruct(dict)),
+                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
+            };
+
+        /// <summary>
+        /// Given a <see cref="ImmutableDictionary{TKey, TValue}"/> produced by <see cref="SerializeAsync(object)"/>,
+        /// produces the equivalent <see cref="Struct"/> that can be passed to the Pulumi engine.
+        /// </summary>
+        public static Struct CreateStruct(ImmutableDictionary<string, object> serializedDictionary)
+        {
+            var result = new Struct();
+            foreach (var (key, value) in serializedDictionary)
+            {
+                result.Fields.Add(key, CreateValue(value));
+            }
+            return result;
         }
     }
 }

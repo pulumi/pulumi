@@ -65,7 +65,7 @@ namespace Pulumi
             }
 
             return new SerializationResult(
-                CreateStruct(result.ToImmutableDictionary()),
+                Serializer.CreateStruct(result.ToImmutableDictionary()),
                 propertyToDependentResources.ToImmutableDictionary());
         }
 

@@ -118,29 +118,6 @@ namespace Pulumi
             request.Object = prepareResult.SerializedProps;
         }
 
-        private static Value CreateValue(object? value)
-            => value switch
-            {
-                null => Value.ForNull(),
-                int i => Value.ForNumber(i),
-                double d => Value.ForNumber(d),
-                bool b => Value.ForBool(b),
-                string s => Value.ForString(s),
-                IList list => Value.ForList(list.OfType<object>().Select(v => CreateValue(v)).ToArray()),
-                IDictionary dict => Value.ForStruct(CreateStruct(dict)),
-                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
-            };
-
-        private static Struct CreateStruct(IDictionary dict)
-        {
-            var result = new Struct();
-            foreach (var key in dict.Keys.OfType<string>())
-            {
-                result.Fields.Add(key, CreateValue(dict[key]));
-            }
-            return result;
-        }
-
         private static RegisterResourceRequest CreateRegisterResourceRequest(string type, string name, bool custom, ResourceOptions options)
         {
             var customOpts = options as CustomResourceOptions;
