@@ -130,7 +130,7 @@ namespace Pulumi.Rpc
                    sig.KindCase == Value.KindOneofCase.StringValue &&
                    sig.StringValue == Constants.SpecialSecretSig)
             {
-                Debug.Assert(value.StructValue.Fields.TryGetValue("value", out var secretValue), "Secrets must have a field called 'value'");
+                Debug.Assert(value.StructValue.Fields.TryGetValue(Constants.SecretValueName, out var secretValue), "Secrets must have a field called 'value'");
                 isSecret = true;
                 value = secretValue;
             }

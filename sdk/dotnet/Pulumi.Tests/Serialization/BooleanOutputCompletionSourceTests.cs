@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Pulumi.Tests.Serialization
 {
-    public class BooleanOutputCompletionSourceTests : PulumiTest
+    public class BooleanOutputCompletionSourceTests : CompletionSourceTests
     {
         [Fact]
         public async Task True()
@@ -33,6 +33,29 @@ namespace Pulumi.Tests.Serialization
             Assert.False(data.Value);
             Assert.True(data.IsKnown);
         }
+        [Fact]
+        public async Task SecretTrue()
+        {
+            var source = new BooleanOutputCompletionSource(resource: null);
+            source.SetResult(CreateSecret(new Value { BoolValue = true }));
+
+            var data = await source.Output.DataTask;
+            Assert.True(data.Value);
+            Assert.True(data.IsKnown);
+            Assert.True(data.IsSecret);
+        }
+
+        [Fact]
+        public async Task SecretFalse()
+        {
+            var source = new BooleanOutputCompletionSource(resource: null);
+            source.SetResult(CreateSecret(new Value { BoolValue = false }));
+
+            var data = await source.Output.DataTask;
+            Assert.False(data.Value);
+            Assert.True(data.IsKnown);
+            Assert.True(data.IsSecret);
+        }
 
         [Fact]
         public void NonBooleanThrows()
@@ -45,7 +68,7 @@ namespace Pulumi.Tests.Serialization
         }
 
         [Fact]
-        public Task NullInPreviewProducesUnknown()
+        public Task NullInPreviewProducesFalseUnknown()
         {
             return RunInPreview(async () =>
             {
@@ -56,6 +79,17 @@ namespace Pulumi.Tests.Serialization
                 Assert.False(data.Value);
                 Assert.False(data.IsKnown);
             });
+        }
+
+        [Fact]
+        public async Task UnknownProducesFalseUnknown()
+        {
+            var source = new BooleanOutputCompletionSource(resource: null);
+            source.SetResult(UnknownValue);
+
+            var data = await source.Output.DataTask;
+            Assert.False(data.Value);
+            Assert.False(data.IsKnown);
         }
 
         [Fact]

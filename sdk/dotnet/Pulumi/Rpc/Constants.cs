@@ -30,5 +30,7 @@ namespace Pulumi.Rpc
         /// specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
         /// </summary>
         public const string SpecialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
+
+        public const string SecretValueName = "value";
     }
 }
