@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {

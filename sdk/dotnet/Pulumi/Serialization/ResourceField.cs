@@ -4,7 +4,7 @@
 
 using System;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class ResourceFieldAttribute : Attribute 

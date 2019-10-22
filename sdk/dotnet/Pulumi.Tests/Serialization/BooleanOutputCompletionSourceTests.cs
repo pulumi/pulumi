@@ -5,7 +5,7 @@
 using System;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization

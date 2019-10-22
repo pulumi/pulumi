@@ -4,7 +4,7 @@
 
 using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     internal interface IProtobufOutputCompletionSource : IOutputCompletionSource
     {

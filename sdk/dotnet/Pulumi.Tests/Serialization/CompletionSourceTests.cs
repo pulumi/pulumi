@@ -3,7 +3,7 @@
 #nullable enable
 
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace Pulumi.Tests.Serialization
 {

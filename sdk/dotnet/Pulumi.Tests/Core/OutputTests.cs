@@ -4,7 +4,7 @@
 
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.Core

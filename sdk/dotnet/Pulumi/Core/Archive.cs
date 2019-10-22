@@ -4,7 +4,7 @@
 
 using System;
 using System.Collections.Immutable;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {

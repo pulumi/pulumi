@@ -4,7 +4,7 @@
 
 using System;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     internal interface IOutputCompletionSource
     {

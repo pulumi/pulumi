@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Newtonsoft.Json.Linq;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi

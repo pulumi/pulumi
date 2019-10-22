@@ -28,4 +28,8 @@
     <Protobuf Include="..\..\proto\*.proto" Access="internal" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Rpc\" />
+  </ItemGroup>
+
 </Project>

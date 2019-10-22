@@ -2,7 +2,7 @@
 
 #nullable enable
 
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {

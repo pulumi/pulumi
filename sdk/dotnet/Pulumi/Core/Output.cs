@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {
@@ -113,9 +113,6 @@ namespace Pulumi
         }
 
         public Output<U> Apply<U>(Func<T, U> func)
-            => Apply(t => Output.Create(func(t)));
-
-        public Output<U> ApplyAsync<U>(Func<T, Task<U>> func)
             => Apply(t => Output.Create(func(t)));
 
         public Output<U> Apply<U>(Func<T, Output<U>> func)

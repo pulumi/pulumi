@@ -493,7 +493,7 @@
         <member name="M:Pulumi.IOutput.GetDataAsync">
             <summary>
             Returns an <see cref="T:Pulumi.Output`1"/> equivalent to this, except with our
-            <see cref="F:Pulumi.Rpc.OutputData`1.Value"/> casted to an object.
+            <see cref="F:Pulumi.Serialization.OutputData`1.Value"/> casted to an object.
             </summary>
         </member>
         <member name="T:Pulumi.Output`1">
@@ -561,7 +561,7 @@
         <member name="M:Pulumi.Deployment.CompleteResourceAsync(Pulumi.Resource,System.Func{System.Threading.Tasks.Task{System.ValueTuple{System.String,System.String,Google.Protobuf.WellKnownTypes.Struct}}})">
             <summary>
             Executes the provided <paramref name="action"/> and then completes all the 
-            <see cref="T:Pulumi.Rpc.OutputCompletionSource`1"/> sources on the <paramref name="resource"/> with
+            <see cref="T:Pulumi.Serialization.OutputCompletionSource`1"/> sources on the <paramref name="resource"/> with
             the results of it.
             </summary>
         </member>
@@ -955,7 +955,7 @@
             construction logic.  This is necessary as we cannot actually register this Resource
             until the derived-class constructors finish.  If we did, we might get our output results
             back prior to the contruct finishing.  In which case, we'd have no way to set the output
-            fields of this instance since the <see cref="T:Pulumi.Rpc.OutputCompletionSource`1"/>s for them will
+            fields of this instance since the <see cref="T:Pulumi.Serialization.OutputCompletionSource`1"/>s for them will
             not have been instantiated yet.
             </summary>
         </member>
@@ -1077,27 +1077,27 @@
             The original resource options passed to the Resource constructor.
             </summary>
         </member>
-        <member name="F:Pulumi.Rpc.Constants.UnknownValue">
+        <member name="F:Pulumi.Serialization.Constants.UnknownValue">
             <summary>
             Unknown values are encoded as a distinguished string value.
             </summary>
         </member>
-        <member name="F:Pulumi.Rpc.Constants.SpecialSigKey">
+        <member name="F:Pulumi.Serialization.Constants.SpecialSigKey">
             <summary>
             specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
             </summary>
         </member>
-        <member name="F:Pulumi.Rpc.Constants.SpecialAssetSig">
+        <member name="F:Pulumi.Serialization.Constants.SpecialAssetSig">
             <summary>
             specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
             </summary>
         </member>
-        <member name="F:Pulumi.Rpc.Constants.SpecialArchiveSig">
+        <member name="F:Pulumi.Serialization.Constants.SpecialArchiveSig">
             <summary>
             specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
             </summary>
         </member>
-        <member name="F:Pulumi.Rpc.Constants.SpecialSecretSig">
+        <member name="F:Pulumi.Serialization.Constants.SpecialSecretSig">
             <summary>
             specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
             </summary>

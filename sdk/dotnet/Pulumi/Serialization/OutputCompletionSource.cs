@@ -6,7 +6,7 @@ using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     public abstract class OutputCompletionSource<T> : IOutputCompletionSource
     {

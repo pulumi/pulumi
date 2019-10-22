@@ -4,7 +4,7 @@
 
 using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     public delegate OutputData<T> Deserializer<T>(Value value);
 }

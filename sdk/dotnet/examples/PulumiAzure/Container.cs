@@ -1,4 +1,4 @@
-﻿using Pulumi.Rpc;
+﻿using Pulumi.Serialization;
 
 namespace Pulumi.Azure.Storage
 {

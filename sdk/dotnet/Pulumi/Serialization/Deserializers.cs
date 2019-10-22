@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     public static class Deserializers
     {

@@ -2,7 +2,7 @@
 // the shape right "by hand" and then work on the code-gen to stub everything else out:
 
 using Pulumi;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 
 namespace AWS.S3
 {

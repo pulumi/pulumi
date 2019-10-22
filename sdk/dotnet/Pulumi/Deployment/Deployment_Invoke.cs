@@ -6,7 +6,7 @@ using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Rpc;
+using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi
@@ -52,7 +52,7 @@ namespace Pulumi
             var result = await monitor.InvokeAsync(new InvokeRequest
             {
                 Tok = token,
-                Provider = provider ?? "",
+                Provider = provider,
                 Version = options?.Version ?? "",
                 Args = serialized,
             });

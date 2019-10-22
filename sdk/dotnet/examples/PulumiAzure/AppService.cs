@@ -1,7 +1,5 @@
-﻿using Pulumi.Rpc;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using Pulumi.Serialization;
 
 namespace Pulumi.Azure.AppService
 {

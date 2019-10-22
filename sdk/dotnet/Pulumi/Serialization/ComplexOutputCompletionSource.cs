@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     public class ComplexOutputCompletionSource<T> : ProtobufOutputCompletionSource<T>
     {

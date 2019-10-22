@@ -2,7 +2,7 @@
 
 #nullable enable
 
-namespace Pulumi.Rpc
+namespace Pulumi.Serialization
 {
     public sealed class StringOutputCompletionSource : ProtobufOutputCompletionSource<string>
     {
