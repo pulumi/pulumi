@@ -77,7 +77,7 @@ func (p *windowsPipes) writer() io.Writer {
 
 func (p *windowsPipes) connect() error {
 	acceptDone := make(chan error)
-	defer close(acceptDone);
+	defer close(acceptDone)
 
 	go func() {
 		reqConn, err := p.reqListener.Accept()
