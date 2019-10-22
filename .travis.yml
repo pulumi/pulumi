@@ -11,6 +11,7 @@ matrix:
     env: NODE_VERSION=v8.16.0
 language: go
 go: 1.12.9
+dotnet: 3.0.100
 sudo: true
 git:
   depth: false
