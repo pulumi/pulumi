@@ -20,6 +20,12 @@ namespace Pulumi
         public static Output<T> Create<T>(Task<T> value)
             => Output<T>.Create(value);
 
+        public static Output<T> CreateSecret<T>([MaybeNull]T value)
+            => CreateSecret(Task.FromResult(value));
+
+        public static Output<T> CreateSecret<T>(Task<T> value)
+            => Output<T>.CreateSecret(value);
+
         public static Output<ImmutableArray<T>> All<T>(params Input<T>[] inputs)
             => All(ImmutableArray.CreateRange(inputs));
 
@@ -101,6 +107,12 @@ namespace Pulumi
             => await DataTask.ConfigureAwait(false);
 
         public static Output<T> Create(Task<T> value)
+            => Create(value, isSecret: false);
+
+        internal static Output<T> CreateSecret(Task<T> value)
+            => Create(value, isSecret: true);
+
+        private static Output<T> Create(Task<T> value, bool isSecret)
         {
             if (value == null)
             {
@@ -108,7 +120,7 @@ namespace Pulumi
             }
 
             var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => OutputData.Create(t, isKnown: true, isSecret: false));
+            value.Assign(tcs, t => OutputData.Create(t, isKnown: true, isSecret: isSecret));
             return new Output<T>(ImmutableHashSet<Resource>.Empty, tcs.Task);
         }
 

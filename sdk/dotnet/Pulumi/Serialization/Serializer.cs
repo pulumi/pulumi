@@ -24,9 +24,6 @@ namespace Pulumi.Serialization
             _excessiveDebugOutput = excessiveDebugOutput;
         }
 
-        public Task<object?> SerializeAsync(object? prop)
-            => SerializeAsync(ctx: "", prop);
-
         /// <summary>
         /// Takes in an arbitrary object and serializes it into a uniform form that can converted
         /// trivially to a protobuf to be passed to the Pulumi engine.
@@ -213,7 +210,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return builder.ToImmutable();
         }
 
-        private async Task<object> SerializeResourceArgsAsync(string ctx, ResourceArgs args)
+        private async Task<ImmutableDictionary<string, object>> SerializeResourceArgsAsync(string ctx, ResourceArgs args)
         {
             if (_excessiveDebugOutput)
             {
@@ -277,7 +274,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return result.ToImmutable();
         }
 
-        private static Value CreateValue(object? value)
+        public static Value CreateValue(object? value)
             => value switch
             {
                 null => Value.ForNull(),
@@ -291,7 +288,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             };
 
         /// <summary>
-        /// Given a <see cref="ImmutableDictionary{TKey, TValue}"/> produced by <see cref="SerializeAsync(object)"/>,
+        /// Given a <see cref="ImmutableDictionary{TKey, TValue}"/> produced by <see cref="SerializeAsync"/>,
         /// produces the equivalent <see cref="Struct"/> that can be passed to the Pulumi engine.
         /// </summary>
         public static Struct CreateStruct(ImmutableDictionary<string, object> serializedDictionary)

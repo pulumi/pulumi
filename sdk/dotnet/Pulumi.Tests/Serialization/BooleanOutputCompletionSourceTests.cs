@@ -37,7 +37,7 @@ namespace Pulumi.Tests.Serialization
         public async Task SecretTrue()
         {
             var source = new BooleanOutputCompletionSource(resource: null);
-            source.SetResult(CreateSecret(new Value { BoolValue = true }));
+            source.SetResult(CreateSecretValue(new Value { BoolValue = true }));
 
             var data = await source.Output.DataTask;
             Assert.True(data.Value);
@@ -49,7 +49,7 @@ namespace Pulumi.Tests.Serialization
         public async Task SecretFalse()
         {
             var source = new BooleanOutputCompletionSource(resource: null);
-            source.SetResult(CreateSecret(new Value { BoolValue = false }));
+            source.SetResult(CreateSecretValue(new Value { BoolValue = false }));
 
             var data = await source.Output.DataTask;
             Assert.False(data.Value);

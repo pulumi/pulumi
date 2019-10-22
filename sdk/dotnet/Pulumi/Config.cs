@@ -43,11 +43,7 @@ namespace Pulumi
         }
 
         private static Output<T> MakeSecret<T>(T value)
-        {
-            return new Output<T>(
-                ImmutableHashSet<Resource>.Empty,
-                Task.FromResult(OutputData.Create(value, isKnown: true, isSecret: true)));
-        }
+            => Output.CreateSecret(value);
 
         /// <summary>
         /// Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.

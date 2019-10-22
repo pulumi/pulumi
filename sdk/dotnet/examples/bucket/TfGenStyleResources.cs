@@ -17,12 +17,12 @@ namespace AWS.S3
 
     public class BucketObjectArgs : ResourceArgs
     {
-        public Input<string> Acl;
-        public Input<string> Bucket;
+        public Input<string> Acl = default!;
+        public Input<string> Bucket = default!;
         public Input<string> ContentBase64;
-        public Input<string> ContentType;
-        public Input<string> Key;
-        public Input<AssetOrArchive> Source;
+        public Input<string> ContentType = default!;
+        public Input<string> Key = default!;
+        public Input<AssetOrArchive> Source = default!;
 
         protected override void AddProperties(PropertyBuilder builder)
         {

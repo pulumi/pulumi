@@ -1146,7 +1146,7 @@
         </member>
         <member name="M:Pulumi.Serialization.Serializer.CreateStruct(System.Collections.Immutable.ImmutableDictionary{System.String,System.Object})">
             <summary>
-            Given a <see cref="T:System.Collections.Immutable.ImmutableDictionary`2"/> produced by <see cref="M:Pulumi.Serialization.Serializer.SerializeAsync(System.Object)"/>,
+            Given a <see cref="T:System.Collections.Immutable.ImmutableDictionary`2"/> produced by <see cref="M:Pulumi.Serialization.Serializer.SerializeAsync(System.String,System.Object)"/>,
             produces the equivalent <see cref="T:Google.Protobuf.WellKnownTypes.Struct"/> that can be passed to the Pulumi engine.
             </summary>
         </member>
