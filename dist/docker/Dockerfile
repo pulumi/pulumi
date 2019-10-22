@@ -12,7 +12,6 @@ RUN apt-get update -y && \
     build-essential \
     ca-certificates \
     curl \
-    jq \
     git \
     gnupg \
     software-properties-common \
