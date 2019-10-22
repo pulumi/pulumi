@@ -304,11 +304,11 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Invoke(%s)", tok)
 
-	providerReq, err := rm.parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := rm.getProvider(providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
 		return nil, err
 	}
@@ -371,58 +371,6 @@ func (rm *queryResmon) SupportsFeature(ctx context.Context,
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
 	}, nil
-}
-
-func (rm *queryResmon) parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
-	if version == "" {
-		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg), nil
-	}
-
-	parsedVersion, err := semver.Parse(version)
-	if err != nil {
-		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
-		return providers.ProviderRequest{}, err
-	}
-
-	return providers.NewProviderRequest(&parsedVersion, pkg), nil
-}
-
-// getProviderReference fetches the provider reference for a resource, read, or invoke from the
-// given package with the given unparsed provider reference. If the unparsed provider reference is
-// empty, this function returns a reference to the default provider for the indicated package.
-func (rm *queryResmon) getProviderReference(req providers.ProviderRequest,
-	rawProviderRef string) (providers.Reference, error) {
-	if rawProviderRef != "" {
-		ref, err := providers.ParseReference(rawProviderRef)
-		if err != nil {
-			return providers.Reference{}, errors.Errorf("could not parse provider reference: %v", err)
-		}
-		return ref, nil
-	}
-
-	ref, err := rm.defaultProviders.getDefaultProviderRef(req)
-	if err != nil {
-		return providers.Reference{}, err
-	}
-	return ref, nil
-}
-
-// getProvider fetches the provider plugin for a resource, read, or invoke from the given package
-// with the given unparsed provider reference. If the unparsed provider reference is empty, this
-// function returns the plugin for the indicated package's default provider.
-func (rm *queryResmon) getProvider(
-	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
-
-	providerRef, err := rm.getProviderReference(req, rawProviderRef)
-	if err != nil {
-		return nil, err
-	}
-	provider, ok := rm.reg.GetProvider(providerRef)
-	if !ok {
-		return nil, errors.Errorf("unknown provider '%v'", rawProviderRef)
-	}
-	return provider, nil
 }
 
 // syntheticProviderURN will create a "fake" URN for a resource provider in query mode. Query mode
