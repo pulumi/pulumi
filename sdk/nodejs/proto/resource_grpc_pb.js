@@ -157,6 +157,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
+  streamInvoke: {
+    path: '/pulumirpc.ResourceMonitor/StreamInvoke',
+    requestStream: false,
+    responseStream: true,
+    requestType: provider_pb.InvokeRequest,
+    responseType: provider_pb.InvokeResponse,
+    requestSerialize: serialize_pulumirpc_InvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    responseSerialize: serialize_pulumirpc_InvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+  },
   readResource: {
     path: '/pulumirpc.ResourceMonitor/ReadResource',
     requestStream: false,
