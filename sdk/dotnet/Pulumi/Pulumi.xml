@@ -21,12 +21,12 @@
             is the name of the current project.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.Get(System.String,Pulumi.Config.StringOptions)">
+        <member name="M:Pulumi.Config.Get(System.String)">
             <summary>
             Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.GetSecret(System.String,Pulumi.Config.StringOptions)">
+        <member name="M:Pulumi.Config.GetSecret(System.String)">
             <summary>
             Loads an optional configuration value by its key, marking it as a secret, or <see
             langword="null"/> if it doesn't exist.
@@ -45,13 +45,13 @@
             function will throw an error.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.GetInt32(System.String,Pulumi.Config.Int32Options)">
+        <member name="M:Pulumi.Config.GetInt32(System.String)">
             <summary>
             Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
             If the configuration value isn't a legal number, this function will throw an error.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.GetSecretInt32(System.String,Pulumi.Config.Int32Options)">
+        <member name="M:Pulumi.Config.GetSecretInt32(System.String)">
             <summary>
             loads an optional configuration value, as a number, by its key, marking it as a secret
             or null if it doesn't exist.
@@ -71,12 +71,12 @@
             shape of the contents.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.Require(System.String,Pulumi.Config.StringOptions)">
+        <member name="M:Pulumi.Config.Require(System.String)">
             <summary>
             Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.RequireSecret(System.String,Pulumi.Config.StringOptions)">
+        <member name="M:Pulumi.Config.RequireSecret(System.String)">
             <summary>
             loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
             is thrown.
@@ -94,13 +94,13 @@
             If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.RequireInt32(System.String,Pulumi.Config.Int32Options)">
+        <member name="M:Pulumi.Config.RequireInt32(System.String)">
             <summary>
             loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
             configuration value is not a legal number, an error is thrown.
             </summary>
         </member>
-        <member name="M:Pulumi.Config.RequireSecretInt32(System.String,Pulumi.Config.Int32Options)">
+        <member name="M:Pulumi.Config.RequireSecretInt32(System.String)">
             <summary>
             loads a configuration value, as a number, by its given key, marking it as a secret.
             If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
@@ -148,48 +148,6 @@
         <member name="T:Pulumi.Config.ConfigMissingException">
             <summary>
             ConfigMissingException is used when a configuration value is completely missing.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Config.StringOptions">
-            <summary>
-            StringOptions may be used to constrain the set of legal values a string config value may contain.
-            </summary>
-        </member>
-        <member name="F:Pulumi.Config.StringOptions.AllowedValues">
-            <summary>
-            The legal enum values. If it does not match, a ConfigEnumError is thrown.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Config.StringOptions.MinLength">
-            <summary>
-            The minimum string length. If the string is not this long, a ConfigRangeError is thrown.
-            </summary>
-        </member>
-        <member name="F:Pulumi.Config.StringOptions.MaxLength">
-            <summary>
-            The maximum string length. If the string is longer than this, a ConfigRangeError is thrown.
-            </summary>
-        </member>
-        <member name="F:Pulumi.Config.StringOptions.Pattern">
-            <summary>
-            A regular expression the string must match. If it does not match, a ConfigPatternError is thrown.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Config.Int32Options">
-            <summary>
-            Int32Options may be used to constrain the set of legal values a number config value may contain.
-            </summary>
-        </member>
-        <member name="F:Pulumi.Config.Int32Options.Min">
-            <summary>
-            The minimum number value, inclusive. If the number is less than this, a ConfigRangeError
-            is thrown.
-            </summary>
-        </member>
-        <member name="F:Pulumi.Config.Int32Options.Max">
-            <summary>
-            The maximum number value, inclusive. If the number is greater than this, a
-            ConfigRangeError is thrown.
             </summary>
         </member>
         <member name="T:Pulumi.Alias">

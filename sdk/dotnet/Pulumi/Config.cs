@@ -48,49 +48,16 @@ namespace Pulumi
         /// <summary>
         /// Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.
         /// </summary>
-        public string? Get(string key, StringOptions? opts = null)
-        {
-            var v = Deployment.InternalInstance.GetConfig(this.FullKey(key));
-            if (v == null)
-            {
-                return null;
-            }
-
-            if (opts != null)
-            {
-                // SAFETY: if allowedValues != null, verifying v ∈ K[]
-                if (opts.AllowedValues.Count > 0 && !opts.AllowedValues.Contains(v))
-                {
-                    throw new ConfigEnumException(this.FullKey(key), v, opts.AllowedValues);
-                }
-                else if (opts.MinLength != null && v.Length < opts.MinLength)
-                {
-                    throw new ConfigRangeException(this.FullKey(key), v, opts.MinLength, null);
-                }
-                else if (opts.MaxLength != null && v.Length > opts.MaxLength)
-                {
-                    throw new ConfigRangeException(this.FullKey(key), v, null, opts.MaxLength);
-                }
-                else if (opts.Pattern != null)
-                {
-                    var pattern = opts.Pattern;
-                    if (!pattern.IsMatch(v))
-                    {
-                        throw new ConfigPatternException(this.FullKey(key), v, pattern);
-                    }
-                }
-            }
-
-            return v;
-        }
+        public string? Get(string key)
+            => Deployment.InternalInstance.GetConfig(this.FullKey(key));
 
         /// <summary>
         /// Loads an optional configuration value by its key, marking it as a secret, or <see
         /// langword="null"/> if it doesn't exist.
         /// </summary>
-        public Output<string>? GetSecret(string key, StringOptions? opts = null)
+        public Output<string>? GetSecret(string key)
         {
-            var v = this.Get(key, opts);
+            var v = this.Get(key);
             return v == null ? null : MakeSecret(v);
         }
 
@@ -132,7 +99,7 @@ namespace Pulumi
         /// Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
         /// If the configuration value isn't a legal number, this function will throw an error.
         /// </summary>
-        public int? GetInt32(string key, Int32Options? opts = null)
+        public int? GetInt32(string key)
         {
             var v = this.Get(key);
             if (v == null)
@@ -145,18 +112,6 @@ namespace Pulumi
                 throw new ConfigTypeException(this.FullKey(key), v, "Int32");
             }
 
-            if (opts != null)
-            {
-                if (opts.Min != null && result < opts.Min)
-                {
-                    throw new ConfigRangeException(this.FullKey(key), result, opts.Min, null);
-                }
-                else if (opts.Max != null && result > opts.Max)
-                {
-                    throw new ConfigRangeException(this.FullKey(key), result, null, opts.Max);
-                }
-            }
-
             return result;
         }
 
@@ -165,9 +120,9 @@ namespace Pulumi
         /// or null if it doesn't exist.
         /// If the configuration value isn't a legal number, this function will throw an error.
         /// </summary>
-        public Output<int>? GetSecretInt32(string key, Int32Options? opts = null)
+        public Output<int>? GetSecretInt32(string key)
         {
-            var v = this.GetInt32(key, opts);
+            var v = this.GetInt32(key);
             return v == null ? null : MakeSecret(v.Value);
         }
 
@@ -203,15 +158,15 @@ namespace Pulumi
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
         /// </summary>
-        public string Require(string key, StringOptions? opts = null)
-            => this.Get(key, opts) ?? throw new ConfigMissingException(this.FullKey(key));
+        public string Require(string key)
+            => this.Get(key) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
-        public Output<string> RequireSecret(string key, StringOptions? opts = null)
-            => MakeSecret(this.Require(key, opts));
+        public Output<string> RequireSecret(string key)
+            => MakeSecret(this.Require(key));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
@@ -231,15 +186,15 @@ namespace Pulumi
         /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
         /// </summary>
-        public int RequireInt32(string key, Int32Options? opts = null)
-            => this.GetInt32(key, opts) ?? throw new ConfigMissingException(this.FullKey(key));
+        public int RequireInt32(string key)
+            => this.GetInt32(key) ?? throw new ConfigMissingException(this.FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
         /// </summary>
-        public Output<int> RequireSecretInt32(string key, Int32Options? opts = null)
-            => MakeSecret(this.RequireInt32(key, opts));
+        public Output<int> RequireSecretInt32(string key)
+            => MakeSecret(this.RequireInt32(key));
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
