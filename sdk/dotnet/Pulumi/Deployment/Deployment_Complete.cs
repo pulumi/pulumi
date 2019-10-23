@@ -11,7 +11,6 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-
         /// <summary>
         /// Executes the provided <paramref name="action"/> and then completes all the 
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
@@ -45,6 +44,12 @@ namespace Pulumi
                 // object.  Allow the output field to deserialize the response.
                 foreach (var (fieldName, completionSource) in completionSources)
                 {
+                    if (fieldName == "urn" || fieldName == "id")
+                    {
+                        // Already handled specially above.
+                        continue;
+                    }
+
                     // We process and deserialize each field (instead of bulk processing
                     // 'response.data' so that each field can have independent isKnown/isSecret
                     // values.  We do not want to bubble up isKnown/isSecret from one field to the
