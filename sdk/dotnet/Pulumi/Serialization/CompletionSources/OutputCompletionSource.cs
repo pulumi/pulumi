@@ -17,7 +17,7 @@ namespace Pulumi.Serialization
         System.Type TargetType { get; }
         IOutput Output { get; }
         void TrySetException(Exception exception);
-        void SetDefaultResult(bool isKnown);
+        void TrySetDefaultResult(bool isKnown);
         
         void SetStringValue(string value, bool isKnown);
         void SetValue(string context, Value value);
@@ -40,9 +40,6 @@ namespace Pulumi.Serialization
 
         IOutput IOutputCompletionSource.Output => Output;
 
-        public void SetDefaultResult(bool isKnown)
-            => _taskCompletionSource.SetResult(new OutputData<T>(default!, isKnown, isSecret: false));
-
         public void SetStringValue(string value, bool isKnown)
             => _taskCompletionSource.SetResult(new OutputData<T>((T)(object)value, isKnown, isSecret: false));
 
@@ -52,6 +49,9 @@ namespace Pulumi.Serialization
             var converted = OutputCompletionSource.Convert(context, deserialized, this.TargetType);
             _taskCompletionSource.SetResult(new OutputData<T>((T)converted!, isKnown, isSecret));
         }
+
+        public void TrySetDefaultResult(bool isKnown)
+            => _taskCompletionSource.TrySetResult(new OutputData<T>(default!, isKnown, isSecret: false));
 
         public void TrySetException(Exception exception)
             => _taskCompletionSource.TrySetException(exception);
@@ -80,7 +80,8 @@ namespace Pulumi.Serialization
                     throw new InvalidOperationException($"{propFullName} was not an Output<T>");
                 }
 
-                if (prop.SetMethod == null)
+                var setMethod = prop.DeclaringType!.GetMethod("set_" + prop.Name, BindingFlags.NonPublic | BindingFlags.Instance);
+                if (setMethod == null)
                 {
                     throw new InvalidOperationException($"{propFullName} did not have a 'set' method");
                 }
@@ -92,7 +93,7 @@ namespace Pulumi.Serialization
                 var ocsContructor = ocsType.GetConstructors().Single();
                 var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
 
-                prop.SetValue(resource, completionSource.Output);
+                setMethod.Invoke(resource, new[] { completionSource.Output });
                 result.Add(attr.Name, completionSource);
             }
 

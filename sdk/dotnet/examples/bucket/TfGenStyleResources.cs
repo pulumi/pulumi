@@ -11,7 +11,6 @@ namespace AWS.S3
         public BucketObject(string name, BucketObjectArgs args, ResourceOptions options = null)
             : base("aws:s3/bucketObject:BucketObject", name, args, options)
         {
-            OnConstructorCompleted();
         }
     }
 
@@ -37,15 +36,12 @@ namespace AWS.S3
 
     public class Bucket : CustomResource
     {
-        [ResourceField("bucketDomainName")]
-        private readonly StringOutputCompletionSource _bucketDomainName;
-        public Output<string> BucketDomainName => _bucketDomainName.Output;
+        [Property("bucketDomainName")]
+        public Output<string> BucketDomainName { get; private set; }
 
         public Bucket(string name, BucketArgs args, ResourceOptions options = null)
             : base("aws:s3/bucket:Bucket", name, args, options)
         {
-            _bucketDomainName = new StringOutputCompletionSource(this);
-            this.OnConstructorCompleted();
         }
     }
 

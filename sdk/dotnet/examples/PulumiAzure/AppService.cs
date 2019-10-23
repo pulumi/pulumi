@@ -5,15 +5,12 @@ namespace Pulumi.Azure.AppService
 {
     public class AppService : CustomResource
     {
-        [ResourceField("defaultSiteHostname")]
-        private readonly StringOutputCompletionSource _defaultSiteHostname;
-        public Output<string> DefaultSiteHostname => _defaultSiteHostname.Output;
-        
+        [Property("defaultSiteHostname")]
+        public Output<string> DefaultSiteHostname { get; private set; }
+
         public AppService(string name, AppServiceArgs args, ResourceOptions opts = null)
             : base("azure:appservice/appService:AppService", name, args, opts)
         {
-            _defaultSiteHostname = new StringOutputCompletionSource(this);
-            this.OnConstructorCompleted();
         }
     }
 

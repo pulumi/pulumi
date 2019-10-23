@@ -4,20 +4,15 @@ namespace Pulumi.Azure.Core
 {
     public class ResourceGroup : CustomResource
     {
-        [ResourceField("location")]
-        private readonly StringOutputCompletionSource _location;
-        public Output<string> Location => _location.Output;
+        [Property("location")]
+        public Output<string> Location { get; private set; }
 
-        [ResourceField("name")]
-        private readonly StringOutputCompletionSource _name;
-        public Output<string> Name => _name.Output;
+        [Property("name")]
+        public Output<string> Name { get; private set; }
 
         public ResourceGroup(string name, ResourceGroupArgs args = default, ResourceOptions opts = default) 
             : base("azure:core/resourceGroup:ResourceGroup", name, args, opts)
         {
-            _location = new StringOutputCompletionSource(this);
-            _name = new StringOutputCompletionSource(this);
-            this.OnConstructorCompleted();
         }
     }
 

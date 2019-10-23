@@ -4,25 +4,18 @@ namespace Pulumi.Azure.Storage
 {
     public class Account : CustomResource
     {
-        [ResourceField("name")]
-        private readonly StringOutputCompletionSource _name;
-        public Output<string> Name => _name.Output;
+        [Property("name")]
+        public Output<string> Name { get; private set; }
 
-        [ResourceField("primaryAccessKey")]
-        private readonly StringOutputCompletionSource _primaryAccessKey;
-        public Output<string> PrimaryAccessKey => _primaryAccessKey.Output;
+        [Property("primaryAccessKey")]
+        public Output<string> PrimaryAccessKey { get; private set; }
 
-        [ResourceField("primaryConnectionString")]
-        private readonly StringOutputCompletionSource _primaryConnectionString;
-        public Output<string> PrimaryConnectionString => _primaryConnectionString.Output;
+        [Property("primaryConnectionString")]
+        public Output<string> PrimaryConnectionString { get; private set; }
 
         public Account(string name, AccountArgs args = default, ResourceOptions opts = default)
             : base("azure:storage/account:Account", name, args, opts)
         {
-            _name = new StringOutputCompletionSource(this);
-            _primaryAccessKey = new StringOutputCompletionSource(this);
-            _primaryConnectionString = new StringOutputCompletionSource(this);
-            this.OnConstructorCompleted();
         }
     }
 

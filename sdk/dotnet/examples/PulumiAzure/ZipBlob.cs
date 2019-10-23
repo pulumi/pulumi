@@ -4,20 +4,15 @@ namespace Pulumi.Azure.Storage
 {
     public class ZipBlob : CustomResource
     {
-        [ResourceField("name")]
-        private readonly StringOutputCompletionSource _name;
-        public Output<string> Name => _name.Output;
+        [Property("name")]
+        public Output<string> Name { get; private set; }
 
-        [ResourceField("storageContainerName")]
-        private readonly StringOutputCompletionSource _storageContainerName;
-        public Output<string> StorageContainerName => _storageContainerName.Output;
+        [Property("storageContainerName")]
+        public Output<string> StorageContainerName { get; private set; }
 
         public ZipBlob(string name, ZipBlobArgs args = default, ResourceOptions opts = default) 
             : base("azure:storage/zipBlob:ZipBlob", name, args, opts)
         {
-            _name = new StringOutputCompletionSource(this);
-            _storageContainerName = new StringOutputCompletionSource(this);
-            this.OnConstructorCompleted();
         }
     }
 
