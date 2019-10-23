@@ -72,9 +72,9 @@ fi
 
 # For Google, we need to authenticate with a service principal for certain authentication operations.
 if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
-    GCLOUD_KEYFILE="$(mktemp).json"
-    echo "$GOOGLE_CREDENTIALS" > $GCLOUD_KEYFILE
-    gcloud auth activate-service-account --key-file=$GCLOUD_KEYFILE
+    export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp).json"
+    echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
 fi
 
 # Next, run npm install. We always call this, as
