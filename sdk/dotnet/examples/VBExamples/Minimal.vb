@@ -3,7 +3,7 @@ Imports Pulumi.Azure.Core
 Imports Storage = Pulumi.Azure.Storage
 
 Public Class Minimal
-    Public Shared Function Run() As IDictionary(Of String, Output(Of String))
+    Public Shared Function Run() As IDictionary(Of String, Object)
         Dim resourceGroup = New ResourceGroup("rg", New ResourceGroupArgs With {
             .Location = "West Europe"
         })
@@ -12,7 +12,7 @@ Public Class Minimal
             .AccountReplicationType = "LRS",
             .AccountTier = "Standard"
         })
-        Return New Dictionary(Of String, Output(Of String)) From {
+        Return New Dictionary(Of String, Object) From {
             {"accessKey", storageAccount.PrimaryAccessKey}
         }
     End Function

@@ -1,0 +1,3 @@
+name: stack_reference_dotnet
+description: A simple .NET program that has a stack reference.
+runtime: dotnet

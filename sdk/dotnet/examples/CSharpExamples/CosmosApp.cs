@@ -38,18 +38,13 @@ namespace Pulumi.CSharpExamples
                 {
                     ResourceGroupName = args.ResourceGroupName,
                     Location = primaryLocation,
-                    //GeoLocations = new[]
-                    //{
-                    //    new CosmosDB.AccountGeoLocation {  Location = "West Europe", FailoverPriority = 0},
-                    //},
                     GeoLocations = locations.Apply(ls => 
                         ls.Select((l, i) =>
                                 new CosmosDB.AccountGeoLocation
                                 {
                                     Location = l,
                                     FailoverPriority = i
-                                })
-                          .ToList()),
+                                })),
                     OfferType = "Standard",
                     ConsistencyPolicy = new CosmosDB.AccountConsistencyPolicy
                     {

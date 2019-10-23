@@ -1,13 +1,8 @@
-﻿namespace Pulumi
+﻿namespace Pulumi.FSharp
 
+open Pulumi
 open Pulumi.Azure.Core
 open Pulumi.Azure.Storage
-
-[<AutoOpen>]
-module Ops =
-    let input<'a> (v: 'a): Input<'a> = Input.op_Implicit v
-    let io<'a> (v: Output<'a>): Input<'a> = Input.op_Implicit v
-
 
 [<AutoOpen>]
 module Builders =
