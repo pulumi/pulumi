@@ -435,7 +435,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 					shown[logEntry] = true
 				}
 			}
-			time.Sleep(time.Second)
+			time.Sleep(10 * time.Second)
 		}
 	}()
 

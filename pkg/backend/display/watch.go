@@ -15,11 +15,14 @@
 package display
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -48,10 +51,13 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
 			p := e.Payload.(engine.DiagEventPayload)
+			if p.Ephemeral || p.Severity == diag.Debug {
+				continue
+			}
 			if p.URN != "" {
 				s := renderDiffDiagEvent(p, opts)
-				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.URN.Name(), s)
-				fprintIgnoreError(os.Stdout, s)
+				stdout := newPrefixer(os.Stdout, fmt.Sprintf("%30.30s[%30.30s] ", time.Now().Format(timeFormat), p.URN.Name()))
+				fprintIgnoreError(stdout, s)
 			}
 
 		case engine.ResourcePreEvent:
@@ -79,4 +85,35 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 			contract.Failf("unknown event type '%s'", e.Type)
 		}
 	}
+}
+
+type prefixer struct {
+	writer io.Writer
+	prefix []byte
+}
+
+// newPrefixer wraps an io.Writer, prepending a fixed prefix after each \n emitting on the wrapped writer
+func newPrefixer(writer io.Writer, prefix string) *prefixer {
+	return &prefixer{writer, []byte(prefix)}
+}
+
+var _ io.Writer = (*prefixer)(nil)
+
+func (prefixer *prefixer) Write(p []byte) (int, error) {
+	n := 0
+	lines := bytes.SplitAfter(p, []byte{'\n'})
+	for _, line := range lines {
+		if len(line) > 0 {
+			_, err := prefixer.writer.Write(prefixer.prefix)
+			if err != nil {
+				return n, err
+			}
+		}
+		m, err := prefixer.writer.Write(line)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
 }
