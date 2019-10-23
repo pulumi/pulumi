@@ -100,16 +100,6 @@ namespace Pulumi
         /// </summary>
         private readonly ImmutableDictionary<string, ProviderResource> _providers;
 
-        ///// <summary>
-        ///// TaskCompletionSource that our subclasses need to signal when they are done running their
-        ///// construction logic.  This is necessary as we cannot actually register this Resource
-        ///// until the derived-class constructors finish.  If we did, we might get our output results
-        ///// back prior to the contruct finishing.  In which case, we'd have no way to set the output
-        ///// fields of this instance since the <see cref="OutputCompletionSource{T}"/>s for them will
-        ///// not have been instantiated yet.
-        ///// </summary>
-        //internal readonly TaskCompletionSource<bool> _onConstructorFinished = new TaskCompletionSource<bool>();
-
         /// <summary>
         /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
         /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
@@ -275,9 +265,6 @@ namespace Pulumi
                 Deployment.InternalInstance.RegisterResource(this, custom, args, options);
             }
         }
-
-        //protected void OnConstructorCompleted()
-        //    => _onConstructorFinished.TrySetResult(true);
 
         /// <summary>
         /// Fetches the provider for the given module member, if any.

@@ -14,13 +14,12 @@ namespace Pulumi
     /// </summary>
     public class CustomResource : Resource
     {
-        // internal readonly IdOutputCompletionSource _id;
-
         /// <summary>
         /// Id is the provider-assigned unique ID for this managed resource.  It is set during
         /// deployments and may be missing (unknown) during planning phases.
         /// </summary>
-        [Property("id")] public Output<string> Id { get; private set; } = null!;
+        [Property("id")]
+        public Output<string> Id { get; private set; } = null!;
 
         /// <summary>
         /// Creates and registers a new managed resource.  t is the fully qualified type token and
