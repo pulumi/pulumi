@@ -6,5 +6,5 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
 {
-    public delegate OutputData<T> Deserializer<T>(Value value);
+    internal delegate OutputData<T> Deserializer<T>(Value value);
 }

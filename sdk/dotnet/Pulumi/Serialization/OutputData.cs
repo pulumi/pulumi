@@ -14,7 +14,7 @@ namespace Pulumi.Serialization
            => (isKnown && data.IsKnown, isSecret || data.IsSecret);
     }
 
-    public struct OutputData<X>
+    internal struct OutputData<X>
     {
         public readonly X Value;
         public readonly bool IsKnown;
