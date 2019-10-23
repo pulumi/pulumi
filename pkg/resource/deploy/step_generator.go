@@ -45,9 +45,7 @@ type stepGenerator struct {
 	// events and report them all at once.
 	hasPolicyViolations bool
 
-	// urns contains the set of URNs discovered for this plan, with their final resource state.
-	urns map[resource.URN]*resource.State
-
+	urns           map[resource.URN]bool            // set of URNs discovered for this plan
 	reads          map[resource.URN]bool            // set of URNs read for this plan
 	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
 	replaces       map[resource.URN]bool            // set of URNs replaced in this plan
@@ -55,6 +53,7 @@ type stepGenerator struct {
 	creates        map[resource.URN]bool            // set of URNs created in this plan
 	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
+	urnState       map[resource.URN]*resource.State // URN map of all resources we have seen so far (including providers).
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
@@ -132,13 +131,14 @@ func (sg *stepGenerator) GenerateSteps(
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-	// Generate an URN for this new resource, confirm we haven't seen it before in this plan.
+	// Generate a URN for this new resource, confirm we haven't seen it before in this plan.
 	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
-	if _, ok := sg.urns[urn]; ok {
+	if sg.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
+	sg.urns[urn] = true
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
@@ -179,11 +179,10 @@ func (sg *stepGenerator) GenerateSteps(
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
-	// Mark the URN/resource as having been seen.
-	sg.urns[urn] = new
 
-	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
-	// of resources that use this provider.
+	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
+	// lookup providers for calculating replacement of resources that use the provider.
+	sg.urnState[urn] = new
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -1113,10 +1112,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := make(map[resource.URN]bool)
-	for urn := range sg.urns {
-		impossibleDependents[urn] = true
-	}
+	impossibleDependents := sg.urns
 	for _, d := range sg.plan.depGraph.DependingOn(root, impossibleDependents) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
@@ -1136,7 +1132,7 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 	return &stepGenerator{
 		plan:                 plan,
 		opts:                 opts,
-		urns:                 make(map[resource.URN]*resource.State),
+		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
 		sames:                make(map[resource.URN]bool),
@@ -1144,6 +1140,7 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
+		urnState:             make(map[resource.URN]*resource.State),
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),

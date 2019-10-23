@@ -265,7 +265,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if res == nil && !pe.stepExec.Errored() {
-		resourcesSeen := pe.stepGen.urns
+		resourcesSeen := pe.stepGen.urnState
 		resources := make([]plugin.AnalyzerResource, 0, len(resourcesSeen))
 		for _, v := range resourcesSeen {
 			resources = append(resources, plugin.AnalyzerResource{
