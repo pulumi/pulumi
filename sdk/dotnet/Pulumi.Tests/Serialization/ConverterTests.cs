@@ -9,7 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Tests.Serialization
 {
-    public abstract class CompletionSourceTests : PulumiTest
+    public abstract class ConverterTests : PulumiTest
     {
         protected static readonly Value UnknownValue = new Value { StringValue = Constants.UnknownValue };
 

@@ -1,15 +1,11 @@
 PROJECT_NAME     := Pulumi .NET Core SDK
-VERSION          := $(shell ../../scripts/get-version)
-
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
-
+VERSION          := $(shell ../../scripts/get-version)
 PROJECT_PKGS    := $(shell go list ./cmd...)
+
 TESTPARALLELISM := 10
-TEST_FAST_TIMEOUT := 2m
 
 include ../../build/common.mk
-
-export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 build::
 	dotnet build dotnet.sln

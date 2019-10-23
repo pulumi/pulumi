@@ -34,13 +34,12 @@ namespace Pulumi.Tests.Serialization
         }
     }
 
-    public class ComplexTypeOutputCompletionSourceTests : CompletionSourceTests
+    public class ComplexTypeConverterTests : ConverterTests
     {
         [Fact]
         public async Task ComplexType1()
         {
-            var source = new OutputCompletionSource<ComplexType1>(resource: null);
-            source.SetValue("", await SerializeToValueAsync(new Dictionary<string, object>
+            var data = Converter.ConvertValue<ComplexType1>("", await SerializeToValueAsync(new Dictionary<string, object>
             {
                 { "s", "str" },
                 { "b", true },
@@ -50,7 +49,6 @@ namespace Pulumi.Tests.Serialization
                 { "dict", new Dictionary<object, object> { { "k", 10 } } },
             }));
 
-            var data = await source.Output.DataTask;
             Assert.Equal("str", data.Value.S);
             Assert.Equal((object)true, data.Value.B);
             Assert.Equal(42, data.Value.I);
