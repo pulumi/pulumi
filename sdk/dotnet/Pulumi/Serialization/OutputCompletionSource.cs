@@ -168,10 +168,8 @@ namespace Pulumi.Serialization
         }
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
-        {
-            return outputTypeArg.GetConstructors(BindingFlags.NonPublic).FirstOrDefault(
-                            c => c.GetCustomAttributes<PropertyConstructorAttribute>() != null);
-        }
+            => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).FirstOrDefault(
+                c => c.GetCustomAttributes<PropertyConstructorAttribute>() != null);
 
         public static object? Convert(string fieldName, object? val, System.Type targetType)
         {
@@ -347,7 +345,9 @@ namespace Pulumi.Serialization
                                            .MakeGenericMethod(targetType.GenericTypeArguments)
                                            .Invoke(obj: null, parameters: null)!;
 
-            var builderAdd = builder.GetType().GetMethod(nameof(ImmutableDictionary<string, object>.Builder.Add))!;
+            // var b = ImmutableDictionary.CreateBuilder<string, object>().Add()
+
+            var builderAdd = builder.GetType().GetMethod(nameof(ImmutableDictionary<string, object>.Builder.Add), targetType.GenericTypeArguments)!;
             var builderToImmutable = builder.GetType().GetMethod(nameof(ImmutableDictionary<string, object>.Builder.ToImmutable))!;
 
             var elementType = targetType.GenericTypeArguments[1];

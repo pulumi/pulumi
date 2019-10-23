@@ -1067,6 +1067,27 @@
             The original resource options passed to the Resource constructor.
             </summary>
         </member>
+        <member name="T:Pulumi.Serialization.PropertyAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.PropertyTypeAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
+            output property.  A complex type must have a single constructor in it marked with the 
+            <see cref="T:Pulumi.Serialization.PropertyConstructorAttribute"/> attribute.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.PropertyConstructorAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to marks the constructor for a complex
+            property type so that it can be instantiated by the Pulumi runtime.
+            
+            The constructor should contain parameters that map to the resultant <see
+            cref="P:Google.Protobuf.WellKnownTypes.Struct.Fields"/> returned by the engine.
+            </summary>
+        </member>
         <member name="F:Pulumi.Serialization.Constants.UnknownValue">
             <summary>
             Unknown values are encoded as a distinguished string value.
@@ -1090,27 +1111,6 @@
         <member name="F:Pulumi.Serialization.Constants.SpecialSecretSig">
             <summary>
             specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Serialization.PropertyAttribute">
-            <summary>
-            Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Serialization.PropertyTypeAttribute">
-            <summary>
-            Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
-            output property.  A complex type must have a single constructor in it marked with the 
-            <see cref="T:Pulumi.Serialization.PropertyConstructorAttribute"/> attribute.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Serialization.PropertyConstructorAttribute">
-            <summary>
-            Attribute used by a Pulumi Cloud Provider Package to marks the constructor for a complex
-            property type so that it can be instantiated by the Pulumi runtime.
-            
-            The constructor should contain parameters that map to the resultant <see
-            cref="P:Google.Protobuf.WellKnownTypes.Struct.Fields"/> returned by the engine.
             </summary>
         </member>
         <member name="M:Pulumi.Serialization.Serializer.SerializeAsync(System.String,System.Object)">

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Pulumi.Tests.Serialization
 {
-    public class OutputCompletionSourceTests : CompletionSourceTests
+    public class BooleanOutputCompletionSourceTests : CompletionSourceTests
     {
         [Fact]
         public async Task True()
