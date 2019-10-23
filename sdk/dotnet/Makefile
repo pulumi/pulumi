@@ -19,8 +19,14 @@ install:: install_plugin
 lint::
 	golangci-lint run
 
-test_fast::
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+dotnet_test::
+	dotnet test
+
+test_fast:: dotnet_test
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
+
+test_all:: dotnet_test
+	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
