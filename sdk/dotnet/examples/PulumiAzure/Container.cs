@@ -4,7 +4,7 @@ namespace Pulumi.Azure.Storage
 {
     public class Container : CustomResource
     {
-        [Property("name")]
+        [OutputProperty("name")]
         public Output<string> Name { get; private set; }
 
         public Container(string name, ContainerArgs args = default, ResourceOptions opts = default)

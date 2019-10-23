@@ -1067,9 +1067,14 @@
             The original resource options passed to the Resource constructor.
             </summary>
         </member>
-        <member name="T:Pulumi.Serialization.PropertyAttribute">
+        <member name="T:Pulumi.Serialization.OutputPropertyAttribute">
             <summary>
             Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.InputPropertyAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to mark Resource input properties.
             </summary>
         </member>
         <member name="T:Pulumi.Serialization.PropertyTypeAttribute">

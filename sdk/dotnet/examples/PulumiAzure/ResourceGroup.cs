@@ -4,10 +4,10 @@ namespace Pulumi.Azure.Core
 {
     public class ResourceGroup : CustomResource
     {
-        [Property("location")]
+        [OutputProperty("location")]
         public Output<string> Location { get; private set; }
 
-        [Property("name")]
+        [OutputProperty("name")]
         public Output<string> Name { get; private set; }
 
         public ResourceGroup(string name, ResourceGroupArgs args = default, ResourceOptions opts = default) 

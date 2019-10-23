@@ -4,10 +4,10 @@ namespace Pulumi.Azure.Storage
 {
     public class ZipBlob : CustomResource
     {
-        [Property("name")]
+        [OutputProperty("name")]
         public Output<string> Name { get; private set; }
 
-        [Property("storageContainerName")]
+        [OutputProperty("storageContainerName")]
         public Output<string> StorageContainerName { get; private set; }
 
         public ZipBlob(string name, ZipBlobArgs args = default, ResourceOptions opts = default) 

@@ -11,11 +11,24 @@ namespace Pulumi.Serialization
     /// Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public sealed class PropertyAttribute : Attribute 
+    public sealed class OutputPropertyAttribute : Attribute 
     {
         public readonly string Name;
 
-        public PropertyAttribute(string name)
+        public OutputPropertyAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+    /// <summary>
+    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource input properties.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public sealed class InputPropertyAttribute : Attribute
+    {
+        public readonly string Name;
+
+        public InputPropertyAttribute(string name)
         {
             Name = name;
         }

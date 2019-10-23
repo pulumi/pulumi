@@ -16,6 +16,7 @@ namespace Pulumi.Serialization
     {
         System.Type TargetType { get; }
         IOutput Output { get; }
+
         void TrySetException(Exception exception);
         void TrySetDefaultResult(bool isKnown);
         
@@ -65,7 +66,7 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr = property.GetCustomAttribute<PropertyAttribute>()
+                        let attr = property.GetCustomAttribute<OutputPropertyAttribute>()
                         where attr != null
                         select (property, attr);
 

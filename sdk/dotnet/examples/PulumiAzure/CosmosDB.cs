@@ -4,7 +4,7 @@ namespace Pulumi.Azure.CosmosDB
 {
     public class Account : CustomResource
     {
-        [Property("name")]
+        [OutputProperty("name")]
         public Output<string> Name { get; private set; }
 
         public Account(string name, AccountArgs args = default, ResourceOptions opts = default)

@@ -4,7 +4,7 @@ namespace Pulumi.Azure.AppService
 {
     public class Plan : CustomResource
     {
-        [Property("name")]
+        [OutputProperty("name")]
         public Output<string> Name { get; private set; }
 
         public Plan(string name, PlanArgs args = default, ResourceOptions opts = default)

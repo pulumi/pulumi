@@ -5,7 +5,7 @@ namespace Pulumi.Azure.AppService
 {
     public class AppService : CustomResource
     {
-        [Property("defaultSiteHostname")]
+        [OutputProperty("defaultSiteHostname")]
         public Output<string> DefaultSiteHostname { get; private set; }
 
         public AppService(string name, AppServiceArgs args, ResourceOptions opts = null)
