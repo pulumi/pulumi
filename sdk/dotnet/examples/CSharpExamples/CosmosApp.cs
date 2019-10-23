@@ -31,20 +31,30 @@ namespace Pulumi.CSharpExamples
             }
 
             var primaryLocation = args.Locations.ToOutput().Apply(ls => ls[0]);
+            var locations = args.Locations.ToOutput();
 
             var cosmosAccount = new CosmosDB.Account($"cosmos-{name}",
                 new CosmosDB.AccountArgs
                 {
                     ResourceGroupName = args.ResourceGroupName,
                     Location = primaryLocation,
-                    //GeoLocations = args.Locations.ToOutput().Apply(ls => ls.Select((location, failoverPriority) => ({ location, failoverPriority }))),
-                    OfferType = "Standard",
-                    //consistencyPolicy = new 
+                    //GeoLocations = new[]
                     //{
-                    //    consistencyLevel: "Session",
-                    //    maxIntervalInSeconds: 300,
-                    //    maxStalenessPrefix: 100000,
+                    //    new CosmosDB.AccountGeoLocation {  Location = "West Europe", FailoverPriority = 0},
                     //},
+                    GeoLocations = locations.Apply(ls => 
+                        ls.Select((l, i) =>
+                                new CosmosDB.AccountGeoLocation
+                                {
+                                    Location = l,
+                                    FailoverPriority = i
+                                })
+                          .ToList()),
+                    OfferType = "Standard",
+                    ConsistencyPolicy = new CosmosDB.AccountConsistencyPolicy
+                    {
+                        ConsistencyLevel = "Session",
+                    },
                 });
         }
     }
@@ -56,6 +66,12 @@ namespace Pulumi.CSharpExamples
             var resourceGroup = new ResourceGroup("dotnet-rg", new ResourceGroupArgs
             {
                 Location = "West Europe"
+            });
+
+            var cosmosapp = new CosmosApp("capp", new CosmosAppArgs
+            {
+                ResourceGroupName = resourceGroup.Name,
+                Locations = new[] { resourceGroup.Location },
             });
 
             var storageAccount = new Account("sa", new AccountArgs

@@ -9,6 +9,6 @@ class Program
 {
     static Task<int> Main(string[] args)
     {
-        return Deployment.RunAsync(Pulumi.CSharpExamples.WebApp.Run);
+        return Deployment.RunAsync(Pulumi.CSharpExamples.GlobalApp.Run);
     }
 }
