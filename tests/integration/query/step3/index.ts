@@ -4,7 +4,7 @@ import * as pulumi from "@pulumi/pulumi";
 
 // Step 3: Run a query during `pulumi query`.
 pulumi.runtime
-    .listResourceOutputs(undefined, `moolumi/${pulumi.runtime.getStack()}`)
+    .listResourceOutputs(undefined, "moolumi/query-stack")
     .groupBy<string, pulumi.Resource>(r => (<any>r).__pulumiType)
     .all(async function(group) {
         const count = await group.count();
