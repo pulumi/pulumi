@@ -56,7 +56,9 @@ namespace Pulumi
                     // rest.
                     if (response.data.Fields.TryGetValue(fieldName, out var value))
                     {
-                        completionSource.SetValue($"{resource.GetType().FullName}.{fieldName}", value);
+                        var converted = Converter.ConvertValue(
+                            $"{resource.GetType().FullName}.{fieldName}", value, completionSource.TargetType);
+                        completionSource.SetValue(converted);
                     }
                 }
             }

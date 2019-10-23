@@ -83,11 +83,8 @@ namespace Pulumi
                 return default!;
             }
 
-            var ocs = new OutputCompletionSource<T>(resource: null);
-            ocs.SetValue(token, new Value { StructValue = result.Return });
-            var output = ocs.Output;
-
-            return await output.GetValueAsync().ConfigureAwait(false);
+            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result.Return });
+            return data.Value;
         }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)
