@@ -23,7 +23,7 @@ before_install:
 - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ulimit -n 2048; fi
 install:
-- source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
+- source ./temp_scripts/install-common-toolchain.sh
 before_script:
 - "${PULUMI_SCRIPTS}/ci/ensure-dependencies"
 script:
