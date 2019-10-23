@@ -32,6 +32,9 @@ namespace Pulumi
         public static Output<ImmutableArray<T>> All<T>(ImmutableArray<Input<T>> inputs)
             => Output<T>.All(inputs);
 
+        public static Output<(X, Y)> Tuple<X, Y>(Output<X> item1, Output<Y> item2)
+            => Tuple((Input<X>)item1, (Input<Y>)item2);
+
         public static Output<(X, Y)> Tuple<X, Y>(Input<X> item1, Input<Y> item2)
             => Tuple<X, Y, int>(item1, item2, 0).Apply(v => (v.Item1, v.Item2));
 
@@ -51,7 +54,10 @@ namespace Pulumi
 
             return All(inputs).Apply(objs =>
                 string.Format(formattableString.Format, objs.ToArray()));
-         }
+        }
+
+        internal static Output<ImmutableArray<T>> Merge<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
+            => Tuple(values1, values2).Apply(a => a.Item1.AddRange(a.Item2));
     }
 
     /// <summary>

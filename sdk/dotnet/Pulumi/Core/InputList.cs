@@ -60,11 +60,16 @@ namespace Pulumi
         {
             // Make an Output from the values passed in, mix in with our own Output, and combine
             // both to produce the final array that we will now point at.
-            var values1 = _outputValue;
-            var values2 = Output.All(inputs);
-            _outputValue = Output.All<ImmutableArray<T>>(values1, values2)
-                                 .Apply(a => a[0].AddRange(a[1]));
+            _outputValue = Output.Merge(_outputValue, Output.All(inputs));
         }
+
+        //public void AddRange(IEnumerable<T> collection)
+        //{
+        //    foreach (var value in collection)
+        //    {
+        //        Add(value);
+        //    }
+        //}
 
         internal InputList<T> Clone()
             => new InputList<T>(_outputValue);

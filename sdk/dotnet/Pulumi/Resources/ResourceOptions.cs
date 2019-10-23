@@ -2,6 +2,7 @@
 
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,7 +11,7 @@ namespace Pulumi
     /// <summary>
     /// ResourceOptions is a bag of optional settings that control a resource's behavior.
     /// </summary>
-    public class ResourceOptions
+    public partial class ResourceOptions
     {
         /// <summary>
         /// An optional existing ID to load, rather than create.
@@ -91,18 +92,6 @@ namespace Pulumi
         public List<Input<UrnOrAlias>> Aliases { get; set; } = new List<Input<UrnOrAlias>>();
 
         internal virtual ResourceOptions Clone()
-            => new ResourceOptions
-            {
-                Aliases = this.Aliases.ToList(),
-                CustomTimeouts = CustomTimeouts.Clone(this.CustomTimeouts),
-                DependsOn = this.DependsOn.Clone(),
-                Id = this.Id,
-                Parent = this.Parent,
-                IgnoreChanges = this.IgnoreChanges.ToList(),
-                Protect = this.Protect,
-                Provider = this.Provider,
-                ResourceTransformations = this.ResourceTransformations.ToList(),
-                Version = this.Version,
-            };
+            => CreateResourceOptionsCopy(this);
     }
 }

@@ -1038,6 +1038,31 @@
             An optional list of aliases to treat this resource as matching.
             </summary>
         </member>
+        <member name="M:Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions,Pulumi.ResourceOptions)">
+            <summary>
+            Takes two ResourceOptions values and produces a new ResourceOptions with the respective
+            properties of <paramref name="options2"/> merged over the same properties in <paramref
+            name="options1"/>.  The original options objects will be unchanged.
+            <para/>
+            A new instance will always be returned.
+            <para/>
+            Conceptually property merging follows these basic rules:
+            <list type="number">
+            <item>
+            If the property is a collection, the final value will be a collection containing the
+            values from each options object.
+            </item>
+            <item>
+            Simple scaler values from <paramref name="options2"/> (i.e. <see cref="T:System.String"/>s,
+            <see cref="T:System.Int32"/>s, <see cref="T:System.Boolean"/>s) will replace the values of <paramref
+            name="options1"/>.
+            </item>
+            <item>
+            <see langword="null"/> values in <paramref name="options2"/> will be ignored.
+            </item>
+            </list>
+            </summary>
+        </member>
         <member name="T:Pulumi.ResourceTransformation">
             <summary>
             ResourceTransformation is the callback signature for <see
