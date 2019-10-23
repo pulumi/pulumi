@@ -151,22 +151,22 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
 				return errors.Errorf("'dotnet build' exited with non-zero exit code: %d", status.ExitStatus())
-			} else {
-				return errors.Wrapf(exiterr, "'dotnet build' exited unexpectedly")
 			}
-		} else {
-			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			return errors.Wrapf(err, "Problem executing 'dotnet build'")
+
+			return errors.Wrapf(exiterr, "'dotnet build' exited unexpectedly")
 		}
 
-		return err
+		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+		return errors.Wrapf(err, "Problem executing 'dotnet build'")
 	}
 
 	return nil
 }
 
-func (host *dotnetLanguageHost) DotnetRun(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+func (host *dotnetLanguageHost) DotnetRun(
+	ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")

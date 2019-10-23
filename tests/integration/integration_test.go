@@ -318,7 +318,7 @@ func TestStackOutputsPython(t *testing.T) {
 
 func TestStackOutputsDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_outputs", "dotnet"),
+		Dir:   filepath.Join("stack_outputs", "dotnet"),
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
@@ -754,7 +754,7 @@ func TestStackReferenceDotNet(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference", "dotnet"),
+		Dir:   filepath.Join("stack_reference", "dotnet"),
 		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
