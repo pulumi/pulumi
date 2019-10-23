@@ -5,7 +5,7 @@ namespace Pulumi.Azure.AppService
 {
     public class AppService : CustomResource
     {
-        [OutputProperty("defaultSiteHostname")]
+        [Output("defaultSiteHostname")]
         public Output<string> DefaultSiteHostname { get; private set; }
 
         public AppService(string name, AppServiceArgs args, ResourceOptions opts = null)
@@ -16,38 +16,38 @@ namespace Pulumi.Azure.AppService
 
     public class AppServiceArgs : ResourceArgs
     {
+        [Input("appServicePlanId")]
         public Input<string> AppServicePlanId { get; set; }
+        [Input("location")]
         public Input<string> Location { get; set; }
+        [Input("resourceGroupName")]
         public Input<string> ResourceGroupName { get; set; }
 
-
+        [Input("appSettings")]
         private InputMap<string> _appSettings;
         public InputMap<string> AppSettings
         {
-            get => _appSettings ?? (_appSettings = new Dictionary<string, string>());
+            get => _appSettings ?? (_appSettings = new InputMap<string>());
             set => _appSettings = value;
         }
+
+        // TODO: why is this disabled?
+        // [Input("connectionStrings")]
         private InputList<ConnectionStringArgs> _connectionStrings;
         public InputList<ConnectionStringArgs> ConnectionStrings
         {
-            get => _connectionStrings ?? (_connectionStrings = new List<ConnectionStringArgs>());
+            get => _connectionStrings ?? (_connectionStrings = new InputList<ConnectionStringArgs>());
             set => _connectionStrings = value;
-        }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("appServicePlanId", AppServicePlanId);
-            builder.Add("location", Location);
-            builder.Add("resourceGroupName", ResourceGroupName);
-            builder.Add("appSettings", AppSettings);
-            //builder.Add("connectionStrings", ConnectionStrings);
         }
     }
 
-    public class ConnectionStringArgs
+    public class ConnectionStringArgs : ResourceArgs
     {
+        [Input("name")]
         public Input<string> Name { get; set; }
+        [Input("type")]
         public Input<string> Type { get; set; }
+        [Input("value")]
         public Input<string> Value { get; set; }
     }
 }

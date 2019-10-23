@@ -1,43 +1,36 @@
 ﻿using System.Threading.Tasks;
+using Pulumi.Serialization;
 
 namespace Pulumi.Azure.Storage
 {
     public class GetAccountBlobContainerSASArgs : ResourceArgs
     {
+        [Input("connectionString")]
         public Input<string> ConnectionString { get; set; }
+        [Input("containerName")]
         public Input<string> ContainerName { get; set; }
+        [Input("start")]
         public Input<string> Start { get; set; }
+        [Input("expiry")]
         public Input<string> Expiry { get; set; }
+        [Input("permissions")]
         public Input<GetAccountBlobContainerSASPermissions> Permissions { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("connectionString", ConnectionString);
-            builder.Add("containerName", ContainerName);
-            builder.Add("start", Start);
-            builder.Add("expiry", Expiry);
-            builder.Add("permissions", Permissions);
-        }
     }
 
     public class GetAccountBlobContainerSASPermissions : ResourceArgs
     {
+        [Input("add")]
         public Input<bool> Add { get; set; }
+        [Input("create")]
         public Input<bool> Create { get; set; }
+        [Input("delete")]
         public Input<bool> Delete { get; set; }
+        [Input("list")]
         public Input<bool> List { get; set; }
+        [Input("read")]
         public Input<bool> Read { get; set; }
+        [Input("write")]
         public Input<bool> Write { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("add", Add);
-            builder.Add("create", Create);
-            builder.Add("delete", Delete);
-            builder.Add("list", List);
-            builder.Add("read", Read);
-            builder.Add("write", Write);
-        }
     }
 
     public static class DataSource

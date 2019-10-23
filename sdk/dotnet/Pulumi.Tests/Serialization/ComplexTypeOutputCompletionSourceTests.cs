@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Pulumi.Tests.Serialization
 {
-    [PropertyType]
+    [OutputType]
     public class ComplexType1
     {
         public readonly string S;
@@ -20,7 +20,7 @@ namespace Pulumi.Tests.Serialization
         public readonly ImmutableArray<bool> Array;
         public readonly ImmutableDictionary<string, int> Dict;
 
-        [PropertyConstructor]
+        [OutputConstructor]
         private ComplexType1(
             string s, bool b, int i, double d,
             ImmutableArray<bool> array, ImmutableDictionary<string, int> dict)

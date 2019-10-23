@@ -42,7 +42,7 @@ namespace Pulumi
     /// </summary>
     public sealed class InputMap<V> : Input<ImmutableDictionary<string, V>>, IEnumerable
     {
-        internal InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
+        public InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
         {
         }
 

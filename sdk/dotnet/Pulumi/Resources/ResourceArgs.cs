@@ -2,8 +2,11 @@
 
 #nullable enable
 
-using System.Collections.Generic;
+using System;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {
@@ -20,31 +23,45 @@ namespace Pulumi
 
         internal ImmutableDictionary<string, IInput> ToDictionary()
         {
-            var dictionaryBuilder = ImmutableDictionary.CreateBuilder<string, IInput>();
-            AddProperties(new PropertyBuilder(dictionaryBuilder));
-            return dictionaryBuilder.ToImmutable();
-        }
+            var builder = ImmutableDictionary.CreateBuilder<string, IInput>();
 
-        protected abstract void AddProperties(PropertyBuilder builder);
+            var fieldQuery =
+                from field in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                let attr = field.GetCustomAttribute<InputAttribute>()
+                where attr != null
+                select (attr, field.Name, memberType: field.FieldType, getValue: (Func<object?,object?>)field.GetValue);
 
-        protected struct PropertyBuilder
-        {
-            private readonly ImmutableDictionary<string, IInput>.Builder _builder;
+            var propQuery =
+                from prop in this.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                let attr = prop.GetCustomAttribute<InputAttribute>()
+                where attr != null
+                select (attr, prop.Name, memberType: prop.PropertyType, getValue: (Func<object?, object?>)prop.GetValue);
 
-            internal PropertyBuilder(ImmutableDictionary<string, IInput>.Builder builder)
+            var all = fieldQuery.Concat(propQuery).ToList();
+
+            foreach (var (attr, memberName, memberType, getValue) in all)
             {
-                _builder = builder;
+                var fullName = $"[Input] {this.GetType().FullName}.{memberName}";
+
+                if (!typeof(IInput).IsAssignableFrom(memberType))
+                {
+                    throw new InvalidOperationException($"{fullName} was not an Input<T>");
+                }
+
+                var value = (IInput)getValue(this);
+                if (attr.Required && value == null)
+                {
+                    throw new ArgumentNullException(memberName, $"{fullName} is required but was not given a value");
+                }
+
+                builder.Add(attr.Name, value!);
             }
 
-            public void Add<T>(string name, Input<T> input)
-                => _builder.Add(name, input);
+            return builder.ToImmutable();
         }
 
         private class EmptyResourceArgs : ResourceArgs
         {
-            protected override void AddProperties(PropertyBuilder builder)
-            {
-            }
         }
     }
 }

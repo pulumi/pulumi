@@ -1067,24 +1067,40 @@
             The original resource options passed to the Resource constructor.
             </summary>
         </member>
-        <member name="T:Pulumi.Serialization.OutputPropertyAttribute">
+        <member name="T:Pulumi.Serialization.OutputAttribute">
             <summary>
             Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
             </summary>
         </member>
-        <member name="T:Pulumi.Serialization.InputPropertyAttribute">
+        <member name="T:Pulumi.Serialization.InputAttribute">
             <summary>
-            Attribute used by a Pulumi Cloud Provider Package to mark Resource input properties.
+            Attribute used by a Pulumi Cloud Provider Package to mark Resource input fields and
+            properties.
+            <para/>
+            Note: for simple inputs (i.e. <see cref="T:Pulumi.Input`1"/> this should just be placed on the
+            property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
+            
+            For collection inputs (i.e. <see cref="T:Pulumi.InputList`1"/> this shuld be placed on the
+            backing field for the property.  i.e.
+            
+            <code>
+                [Input] private InputList&lt;string&gt; _acls;
+                public InputList&lt;string&gt; Acls
+                {
+                    get => _acls ?? (_acls = new InputList&lt;string&gt;());
+                    set => _acls = value;
+                }
+            </code>
             </summary>
         </member>
-        <member name="T:Pulumi.Serialization.PropertyTypeAttribute">
+        <member name="T:Pulumi.Serialization.OutputTypeAttribute">
             <summary>
             Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
             output property.  A complex type must have a single constructor in it marked with the 
-            <see cref="T:Pulumi.Serialization.PropertyConstructorAttribute"/> attribute.
+            <see cref="T:Pulumi.Serialization.OutputConstructorAttribute"/> attribute.
             </summary>
         </member>
-        <member name="T:Pulumi.Serialization.PropertyConstructorAttribute">
+        <member name="T:Pulumi.Serialization.OutputConstructorAttribute">
             <summary>
             Attribute used by a Pulumi Cloud Provider Package to marks the constructor for a complex
             property type so that it can be instantiated by the Pulumi runtime.

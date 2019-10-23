@@ -16,27 +16,28 @@ namespace AWS.S3
 
     public class BucketObjectArgs : ResourceArgs
     {
+        [Input("acl")]
         public Input<string> Acl = default!;
-        public Input<string> Bucket = default!;
-        public Input<string> ContentBase64;
-        public Input<string> ContentType = default!;
-        public Input<string> Key = default!;
-        public Input<AssetOrArchive> Source = default!;
 
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("acl", Acl);
-            builder.Add("bucket", Bucket);
-            builder.Add("contentBase64", ContentBase64);
-            builder.Add("contentType", ContentType);
-            builder.Add("key", Key);
-            builder.Add("source", Source);
-        }
+        [Input("bucket")]
+        public Input<string> Bucket = default!;
+
+        [Input("contentBase64")]
+        public Input<string> ContentBase64;
+
+        [Input("contentType")]
+        public Input<string> ContentType = default!;
+
+        [Input("key")]
+        public Input<string> Key = default!;
+
+        [Input("source")]
+        public Input<AssetOrArchive> Source = default!;
     }
 
     public class Bucket : CustomResource
     {
-        [OutputProperty("bucketDomainName")] public Output<string> BucketDomainName { get; private set; }
+        [Output("bucketDomainName")] public Output<string> BucketDomainName { get; private set; }
 
         public Bucket(string name, BucketArgs args, ResourceOptions options = null)
             : base("aws:s3/bucket:Bucket", name, args, options)
@@ -46,11 +47,7 @@ namespace AWS.S3
 
     public class BucketArgs : ResourceArgs
     {
+        [Input("acl")]
         public Input<string> Acl;
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("acl", Acl);
-        }
     }
 }

@@ -11,36 +11,55 @@ namespace Pulumi.Serialization
     /// Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public sealed class OutputPropertyAttribute : Attribute 
+    public sealed class OutputAttribute : Attribute 
     {
         public readonly string Name;
 
-        public OutputPropertyAttribute(string name)
+        public OutputAttribute(string name)
         {
             Name = name;
         }
     }
+
     /// <summary>
-    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource input properties.
+    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource input fields and
+    /// properties.
+    /// <para/>
+    /// Note: for simple inputs (i.e. <see cref="Input{T}"/> this should just be placed on the
+    /// property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
+    /// 
+    /// For collection inputs (i.e. <see cref="InputList{T}"/> this shuld be placed on the
+    /// backing field for the property.  i.e.
+    /// 
+    /// <code>
+    ///     [Input] private InputList&lt;string&gt; _acls;
+    ///     public InputList&lt;string&gt; Acls
+    ///     {
+    ///         get => _acls ?? (_acls = new InputList&lt;string&gt;());
+    ///         set => _acls = value;
+    ///     }
+    /// </code>
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property)]
-    public sealed class InputPropertyAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public sealed class InputAttribute : Attribute
     {
         public readonly string Name;
+        public readonly bool Required;
 
-        public InputPropertyAttribute(string name)
+        public InputAttribute(string name, bool required = false)
         {
             Name = name;
+            Required = required;
         }
     }
 
     /// <summary>
     /// Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
     /// output property.  A complex type must have a single constructor in it marked with the 
-    /// <see cref="PropertyConstructorAttribute"/> attribute.
+    /// <see cref="OutputConstructorAttribute"/> attribute.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class PropertyTypeAttribute : Attribute
+    public sealed class OutputTypeAttribute : Attribute
     {
     }
 
@@ -52,7 +71,7 @@ namespace Pulumi.Serialization
     /// cref="Struct.Fields"/> returned by the engine.
     /// </summary>
     [AttributeUsage(AttributeTargets.Constructor)]
-    public sealed class PropertyConstructorAttribute : Attribute
+    public sealed class OutputConstructorAttribute : Attribute
     {
     }
 }

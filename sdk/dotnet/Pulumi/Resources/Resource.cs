@@ -65,7 +65,7 @@ namespace Pulumi
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
-        [OutputProperty("urn")]
+        [Output("urn")]
         public Output<string> Urn { get; private set; } = null!;
 
         /// <summary>

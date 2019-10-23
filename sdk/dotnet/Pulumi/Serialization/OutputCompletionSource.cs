@@ -66,7 +66,7 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr = property.GetCustomAttribute<OutputPropertyAttribute>()
+                        let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
                         select (property, attr);
 
@@ -74,14 +74,14 @@ namespace Pulumi.Serialization
             foreach (var (prop, attr) in query.ToList())
             {
                 var propType = prop.PropertyType;
-                var propFullName = $"[Property] {resource.GetType().FullName}.{prop.Name}";
+                var propFullName = $"[Output] {resource.GetType().FullName}.{prop.Name}";
                 if (!propType.IsConstructedGenericType &&
                     propType.GetGenericTypeDefinition() != typeof(Output<>))
                 {
                     throw new InvalidOperationException($"{propFullName} was not an Output<T>");
                 }
 
-                var setMethod = prop.DeclaringType!.GetMethod("set_" + prop.Name, BindingFlags.NonPublic | BindingFlags.Instance);
+                var setMethod = prop.DeclaringType!.GetMethod("set_" + prop.Name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
                 if (setMethod == null)
                 {
                     throw new InvalidOperationException($"{propFullName} did not have a 'set' method");
@@ -145,7 +145,7 @@ namespace Pulumi.Serialization
                 }
             }
 
-            var propertyTypeAttribute = outputTypeArg.GetCustomAttribute<PropertyTypeAttribute>();
+            var propertyTypeAttribute = outputTypeArg.GetCustomAttribute<OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
@@ -169,8 +169,8 @@ namespace Pulumi.Serialization
         }
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
-            => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<PropertyConstructorAttribute>() != null);
+            => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
+                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
 
         public static object? Convert(string fieldName, object? val, System.Type targetType)
         {
@@ -264,7 +264,7 @@ namespace Pulumi.Serialization
                 }
             }
 
-            if (targetType.GetCustomAttribute<PropertyTypeAttribute>() == null)
+            if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
             {
                 throw new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {fieldName}");

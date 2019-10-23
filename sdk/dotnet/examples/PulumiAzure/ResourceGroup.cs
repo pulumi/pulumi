@@ -4,10 +4,10 @@ namespace Pulumi.Azure.Core
 {
     public class ResourceGroup : CustomResource
     {
-        [OutputProperty("location")]
+        [Output("location")]
         public Output<string> Location { get; private set; }
 
-        [OutputProperty("name")]
+        [Output("name")]
         public Output<string> Name { get; private set; }
 
         public ResourceGroup(string name, ResourceGroupArgs args = default, ResourceOptions opts = default) 
@@ -18,13 +18,9 @@ namespace Pulumi.Azure.Core
 
     public class ResourceGroupArgs : ResourceArgs
     {
+        [Input("location")]
         public Input<string> Location;
+        [Input("name")]
         public Input<string> Name;
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("location", Location);
-            builder.Add("name", Name);
-        }
     }
 }

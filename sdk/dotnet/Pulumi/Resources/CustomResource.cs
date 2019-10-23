@@ -18,7 +18,7 @@ namespace Pulumi
         /// Id is the provider-assigned unique ID for this managed resource.  It is set during
         /// deployments and may be missing (unknown) during planning phases.
         /// </summary>
-        [OutputProperty("id")]
+        [Output("id")]
         public Output<string> Id { get; private set; } = null!;
 
         /// <summary>

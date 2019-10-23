@@ -47,7 +47,7 @@ namespace Pulumi
     /// </summary>
     public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
     {
-        internal InputList() : this(Output.Create(ImmutableArray<T>.Empty))
+        public InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {
         }
 

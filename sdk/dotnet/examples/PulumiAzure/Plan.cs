@@ -4,7 +4,7 @@ namespace Pulumi.Azure.AppService
 {
     public class Plan : CustomResource
     {
-        [OutputProperty("name")]
+        [Output("name")]
         public Output<string> Name { get; private set; }
 
         public Plan(string name, PlanArgs args = default, ResourceOptions opts = default)
@@ -15,29 +15,21 @@ namespace Pulumi.Azure.AppService
 
     public class PlanArgs : ResourceArgs
     {
+        [Input("kind")]
         public Input<string> Kind { get; set; }
+        [Input("location")]
         public Input<string> Location { get; set; }
+        [Input("resourceGroupName")]
         public Input<string> ResourceGroupName { get; set; }
+        [Input("sku")]
         public Input<PlanSkuArgs> Sku { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("kind", Kind);
-            builder.Add("location", Location);
-            builder.Add("resourceGroupName", ResourceGroupName);
-            builder.Add("sku", Sku);
-        }
     }
 
     public class PlanSkuArgs : ResourceArgs
     {
+        [Input("size")]
         public Input<string> Size { get; set; }
+        [Input("tier")]
         public Input<string> Tier { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("size", Size);
-            builder.Add("tier", Tier);
-        }
     }
 }

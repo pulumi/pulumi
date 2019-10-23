@@ -4,13 +4,13 @@ namespace Pulumi.Azure.Storage
 {
     public class Account : CustomResource
     {
-        [OutputProperty("name")]
+        [Output("name")]
         public Output<string> Name { get; private set; }
 
-        [OutputProperty("primaryAccessKey")]
+        [Output("primaryAccessKey")]
         public Output<string> PrimaryAccessKey { get; private set; }
 
-        [OutputProperty("primaryConnectionString")]
+        [Output("primaryConnectionString")]
         public Output<string> PrimaryConnectionString { get; private set; }
 
         public Account(string name, AccountArgs args = default, ResourceOptions opts = default)
@@ -21,21 +21,17 @@ namespace Pulumi.Azure.Storage
 
     public class AccountArgs : ResourceArgs
     {
+        [Input("accessTier")]
         public Input<string> AccessTier { get; set; }
+        [Input("accountKind")]
         public Input<string> AccountKind { get; set; }
+        [Input("accountTier")]
         public Input<string> AccountTier { get; set; }
+        [Input("accountReplicationType")]
         public Input<string> AccountReplicationType { get; set; }
+        [Input("location")]
         public Input<string> Location { get; set; }
+        [Input("resourceGroupName")]
         public Input<string> ResourceGroupName { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("accessTier", AccessTier);
-            builder.Add("accountKind", AccountKind);
-            builder.Add("accountTier", AccountTier);
-            builder.Add("accountReplicationType", AccountReplicationType);
-            builder.Add("location", Location);
-            builder.Add("resourceGroupName", ResourceGroupName);
-        }
     }
 }

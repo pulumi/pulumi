@@ -4,10 +4,10 @@ namespace Pulumi.Azure.Storage
 {
     public class ZipBlob : CustomResource
     {
-        [OutputProperty("name")]
+        [Output("name")]
         public Output<string> Name { get; private set; }
 
-        [OutputProperty("storageContainerName")]
+        [Output("storageContainerName")]
         public Output<string> StorageContainerName { get; private set; }
 
         public ZipBlob(string name, ZipBlobArgs args = default, ResourceOptions opts = default) 
@@ -18,20 +18,15 @@ namespace Pulumi.Azure.Storage
 
     public class ZipBlobArgs : ResourceArgs
     {
+        [Input("content")]
         public Input<AssetOrArchive> Content { get; set; }
+        [Input("storageAccountName")]
         public Input<string> StorageAccountName { get; set; }
+        [Input("storageContainerName")]
         public Input<string> StorageContainerName { get; set; }
+        [Input("type")]
         public Input<string> Type { get; set; }
-
-        protected override void AddProperties(PropertyBuilder builder)
-        {
-            builder.Add("content", Content);
-            builder.Add("storageAccountName", StorageAccountName);
-            builder.Add("storageContainerName", StorageContainerName);
-            builder.Add("type", Type);
-        }
     }
-
 
     public static class SharedAccessSignature
     {

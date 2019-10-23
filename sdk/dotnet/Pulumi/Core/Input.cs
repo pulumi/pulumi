@@ -3,7 +3,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Pulumi
