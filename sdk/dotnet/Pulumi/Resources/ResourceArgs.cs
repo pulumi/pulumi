@@ -17,25 +17,21 @@ namespace Pulumi
     {
         public static readonly ResourceArgs Empty = new EmptyResourceArgs();
 
+        private readonly ImmutableArray<InputInfo> _inputInfos;
+
         protected ResourceArgs()
         {
-        }
-
-        internal ImmutableDictionary<string, IInput> ToDictionary()
-        {
-            var builder = ImmutableDictionary.CreateBuilder<string, IInput>();
-
             var fieldQuery =
                 from field in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
                 let attr = field.GetCustomAttribute<InputAttribute>()
                 where attr != null
-                select (attr, field.Name, memberType: field.FieldType, getValue: (Func<object?,object?>)field.GetValue);
+                select (attr, memberName: field.Name, memberType: field.FieldType, getValue: (Func<object?, object?>)field.GetValue);
 
             var propQuery =
                 from prop in this.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
                 let attr = prop.GetCustomAttribute<InputAttribute>()
                 where attr != null
-                select (attr, prop.Name, memberType: prop.PropertyType, getValue: (Func<object?, object?>)prop.GetValue);
+                select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object?, object?>)prop.GetValue);
 
             var all = fieldQuery.Concat(propQuery).ToList();
 
@@ -47,14 +43,25 @@ namespace Pulumi
                 {
                     throw new InvalidOperationException($"{fullName} was not an Input<T>");
                 }
+            }
 
-                var value = (IInput)getValue(this);
-                if (attr.Required && value == null)
+            _inputInfos = all.Select(t =>
+                new InputInfo(t.attr.Name, t.attr.Required, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
+        }
+
+        internal ImmutableDictionary<string, IInput> ToDictionary()
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, IInput>();
+            foreach (var info in _inputInfos)
+            {
+                var value = (IInput)info.GetValue(this);
+                if (info.Required && value == null)
                 {
-                    throw new ArgumentNullException(memberName, $"{fullName} is required but was not given a value");
+                    var fullName = $"[Input] {this.GetType().FullName}.{info.MemberName}";
+                    throw new ArgumentNullException(info.MemberName, $"{fullName} is required but was not given a value");
                 }
 
-                builder.Add(attr.Name, value!);
+                builder.Add(info.Name, value!);
             }
 
             return builder.ToImmutable();
@@ -62,6 +69,25 @@ namespace Pulumi
 
         private class EmptyResourceArgs : ResourceArgs
         {
+        }
+
+        private struct InputInfo
+        {
+            public readonly bool Required;
+            public readonly string Name;
+
+            public readonly Type MemberType;
+            public readonly string MemberName;
+            public Func<object, object> GetValue;
+
+            public InputInfo(string name, bool required, string memberName, Type memberType, Func<object, object> getValue) : this()
+            {
+                Name = name;
+                Required = required;
+                MemberName = memberName;
+                MemberType = memberType;
+                GetValue = getValue;
+            }
         }
     }
 }
