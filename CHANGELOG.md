@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Adds a **preview** of .NET support for Pulumi. This code is an experimental state and is subject
+  to change at any point.
+
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
   [#3368](https://github.com/pulumi/pulumi/pull/3368)
 
