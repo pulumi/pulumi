@@ -33,9 +33,14 @@ namespace Pulumi
 
     public sealed partial class Deployment
     {
-        public async Task<T> InvokeAsync<T>(
-            string token, ResourceArgs args,
-            Func<ImmutableDictionary<string, object>, T> convert, InvokeOptions? options)
+        public Task InvokeAsync(string token, ResourceArgs args, InvokeOptions? options)
+            => InvokeAsync<object>(token, args, options, convertResult: false);
+
+        public Task<T> InvokeAsync<T>(string token, ResourceArgs args, InvokeOptions? options)
+            => InvokeAsync<T>(token, args, options, convertResult: true);
+
+        private async Task<T> InvokeAsync<T>(
+            string token, ResourceArgs args, InvokeOptions? options, bool convertResult)
         {
             var label = $"Invoking function: tok={token} asynchronously";
             Log.Debug(label);
@@ -57,13 +62,6 @@ namespace Pulumi
                 Args = serialized,
             });
 
-            // Finally propagate any other properties that were given to us as outputs.
-            return DeserializeResponse<T>(token, convert, result);
-        }
-
-        private T DeserializeResponse<T>(
-            string token, Func<ImmutableDictionary<string, object>, T> convert, InvokeResponse result)
-        {
             if (result.Failures.Count > 0)
             {
                 var reasons = "";
@@ -80,8 +78,16 @@ namespace Pulumi
                 throw new InvokeException($"Invoke of '{token}' failed: {reasons}");
             }
 
-            var data = Deserializers.GenericStructDeserializer(new Value { StructValue = result.Return });
-            return convert(data.Value);
+            if (!convertResult)
+            {
+                return default!;
+            }
+
+            var ocs = new OutputCompletionSource<T>(resource: null);
+            ocs.SetValue(token, new Value { StructValue = result.Return });
+            var output = ocs.Output;
+
+            return await output.GetValueAsync().ConfigureAwait(false);
         }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)

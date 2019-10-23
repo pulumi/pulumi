@@ -88,7 +88,7 @@ namespace Pulumi.Serialization
                 }
 
                 var outputTypeArg = propType.GenericTypeArguments.Single();
-                CheckOutputTypeArg(propFullName, outputTypeArg);
+                CheckTypeIsDeserializable(propFullName, outputTypeArg);
 
                 var ocsType = typeof(OutputCompletionSource<>).MakeGenericType(outputTypeArg);
                 var ocsContructor = ocsType.GetConstructors().Single();
@@ -102,7 +102,7 @@ namespace Pulumi.Serialization
             return result.ToImmutable();
         }
 
-        private static void CheckOutputTypeArg(string fullName, System.Type outputTypeArg)
+        public static void CheckTypeIsDeserializable(string fullName, System.Type outputTypeArg)
         {
             if (outputTypeArg == typeof(bool) ||
                 outputTypeArg == typeof(int) ||
@@ -116,12 +116,12 @@ namespace Pulumi.Serialization
             {
                 if (outputTypeArg.GetGenericTypeDefinition() == typeof(Nullable<>))
                 {
-                    CheckOutputTypeArg(fullName, outputTypeArg.GenericTypeArguments.Single());
+                    CheckTypeIsDeserializable(fullName, outputTypeArg.GenericTypeArguments.Single());
                     return;
                 }
                 else if (outputTypeArg.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
                 {
-                    CheckOutputTypeArg(fullName, outputTypeArg.GenericTypeArguments.Single());
+                    CheckTypeIsDeserializable(fullName, outputTypeArg.GenericTypeArguments.Single());
                     return;
                 }
                 else if (outputTypeArg.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
@@ -134,7 +134,7 @@ namespace Pulumi.Serialization
     The only allowed ImmutableDictionary 'TKey' type is 'String'.");
                     }
 
-                    CheckOutputTypeArg(fullName, dictTypeArgs[1]);
+                    CheckTypeIsDeserializable(fullName, dictTypeArgs[1]);
                     return;
                 }
                 else
@@ -164,7 +164,7 @@ namespace Pulumi.Serialization
 
             foreach (var param in constructor.GetParameters())
             {
-                CheckOutputTypeArg($@"{outputTypeArg.FullName}(${param.Name})", param.ParameterType);
+                CheckTypeIsDeserializable($@"{outputTypeArg.FullName}(${param.Name})", param.ParameterType);
             }
         }
 

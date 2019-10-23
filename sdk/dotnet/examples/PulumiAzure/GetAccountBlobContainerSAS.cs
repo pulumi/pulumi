@@ -33,14 +33,25 @@ namespace Pulumi.Azure.Storage
         public Input<bool> Write { get; set; }
     }
 
+    [OutputType]
+    public class GetAccountBlobContainerSASResult
+    {
+        public readonly string Sas;
+
+        [OutputConstructor]
+        private GetAccountBlobContainerSASResult(string sas)
+        {
+            this.Sas = sas;
+        }
+    }
+
     public static class DataSource
     {
-        public static Task<string> GetAccountBlobContainerSAS(GetAccountBlobContainerSASArgs args)
+        public static async Task<string> GetAccountBlobContainerSAS(GetAccountBlobContainerSASArgs args)
         {
-            return Deployment.Instance.InvokeAsync<string>(
-                "azure:storage/getAccountBlobContainerSAS:getAccountBlobContainerSAS",
-                args,
-                dict => dict["sas"]?.ToString());
+            var result = await Deployment.Instance.InvokeAsync<GetAccountBlobContainerSASResult>(
+                "azure:storage/getAccountBlobContainerSAS:getAccountBlobContainerSAS", args).ConfigureAwait(false);
+            return result.Sas.ToString();
         }
     }
 }

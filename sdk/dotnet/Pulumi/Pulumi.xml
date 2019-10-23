@@ -684,16 +684,22 @@
             The Stack that the deployment is producing.
             </summary>
         </member>
-        <member name="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,System.Func{System.Collections.Immutable.ImmutableDictionary{System.String,System.Object},``0},Pulumi.InvokeOptions)">
+        <member name="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,Pulumi.InvokeOptions)">
             <summary>
             Dynamically invokes the function '<paramref name="token"/>', which is offered by a
             provider plugin.
             <para/>
-            The result of <see cref="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,System.Func{System.Collections.Immutable.ImmutableDictionary{System.String,System.Object},``0},Pulumi.InvokeOptions)"/> will be a <see cref="T:System.Threading.Tasks.Task"/> resolved to the
+            The result of <see cref="M:Pulumi.IDeployment.InvokeAsync(System.String,Pulumi.ResourceArgs,Pulumi.InvokeOptions)"/> will be a <see cref="T:System.Threading.Tasks.Task"/> resolved to the
             result value of the provider plugin.
             <para/>
             The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
             <see cref="T:System.Threading.Tasks.Task`1"/>s, <see cref="T:Pulumi.Output`1"/>s etc.).
+            </summary>
+        </member>
+        <member name="M:Pulumi.IDeployment.InvokeAsync(System.String,Pulumi.ResourceArgs,Pulumi.InvokeOptions)">
+            <summary>
+            Same as <see cref="M:Pulumi.IDeployment.InvokeAsync``1(System.String,Pulumi.ResourceArgs,Pulumi.InvokeOptions)"/>, however the
+            return value is ignored.
             </summary>
         </member>
         <member name="T:Pulumi.LogException">
