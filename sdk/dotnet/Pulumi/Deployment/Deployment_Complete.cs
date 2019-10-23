@@ -27,17 +27,17 @@ namespace Pulumi
             try
             {
                 var response = await action().ConfigureAwait(false);
-                completionSources["urn"].SetResult(response.urn, isKnown: true, isSecret: false);
+                completionSources["urn"].SetStringValue(response.urn, isKnown: true);
                 if (resource is CustomResource customResource)
                 {
                     var id = response.id;
                     if (string.IsNullOrEmpty(id))
                     {
-                        completionSources["id"].SetResult("", isKnown: false, isSecret: false);
+                        completionSources["id"].SetStringValue("", isKnown: false);
                     }
                     else
                     {
-                        completionSources["id"].SetResult(id, isKnown: true, isSecret: false);
+                        completionSources["id"].SetStringValue(id, isKnown: true);
                     }
                 }
 
@@ -51,11 +51,7 @@ namespace Pulumi
                     // rest.
                     if (response.data.Fields.TryGetValue(fieldName, out var value))
                     {
-                        var (deserialized, isKnown, isSecret) = Deserializers.GenericDeserializer(value);
-
-                        var converted = OutputCompletionSource.Convert(
-                            $"{resource.GetType().FullName}.{fieldName}", deserialized, completionSource.TargetType);
-                        completionSource.SetResult(converted, isKnown, isSecret);
+                        completionSource.SetValue($"{resource.GetType().FullName}.{fieldName}", value);
                     }
                 }
             }

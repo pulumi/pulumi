@@ -561,7 +561,7 @@
         <member name="M:Pulumi.Deployment.CompleteResourceAsync(Pulumi.Resource,System.Func{System.Threading.Tasks.Task{System.ValueTuple{System.String,System.String,Google.Protobuf.WellKnownTypes.Struct}}})">
             <summary>
             Executes the provided <paramref name="action"/> and then completes all the 
-            <see cref="T:Pulumi.Serialization.OutputCompletionSource`1"/> sources on the <paramref name="resource"/> with
+            <see cref="T:Pulumi.Serialization.IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
             the results of it.
             </summary>
         </member>
@@ -913,7 +913,7 @@
             of pattern failed in practice.
             </summary>
         </member>
-        <member name="F:Pulumi.Resource._urn">
+        <member name="P:Pulumi.Resource.Urn">
             <summary>
             Urn is the stable logical URN used to distinctly address a resource, both before and
             after deployments.
@@ -947,16 +947,6 @@
         <member name="F:Pulumi.Resource._providers">
             <summary>
             The set of providers to use for child resources. Keyed by package name (e.g. "aws").
-            </summary>
-        </member>
-        <member name="F:Pulumi.Resource._onConstructorFinished">
-            <summary>
-            TaskCompletionSource that our subclasses need to signal when they are done running their
-            construction logic.  This is necessary as we cannot actually register this Resource
-            until the derived-class constructors finish.  If we did, we might get our output results
-            back prior to the contruct finishing.  In which case, we'd have no way to set the output
-            fields of this instance since the <see cref="T:Pulumi.Serialization.OutputCompletionSource`1"/>s for them will
-            not have been instantiated yet.
             </summary>
         </member>
         <member name="M:Pulumi.Resource.#ctor(System.String,System.String,System.Boolean,Pulumi.ResourceArgs,Pulumi.ResourceOptions)">
@@ -1100,6 +1090,27 @@
         <member name="F:Pulumi.Serialization.Constants.SpecialSecretSig">
             <summary>
             specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.PropertyAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.PropertyTypeAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
+            output property.  A complex type must have a single constructor in it marked with the 
+            <see cref="T:Pulumi.Serialization.PropertyConstructorAttribute"/> attribute.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Serialization.PropertyConstructorAttribute">
+            <summary>
+            Attribute used by a Pulumi Cloud Provider Package to marks the constructor for a complex
+            property type so that it can be instantiated by the Pulumi runtime.
+            
+            The constructor should contain parameters that map to the resultant <see
+            cref="P:Google.Protobuf.WellKnownTypes.Struct.Fields"/> returned by the engine.
             </summary>
         </member>
         <member name="M:Pulumi.Serialization.Serializer.SerializeAsync(System.String,System.Object)">

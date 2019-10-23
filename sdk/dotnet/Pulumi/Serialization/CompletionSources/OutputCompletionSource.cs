@@ -7,39 +7,51 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Newtonsoft.Json.Linq;
 
 namespace Pulumi.Serialization
 {
     internal interface IOutputCompletionSource
     {
-        Type TargetType { get; }
+        System.Type TargetType { get; }
         IOutput Output { get; }
         void TrySetException(Exception exception);
         void SetDefaultResult(bool isKnown);
-        void SetResult(object? value, bool isKnown, bool isSecret);
+        
+        void SetStringValue(string value, bool isKnown);
+        void SetValue(string context, Value value);
     }
 
     internal class OutputCompletionSource<T> : IOutputCompletionSource
     {
         private readonly TaskCompletionSource<OutputData<T>> _taskCompletionSource;
-        private readonly Output<T> _output;
+        public readonly Output<T> Output;
 
-        public OutputCompletionSource(Resource resource)
+        public OutputCompletionSource(Resource? resource)
         {
             _taskCompletionSource = new TaskCompletionSource<OutputData<T>>();
-            _output = new Output<T>(ImmutableHashSet.Create(resource), _taskCompletionSource.Task);
+            Output = new Output<T>(
+                resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource),
+                _taskCompletionSource.Task);
         }
 
         public System.Type TargetType => typeof(T);
 
-        public IOutput Output => _output;
+        IOutput IOutputCompletionSource.Output => Output;
 
         public void SetDefaultResult(bool isKnown)
             => _taskCompletionSource.SetResult(new OutputData<T>(default!, isKnown, isSecret: false));
 
-        public void SetResult(object? value, bool isKnown, bool isSecret)
-            => _taskCompletionSource.SetResult(new OutputData<T>((T)value!, isKnown, isSecret));
+        public void SetStringValue(string value, bool isKnown)
+            => _taskCompletionSource.SetResult(new OutputData<T>((T)(object)value, isKnown, isSecret: false));
+
+        public void SetValue(string context, Value value)
+        {
+            var (deserialized, isKnown, isSecret) = Deserializers.GenericDeserializer(value);
+            var converted = OutputCompletionSource.Convert(context, deserialized, this.TargetType);
+            _taskCompletionSource.SetResult(new OutputData<T>((T)converted!, isKnown, isSecret));
+        }
 
         public void TrySetException(Exception exception)
             => _taskCompletionSource.TrySetException(exception);
@@ -297,7 +309,7 @@ namespace Pulumi.Serialization
             }
 
             var builder =
-                typeof(ImmutableArray).GetMethod(nameof(ImmutableArray.CreateBuilder))!
+                typeof(ImmutableArray).GetMethod(nameof(ImmutableArray.CreateBuilder), Array.Empty<System.Type>())!
                                       .MakeGenericMethod(targetType.GenericTypeArguments)
                                       .Invoke(obj: null, parameters: null)!;
 
@@ -330,7 +342,7 @@ namespace Pulumi.Serialization
             }
 
             var builder =
-                typeof(ImmutableDictionary).GetMethod(nameof(ImmutableDictionary.CreateBuilder))!
+                typeof(ImmutableDictionary).GetMethod(nameof(ImmutableDictionary.CreateBuilder), Array.Empty<System.Type>())!
                                            .MakeGenericMethod(targetType.GenericTypeArguments)
                                            .Invoke(obj: null, parameters: null)!;
 

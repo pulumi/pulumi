@@ -28,7 +28,7 @@ namespace Pulumi
                    args: ResourceArgs.Empty,
                    options ?? new ComponentResourceOptions())
         {
-            this.OnConstructorCompleted();
+            // this.OnConstructorCompleted();
         }
 
         /// <summary>

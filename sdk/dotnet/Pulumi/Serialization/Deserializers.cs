@@ -66,13 +66,8 @@ namespace Pulumi.Serialization
                     foreach (var element in v.ListValue.Values)
                     {
                         var elementData = elementDeserializer(element);
-
-                        // ignore any child elements that are null
-                        if (elementData.Value != null)
-                        {
-                            (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
-                            result.Add(elementData.Value);
-                        }
+                        (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
+                        result.Add(elementData.Value);
                     }
 
                     return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
@@ -89,13 +84,8 @@ namespace Pulumi.Serialization
                     foreach (var (key, element) in v.StructValue.Fields)
                     {
                         var elementData = elementDeserializer(element);
-
-                        // ignore any child elements that are null
-                        if (elementData.Value != null)
-                        {
-                            (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
-                            result.Add(key, elementData.Value);
-                        }
+                        (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
+                        result.Add(key, elementData.Value);
                     }
 
                     return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
