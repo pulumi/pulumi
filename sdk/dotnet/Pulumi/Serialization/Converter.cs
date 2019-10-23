@@ -189,6 +189,12 @@ namespace Pulumi.Serialization
                     $"Expected {typeof(ImmutableDictionary<string, object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}");
             }
 
+            if (targetType == typeof(ImmutableDictionary<string, object>))
+            {
+                // already in the form we need.  no need to convert anything.
+                return val;
+            }
+
             var keyType = targetType.GenericTypeArguments[0];
             if (keyType != typeof(string))
             {
@@ -222,6 +228,14 @@ namespace Pulumi.Serialization
                 targetType == typeof(double) ||
                 targetType == typeof(string))
             {
+                return;
+            }
+
+            if (targetType == typeof(ImmutableDictionary<string, object>))
+            {
+                // This type is what is generated for things like azure/aws tags.  It's an untyped
+                // map in our original schema.  This is the only place that `object` should appear
+                // as a legal value.
                 return;
             }
 
@@ -277,7 +291,7 @@ $@"{targetType.FullName} had [PropertyType] attribute, but did not contain const
 
             foreach (var param in constructor.GetParameters())
             {
-                CheckTargetType($@"{targetType.FullName}(${param.Name})", param.ParameterType);
+                CheckTargetType($@"{targetType.FullName}({param.Name})", param.ParameterType);
             }
         }
 

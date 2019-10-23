@@ -2,10 +2,11 @@
 
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AWS.S3;
 using Pulumi;
+using Pulumi.Aws.S3;
 
 class Program
 {
@@ -21,16 +22,23 @@ class Program
                 Acl = "public-read"
             });
 
-            // Add some content.  We can use contentBase64 for now, but next we'll want to build out the Assets pipeline so we
-            // can do a natural thing.
-            var content = new BucketObject($"{config.Require("name")}-content", new BucketObjectArgs
+            if (bucket.Id == null)
+            {
+                throw new InvalidOperationException("Id is null");
+            }
+
+            var bucketArgs = new BucketObjectArgs
             {
                 Acl = "public-read",
                 Bucket = bucket.Id,
                 ContentType = "text/plain; charset=utf8",
                 Key = "hello.txt",
                 Source = new StringAsset("Made with \u2764, Pulumi, and .NET"),
-            });
+            };
+
+            // Add some content.  We can use contentBase64 for now, but next we'll want to build out the Assets pipeline so we
+            // can do a natural thing.
+            var content = new BucketObject($"{config.Require("name")}-content", bucketArgs);
 
             //bucket.Id.Apply(id => Console.WriteLine($"Bucket ID id: {id}"));
             //content.Id.Apply(id => Console.WriteLine($"Content ID id: {id}"));

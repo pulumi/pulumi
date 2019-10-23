@@ -3,8 +3,11 @@
 #nullable enable
 
 using System;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Pulumi.Serialization;
 
 namespace Pulumi
@@ -16,11 +19,24 @@ namespace Pulumi
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
         /// the results of it.
         /// </summary>
-        private async Task CompleteResourceAsync(
+        private Task CompleteResourceAsync(
             Resource resource, Func<Task<(string urn, string id, Struct data)>> action)
         {
-            var completionSources = OutputCompletionSource.GetSources(resource);
+            // IMPORTANT!  This function must not be `async`.  We have to make sure this
+            // synchronously happens. When the constructor runs since this will set all
+            // our output fields.
 
+            var completionSources = OutputCompletionSource.GetSources(resource);
+            Console.WriteLine("Completion sources for: " + resource.GetResourceType() + "." + resource.GetResourceName());
+            Console.WriteLine(new JArray(completionSources.Keys).ToString(Formatting.None));
+
+            return CompleteResourceAsync(resource, action, completionSources);
+        }
+
+        private async Task CompleteResourceAsync(
+            Resource resource, Func<Task<(string urn, string id, Struct data)>> action,
+            ImmutableDictionary<string, IOutputCompletionSource> completionSources)
+        {
             // Run in a try/catch/finally so that we always resolve all the outputs of the resource
             // regardless of whether we encounter an errors computing the action.
             try

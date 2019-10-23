@@ -5,6 +5,10 @@
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;8618</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
   </ItemGroup>
