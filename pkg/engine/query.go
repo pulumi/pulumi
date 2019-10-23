@@ -130,7 +130,7 @@ func query(ctx *Context, q QueryInfo, opts QueryOptions) result.Result {
 		if res.IsBail() {
 			return res
 		}
-		return result.Error("an error occurred while running the query")
+		return result.Errorf("an error occurred while running the query: %v", res.Error())
 	}
 	return nil
 }
