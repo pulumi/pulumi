@@ -46,7 +46,7 @@ namespace Pulumi.Serialization
 
         public void SetValue(string context, Value value)
         {
-            var (deserialized, isKnown, isSecret) = Deserializers.Deserialize(value);
+            var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = OutputCompletionSource.Convert(context, deserialized, this.TargetType);
             _taskCompletionSource.SetResult(new OutputData<T>((T)converted!, isKnown, isSecret));
         }

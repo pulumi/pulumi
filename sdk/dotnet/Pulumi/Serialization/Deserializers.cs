@@ -9,7 +9,7 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
 {
-    internal static class Deserializers
+    internal static class Deserializer
     {
         private static OutputData<T> DeserializeCore<T>(Value value, Func<Value, OutputData<T>> func)
         {
