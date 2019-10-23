@@ -74,6 +74,14 @@ esac
     if [ "${OS}" = "linux" ]; then
         curl -sfL -o /tmp/pandoc.deb "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
         sudo apt-get install /tmp/pandoc.deb
+    else
+        # This is currently version 2.6 - we'll likely want to track the version
+        # in brew pretty closely in CI, as it's a pain to install otherwise.
+        brew install pandoc
+    fi
+
+    echo "installing dotnet sdk and runtime"
+    if [ "${OS}" = "linux" ]; then
         wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
         sudo dpkg -i packages-microsoft-prod.deb
         sudo add-apt-repository universe
@@ -83,9 +91,6 @@ esac
         sudo apt-get install dotnet-sdk-3.0
         sudo apt-get install aspnetcore-runtime-3.0
     else
-        # This is currently version 2.6 - we'll likely want to track the version
-				# in brew pretty closely in CI, as it's a pain to install otherwise.
-        brew install pandoc
         brew install dotnet-sdk
         brew install dotnet
     fi
