@@ -76,7 +76,7 @@ namespace Pulumi
                 options1.ResourceTransformations.AddRange(options2.ResourceTransformations);
                 options1.Aliases.AddRange(options2.Aliases);
                 
-                options1.DependsOn = Output.Merge(options1.DependsOn.ToOutput(), options2.DependsOn.ToOutput());
+                options1.DependsOn = options1.DependsOn.Concat(options2.DependsOn);
                 return options1;
             }
 

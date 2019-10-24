@@ -54,7 +54,7 @@ namespace Pulumi
                 string.Format(formattableString.Format, objs.ToArray()));
         }
 
-        internal static Output<ImmutableArray<T>> Merge<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
+        internal static Output<ImmutableArray<T>> Concat<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
             => Tuple(values1, values2).Apply(a => a.Item1.AddRange(a.Item2));
     }
 

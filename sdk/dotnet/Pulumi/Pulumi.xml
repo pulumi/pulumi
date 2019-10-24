@@ -351,6 +351,12 @@
             </code>
             </summary>
         </member>
+        <member name="M:Pulumi.InputList`1.Concat(Pulumi.InputList{`0})">
+            <summary>
+            Concatenates the values in this list with the values in <paramref name="other"/>,
+            returning the concatenated sequence in a new <see cref="T:Pulumi.InputList`1"/>.
+            </summary>
+        </member>
         <member name="T:Pulumi.InputMap`1">
             <summary>
             A mapping of <see cref="T:System.String"/>s to values that can be passed in as the arguments to a
