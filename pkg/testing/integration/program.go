@@ -1597,5 +1597,10 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi"}, cwd)
+	localNuget := os.Getenv("LOCAL_NUGET")
+	if localNuget == "" {
+		return errors.Wrap(err, "local NuGet path is not configured")
+	}
+
+	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget}, cwd)
 }

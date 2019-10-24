@@ -5,10 +5,14 @@ PROJECT_PKGS    := $(shell go list ./cmd...)
 
 TESTPARALLELISM := 10
 
+LOCAL_NUGET := ~/.nuget/local
+
 include ../../build/common.mk
 
 build::
 	dotnet build dotnet.sln
+	mkdir $(LOCAL_NUGET)
+	cp -p $(find . -name '*.nupkg') $(LOCAL_NUGET)
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
