@@ -17,7 +17,9 @@ namespace Pulumi.Tests
             Assert.Equal(expected.Count, actual.Count);
             foreach (var (key, actualValue) in actual)
             {
+#pragma warning disable CS8717 // A member returning a [MaybeNull] value introduces a null value for a type parameter.
                 Assert.True(expected.TryGetValue(key, out var expectedValue));
+#pragma warning restore CS8717 // A member returning a [MaybeNull] value introduces a null value for a type parameter.
                 Assert.Equal(expectedValue, actualValue);
             }
         }

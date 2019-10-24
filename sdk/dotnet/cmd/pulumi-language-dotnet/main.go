@@ -130,7 +130,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 }
 
 func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.RunRequest) error {
-	args := []string{"build"}
+	args := []string{"build", "--verbosity", "quiet"}
 
 	if req.GetProgram() != "" {
 		args = append(args, req.GetProgram())
