@@ -1,17 +1,7 @@
 ﻿// Copyright 2016-2018, Pulumi Corporation
 
-#nullable enable
-
-using System;
-using System.Collections;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Newtonsoft.Json.Linq;
-using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi

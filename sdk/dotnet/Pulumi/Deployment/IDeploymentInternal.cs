@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2018, Pulumi Corporation
 
-#nullable enable
-
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

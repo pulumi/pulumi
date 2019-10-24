@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-#nullable enable
-
 using System;
 using System.Collections.Immutable;
 using Pulumi.Serialization;

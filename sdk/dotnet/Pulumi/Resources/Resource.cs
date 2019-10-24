@@ -1,12 +1,9 @@
 // Copyright 2016-2018, Pulumi Corporation
 
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 using Pulumi.Serialization;
 
 namespace Pulumi

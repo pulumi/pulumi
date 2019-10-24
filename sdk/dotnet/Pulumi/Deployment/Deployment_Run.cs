@@ -1,12 +1,9 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace Pulumi
 {
