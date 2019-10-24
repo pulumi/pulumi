@@ -61,14 +61,6 @@ namespace Pulumi
             _outputValue = Output.Merge(_outputValue, Output.All(inputs));
         }
 
-        //public void AddRange(IEnumerable<T> collection)
-        //{
-        //    foreach (var value in collection)
-        //    {
-        //        Add(value);
-        //    }
-        //}
-
         internal InputList<T> Clone()
             => new InputList<T>(_outputValue);
 
