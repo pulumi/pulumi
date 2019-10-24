@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading;
 
 namespace Pulumi
 {
@@ -38,7 +39,7 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public sealed class InputMap<V> : Input<ImmutableDictionary<string, V>>, IEnumerable
+    public sealed class InputMap<V> : Input<ImmutableDictionary<string, V>>, IEnumerable, IAsyncEnumerable<Input<KeyValuePair<string, V>>>
     {
         public InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
         {
@@ -83,7 +84,16 @@ namespace Pulumi
         #region IEnumerable
 
         IEnumerator IEnumerable.GetEnumerator()
-            => throw new NotSupportedException("An InputMap cannot be enumerated");
+            => throw new NotSupportedException($"A {GetType().FullName} cannot be synchronously enumerated. Use {nameof(GetAsyncEnumerator)} instead.");
+
+        public async IAsyncEnumerator<Input<KeyValuePair<string, V>>> GetAsyncEnumerator(CancellationToken cancellationToken)
+        {
+            var data = await _outputValue.GetValueAsync().ConfigureAwait(false);
+            foreach (var value in data)
+            {
+                yield return value;
+            }
+        }
 
         #endregion
     }

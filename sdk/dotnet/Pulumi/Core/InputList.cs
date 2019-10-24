@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 
 namespace Pulumi
 {
@@ -43,7 +44,7 @@ namespace Pulumi
     ///     });
     /// </code>
     /// </summary>
-    public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable
+    public class InputList<T> : Input<ImmutableArray<T>>, IEnumerable, IAsyncEnumerable<Input<T>>
     {
         public InputList() : this(Output.Create(ImmutableArray<T>.Empty))
         {
@@ -135,7 +136,16 @@ namespace Pulumi
         #region IEnumerable
 
         IEnumerator IEnumerable.GetEnumerator()
-            => throw new NotSupportedException("An InputList cannot be enumerated");
+            => throw new NotSupportedException($"A {GetType().FullName} cannot be synchronously enumerated. Use {nameof(GetAsyncEnumerator)} instead.");
+
+        public async IAsyncEnumerator<Input<T>> GetAsyncEnumerator(CancellationToken cancellationToken)
+        {
+            var data = await _outputValue.GetValueAsync().ConfigureAwait(false);
+            foreach (var value in data)
+            {
+                yield return value;
+            }
+        }
 
         #endregion
     }
