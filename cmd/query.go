@@ -17,7 +17,6 @@ package cmd
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -55,7 +54,7 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+			b, err := currentBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -65,25 +64,13 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			sm, err := getStackSecretsManager(s)
-			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
-			}
-
-			cfg, err := getStackConfiguration(s, sm)
-			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
-			}
-
 			opts.Engine = engine.UpdateOptions{}
 
-			res := s.Query(commandContext(), backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				Scopes:             cancellationScopes,
+			res := b.Query(commandContext(), backend.QueryOperation{
+				Proj:   proj,
+				Root:   root,
+				Opts:   opts,
+				Scopes: cancellationScopes,
 			})
 			switch {
 			case res != nil && res.Error() == context.Canceled:

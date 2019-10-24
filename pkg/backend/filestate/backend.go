@@ -393,9 +393,9 @@ func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Query(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return b.query(ctx, stack, op, nil /*events*/)
+func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
+
+	return b.query(ctx, op, nil /*events*/)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
@@ -549,7 +549,7 @@ func (b *localBackend) apply(
 }
 
 // query executes a query program against the resource outputs of a locally hosted stack.
-func (b *localBackend) query(ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
+func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 	events chan<- engine.Event) result.Result {
 
 	// TODO: Consider implementing this for local backend. We left it out for the initial cut

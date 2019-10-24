@@ -139,7 +139,7 @@ type Backend interface {
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
 	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, stack Stack, op UpdateOperation) result.Result
+	Query(ctx context.Context, op QueryOperation) result.Result
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -176,6 +176,16 @@ type UpdateOperation struct {
 	Scopes             CancellationScopeSource
 }
 
+// QueryOperation configures a query operation.
+type QueryOperation struct {
+	Proj               *workspace.Project
+	Root               string
+	Opts               UpdateOptions
+	SecretsManager     secrets.Manager
+	StackConfiguration StackConfiguration
+	Scopes             CancellationScopeSource
+}
+
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
 	Config    config.Map
@@ -193,6 +203,14 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+}
+
+// QueryOptions configures a query to operate against a backend and the engine.
+type QueryOptions struct {
+	// Engine contains all of the engine-specific options.
+	Engine engine.UpdateOptions
+	// Display contains all of the backend display options.
+	Display display.Options
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.

@@ -16,6 +16,20 @@
 
 package colors
 
+import "golang.org/x/sys/windows/registry"
+
+func hasVTSupport() bool {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion`, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	maj, _, err := k.GetIntegerValue("CurrentMajorVersionNumber")
+	if err != nil {
+		return false
+	}
+	return maj >= 10
+}
+
 func init() {
-	disableColorization = true
+	disableColorization = !hasVTSupport()
 }

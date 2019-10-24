@@ -109,9 +109,39 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 				logging.V(10).Infof("Sync invoke: Invoking: %s", req.GetTok())
 				res, err := target.Invoke(ctx, &req)
+
+				// Unfortunately, `monitor.Invoke` can return errors for non-exceptional cases. This
+				// can happen, for example, if the underlying provider call ends up returning an
+				// error itself.  A common case of this is the aws-provider which will often return
+				// errors like:
+				//
+				//  aws:ec2/getRouteTable:getRouteTable: Your query returned no results.
+				//
+				// This is not an error in the sense that something has gone terribly wrong and we
+				// need to shutdown.  Rather, it's just a validation issue that needs to be passed
+				// back to the user program to handle.
+				//
+				// In the async codepath, this just returns as a grpc error which is thrown in the
+				// sdk code (and can be handled by the user). Unfortunately, our sync-rpc pipes have
+				// no way to send either an err or a success result.  They can only send success,
+				// and only *terminate* on error.
+				//
+				// So, to workaround this issue, we abuse the 'success result' slightly.
+				// Specifically, we take advantage of the fact that the success-result contains a
+				// list of 'failures' to indicate if 'Check' reported any problems.  We just stash
+				// this error into that array, knowing that the SDK will see it and immediately
+				// throw, just like it would have done for an RPC error in the normal async case.
 				if err != nil {
 					logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
-					return err
+					logging.V(10).Infof("Sync invoke: Converting error to response.\n")
+					if res == nil {
+						res = &pulumirpc.InvokeResponse{}
+					}
+
+					res.Failures = append(res.Failures, &pulumirpc.CheckFailure{
+						Property: "",
+						Reason:   err.Error(),
+					})
 				}
 
 				// encode the response
