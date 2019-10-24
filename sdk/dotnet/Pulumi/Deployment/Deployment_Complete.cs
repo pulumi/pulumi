@@ -19,8 +19,8 @@ namespace Pulumi
             Resource resource, Func<Task<(string urn, string id, Struct data)>> action)
         {
             // IMPORTANT!  This function must not be `async`.  We have to make sure this
-            // synchronously happens. When the constructor runs since this will set all
-            // our output fields.
+            // synchronously happens when the constructor runs since this will set all our output
+            // fields.  We need those fields assigned by the time the constructor returns.
 
             return CompleteResourceAsync(
                 resource, action, OutputCompletionSource.GetSources(resource));
