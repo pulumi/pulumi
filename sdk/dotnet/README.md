@@ -1,39 +1,61 @@
-# Experimental .NET Language Provider
+﻿# Experimental .NET Language Provider
 
 An early prototype of a .NET language provider for Pulumi.
 
 
 ## Building and Running
 
-To build, you'll want to install the .NET Core SDK, and ensure `dotnet` is on
-your path.  I'm using the 2.1 SDK, but I believe any 2.0+ SDK will work.
+To build, you'll want to install the .NET Core 3.0 SDK or greater, and ensure
+`dotnet` is on your path. Once that it does, running `make` in either the root
+directory or the `sdk/dotnet` directory will build and install the language
+plugin.
 
-`$ dotnet build` should build the relevent libraries.
+Once this is done you can write a Pulumi app written on top of .NET.  See the 
+`sdk/dotnet/examples` directory showing how this can be done with C#, F#, or VB.
+Your application will need to reference the `Pulumi.dll` built above.
 
-You'll also need to build the language host, which is written in Golang and
-handles launching `pulumi-language-dotnet-exec`.
+Here's a simple example of a Pulumi app written in C# that creates some simple
+AWS resources:
 
-`$ GOBIN=/opt/pulumi/bin go install ./cmd/pulumi-language-dotnet`
+```c#
+// Copyright 2016-2019, Pulumi Corporation
 
-Add the Publish Pulumi.Host and add the folder to you $PATH:
-
-```
-$ dotnet publish Pulumi.Host/pulumi-language-dotnet-exec.csproj
-$ export PATH=$(go env GOPATH)/src/github.com/pulumi/pulumi/sdk/dotnet/Pulumi.Host/bin/Debug/netcoreapp2.0/publish:$PATH
-```
-
-Write a little sample app as a csharp script.  You have to include the full Path to Pulumi.dll in
-your reference.
-
-```
-$ cat main.csx 
-
-#r "/home/matell/go/src/github.com/pulumi/pulumi/sdk/dotnet/Pulumi/bin/Debug/netstandard2.0/Pulumi.dll"
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Pulumi;
-using System;
+using Pulumi.Aws.S3;
 
-Config config = new Config("hello-dotnet");
-CustomResource r = new CustomResource("aws:s3/bucket:Bucket", config["name"]);
+class Program
+{
+    static Task<int> Main()
+        => Deployment.RunAsync(() =>
+        {
+            var config = new Config("hello-dotnet");
+            var name = config.Require("name");
+
+            // Create the bucket, and make it public.
+            var bucket = new Bucket(name, new BucketArgs { Acl = "public-read" });
+
+            // Add some content.
+            var content = new BucketObject($"{name}-content", new BucketObjectArgs
+            {
+                Acl = "public-read",
+                Bucket = bucket.Id,
+                ContentType = "text/plain; charset=utf8",
+                Key = "hello.txt",
+                Source = new StringAsset("Made with ❤, Pulumi, and .NET"),
+            });
+
+            // Return some values that will become the Outputs of the stack.
+            return new Dictionary<string, object>
+            {
+                { "hello", "world" },
+                { "bucket-id", bucket.Id },
+                { "content-id", content.Id },
+                { "object-url", Output.Format($"http://{bucket.BucketDomainName}/{content.Key}") },
+            };
+        });
+}
 ```
 
 Make a Pulumi.yaml file:
