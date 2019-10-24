@@ -55,11 +55,8 @@ namespace Pulumi
             if (prepareResult.ProviderRef != null)
                 request.Provider = prepareResult.ProviderRef;
 
-            foreach (var alias in prepareResult.Aliases)
-                request.Aliases.Add(alias);
-
-            foreach (var dep in prepareResult.AllDirectDependencyURNs)
-                request.Dependencies.Add(dep);
+            request.Aliases.AddRange(prepareResult.Aliases);
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
 
             foreach (var (key, resourceURNs) in prepareResult.PropertyToDirectDependencyURNs)
             {

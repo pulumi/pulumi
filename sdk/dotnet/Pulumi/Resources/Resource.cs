@@ -211,7 +211,7 @@ namespace Pulumi
                     if (typeComponents.Length == 3)
                     {
                         var pkg = typeComponents[0];
-                        this._providers = this._providers.Add(pkg, provider);
+                        this._providers = this._providers.SetItem(pkg, provider);
                     }
                 }
             }

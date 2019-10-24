@@ -46,7 +46,7 @@ namespace Pulumi
         {
             lock (_taskToDescription)
             {
-                _taskToDescription.Add(task, description);//.Enqueue((description, task));
+                _taskToDescription.Add(task, description);
             }
         }
 

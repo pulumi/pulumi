@@ -38,7 +38,6 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]#...";
             Log.Debug($"Reading resource: id={(id is IOutput ? "Output<T>" : id)}, t=${type}, name=${name}");
 
-            var monitor = this.Monitor;
             var prepareResult = await this.PrepareResourceAsync(
                 label, resource, custom: true, args, options).ConfigureAwait(false);
 
@@ -60,13 +59,10 @@ namespace Pulumi
                 AcceptSecrets = true,
             };
 
-            foreach (var urn in prepareResult.AllDirectDependencyURNs)
-            {
-                request.Dependencies.Add(urn);
-            }
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
 
             // Now run the operation, serializing the invocation if necessary.
-            var response = await monitor.ReadResourceAsync(request);
+            var response = await this.Monitor.ReadResourceAsync(request);
 
             return (response.Urn, resolvedID, response.Properties);
         }
