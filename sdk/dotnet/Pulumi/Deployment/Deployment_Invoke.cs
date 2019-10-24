@@ -21,6 +21,7 @@ namespace Pulumi
         /// provider for the invoked function's package will be used.
         /// </summary>
         public ProviderResource? Provider { get; set; }
+
         /// <summary>
         /// An optional version, corresponding to the version of the provider plugin that should be
         /// used when performing this invoke.
@@ -39,7 +40,7 @@ namespace Pulumi
         private async Task<T> InvokeAsync<T>(
             string token, ResourceArgs args, InvokeOptions? options, bool convertResult)
         {
-            var label = $"Invoking function: tok={token} asynchronously";
+            var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
 
             // Wait for all values to be available, and then perform the RPC.
@@ -48,10 +49,9 @@ namespace Pulumi
             Log.Debug($"Invoke RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 
-            var monitor = this.Monitor;
-            var provider = await ProviderResource.RegisterAsync(GetProvider(token, options));
+            var provider = await ProviderResource.RegisterAsync(GetProvider(token, options)).ConfigureAwait(false);
 
-            var result = await monitor.InvokeAsync(new InvokeRequest
+            var result = await this.Monitor.InvokeAsync(new InvokeRequest
             {
                 Tok = token,
                 Provider = provider ?? "",
