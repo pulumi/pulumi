@@ -1599,7 +1599,7 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		return errors.New("missing PULUMI_LOCAL_NUGET local NuGet path")
+		localNuget = "~/.nuget/local"
 	}
 
 	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget}, cwd)

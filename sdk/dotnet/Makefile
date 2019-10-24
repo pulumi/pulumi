@@ -2,6 +2,7 @@ PROJECT_NAME     := Pulumi .NET Core SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
 VERSION          := $(shell ../../scripts/get-version)
 PROJECT_PKGS    := $(shell go list ./cmd...)
+PULUMI_LOCAL_NUGET ?= ~/.nuget/local
 
 TESTPARALLELISM := 10
 

@@ -15,7 +15,6 @@ sudo: true
 git:
   depth: false
 before_install:
-- export PULUMI_LOCAL_NUGET=~/.nuget/local
 - openssl aes-256-cbc -K $encrypted_342342ee5e49_key -iv $encrypted_342342ee5e49_iv
   -in gcp-credentials.json.enc -out gcp-credentials.json -d
 - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
