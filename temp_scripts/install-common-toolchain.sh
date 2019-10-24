@@ -91,8 +91,8 @@ esac
         sudo apt-get install dotnet-sdk-3.0
         sudo apt-get install aspnetcore-runtime-3.0
     else
-        brew install dotnet-sdk
-        brew install dotnet
+        brew cask install dotnet-sdk
+        brew cask install dotnet
     fi
 
     echo "installing Terraform-to-Pulumi conversion tool (${TF2PULUMI_VERSION}-${OS})"
