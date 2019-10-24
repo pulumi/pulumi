@@ -1,6 +1,7 @@
 // Copyright 2016-2018, Pulumi Corporation
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Pulumi
@@ -34,27 +35,32 @@ namespace Pulumi
                 name = name[0..^":config".Length];
             }
 
-            this._name = name;
+            _name = name;
         }
 
-        private static Output<T> MakeSecret<T>(T value)
+        [return: NotNullIfNotNull("value")]
+        private static Output<T>? MakeClassSecret<T>(T? value) where T : class
+            => value == null ? null : Output.CreateSecret(value);
+
+        private static Output<T>? MakeStructSecret<T>(T? value) where T : struct
+            => value == null ? null : MakeStructSecret(value.Value);
+
+        private static Output<T> MakeStructSecret<T>(T value) where T : struct
             => Output.CreateSecret(value);
+
 
         /// <summary>
         /// Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.
         /// </summary>
         public string? Get(string key)
-            => Deployment.InternalInstance.GetConfig(this.FullKey(key));
+            => Deployment.InternalInstance.GetConfig(FullKey(key));
 
         /// <summary>
         /// Loads an optional configuration value by its key, marking it as a secret, or <see
         /// langword="null"/> if it doesn't exist.
         /// </summary>
         public Output<string>? GetSecret(string key)
-        {
-            var v = this.Get(key);
-            return v == null ? null : MakeSecret(v);
-        }
+            => MakeClassSecret(Get(key));
 
         /// <summary>
         /// Loads an optional configuration value, as a boolean, by its key, or null if it doesn't exist.
@@ -62,21 +68,10 @@ namespace Pulumi
         /// </summary>
         public bool? GetBoolean(string key)
         {
-            var v = this.Get(key);
-            if (v == null)
-            {
-                return null;
-            }
-            else if (v == "true")
-            {
-                return true;
-            }
-            else if (v == "false")
-            {
-                return false;
-            }
-
-            throw new ConfigTypeException(this.FullKey(key), v, "bool");
+            var v = Get(key);
+            return v == null ? default(bool?) :
+                   v == "true" ? true :
+                   v == "false" ? false : throw new ConfigTypeException(FullKey(key), v, nameof(Boolean));
         }
 
         /// <summary>
@@ -85,10 +80,7 @@ namespace Pulumi
         /// function will throw an error.
         /// </summary>
         public Output<bool>? GetSecretBoolean(string key)
-        {
-            var v = this.GetBoolean(key);
-            return v == null ? null : MakeSecret(v.Value);
-        }
+            => MakeStructSecret(GetBoolean(key));
 
         /// <summary>
         /// Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
@@ -96,18 +88,12 @@ namespace Pulumi
         /// </summary>
         public int? GetInt32(string key)
         {
-            var v = this.Get(key);
-            if (v == null)
-            {
-                return null;
-            }
-
-            if (!int.TryParse(v, out var result))
-            {
-                throw new ConfigTypeException(this.FullKey(key), v, "Int32");
-            }
-
-            return result;
+            var v = Get(key);
+            return v == null
+                ? default(int?)
+                : int.TryParse(v, out var result)
+                    ? result
+                    : throw new ConfigTypeException(FullKey(key), v, nameof(Int32));
         }
 
         /// <summary>
@@ -116,10 +102,7 @@ namespace Pulumi
         /// If the configuration value isn't a legal number, this function will throw an error.
         /// </summary>
         public Output<int>? GetSecretInt32(string key)
-        {
-            var v = this.GetInt32(key);
-            return v == null ? null : MakeSecret(v.Value);
-        }
+            => MakeStructSecret(GetInt32(key));
 
         /// <summary>
         /// loads an optional configuration value, as an object, by its key, or null if it doesn't
@@ -127,7 +110,7 @@ namespace Pulumi
         /// </summary>
         public JsonDocument? GetJson(string key)
         {
-            var v = this.Get(key);
+            var v = Get(key);
 
             try
             {
@@ -135,7 +118,7 @@ namespace Pulumi
             }
             catch (Exception ex)
             {
-                throw new ConfigTypeException(this.FullKey(key), v, nameof(JsonDocument), ex);
+                throw new ConfigTypeException(FullKey(key), v, nameof(JsonDocument), ex);
             }
         }
 
@@ -145,51 +128,48 @@ namespace Pulumi
         /// shape of the contents.
         /// </summary>
         public Output<JsonDocument>? GetSecretJson(string key)
-        {
-            var v = this.GetJson(key);
-            return v == null ? null : MakeSecret(v);
-        }
+            => MakeClassSecret(GetJson(key));
 
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
         /// </summary>
         public string Require(string key)
-            => this.Get(key) ?? throw new ConfigMissingException(this.FullKey(key));
+            => Get(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
         public Output<string> RequireSecret(string key)
-            => MakeSecret(this.Require(key));
+            => MakeClassSecret(Require(key));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public bool RequireBoolean(string key)
-            => this.GetBoolean(key) ?? throw new ConfigMissingException(this.FullKey(key));
+            => GetBoolean(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a boolean, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public Output<bool> RequireSecretBoolean(string key)
-            => MakeSecret(this.RequireBoolean(key));
+            => MakeStructSecret(RequireBoolean(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
         /// </summary>
         public int RequireInt32(string key)
-            => this.GetInt32(key) ?? throw new ConfigMissingException(this.FullKey(key));
+            => GetInt32(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// loads a configuration value, as a number, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
         /// </summary>
         public Output<int> RequireSecretInt32(string key)
-            => MakeSecret(this.RequireInt32(key));
+            => MakeStructSecret(RequireInt32(key));
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
@@ -197,7 +177,7 @@ namespace Pulumi
         /// error is thrown.
         /// </summary>
         public JsonDocument RequireJson(string key)
-            => this.GetJson(key) ?? throw new ConfigMissingException(this.FullKey(key));
+            => GetJson(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
@@ -205,12 +185,12 @@ namespace Pulumi
         /// legal JSON string, an error is thrown.
         /// </summary>
         public Output<JsonDocument> RequireSecretJson(string key)
-            => MakeSecret(this.RequireJson(key));
+            => MakeClassSecret(RequireJson(key));
 
         /// <summary>
         /// turns a simple configuration key into a fully resolved one, by prepending the bag's name.
         /// </summary>
         private string FullKey(string key)
-            => $"{this._name}:{key}";
+            => $"{_name}:{key}";
     }
 }
