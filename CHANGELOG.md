@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.4.0 (2019-10-24)
+
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
   [#3368](https://github.com/pulumi/pulumi/pull/3368)
 
