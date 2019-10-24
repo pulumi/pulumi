@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using Newtonsoft.Json.Linq;
 
@@ -14,47 +13,26 @@ namespace Pulumi
         /// </summary>
         private const string _configEnvKey = "PULUMI_CONFIG";
 
-        private readonly object _configGate = new object();
-        private readonly Dictionary<string, string> _config = ParseConfig();
-
         /// <summary>
-        /// returns a copy of the full config map.
+        /// Returns a copy of the full config map.
         /// </summary>
-        internal ImmutableDictionary<string, string> AllConfig()
-        {
-            lock (_configGate)
-            {
-                return _config.ToImmutableDictionary();
-            }
-        }
+        internal ImmutableDictionary<string, string> AllConfig { get; private set; } = ParseConfig();
 
         /// <summary>
         /// sets a configuration variable.
         /// </summary>
         internal void SetConfig(string key, string value)
-        {
-            lock (_configGate)
-            {
-                _config[key] = value;
-            }
-        }
+            => AllConfig = AllConfig.Add(key, value);
 
         /// <summary>
         /// returns a configuration variable's value or <see langword="null"/> if it is unset.
         /// </summary>
         string? IDeploymentInternal.GetConfig(string key)
-        {
-            lock (_configGate)
-            {
-                return _config.TryGetValue(key, out var value)
-                    ? value
-                    : null;
-            }
-        }
+            => AllConfig.TryGetValue(key, out var value) ? value : null;
 
-        private static Dictionary<string, string> ParseConfig()
+        private static ImmutableDictionary<string, string> ParseConfig()
         {
-            var parsedConfig = new Dictionary<string, string>();
+            var parsedConfig = ImmutableDictionary.CreateBuilder<string, string>();
             var envConfig = Environment.GetEnvironmentVariable(_configEnvKey);
 
             if (envConfig != null)
@@ -66,7 +44,7 @@ namespace Pulumi
                 }
             }
 
-            return parsedConfig;
+            return parsedConfig.ToImmutable();
         }
 
         /// <summary>
