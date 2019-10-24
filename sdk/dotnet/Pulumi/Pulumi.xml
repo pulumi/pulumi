@@ -130,21 +130,6 @@
             ConfigTypeException is used when a configuration value is of the wrong type.
             </summary>
         </member>
-        <member name="T:Pulumi.Config.ConfigEnumException">
-            <summary>
-            ConfigEnumException is used when a configuration value isn't a correct enum value.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Config.ConfigRangeException">
-            <summary>
-            ConfigRangeException is used when a configuration value is outside of the range of legal sizes.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Config.ConfigPatternException">
-            <summary>
-            ConfigPatternException is used when a configuration value does not match the given regular expression.
-            </summary>
-        </member>
         <member name="T:Pulumi.Config.ConfigMissingException">
             <summary>
             ConfigMissingException is used when a configuration value is completely missing.
