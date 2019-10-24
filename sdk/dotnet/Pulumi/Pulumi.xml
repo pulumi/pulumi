@@ -519,9 +519,9 @@
             The environment variable key that the language plugin uses to set configuration values.
             </summary>
         </member>
-        <member name="M:Pulumi.Deployment.AllConfig">
+        <member name="P:Pulumi.Deployment.AllConfig">
             <summary>
-            returns a copy of the full config map.
+            Returns a copy of the full config map.
             </summary>
         </member>
         <member name="M:Pulumi.Deployment.SetConfig(System.String,System.String)">

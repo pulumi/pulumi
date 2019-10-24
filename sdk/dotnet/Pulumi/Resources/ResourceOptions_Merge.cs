@@ -103,7 +103,7 @@ namespace Pulumi
 
                 options1.Providers.AddRange(options2.Providers);
 
-                if (options1.Providers.Count == 0)
+                if (options1.Providers.Count == 1)
                 {
                     options1.Provider = options1.Providers[0];
                     options1.Providers.Clear();

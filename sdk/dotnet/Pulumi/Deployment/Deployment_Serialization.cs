@@ -44,8 +44,8 @@ namespace Pulumi
         {
             var props = await args.ToOutput().GetValueAsync().ConfigureAwait(false);
 
-            var propertyToDependentResources = new Dictionary<string, HashSet<Resource>>();
-            var result = new Dictionary<string, object>();
+            var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
+            var result = ImmutableDictionary.CreateBuilder<string, object>();
 
             foreach (var (key, input) in props)
             {
@@ -63,8 +63,8 @@ namespace Pulumi
             }
 
             return new SerializationResult(
-                Serializer.CreateStruct(result.ToImmutableDictionary()),
-                propertyToDependentResources.ToImmutableDictionary());
+                Serializer.CreateStruct(result.ToImmutable()),
+                propertyToDependentResources.ToImmutable());
         }
 
         private struct SerializationResult
