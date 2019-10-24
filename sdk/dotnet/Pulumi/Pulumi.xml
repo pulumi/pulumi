@@ -6,19 +6,19 @@
     <members>
         <member name="T:Pulumi.Config">
             <summary>
-            Config is a bag of related configuration state.  Each bag contains any number of
-            configuration variables, indexed by simple keys, and each has a name that uniquely
+            <see cref="T:Pulumi.Config"/> is a bag of related configuration state.  Each bag contains any number
+            of configuration variables, indexed by simple keys, and each has a name that uniquely
             identifies it; two bags with different names do not share values for variables that
-            otherwise share the same key.  For example, a bag whose name is <c>pulumi:foo</c>, with keys <c>a</c>,
-            <c>b</c>, and <c>c</c>, is entirely separate from a bag whose name is <c>pulumi:bar</c> with
-            the same simple key names.  Each key has a fully qualified names, such as
-            <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
+            otherwise share the same key.  For example, a bag whose name is <c>pulumi:foo</c>, with keys
+            <c>a</c>, <c>b</c>, and <c>c</c>, is entirely separate from a bag whose name is
+            <c>pulumi:bar</c> with the same simple key names.  Each key has a fully qualified names,
+            such as <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
             </summary>
         </member>
         <member name="F:Pulumi.Config._name">
             <summary>
-            name is the configuration bag's logical name and uniquely identifies it.  The default
-            is the name of the current project.
+            <see cref="F:Pulumi.Config._name"/> is the configuration bag's logical name and uniquely identifies it.
+            The default is the name of the current project.
             </summary>
         </member>
         <member name="M:Pulumi.Config.Get(System.String)">
@@ -40,7 +40,7 @@
         </member>
         <member name="M:Pulumi.Config.GetSecretBoolean(System.String)">
             <summary>
-            loads an optional configuration value, as a boolean, by its key, making it as a secret or
+            Loads an optional configuration value, as a boolean, by its key, making it as a secret or
             null if it doesn't exist. If the configuration value isn't a legal boolean, this
             function will throw an error.
             </summary>
@@ -53,14 +53,14 @@
         </member>
         <member name="M:Pulumi.Config.GetSecretInt32(System.String)">
             <summary>
-            loads an optional configuration value, as a number, by its key, marking it as a secret
+            Loads an optional configuration value, as a number, by its key, marking it as a secret
             or null if it doesn't exist.
             If the configuration value isn't a legal number, this function will throw an error.
             </summary>
         </member>
         <member name="M:Pulumi.Config.GetJson(System.String)">
             <summary>
-            loads an optional configuration value, as an object, by its key, or null if it doesn't
+            Loads an optional configuration value, as an object, by its key, or null if it doesn't
             exist. This routine simply JSON parses and doesn't validate the shape of the contents.
             </summary>
         </member>
@@ -78,31 +78,31 @@
         </member>
         <member name="M:Pulumi.Config.RequireSecret(System.String)">
             <summary>
-            loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+            Loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
             is thrown.
             </summary>
         </member>
         <member name="M:Pulumi.Config.RequireBoolean(System.String)">
             <summary>
-            loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
+            Loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
             configuration value is not a legal boolean, an error is thrown.
             </summary>
         </member>
         <member name="M:Pulumi.Config.RequireSecretBoolean(System.String)">
             <summary>
-            loads a configuration value, as a boolean, by its given key, marking it as a secret.
+            Loads a configuration value, as a boolean, by its given key, marking it as a secret.
             If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
             </summary>
         </member>
         <member name="M:Pulumi.Config.RequireInt32(System.String)">
             <summary>
-            loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+            Loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
             configuration value is not a legal number, an error is thrown.
             </summary>
         </member>
         <member name="M:Pulumi.Config.RequireSecretInt32(System.String)">
             <summary>
-            loads a configuration value, as a number, by its given key, marking it as a secret.
+            Loads a configuration value, as a number, by its given key, marking it as a secret.
             If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
             </summary>
         </member>
@@ -122,7 +122,7 @@
         </member>
         <member name="M:Pulumi.Config.FullKey(System.String)">
             <summary>
-            turns a simple configuration key into a fully resolved one, by prepending the bag's name.
+            Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
             </summary>
         </member>
         <member name="T:Pulumi.Config.ConfigTypeException">
@@ -476,10 +476,10 @@
         </member>
         <member name="M:Pulumi.Urn.InheritedChildAlias(System.String,System.String,Pulumi.Input{System.String},System.String)">
             <summary>
-            inheritedChildAlias computes the alias that should be applied to a child based on an
-            alias applied to it's parent. This may involve changing the name of the resource in
-            cases where the resource has a named derived from the name of the parent, and the parent
-            name changed.
+            <see cref="M:Pulumi.Urn.InheritedChildAlias(System.String,System.String,Pulumi.Input{System.String},System.String)"/> computes the alias that should be applied to a child
+            based on an alias applied to it's parent. This may involve changing the name of the
+            resource in cases where the resource has a named derived from the name of the parent,
+            and the parent name changed.
             </summary>
         </member>
         <member name="T:Pulumi.Deployment">
@@ -526,12 +526,12 @@
         </member>
         <member name="M:Pulumi.Deployment.SetConfig(System.String,System.String)">
             <summary>
-            sets a configuration variable.
+            Sets a configuration variable.
             </summary>
         </member>
         <member name="M:Pulumi.Deployment.Pulumi#IDeploymentInternal#GetConfig(System.String)">
             <summary>
-            returns a configuration variable's value or <see langword="null"/> if it is unset.
+            Returns a configuration variable's value or <see langword="null"/> if it is unset.
             </summary>
         </member>
         <member name="M:Pulumi.Deployment.CleanKey(System.String)">
@@ -574,7 +574,7 @@
         </member>
         <member name="M:Pulumi.Deployment.GetRootResourceAsync(System.String)">
             <summary>
-            returns a root resource URN that will automatically become the default parent of all
+            Returns a root resource URN that will automatically become the default parent of all
             resources.  This can be used to ensure that all resources without explicit parents are
             parented to a common parent resource.
             </summary>
@@ -582,17 +582,17 @@
         </member>
         <member name="M:Pulumi.Deployment.SerializeResourcePropertiesAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.IInput})">
             <summary>
-            serializeResourceProperties walks the props object passed in, awaiting all interior
-            promises besides those for <see cref="P:Pulumi.Resource.Urn"/> and <see
+            <see cref="M:Pulumi.Deployment.SerializeResourcePropertiesAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.IInput})"/> walks the props object passed in,
+            awaiting all interior promises besides those for <see cref="P:Pulumi.Resource.Urn"/> and <see
             cref="P:Pulumi.CustomResource.Id"/>, creating a reasonable POCO object that can be remoted over
             to registerResource.
             </summary>
         </member>
         <member name="M:Pulumi.Deployment.SerializeFilteredPropertiesAsync(System.String,Pulumi.Input{System.Collections.Generic.IDictionary{System.String,Pulumi.IInput}},System.Predicate{System.String})">
             <summary>
-            serializeFilteredProperties walks the props object passed in, awaiting all interior
-            promises for properties with keys that match the provided filter, creating a reasonable
-            POCO object that can be remoted over to registerResource.
+            <see cref="M:Pulumi.Deployment.SerializeFilteredPropertiesAsync(System.String,Pulumi.Input{System.Collections.Generic.IDictionary{System.String,Pulumi.IInput}},System.Predicate{System.String})"/> walks the props object passed in,
+            awaiting all interior promises for properties with keys that match the provided filter,
+            creating a reasonable POCO object that can be remoted over to registerResource.
             </summary>
         </member>
         <member name="P:Pulumi.InvokeOptions.Parent">
@@ -1096,22 +1096,22 @@
         </member>
         <member name="F:Pulumi.Serialization.Constants.SpecialSigKey">
             <summary>
-            specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
+            SpecialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
             </summary>
         </member>
         <member name="F:Pulumi.Serialization.Constants.SpecialAssetSig">
             <summary>
-            specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
+            SpecialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
             </summary>
         </member>
         <member name="F:Pulumi.Serialization.Constants.SpecialArchiveSig">
             <summary>
-            specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
+            SpecialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
             </summary>
         </member>
         <member name="F:Pulumi.Serialization.Constants.SpecialSecretSig">
             <summary>
-            specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+            SpecialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
             </summary>
         </member>
         <member name="M:Pulumi.Serialization.Serializer.SerializeAsync(System.String,System.Object)">
@@ -1190,9 +1190,10 @@
         </member>
         <member name="F:Pulumi.Stack._rootPulumiStackTypeName">
             <summary>
-            rootPulumiStackTypeName is the type name that should be used to construct the root
-            component in the tree of Pulumi resources allocated by a deployment.This must be kept up
-            to date with <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
+            <see cref="F:Pulumi.Stack._rootPulumiStackTypeName"/> is the type name that should be used to construct
+            the root component in the tree of Pulumi resources allocated by a deployment.This must
+            be kept up to date with
+            <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
             </summary>
         </member>
         <member name="F:Pulumi.Stack.Outputs">
