@@ -11,7 +11,7 @@ namespace Pulumi
         private Task<string>? _rootResource;
 
         /// <summary>
-        /// returns a root resource URN that will automatically become the default parent of all
+        /// Returns a root resource URN that will automatically become the default parent of all
         /// resources.  This can be used to ensure that all resources without explicit parents are
         /// parented to a common parent resource.
         /// </summary>

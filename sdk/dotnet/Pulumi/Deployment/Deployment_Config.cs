@@ -19,13 +19,13 @@ namespace Pulumi
         internal ImmutableDictionary<string, string> AllConfig { get; private set; } = ParseConfig();
 
         /// <summary>
-        /// sets a configuration variable.
+        /// Sets a configuration variable.
         /// </summary>
         internal void SetConfig(string key, string value)
             => AllConfig = AllConfig.Add(key, value);
 
         /// <summary>
-        /// returns a configuration variable's value or <see langword="null"/> if it is unset.
+        /// Returns a configuration variable's value or <see langword="null"/> if it is unset.
         /// </summary>
         string? IDeploymentInternal.GetConfig(string key)
             => AllConfig.TryGetValue(key, out var value) ? value : null;

@@ -34,9 +34,10 @@ namespace Pulumi
         public static readonly Resource? Root = null;
 
         /// <summary>
-        /// rootPulumiStackTypeName is the type name that should be used to construct the root
-        /// component in the tree of Pulumi resources allocated by a deployment.This must be kept up
-        /// to date with <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
+        /// <see cref="_rootPulumiStackTypeName"/> is the type name that should be used to construct
+        /// the root component in the tree of Pulumi resources allocated by a deployment.This must
+        /// be kept up to date with
+        /// <c>github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName</c>.
         /// </summary>
         internal const string _rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 

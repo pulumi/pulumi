@@ -7,19 +7,19 @@ using System.Text.Json;
 namespace Pulumi
 {
     /// <summary>
-    /// Config is a bag of related configuration state.  Each bag contains any number of
-    /// configuration variables, indexed by simple keys, and each has a name that uniquely
+    /// <see cref="Config"/> is a bag of related configuration state.  Each bag contains any number
+    /// of configuration variables, indexed by simple keys, and each has a name that uniquely
     /// identifies it; two bags with different names do not share values for variables that
-    /// otherwise share the same key.  For example, a bag whose name is <c>pulumi:foo</c>, with keys <c>a</c>,
-    /// <c>b</c>, and <c>c</c>, is entirely separate from a bag whose name is <c>pulumi:bar</c> with
-    /// the same simple key names.  Each key has a fully qualified names, such as
-    /// <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
+    /// otherwise share the same key.  For example, a bag whose name is <c>pulumi:foo</c>, with keys
+    /// <c>a</c>, <c>b</c>, and <c>c</c>, is entirely separate from a bag whose name is
+    /// <c>pulumi:bar</c> with the same simple key names.  Each key has a fully qualified names,
+    /// such as <c>pulumi:foo:a</c>, ..., and <c>pulumi:bar:a</c>, respectively.
     /// </summary>
     public sealed partial class Config
     {
         /// <summary>
-        /// name is the configuration bag's logical name and uniquely identifies it.  The default
-        /// is the name of the current project.
+        /// <see cref="_name"/> is the configuration bag's logical name and uniquely identifies it.
+        /// The default is the name of the current project.
         /// </summary>
         private readonly string _name;
 
@@ -75,7 +75,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// loads an optional configuration value, as a boolean, by its key, making it as a secret or
+        /// Loads an optional configuration value, as a boolean, by its key, making it as a secret or
         /// null if it doesn't exist. If the configuration value isn't a legal boolean, this
         /// function will throw an error.
         /// </summary>
@@ -97,7 +97,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// loads an optional configuration value, as a number, by its key, marking it as a secret
+        /// Loads an optional configuration value, as a number, by its key, marking it as a secret
         /// or null if it doesn't exist.
         /// If the configuration value isn't a legal number, this function will throw an error.
         /// </summary>
@@ -105,7 +105,7 @@ namespace Pulumi
             => MakeStructSecret(GetInt32(key));
 
         /// <summary>
-        /// loads an optional configuration value, as an object, by its key, or null if it doesn't
+        /// Loads an optional configuration value, as an object, by its key, or null if it doesn't
         /// exist. This routine simply JSON parses and doesn't validate the shape of the contents.
         /// </summary>
         public JsonDocument? GetJson(string key)
@@ -137,35 +137,35 @@ namespace Pulumi
             => Get(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
-        /// loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+        /// Loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
         public Output<string> RequireSecret(string key)
             => MakeClassSecret(Require(key));
 
         /// <summary>
-        /// loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
+        /// Loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public bool RequireBoolean(string key)
             => GetBoolean(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
-        /// loads a configuration value, as a boolean, by its given key, marking it as a secret.
+        /// Loads a configuration value, as a boolean, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public Output<bool> RequireSecretBoolean(string key)
             => MakeStructSecret(RequireBoolean(key));
 
         /// <summary>
-        /// loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+        /// Loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
         /// </summary>
         public int RequireInt32(string key)
             => GetInt32(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
-        /// loads a configuration value, as a number, by its given key, marking it as a secret.
+        /// Loads a configuration value, as a number, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
         /// </summary>
         public Output<int> RequireSecretInt32(string key)
@@ -188,7 +188,7 @@ namespace Pulumi
             => MakeClassSecret(RequireJson(key));
 
         /// <summary>
-        /// turns a simple configuration key into a fully resolved one, by prepending the bag's name.
+        /// Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
         /// </summary>
         private string FullKey(string key)
             => $"{_name}:{key}";

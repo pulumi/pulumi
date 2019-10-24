@@ -15,8 +15,8 @@ namespace Pulumi
         internal static bool _excessiveDebugOutput = true;
 
         /// <summary>
-        /// serializeResourceProperties walks the props object passed in, awaiting all interior
-        /// promises besides those for <see cref="Resource.Urn"/> and <see
+        /// <see cref="SerializeResourcePropertiesAsync"/> walks the props object passed in,
+        /// awaiting all interior promises besides those for <see cref="Resource.Urn"/> and <see
         /// cref="CustomResource.Id"/>, creating a reasonable POCO object that can be remoted over
         /// to registerResource.
         /// </summary>
@@ -35,9 +35,9 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// serializeFilteredProperties walks the props object passed in, awaiting all interior
-        /// promises for properties with keys that match the provided filter, creating a reasonable
-        /// POCO object that can be remoted over to registerResource.
+        /// <see cref="SerializeFilteredPropertiesAsync"/> walks the props object passed in,
+        /// awaiting all interior promises for properties with keys that match the provided filter,
+        /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
             string label, Input<IDictionary<string, IInput>> args, Predicate<string> acceptKey)

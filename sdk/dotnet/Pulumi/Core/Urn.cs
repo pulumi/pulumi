@@ -43,10 +43,10 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// inheritedChildAlias computes the alias that should be applied to a child based on an
-        /// alias applied to it's parent. This may involve changing the name of the resource in
-        /// cases where the resource has a named derived from the name of the parent, and the parent
-        /// name changed.
+        /// <see cref="InheritedChildAlias"/> computes the alias that should be applied to a child
+        /// based on an alias applied to it's parent. This may involve changing the name of the
+        /// resource in cases where the resource has a named derived from the name of the parent,
+        /// and the parent name changed.
         /// </summary>
         internal static Output<UrnOrAlias> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
         {
