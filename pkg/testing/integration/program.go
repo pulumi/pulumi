@@ -1603,7 +1603,7 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		if err != nil {
 			return errors.Wrap(err, "could not determine current user")
 		}
-		localNuget = filepath.Join(usr.HomeDir, "nuget", "local")
+		localNuget = filepath.Join(usr.HomeDir, ".nuget", "local")
 	}
 
 	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget}, cwd)
