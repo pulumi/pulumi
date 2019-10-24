@@ -38,15 +38,8 @@ namespace Pulumi
                 completionSources["urn"].SetStringValue(response.urn, isKnown: true);
                 if (resource is CustomResource customResource)
                 {
-                    var id = response.id;
-                    if (string.IsNullOrEmpty(id))
-                    {
-                        completionSources["id"].SetStringValue("", isKnown: false);
-                    }
-                    else
-                    {
-                        completionSources["id"].SetStringValue(id, isKnown: true);
-                    }
+                    var id = response.id ?? "";
+                    completionSources["id"].SetStringValue(id, isKnown: id != "");
                 }
 
                 // Go through all our output fields and lookup a corresponding value in the response
