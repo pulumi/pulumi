@@ -21,7 +21,7 @@ namespace Pulumi.Tests.Serialization
         public readonly ImmutableDictionary<string, int> Dict;
 
         [OutputConstructor]
-        private ComplexType1(
+        public ComplexType1(
             string s, bool b, int i, double d,
             ImmutableArray<bool> array, ImmutableDictionary<string, int> dict)
         {

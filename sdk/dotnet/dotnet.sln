@@ -17,9 +17,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSharpExamples", "examples\
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharpExamples", "examples\FSharpExamples\FSharpExamples.fsproj", "{193DBB9E-BE39-4E32-BEC3-B40762F18C67}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Pulumi.FSharp", "Pulumi.FSharp\Pulumi.FSharp.fsproj", "{F45E8B4A-DAF3-48E8-B9D6-01924AF2188D}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Pulumi.FSharp", "Pulumi.FSharp\Pulumi.FSharp.fsproj", "{F45E8B4A-DAF3-48E8-B9D6-01924AF2188D}"
 EndProject
 Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "VBExamples", "examples\VBExamples\VBExamples.vbproj", "{E2662E3A-4F40-42EB-B0DB-8F9166C2CE61}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D4626281-DB93-4BB3-B23C-02F47032E4FA}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

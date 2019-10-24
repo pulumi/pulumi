@@ -10,7 +10,7 @@ using Pulumi.Aws.S3;
 
 class Program
 {
-    static Task<int> Main(string[] args)
+    static Task<int> Main()
     {
         return Deployment.RunAsync(() =>
         {

@@ -39,7 +39,7 @@ namespace Pulumi.Azure.Storage
         public readonly string Sas;
 
         [OutputConstructor]
-        private GetAccountBlobContainerSASResult(string sas)
+        public GetAccountBlobContainerSASResult(string sas)
         {
             this.Sas = sas;
         }
