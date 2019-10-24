@@ -41,7 +41,7 @@ namespace Pulumi
                 => _assets = assets ?? throw new ArgumentNullException(nameof(assets));
 
         internal override (string propName, object value) GetSerializationDataWorker()
-            => ("assets", _assets);
+            => (Constants.ArchiveAssetsName, _assets);
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ namespace Pulumi
             => this._path = path ?? throw new ArgumentNullException(nameof(path));
 
         internal override (string propName, object value) GetSerializationDataWorker()
-            => ("path", _path);
+            => (Constants.AssetOrArchivePathName, _path);
     }
 
     /// <summary>
@@ -80,6 +80,6 @@ namespace Pulumi
                 => _uri = uri ?? throw new ArgumentNullException(nameof(uri));
 
         internal override (string propName, object value) GetSerializationDataWorker()
-            => ("uri", _uri);
+            => (Constants.AssetOrArchiveUriName, _uri);
     }
 }

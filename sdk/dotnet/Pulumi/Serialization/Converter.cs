@@ -38,15 +38,11 @@ namespace Pulumi.Serialization
             if (val == null)
             {
                 if (targetIsNullable)
-                {
                     // A 'null' value coerces to a nullable null.
                     return null;
-                }
 
                 if (targetType.IsValueType)
-                {
                     return Activator.CreateInstance(targetType);
-                }
 
                 // for all other types, can just return the null value right back out as a legal
                 // reference type value.
@@ -55,89 +51,53 @@ namespace Pulumi.Serialization
 
             // We're not null and we're converting to Nullable<T>, just convert our value to be a T.
             if (targetIsNullable)
-            {
                 return ConvertObject(context, val, targetType.GenericTypeArguments.Single());
-            }
 
             if (targetType == typeof(string))
-            {
-                if (!(val is string))
-                {
-                    throw new InvalidOperationException(
-                        $"Expected {typeof(string).FullName} but got {val.GetType().FullName} deserializing {context}");
-                }
-
-                return val;
-            }
+                return EnsureType<string>(context, val);
 
             if (targetType == typeof(bool))
-            {
-                if (!(val is bool))
-                {
-                    throw new InvalidOperationException(
-                        $"Expected {typeof(bool).FullName} but got {val.GetType().FullName} deserializing {context}");
-                }
-
-                return val;
-            }
+                return EnsureType<bool>(context, val);
 
             if (targetType == typeof(double))
-            {
-                if (!(val is double))
-                {
-                    throw new InvalidOperationException(
-                        $"Expected {typeof(double).FullName} but got {val.GetType().FullName} deserializing {context}");
-                }
-
-                return val;
-            }
+                return EnsureType<double>(context, val);
 
             if (targetType == typeof(int))
-            {
-                if (!(val is double d))
-                {
-                    throw new InvalidOperationException(
-                        $"Expected {typeof(double).FullName} but got {val.GetType().FullName} deserializing {context}");
-                }
+                return (int)EnsureType<double>(context, val);
 
-                return (int)d;
-            }
+            if (targetType == typeof(Asset))
+                return EnsureType<Asset>(context, val);
+
+            if (targetType == typeof(Archive))
+                return EnsureType<Archive>(context, val);
+
+            if (targetType == typeof(AssetOrArchive))
+                return EnsureType<AssetOrArchive>(context, val);
 
             if (targetType.IsConstructedGenericType)
             {
                 if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
-                {
                     return ConvertArray(context, val, targetType);
-                }
-                else if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
-                {
+                
+                if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
                     return ConvertDictionary(context, val, targetType);
-                }
-                else
-                {
-                    throw new InvalidOperationException(
-                        $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
-                }
+                
+                throw new InvalidOperationException(
+                    $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
             if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
-            {
                 throw new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}");
-            }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
-            {
                 throw new InvalidOperationException(
                     $"Expected target type {targetType.FullName} to have [PropertyConstructor] constructor when deserializing {context}");
-            }
 
             if (!(val is ImmutableDictionary<string, object> dictionary))
-            {
                 throw new InvalidOperationException(
     $"Expected {typeof(ImmutableDictionary<string, object>).FullName} but got {val.GetType().FullName} deserializing {context}");
-            }
 
             var constructorParameters = constructor.GetParameters();
             var arguments = new object?[constructorParameters.Length];
@@ -155,6 +115,9 @@ namespace Pulumi.Serialization
 
             return constructor.Invoke(arguments);
         }
+
+        private static T EnsureType<T>(string context, object val)
+            => val is T t ? t : throw new InvalidOperationException($"Expected {typeof(T).FullName} but got {val.GetType().FullName} deserializing {context}");
 
         private static object ConvertArray(string fieldName, object val, System.Type targetType)
         {
@@ -226,7 +189,10 @@ namespace Pulumi.Serialization
             if (targetType == typeof(bool) ||
                 targetType == typeof(int) ||
                 targetType == typeof(double) ||
-                targetType == typeof(string))
+                targetType == typeof(string) ||
+                targetType == typeof(Asset) ||
+                targetType == typeof(Archive) ||
+                targetType == typeof(AssetOrArchive))
             {
                 return;
             }

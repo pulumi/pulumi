@@ -32,5 +32,11 @@ namespace Pulumi.Serialization
         public const string SpecialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 
         public const string SecretValueName = "value";
+
+        public const string AssetTextName = "text";
+        public const string ArchiveAssetsName = "assets";
+
+        public const string AssetOrArchivePathName = "path";
+        public const string AssetOrArchiveUriName = "uri";
     }
 }

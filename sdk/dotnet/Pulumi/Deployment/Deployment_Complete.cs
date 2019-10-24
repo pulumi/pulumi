@@ -26,11 +26,8 @@ namespace Pulumi
             // synchronously happens. When the constructor runs since this will set all
             // our output fields.
 
-            var completionSources = OutputCompletionSource.GetSources(resource);
-            Console.WriteLine("Completion sources for: " + resource.GetResourceType() + "." + resource.GetResourceName());
-            Console.WriteLine(new JArray(completionSources.Keys).ToString(Formatting.None));
-
-            return CompleteResourceAsync(resource, action, completionSources);
+            return CompleteResourceAsync(
+                resource, action, OutputCompletionSource.GetSources(resource));
         }
 
         private async Task CompleteResourceAsync(
