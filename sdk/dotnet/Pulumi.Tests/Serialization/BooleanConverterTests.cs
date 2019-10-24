@@ -26,6 +26,7 @@ namespace Pulumi.Tests.Serialization
             Assert.False(data.Value);
             Assert.True(data.IsKnown);
         }
+
         [Fact]
         public void SecretTrue()
         {
@@ -95,6 +96,32 @@ namespace Pulumi.Tests.Serialization
             {
                 var data = Converter.ConvertValue<bool>("", new Value { StringValue = "" });
             });
+        }
+
+        [Fact]
+        public void NullableTrue()
+        {
+            var data = Converter.ConvertValue<bool?>("", new Value { BoolValue = true });
+            Assert.True(data.Value);
+            Assert.True(data.IsKnown);
+        }
+
+        [Fact]
+        public void NullableFalse()
+        {
+            var data = Converter.ConvertValue<bool?>("", new Value { BoolValue = false });
+
+            Assert.False(data.Value);
+            Assert.True(data.IsKnown);
+        }
+
+        [Fact]
+        public void NullableNull()
+        {
+            var data = Converter.ConvertValue<bool?>("", new Value { NullValue = NullValue.NullValue });
+
+            Assert.Null(data.Value);
+            Assert.True(data.IsKnown);
         }
     }
 }
