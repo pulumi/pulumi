@@ -21,7 +21,7 @@ namespace Pulumi.Aws.S3
         public Output<string> Arn { get; private set; } = null!;
 
         [Output("bucket")]
-        public Output<string> Bucket_ { get; private set; } = null!;
+        public Output<string> BucketName { get; private set; } = null!;
 
         [Output("bucketDomainName")]
         public Output<string> BucketDomainName { get; private set; } = null!;
@@ -90,37 +90,37 @@ namespace Pulumi.Aws.S3
     public class BucketArgs : ResourceArgs
     {
         [Input("accelerationStatus")]
-        public Input<string> AccelerationStatus { get; set; }
+        public Input<string>? AccelerationStatus { get; set; }
 
         [Input("acl")]
-        public Input<string> Acl { get; set; }
+        public Input<string>? Acl { get; set; }
 
         [Input("arn")]
-        public Input<string> Arn { get; set; }
+        public Input<string>? Arn { get; set; }
 
         [Input("bucket")]
-        public Input<string> Bucket { get; set; }
+        public Input<string>? BucketName { get; set; }
 
         [Input("bucketPrefix")]
-        public Input<string> BucketPrefix { get; set; }
+        public Input<string>? BucketPrefix { get; set; }
 
         [Input("corsRules")]
         private InputList<BucketCorsRulesArgs>? _corsRules;
-        public InputList<BucketCorsRulesArgs> CorsRules
+        public InputList<BucketCorsRulesArgs>? CorsRules
         {
             get => _corsRules ?? (_corsRules = new InputList<BucketCorsRulesArgs>());
             set => _corsRules = value;
         }
 
         [Input("forceDestroy")]
-        public Input<bool> ForceDestroy { get; set; }
+        public Input<bool>? ForceDestroy { get; set; }
 
         [Input("hostedZoneId")]
-        public Input<string> HostedZoneId { get; set; }
+        public Input<string>? HostedZoneId { get; set; }
 
         [Input("lifecycleRules")]
         private InputList<BucketLifecycleRulesArgs>? _lifecycleRules;
-        public InputList<BucketLifecycleRulesArgs> LifecycleRules
+        public InputList<BucketLifecycleRulesArgs>? LifecycleRules
         {
             get => _lifecycleRules ?? (_lifecycleRules = new InputList<BucketLifecycleRulesArgs>());
             set => _lifecycleRules = value;
@@ -128,49 +128,49 @@ namespace Pulumi.Aws.S3
 
         [Input("loggings")]
         private InputList<BucketLoggingsArgs>? _loggings;
-        public InputList<BucketLoggingsArgs> Loggings
+        public InputList<BucketLoggingsArgs>? Loggings
         {
             get => _loggings ?? (_loggings = new InputList<BucketLoggingsArgs>());
             set => _loggings = value;
         }
 
         [Input("objectLockConfiguration")]
-        public Input<BucketObjectLockConfigurationArgs> ObjectLockConfiguration { get; set; }
+        public Input<BucketObjectLockConfigurationArgs>? ObjectLockConfiguration { get; set; }
 
         [Input("policy")]
-        public Input<string> Policy { get; set; }
+        public Input<string>? Policy { get; set; }
 
         [Input("region")]
-        public Input<string> Region { get; set; }
+        public Input<string>? Region { get; set; }
 
         [Input("replicationConfiguration")]
-        public Input<BucketReplicationConfigurationArgs> ReplicationConfiguration { get; set; }
+        public Input<BucketReplicationConfigurationArgs>? ReplicationConfiguration { get; set; }
 
         [Input("requestPayer")]
-        public Input<string> RequestPayer { get; set; }
+        public Input<string>? RequestPayer { get; set; }
 
         [Input("serverSideEncryptionConfiguration")]
-        public Input<BucketServerSideEncryptionConfigurationArgs> ServerSideEncryptionConfiguration { get; set; }
+        public Input<BucketServerSideEncryptionConfigurationArgs>? ServerSideEncryptionConfiguration { get; set; }
 
         [Input("tags")]
         private InputMap<object>? _tags;
-        public InputMap<object> Tags
+        public InputMap<object>? Tags
         {
             get => _tags ?? (_tags = new InputMap<object>());
             set => _tags = value;
         }
 
         [Input("versioning")]
-        public Input<BucketVersioningArgs> Versioning { get; set; }
+        public Input<BucketVersioningArgs>? Versioning { get; set; }
 
         [Input("website")]
-        public Input<BucketWebsiteArgs> Website { get; set; }
+        public Input<BucketWebsiteArgs>? Website { get; set; }
 
         [Input("websiteDomain")]
-        public Input<string> WebsiteDomain { get; set; }
+        public Input<string>? WebsiteDomain { get; set; }
 
         [Input("websiteEndpoint")]
-        public Input<string> WebsiteEndpoint { get; set; }
+        public Input<string>? WebsiteEndpoint { get; set; }
 
         public BucketArgs()
         {
@@ -181,7 +181,7 @@ namespace Pulumi.Aws.S3
     {
         [Input("allowedHeaders")]
         private InputList<string>? _allowedHeaders;
-        public InputList<string> AllowedHeaders
+        public InputList<string>? AllowedHeaders
         {
             get => _allowedHeaders ?? (_allowedHeaders = new InputList<string>());
             set => _allowedHeaders = value;
@@ -205,14 +205,14 @@ namespace Pulumi.Aws.S3
 
         [Input("exposeHeaders")]
         private InputList<string>? _exposeHeaders;
-        public InputList<string> ExposeHeaders
+        public InputList<string>? ExposeHeaders
         {
             get => _exposeHeaders ?? (_exposeHeaders = new InputList<string>());
             set => _exposeHeaders = value;
         }
 
         [Input("maxAgeSeconds")]
-        public Input<int> MaxAgeSeconds { get; set; }
+        public Input<int>? MaxAgeSeconds { get; set; }
 
         public BucketCorsRulesArgs()
         {
@@ -222,34 +222,34 @@ namespace Pulumi.Aws.S3
     public class BucketLifecycleRulesArgs
     {
         [Input("abortIncompleteMultipartUploadDays")]
-        public Input<int> AbortIncompleteMultipartUploadDays { get; set; }
+        public Input<int>? AbortIncompleteMultipartUploadDays { get; set; }
 
         [Input("enabled", required: true)]
         public Input<bool> Enabled { get; set; } = null!;
 
         [Input("expiration")]
-        public Input<BucketLifecycleRulesExpirationArgs> Expiration { get; set; }
+        public Input<BucketLifecycleRulesExpirationArgs>? Expiration { get; set; }
 
         [Input("id")]
-        public Input<string> Id { get; set; }
+        public Input<string>? Id { get; set; }
 
         [Input("noncurrentVersionExpiration")]
-        public Input<BucketLifecycleRulesNoncurrentVersionExpirationArgs> NoncurrentVersionExpiration { get; set; }
+        public Input<BucketLifecycleRulesNoncurrentVersionExpirationArgs>? NoncurrentVersionExpiration { get; set; }
 
         [Input("noncurrentVersionTransitions")]
         private InputList<BucketLifecycleRulesNoncurrentVersionTransitionsArgs>? _noncurrentVersionTransitions;
-        public InputList<BucketLifecycleRulesNoncurrentVersionTransitionsArgs> NoncurrentVersionTransitions
+        public InputList<BucketLifecycleRulesNoncurrentVersionTransitionsArgs>? NoncurrentVersionTransitions
         {
             get => _noncurrentVersionTransitions ?? (_noncurrentVersionTransitions = new InputList<BucketLifecycleRulesNoncurrentVersionTransitionsArgs>());
             set => _noncurrentVersionTransitions = value;
         }
 
         [Input("prefix")]
-        public Input<string> Prefix { get; set; }
+        public Input<string>? Prefix { get; set; }
 
         [Input("tags")]
         private InputMap<object>? _tags;
-        public InputMap<object> Tags
+        public InputMap<object>? Tags
         {
             get => _tags ?? (_tags = new InputMap<object>());
             set => _tags = value;
@@ -257,7 +257,7 @@ namespace Pulumi.Aws.S3
 
         [Input("transitions")]
         private InputList<BucketLifecycleRulesTransitionsArgs>? _transitions;
-        public InputList<BucketLifecycleRulesTransitionsArgs> Transitions
+        public InputList<BucketLifecycleRulesTransitionsArgs>? Transitions
         {
             get => _transitions ?? (_transitions = new InputList<BucketLifecycleRulesTransitionsArgs>());
             set => _transitions = value;
@@ -271,13 +271,13 @@ namespace Pulumi.Aws.S3
     public class BucketLifecycleRulesExpirationArgs
     {
         [Input("date")]
-        public Input<string> Date { get; set; }
+        public Input<string>? Date { get; set; }
 
         [Input("days")]
-        public Input<int> Days { get; set; }
+        public Input<int>? Days { get; set; }
 
         [Input("expiredObjectDeleteMarker")]
-        public Input<bool> ExpiredObjectDeleteMarker { get; set; }
+        public Input<bool>? ExpiredObjectDeleteMarker { get; set; }
 
         public BucketLifecycleRulesExpirationArgs()
         {
@@ -287,7 +287,7 @@ namespace Pulumi.Aws.S3
     public class BucketLifecycleRulesNoncurrentVersionExpirationArgs
     {
         [Input("days")]
-        public Input<int> Days { get; set; }
+        public Input<int>? Days { get; set; }
 
         public BucketLifecycleRulesNoncurrentVersionExpirationArgs()
         {
@@ -297,7 +297,7 @@ namespace Pulumi.Aws.S3
     public class BucketLifecycleRulesNoncurrentVersionTransitionsArgs
     {
         [Input("days")]
-        public Input<int> Days { get; set; }
+        public Input<int>? Days { get; set; }
 
         [Input("storageClass", required: true)]
         public Input<string> StorageClass { get; set; } = null!;
@@ -310,10 +310,10 @@ namespace Pulumi.Aws.S3
     public class BucketLifecycleRulesTransitionsArgs
     {
         [Input("date")]
-        public Input<string> Date { get; set; }
+        public Input<string>? Date { get; set; }
 
         [Input("days")]
-        public Input<int> Days { get; set; }
+        public Input<int>? Days { get; set; }
 
         [Input("storageClass", required: true)]
         public Input<string> StorageClass { get; set; } = null!;
@@ -329,7 +329,7 @@ namespace Pulumi.Aws.S3
         public Input<string> TargetBucket { get; set; } = null!;
 
         [Input("targetPrefix")]
-        public Input<string> TargetPrefix { get; set; }
+        public Input<string>? TargetPrefix { get; set; }
 
         public BucketLoggingsArgs()
         {
@@ -342,7 +342,7 @@ namespace Pulumi.Aws.S3
         public Input<string> ObjectLockEnabled { get; set; } = null!;
 
         [Input("rule")]
-        public Input<BucketObjectLockConfigurationRuleArgs> Rule { get; set; }
+        public Input<BucketObjectLockConfigurationRuleArgs>? Rule { get; set; }
 
         public BucketObjectLockConfigurationArgs()
         {
@@ -362,13 +362,13 @@ namespace Pulumi.Aws.S3
     public class BucketObjectLockConfigurationRuleDefaultRetentionArgs
     {
         [Input("days")]
-        public Input<int> Days { get; set; }
+        public Input<int>? Days { get; set; }
 
         [Input("mode", required: true)]
         public Input<string> Mode { get; set; } = null!;
 
         [Input("years")]
-        public Input<int> Years { get; set; }
+        public Input<int>? Years { get; set; }
 
         public BucketObjectLockConfigurationRuleDefaultRetentionArgs()
         {
@@ -399,19 +399,19 @@ namespace Pulumi.Aws.S3
         public Input<BucketReplicationConfigurationRulesDestinationArgs> Destination { get; set; } = null!;
 
         [Input("filter")]
-        public Input<BucketReplicationConfigurationRulesFilterArgs> Filter { get; set; }
+        public Input<BucketReplicationConfigurationRulesFilterArgs>? Filter { get; set; }
 
         [Input("id")]
-        public Input<string> Id { get; set; }
+        public Input<string>? Id { get; set; }
 
         [Input("prefix")]
-        public Input<string> Prefix { get; set; }
+        public Input<string>? Prefix { get; set; }
 
         [Input("priority")]
-        public Input<int> Priority { get; set; }
+        public Input<int>? Priority { get; set; }
 
         [Input("sourceSelectionCriteria")]
-        public Input<BucketReplicationConfigurationRulesSourceSelectionCriteriaArgs> SourceSelectionCriteria { get; set; }
+        public Input<BucketReplicationConfigurationRulesSourceSelectionCriteriaArgs>? SourceSelectionCriteria { get; set; }
 
         [Input("status", required: true)]
         public Input<string> Status { get; set; } = null!;
@@ -434,19 +434,19 @@ namespace Pulumi.Aws.S3
     public class BucketReplicationConfigurationRulesDestinationArgs
     {
         [Input("accessControlTranslation")]
-        public Input<BucketReplicationConfigurationRulesDestinationAccessControlTranslationArgs> AccessControlTranslation { get; set; }
+        public Input<BucketReplicationConfigurationRulesDestinationAccessControlTranslationArgs>? AccessControlTranslation { get; set; }
 
         [Input("accountId")]
-        public Input<string> AccountId { get; set; }
+        public Input<string>? AccountId { get; set; }
 
         [Input("bucket", required: true)]
         public Input<string> Bucket { get; set; } = null!;
 
         [Input("replicaKmsKeyId")]
-        public Input<string> ReplicaKmsKeyId { get; set; }
+        public Input<string>? ReplicaKmsKeyId { get; set; }
 
         [Input("storageClass")]
-        public Input<string> StorageClass { get; set; }
+        public Input<string>? StorageClass { get; set; }
 
         public BucketReplicationConfigurationRulesDestinationArgs()
         {
@@ -456,11 +456,11 @@ namespace Pulumi.Aws.S3
     public class BucketReplicationConfigurationRulesFilterArgs
     {
         [Input("prefix")]
-        public Input<string> Prefix { get; set; }
+        public Input<string>? Prefix { get; set; }
 
         [Input("tags")]
         private InputMap<object>? _tags;
-        public InputMap<object> Tags
+        public InputMap<object>? Tags
         {
             get => _tags ?? (_tags = new InputMap<object>());
             set => _tags = value;
@@ -474,7 +474,7 @@ namespace Pulumi.Aws.S3
     public class BucketReplicationConfigurationRulesSourceSelectionCriteriaArgs
     {
         [Input("sseKmsEncryptedObjects")]
-        public Input<BucketReplicationConfigurationRulesSourceSelectionCriteriaSseKmsEncryptedObjectsArgs> SseKmsEncryptedObjects { get; set; }
+        public Input<BucketReplicationConfigurationRulesSourceSelectionCriteriaSseKmsEncryptedObjectsArgs>? SseKmsEncryptedObjects { get; set; }
 
         public BucketReplicationConfigurationRulesSourceSelectionCriteriaArgs()
         {
@@ -504,7 +504,7 @@ namespace Pulumi.Aws.S3
     public class BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefaultArgs
     {
         [Input("kmsMasterKeyId")]
-        public Input<string> KmsMasterKeyId { get; set; }
+        public Input<string>? KmsMasterKeyId { get; set; }
 
         [Input("sseAlgorithm", required: true)]
         public Input<string> SseAlgorithm { get; set; } = null!;
@@ -527,10 +527,10 @@ namespace Pulumi.Aws.S3
     public class BucketVersioningArgs
     {
         [Input("enabled")]
-        public Input<bool> Enabled { get; set; }
+        public Input<bool>? Enabled { get; set; }
 
         [Input("mfaDelete")]
-        public Input<bool> MfaDelete { get; set; }
+        public Input<bool>? MfaDelete { get; set; }
 
         public BucketVersioningArgs()
         {
@@ -540,16 +540,16 @@ namespace Pulumi.Aws.S3
     public class BucketWebsiteArgs
     {
         [Input("errorDocument")]
-        public Input<string> ErrorDocument { get; set; }
+        public Input<string>? ErrorDocument { get; set; }
 
         [Input("indexDocument")]
-        public Input<string> IndexDocument { get; set; }
+        public Input<string>? IndexDocument { get; set; }
 
         [Input("redirectAllRequestsTo")]
-        public Input<string> RedirectAllRequestsTo { get; set; }
+        public Input<string>? RedirectAllRequestsTo { get; set; }
 
         [Input("routingRules")]
-        public Input<string> RoutingRules { get; set; }
+        public Input<string>? RoutingRules { get; set; }
 
         public BucketWebsiteArgs()
         {

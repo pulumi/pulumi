@@ -90,80 +90,80 @@ namespace Pulumi.Aws.S3
     public class BucketObjectArgs : ResourceArgs
     {
         [Input("acl")]
-        public Input<string> Acl { get; set; }
+        public Input<string>? Acl { get; set; }
 
         [Input("bucket", required: true)]
         public Input<string> Bucket { get; set; } = null!;
 
         [Input("cacheControl")]
-        public Input<string> CacheControl { get; set; }
+        public Input<string>? CacheControl { get; set; }
 
         [Input("content")]
-        public Input<string> Content { get; set; }
+        public Input<string>? Content { get; set; }
 
         [Input("contentBase64")]
-        public Input<string> ContentBase64 { get; set; }
+        public Input<string>? ContentBase64 { get; set; }
 
         [Input("contentDisposition")]
-        public Input<string> ContentDisposition { get; set; }
+        public Input<string>? ContentDisposition { get; set; }
 
         [Input("contentEncoding")]
-        public Input<string> ContentEncoding { get; set; }
+        public Input<string>? ContentEncoding { get; set; }
 
         [Input("contentLanguage")]
-        public Input<string> ContentLanguage { get; set; }
+        public Input<string>? ContentLanguage { get; set; }
 
         [Input("contentType")]
-        public Input<string> ContentType { get; set; }
+        public Input<string>? ContentType { get; set; }
 
         [Input("etag")]
-        public Input<string> Etag { get; set; }
+        public Input<string>? Etag { get; set; }
 
         [Input("forceDestroy")]
-        public Input<bool> ForceDestroy { get; set; }
+        public Input<bool>? ForceDestroy { get; set; }
 
         [Input("key")]
-        public Input<string> Key { get; set; }
+        public Input<string>? Key { get; set; }
 
         [Input("kmsKeyId")]
-        public Input<string> KmsKeyId { get; set; }
+        public Input<string>? KmsKeyId { get; set; }
 
         [Input("metadata")]
         private InputMap<string>? _metadata;
-        public InputMap<string> Metadata
+        public InputMap<string>? Metadata
         {
             get => _metadata ?? (_metadata = new InputMap<string>());
             set => _metadata = value;
         }
 
         [Input("objectLockLegalHoldStatus")]
-        public Input<string> ObjectLockLegalHoldStatus { get; set; }
+        public Input<string>? ObjectLockLegalHoldStatus { get; set; }
 
         [Input("objectLockMode")]
-        public Input<string> ObjectLockMode { get; set; }
+        public Input<string>? ObjectLockMode { get; set; }
 
         [Input("objectLockRetainUntilDate")]
-        public Input<string> ObjectLockRetainUntilDate { get; set; }
+        public Input<string>? ObjectLockRetainUntilDate { get; set; }
 
         [Input("serverSideEncryption")]
-        public Input<string> ServerSideEncryption { get; set; }
+        public Input<string>? ServerSideEncryption { get; set; }
 
         [Input("source")]
-        public Input<AssetOrArchive> Source { get; set; }
+        public Input<AssetOrArchive>? Source { get; set; }
 
         [Input("storageClass")]
-        public Input<string> StorageClass { get; set; }
+        public Input<string>? StorageClass { get; set; }
 
         [Input("tags")]
         private InputMap<object>? _tags;
-        public InputMap<object> Tags
+        public InputMap<object>? Tags
         {
             get => _tags ?? (_tags = new InputMap<object>());
             set => _tags = value;
         }
 
         [Input("websiteRedirect")]
-        public Input<string> WebsiteRedirect { get; set; }
+        public Input<string>? WebsiteRedirect { get; set; }
 
         public BucketObjectArgs()
         {

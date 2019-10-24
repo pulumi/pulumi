@@ -124,11 +124,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 // resolve isKnown to true) and for any resource outputs that were resolved with known values.
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
-                var value = await SerializeAsync($"{ctx}.id", data.Value).ConfigureAwait(false);
 
                 if (!isKnown)
                     return Constants.UnknownValue;
 
+                var value = await SerializeAsync($"{ctx}.id", data.Value).ConfigureAwait(false);
                 if (isSecret)
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -226,18 +226,25 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 Log.Debug($"Serialize property[{ctx}]: Hit list");
             }
 
-            var result = ImmutableArray.CreateBuilder<object?>(list.Count);
-            for (int i = 0, n = list.Count; i < n; i++)
+            try
             {
-                if (_excessiveDebugOutput)
+                var result = ImmutableArray.CreateBuilder<object?>(list.Count);
+                for (int i = 0, n = list.Count; i < n; i++)
                 {
-                    Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
+                    if (_excessiveDebugOutput)
+                    {
+                        Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
+                    }
+
+                    result.Add(await SerializeAsync($"{ctx}[{i}]", list[i]).ConfigureAwait(false));
                 }
 
-                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i]).ConfigureAwait(false));
+                return result.MoveToImmutable();
             }
-
-            return result.MoveToImmutable();
+            catch (Exception e)
+            {
+                throw new Exception(ctx, e);
+            }
         }
 
         public async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary)

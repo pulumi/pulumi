@@ -31,6 +31,8 @@ namespace Pulumi
             this.RegisterTask(
                 $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
                 CompleteResourceAsync(resource, () => RegisterResourceAsync(resource, custom, args, options)));
+
+            this.RegisterTask($"{resource.GetResourceType()}-{resource.GetResourceName()}: urn", resource.Urn.DataTask);
         }
 
         private async Task<(string urn, string id, Struct data)> RegisterResourceAsync(

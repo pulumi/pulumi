@@ -94,9 +94,7 @@ namespace Pulumi
         {
             try
             {
-                var urn = resource == null
-                    ? ""
-                    : await resource.Urn.GetValueAsync().ConfigureAwait(false);
+                var urn = await TryGetResourceUrnAsync(resource).ConfigureAwait(false);
 
                 await Engine.LogAsync(new LogRequest
                 {
@@ -123,6 +121,25 @@ namespace Pulumi
                 // exception that the top level can know about and handle specially.
                 throw new LogException(e);
             }
+        }
+
+        private static async Task<string> TryGetResourceUrnAsync(Resource? resource)
+        {
+            if (resource != null)
+            {
+                try
+                {
+                    return await resource.Urn.GetValueAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // getting the urn for a resource may itself fail.  in that case we don't want to
+                    // fail to send an logging message. we'll just send the logging message unassociated
+                    // with any resource.
+                }
+            }
+
+            return "";
         }
     }
 }
