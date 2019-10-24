@@ -48,8 +48,6 @@ type Stack interface {
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 
-	// Query this stack's state.
-	Query(ctx context.Context, op UpdateOperation) result.Result
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
@@ -62,16 +60,12 @@ type Stack interface {
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 }
 
-// Query executes a query program against a stack's resource outputs.
-func Query(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Query(ctx, s, op)
-}
-
 // RemoveStack returns the stack, or returns an error if it cannot.
 func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 	return s.Backend().RemoveStack(ctx, s, force)
 }
 
+// RenameStack renames the stack, or returns an error if it cannot.
 func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
 	return s.Backend().RenameStack(ctx, s, newName)
 }

@@ -107,6 +107,7 @@ func (s *cloudStack) OrgName() string                       { return s.orgName }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
+
 	si, err := s.b.getCloudStackIdentifier(s.ref)
 	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
 	return si
@@ -124,10 +125,6 @@ func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 
 	s.snapshot = &snap
 	return *s.snapshot, nil
-}
-
-func (s *cloudStack) Query(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.Query(ctx, s, op)
 }
 
 func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {

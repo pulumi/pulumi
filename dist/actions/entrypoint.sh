@@ -72,14 +72,26 @@ fi
 
 # For Google, we need to authenticate with a service principal for certain authentication operations.
 if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
-    GCLOUD_KEYFILE="$(mktemp).json"
-    echo "$GOOGLE_CREDENTIALS" > $GCLOUD_KEYFILE
-    gcloud auth activate-service-account --key-file=$GCLOUD_KEYFILE
+    export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp).json"
+    echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
 fi
 
-# Next, lazily install packages if required.
-if [ -e package.json ] && [ ! -d node_modules ]; then
-    npm install
+# Next, run npm install. We always call this, as
+# previous calls (stack select, login, preview) will run the
+# npm scripts that install plugins; plugin installation directory
+# is outside of the persisted filesystem (GitHub Actions).
+# So we need to run this everytime to ensure the plugins are
+# always available. This shouldn't cause a performance hit,
+# as the node_modules/lock file will be persisted across runs.
+#
+# Similarly, run yarn install as applicable for the same reasons.
+if [ -e package.json ]; then
+    if [ -f yarn.lock ] || [ ! -z $USE_YARN ]; then
+        yarn install
+    else
+        npm install
+    fi
 fi
 
 # Now just pass along all arguments to the Pulumi CLI, sending the output to a file for

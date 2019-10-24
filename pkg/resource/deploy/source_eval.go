@@ -238,9 +238,9 @@ type defaultProviders struct {
 	providers map[string]providers.Reference
 	config    plugin.ConfigSource
 
-	requests chan defaultProviderRequest
-	regChan  chan<- *registerResourceEvent
-	cancel   <-chan bool
+	requests        chan defaultProviderRequest
+	providerRegChan chan<- *registerResourceEvent
+	cancel          <-chan bool
 }
 
 type defaultProviderResponse struct {
@@ -333,7 +333,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 
 	select {
-	case d.regChan <- event:
+	case d.providerRegChan <- event:
 	case <-d.cancel:
 		return providers.Reference{}, context.Canceled
 	}
@@ -417,7 +417,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		providers:       make(map[string]providers.Reference),
 		config:          src.runinfo.Target,
 		requests:        make(chan defaultProviderRequest),
-		regChan:         regChan,
+		providerRegChan: regChan,
 		cancel:          cancel,
 	}
 
@@ -464,7 +464,7 @@ func (rm *resmon) Cancel() error {
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
-func (rm *resmon) getProviderReference(req providers.ProviderRequest,
+func getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
 	rawProviderRef string) (providers.Reference, error) {
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
@@ -474,29 +474,32 @@ func (rm *resmon) getProviderReference(req providers.ProviderRequest,
 		return ref, nil
 	}
 
-	ref, err := rm.defaultProviders.getDefaultProviderRef(req)
+	ref, err := defaultProviders.getDefaultProviderRef(req)
 	if err != nil {
 		return providers.Reference{}, err
 	}
 	return ref, nil
 }
 
-// getProvider fetches the provider plugin for a resource, read, or invoke from the given package with the given
-// unparsed provider reference. If the unparsed provider reference is empty, this function returns the plugin for the
-// indicated package's default provider.
-func (rm *resmon) getProvider(req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
-	providerRef, err := rm.getProviderReference(req, rawProviderRef)
+// getProviderFromSource fetches the provider plugin for a resource, read, or invoke from the given
+// package with the given unparsed provider reference. If the unparsed provider reference is empty,
+// this function returns the plugin for the indicated package's default provider.
+func getProviderFromSource(
+	providers ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
+
+	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, err
 	}
-	provider, ok := rm.providers.GetProvider(providerRef)
+	provider, ok := providers.GetProvider(providerRef)
 	if !ok {
 		return nil, errors.Errorf("unknown provider '%v'", rawProviderRef)
 	}
 	return provider, nil
 }
 
-func (rm *resmon) parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
+func parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
 		return providers.NewProviderRequest(nil, pkg), nil
@@ -532,11 +535,11 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := rm.parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := rm.getProvider(providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +593,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
 		if err != nil {
 			return nil, err
 		}
@@ -696,7 +699,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 	provider := req.GetProvider()
 	if custom && !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := rm.parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
 		if err != nil {
 			return nil, err
 		}

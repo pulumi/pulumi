@@ -6,8 +6,14 @@ CHANGELOG
 - Adds a **preview** of .NET support for Pulumi. This code is an experimental state and is subject
   to change at any point.
 
+## 1.4.0 (2019-10-24)
+
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
   [#3368](https://github.com/pulumi/pulumi/pull/3368)
+
+- Fix colorization on Windows 10, and fix a colorizer bug that could cause garbled output for resources with long
+  status messages.
+  [#3385](https://github.com/pulumi/pulumi/pull/3385)
 
 ## 1.3.4 (2019-10-18)
 
