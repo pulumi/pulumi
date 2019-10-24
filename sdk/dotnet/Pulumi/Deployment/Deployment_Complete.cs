@@ -82,7 +82,7 @@ namespace Pulumi
                     source.TrySetException(e);
                 }
 
-                throw e;
+                throw;
             }
             finally
             {
