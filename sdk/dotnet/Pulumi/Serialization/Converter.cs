@@ -95,9 +95,7 @@ namespace Pulumi.Serialization
                 throw new InvalidOperationException(
                     $"Expected target type {targetType.FullName} to have [PropertyConstructor] constructor when deserializing {context}");
 
-            if (!(val is ImmutableDictionary<string, object> dictionary))
-                throw new InvalidOperationException(
-    $"Expected {typeof(ImmutableDictionary<string, object>).FullName} but got {val.GetType().FullName} deserializing {context}");
+            var dictionary = EnsureType<ImmutableDictionary<string, object>>(context, val);
 
             var constructorParameters = constructor.GetParameters();
             var arguments = new object?[constructorParameters.Length];

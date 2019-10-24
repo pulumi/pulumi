@@ -6,8 +6,6 @@ using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Pulumi.Serialization;
 
 namespace Pulumi
