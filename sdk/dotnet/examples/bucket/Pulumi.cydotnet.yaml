@@ -1,0 +1,3 @@
+config:
+  aws:region: us-east-2
+  hello-dotnet:name: cyrus

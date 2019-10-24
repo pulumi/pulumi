@@ -57,6 +57,7 @@ import (
 const PythonRuntime = "python"
 const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
+const DotNetRuntime = "dotnet"
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -219,6 +220,8 @@ type ProgramTestOptions struct {
 	GoBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
+	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
+	DotNetBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -575,6 +578,7 @@ type programTester struct {
 	yarnBin   string              // the `yarn` binary we are using.
 	goBin     string              // the `go` binary we are using.
 	pipenvBin string              // The `pipenv` binary we are using.
+	dotNetBin string              // the `dotnet` binary we are using.
 	eventLog  string              // The path to the event log for this test.
 }
 
@@ -602,6 +606,10 @@ func (pt *programTester) getGoBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *programTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+func (pt *programTester) getDotNetBin() (string, error) {
+	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -1373,6 +1381,8 @@ func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
 	}
@@ -1573,4 +1583,28 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+}
+
+// prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
+func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+	dotNetBin, err := pt.getDotNetBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `dotnet` binary")
+	}
+
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
+	if localNuget == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return errors.Wrap(err, "could not determine current user")
+		}
+		localNuget = filepath.Join(usr.HomeDir, ".nuget", "local")
+	}
+
+	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget}, cwd)
 }

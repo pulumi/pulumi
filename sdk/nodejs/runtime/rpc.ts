@@ -404,7 +404,7 @@ export function deserializeProperty(prop: any): any {
         return prop;
     }
     else if (prop instanceof Array) {
-        // We can just deserialize all the elements of the underyling array and return it.
+        // We can just deserialize all the elements of the underlying array and return it.
         // However, we want to push secretness up to the top level (since we can't set sub-properties to secret)
         // values since they are not typed as Output<T>.
         let hadSecret = false;

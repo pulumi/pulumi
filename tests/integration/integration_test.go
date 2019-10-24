@@ -84,6 +84,14 @@ func TestEmptyGo(t *testing.T) {
 	})
 }
 
+// TestEmptyDotNet simply tests that we can run an empty .NET project.
+func TestEmptyDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "dotnet"),
+		Quick: true,
+	})
+}
+
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
@@ -306,7 +314,27 @@ func TestStackOutputsPython(t *testing.T) {
 			}
 		},
 	})
+}
 
+func TestStackOutputsDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("stack_outputs", "dotnet"),
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
 }
 
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
@@ -598,6 +626,20 @@ func TestConfigBasicGo(t *testing.T) {
 	})
 }
 
+// Tests basic configuration from the perspective of a Pulumi .NET program.
+func TestConfigBasicDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("config_basic", "dotnet"),
+		Quick: true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super secret is encrypted",
+		},
+	})
+}
+
 // Tests an explicit provider instance.
 func TestExplicitProvider(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -698,6 +740,21 @@ func TestStackReferencePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+func TestStackReferenceDotNet(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:   filepath.Join("stack_reference", "dotnet"),
 		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
