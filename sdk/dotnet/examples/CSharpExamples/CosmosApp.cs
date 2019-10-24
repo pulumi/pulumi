@@ -41,8 +41,6 @@ namespace Pulumi.CSharpExamples
                     GeoLocations = locations.Apply(ls =>
                         ls.Select((l, i) =>
                         {
-                            Console.WriteLine("Location: " + l);
-                            Console.WriteLine("Index: " + i);
                             return new CosmosDB.AccountGeoLocation
                             {
                                 Location = l,
