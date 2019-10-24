@@ -12,7 +12,8 @@ include ../../build/common.mk
 build::
 	dotnet build dotnet.sln
 	mkdir -p ${LOCAL_NUGET}
-	cp -p $(find . -name '*.nupkg') ${LOCAL_NUGET}
+	find . -name '*.nupkg'
+	find . -name '*.nupkg' -exec cp -p {} ${LOCAL_NUGET} \;
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
