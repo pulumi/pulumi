@@ -226,25 +226,18 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 Log.Debug($"Serialize property[{ctx}]: Hit list");
             }
 
-            try
+            var result = ImmutableArray.CreateBuilder<object?>(list.Count);
+            for (int i = 0, n = list.Count; i < n; i++)
             {
-                var result = ImmutableArray.CreateBuilder<object?>(list.Count);
-                for (int i = 0, n = list.Count; i < n; i++)
+                if (_excessiveDebugOutput)
                 {
-                    if (_excessiveDebugOutput)
-                    {
-                        Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
-                    }
-
-                    result.Add(await SerializeAsync($"{ctx}[{i}]", list[i]).ConfigureAwait(false));
+                    Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
                 }
 
-                return result.MoveToImmutable();
+                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i]).ConfigureAwait(false));
             }
-            catch (Exception e)
-            {
-                throw new Exception(ctx, e);
-            }
+
+            return result.MoveToImmutable();
         }
 
         public async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary)
