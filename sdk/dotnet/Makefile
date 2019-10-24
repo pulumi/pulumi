@@ -5,15 +5,13 @@ PROJECT_PKGS    := $(shell go list ./cmd...)
 
 TESTPARALLELISM := 10
 
-LOCAL_NUGET := ~/.nuget/local
-
 include ../../build/common.mk
 
 build::
 	dotnet build dotnet.sln
-	mkdir -p ${LOCAL_NUGET}
-	find . -name '*.nupkg' -exec cp -p {} ${LOCAL_NUGET} \;
-	ls ${LOCAL_NUGET}
+	echo "Copying NuGet packages to ${PULUMI_LOCAL_NUGET}"
+	mkdir -p ${PULUMI_LOCAL_NUGET}
+	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_LOCAL_NUGET} \;
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
