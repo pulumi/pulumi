@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Minimal.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Pulumi.FSharp\Pulumi.FSharp.fsproj" />
+    <ProjectReference Include="..\PulumiAzure\PulumiAzure.csproj" />
+    <ProjectReference Include="..\..\Pulumi\Pulumi.csproj" />
+  </ItemGroup>
+
+</Project>

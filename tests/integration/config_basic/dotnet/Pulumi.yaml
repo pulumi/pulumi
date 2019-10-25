@@ -1,0 +1,3 @@
+name: config_basic_dotnet
+description: A simple .NET program that uses configuration.
+runtime: dotnet

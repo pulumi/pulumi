@@ -1,0 +1,3 @@
+name: stack_outputs
+description: A program that exports some outputs from .NET.
+runtime: dotnet

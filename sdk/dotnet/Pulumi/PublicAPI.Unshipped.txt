@@ -1,0 +1,209 @@
+﻿Pulumi.Alias
+Pulumi.Alias.Alias() -> void
+Pulumi.Alias.Name.get -> Pulumi.Input<string>
+Pulumi.Alias.Name.set -> void
+Pulumi.Alias.NoParent.get -> bool
+Pulumi.Alias.NoParent.set -> void
+Pulumi.Alias.Parent.get -> Pulumi.Resource
+Pulumi.Alias.Parent.set -> void
+Pulumi.Alias.ParentUrn.get -> Pulumi.Input<string>
+Pulumi.Alias.ParentUrn.set -> void
+Pulumi.Alias.Project.get -> Pulumi.Input<string>
+Pulumi.Alias.Project.set -> void
+Pulumi.Alias.Stack.get -> Pulumi.Input<string>
+Pulumi.Alias.Stack.set -> void
+Pulumi.Alias.Type.get -> Pulumi.Input<string>
+Pulumi.Alias.Type.set -> void
+Pulumi.Alias.Urn.get -> string
+Pulumi.Alias.Urn.set -> void
+Pulumi.Archive
+Pulumi.Asset
+Pulumi.AssetArchive
+Pulumi.AssetArchive.AssetArchive(System.Collections.Immutable.ImmutableDictionary<string, Pulumi.AssetOrArchive> assets) -> void
+Pulumi.AssetOrArchive
+Pulumi.ComponentResource
+Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceOptions options = null) -> void
+Pulumi.ComponentResource.RegisterOutputs() -> void
+Pulumi.ComponentResource.RegisterOutputs(Pulumi.Output<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
+Pulumi.ComponentResource.RegisterOutputs(System.Collections.Generic.IDictionary<string, object> outputs) -> void
+Pulumi.ComponentResource.RegisterOutputs(System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
+Pulumi.ComponentResourceOptions
+Pulumi.ComponentResourceOptions.ComponentResourceOptions() -> void
+Pulumi.ComponentResourceOptions.Providers.get -> System.Collections.Generic.List<Pulumi.ProviderResource>
+Pulumi.ComponentResourceOptions.Providers.set -> void
+Pulumi.Config
+Pulumi.Config.Config(string name = null) -> void
+Pulumi.Config.Get(string key) -> string
+Pulumi.Config.GetBoolean(string key) -> bool?
+Pulumi.Config.GetInt32(string key) -> int?
+Pulumi.Config.GetObject<T>(string key) -> T
+Pulumi.Config.GetSecret(string key) -> Pulumi.Output<string>
+Pulumi.Config.GetSecretBoolean(string key) -> Pulumi.Output<bool>
+Pulumi.Config.GetSecretInt32(string key) -> Pulumi.Output<int>
+Pulumi.Config.GetSecretObject<T>(string key) -> Pulumi.Output<T>
+Pulumi.Config.Require(string key) -> string
+Pulumi.Config.RequireBoolean(string key) -> bool
+Pulumi.Config.RequireInt32(string key) -> int
+Pulumi.Config.RequireObject<T>(string key) -> T
+Pulumi.Config.RequireSecret(string key) -> Pulumi.Output<string>
+Pulumi.Config.RequireSecretBoolean(string key) -> Pulumi.Output<bool>
+Pulumi.Config.RequireSecretInt32(string key) -> Pulumi.Output<int>
+Pulumi.Config.RequireSecretObject<T>(string key) -> Pulumi.Output<T>
+Pulumi.CustomResource
+Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
+Pulumi.CustomResource.Id.get -> Pulumi.Output<string>
+Pulumi.CustomResourceOptions
+Pulumi.CustomResourceOptions.AdditionalSecretOutputs.get -> System.Collections.Generic.List<string>
+Pulumi.CustomResourceOptions.AdditionalSecretOutputs.set -> void
+Pulumi.CustomResourceOptions.CustomResourceOptions() -> void
+Pulumi.CustomResourceOptions.DeleteBeforeReplace.get -> bool?
+Pulumi.CustomResourceOptions.DeleteBeforeReplace.set -> void
+Pulumi.CustomResourceOptions.ImportId.get -> string
+Pulumi.CustomResourceOptions.ImportId.set -> void
+Pulumi.CustomTimeouts
+Pulumi.CustomTimeouts.Create.get -> System.TimeSpan?
+Pulumi.CustomTimeouts.Create.set -> void
+Pulumi.CustomTimeouts.CustomTimeouts() -> void
+Pulumi.CustomTimeouts.Delete.get -> System.TimeSpan?
+Pulumi.CustomTimeouts.Delete.set -> void
+Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
+Pulumi.CustomTimeouts.Update.set -> void
+Pulumi.Deployment
+Pulumi.FileArchive
+Pulumi.FileArchive.FileArchive(string path) -> void
+Pulumi.FileAsset
+Pulumi.FileAsset.FileAsset(string path) -> void
+Pulumi.IDeployment
+Pulumi.IDeployment.InvokeAsync(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
+Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
+Pulumi.IDeployment.IsDryRun.get -> bool
+Pulumi.IDeployment.ProjectName.get -> string
+Pulumi.IDeployment.StackName.get -> string
+Pulumi.Input<T>
+Pulumi.Input<T>.ToOutput() -> Pulumi.Output<T>
+Pulumi.InputList<T>
+Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
+Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
+Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<T>>
+Pulumi.InputList<T>.InputList() -> void
+Pulumi.InputMap<V>
+Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
+Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
+Pulumi.InputMap<V>.InputMap() -> void
+Pulumi.InputMap<V>.this[string key].set -> void
+Pulumi.InvokeOptions
+Pulumi.InvokeOptions.InvokeOptions() -> void
+Pulumi.InvokeOptions.Parent.get -> Pulumi.Resource
+Pulumi.InvokeOptions.Parent.set -> void
+Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
+Pulumi.InvokeOptions.Provider.set -> void
+Pulumi.InvokeOptions.Version.get -> string
+Pulumi.InvokeOptions.Version.set -> void
+Pulumi.Log
+Pulumi.Output
+Pulumi.Output<T>
+Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
+Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
+Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+Pulumi.ProviderResource
+Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
+Pulumi.RemoteArchive
+Pulumi.RemoteArchive.RemoteArchive(string uri) -> void
+Pulumi.RemoteAsset
+Pulumi.RemoteAsset.RemoteAsset(string uri) -> void
+Pulumi.Resource
+Pulumi.Resource.GetResourceName() -> string
+Pulumi.Resource.GetResourceType() -> string
+Pulumi.Resource.Urn.get -> Pulumi.Output<string>
+Pulumi.ResourceArgs
+Pulumi.ResourceArgs.ResourceArgs() -> void
+Pulumi.ResourceException
+Pulumi.ResourceException.ResourceException(string message, Pulumi.Resource resource, bool hideStack = false) -> void
+Pulumi.ResourceOptions
+Pulumi.ResourceOptions.Aliases.get -> System.Collections.Generic.List<Pulumi.Input<Pulumi.Alias>>
+Pulumi.ResourceOptions.Aliases.set -> void
+Pulumi.ResourceOptions.CustomTimeouts.get -> Pulumi.CustomTimeouts
+Pulumi.ResourceOptions.CustomTimeouts.set -> void
+Pulumi.ResourceOptions.DependsOn.get -> Pulumi.InputList<Pulumi.Resource>
+Pulumi.ResourceOptions.DependsOn.set -> void
+Pulumi.ResourceOptions.Id.get -> Pulumi.Input<string>
+Pulumi.ResourceOptions.Id.set -> void
+Pulumi.ResourceOptions.IgnoreChanges.get -> System.Collections.Generic.List<string>
+Pulumi.ResourceOptions.IgnoreChanges.set -> void
+Pulumi.ResourceOptions.Parent.get -> Pulumi.Resource
+Pulumi.ResourceOptions.Parent.set -> void
+Pulumi.ResourceOptions.Protect.get -> bool?
+Pulumi.ResourceOptions.Protect.set -> void
+Pulumi.ResourceOptions.Provider.get -> Pulumi.ProviderResource
+Pulumi.ResourceOptions.Provider.set -> void
+Pulumi.ResourceOptions.ResourceOptions() -> void
+Pulumi.ResourceOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
+Pulumi.ResourceOptions.ResourceTransformations.set -> void
+Pulumi.ResourceOptions.Version.get -> string
+Pulumi.ResourceOptions.Version.set -> void
+Pulumi.ResourceTransformation
+Pulumi.ResourceTransformationArgs
+Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
+Pulumi.ResourceTransformationArgs.Options.get -> Pulumi.ResourceOptions
+Pulumi.ResourceTransformationArgs.Resource.get -> Pulumi.Resource
+Pulumi.ResourceTransformationArgs.ResourceTransformationArgs(Pulumi.Resource resource, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
+Pulumi.ResourceTransformationResult
+Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
+Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
+Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
+Pulumi.Serialization.InputAttribute
+Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
+Pulumi.Serialization.OutputAttribute
+Pulumi.Serialization.OutputAttribute.Name.get -> string
+Pulumi.Serialization.OutputAttribute.OutputAttribute(string name) -> void
+Pulumi.Serialization.OutputConstructorAttribute
+Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
+Pulumi.Serialization.OutputTypeAttribute
+Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
+Pulumi.StringAsset
+Pulumi.StringAsset.StringAsset(string text) -> void
+static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
+static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
+static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
+static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T> value) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T>[] values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Generic.IEnumerable<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Generic.List<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<T> value) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<T>[] values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<T[]> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Generic.List<Pulumi.Input<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Generic.List<Pulumi.Output<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Generic.List<T> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Output<T>> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Immutable.ImmutableArray<T> values) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(T value) -> Pulumi.InputList<T>
+static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(T[] values) -> Pulumi.InputList<T>
+static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Generic.Dictionary<string, V>> values) -> Pulumi.InputMap<V>
+static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Generic.IDictionary<string, V>> values) -> Pulumi.InputMap<V>
+static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, V>> values) -> Pulumi.InputMap<V>
+static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Generic.Dictionary<string, V> values) -> Pulumi.InputMap<V>
+static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> Pulumi.InputMap<V>
+static Pulumi.Log.Debug(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
+static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
+static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
+static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
+static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
+static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
+static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
+static Pulumi.Output.CreateSecret<T>(T value) -> Pulumi.Output<T>
+static Pulumi.Output.Format(System.FormattableString formattableString) -> Pulumi.Output<string>
+static Pulumi.Output.Tuple<X, Y, Z>(Pulumi.Input<X> item1, Pulumi.Input<Y> item2, Pulumi.Input<Z> item3) -> Pulumi.Output<(X, Y, Z)>
+static Pulumi.Output.Tuple<X, Y>(Pulumi.Input<X> item1, Pulumi.Input<Y> item2) -> Pulumi.Output<(X, Y)>
+static Pulumi.Output.Tuple<X, Y>(Pulumi.Output<X> item1, Pulumi.Output<Y> item2) -> Pulumi.Output<(X, Y)>
+static Pulumi.Output<T>.Create(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
+static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
+static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
