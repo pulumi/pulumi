@@ -23,6 +23,11 @@ namespace Pulumi
         /// </summary>
         private readonly string _name;
 
+        /// <summary>
+        /// Creates a new <see cref="Config"/> instance. <paramref name="name"/> is the
+        /// configuration bag's logical name and uniquely identifies it. The default is the name of
+        /// the current project.
+        /// </summary>
         public Config(string? name = null)
         {
             if (name == null)
