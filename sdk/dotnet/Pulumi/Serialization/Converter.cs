@@ -241,7 +241,7 @@ $@"{context} contains invalid type {targetType.FullName}:
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [PropertyType] attribute.");
+    a class explicitly marked with the [OutputType] attribute.");
             }
 
             var constructor = GetPropertyConstructor(targetType);
