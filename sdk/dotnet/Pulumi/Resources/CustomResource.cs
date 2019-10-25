@@ -16,6 +16,7 @@ namespace Pulumi
         /// Id is the provider-assigned unique ID for this managed resource.  It is set during
         /// deployments and may be missing (unknown) during planning phases.
         /// </summary>
+        // Set using reflection, so we silence the NRT warnings with `null!`.
         [Output(Constants.IdPropertyName)]
         public Output<string> Id { get; private set; } = null!;
 

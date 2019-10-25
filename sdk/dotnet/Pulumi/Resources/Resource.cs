@@ -62,6 +62,7 @@ namespace Pulumi
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
+        // Set using reflection, so we silence the NRT warnings with `null!`.
         [Output(Constants.UrnPropertyName)]
         public Output<string> Urn { get; private set; } = null!;
 
