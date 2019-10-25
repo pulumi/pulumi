@@ -139,7 +139,7 @@ namespace Pulumi
 
             // there were no more tasks we were waiting on.  Quit out, reporting if we had any
             // errors or not.
-            return HasErrors ? 1 : 0;
+            return _logger.LoggedErrors ? 1 : 0;
         }
 
         private async Task<int> HandleExceptionAsync(Exception exception)
@@ -163,19 +163,19 @@ namespace Pulumi
             if (exception is RunException)
             {
                 // Always hide the stack for RunErrors.
-                await ErrorAsync(exception.Message).ConfigureAwait(false);
+                await _logger.ErrorAsync(exception.Message).ConfigureAwait(false);
             }
             else if (exception is ResourceException resourceEx)
             {
                 var message = resourceEx.HideStack
                     ? resourceEx.Message
                     : resourceEx.ToString();
-                await ErrorAsync(message, resourceEx.Resource).ConfigureAwait(false);
+                await _logger.ErrorAsync(message, resourceEx.Resource).ConfigureAwait(false);
             }
             else
             {
                 var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-                await ErrorAsync(
+                await _logger.ErrorAsync(
 $@"Running program '{location}' failed with an unhandled exception:
 {exception.ToString()}").ConfigureAwait(false);
             }

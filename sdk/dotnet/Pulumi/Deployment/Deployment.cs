@@ -73,6 +73,9 @@ namespace Pulumi
             set => Stack = value;
         }
 
+        private readonly ILogger _logger;
+        ILogger IDeploymentInternal.Logger => _logger;
+
         private Deployment()
         {
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
@@ -113,6 +116,8 @@ namespace Pulumi
             _options = new Options(
                 queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
+
+            _logger = new Logger(this);
 
             Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));

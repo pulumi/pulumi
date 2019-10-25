@@ -12,10 +12,7 @@ namespace Pulumi
 
         Stack Stack { get; set; }
 
-        Task DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
-        Task ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral);
+        ILogger Logger { get; }
 
         Task SetRootResourceAsync(Stack stack);
 
