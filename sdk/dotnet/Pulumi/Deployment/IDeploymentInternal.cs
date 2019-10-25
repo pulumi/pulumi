@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Pulumirpc;
 
 namespace Pulumi
 {
@@ -13,6 +14,7 @@ namespace Pulumi
         Stack Stack { get; set; }
 
         ILogger Logger { get; }
+        IRunner Runner { get; }
 
         Task SetRootResourceAsync(Stack stack);
 

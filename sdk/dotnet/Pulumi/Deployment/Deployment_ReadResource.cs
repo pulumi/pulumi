@@ -20,7 +20,7 @@ namespace Pulumi
             // finished.  Otherwise, we might actually read and get the result back *prior* to
             // the object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
-            this.RegisterTask(
+            _runner.RegisterTask(
                 $"{nameof(IDeploymentInternal.ReadResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
                 CompleteResourceAsync(resource, () => ReadResourceAsync(resource, args, options)));
         }

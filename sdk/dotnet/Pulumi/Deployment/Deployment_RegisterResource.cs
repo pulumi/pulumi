@@ -19,7 +19,7 @@ namespace Pulumi
             // finished.  Otherwise, we might actually register and get the result back *prior* to
             // the object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
-            this.RegisterTask(
+            this._runner.RegisterTask(
                 $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
                 CompleteResourceAsync(resource, () => RegisterResourceAsync(resource, custom, args, options)));
         }

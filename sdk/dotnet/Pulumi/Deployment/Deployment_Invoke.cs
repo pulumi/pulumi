@@ -8,31 +8,6 @@ using Pulumirpc;
 
 namespace Pulumi
 {
-    /// <summary>
-    /// Options to help control the behavior of <see cref="IDeployment.InvokeAsync{T}(string,
-    /// ResourceArgs, InvokeOptions)"/>.
-    /// </summary>
-    public class InvokeOptions
-    {
-        /// <summary>
-        /// An optional parent to use for default options for this invoke (e.g. the default provider
-        /// to use).
-        /// </summary>
-        public Resource? Parent { get; set; }
-
-        /// <summary>
-        /// An optional provider to use for this invocation. If no provider is supplied, the default
-        /// provider for the invoked function's package will be used.
-        /// </summary>
-        public ProviderResource? Provider { get; set; }
-
-        /// <summary>
-        /// An optional version, corresponding to the version of the provider plugin that should be
-        /// used when performing this invoke.
-        /// </summary>
-        public string? Version { get; set; }
-    }
-
     public sealed partial class Deployment
     {
         Task IDeployment.InvokeAsync(string token, ResourceArgs args, InvokeOptions? options)

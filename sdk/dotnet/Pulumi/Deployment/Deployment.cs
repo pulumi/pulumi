@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Win32.SafeHandles;
 using Pulumirpc;
 
 namespace Pulumi
@@ -52,10 +53,8 @@ namespace Pulumi
         private readonly string _stackName;
         private readonly bool _isDryRun;
 
-        Options IDeploymentInternal.Options => _options;
-        string IDeployment.ProjectName => _projectName;
-        string IDeployment.StackName => _stackName;
-        bool IDeployment.IsDryRun => _isDryRun;
+        private readonly ILogger _logger;
+        private readonly IRunner _runner;
 
         internal Engine.EngineClient Engine { get; }
         internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
@@ -66,15 +65,6 @@ namespace Pulumi
             get => _stack ?? throw new InvalidOperationException("Trying to acquire Deployment.Stack before 'Run' was called.");
             set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
         }
-
-        Stack IDeploymentInternal.Stack
-        {
-            get => Stack;
-            set => Stack = value;
-        }
-
-        private readonly ILogger _logger;
-        ILogger IDeploymentInternal.Logger => _logger;
 
         private Deployment()
         {
@@ -117,8 +107,6 @@ namespace Pulumi
                 queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
                 monitor: monitor, engine: engine, tracing: tracing);
 
-            _logger = new Logger(this);
-
             Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
             Serilog.Log.Debug("Created Deployment Engine.");
@@ -126,6 +114,23 @@ namespace Pulumi
             Serilog.Log.Debug("Creating Deployment Monitor.");
             this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
             Serilog.Log.Debug("Created Deployment Monitor.");
+
+            _runner = new Runner(this);
+            _logger = new Logger(this, this.Engine);
+        }
+
+        string IDeployment.ProjectName => _projectName;
+        string IDeployment.StackName => _stackName;
+        bool IDeployment.IsDryRun => _isDryRun;
+
+        Options IDeploymentInternal.Options => _options;
+        ILogger IDeploymentInternal.Logger => _logger;
+        IRunner IDeploymentInternal.Runner => _runner;
+
+        Stack IDeploymentInternal.Stack
+        {
+            get => Stack;
+            set => Stack = value;
         }
     }
 }

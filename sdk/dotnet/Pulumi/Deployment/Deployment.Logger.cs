@@ -12,15 +12,19 @@ namespace Pulumi
         private class Logger : ILogger
         {
             private readonly object _logGate = new object();
-            public readonly Deployment _deployment;
+            private readonly IDeploymentInternal _deployment;
+            private readonly Engine.EngineClient _engine;
 
             // We serialize all logging tasks so that the engine doesn't hear about them out of order.
             // This is necessary for streaming logs to be maintained in the right order.
             private Task _lastLogTask = Task.CompletedTask;
             private int _errorCount;
 
-            public Logger(Deployment deployment)
-                => _deployment = deployment;
+            public Logger(IDeploymentInternal deployment, Engine.EngineClient engine)
+            {
+                _deployment = deployment;
+                _engine = engine;
+            }
 
             public bool LoggedErrors
             {
@@ -91,7 +95,7 @@ namespace Pulumi
                     task = _lastLogTask;
                 }
 
-                _deployment.RegisterTask($"Log: {severity}: {message}", task);
+                _deployment.Runner.RegisterTask($"Log: {severity}: {message}", task);
                 return task;
             }
 
@@ -101,7 +105,7 @@ namespace Pulumi
                 {
                     var urn = await TryGetResourceUrnAsync(resource).ConfigureAwait(false);
 
-                    await _deployment.Engine.LogAsync(new LogRequest
+                    await _engine.LogAsync(new LogRequest
                     {
                         Severity = severity,
                         Message = message,
