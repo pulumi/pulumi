@@ -32,19 +32,19 @@ Pulumi.Config.Config(string name = null) -> void
 Pulumi.Config.Get(string key) -> string
 Pulumi.Config.GetBoolean(string key) -> bool?
 Pulumi.Config.GetInt32(string key) -> int?
-Pulumi.Config.GetJson(string key) -> System.Text.Json.JsonDocument
+Pulumi.Config.GetObject<T>(string key) -> T
 Pulumi.Config.GetSecret(string key) -> Pulumi.Output<string>
 Pulumi.Config.GetSecretBoolean(string key) -> Pulumi.Output<bool>
 Pulumi.Config.GetSecretInt32(string key) -> Pulumi.Output<int>
-Pulumi.Config.GetSecretJson(string key) -> Pulumi.Output<System.Text.Json.JsonDocument>
+Pulumi.Config.GetSecretObject<T>(string key) -> Pulumi.Output<T>
 Pulumi.Config.Require(string key) -> string
 Pulumi.Config.RequireBoolean(string key) -> bool
 Pulumi.Config.RequireInt32(string key) -> int
-Pulumi.Config.RequireJson(string key) -> System.Text.Json.JsonDocument
+Pulumi.Config.RequireObject<T>(string key) -> T
 Pulumi.Config.RequireSecret(string key) -> Pulumi.Output<string>
 Pulumi.Config.RequireSecretBoolean(string key) -> Pulumi.Output<bool>
 Pulumi.Config.RequireSecretInt32(string key) -> Pulumi.Output<int>
-Pulumi.Config.RequireSecretJson(string key) -> Pulumi.Output<System.Text.Json.JsonDocument>
+Pulumi.Config.RequireSecretObject<T>(string key) -> Pulumi.Output<T>
 Pulumi.CustomResource
 Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.CustomResource.Id.get -> Pulumi.Output<string>

@@ -26,6 +26,7 @@ class Program
                 ContentType = "text/plain; charset=utf8",
                 Key = "hello.txt",
                 Source = new StringAsset("Made with ❤, Pulumi, and .NET"),
+                
             });
 
             // Return some values that will become the Outputs of the stack.

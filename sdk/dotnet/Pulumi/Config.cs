@@ -2,7 +2,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace Pulumi
 {
@@ -111,29 +111,29 @@ namespace Pulumi
 
         /// <summary>
         /// Loads an optional configuration value, as an object, by its key, or null if it doesn't
-        /// exist. This routine simply JSON parses and doesn't validate the shape of the contents.
+        /// exist. This works by taking the value associated with <paramref name="key"/> and passing it
+        /// to <see cref="JsonConvert.DeserializeObject{T}(string)"/>.
         /// </summary>
-        public JsonDocument? GetJson(string key)
+        public T? GetObject<T>(string key) where T : class
         {
             var v = Get(key);
-
             try
             {
-                return v == null ? null : JsonDocument.Parse(v);
+                return v == null ? null : JsonConvert.DeserializeObject<T>(v);
             }
             catch (JsonException ex)
             {
-                throw new ConfigTypeException(FullKey(key), v, nameof(JsonDocument), ex);
+                throw new ConfigTypeException(FullKey(key), v, typeof(T).FullName!, ex);
             }
         }
 
         /// <summary>
         /// Loads an optional configuration value, as an object, by its key, marking it as a secret
-        /// or null if it doesn't exist. This routine simply JSON parses and doesn't validate the
-        /// shape of the contents.
+        /// or null if it doesn't exist. This works by taking the value associated with <paramref name="key"/> and passing it
+        /// to <see cref="JsonConvert.DeserializeObject{T}(string)"/>.
         /// </summary>
-        public Output<JsonDocument>? GetSecretJson(string key)
-            => MakeClassSecret(GetJson(key));
+        public Output<T>? GetSecretObject<T>(string key) where T : class
+            => MakeClassSecret(GetObject<T>(key));
 
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -142,7 +142,7 @@ namespace Pulumi
             => Get(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
-        /// Loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+        /// Loads a configuration value by its given key, marking it as a secret.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
         public Output<string> RequireSecret(string key)
@@ -177,20 +177,21 @@ namespace Pulumi
             => MakeStructSecret(RequireInt32(key));
 
         /// <summary>
-        /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
-        /// object. If it doesn't exist, or the configuration value is not a legal JSON string, an
-        /// error is thrown.
+        /// Loads a configuration value as a JSON string and deserializes the JSON into an object.
+        /// object. If it doesn't exist, or the configuration value cannot be converted using <see
+        /// cref="JsonConvert.DeserializeObject{T}(string)"/>, an error is thrown.
         /// </summary>
-        public JsonDocument RequireJson(string key)
-            => GetJson(key) ?? throw new ConfigMissingException(FullKey(key));
+        public T RequireObject<T>(string key) where T : class
+            => GetObject<T>(key) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
-        /// object, marking it as a secret. If it doesn't exist, or the configuration value is not a
-        /// legal JSON string, an error is thrown.
+        /// object, marking it as a secret. If it doesn't exist, or the configuration value cannot
+        /// be converted using <see cref="JsonConvert.DeserializeObject{T}(string)"/>. an error is
+        /// thrown.
         /// </summary>
-        public Output<JsonDocument> RequireSecretJson(string key)
-            => MakeClassSecret(RequireJson(key));
+        public Output<T> RequireSecretObject<T>(string key) where T : class
+            => MakeClassSecret(RequireObject<T>(key));
 
         /// <summary>
         /// Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
