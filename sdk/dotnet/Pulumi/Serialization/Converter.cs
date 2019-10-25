@@ -91,7 +91,7 @@ namespace Pulumi.Serialization
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
                 throw new InvalidOperationException(
-                    $"Expected target type {targetType.FullName} to have [PropertyConstructor] constructor when deserializing {context}");
+                    $"Expected target type {targetType.FullName} to have [OutputConstructor] constructor when deserializing {context}");
 
             var dictionary = EnsureType<ImmutableDictionary<string, object>>(context, val);
 
@@ -241,14 +241,14 @@ $@"{context} contains invalid type {targetType.FullName}:
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [PropertyType] attribute.");
+    a class explicitly marked with the [OutputType] attribute.");
             }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [PropertyType] attribute, but did not contain constructor marked with [PropertyConstructor].");
+$@"{targetType.FullName} had [OutputType] attribute, but did not contain constructor marked with [OutputConstructor].");
             }
 
             foreach (var param in constructor.GetParameters())
