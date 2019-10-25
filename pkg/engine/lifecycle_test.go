@@ -4479,6 +4479,9 @@ func TestUpdateTarget(t *testing.T) {
 			updateSpecificTargets(t, subset)
 		}
 	}
+
+	// Also update a target that doesn't exist to make sure we don't crash or otherwise go off the rails.
+	updateInvalidTarget(t)
 }
 
 func updateSpecificTargets(t *testing.T, targets []string) {
@@ -4559,6 +4562,47 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 
 			return res
 		},
+	}}
+
+	p.Run(t, old)
+}
+
+func updateInvalidTarget(t *testing.T) {
+	p := &TestPlan{}
+
+	_, old, program := generateComplexTestDependencyGraph(t, p)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
+					// all resources will change.
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
+
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+					outputs := olds.Copy()
+
+					outputs["output_prop"] = resource.NewPropertyValue(42)
+					return outputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p.Options.UpdateTargets = []resource.URN{"foo"}
+	t.Logf("Updating invalid targets: %v", p.Options.UpdateTargets)
+
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
 	}}
 
 	p.Run(t, old)

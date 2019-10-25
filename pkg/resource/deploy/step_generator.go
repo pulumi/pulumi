@@ -648,6 +648,14 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// Now actually use all the requested targets to figure out the exact set to delete.
 	for target := range targetsOpt {
 		current := sg.plan.olds[target]
+		if current == nil {
+			// user specified a target that didn't exist.  they will have already gotten a warning
+			// about this when we called checkTargets.  explicitly ignore this target since it won't
+			// be something we could possibly be trying to delete, nor could have dependents we
+			// might need to replace either.
+			continue
+		}
+
 		resourcesToDelete[target] = true
 
 		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
