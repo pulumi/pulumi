@@ -19,12 +19,14 @@ namespace Pulumi
             Resource resource, Func<Task<(string urn, string id, Struct data)>> action)
         {
             // IMPORTANT!  This function is Task-returning, but must not actually be `async` itself.
-            // We have to make sure we run this synchronously directly when the constructor runs
-            // since this will set all our output fields.  We need those fields assigned by the time
-            // the constructor returns.
+            // We have to make sure we run 'OutputCompletionSource.GetSources' synchronously
+            // directly when `resource`'s constructor runs since this will set all of the
+            // `[Output(...)] Output<T>` properties.  We need those properties assigned by the time
+            // the base 'Resource' constructor finishes so that both derived classes and external
+            // consumers can use the Output properties of `resource`.
+            var completionSources = OutputCompletionSource.GetSources(resource);
 
-            return CompleteResourceAsync(
-                resource, action, OutputCompletionSource.GetSources(resource));
+            return CompleteResourceAsync(resource, action, completionSources);
         }
 
         private async Task CompleteResourceAsync(
