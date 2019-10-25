@@ -1,8 +1,9 @@
 PROJECT_NAME       := Pulumi .NET Core SDK
 LANGHOST_PKG       := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
 VERSION            := $(shell ../../scripts/get-version)
-VERSION_PREFIX     := $(echo $VERSION | cut -f1 -d- | cut -c2-)
-VERSION_SUFFIX     := $(echo $VERSION | cut -f2 -d-)
+VERSION_DOTNET     := ${VERSION:v%=%}                             # strip v from the beginning
+VERSION_PREFIX     := $(firstword $(subst -, ,${VERSION_DOTNET})) # e.g. 1.5.0
+VERSION_SUFFIX     := $(word 2,$(subst -, ,${VERSION_DOTNET}))    # e.g. alpha.1
 PROJECT_PKGS       := $(shell go list ./cmd...)
 PULUMI_LOCAL_NUGET ?= ~/.nuget/local
 
