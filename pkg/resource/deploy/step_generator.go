@@ -53,8 +53,8 @@ type stepGenerator struct {
 	creates        map[resource.URN]bool            // set of URNs created in this plan
 	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
-	urnState       map[resource.URN]*resource.State // URN map of all resources we have seen so far (including providers).
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
+	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
@@ -182,7 +182,7 @@ func (sg *stepGenerator) GenerateSteps(
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
-	sg.urnState[urn] = new
+	sg.resourceStates[urn] = new
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -1140,8 +1140,8 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
-		urnState:             make(map[resource.URN]*resource.State),
 		providers:            make(map[resource.URN]*resource.State),
+		resourceStates:       make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}
