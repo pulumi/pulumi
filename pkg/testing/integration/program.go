@@ -1612,7 +1612,7 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
 	}
 	if len(matches) != 1 {
-		return errors.New(fmt.Sprintf("findind a local Pulumi NuGet package yielded %v", matches))
+		return errors.New(fmt.Sprintf("attempting to find a local Pulumi NuGet package yielded %v results", matches))
 	}
 	file := filepath.Base(matches[0])
 	r := strings.NewReplacer("Pulumi.", "", ".nupkg", "")
