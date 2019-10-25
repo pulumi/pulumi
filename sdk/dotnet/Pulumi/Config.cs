@@ -114,12 +114,13 @@ namespace Pulumi
         /// exist. This works by taking the value associated with <paramref name="key"/> and passing
         /// it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
         /// </summary>
-        public T? GetObject<T>(string key) where T : class
+        [return: MaybeNull]
+        public T GetObject<T>(string key)
         {
             var v = Get(key);
             try
             {
-                return v == null ? null : JsonSerializer.Deserialize<T>(v);
+                return v == null ? default : JsonSerializer.Deserialize<T>(v);
             }
             catch (JsonException ex)
             {
@@ -133,8 +134,14 @@ namespace Pulumi
         /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string,
         /// JsonSerializerOptions)"/>.
         /// </summary>
-        public Output<T>? GetSecretObject<T>(string key) where T : class
-            => MakeClassSecret(GetObject<T>(key));
+        public Output<T>? GetSecretObject<T>(string key)
+        {
+            var v = Get(key);
+            if (v == null)
+                return null;
+
+            return Output.CreateSecret(GetObject<T>(key)!);
+        }
 
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
@@ -183,8 +190,14 @@ namespace Pulumi
         /// cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>, an error is
         /// thrown.
         /// </summary>
-        public T RequireObject<T>(string key) where T : class
-            => GetObject<T>(key) ?? throw new ConfigMissingException(FullKey(key));
+        public T RequireObject<T>(string key)
+        {
+            var v = Get(key);
+            if (v == null)
+                throw new ConfigMissingException(FullKey(key));
+
+            return GetObject<T>(key)!;
+        }
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
@@ -192,8 +205,8 @@ namespace Pulumi
         /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string,
         /// JsonSerializerOptions)"/>. an error is thrown.
         /// </summary>
-        public Output<T> RequireSecretObject<T>(string key) where T : class
-            => MakeClassSecret(RequireObject<T>(key));
+        public Output<T> RequireSecretObject<T>(string key)
+            => Output.CreateSecret(RequireObject<T>(key));
 
         /// <summary>
         /// Turns a simple configuration key into a fully resolved one, by prepending the bag's name.
