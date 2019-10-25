@@ -17,8 +17,8 @@ namespace Pulumi
         /// <returns></returns>
         internal static Output<string> Create(
             Input<string> name, Input<string> type,
-            Resource? parent = null, Input<string>? parentUrn = null,
-            Input<string>? project = null, Input<string>? stack = null)
+            Resource? parent, Input<string>? parentUrn,
+            Input<string>? project, Input<string>? stack)
         {
             if (parent != null && parentUrn != null)
                 throw new ArgumentException("Only one of 'parent' and 'parentUrn' can be non-null.");
@@ -78,7 +78,9 @@ namespace Pulumi
                 });
             }
 
-            return Create(aliasName, childType, parentUrn: parentAlias);
+            return Create(
+                aliasName, childType, parent: null,
+                parentUrn: parentAlias, project: null, stack: null);
         }
     }
 }

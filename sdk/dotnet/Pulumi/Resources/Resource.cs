@@ -293,31 +293,23 @@ namespace Pulumi
                 }
 
                 var alias = a.Alias!;
-                var name = alias.Name.HasValue ? alias.Name.Value : defaultName;
-                var type = alias.Type.HasValue ? alias.Type.Value : defaultType;
-                var project = alias.Project.HasValue ? alias.Project.Value : Deployment.Instance.ProjectName;
-                var stack = alias.Stack.HasValue ? alias.Stack.Value : Deployment.Instance.StackName;
+                var name = alias.Name ?? defaultName;
+                var type = alias.Type ?? defaultType;
+                var project = alias.Project ?? Deployment.Instance.ProjectName;
+                var stack = alias.Stack ?? Deployment.Instance.StackName;
 
-                if (alias.Parent.HasValue && alias.ParentUrn.HasValue)
-                    throw new ArgumentException("Alias cannot specify Parent and ParentUrn at the same time.");
+                var parentCount =
+                    (alias.Parent != null ? 1 : 0) +
+                    (alias.ParentUrn != null ? 1 : 0) +
+                    (alias.NoParent ? 1 : 0);
 
-                Resource? parent;
-                Input<string>? parentUrn;
-                if (alias.Parent.HasValue)
+                if (parentCount >= 2)
                 {
-                    parent = alias.Parent.Value;
-                    parentUrn = null;
+                    throw new ArgumentException(
+$"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(alias.NoParent)}' in an {nameof(Alias)}");
                 }
-                else if (alias.ParentUrn.HasValue)
-                {
-                    parent = null;
-                    parentUrn = alias.ParentUrn.Value;
-                }
-                else
-                {
-                    parent = defaultParent;
-                    parentUrn = null;
-                }
+
+                var (parent, parentUrn) = GetParentInfo(defaultParent, alias);
 
                 if (name == null)
                     throw new Exception("No valid 'Name' passed in for alias.");
@@ -327,6 +319,20 @@ namespace Pulumi
 
                 return Pulumi.Urn.Create(name, type, parent, parentUrn, project, stack);
             });
+        }
+
+        private static (Resource? parent, Input<string>? urn) GetParentInfo(Resource? defaultParent, Alias alias)
+        {
+            if (alias.Parent != null)
+                return (alias.Parent, null);
+
+            if (alias.ParentUrn != null)
+                return (null, alias.ParentUrn);
+
+            if (alias.NoParent)
+                return (null, null);
+
+            return (defaultParent, null);
         }
 
         private static ImmutableDictionary<string, ProviderResource> ConvertToProvidersMap(List<ProviderResource>? providers)

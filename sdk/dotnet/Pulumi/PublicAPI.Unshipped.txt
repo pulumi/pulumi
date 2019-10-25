@@ -1,16 +1,18 @@
 ﻿Pulumi.Alias
 Pulumi.Alias.Alias() -> void
-Pulumi.Alias.Name.get -> Pulumi.Optional<Pulumi.Input<string>>
+Pulumi.Alias.Name.get -> Pulumi.Input<string>
 Pulumi.Alias.Name.set -> void
-Pulumi.Alias.Parent.get -> Pulumi.Optional<Pulumi.Resource>
+Pulumi.Alias.NoParent.get -> bool
+Pulumi.Alias.NoParent.set -> void
+Pulumi.Alias.Parent.get -> Pulumi.Resource
 Pulumi.Alias.Parent.set -> void
-Pulumi.Alias.ParentUrn.get -> Pulumi.Optional<Pulumi.Input<string>>
+Pulumi.Alias.ParentUrn.get -> Pulumi.Input<string>
 Pulumi.Alias.ParentUrn.set -> void
-Pulumi.Alias.Project.get -> Pulumi.Optional<Pulumi.Input<string>>
+Pulumi.Alias.Project.get -> Pulumi.Input<string>
 Pulumi.Alias.Project.set -> void
-Pulumi.Alias.Stack.get -> Pulumi.Optional<Pulumi.Input<string>>
+Pulumi.Alias.Stack.get -> Pulumi.Input<string>
 Pulumi.Alias.Stack.set -> void
-Pulumi.Alias.Type.get -> Pulumi.Optional<Pulumi.Input<string>>
+Pulumi.Alias.Type.get -> Pulumi.Input<string>
 Pulumi.Alias.Type.set -> void
 Pulumi.Archive
 Pulumi.Asset
@@ -96,11 +98,6 @@ Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
 Pulumi.Log
-Pulumi.Optional<T>
-Pulumi.Optional<T>.Equals(Pulumi.Optional<T> other) -> bool
-Pulumi.Optional<T>.HasValue.get -> bool
-Pulumi.Optional<T>.Optional(T value) -> void
-Pulumi.Optional<T>.Value.get -> T
 Pulumi.Output
 Pulumi.Output<T>
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
@@ -168,9 +165,6 @@ Pulumi.StringAsset.StringAsset(string text) -> void
 Pulumi.UrnOrAlias
 Pulumi.UrnOrAlias.Alias.get -> Pulumi.Alias
 Pulumi.UrnOrAlias.Urn.get -> string
-override Pulumi.Optional<T>.Equals(object obj) -> bool
-override Pulumi.Optional<T>.GetHashCode() -> int
-override Pulumi.Optional<T>.ToString() -> string
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
@@ -203,9 +197,6 @@ static Pulumi.Log.Debug(string message, Pulumi.Resource resource = null, int? st
 static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
-static Pulumi.Optional<T>.implicit operator Pulumi.Optional<T>(T value) -> Pulumi.Optional<T>
-static Pulumi.Optional<T>.operator !=(Pulumi.Optional<T> left, Pulumi.Optional<T> right) -> bool
-static Pulumi.Optional<T>.operator ==(Pulumi.Optional<T> left, Pulumi.Optional<T> right) -> bool
 static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
