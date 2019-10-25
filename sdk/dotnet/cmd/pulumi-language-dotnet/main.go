@@ -12,10 +12,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -106,6 +108,7 @@ type dotnetLanguageHost struct {
 }
 
 func newLanguageHost(exec, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+
 	return &dotnetLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
@@ -130,7 +133,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 }
 
 func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.RunRequest) error {
-	args := []string{"build", "--verbosity", "quiet"}
+	args := []string{"build"}
 
 	if req.GetProgram() != "" {
 		args = append(args, req.GetProgram())
@@ -141,11 +144,60 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
+	// Make a connection to the real engine that we will log messages to.
+	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
+	if err != nil {
+		return errors.Wrapf(err, "language host could not make connection to engine")
+	}
+
+	// Make a client around that connection.  We can then make our own server that will act as a
+	// monitor for the sdk and forward to the real monitor.
+	engineClient := pulumirpc.NewEngineClient(conn)
+
+	// Buffer the writes we see from dotnet from its stdout and stderr streams. We will display
+	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
+	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
+	streamID := rand.Int31()
+
+	infoBuffer := &bytes.Buffer{}
+	errorBuffer := &bytes.Buffer{}
+
+	infoWriter := &logWriter{
+		ctx:          ctx,
+		engineClient: engineClient,
+		streamID:     streamID,
+		buffer:       infoBuffer,
+		severity:     pulumirpc.LogSeverity_INFO,
+	}
+
+	errorWriter := &logWriter{
+		ctx:          ctx,
+		engineClient: engineClient,
+		streamID:     streamID,
+		buffer:       errorBuffer,
+		severity:     pulumirpc.LogSeverity_ERROR,
+	}
+
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	cmd.Stdout = infoWriter
+	cmd.Stderr = errorWriter
+
+	engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Message:   "running 'dotnet build'",
+		Urn:       "",
+		Ephemeral: true,
+		StreamId:  streamID,
+		Severity:  pulumirpc.LogSeverity_INFO,
+	})
+
 	if err := cmd.Run(); err != nil {
+		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
+		// they get displayed to the user.
+		os.Stdout.Write(infoBuffer.Bytes())
+		os.Stderr.Write(errorBuffer.Bytes())
+
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
@@ -161,7 +213,44 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		return errors.Wrapf(err, "Problem executing 'dotnet build'")
 	}
 
+	engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Message:   "'dotnet build' completed successfully",
+		Urn:       "",
+		Ephemeral: true,
+		StreamId:  streamID,
+		Severity:  pulumirpc.LogSeverity_INFO,
+	})
+
 	return nil
+}
+
+type logWriter struct {
+	ctx          context.Context
+	engineClient pulumirpc.EngineClient
+	streamID     int32
+	severity     pulumirpc.LogSeverity
+	buffer       *bytes.Buffer
+}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	n, err = w.buffer.Write(p)
+	if err != nil {
+		return
+	}
+
+	_, err = w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
+		Message:   string(p),
+		Urn:       "",
+		Ephemeral: true,
+		StreamId:  w.streamID,
+		Severity:  w.severity,
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
 }
 
 func (host *dotnetLanguageHost) DotnetRun(
