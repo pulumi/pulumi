@@ -41,13 +41,15 @@ namespace Pulumi.Serialization
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class InputAttribute : Attribute
     {
-        public string Name { get; }
-        public bool IsRequired { get; }
+        internal string Name { get; }
+        internal bool IsRequired { get; }
+        internal bool Json { get; }
 
-        public InputAttribute(string name, bool required = false)
+        public InputAttribute(string name, bool required = false, bool json = false)
         {
             Name = name;
             IsRequired = required;
+            Json = json;
         }
     }
 

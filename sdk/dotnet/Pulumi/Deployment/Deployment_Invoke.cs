@@ -23,7 +23,7 @@ namespace Pulumi
             Log.Debug(label);
 
             // Wait for all values to be available, and then perform the RPC.
-            var argsDict = args.ToDictionary();
+            var argsDict = await args.ToDictionaryAsync().ConfigureAwait(false);
             var serialized = await SerializeAllPropertiesAsync($"invoke:{token}", argsDict);
             Log.Debug($"Invoke RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));

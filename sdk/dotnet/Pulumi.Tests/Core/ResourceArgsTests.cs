@@ -7,24 +7,26 @@ using Xunit;
 
 namespace Pulumi.Tests.Core
 {
-    public class ComplexResourceArgs1 : ResourceArgs
-    {
-        [Input("s")] public Input<string> S { get; set; } = null!;
-        [Input("array")] private InputList<bool> _array = null!;
-        public InputList<bool> Array
-        {
-            get => _array ?? (_array = new InputList<bool>());
-            set => _array = value;
-        }
-    }
-
     public class ResourceArgsTests : PulumiTest
     {
+        #region ComplexResourceArgs1
+
+        public class ComplexResourceArgs1 : ResourceArgs
+        {
+            [Input("s")] public Input<string> S { get; set; } = null!;
+            [Input("array")] private InputList<bool> _array = null!;
+            public InputList<bool> Array
+            {
+                get => _array ?? (_array = new InputList<bool>());
+                set => _array = value;
+            }
+        }
+
         [Fact]
-        public void TestComplexResourceArgs1_NullValues()
+        public async Task TestComplexResourceArgs1_NullValues()
         {
             var args = new ComplexResourceArgs1();
-            var dictionary = args.ToDictionary();
+            var dictionary = await args.ToDictionaryAsync();
 
             Assert.True(dictionary.TryGetValue("s", out var sValue));
             Assert.True(dictionary.TryGetValue("array", out var arrayValue));
@@ -41,7 +43,7 @@ namespace Pulumi.Tests.Core
                 S = "val",
             };
 
-            var dictionary = args.ToDictionary();
+            var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
 
             Assert.True(dictionary.TryGetValue("s", out var sValue));
             Assert.True(dictionary.TryGetValue("array", out var arrayValue));
@@ -49,7 +51,7 @@ namespace Pulumi.Tests.Core
             Assert.NotNull(sValue);
             Assert.Null(arrayValue);
 
-            var output = sValue.ToOutput();
+            var output = sValue!.ToOutput();
             var data = await output.GetDataAsync();
             Assert.Equal("val", data.Value);
         }
@@ -64,7 +66,7 @@ namespace Pulumi.Tests.Core
                     Array = { true },
                 };
 
-                var dictionary = args.ToDictionary();
+                var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
 
                 Assert.True(dictionary.TryGetValue("s", out var sValue));
                 Assert.True(dictionary.TryGetValue("array", out var arrayValue));
@@ -72,11 +74,61 @@ namespace Pulumi.Tests.Core
                 Assert.Null(sValue);
                 Assert.NotNull(arrayValue);
 
-                var output = arrayValue.ToOutput();
+                var output = arrayValue!.ToOutput();
                 var data = await output.GetDataAsync();
                 AssertEx.SequenceEqual(
                     ImmutableArray<bool>.Empty.Add(true), (ImmutableArray<bool>)data.Value!);
             });
         }
+
+        #endregion
+
+        #region JsonResourceArgs1
+
+        public class JsonResourceArgs1 : ResourceArgs
+        {
+            [Input("array", json: true)] private InputList<bool> _array = null!;
+            public InputList<bool> Array
+            {
+                get => _array ?? (_array = new InputList<bool>());
+                set => _array = value;
+            }
+
+            [Input("map", json: true)] private InputMap<int> _map = null!;
+            public InputMap<int> Map
+            {
+                get => _map ?? (_map = new InputMap<int>());
+                set => _map = value;
+            }
+        }
+
+        [Fact]
+        public async Task TestJsonMap()
+        {
+            var args = new JsonResourceArgs1
+            {
+                Array = { true, false },
+                Map =
+                {
+                    { "k1", 1 },
+                    { "k2", 2 },
+                },
+            };
+            var dictionary = await args.ToDictionaryAsync();
+
+            Assert.True(dictionary.TryGetValue("array", out var arrayValue));
+            Assert.True(dictionary.TryGetValue("map", out var mapValue));
+
+            Assert.NotNull(arrayValue);
+            Assert.NotNull(mapValue);
+
+            var arrayVal = (await arrayValue!.ToOutput().GetDataAsync()).Value;
+            Assert.Equal("[ true, false ]", arrayVal);
+
+            var mapVal = (await mapValue!.ToOutput().GetDataAsync()).Value;
+            Assert.Equal("{ \"k1\": 1, \"k2\": 2 }", mapVal);
+        }
+
+        #endregion
     }
 }

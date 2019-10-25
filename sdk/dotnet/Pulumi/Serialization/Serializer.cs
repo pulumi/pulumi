@@ -206,7 +206,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 Log.Debug($"Serialize property[{ctx}]: Recursing into ResourceArgs");
             }
 
-            return await SerializeDictionaryAsync(ctx, args.ToDictionary()).ConfigureAwait(false);
+            var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
+            return await SerializeDictionaryAsync(ctx, dictionary).ConfigureAwait(false);
         }
 
         private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list)

@@ -216,7 +216,7 @@ namespace Pulumi
 
             // During previews only perform the apply if the engine was able to
             // give us an actual value for this Output.
-            if (Deployment.Instance.IsDryRun && !data.IsKnown)
+            if (!data.IsKnown && Deployment.Instance.IsDryRun)
             {
                 return new OutputData<U>(default!, isKnown: false, data.IsSecret);
             }

@@ -4,6 +4,8 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
+using Google.Protobuf;
 using Pulumi.Serialization;
 
 namespace Pulumi
@@ -23,13 +25,13 @@ namespace Pulumi
                 from field in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
                 let attr = field.GetCustomAttribute<InputAttribute>()
                 where attr != null
-                select (attr, memberName: field.Name, memberType: field.FieldType, getValue: (Func<object?, object?>)field.GetValue);
+                select (attr, memberName: field.Name, memberType: field.FieldType, getValue: (Func<object, object?>)field.GetValue);
 
             var propQuery =
                 from prop in this.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
                 let attr = prop.GetCustomAttribute<InputAttribute>()
                 where attr != null
-                select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object?, object?>)prop.GetValue);
+                select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object, object?>)prop.GetValue);
 
             var all = fieldQuery.Concat(propQuery).ToList();
 
@@ -44,25 +46,43 @@ namespace Pulumi
             }
 
             _inputInfos = all.Select(t =>
-                new InputInfo(t.attr.Name, t.attr.IsRequired, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
+                new InputInfo(t.attr, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
         }
 
-        internal ImmutableDictionary<string, IInput> ToDictionary()
+        internal async Task<ImmutableDictionary<string, IInput?>> ToDictionaryAsync()
         {
-            var builder = ImmutableDictionary.CreateBuilder<string, IInput>();
+            var builder = ImmutableDictionary.CreateBuilder<string, IInput?>();
             foreach (var info in _inputInfos)
             {
-                var value = (IInput)info.GetValue(this);
-                if (info.Required && value == null)
+                var fullName = $"[Input] {this.GetType().FullName}.{info.MemberName}";
+
+                var value = (IInput?)info.GetValue(this);
+                if (info.Attribute.IsRequired && value == null)
                 {
-                    var fullName = $"[Input] {this.GetType().FullName}.{info.MemberName}";
                     throw new ArgumentNullException(info.MemberName, $"{fullName} is required but was not given a value");
                 }
 
-                builder.Add(info.Name, value!);
+                if (info.Attribute.Json)
+                {
+                    value = await ConvertToJsonAsync(fullName, value).ConfigureAwait(false);
+                }
+
+                builder.Add(info.Attribute.Name, value);
             }
 
             return builder.ToImmutable();
+        }
+
+        private async Task<IInput?> ConvertToJsonAsync(string context, IInput? input)
+        {
+            if (input == null)
+                return null;
+
+            var serializer = new Serializer(excessiveDebugOutput: false);
+            var obj = await serializer.SerializeAsync(context, input).ConfigureAwait(false);
+            var value = Serializer.CreateValue(obj);
+            var valueString = JsonFormatter.Default.Format(value);
+            return (Input<string>)valueString;
         }
 
         private class EmptyResourceArgs : ResourceArgs
@@ -71,17 +91,14 @@ namespace Pulumi
 
         private struct InputInfo
         {
-            public readonly bool Required;
-            public readonly string Name;
-
+            public readonly InputAttribute Attribute;
             public readonly Type MemberType;
             public readonly string MemberName;
-            public Func<object, object> GetValue;
+            public Func<object, object?> GetValue;
 
-            public InputInfo(string name, bool required, string memberName, Type memberType, Func<object, object> getValue) : this()
+            public InputInfo(InputAttribute attribute, string memberName, Type memberType, Func<object, object> getValue) : this()
             {
-                Name = name;
-                Required = required;
+                Attribute = attribute;
                 MemberName = memberName;
                 MemberType = memberType;
                 GetValue = getValue;

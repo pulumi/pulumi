@@ -28,8 +28,9 @@ namespace Pulumi
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
             Log.Debug($"Serializing properties: t={type}, name={name}, custom={custom}");
+            var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
             var (serializedProps, propertyToDirectDependencies) =
-                await SerializeResourcePropertiesAsync(label, args.ToDictionary()).ConfigureAwait(false);
+                await SerializeResourcePropertiesAsync(label, dictionary).ConfigureAwait(false);
             Log.Debug($"Serialized properties: t={type}, name={name}, custom={custom}");
 
             // Wait for the parent to complete.

@@ -21,14 +21,14 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, IInput> args)
+            string label, IDictionary<string, IInput?> args)
         {
             return SerializeFilteredPropertiesAsync(
                 label, Output.Create(args), key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
-            string label, Input<IDictionary<string, IInput>> args)
+            string label, Input<IDictionary<string, IInput?>> args)
         {
             var result = await SerializeFilteredPropertiesAsync(label, args, _ => true).ConfigureAwait(false);
             return result.Serialized;
@@ -40,7 +40,7 @@ namespace Pulumi
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, Input<IDictionary<string, IInput>> args, Predicate<string> acceptKey)
+            string label, Input<IDictionary<string, IInput?>> args, Predicate<string> acceptKey)
         {
             var props = await args.ToOutput().GetValueAsync().ConfigureAwait(false);
 
