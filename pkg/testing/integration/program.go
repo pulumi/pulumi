@@ -1618,5 +1618,6 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	r := strings.NewReplacer("Pulumi.", "", ".nupkg", "")
 	version := r.Replace(file)
 
-	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget, "-v", version}, cwd)
+	return pt.runCommand("dotnet-add-package",
+		[]string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget, "-v", version}, cwd)
 }
