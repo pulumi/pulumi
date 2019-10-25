@@ -54,6 +54,7 @@ type stepGenerator struct {
 	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
+	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
@@ -130,7 +131,7 @@ func (sg *stepGenerator) GenerateSteps(
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-	// generate an URN for this new resource.
+	// Generate a URN for this new resource, confirm we haven't seen it before in this plan.
 	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
 	if sg.urns[urn] {
 		invalid = true
@@ -179,8 +180,9 @@ func (sg *stepGenerator) GenerateSteps(
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
 
-	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
-	// of resources that use this provider.
+	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
+	// lookup providers for calculating replacement of resources that use the provider.
+	sg.resourceStates[urn] = new
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -254,18 +256,20 @@ func (sg *stepGenerator) GenerateSteps(
 		}
 	}
 
-	// Get the final list of policy packs.
+	// Send the resource off to any Analyzers before being operated on.
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
-
 	for _, analyzer := range analyzers {
-		var diagnostics []plugin.AnalyzeDiagnostic
-		diagnostics, err = analyzer.Analyze(new.Type, inputs)
-		if err != nil {
-			return nil, result.FromError(err)
+		r := plugin.AnalyzerResource{
+			Type:       new.Type,
+			Properties: inputs,
+		}
+		diagnostics, aErr := analyzer.Analyze(r)
+		if aErr != nil {
+			return nil, result.FromError(aErr)
 		}
 		for _, d := range diagnostics {
-			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
-			// will cause them to fail eagerly.
+			// TODO(hausdorff): Batch up failures and report them all at once during preview. This code here
+			// will cause them to fail eagerly, and stop the plan immediately.
 			if d.EnforcementLevel == apitype.Mandatory {
 				if !sg.plan.preview {
 					invalid = true
@@ -1137,6 +1141,7 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		deletes:              make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
+		resourceStates:       make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}

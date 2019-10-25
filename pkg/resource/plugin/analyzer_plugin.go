@@ -21,9 +21,9 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -117,8 +117,8 @@ func (a *analyzer) label() string {
 }
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(
-	t tokens.Type, props resource.PropertyMap) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+	t, props := r.Type, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
@@ -140,24 +140,54 @@ func (a *analyzer) Analyze(
 	failures := resp.GetDiagnostics()
 	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
 
-	diags := []AnalyzeDiagnostic{}
-	for _, failure := range failures {
-		enforcementLevel, err := convertEnforcementLevel(failure.EnforcementLevel)
+	diags, err := convertDiagnostics(failures)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting analysis results")
+	}
+	return diags, nil
+}
+
+// AnalyzeStack analyzes all resources in a stack at the end of the update operation.
+func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
+
+	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
+	for idx, resource := range resources {
+		props, err := MarshalProperties(resource.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "marshalling properties")
 		}
 
-		diags = append(diags, AnalyzeDiagnostic{
-			PolicyName:        failure.PolicyName,
-			PolicyPackName:    failure.PolicyPackName,
-			PolicyPackVersion: failure.PolicyPackVersion,
-			Description:       failure.Description,
-			Message:           failure.Message,
-			Tags:              failure.Tags,
-			EnforcementLevel:  enforcementLevel,
-		})
+		protoResources[idx] = &pulumirpc.AnalyzerResource{
+			Type:       string(resource.Type),
+			Properties: props,
+		}
 	}
 
+	resp, err := a.client.AnalyzeStack(a.ctx.Request(), &pulumirpc.AnalyzeStackRequest{
+		Resources: protoResources,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		// Handle the case where we the policy pack doesn't implement a recent enough
+		// AnalyzerService to support the AnalyzeStack method. Ignore the error as it
+		// just means the analyzer isn't capable of this specific type of check.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.AnalyzeStack(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil, nil
+		}
+
+		logging.V(7).Infof("%s.AnalyzeStack(...) failed: err=%v", a.label(), rpcError)
+		return nil, rpcError
+	}
+
+	failures := resp.GetDiagnostics()
+	logging.V(7).Infof("%s.AnalyzeStack(...) success: failures=#%d", a.label(), len(failures))
+
+	diags, err := convertDiagnostics(failures)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting analysis results")
+	}
 	return diags, nil
 }
 
@@ -238,4 +268,28 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 	default:
 		return "", fmt.Errorf("Invalid enforcement level %d", el)
 	}
+}
+
+func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]AnalyzeDiagnostic, error) {
+	diagnostics := make([]AnalyzeDiagnostic, len(protoDiagnostics))
+	for idx := range protoDiagnostics {
+		protoD := protoDiagnostics[idx]
+
+		enforcementLevel, err := convertEnforcementLevel(protoD.EnforcementLevel)
+		if err != nil {
+			return nil, err
+		}
+
+		diagnostics[idx] = AnalyzeDiagnostic{
+			PolicyName:        protoD.PolicyName,
+			PolicyPackName:    protoD.PolicyPackName,
+			PolicyPackVersion: protoD.PolicyPackVersion,
+			Description:       protoD.Description,
+			Message:           protoD.Message,
+			Tags:              protoD.Tags,
+			EnforcementLevel:  enforcementLevel,
+		}
+	}
+
+	return diagnostics, nil
 }
