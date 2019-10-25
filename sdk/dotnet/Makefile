@@ -1,7 +1,8 @@
 PROJECT_NAME       := Pulumi .NET Core SDK
 LANGHOST_PKG       := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
 VERSION            := $(shell ../../scripts/get-version)
-VERSION_SUFFIX     := alpha1
+VERSION_PREFIX     := $(echo $VERSION | cut -f1 -d- | cut -c2-)
+VERSION_SUFFIX     := $(echo $VERSION | cut -f2 -d-)
 PROJECT_PKGS       := $(shell go list ./cmd...)
 PULUMI_LOCAL_NUGET ?= ~/.nuget/local
 
@@ -10,7 +11,7 @@ TESTPARALLELISM := 10
 include ../../build/common.mk
 
 build::
-	dotnet build dotnet.sln /p:VersionPrefix=${VERSION} /p:VersionSuffix=${VERSION_SUFFIX}
+	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
 	echo "Copying NuGet packages to ${PULUMI_LOCAL_NUGET}"
 	mkdir -p ${PULUMI_LOCAL_NUGET}
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_LOCAL_NUGET} \;
