@@ -4,8 +4,8 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 
 namespace Pulumi.Serialization
 {
@@ -91,7 +91,7 @@ namespace Pulumi.Serialization
                 result.Add(attr.Name, completionSource);
             }
 
-            Log.Debug("Fields to assign: " + new JArray(result.Keys), resource);
+            Log.Debug("Fields to assign: " + JsonSerializer.Serialize(result.Keys), resource);
             return result.ToImmutable();
         }
     }

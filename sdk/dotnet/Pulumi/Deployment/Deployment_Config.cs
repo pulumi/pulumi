@@ -2,7 +2,7 @@
 
 using System;
 using System.Collections.Immutable;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Pulumi
 {
@@ -37,8 +37,8 @@ namespace Pulumi
 
             if (envConfig != null)
             {
-                var envObject = JObject.Parse(envConfig);
-                foreach (var prop in envObject.Properties())
+                var envObject = JsonDocument.Parse(envConfig);
+                foreach (var prop in envObject.RootElement.EnumerateObject())
                 {
                     parsedConfig[CleanKey(prop.Name)] = prop.Value.ToString();
                 }

@@ -2,7 +2,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Pulumi
 {
@@ -111,15 +111,15 @@ namespace Pulumi
 
         /// <summary>
         /// Loads an optional configuration value, as an object, by its key, or null if it doesn't
-        /// exist. This works by taking the value associated with <paramref name="key"/> and passing it
-        /// to <see cref="JsonConvert.DeserializeObject{T}(string)"/>.
+        /// exist. This works by taking the value associated with <paramref name="key"/> and passing
+        /// it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
         /// </summary>
         public T? GetObject<T>(string key) where T : class
         {
             var v = Get(key);
             try
             {
-                return v == null ? null : JsonConvert.DeserializeObject<T>(v);
+                return v == null ? null : JsonSerializer.Deserialize<T>(v);
             }
             catch (JsonException ex)
             {
@@ -129,8 +129,9 @@ namespace Pulumi
 
         /// <summary>
         /// Loads an optional configuration value, as an object, by its key, marking it as a secret
-        /// or null if it doesn't exist. This works by taking the value associated with <paramref name="key"/> and passing it
-        /// to <see cref="JsonConvert.DeserializeObject{T}(string)"/>.
+        /// or null if it doesn't exist. This works by taking the value associated with <paramref
+        /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string,
+        /// JsonSerializerOptions)"/>.
         /// </summary>
         public Output<T>? GetSecretObject<T>(string key) where T : class
             => MakeClassSecret(GetObject<T>(key));
@@ -179,7 +180,8 @@ namespace Pulumi
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into an object.
         /// object. If it doesn't exist, or the configuration value cannot be converted using <see
-        /// cref="JsonConvert.DeserializeObject{T}(string)"/>, an error is thrown.
+        /// cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>, an error is
+        /// thrown.
         /// </summary>
         public T RequireObject<T>(string key) where T : class
             => GetObject<T>(key) ?? throw new ConfigMissingException(FullKey(key));
@@ -187,8 +189,8 @@ namespace Pulumi
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
         /// object, marking it as a secret. If it doesn't exist, or the configuration value cannot
-        /// be converted using <see cref="JsonConvert.DeserializeObject{T}(string)"/>. an error is
-        /// thrown.
+        /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string,
+        /// JsonSerializerOptions)"/>. an error is thrown.
         /// </summary>
         public Output<T> RequireSecretObject<T>(string key) where T : class
             => MakeClassSecret(RequireObject<T>(key));
