@@ -280,7 +280,7 @@ namespace Pulumi
         }
 
         private static Output<string> CollapseAliasToUrn(
-            Input<UrnOrAlias> alias,
+            Input<Alias> alias,
             string defaultName,
             string defaultType,
             Resource? defaultParent)
@@ -289,27 +289,35 @@ namespace Pulumi
             {
                 if (a.Urn != null)
                 {
+                    CheckNull(a.Name, nameof(a.Name));
+                    CheckNull(a.Type, nameof(a.Type));
+                    CheckNull(a.Project, nameof(a.Project));
+                    CheckNull(a.Stack, nameof(a.Stack));
+                    CheckNull(a.Parent, nameof(a.Parent));
+                    CheckNull(a.ParentUrn, nameof(a.ParentUrn));
+                    if (a.NoParent)
+                        ThrowAliasPropertyConflict(nameof(a.NoParent));
+
                     return Output.Create(a.Urn);
                 }
 
-                var alias = a.Alias!;
-                var name = alias.Name ?? defaultName;
-                var type = alias.Type ?? defaultType;
-                var project = alias.Project ?? Deployment.Instance.ProjectName;
-                var stack = alias.Stack ?? Deployment.Instance.StackName;
+                var name = a.Name ?? defaultName;
+                var type = a.Type ?? defaultType;
+                var project = a.Project ?? Deployment.Instance.ProjectName;
+                var stack = a.Stack ?? Deployment.Instance.StackName;
 
                 var parentCount =
-                    (alias.Parent != null ? 1 : 0) +
-                    (alias.ParentUrn != null ? 1 : 0) +
-                    (alias.NoParent ? 1 : 0);
+                    (a.Parent != null ? 1 : 0) +
+                    (a.ParentUrn != null ? 1 : 0) +
+                    (a.NoParent ? 1 : 0);
 
                 if (parentCount >= 2)
                 {
                     throw new ArgumentException(
-$"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(alias.NoParent)}' in an {nameof(Alias)}");
+$"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(Alias.NoParent)}' in an {nameof(Alias)}");
                 }
 
-                var (parent, parentUrn) = GetParentInfo(defaultParent, alias);
+                var (parent, parentUrn) = GetParentInfo(defaultParent, a);
 
                 if (name == null)
                     throw new Exception("No valid 'Name' passed in for alias.");
@@ -320,6 +328,18 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
                 return Pulumi.Urn.Create(name, type, parent, parentUrn, project, stack);
             });
         }
+
+        private static void CheckNull<T>(T? value, string name) where T : class
+        {
+            if (value != null)
+            {
+                ThrowAliasPropertyConflict(name);
+                return;
+            }
+        }
+
+        private static void ThrowAliasPropertyConflict(string name)
+            => throw new ArgumentException($"{nameof(Alias)} should not specify both {nameof(Alias.Urn)} and {name}");
 
         private static (Resource? parent, Input<string>? urn) GetParentInfo(Resource? defaultParent, Alias alias)
         {

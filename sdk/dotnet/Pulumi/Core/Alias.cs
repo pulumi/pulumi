@@ -3,8 +3,13 @@
 namespace Pulumi
 {
     /// <summary>
-    /// Alias is a partial description of prior named used for a resource. It can be processed in
-    /// the context of a resource creation to determine what the full aliased URN would be.
+    /// Alias is a description of prior named used for a resource. It can be processed in the
+    /// context of a resource creation to determine what the full aliased URN would be.
+    /// <para/>
+    /// Use <see cref="Urn"/> in the case where a prior URN is known and can just be specified in
+    /// full.  Otherwise, provide some subset of the other properties in this type to generate an
+    /// appropriate urn from the pre-existing values of the <see cref="Resource"/> with certain
+    /// parts overridden.
     /// <para/>
     /// The presence of a property indicates if its value should be used. If absent (i.e.
     /// <see langword="null"/>), then the value is not used.
@@ -17,6 +22,12 @@ namespace Pulumi
     /// </summary>
     public sealed class Alias
     {
+        /// <summary>
+        /// The previous urn to alias to.  If this is provided, no other properties in this type
+        /// should be provided.
+        /// </summary>
+        public string? Urn { get; set; }
+
         /// <summary>
         /// The previous name of the resource.  If <see langword="null"/>, the current name of the
         /// resource is used.

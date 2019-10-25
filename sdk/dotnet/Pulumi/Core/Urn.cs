@@ -48,13 +48,7 @@ namespace Pulumi
         /// resource in cases where the resource has a named derived from the name of the parent,
         /// and the parent name changed.
         /// </summary>
-        internal static Output<UrnOrAlias> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
-        {
-            var urn = InheritedChildAliasWorker(childName, parentName, parentAlias, childType);
-            return urn.Apply(u => (UrnOrAlias)u);
-        }
-
-        internal static Output<string> InheritedChildAliasWorker(string childName, string parentName, Input<string> parentAlias, string childType)
+        internal static Output<Alias> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
         {
             // If the child name has the parent name as a prefix, then we make the assumption that
             // it was constructed from the convention of using '{name}-details' as the name of the
@@ -78,9 +72,10 @@ namespace Pulumi
                 });
             }
 
-            return Create(
+            var urn = Create(
                 aliasName, childType, parent: null,
                 parentUrn: parentAlias, project: null, stack: null);
+            return urn.Apply(u => new Alias { Urn = u });
         }
     }
 }

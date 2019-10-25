@@ -85,7 +85,7 @@ namespace Pulumi
         /// <summary>
         /// An optional list of aliases to treat this resource as matching.
         /// </summary>
-        public List<Input<UrnOrAlias>> Aliases { get; set; } = new List<Input<UrnOrAlias>>();
+        public List<Input<Alias>> Aliases { get; set; } = new List<Input<Alias>>();
 
         internal virtual ResourceOptions Clone()
             => CreateResourceOptionsCopy(this);

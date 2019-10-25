@@ -14,6 +14,8 @@ Pulumi.Alias.Stack.get -> Pulumi.Input<string>
 Pulumi.Alias.Stack.set -> void
 Pulumi.Alias.Type.get -> Pulumi.Input<string>
 Pulumi.Alias.Type.set -> void
+Pulumi.Alias.Urn.get -> string
+Pulumi.Alias.Urn.set -> void
 Pulumi.Archive
 Pulumi.Asset
 Pulumi.AssetArchive
@@ -118,7 +120,7 @@ Pulumi.ResourceArgs.ResourceArgs() -> void
 Pulumi.ResourceException
 Pulumi.ResourceException.ResourceException(string message, Pulumi.Resource resource, bool hideStack = false) -> void
 Pulumi.ResourceOptions
-Pulumi.ResourceOptions.Aliases.get -> System.Collections.Generic.List<Pulumi.Input<Pulumi.UrnOrAlias>>
+Pulumi.ResourceOptions.Aliases.get -> System.Collections.Generic.List<Pulumi.Input<Pulumi.Alias>>
 Pulumi.ResourceOptions.Aliases.set -> void
 Pulumi.ResourceOptions.CustomTimeouts.get -> Pulumi.CustomTimeouts
 Pulumi.ResourceOptions.CustomTimeouts.set -> void
@@ -162,9 +164,6 @@ Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
-Pulumi.UrnOrAlias
-Pulumi.UrnOrAlias.Alias.get -> Pulumi.Alias
-Pulumi.UrnOrAlias.Urn.get -> string
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
@@ -209,6 +208,4 @@ static Pulumi.Output.Tuple<X, Y>(Pulumi.Input<X> item1, Pulumi.Input<Y> item2) -
 static Pulumi.Output.Tuple<X, Y>(Pulumi.Output<X> item1, Pulumi.Output<Y> item2) -> Pulumi.Output<(X, Y)>
 static Pulumi.Output<T>.Create(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
-static Pulumi.UrnOrAlias.implicit operator Pulumi.UrnOrAlias(Pulumi.Alias alias) -> Pulumi.UrnOrAlias
-static Pulumi.UrnOrAlias.implicit operator Pulumi.UrnOrAlias(string urn) -> Pulumi.UrnOrAlias
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
