@@ -287,9 +287,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
         public static Struct CreateStruct(ImmutableDictionary<string, object> serializedDictionary)
         {
             var result = new Struct();
-            foreach (var (key, value) in serializedDictionary)
+            foreach (var key in serializedDictionary.Keys.OrderBy(k => k))
             {
-                result.Fields.Add(key, CreateValue(value));
+                result.Fields.Add(key, CreateValue(serializedDictionary[key]));
             }
             return result;
         }
