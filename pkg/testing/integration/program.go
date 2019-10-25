@@ -1606,5 +1606,17 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		localNuget = filepath.Join(usr.HomeDir, ".nuget", "local")
 	}
 
-	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget}, cwd)
+	// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
+	matches, err := filepath.Glob(filepath.Join(localNuget, "Pulumi.?.?.*.nupkg"))
+	if err != nil {
+		return errors.Wrap(err, "findind a local Pulumi NuGet package")
+	}
+	if len(matches) != 1 {
+		return errors.New(fmt.Sprintf("findind a local Pulumi NuGet package yielded %v", matches))
+	}
+	file := filepath.Base(matches[0])
+	r := strings.NewReplacer("Pulumi.", "", ".nupkg", "")
+	version := r.Replace(file)
+
+	return pt.runCommand("dotnet-add-package", []string{dotNetBin, "add", "package", "Pulumi", "-s", localNuget, "-v", version}, cwd)
 }
