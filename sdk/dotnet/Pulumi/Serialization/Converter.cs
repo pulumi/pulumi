@@ -248,7 +248,7 @@ $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [PropertyType] attribute, but did not contain constructor marked with [PropertyConstructor].");
+$@"{targetType.FullName} had [OutputType] attribute, but did not contain constructor marked with [OutputConstructor].");
             }
 
             foreach (var param in constructor.GetParameters())
