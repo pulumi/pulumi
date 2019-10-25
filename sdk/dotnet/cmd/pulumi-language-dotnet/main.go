@@ -184,13 +184,16 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	cmd.Stdout = infoWriter
 	cmd.Stderr = errorWriter
 
-	engineClient.Log(ctx, &pulumirpc.LogRequest{
+	_, err = engineClient.Log(ctx, &pulumirpc.LogRequest{
 		Message:   "running 'dotnet build'",
 		Urn:       "",
 		Ephemeral: true,
 		StreamId:  streamID,
 		Severity:  pulumirpc.LogSeverity_INFO,
 	})
+	if err != nil {
+		return err
+	}
 
 	if err := cmd.Run(); err != nil {
 		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
@@ -213,7 +216,7 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		return errors.Wrapf(err, "Problem executing 'dotnet build'")
 	}
 
-	engineClient.Log(ctx, &pulumirpc.LogRequest{
+	_, err = engineClient.Log(ctx, &pulumirpc.LogRequest{
 		Message:   "'dotnet build' completed successfully",
 		Urn:       "",
 		Ephemeral: true,
@@ -221,7 +224,7 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		Severity:  pulumirpc.LogSeverity_INFO,
 	})
 
-	return nil
+	return err
 }
 
 type logWriter struct {
