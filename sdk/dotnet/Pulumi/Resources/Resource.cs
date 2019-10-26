@@ -243,25 +243,7 @@ namespace Pulumi
             }
             this._aliases = aliases.ToImmutable();
 
-            if (options.Id != null)
-            {
-                // If this resource already exists, read its state rather than registering it anew.
-                if (!custom)
-                {
-                    throw new ResourceException(
-                        "Cannot read an existing resource unless it has a custom provider", options.Parent);
-                }
-
-                Deployment.InternalInstance.ReadResource(this, args, options);
-            }
-            else
-            {
-                // Kick off the resource registration.  If we are actually performing a deployment,
-                // this resource's properties will be resolved asynchronously after the operation
-                // completes, so that dependent computations resolve normally.  If we are just
-                // planning, on the other hand, values will never resolve.
-                Deployment.InternalInstance.RegisterResource(this, custom, args, options);
-            }
+            Deployment.InternalInstance.ReadOrRegisterResource(this, args, options);
         }
 
         /// <summary>

@@ -10,6 +10,44 @@ namespace Pulumi
 {
     public partial class Deployment
     {
+        void IDeploymentInternal.ReadOrRegisterResource(
+            Resource resource, ResourceArgs args, ResourceOptions options)
+        {
+            // ReadResource is called in a fire-and-forget manner.  Make sure we keep track of
+            // this task so that the application will not quit until this async work completes.
+            //
+            // Also, we can only do our work once the constructor for the resource has actually
+            // finished.  Otherwise, we might actually read and get the result back *prior* to
+            // the object finishing initializing.  Note: this is not a speculative concern. This is
+            // something that does happen and has to be accounted for.
+            _runner.RegisterTask(
+                $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
+                CompleteResourceAsync(resource, () => ReadOrRegisterResourceAsync(resource, args, options)));
+        }
+
+        private async Task<(string urn, string id, Struct data)> ReadOrRegisterResourceAsync(
+            Resource resource, ResourceArgs args, ResourceOptions options)
+        {
+            if (options.Id != null)
+            {
+                var id = await options.Id.ToOutput().GetValueAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (!(resource is CustomResource))
+                        throw new ArgumentException($"{nameof(ResourceOptions)}.{nameof(ResourceOptions.Id)} is only valid for a {nameof(CustomResource)}");
+
+                    // If this resource already exists, read its state rather than registering it anew.
+                    return await ReadResourceAsync(resource, id, args, options).ConfigureAwait(false);
+                }
+            }
+
+            // Kick off the resource registration.  If we are actually performing a deployment, this
+            // resource's properties will be resolved asynchronously after the operation completes,
+            // so that dependent computations resolve normally.  If we are just planning, on the
+            // other hand, values will never resolve.
+            return await RegisterResourceAsync(resource, args, options).ConfigureAwait(false);
+        }
+
         /// <summary>
         /// Executes the provided <paramref name="action"/> and then completes all the 
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with

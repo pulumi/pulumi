@@ -9,27 +9,12 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        void IDeploymentInternal.RegisterResource(
-            Resource resource, bool custom, ResourceArgs args, ResourceOptions options)
-        {
-            // RegisterResource is called in a fire-and-forget manner.  Make sure we keep track of
-            // this task so that the application will not quit until this async work completes.
-            //
-            // Also, we can only do our work once the constructor for the resource has actually
-            // finished.  Otherwise, we might actually register and get the result back *prior* to
-            // the object finishing initializing.  Note: this is not a speculative concern. This is
-            // something that does happen and has to be accounted for.
-            this._runner.RegisterTask(
-                $"{nameof(IDeploymentInternal.RegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                CompleteResourceAsync(resource, () => RegisterResourceAsync(resource, custom, args, options)));
-        }
-
         private async Task<(string urn, string id, Struct data)> RegisterResourceAsync(
-            Resource resource, bool custom,
-            ResourceArgs args, ResourceOptions options)
+            Resource resource, ResourceArgs args, ResourceOptions options)
         {
             var name = resource.GetResourceName();
             var type = resource.GetResourceType();
+            var custom = resource is CustomResource;
 
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}");
