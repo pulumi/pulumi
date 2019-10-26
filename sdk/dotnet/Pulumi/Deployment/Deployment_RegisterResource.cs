@@ -51,10 +51,8 @@ namespace Pulumi
         private static void PopulateRequest(RegisterResourceRequest request, PrepareResult prepareResult)
         {
             request.Object = prepareResult.SerializedProps;
-
-            request.Parent = prepareResult.ParentUrn ?? "";
-            request.Provider = prepareResult.ProviderRef ?? "";
-
+            request.Parent = prepareResult.ParentUrn;
+            request.Provider = prepareResult.ProviderRef;
             request.Aliases.AddRange(prepareResult.Aliases);
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
 
