@@ -83,8 +83,8 @@ namespace Pulumi
 
             return new PrepareResult(
                 serializedProps,
-                parentURN,
-                providerRef,
+                parentURN ?? "",
+                providerRef ?? "",
                 allDirectDependencyURNs,
                 propertyToDirectDependencyURNs,
                 aliases);
@@ -153,13 +153,13 @@ namespace Pulumi
         private struct PrepareResult
         {
             public readonly Struct SerializedProps;
-            public readonly string? ParentUrn;
-            public readonly string? ProviderRef;
+            public readonly string ParentUrn;
+            public readonly string ProviderRef;
             public readonly HashSet<string> AllDirectDependencyURNs;
             public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyURNs;
             public readonly List<string> Aliases;
 
-            public PrepareResult(Struct serializedProps, string? parentUrn, string? providerRef, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
