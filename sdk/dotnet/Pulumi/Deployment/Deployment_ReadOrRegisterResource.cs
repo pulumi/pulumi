@@ -10,34 +10,67 @@ namespace Pulumi
 {
     public partial class Deployment
     {
+        void IDeploymentInternal.ReadOrRegisterResource(
+            Resource resource, ResourceArgs args, ResourceOptions options)
+        {
+            // ReadOrRegisterResource is called in a fire-and-forget manner.  Make sure we keep
+            // track of this task so that the application will not quit until this async work
+            // completes.
+            //
+            // Also, we can only do our work once the constructor for the resource has actually
+            // finished.  Otherwise, we might actually read and get the result back *prior* to the
+            // object finishing initializing.  Note: this is not a speculative concern. This is
+            // something that does happen and has to be accounted for.
+            //
+            // IMPORTANT! We have to make sure we run 'OutputCompletionSource.InitializeOutputs'
+            // synchronously directly when `resource`'s constructor runs since this will set all of
+            // the `[Output(...)] Output<T>` properties.  We need those properties assigned by the
+            // time the base 'Resource' constructor finishes so that both derived classes and
+            // external consumers can use the Output properties of `resource`.
+            var completionSources = OutputCompletionSource.InitializeOutputs(resource);
+
+            _runner.RegisterTask(
+                $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
+                CompleteResourceAsync(resource, args, options, completionSources));
+        }
+
+        private async Task<(string urn, string id, Struct data)> ReadOrRegisterResourceAsync(
+            Resource resource, ResourceArgs args, ResourceOptions options)
+        {
+            if (options.Id != null)
+            {
+                var id = await options.Id.ToOutput().GetValueAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (!(resource is CustomResource))
+                        throw new ArgumentException($"{nameof(ResourceOptions)}.{nameof(ResourceOptions.Id)} is only valid for a {nameof(CustomResource)}");
+
+                    // If this resource already exists, read its state rather than registering it anew.
+                    return await ReadResourceAsync(resource, id, args, options).ConfigureAwait(false);
+                }
+            }
+
+            // Kick off the resource registration.  If we are actually performing a deployment, this
+            // resource's properties will be resolved asynchronously after the operation completes,
+            // so that dependent computations resolve normally.  If we are just planning, on the
+            // other hand, values will never resolve.
+            return await RegisterResourceAsync(resource, args, options).ConfigureAwait(false);
+        }
+
         /// <summary>
-        /// Executes the provided <paramref name="action"/> and then completes all the 
+        /// Calls <see cref="ReadOrRegisterResourceAsync"/> then completes all the 
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
         /// the results of it.
         /// </summary>
-        private Task CompleteResourceAsync(
-            Resource resource, Func<Task<(string urn, string id, Struct data)>> action)
-        {
-            // IMPORTANT!  This function is Task-returning, but must not actually be `async` itself.
-            // We have to make sure we run 'OutputCompletionSource.GetSources' synchronously
-            // directly when `resource`'s constructor runs since this will set all of the
-            // `[Output(...)] Output<T>` properties.  We need those properties assigned by the time
-            // the base 'Resource' constructor finishes so that both derived classes and external
-            // consumers can use the Output properties of `resource`.
-            var completionSources = OutputCompletionSource.GetSources(resource);
-
-            return CompleteResourceAsync(resource, action, completionSources);
-        }
-
         private async Task CompleteResourceAsync(
-            Resource resource, Func<Task<(string urn, string id, Struct data)>> action,
+            Resource resource, ResourceArgs args, ResourceOptions options,
             ImmutableDictionary<string, IOutputCompletionSource> completionSources)
         {
             // Run in a try/catch/finally so that we always resolve all the outputs of the resource
             // regardless of whether we encounter an errors computing the action.
             try
             {
-                var response = await action().ConfigureAwait(false);
+                var response = await ReadOrRegisterResourceAsync(resource, args, options).ConfigureAwait(false);
                 completionSources[Constants.UrnPropertyName].SetStringValue(response.urn, isKnown: true);
                 if (resource is CustomResource customResource)
                 {

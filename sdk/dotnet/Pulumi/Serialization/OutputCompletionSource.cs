@@ -53,7 +53,7 @@ namespace Pulumi.Serialization
 
     internal static class OutputCompletionSource
     {
-        public static ImmutableDictionary<string, IOutputCompletionSource> GetSources(Resource resource)
+        public static ImmutableDictionary<string, IOutputCompletionSource> InitializeOutputs(Resource resource)
         {
             var name = resource.GetResourceName();
             var type = resource.GetResourceType();
