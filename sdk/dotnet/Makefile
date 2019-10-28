@@ -15,6 +15,7 @@ VERSION_PREFIX       := ${VERSION_FIRST_WORD}
 ifeq ($(VERSION_THIRD_WORD),)
 	VERSION_SUFFIX   := ${VERSION_SECOND_WORD}
 else
+	# have to use addsuffix or make adds a whitespace between the two values.
 	VERSION_SUFFIX   := $(addsuffix -$(VERSION_THIRD_WORD),${VERSION_SECOND_WORD})
 endif
 
