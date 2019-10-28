@@ -25,9 +25,9 @@ namespace Pulumi
         internal static ResourceOptions CreateResourceOptionsCopy(ResourceOptions options)
             => CreateCopy<ResourceOptions>(options);
 
-        internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions options)
+        internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions? options)
         {
-            var copy = CreateCopy<CustomResourceOptions>(options);
+            var copy = CreateCopy<CustomResourceOptions>(options ?? new ResourceOptions());
 
             var customOptions = options as CustomResourceOptions;
             copy.AdditionalSecretOutputs = customOptions?.AdditionalSecretOutputs.ToList() ?? new List<string>();
@@ -37,9 +37,9 @@ namespace Pulumi
             return copy;
         }
 
-        internal static ComponentResourceOptions CreateComponentResourceOptionsCopy(ResourceOptions options)
+        internal static ComponentResourceOptions CreateComponentResourceOptionsCopy(ResourceOptions? options)
         {
-            var copy = CreateCopy<ComponentResourceOptions>(options);
+            var copy = CreateCopy<ComponentResourceOptions>(options ?? new ResourceOptions());
 
             var componentOptions = options as ComponentResourceOptions;
             copy.Providers = componentOptions?.Providers.ToList() ?? new List<ProviderResource>();
