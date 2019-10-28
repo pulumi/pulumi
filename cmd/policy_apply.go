@@ -25,7 +25,7 @@ import (
 
 func newPolicyApplyCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "apply <orgName>/<policyPackName> <version>",
+		Use:   "apply <org-name>/<policy-pack-name> <version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Apply a set of policies to a Pulumi organization",
 		Long:  "Apply a set of policies to a Pulumi organization",
