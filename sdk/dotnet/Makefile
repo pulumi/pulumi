@@ -1,11 +1,35 @@
-PROJECT_NAME       := Pulumi .NET Core SDK
-LANGHOST_PKG       := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
-VERSION            := $(shell ../../scripts/get-version)
-VERSION_DOTNET     := ${VERSION:v%=%}                             # strip v from the beginning
-VERSION_PREFIX     := $(firstword $(subst -, ,${VERSION_DOTNET})) # e.g. 1.5.0
-VERSION_SUFFIX     := $(word 2,$(subst -, ,${VERSION_DOTNET}))    # e.g. alpha.1
-PROJECT_PKGS       := $(shell go list ./cmd...)
-PULUMI_LOCAL_NUGET ?= ~/.nuget/local
+PROJECT_NAME         := Pulumi .NET Core SDK
+LANGHOST_PKG         := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
+
+PROJECT_PKGS         := $(shell go list ./cmd...)
+PULUMI_LOCAL_NUGET   ?= ~/.nuget/local
+
+VERSION              := $(shell ../../scripts/get-version)
+VERSION_DOTNET       := ${VERSION:v%=%}                             # strip v from the beginning
+VERSION_FIRST_WORD   := $(word 1,$(subst -, ,${VERSION_DOTNET}))    # e.g. 1.5.0
+VERSION_SECOND_WORD  := $(word 2,$(subst -, ,${VERSION_DOTNET}))    # e.g. alpha or alpha.1
+VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${VERSION_DOTNET}))    # e.g. featbranch or featbranch.1
+
+VERSION_PREFIX       := ${VERSION_FIRST_WORD}
+
+# .NET support is only in Preview currently.  So unilaterally add `-preview` to the version suffix.
+# From the nuget docs:
+#
+# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
+# Technically speaking, you can use any string after the hyphen and NuGet will treat the package as
+# pre-release. NuGet then displays the full version number in the applicable UI, leaving consumers
+# to interpret the meaning for themselves.
+#
+# With this in mind, it's generally good to follow recognized naming conventions such as the
+# following:
+#
+#     -alpha: Alpha release, typically used for work-in-progress and experimentation
+VERSION_SUFFIX_TEMP  := preview-$(strip ${VERSION_SECOND_WORD})
+ifeq ($(strip $(VERSION_THIRD_WORD)),)
+	VERSION_SUFFIX   := ${VERSION_SUFFIX_TEMP}
+else
+	VERSION_SUFFIX   := $(addsuffix -$(strip $(VERSION_THIRD_WORD)),${VERSION_SUFFIX_TEMP})
+endif
 
 TESTPARALLELISM := 10
 
