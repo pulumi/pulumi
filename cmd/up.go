@@ -138,7 +138,7 @@ func newUpCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
 	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
+		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiStack)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -214,7 +214,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
-		if err = template.CopyTemplateFiles(temp, true, name, description); err != nil {
+		if err = workspace.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
 			return result.FromError(err)
 		}
 

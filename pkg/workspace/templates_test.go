@@ -87,64 +87,168 @@ func getValidProjectNamePrefixes() []string {
 }
 
 func TestRetrieveNonExistingTemplate(t *testing.T) {
+	tests := []struct {
+		testName     string
+		templateKind TemplateKind
+	}{
+		{
+			testName:     "TemplateKindPulumiStack",
+			templateKind: TemplateKindPulumiStack,
+		},
+		{
+			testName:     "TemplateKindPolicyPack",
+			templateKind: TemplateKindPolicyPack,
+		},
+	}
+
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
-	_, err := RetrieveTemplates(templateName, false)
-	assert.NotNil(t, err)
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			_, err := RetrieveTemplates(templateName, false, tt.templateKind)
+			assert.NotNil(t, err)
+		})
+	}
 }
 
 func TestRetrieveStandardTemplate(t *testing.T) {
-	templateName := "typescript"
-	repository, err := RetrieveTemplates(templateName, false)
-	assert.Nil(t, err)
-	assert.Equal(t, false, repository.ShouldDelete)
+	tests := []struct {
+		testName     string
+		templateKind TemplateKind
+		templateName string
+	}{
+		{
+			testName:     "TemplateKindPulumiStack",
+			templateKind: TemplateKindPulumiStack,
+			templateName: "typescript",
+		},
+		{
+			testName:     "TemplateKindPolicyPack",
+			templateKind: TemplateKindPolicyPack,
+			templateName: "aws-typescript",
+		},
+	}
 
-	// Root should point to Pulumi templates directory (e.g. ~/.pulumi/templates)
-	templateDir, _ := GetTemplateDir()
-	assert.Equal(t, templateDir, repository.Root)
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			repository, err := RetrieveTemplates(tt.templateName, false, tt.templateKind)
+			assert.Nil(t, err)
+			assert.Equal(t, false, repository.ShouldDelete)
 
-	// SubDirectory should be a direct subfolder of Root with the name of the template
-	expectedPath := filepath.Join(repository.Root, templateName)
-	assert.Equal(t, expectedPath, repository.SubDirectory)
+			// Root should point to Pulumi templates directory
+			// (e.g. ~/.pulumi/templates or ~/.pulumi/templates-policy)
+			templateDir, _ := GetTemplateDir(tt.templateKind)
+			assert.Equal(t, templateDir, repository.Root)
+
+			// SubDirectory should be a direct subfolder of Root with the name of the template
+			expectedPath := filepath.Join(repository.Root, tt.templateName)
+			assert.Equal(t, expectedPath, repository.SubDirectory)
+		})
+	}
 }
 
 func TestRetrieveHttpsTemplate(t *testing.T) {
-	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
-	repository, err := RetrieveTemplates(templateURL, false)
-	assert.Nil(t, err)
-	assert.Equal(t, true, repository.ShouldDelete)
+	tests := []struct {
+		testName        string
+		templateKind    TemplateKind
+		templateURL     string
+		yamlFile        string
+		expectedSubPath []string
+	}{
+		{
+			testName:        "TemplateKindPulumiStack",
+			templateKind:    TemplateKindPulumiStack,
+			templateURL:     "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
+			yamlFile:        "Pulumi.yaml",
+			expectedSubPath: []string{"examples", "minimal"},
+		},
+		{
+			testName:        "TemplateKindPolicyPack",
+			templateKind:    TemplateKindPolicyPack,
+			templateURL:     "https://github.com/pulumi/examples/tree/master/policy-packs/aws-advanced",
+			yamlFile:        "PulumiPolicy.yaml",
+			expectedSubPath: []string{"policy-packs", "aws-advanced"},
+		},
+	}
 
-	// Root should point to a subfolder of a Temp Dir
-	tempDir := os.TempDir()
-	pattern := filepath.Join(tempDir, "*")
-	matched, _ := filepath.Match(pattern, repository.Root)
-	assert.True(t, matched)
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			repository, err := RetrieveTemplates(tt.templateURL, false, tt.templateKind)
+			assert.Nil(t, err)
+			assert.Equal(t, true, repository.ShouldDelete)
 
-	// SubDirectory follows the path of the template in the Git repo
-	expectedPath := filepath.Join(repository.Root, "examples", "minimal")
-	assert.Equal(t, expectedPath, repository.SubDirectory)
+			// Root should point to a subfolder of a Temp Dir
+			tempDir := os.TempDir()
+			pattern := filepath.Join(tempDir, "*")
+			matched, _ := filepath.Match(pattern, repository.Root)
+			assert.True(t, matched)
 
-	// SubDirectory should exist and contain the template files
-	yamlPath := filepath.Join(repository.SubDirectory, "Pulumi.yaml")
-	_, err = os.Stat(yamlPath)
-	assert.Nil(t, err)
+			// SubDirectory follows the path of the template in the Git repo
+			pathElements := append([]string{repository.Root}, tt.expectedSubPath...)
+			expectedPath := filepath.Join(pathElements...)
+			assert.Equal(t, expectedPath, repository.SubDirectory)
 
-	// Clean Up
-	err = repository.Delete()
-	assert.Nil(t, err)
+			// SubDirectory should exist and contain the template files
+			yamlPath := filepath.Join(repository.SubDirectory, tt.yamlFile)
+			_, err = os.Stat(yamlPath)
+			assert.Nil(t, err)
+
+			// Clean Up
+			err = repository.Delete()
+			assert.Nil(t, err)
+		})
+	}
 }
 
 func TestRetrieveHttpsTemplateOffline(t *testing.T) {
-	templateURL := "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal"
-	_, err := RetrieveTemplates(templateURL, true)
-	assert.NotNil(t, err)
+	tests := []struct {
+		testName     string
+		templateKind TemplateKind
+		templateURL  string
+	}{
+		{
+			testName:     "TemplateKindPulumiStack",
+			templateKind: TemplateKindPulumiStack,
+			templateURL:  "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
+		},
+		{
+			testName:     "TemplateKindPolicyPack",
+			templateKind: TemplateKindPolicyPack,
+			templateURL:  "https://github.com/pulumi/examples/tree/master/policy-packs/aws-advanced",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			_, err := RetrieveTemplates(tt.templateURL, true, tt.templateKind)
+			assert.NotNil(t, err)
+		})
+	}
 }
 
 func TestRetrieveFileTemplate(t *testing.T) {
-	repository, err := RetrieveTemplates(".", false)
-	assert.Nil(t, err)
-	assert.Equal(t, false, repository.ShouldDelete)
+	tests := []struct {
+		testName     string
+		templateKind TemplateKind
+	}{
+		{
+			testName:     "TemplateKindPulumiStack",
+			templateKind: TemplateKindPulumiStack,
+		},
+		{
+			testName:     "TemplateKindPolicyPack",
+			templateKind: TemplateKindPolicyPack,
+		},
+	}
 
-	// Both Root and SubDirectory just point to the (existing) specified folder
-	assert.Equal(t, ".", repository.Root)
-	assert.Equal(t, ".", repository.SubDirectory)
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			repository, err := RetrieveTemplates(".", false, tt.templateKind)
+			assert.Nil(t, err)
+			assert.Equal(t, false, repository.ShouldDelete)
+
+			// Both Root and SubDirectory just point to the (existing) specified folder
+			assert.Equal(t, ".", repository.Root)
+			assert.Equal(t, ".", repository.SubDirectory)
+		})
+	}
 }

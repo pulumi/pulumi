@@ -47,6 +47,8 @@ const (
 	StackDir = "stacks"
 	// TemplateDir is the name of the directory containing templates.
 	TemplateDir = "templates"
+	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
+	TemplatePolicyDir = "templates-policy"
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
 	WorkspaceDir = "workspaces"
 

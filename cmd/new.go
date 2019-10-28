@@ -94,19 +94,9 @@ func runNew(args newArgs) error {
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {
-		// Ensure the directory exists.
-		if err = os.MkdirAll(args.dir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "creating the directory")
-		}
-
-		// Change the working directory to the specified directory.
-		if err = os.Chdir(args.dir); err != nil {
-			return errors.Wrap(err, "changing the working directory")
-		}
-
-		// Get the new working directory.
-		if cwd, err = os.Getwd(); err != nil {
-			return errors.Wrap(err, "getting the working directory")
+		cwd, err = useSpecifiedDir(args.dir)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -133,7 +123,7 @@ func runNew(args newArgs) error {
 	}
 
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline)
+	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiStack)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func runNew(args newArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd); err != nil {
 			if os.IsNotExist(err) {
 				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 			}
@@ -229,7 +219,7 @@ func runNew(args newArgs) error {
 	}
 
 	// Actually copy the files.
-	if err = template.CopyTemplateFiles(cwd, args.force, args.name, args.description); err != nil {
+	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
 			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 		}
@@ -296,6 +286,28 @@ func runNew(args newArgs) error {
 	return nil
 }
 
+// Ensure the directory exists and uses it as the current working
+// directory.
+func useSpecifiedDir(dir string) (string, error) {
+	// Ensure the directory exists.
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return "", errors.Wrap(err, "creating the directory")
+	}
+
+	// Change the working directory to the specified directory.
+	if err := os.Chdir(dir); err != nil {
+		return "", errors.Wrap(err, "changing the working directory")
+	}
+
+	// Get the new working directory.
+	var cwd string
+	var err error
+	if cwd, err = os.Getwd(); err != nil {
+		return "", errors.Wrap(err, "getting the working directory")
+	}
+	return cwd, nil
+}
+
 // newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
 // nolint: vetshadow
@@ -345,7 +357,7 @@ func newNewCmd() *cobra.Command {
 		defaultHelp(cmd, args)
 
 		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates("", false /*offline*/)
+		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiStack)
 		if err != nil {
 			logging.Warningf("could not retrieve templates: %v", err)
 			return
@@ -549,15 +561,19 @@ func installDependencies() error {
 		return nil
 	}
 
+	// Run the command.
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	return npmInstallDependencies()
+}
+
+// npmInstallDependencies will install dependencies for the project or Policy Pack by running `npm install`.
+func npmInstallDependencies() error {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	// Run the command.
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	err = npm.Install("", os.Stdout, os.Stderr)
+	err := npm.Install("", os.Stdout, os.Stderr)
 	if err != nil {
-		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment")
+		return errors.Wrapf(err, "npm install failed; rerun manually to try again.")
 	}
 
 	fmt.Println("Finished installing dependencies")
