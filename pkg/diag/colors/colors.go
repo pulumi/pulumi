@@ -132,7 +132,7 @@ func writeDirective(w io.StringWriter, c Colorization, directive string) {
 func colorizeText(s string, c Colorization, maxLen int) string {
 	var buf bytes.Buffer
 
-	textLen := 0
+	textLen, reset := 0, false
 	for input := s; len(input) > 0; {
 		// Do we have another directive to process?
 		nextDirectiveStart := strings.Index(input, colorLeft)
@@ -146,10 +146,8 @@ func colorizeText(s string, c Colorization, maxLen int) string {
 				return input
 			}
 
-			// Otherwise, write the remaining input into the buffer and terminate.
-			_, err := buf.WriteString(input)
-			contract.IgnoreError(err)
-			break
+			// Otherwise, set the start of the next directive to the end of the string and continue.
+			nextDirectiveStart = len(input)
 		}
 		if buf.Cap() < len(input) {
 			buf.Grow(len(input))
@@ -160,12 +158,13 @@ func colorizeText(s string, c Colorization, maxLen int) string {
 		if maxLen >= 0 && textLen+len(text) > maxLen {
 			_, err := buf.WriteString(text[:maxLen-textLen])
 			contract.IgnoreError(err)
-			writeDirective(&buf, c, Reset)
+			if reset {
+				writeDirective(&buf, c, Reset)
+			}
 			break
 		}
 		_, err := buf.WriteString(text)
 		contract.IgnoreError(err)
-		input = input[nextDirectiveStart+len(colorLeft):]
 		textLen += len(text)
 
 		// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
@@ -175,9 +174,11 @@ func colorizeText(s string, c Colorization, maxLen int) string {
 			break
 		}
 
-		directive := command(input[:nextDirectiveEnd])
+		directive := command(input[nextDirectiveStart+len(colorLeft) : nextDirectiveEnd])
 		writeDirective(&buf, c, directive)
 		input = input[nextDirectiveEnd+len(colorRight):]
+
+		reset = directive != Reset
 	}
 
 	return buf.String()
