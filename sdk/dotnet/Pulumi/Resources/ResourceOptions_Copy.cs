@@ -1,14 +1,14 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulumi
 {
     public partial class ResourceOptions
     {
-        internal static ResourceOptions CreateResourceOptionsCopy(ResourceOptions options)
-            => new ResourceOptions
+        internal static TResourceOptions CreateCopy<TResourceOptions>(ResourceOptions options) where TResourceOptions : ResourceOptions, new()
+            => new TResourceOptions
             {
                 Aliases = options.Aliases.ToList(),
                 CustomTimeouts = CustomTimeouts.Clone(options.CustomTimeouts),
@@ -19,57 +19,32 @@ namespace Pulumi
                 Protect = options.Protect,
                 Provider = options.Provider,
                 ResourceTransformations = options.ResourceTransformations.ToList(),
-                Version = options.Version,
+                Version = options.Version
             };
+
+        internal static ResourceOptions CreateResourceOptionsCopy(ResourceOptions options)
+            => CreateCopy<ResourceOptions>(options);
 
         internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions options)
         {
+            var copy = CreateCopy<CustomResourceOptions>(options);
+
             var customOptions = options as CustomResourceOptions;
-            var copied = CreateResourceOptionsCopy(options);
+            copy.AdditionalSecretOutputs = customOptions?.AdditionalSecretOutputs.ToList() ?? new List<string>();
+            copy.DeleteBeforeReplace = customOptions?.DeleteBeforeReplace;
+            copy.ImportId = customOptions?.ImportId;
 
-            return new CustomResourceOptions
-            {
-                // Base properties
-                Aliases = copied.Aliases,
-                CustomTimeouts = copied.CustomTimeouts,
-                DependsOn = copied.DependsOn,
-                Id = copied.Id,
-                Parent = copied.Parent,
-                IgnoreChanges = copied.IgnoreChanges,
-                Protect = copied.Protect,
-                Provider = copied.Provider,
-                ResourceTransformations = copied.ResourceTransformations,
-                Version = copied.Version,
-
-                // Our properties
-                AdditionalSecretOutputs = customOptions?.AdditionalSecretOutputs.ToList() ?? new List<string>(),
-                DeleteBeforeReplace = customOptions?.DeleteBeforeReplace,
-                ImportId = customOptions?.ImportId,
-            };
+            return copy;
         }
 
         internal static ComponentResourceOptions CreateComponentResourceOptionsCopy(ResourceOptions options)
         {
+            var copy = CreateCopy<ComponentResourceOptions>(options);
+
             var componentOptions = options as ComponentResourceOptions;
-            var cloned = CreateResourceOptionsCopy(options);
+            copy.Providers = componentOptions?.Providers.ToList() ?? new List<ProviderResource>();
 
-            return new ComponentResourceOptions
-            {
-                // Base properties
-                Aliases = cloned.Aliases,
-                CustomTimeouts = cloned.CustomTimeouts,
-                DependsOn = cloned.DependsOn,
-                Id = cloned.Id,
-                Parent = cloned.Parent,
-                IgnoreChanges = cloned.IgnoreChanges,
-                Protect = cloned.Protect,
-                Provider = cloned.Provider,
-                ResourceTransformations = cloned.ResourceTransformations,
-                Version = cloned.Version,
-
-                // Our properties
-                Providers = componentOptions?.Providers.ToList() ?? new List<ProviderResource>(),
-            };
+            return copy;
         }
     }
 }
