@@ -70,9 +70,6 @@ class OutputImpl<T> implements OutputInstance<T> {
      */
     public readonly resources: () => Set<Resource>;
 
-    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
-    public readonly get: () => T;
-
     /**
      * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
      * to is asynchronously computed (and thus, this is akin to calling [toString] on a [Promise]).
@@ -175,79 +172,6 @@ This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
-        this.apply = <U>(func: (t: T) => Input<U>) => {
-            let innerDetailsResolve: (val: {isKnown: boolean, isSecret: boolean}) => void;
-            const innerDetails = new Promise<any>(resolve => {
-                innerDetailsResolve = resolve;
-            });
-
-            // The known state of the output we're returning depends on if we're known as well, and
-            // if a potential lifted inner Output is known.  If we get an inner Output, and it is
-            // not known itself, then the result we return should not be known.
-            const resultIsKnown = Promise.all([isKnown, innerDetails]).then(([k1, k2]) => k1 && k2.isKnown);
-            const resultIsSecret = Promise.all([isSecret, innerDetails]).then(([k1, k2]) => k1 || k2.isSecret);
-
-            return new Output<U>(resources, promise.then(async v => {
-                try {
-                    if (runtime.isDryRun()) {
-                        // During previews only perform the apply if the engine was able to
-                        // give us an actual value for this Output.
-                        const applyDuringPreview = await isKnown;
-
-                        if (!applyDuringPreview) {
-                            // We didn't actually run the function, our new Output is definitely
-                            // **not** known.
-                            innerDetailsResolve({
-                                isKnown: false,
-                                isSecret: await isSecret,
-                            });
-                            return <U><any>undefined;
-                        }
-                    }
-
-                    const transformed = await func(v);
-                    if (Output.isInstance(transformed)) {
-                        // Note: if the func returned a Output, we unwrap that to get the inner value
-                        // returned by that Output.  Note that we are *not* capturing the Resources of
-                        // this inner Output.  That's intentional.  As the Output returned is only
-                        // supposed to be related this *this* Output object, those resources should
-                        // already be in our transitively reachable resource graph.
-
-                        // The callback func has produced an inner Output that may be 'known' or 'unknown'.
-                        // We have to properly forward that along to our outer output.  That way the Outer
-                        // output doesn't consider itself 'known' then the inner Output did not.
-                        innerDetailsResolve({
-                            isKnown: await transformed.isKnown,
-                            isSecret: await (transformed.isSecret || Promise.resolve(false)),
-                        });
-                        return await transformed.promise();
-                    } else {
-                        // We successfully ran the inner function.  Our new Output should be considered known.
-                        innerDetailsResolve({
-                            isKnown: true,
-                            isSecret: false,
-                        });
-                        return transformed;
-                    }
-                }
-                finally {
-                    // Ensure we always resolve the inner isKnown value no matter what happens
-                    // above. If anything failed along the way, consider this output to be
-                    // not-known. Awaiting this Output's promise() will still throw, but await'ing
-                    // the isKnown bit will just return 'false'.
-                    innerDetailsResolve({
-                        isKnown: false,
-                        isSecret: false,
-                    });
-                }
-            }), resultIsKnown, resultIsSecret);
-        };
-
-        this.get = () => {
-            throw new Error(`Cannot call '.get' during update or preview.
-To manipulate the value of this Output, use '.apply' instead.`);
-        };
-
         return new Proxy(this, {
             get: (obj, prop: keyof T) => {
                 // Recreate the prototype walk to ensure we find any actual members defined directly
@@ -312,6 +236,66 @@ To manipulate the value of this Output, use '.apply' instead.`);
             },
         });
     }
+
+    public get(): T {
+        throw new Error(`Cannot call '.get' during update or preview.
+To manipulate the value of this Output, use '.apply' instead.`);
+    }
+
+    public apply<U>(func: (t: T) => Input<U>): Output<U> {
+        const applied = Promise.all([this.promise(), this.isKnown, this.isSecret])
+                               .then(([value, isKnown, isSecret]) => applyHelperAsync<T, U>(value, isKnown, isSecret, func));
+
+        const result = new OutputImpl<U>(
+            this.resources(), applied.then(a => a.value), applied.then(a => a.isKnown), applied.then(a => a.isSecret));
+        return <Output<U>><any>result;
+    }
+}
+
+async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>) {
+    if (runtime.isDryRun()) {
+        // During previews only perform the apply if the engine was able to give us an actual value
+        // for this Output.
+        const applyDuringPreview = isKnown;
+
+        if (!applyDuringPreview) {
+            // We didn't actually run the function, our new Output is definitely **not** known.
+            return {
+                value: <U><any>undefined,
+                isKnown: false,
+                isSecret,
+            };
+        }
+    }
+
+    const transformed = await func(value);
+    if (Output.isInstance(transformed)) {
+        // Note: if the func returned a Output, we unwrap that to get the inner value returned by
+        // that Output.  Note that we are *not* capturing the Resources of this inner Output.
+        // That's intentional.  As the Output returned is only supposed to be related this *this*
+        // Output object, those resources should already be in our transitively reachable resource
+        // graph.
+
+        // Note: we intentionally await all the promises of the transformed value.  This way we
+        // properly propogate any rejections of any of them through ourselves as well.
+        const innerValue = await transformed.promise();
+        const innerIsKnown = await transformed.isKnown;
+        const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
+
+        return {
+            value: innerValue,
+            isKnown: isKnown && innerIsKnown,
+            isSecret: isSecret || innerIsSecret,
+        };
+    }
+
+    // We successfully ran the inner function.  Our new Output should be considered known.  We
+    // preserve secretness from our original Output to the new one we're creating.
+    return {
+        value: transformed,
+        isKnown: true,
+        isSecret,
+    };
 }
 
 // Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
