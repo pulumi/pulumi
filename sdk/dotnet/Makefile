@@ -5,30 +5,17 @@ PROJECT_PKGS         := $(shell go list ./cmd...)
 PULUMI_LOCAL_NUGET   ?= ~/.nuget/local
 
 VERSION              := $(shell ../../scripts/get-version)
-VERSION_DOTNET       := ${VERSION:v%=%}                             # strip v from the beginning
-VERSION_FIRST_WORD   := $(word 1,$(subst -, ,${VERSION_DOTNET}))    # e.g. 1.5.0
-VERSION_SECOND_WORD  := $(word 2,$(subst -, ,${VERSION_DOTNET}))    # e.g. alpha or alpha.1
-VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${VERSION_DOTNET}))    # e.g. featbranch or featbranch.1
+VERSION_DOTNET       := ${VERSION:v%=%}                                   # strip v from the beginning
+VERSION_FIRST_WORD   := $(strip $(word 1,$(subst -, ,${VERSION_DOTNET}))) # e.g. 1.5.0
+VERSION_SECOND_WORD  := $(strip $(word 2,$(subst -, ,${VERSION_DOTNET}))) # e.g. alpha or alpha.1
+VERSION_THIRD_WORD   := $(strip $(word 3,$(subst -, ,${VERSION_DOTNET}))) # e.g. featbranch or featbranch.1
 
 VERSION_PREFIX       := ${VERSION_FIRST_WORD}
 
-# .NET support is only in Preview currently.  So unilaterally add `-preview` to the version suffix.
-# From the nuget docs:
-#
-# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
-# Technically speaking, you can use any string after the hyphen and NuGet will treat the package as
-# pre-release. NuGet then displays the full version number in the applicable UI, leaving consumers
-# to interpret the meaning for themselves.
-#
-# With this in mind, it's generally good to follow recognized naming conventions such as the
-# following:
-#
-#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-VERSION_SUFFIX_TEMP  := preview-$(strip ${VERSION_SECOND_WORD})
-ifeq ($(strip $(VERSION_THIRD_WORD)),)
-	VERSION_SUFFIX   := ${VERSION_SUFFIX_TEMP}
+ifeq ($(VERSION_THIRD_WORD),)
+	VERSION_SUFFIX   := ${VERSION_SECOND_WORD}
 else
-	VERSION_SUFFIX   := $(addsuffix -$(strip $(VERSION_THIRD_WORD)),${VERSION_SUFFIX_TEMP})
+	VERSION_SUFFIX   := $(addsuffix -$(VERSION_THIRD_WORD),${VERSION_SECOND_WORD})
 endif
 
 TESTPARALLELISM := 10
@@ -36,7 +23,19 @@ TESTPARALLELISM := 10
 include ../../build/common.mk
 
 build::
-	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
+	# .NET support is only in Preview currently.  So unilaterally add `-preview` to the version suffix.
+	# From the nuget docs:
+	#
+	# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
+	# Technically speaking, you can use any string after the hyphen and NuGet will treat the package as
+	# pre-release. NuGet then displays the full version number in the applicable UI, leaving consumers
+	# to interpret the meaning for themselves.
+	#
+	# With this in mind, it's generally good to follow recognized naming conventions such as the
+	# following:
+	#
+	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
+	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=preview-${VERSION_SUFFIX}
 	echo "Copying NuGet packages to ${PULUMI_LOCAL_NUGET}"
 	mkdir -p ${PULUMI_LOCAL_NUGET}
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_LOCAL_NUGET} \;
