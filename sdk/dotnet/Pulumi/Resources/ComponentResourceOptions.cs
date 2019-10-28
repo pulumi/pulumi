@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System;
 using System.Collections.Generic;
 
 namespace Pulumi
@@ -25,5 +26,16 @@ namespace Pulumi
 
         internal override ResourceOptions Clone()
             => CreateComponentResourceOptionsCopy(this);
+
+        /// <inheritdoc cref="ResourceOptions.Merge(ResourceOptions, ResourceOptions)"/>
+        public static new ComponentResourceOptions Merge(ResourceOptions? options1, ResourceOptions? options2)
+        {
+            if (options1 is CustomResourceOptions || options2 is CustomResourceOptions)
+                throw new ArgumentException($"{nameof(ComponentResourceOptions)}.{nameof(Merge)} cannot be used to merge {nameof(CustomResourceOptions)}");
+
+            return (ComponentResourceOptions)ResourceOptions.Merge(
+                CreateComponentResourceOptionsCopy(options1),
+                CreateComponentResourceOptionsCopy(options2));
+        }
     }
 }
