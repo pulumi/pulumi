@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -75,7 +76,7 @@ namespace Pulumi
             foreach (var alias in res._aliases)
             {
                 var aliasVal = await alias.ToOutput().GetValueAsync().ConfigureAwait(false);
-                if (!uniqueAliases.Add(aliasVal))
+                if (uniqueAliases.Add(aliasVal))
                 {
                     aliases.Add(aliasVal);
                 }
