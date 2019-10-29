@@ -65,6 +65,9 @@ type UpdateOptions struct {
 	// Specific resources to refresh during a refresh operation.
 	RefreshTargets []resource.URN
 
+	// Specific resources to replace during an update operation.
+	ReplaceTargets []resource.URN
+
 	// Specific resources to destroy during a destroy operation.
 	DestroyTargets []resource.URN
 

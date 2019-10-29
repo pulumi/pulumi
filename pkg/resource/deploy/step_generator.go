@@ -40,6 +40,9 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
+	updateTargetsOpt  map[resource.URN]bool // the set of resources to update; resources not in this set will be same'd
+	replaceTargetsOpt map[resource.URN]bool // the set of resoures to replace
+
 	// signals that one or more PolicyViolationEvents have been reported to the user, and the plan
 	// should terminate in error. This primarily allows `preview` to aggregate many policy violation
 	// events and report them all at once.
@@ -60,6 +63,14 @@ type stepGenerator struct {
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
+}
+
+func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
+	return sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn]
+}
+
+func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
+	return sg.replaceTargetsOpt != nil && sg.replaceTargetsOpt[urn]
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -125,8 +136,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
-func (sg *stepGenerator) GenerateSteps(
-	updateTargetsOpt map[resource.URN]bool, event RegisterResourceEvent) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 
 	var invalid bool // will be set to true if this object fails validation.
 
@@ -225,8 +235,9 @@ func (sg *stepGenerator) GenerateSteps(
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-		// don't consider those inputs since Pulumi does not own them.
-		if recreating || wasExternal {
+		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+		// targeted for replacement, ignore its old state.
+		if recreating || wasExternal || sg.isTargetedReplace(urn) {
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
@@ -353,7 +364,7 @@ func (sg *stepGenerator) GenerateSteps(
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
-		if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
+		if !sg.isTargetedForUpdate(urn) {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -379,7 +390,7 @@ func (sg *stepGenerator) GenerateSteps(
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
-	if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
+	if !sg.isTargetedForUpdate(urn) {
 		d := diag.GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn)
 
 		if sg.plan.preview {
@@ -447,7 +458,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 
 			// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 			// had assumed that we were going to carry them over from the old resource, which is no longer true.
-			if prov != nil {
+			//
+			// Note that if we're performing a targeted replace, we already have the correct inputs.
+			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
 				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 				if err != nil {
@@ -891,6 +904,11 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
+	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
+	if sg.isTargetedReplace(urn) {
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil
+	}
+
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
 	providerChanged, err := sg.providerChanged(urn, old, new)
@@ -1136,10 +1154,14 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 }
 
 // newStepGenerator creates a new step generator that operates on the given plan.
-func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
+func newStepGenerator(
+	plan *Plan, opts Options, updateTargetsOpt, replaceTargetsOpt map[resource.URN]bool) *stepGenerator {
+
 	return &stepGenerator{
 		plan:                 plan,
 		opts:                 opts,
+		updateTargetsOpt:     updateTargetsOpt,
+		replaceTargetsOpt:    replaceTargetsOpt,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
