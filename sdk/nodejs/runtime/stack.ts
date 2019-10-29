@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output, secret } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { getRootResource, isQueryMode, setRootResource } from "./settings";
+import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -176,7 +176,8 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (Resource.isInstance(prop)) {
         // Emit a resource as a normal pojo.  But filter out all our internal properties so that
         // they don't clutter the display/checkpoint with values not relevant to the application.
-        return serializeAllKeys(n => !n.startsWith("__"));
+        const pojo = await serializeAllKeys(n => !n.startsWith("__"));
+        return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
     }
 
     if (prop instanceof Array) {

@@ -21,7 +21,7 @@ from inspect import isawaitable
 from typing import Callable, Any, Dict, List
 
 from ..resource import ComponentResource, Resource, ResourceTransformation
-from .settings import get_project, get_stack, get_root_resource, set_root_resource
+from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
 from .. import log
 
@@ -148,6 +148,12 @@ def massage(attr: Any, seen: List[Any]):
 
     if isawaitable(attr):
         return Output.from_input(attr).apply(lambda v: massage(v, seen))
+
+    if isinstance(attr, Resource):
+        result = massage(attr.__dict__, seen)
+        if is_dry_run():
+            result["@isPulumiResource"] = True
+        return result
 
     if hasattr(attr, "__dict__"):
         # recurse on the dictionary itself.  It will be handled above.
