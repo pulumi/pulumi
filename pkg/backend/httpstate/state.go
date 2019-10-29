@@ -225,7 +225,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 }
 
 func (b *cloudBackend) newQuery(ctx context.Context,
-	op backend.QueryOperation) (*cloudQuery, error) {
+	op backend.QueryOperation) (engine.QueryInfo, error) {
 
 	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
 }
