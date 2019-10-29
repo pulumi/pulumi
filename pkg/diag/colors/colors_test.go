@@ -80,3 +80,27 @@ func TestColorizer(t *testing.T) {
 		})
 	}
 }
+
+// TestTrimColorizedString provides extra coverage for TrimColorizedString.
+func TestTrimColorizedString(t *testing.T) {
+	str := "hello, " + Green + "world" + Reset + "!!"
+
+	actual := TrimColorizedString(str, len("hello"))
+	assert.Equal(t, "hello", actual)
+
+	actual = TrimColorizedString(str, len("hello, wo"))
+	assert.Equal(t, "hello, "+Green+"wo"+Reset, actual)
+
+	actual = TrimColorizedString(str, len("hello, world"))
+	assert.Equal(t, "hello, "+Green+"world"+Reset, actual)
+
+	actual = TrimColorizedString(str, len("hello, world!"))
+	assert.Equal(t, "hello, "+Green+"world"+Reset+"!", actual)
+
+	actual = TrimColorizedString(str, len("hello, world!!"))
+	assert.Equal(t, str, actual)
+
+	plain := "hello, world!!"
+	actual = TrimColorizedString(plain, len("hello"))
+	assert.Equal(t, "hello", actual)
+}
