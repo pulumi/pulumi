@@ -1,6 +1,5 @@
 #!/bin/bash
 set -o nounset -o errexit -o pipefail
-SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 COMMITISH=${1:-HEAD}
 DIRTY_TAG=""
 
@@ -47,11 +46,17 @@ else
     PATCH=0
 fi
 
-# if we're in a features/xxx branch then append `-xxx` to the version as well.
+# if we're in a features/xxx branch and caller passed --embed-feature-branch then append `-xxx` to
+# the version as well.
 FEATURE_TAG=""
-if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
-    FEATURE_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|-|g')
-fi
+for arg in "$@"
+do
+    if [[ "$arg" == "--embed-feature-branch"]]; then
+        if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
+            FEATURE_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|-|g')
+        fi
+    fi
+done
 
 # We want to include some additional information. To the base tag we
 # add a timestamp and commit hash. We use the timestamp of the commit

@@ -4,7 +4,7 @@ LANGHOST_PKG         := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-
 PROJECT_PKGS         := $(shell go list ./cmd...)
 PULUMI_LOCAL_NUGET   ?= ~/.nuget/local
 
-VERSION              := $(shell ../../scripts/get-version)
+VERSION              := $(shell ../../scripts/get-version --embed-feature-branch)
 VERSION_DOTNET       := ${VERSION:v%=%}                                   # strip v from the beginning
 VERSION_FIRST_WORD   := $(strip $(word 1,$(subst -, ,${VERSION_DOTNET}))) # e.g. 1.5.0
 VERSION_SECOND_WORD  := $(strip $(word 2,$(subst -, ,${VERSION_DOTNET}))) # e.g. alpha or alpha.1
