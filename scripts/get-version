@@ -51,7 +51,7 @@ fi
 FEATURE_TAG=""
 for arg in "$@"
 do
-    if [[ "$arg" == "--embed-feature-branch"]]; then
+    if [[ "$arg" == "--embed-feature-branch" ]]; then
         if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
             FEATURE_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|-|g')
         fi

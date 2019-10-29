@@ -5,7 +5,7 @@ set -o errexit
 set -o pipefail
 readonly ROOT=$(dirname "${0}")/..
 
-NPM_VERSION=$("${ROOT}/scripts/get-version")
+NPM_VERSION=$("${ROOT}/scripts/get-version HEAD")
 "${ROOT}/scripts/build-sdk.sh" $(echo ${NPM_VERSION} | sed -e 's/\+.*//g') $(git rev-parse HEAD)
 
 if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
