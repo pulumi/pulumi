@@ -1,5 +1,11 @@
 #!/bin/bash
 set -o nounset -o errexit -o pipefail
+
+if [ $# -eq 0 ]; then
+    echo "No arguments provided. Pass appropriate git commit-ish value get version of (i.e. 'HEAD')"
+    exit 1
+fi
+
 COMMITISH=${1:-HEAD}
 DIRTY_TAG=""
 
