@@ -108,7 +108,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 			// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
 			if err := snapshot.VerifyIntegrity(); err != nil {
-				msg := fmt.Sprintf("deployment file contains errors: %v", err)
+				msg := fmt.Sprintf("state file contains errors: %v", err)
 				if force {
 					cmdutil.Diag().Warningf(diag.Message("", msg))
 				} else {
