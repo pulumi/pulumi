@@ -123,7 +123,7 @@ func runNew(args newArgs) error {
 	}
 
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiStack)
+	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ func newNewCmd() *cobra.Command {
 		defaultHelp(cmd, args)
 
 		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiStack)
+		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
 		if err != nil {
 			logging.Warningf("could not retrieve templates: %v", err)
 			return
@@ -563,7 +563,12 @@ func installDependencies() error {
 
 	// Run the command.
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	return npmInstallDependencies()
+	err = npmInstallDependencies()
+	if err != nil {
+		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment")
+	}
+	return nil
 }
 
 // npmInstallDependencies will install dependencies for the project or Policy Pack by running `npm install`.
@@ -573,7 +578,7 @@ func npmInstallDependencies() error {
 
 	err := npm.Install("", os.Stdout, os.Stderr)
 	if err != nil {
-		return errors.Wrapf(err, "npm install failed; rerun manually to try again.")
+		return err
 	}
 
 	fmt.Println("Finished installing dependencies")

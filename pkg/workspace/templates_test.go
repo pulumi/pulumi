@@ -92,8 +92,8 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 		templateKind TemplateKind
 	}{
 		{
-			testName:     "TemplateKindPulumiStack",
-			templateKind: TemplateKindPulumiStack,
+			testName:     "TemplateKindPulumiProject",
+			templateKind: TemplateKindPulumiProject,
 		},
 		{
 			testName:     "TemplateKindPolicyPack",
@@ -117,8 +117,8 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 		templateName string
 	}{
 		{
-			testName:     "TemplateKindPulumiStack",
-			templateKind: TemplateKindPulumiStack,
+			testName:     "TemplateKindPulumiProject",
+			templateKind: TemplateKindPulumiProject,
 			templateName: "typescript",
 		},
 		{
@@ -155,8 +155,8 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 		expectedSubPath []string
 	}{
 		{
-			testName:        "TemplateKindPulumiStack",
-			templateKind:    TemplateKindPulumiStack,
+			testName:        "TemplateKindPulumiProject",
+			templateKind:    TemplateKindPulumiProject,
 			templateURL:     "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
 			yamlFile:        "Pulumi.yaml",
 			expectedSubPath: []string{"examples", "minimal"},
@@ -206,8 +206,8 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 		templateURL  string
 	}{
 		{
-			testName:     "TemplateKindPulumiStack",
-			templateKind: TemplateKindPulumiStack,
+			testName:     "TemplateKindPulumiProject",
+			templateKind: TemplateKindPulumiProject,
 			templateURL:  "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
 		},
 		{
@@ -231,8 +231,8 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		templateKind TemplateKind
 	}{
 		{
-			testName:     "TemplateKindPulumiStack",
-			templateKind: TemplateKindPulumiStack,
+			testName:     "TemplateKindPulumiProject",
+			templateKind: TemplateKindPulumiProject,
 		},
 		{
 			testName:     "TemplateKindPolicyPack",

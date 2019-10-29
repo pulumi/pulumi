@@ -73,7 +73,7 @@ func TestTemplates(t *testing.T) {
 	}
 
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiStack)
+	repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
 	assert.NoError(t, err)
 	defer assert.NoError(t, repo.Delete())
 

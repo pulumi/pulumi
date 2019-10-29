@@ -55,8 +55,8 @@ const (
 type TemplateKind int
 
 const (
-	// TemplateKindPulumiStack is a template for a Pulumi stack.
-	TemplateKindPulumiStack TemplateKind = 0
+	// TemplateKindPulumiProject is a template for a Pulumi stack.
+	TemplateKindPulumiProject TemplateKind = 0
 
 	// TemplateKindPolicyPack is a template for a Policy Pack.
 	TemplateKindPolicyPack TemplateKind = 1
@@ -192,8 +192,9 @@ type Template struct {
 
 // PolicyPackTemplate represents a Policy Pack template.
 type PolicyPackTemplate struct {
-	Dir  string // The directory containing PulumiPolicy.yaml.
-	Name string // The name of the template.
+	Dir         string // The directory containing PulumiPolicy.yaml.
+	Name        string // The name of the template.
+	Description string // Description of the template.
 }
 
 // cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
@@ -463,14 +464,19 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 		return PolicyPackTemplate{}, errors.Errorf("%s is not a directory", path)
 	}
 
-	_, err = LoadPolicyPack(filepath.Join(path, "PulumiPolicy.yaml"))
+	pack, err := LoadPolicyPack(filepath.Join(path, "PulumiPolicy.yaml"))
 	if err != nil {
 		return PolicyPackTemplate{}, err
 	}
-	return PolicyPackTemplate{
+	policyPackTemplate := PolicyPackTemplate{
 		Dir:  path,
 		Name: filepath.Base(path),
-	}, nil
+	}
+	if pack.Description != nil {
+		policyPackTemplate.Description = *pack.Description
+	}
+
+	return policyPackTemplate, nil
 }
 
 // GetTemplateDir returns the directory in which templates on the current machine are stored.

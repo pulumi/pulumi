@@ -164,7 +164,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	// Install dependencies.
 	if !args.generateOnly {
 		if err := npmInstallDependencies(); err != nil {
-			return err
+			return errors.Wrapf(err, "npm install failed; rerun manually to try again.")
 		}
 	}
 
@@ -192,29 +192,17 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate, opts dis
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	var selectedOption workspace.PolicyPackTemplate
+	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
 
-	for {
-		options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
-
-		var option string
-		if err := survey.AskOne(&survey.Select{
-			Message:  message,
-			Options:  options,
-			PageSize: len(options),
-		}, &option, nil); err != nil {
-			return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
-		}
-
-		var has bool
-		selectedOption, has = optionToTemplateMap[option]
-		if has {
-			break
-		} else {
-			fmt.Fprintln(os.Stderr, "Error invalid pack selected.")
-		}
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message:  message,
+		Options:  options,
+		PageSize: len(options),
+	}, &option, nil); err != nil {
+		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
-	return selectedOption, nil
+	return optionToTemplateMap[option], nil
 }
 
 // policyTemplatesToOptionArrayAndMap returns an array of option strings and a map of option strings to policy
@@ -233,7 +221,7 @@ func policyTemplatesToOptionArrayAndMap(templates []workspace.PolicyPackTemplate
 	nameToTemplateMap := make(map[string]workspace.PolicyPackTemplate)
 	for _, template := range templates {
 		// Create the option string that combines the name, padding, and description.
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, "")
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
 
 		// Add it to the array and map.
 		options = append(options, option)
