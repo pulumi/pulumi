@@ -16,6 +16,12 @@ CHANGELOG
 - Omit unknowns in resources in stack outputs during preview.
   [#3427](https://github.com/pulumi/pulumi/pull/3427)
 
+- `pulumi update` can now be instructed that a set of resources should be replaced by adding a
+  `--replace urn` argument.  Multiple resources can be specified using `--replace urn1 --replace urn2`. In order to
+  replace exactly one resource, invoke `pulumi update --replace urn --target urn`. In order to treat all resources
+  mentioned by `--replace` as if they were also passed via `--target`, pass the `--target-replaces` flag.
+  [#3418](https://github.com/pulumi/pulumi/pull/3418)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
