@@ -9,6 +9,10 @@ CHANGELOG
 - Fix another colorizer issue that could cause garbled output for messages that did not end in colorization tags.
   [#3417](https://github.com/pulumi/pulumi/pull/3417)
 
+- Verify deployment integrity during import and issue an error if verification fails. The state file can still be
+  imported by passing the `--force` flag.
+  [#3422](https://github.com/pulumi/pulumi/pull/3422)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
