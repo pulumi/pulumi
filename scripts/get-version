@@ -6,7 +6,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-COMMITISH=${1:-HEAD}
+COMMITISH=$1
 DIRTY_TAG=""
 
 # Figure out if the worktree is dirty, we run update-index first
