@@ -170,7 +170,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	fmt.Println(
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new policy pack is ready to go!"+colors.Reset) +
+			colors.BrightGreen+colors.Bold+"Your new Policy Pack is ready to go!"+colors.Reset) +
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
