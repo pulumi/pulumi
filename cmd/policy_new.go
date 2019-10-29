@@ -159,7 +159,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 		return err
 	}
 
-	fmt.Println("Created policy pack!")
+	fmt.Println("Created Policy Pack!")
 
 	// Install dependencies.
 	if !args.generateOnly {
