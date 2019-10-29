@@ -57,7 +57,8 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         --verbose
 
     echo "Publishing .nupkgs to nuget.org:"
-    find ~/.nuget/local/ -name '*.nupkg' | xargs dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json
+    find ~/.nuget/local/ -name '*.nupkg' \
+        -exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
 
     "${ROOT}/scripts/build-and-publish-docker" "${NPM_VERSION}"
 
