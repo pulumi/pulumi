@@ -4712,3 +4712,81 @@ func TestDependencyChangeDBR(t *testing.T) {
 	}
 	p.Run(t, snap)
 }
+
+func TestReplaceSpecificTargets(t *testing.T) {
+	//             A
+	//    _________|_________
+	//    B        C        D
+	//          ___|___  ___|___
+	//          E  F  G  H  I  J
+	//             |__|
+	//             K  L
+
+	p := &TestPlan{}
+
+	urns, old, program := generateComplexTestDependencyGraph(t, p)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
+					// No resources will change.
+					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+				},
+
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	getURN := func(name string) resource.URN {
+		return pickURN(t, urns, complexTestDependencyGraphNames, name)
+	}
+
+	p.Options.ReplaceTargets = []resource.URN{
+		getURN("F"),
+		getURN("B"),
+		getURN("G"),
+	}
+
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: false,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			assert.True(t, len(j.Entries) > 0)
+
+			replaced := make(map[resource.URN]bool)
+			sames := make(map[resource.URN]bool)
+			for _, entry := range j.Entries {
+				if entry.Step.Op() == deploy.OpReplace {
+					replaced[entry.Step.URN()] = true
+				} else if entry.Step.Op() == deploy.OpSame {
+					sames[entry.Step.URN()] = true
+				}
+			}
+
+			for _, target := range p.Options.ReplaceTargets {
+				assert.Contains(t, replaced, target)
+			}
+
+			for _, target := range p.Options.ReplaceTargets {
+				assert.NotContains(t, sames, target)
+			}
+
+			return res
+		},
+	}}
+
+	p.Run(t, old)
+}
