@@ -38,6 +38,7 @@ build::
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
 	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=preview-${VERSION_SUFFIX}
 	echo "Copying NuGet packages to ${PULUMI_LOCAL_NUGET}"
+	rm -rf ${PULUMI_LOCAL_NUGET}
 	mkdir -p ${PULUMI_LOCAL_NUGET}
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_LOCAL_NUGET} \;
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
