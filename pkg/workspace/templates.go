@@ -230,7 +230,9 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 }
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
-func RetrieveTemplates(templateNamePathOrURL string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
+func RetrieveTemplates(templateNamePathOrURL string, offline bool,
+	templateKind TemplateKind) (TemplateRepository, error) {
+
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}

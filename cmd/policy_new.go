@@ -174,12 +174,15 @@ func runNewPolicyPack(args newPolicyArgs) error {
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
-	fmt.Println("Once you're done editing your Policy Pack, run `pulumi policy publish <org-name>/<policy-pack-name>` to publish the pack.")
+	fmt.Println("Once you're done editing your Policy Pack, run `pulumi policy publish <org-name>/<policy-pack-name>`" +
+		" to publish the pack.")
 	return nil
 }
 
 // choosePolicyPackTemplate will prompt the user to choose amongst the available templates.
-func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate, opts display.Options) (workspace.PolicyPackTemplate, error) {
+func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
+	opts display.Options) (workspace.PolicyPackTemplate, error) {
+
 	const chooseTemplateErr = "no template selected; please use `pulumi policy new` to choose one"
 	if !opts.IsInteractive {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
@@ -207,7 +210,9 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate, opts dis
 
 // policyTemplatesToOptionArrayAndMap returns an array of option strings and a map of option strings to policy
 // templates. Each option string is made up of the template name and description with some padding in between.
-func policyTemplatesToOptionArrayAndMap(templates []workspace.PolicyPackTemplate) ([]string, map[string]workspace.PolicyPackTemplate) {
+func policyTemplatesToOptionArrayAndMap(
+	templates []workspace.PolicyPackTemplate) ([]string, map[string]workspace.PolicyPackTemplate) {
+
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {

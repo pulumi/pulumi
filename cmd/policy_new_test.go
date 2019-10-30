@@ -63,17 +63,17 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	skipIfShort(t)
 
+	// A template that will never exist.
+	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
+
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
-		// A template that will never exist.
-		template := "this-is-not-the-template-youre-looking-for"
-
 		var args = newPolicyArgs{
-			templateNameOrURL: template,
+			templateNameOrURL: nonExistantTemplate,
 		}
 
 		err := runNewPolicyPack(args)
@@ -89,13 +89,10 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
-		// A template that will never exist remotely.
-		template := "this-is-not-the-template-youre-looking-for"
-
 		var args = newPolicyArgs{
 			generateOnly:      true,
 			offline:           true,
-			templateNameOrURL: template,
+			templateNameOrURL: nonExistantTemplate,
 			yes:               true,
 		}
 
