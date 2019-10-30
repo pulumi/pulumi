@@ -269,6 +269,10 @@ func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
 // massageStackPreviewOutputDiff removes any adds of unknown values nested inside Pulumi resources present in a stack's
 // outputs.
 func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
+	if diff == nil {
+		return
+	}
+
 	_, isResource := diff.Adds["@isPulumiResource"]
 	if isResource {
 		delete(diff.Adds, "@isPulumiResource")
