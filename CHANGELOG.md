@@ -18,8 +18,8 @@ CHANGELOG
 
 - `pulumi update` can now be instructed that a set of resources should be replaced by adding a
   `--replace urn` argument.  Multiple resources can be specified using `--replace urn1 --replace urn2`. In order to
-  replace exactly one resource, invoke `pulumi update --replace urn --target urn`. In order to treat all resources
-  mentioned by `--replace` as if they were also passed via `--target`, pass the `--target-replaces` flag.
+  replace exactly one resource and leave other resources unchanged, invoke `pulumi update --replace urn --target urn`,
+  or `pulumi update --target-replace urn` for short.
   [#3418](https://github.com/pulumi/pulumi/pull/3418)
 
 ## 1.4.0 (2019-10-24)
