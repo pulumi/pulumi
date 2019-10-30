@@ -151,6 +151,11 @@ def massage(attr: Any, seen: List[Any]):
 
     if isinstance(attr, Resource):
         result = massage(attr.__dict__, seen)
+
+        # In preview only, we mark the result with "@isPulumiResource" to indicate that it is derived
+        # from a resource. This allows the engine to perform resource-specific filtering of unknowns
+        # from output diffs during a preview. This filtering is not necessary during an update because
+        # all property values are known.
         if is_dry_run():
             result["@isPulumiResource"] = True
         return result

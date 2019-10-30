@@ -176,6 +176,11 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (Resource.isInstance(prop)) {
         // Emit a resource as a normal pojo.  But filter out all our internal properties so that
         // they don't clutter the display/checkpoint with values not relevant to the application.
+        //
+        // In preview only, we mark the POJO with "@isPulumiResource" to indicate that it is derived
+        // from a resource. This allows the engine to perform resource-specific filtering of unknowns
+        // from output diffs during a preview. This filtering is not necessary during an update because
+        // all property values are known.
         const pojo = await serializeAllKeys(n => !n.startsWith("__"));
         return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
     }
