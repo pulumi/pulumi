@@ -13,6 +13,9 @@ CHANGELOG
   imported by passing the `--force` flag.
   [#3422](https://github.com/pulumi/pulumi/pull/3422)
 
+- Omit unknowns in resources in stack outputs during preview.
+  [#3427](https://github.com/pulumi/pulumi/pull/3427)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
