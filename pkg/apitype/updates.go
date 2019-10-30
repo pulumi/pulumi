@@ -172,6 +172,11 @@ type UpdateProgram struct {
 
 // RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseRequest struct {
+	// The current, valid lease token.
+	// DEPRECATED as of Pulumi API version 5+. Pulumi API will expect the update token
+	// in the Authorization header instead of this property. This property will be removed
+	// when the minimum supported API version on the service is raised to 5.
+	Token string `json:"token"`
 	// The duration for which to renew the lease in seconds (maximum 300).
 	Duration int `json:"duration"`
 }
