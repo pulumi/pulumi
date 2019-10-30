@@ -1,3 +1,0 @@
-config:
-  aws:region: us-west-2
-  hello-dotnet:name: hello-dotnet
