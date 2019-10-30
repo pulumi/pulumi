@@ -8,7 +8,7 @@ readonly ROOT=$(dirname "${0}")/..
 readonly PUBDIR=$(mktemp -d)
 readonly GITHASH=$(git rev-parse HEAD)
 readonly PUBFILE=$(dirname "${PUBDIR})/${GITHASH}.tgz")
-readonly VERSION=$("${ROOT}/scripts/get-version HEAD")
+readonly VERSION=$("${ROOT}/scripts/get-version" HEAD)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
