@@ -1,7 +1,12 @@
 #!/bin/bash
 set -o nounset -o errexit -o pipefail
-SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
-COMMITISH=${1:-HEAD}
+
+if [ $# -eq 0 ]; then
+    echo "No arguments provided. Pass appropriate git commit-ish value get version of (i.e. 'HEAD')"
+    exit 1
+fi
+
+COMMITISH=$1
 DIRTY_TAG=""
 
 # Figure out if the worktree is dirty, we run update-index first
@@ -47,11 +52,23 @@ else
     PATCH=0
 fi
 
+# if we're in a features/xxx branch and caller passed --embed-feature-branch then append `-xxx` to
+# the version as well.
+FEATURE_TAG=""
+for arg in "$@"
+do
+    if [[ "$arg" == "--embed-feature-branch" ]]; then
+        if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
+            FEATURE_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|-|g')
+        fi
+    fi
+done
+
 # We want to include some additional information. To the base tag we
 # add a timestamp and commit hash. We use the timestamp of the commit
 # itself, not the date it was authored (so it will change when someone
 # rebases a PR into master, for example).
-echo -n "${MAJOR}.${MINOR}.${PATCH}-alpha.$(git show -s --format='%ct+g%h' ${COMMITISH})"
+echo -n "${MAJOR}.${MINOR}.${PATCH}-alpha${FEATURE_TAG}.$(git show -s --format='%ct+g%h' ${COMMITISH})"
 if [ ! -z "${DIRTY_TAG}" ]; then
     echo -n ".${DIRTY_TAG}"
 fi

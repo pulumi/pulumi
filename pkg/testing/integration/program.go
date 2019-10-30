@@ -1599,11 +1599,7 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		usr, err := user.Current()
-		if err != nil {
-			return errors.Wrap(err, "could not determine current user")
-		}
-		localNuget = filepath.Join(usr.HomeDir, ".nuget", "local")
+		localNuget = "/opt/pulumi/nuget"
 	}
 
 	// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.

@@ -6,7 +6,7 @@ PROJECT         := github.com/pulumi/pulumi
 PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
 TEMPLATES_PKGS  := $(shell go list ./tests/templates)
-VERSION         := $(shell scripts/get-version)
+VERSION         := $(shell scripts/get-version HEAD)
 
 TESTPARALLELISM := 10
 
