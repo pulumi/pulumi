@@ -57,7 +57,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         --verbose
 
     echo "Publishing .nupkgs to nuget.org:"
-    find ~/.nuget/local/ -name 'Pulumi*.nupkg' \
+    find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
         -exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
 
     "${ROOT}/scripts/build-and-publish-docker" "${NPM_VERSION}"
