@@ -43,6 +43,7 @@ install_plugin::
 
 install:: install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
+	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 lint::

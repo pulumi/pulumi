@@ -168,8 +168,7 @@ install::
 	$(call STEP_MESSAGE)
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
-	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)"
-	mkdir -p "$(PULUMI_NUGET)"
+	@mkdir -p $(PULUMI_NUGET)
 
 dist::
 	$(call STEP_MESSAGE)
