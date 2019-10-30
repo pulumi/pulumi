@@ -60,6 +60,9 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
+  
+- Add `helm` to `pulumi/pulumi` Dockerhub container
+  [#3294](https://github.com/pulumi/pulumi/pull/3294)
 
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
