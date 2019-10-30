@@ -68,6 +68,7 @@ func newUpCmd() *cobra.Command {
 	var secretsProvider string
 	var targets []string
 	var replaces []string
+	var targetReplaces bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -109,6 +110,10 @@ func newUpCmd() *cobra.Command {
 		replaceURNs := []resource.URN{}
 		for _, r := range replaces {
 			replaceURNs = append(replaceURNs, resource.URN(r))
+		}
+
+		if targetReplaces {
+			targetURNs = append(targetURNs, replaceURNs...)
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -389,6 +394,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
 		"Specify resources to replace. Multiple resources can be specified using --replace run1 --replace urn2")
+	cmd.PersistentFlags().BoolVar(
+		&targetReplaces, "target-replaces", false,
+		"Add any resources passed to --replace to the set of targets to update. Shorthand for --replace urn --target urn")
 
 	// Flags for engine.UpdateOptions.
 	if hasDebugCommands() {
