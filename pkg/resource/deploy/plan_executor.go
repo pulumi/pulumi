@@ -60,15 +60,15 @@ func createTargetMap(targets []resource.URN) map[resource.URN]bool {
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
-func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
+func (pe *planExecutor) checkTargets(targets []resource.URN, op StepOp) result.Result {
 	if len(targets) == 0 {
 		return nil
 	}
 
 	olds := pe.plan.olds
 	var news map[resource.URN]bool
-	if pe.stepGen != nil && pe.stepGen.creates != nil {
-		news = pe.stepGen.creates
+	if pe.stepGen != nil {
+		news = pe.stepGen.urns
 	}
 
 	hasUnknownTarget := false
@@ -82,7 +82,7 @@ func (pe *planExecutor) checkTargets(targets []resource.URN) result.Result {
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
 
-			logging.V(7).Infof("Resource to delete (%v) could not be found in the stack.", target)
+			logging.V(7).Infof("Resource to %v (%v) could not be found in the stack.", op, target)
 			if strings.Contains(string(target), "$") {
 				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
 			} else {
@@ -149,13 +149,17 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// during `update` that we don't know about because it might be the urn for a resource they
 	// want to create.
 	updateTargetsOpt := createTargetMap(opts.UpdateTargets)
+	replaceTargetsOpt := createTargetMap(opts.ReplaceTargets)
 	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
-	if res := pe.checkTargets(opts.DestroyTargets); res != nil {
+	if res := pe.checkTargets(opts.ReplaceTargets, OpReplace); res != nil {
+		return res
+	}
+	if res := pe.checkTargets(opts.DestroyTargets, OpDelete); res != nil {
 		return res
 	}
 
-	if updateTargetsOpt != nil && destroyTargetsOpt != nil {
-		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets")
+	if (updateTargetsOpt != nil || replaceTargetsOpt != nil) && destroyTargetsOpt != nil {
+		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets or .ReplaceTargets")
 	}
 
 	// Begin iterating the source.
@@ -165,7 +169,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	}
 
 	// Set up a step generator for this plan.
-	pe.stepGen = newStepGenerator(pe.plan, opts)
+	pe.stepGen = newStepGenerator(pe.plan, opts, updateTargetsOpt, replaceTargetsOpt)
 
 	// Retire any pending deletes that are currently present in this plan.
 	if res := pe.retirePendingDeletes(callerCtx, opts, preview); res != nil {
@@ -230,7 +234,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, pe.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
 				}
 
-				if res := pe.handleSingleEvent(updateTargetsOpt, event.Event); res != nil {
+				if res := pe.handleSingleEvent(event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
 						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
@@ -255,7 +259,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
 	// to a resource that was created in one of hte steps.
 	if res == nil {
-		res = pe.checkTargets(opts.UpdateTargets)
+		res = pe.checkTargets(opts.UpdateTargets, OpUpdate)
 	}
 
 	if res != nil && res.IsBail() {
@@ -366,7 +370,7 @@ func (pe *planExecutor) performDeletes(
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(updateTargetsOpt map[resource.URN]bool, event SourceEvent) result.Result {
+func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
@@ -374,7 +378,7 @@ func (pe *planExecutor) handleSingleEvent(updateTargetsOpt map[resource.URN]bool
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = pe.stepGen.GenerateSteps(updateTargetsOpt, e)
+		steps, res = pe.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, res = pe.stepGen.GenerateReadSteps(e)
@@ -444,7 +448,7 @@ func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
 	targetMapOpt := createTargetMap(opts.RefreshTargets)
-	if res := pe.checkTargets(opts.RefreshTargets); res != nil {
+	if res := pe.checkTargets(opts.RefreshTargets, OpRefresh); res != nil {
 		return res
 	}
 

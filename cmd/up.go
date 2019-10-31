@@ -66,7 +66,9 @@ func newUpCmd() *cobra.Command {
 	var suppressOutputs bool
 	var yes bool
 	var secretsProvider string
-	var targets *[]string
+	var targets []string
+	var replaces []string
+	var targetReplaces []string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -100,9 +102,19 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
-		targetUrns := []resource.URN{}
-		for _, t := range *targets {
-			targetUrns = append(targetUrns, resource.URN(t))
+		targetURNs := []resource.URN{}
+		for _, t := range targets {
+			targetURNs = append(targetURNs, resource.URN(t))
+		}
+
+		replaceURNs := []resource.URN{}
+		for _, r := range replaces {
+			replaceURNs = append(replaceURNs, resource.URN(r))
+		}
+
+		for _, tr := range targetReplaces {
+			targetURNs = append(targetURNs, resource.URN(tr))
+			replaceURNs = append(replaceURNs, resource.URN(tr))
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -110,8 +122,9 @@ func newUpCmd() *cobra.Command {
 			Parallel:             parallel,
 			Debug:                debug,
 			Refresh:              refresh,
+			ReplaceTargets:       replaceURNs,
 			UseLegacyDiff:        useLegacyDiff(),
-			UpdateTargets:        targetUrns,
+			UpdateTargets:        targetURNs,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -375,10 +388,17 @@ func newUpCmd() *cobra.Command {
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
 
-	targets = cmd.PersistentFlags().StringArrayP(
-		"target", "t", []string{},
+	cmd.PersistentFlags().StringArrayVarP(
+		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
-			" Multiple resources can be specified using: --target urn1 --target urn2")
+			" Multiple resources can be specified using --target urn1 --target urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&replaces, "replace", []string{},
+		"Specify resources to replace. Multiple resources can be specified using --replace run1 --replace urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&targetReplaces, "target-replace", []string{},
+		"Specify a single resource URN to replace. Other resources will not be updated."+
+			" Shorthand for --target urn --replace urn.")
 
 	// Flags for engine.UpdateOptions.
 	if hasDebugCommands() {
