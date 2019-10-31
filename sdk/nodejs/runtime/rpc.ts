@@ -179,20 +179,10 @@ export function resolveProperties(
         value = unwrapRpcSecret(value);
 
         try {
-            // If either we are performing a real deployment, or this is a stable property value, we
-            // can propagate its final value.  Otherwise, it must be undefined, since we don't know
-            // if it's final.
-            if (!isDryRun()) {
-                // normal 'pulumi up'.  resolve the output with the value we got back
-                // from the engine.  That output can always run its .apply calls.
-                resolve(value, true, isSecret);
-            }
-            else {
-                // We're previewing. If the engine was able to give us a reasonable value back,
-                // then use it. Otherwise, inform the Output that the value isn't known.
-                const isKnown = !containsUnknowns(value);
-                resolve(value, isKnown, isSecret);
-            }
+            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+            // present during previews (i.e. isDryRun() will be true).
+            resolve(value, /*isKnown*/ true, isSecret);
         }
         catch (err) {
             throw new Error(
@@ -206,7 +196,7 @@ export function resolveProperties(
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
-            resolve(isDryRun() ? unknown : undefined, !isDryRun(), false);
+            resolve(undefined, !isDryRun(), false);
         }
     }
 }

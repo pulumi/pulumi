@@ -125,23 +125,25 @@ class OutputImpl<T> implements OutputInstance<T> {
     }
 
     /** @internal */
+    static async getPromisedValue<T>(promise: Promise<T>, withUnknowns?: boolean): Promise<T> {
+        // If the caller did not explicitly ask to see unknown values and val contains unknowns, return undefined. This
+        // preserves compatibility with earlier versions of the Pulumi SDK.
+        const val = await promise;
+        if (!withUnknowns && containsUnknowns(val)) {
+            return <T><any>undefined;
+        }
+        return val;
+    }
+
+    /** @internal */
     public constructor(
             resources: Set<Resource> | Resource[] | Resource,
             promise: Promise<T>,
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>) {
 
-        const value = Promise.all([isKnown, promise]).then(([known, val]) => (withUnknowns?: boolean) => {
-            // If the caller did not explicitly ask to see unknown values, simply return val.
-            if (!withUnknowns) {
-                return containsUnknowns(val) ? <T><any>undefined : val;
-            }
-
-            return val;
-        });
-
-        // Otherwise, we are only known if we are not explicitly unknown and the resolved value of the output
-        // contains no distinguished unknown values and if the value's promise is not rejected.
+        // We are only known if we are not explicitly unknown and the resolved value of the output
+        // contains no distinguished unknown values.
         isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
 
         this.isKnown = isKnown;
@@ -159,7 +161,7 @@ class OutputImpl<T> implements OutputInstance<T> {
         }
 
         this.resources = () => new Set<Resource>(resourcesArray);
-        this.promise = (withUnknowns?: boolean) => value.then(getValue => getValue(withUnknowns));
+        this.promise = (withUnknowns?: boolean) => OutputImpl.getPromisedValue(promise, withUnknowns);
 
         const firstResource = resourcesArray[0];
         this.toString = () => {
@@ -280,12 +282,14 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
 // tslint:disable:max-line-length
 async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>, runWithUnknowns: boolean) {
+    const considerValueKnown = isKnown || runWithUnknowns;
+
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
-        const applyDuringPreview = isKnown;
+        const applyDuringPreview = considerValueKnown;
 
-        if (!applyDuringPreview && !runWithUnknowns) {
+        if (!applyDuringPreview) {
             // We didn't actually run the function, our new Output is definitely **not** known.
             return {
                 value: <U><any>undefined,
@@ -318,13 +322,13 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
 
         // Note: we intentionally await all the promises of the transformed value.  This way we
         // properly propogate any rejections of any of them through ourselves as well.
-        const innerValue = <U>(await (<any>transformed).promise(/*withUnknowns*/ true));
+        const innerValue = <U>(await transformed.promise(/*withUnknowns*/ true));
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
 
         return {
             value: innerValue,
-            isKnown: (isKnown || runWithUnknowns) && innerIsKnown,
+            isKnown: considerValueKnown && innerIsKnown,
             isSecret: isSecret || innerIsSecret,
         };
     }
@@ -333,7 +337,7 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
     // preserve secretness from our original Output to the new one we're creating.
     return {
         value: transformed,
-        isKnown: isKnown || runWithUnknowns,
+        isKnown: considerValueKnown,
         isSecret,
     };
 }
@@ -391,9 +395,9 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
     else if (Output.isInstance(val)) {
         // We create a new output here from the raw pieces of the original output in order to accommodate outputs from
         // downlevel SxS SDKs. This ensures that first-class unknowns are properly represented in the system: if this
-        // was a downlevel output where val.isKnown resolves to false, this guarantess that the returned output's
+        // was a downlevel output where val.isKnown resolves to false, this guarantees that the returned output's
         // promise resolves to unknown.
-        const newOutput = new Output(val.resources(), <any>(<any>val).promise(/*withUnknowns*/ true), val.isKnown, val.isSecret);
+        const newOutput = new Output(val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret);
         return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
     }
     else if (val instanceof Array) {
@@ -416,7 +420,7 @@ export function secret<T>(val: Input<T>): Output<Unwrap<T>>;
 export function secret<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const o = output(val);
-    return new Output(o.resources(), <any>(<any>o).promise(/*withUnknowns*/ true), o.isKnown, Promise.resolve(true));
+    return new Output(o.resources(), o.promise(/*withUnknowns*/ true), o.isKnown, Promise.resolve(true));
 }
 
 function createSimpleOutput(val: any) {
@@ -458,7 +462,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
         const allOutputs = val.map(v => output(v));
 
         const [resources, isKnown, isSecret] = getResourcesAndDetails(allOutputs);
-        const promisedArray = Promise.all(allOutputs.map(o => <any>(<any>o).promise(/*withUnknowns*/ true)));
+        const promisedArray = Promise.all(allOutputs.map(o => o.promise(/*withUnknowns*/ true)));
 
         return new Output<Unwrap<T>[]>(new Set<Resource>(resources), promisedArray, isKnown, isSecret);
     } else {
@@ -476,7 +480,7 @@ async function getPromisedObject<T>(
         keysAndOutputs: { key: string, value: Output<Unwrap<T>> }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
-        result[kvp.key] = <any>(await (<any>kvp.value).promise(/*withUnknowns*/ true));
+        result[kvp.key] = await kvp.value.promise(/*withUnknowns*/ true);
     }
 
     return result;
@@ -639,7 +643,7 @@ export type UnwrappedObject<T> = {
 export interface OutputInstance<T> {
     /** @internal */ readonly isKnown: Promise<boolean>;
     /** @internal */ readonly isSecret: Promise<boolean>;
-    /** @internal */ promise(): Promise<T>;
+    /** @internal */ promise(withUnknowns?: boolean): Promise<T>;
     /** @internal */ resources(): Set<Resource>;
 
     /**
