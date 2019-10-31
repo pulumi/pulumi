@@ -22,6 +22,9 @@ CHANGELOG
   or `pulumi update --target-replace urn` for short.
   [#3418](https://github.com/pulumi/pulumi/pull/3418)
 
+- `pulumi stack` now renders the stack as a tree view.
+  [#3430](https://github.com/pulumi/pulumi/pull/3430)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
