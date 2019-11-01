@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { containsUnknowns, Input, Inputs, isUnknown, Output, unknown } from "../output";
+import { Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";

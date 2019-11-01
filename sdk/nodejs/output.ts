@@ -144,9 +144,7 @@ class OutputImpl<T> implements OutputInstance<T> {
 
         // We are only known if we are not explicitly unknown and the resolved value of the output
         // contains no distinguished unknown values.
-        isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
-
-        this.isKnown = isKnown;
+        this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
         this.isSecret = isSecret;
 
         let resourcesArray: Resource[];
@@ -282,12 +280,10 @@ To manipulate the value of this Output, use '.apply' instead.`);
 
 // tslint:disable:max-line-length
 async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: boolean, func: (t: T) => Input<U>, runWithUnknowns: boolean) {
-    const considerValueKnown = isKnown || runWithUnknowns;
-
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
-        const applyDuringPreview = considerValueKnown;
+        const applyDuringPreview = isKnown || runWithUnknowns;
 
         if (!applyDuringPreview) {
             // We didn't actually run the function, our new Output is definitely **not** known.
@@ -297,13 +293,13 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
                 isSecret,
             };
         }
-    }
 
-    // If we are running with unknown values and the value is explicitly unknown but does not actually
-    // contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
-    // that expect to see unknowns in outputs that are not known will always do so.
-    if (runWithUnknowns && !isKnown && !containsUnknowns(value)) {
-        value = <T><any>unknown;
+        // If we are running with unknown values and the value is explicitly unknown but does not actually
+        // contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
+        // that expect to see unknowns during preview in outputs that are not known will always do so.
+        if (!isKnown && runWithUnknowns && !containsUnknowns(value)) {
+            value = <T><any>unknown;
+        }
     }
 
     const transformed = await func(value);
@@ -313,22 +309,16 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
         // That's intentional.  As the Output returned is only supposed to be related this *this*
         // Output object, those resources should already be in our transitively reachable resource
         // graph.
-        //
-        // Note that the result is only known if the inner result is also known. We will allow the
-        // outer result to be unknown if the caller has explicitly requested that the callback run
-        // even with unknown values. This allows a callback to process an unknown value and return
-        // a known value. This is necessary for the proxy to return known values for properties in
-        // objects that contain unknowns.
 
         // Note: we intentionally await all the promises of the transformed value.  This way we
         // properly propogate any rejections of any of them through ourselves as well.
-        const innerValue = <U>(await transformed.promise(/*withUnknowns*/ true));
+        const innerValue = await transformed.promise(/*withUnknowns*/ true);
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
 
         return {
             value: innerValue,
-            isKnown: considerValueKnown && innerIsKnown,
+            isKnown: innerIsKnown,
             isSecret: isSecret || innerIsSecret,
         };
     }
@@ -337,7 +327,7 @@ async function applyHelperAsync<T, U>(value: T, isKnown: boolean, isSecret: bool
     // preserve secretness from our original Output to the new one we're creating.
     return {
         value: transformed,
-        isKnown: considerValueKnown,
+        isKnown: true,
         isSecret,
     };
 }
