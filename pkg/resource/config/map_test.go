@@ -635,6 +635,20 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
+			Key:   "my:0",
+			Value: NewValue("testValue"),
+			Expected: Map{
+				MustMakeKey("my", "0"): NewValue("testValue"),
+			},
+		},
+		{
+			Key:   "my:true",
+			Value: NewValue("testValue"),
+			Expected: Map{
+				MustMakeKey("my", "true"): NewValue("testValue"),
+			},
+		},
+		{
 			Key:   "my:test.Key",
 			Value: NewValue("testValue"),
 			Expected: Map{
@@ -659,6 +673,22 @@ func TestSetSuccess(t *testing.T) {
 		},
 		{
 			Key:   "my:true",
+			Path:  true,
+			Value: NewValue("testValue"),
+			Expected: Map{
+				MustMakeKey("my", "true"): NewValue("testValue"),
+			},
+		},
+		{
+			Key:   `my:["0"]`,
+			Path:  true,
+			Value: NewValue("testValue"),
+			Expected: Map{
+				MustMakeKey("my", "0"): NewValue("testValue"),
+			},
+		},
+		{
+			Key:   `my:["true"]`,
 			Path:  true,
 			Value: NewValue("testValue"),
 			Expected: Map{
@@ -705,10 +735,32 @@ func TestSetSuccess(t *testing.T) {
 			Path:  true,
 			Value: NewValue("value"),
 			Config: Map{
-				MustMakeKey("my", "outer"): NewObjectValue("[1,2,3]"),
+				MustMakeKey("my", "outer"): NewSecureValue("securevalue"),
 			},
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Key:   `my:array[0]`,
+			Path:  true,
+			Value: NewValue("value"),
+			Config: Map{
+				MustMakeKey("my", "array"): NewValue("value"),
+			},
+			Expected: Map{
+				MustMakeKey("my", "array"): NewObjectValue(`["value"]`),
+			},
+		},
+		{
+			Key:   `my:array[0]`,
+			Path:  true,
+			Value: NewValue("value"),
+			Config: Map{
+				MustMakeKey("my", "array"): NewSecureValue("value"),
+			},
+			Expected: Map{
+				MustMakeKey("my", "array"): NewObjectValue(`["value"]`),
 			},
 		},
 		{
@@ -979,6 +1031,32 @@ func TestSetFail(t *testing.T) {
 		// A "secure" key that is a map with a single string value is reserved by the system.
 		{Key: `my:key.secure`},
 		{Key: `my:super.nested.map.secure`},
+
+		// Type mismatches.
+		{
+			Key: `my:outer.inner`,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue("[1,2,3]"),
+			},
+		},
+		{
+			Key: `my:array[0]`,
+			Config: Map{
+				MustMakeKey("my", "array"): NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Key: `my:outer.inner.nested`,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Key: `my:outer.inner[0]`,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
+			},
+		},
 	}
 
 	for _, test := range tests {

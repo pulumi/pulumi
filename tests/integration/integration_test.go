@@ -598,11 +598,24 @@ func TestConfigPaths(t *testing.T) {
 			TopLevelExpectedValue: "this value is a value",
 		},
 		{
+			Key:                   "anotherConfigValue",
+			Value:                 "this value is another value",
+			TopLevelKey:           "anotherConfigValue",
+			TopLevelExpectedValue: "this value is another value",
+		},
+		{
 			Key:                   "bEncryptedSecret",
 			Value:                 "this super secret is encrypted",
 			Secret:                true,
 			TopLevelKey:           "bEncryptedSecret",
 			TopLevelExpectedValue: "this super secret is encrypted",
+		},
+		{
+			Key:                   "anotherEncryptedSecret",
+			Value:                 "another encrypted secret",
+			Secret:                true,
+			TopLevelKey:           "anotherEncryptedSecret",
+			TopLevelExpectedValue: "another encrypted secret",
 		},
 		{
 			Key:                   "[]",
@@ -738,6 +751,36 @@ func TestConfigPaths(t *testing.T) {
 			TopLevelKey:           "wayInner",
 			TopLevelExpectedValue: `{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":false}}}}}}}}}}}`,
 		},
+
+		// Overwriting a top-level string value is allowed.
+		{
+			Key:                   "aConfigValue.inner",
+			Value:                 "new value",
+			Path:                  true,
+			TopLevelKey:           "aConfigValue",
+			TopLevelExpectedValue: `{"inner":"new value"}`,
+		},
+		{
+			Key:                   "anotherConfigValue[0]",
+			Value:                 "new value",
+			Path:                  true,
+			TopLevelKey:           "anotherConfigValue",
+			TopLevelExpectedValue: `["new value"]`,
+		},
+		{
+			Key:                   "bEncryptedSecret.inner",
+			Value:                 "new value",
+			Path:                  true,
+			TopLevelKey:           "bEncryptedSecret",
+			TopLevelExpectedValue: `{"inner":"new value"}`,
+		},
+		{
+			Key:                   "anotherEncryptedSecret[0]",
+			Value:                 "new value",
+			Path:                  true,
+			TopLevelKey:           "anotherEncryptedSecret",
+			TopLevelExpectedValue: `["new value"]`,
+		},
 	}
 
 	validateConfigGet := func(key string, value string, path bool) {
@@ -794,6 +837,12 @@ func TestConfigPaths(t *testing.T) {
 		// A "secure" key that is a map with a single string value is reserved by the system.
 		"key.secure",
 		"super.nested.map.secure",
+
+		// Type mismatch.
+		"outer[0]",
+		"names.nested",
+		"outer.inner.nested",
+		"outer.inner[0]",
 	}
 
 	for _, ns := range namespaces {

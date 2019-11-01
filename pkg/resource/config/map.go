@@ -231,11 +231,18 @@ func (m Map) Set(k Key, v Value, path bool) error {
 		if err != nil {
 			return err
 		}
+
+		// If obj is a string, set it to nil, which allows overwriting the existing
+		// top-level string value in the first iteration of the loop below.
+		if _, ok := obj.(string); ok {
+			obj = nil
+		}
+
 		root[configKey.Name()] = obj
 	}
 
 	// Now, loop through the path segments, and walk the object tree.
-	// If the value for a given segment is nil or isn't the expected type, create a new array/map.
+	// If the value for a given segment is nil, create a new array/map.
 	// The root map is the initial cursor value, and parent is nil.
 	var parent interface{}
 	var parentKey interface{}
@@ -249,16 +256,21 @@ func (m Map) Set(k Key, v Value, path bool) error {
 			return err
 		}
 
-		// If the value is nil or isn't the expected type for the path segment key, create a new array/map.
+		// If the value is nil, create a new array/map.
+		// Otherwise, return an error due to the type mismatch.
 		var newValue interface{}
 		switch pkey.(type) {
 		case int:
-			if _, ok := pvalue.([]interface{}); !ok {
+			if pvalue == nil {
 				newValue = make([]interface{}, 0)
+			} else if _, ok := pvalue.([]interface{}); !ok {
+				return errors.Errorf("an array was expected for index %v", pkey)
 			}
 		case string:
-			if _, ok := pvalue.(map[string]interface{}); !ok {
+			if pvalue == nil {
 				newValue = make(map[string]interface{})
+			} else if _, ok := pvalue.(map[string]interface{}); !ok {
+				return errors.Errorf("a map was expected for key %q", pkey)
 			}
 		default:
 			contract.Failf("unexpected path type")
