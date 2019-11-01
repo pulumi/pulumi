@@ -410,10 +410,10 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 // structure in the future, we should not change existing fields.
 type configValueJSON struct {
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
+	// If the value is an object, ObjectValue will be set.
 	Value       *string     `json:"value,omitempty"`
-	Secret      bool        `json:"secret"`
-	Object      bool        `json:"object"`
 	ObjectValue interface{} `json:"objectValue,omitempty"`
+	Secret      bool        `json:"secret"`
 }
 
 func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
@@ -447,7 +447,6 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 		for _, key := range keys {
 			entry := configValueJSON{
 				Secret: cfg[key].Secure(),
-				Object: cfg[key].Object(),
 			}
 
 			decrypted, err := cfg[key].Value(decrypter)
@@ -530,7 +529,6 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 			value := configValueJSON{
 				Value:  &raw,
 				Secret: v.Secure(),
-				Object: v.Object(),
 			}
 
 			if v.Object() {

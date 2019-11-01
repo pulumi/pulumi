@@ -119,7 +119,6 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 		for k, v := range update.Config {
 			configValue := configValueJSON{
 				Secret: v.Secure(),
-				Object: v.Object(),
 			}
 			if !v.Secure() || (v.Secure() && decrypter != nil) {
 				value, err := v.Value(decrypter)
