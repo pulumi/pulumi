@@ -25,6 +25,9 @@ CHANGELOG
 - `pulumi stack` now renders the stack as a tree view.
   [#3430](https://github.com/pulumi/pulumi/pull/3430)
 
+- Support for lists and maps in config.
+  [#3342](https://github.com/pulumi/pulumi/pull/3342)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
@@ -51,8 +54,6 @@ CHANGELOG
   Some less common existing styles of using `getResource` calls are also deprecated as part of this
   change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
   details on adjusting their code if needed.
-
-- Support for lists and maps in config.
 
 ## 1.3.1 (2019-10-09)
 
