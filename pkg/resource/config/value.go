@@ -16,13 +16,16 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // Value is a single config value.
 type Value struct {
 	value  string
 	secure bool
+	object bool
 }
 
 func NewSecureValue(v string) Value {
@@ -31,6 +34,14 @@ func NewSecureValue(v string) Value {
 
 func NewValue(v string) Value {
 	return Value{value: v, secure: false}
+}
+
+func NewSecureObjectValue(v string) Value {
+	return Value{value: v, secure: true, object: true}
+}
+
+func NewObjectValue(v string) Value {
+	return Value{value: v, secure: false, object: true}
 }
 
 // Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
@@ -42,47 +53,126 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 	if decrypter == nil {
 		return "", errors.New("non-nil decrypter required for secret")
 	}
+	if c.object && decrypter != NopDecrypter {
+		var obj interface{}
+		if err := json.Unmarshal([]byte(c.value), &obj); err != nil {
+			return "", err
+		}
+		decryptedObj, err := decryptObject(obj, decrypter)
+		if err != nil {
+			return "", err
+		}
+		json, err := json.Marshal(decryptedObj)
+		if err != nil {
+			return "", err
+		}
+		return string(json), nil
+	}
 
 	return decrypter.DecryptValue(c.value)
+}
+
+func (c Value) SecureValues(decrypter Decrypter) ([]string, error) {
+	d := NewTrackingDecrypter(decrypter)
+	if _, err := c.Value(d); err != nil {
+		return nil, err
+	}
+	return d.SecureValues(), nil
 }
 
 func (c Value) Secure() bool {
 	return c.secure
 }
 
-func (c Value) MarshalJSON() ([]byte, error) {
-	if !c.secure {
-		return json.Marshal(c.value)
+func (c Value) Object() bool {
+	return c.object
+}
+
+// ToObject returns the string value (if not an object), or the unmarshalled JSON object (if an object).
+func (c Value) ToObject() (interface{}, error) {
+	if !c.object {
+		return c.value, nil
 	}
 
-	m := make(map[string]string)
-	m["secure"] = c.value
+	var v interface{}
+	err := json.Unmarshal([]byte(c.value), &v)
+	if err != nil {
+		return nil, err
+	}
 
-	return json.Marshal(m)
+	return v, nil
+}
+
+func (c Value) MarshalJSON() ([]byte, error) {
+	v, err := c.marshalValue()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(v)
 }
 
 func (c *Value) UnmarshalJSON(b []byte) error {
-	var m map[string]string
-	err := json.Unmarshal(b, &m)
-	if err == nil {
-		if len(m) != 1 {
-			return errors.New("malformed secure data")
-		}
-
-		val, has := m["secure"]
-		if !has {
-			return errors.New("malformed secure data")
-		}
-
-		c.value = val
-		c.secure = true
-		return nil
-	}
-
-	return json.Unmarshal(b, &c.value)
+	return c.unmarshalValue(
+		func(v interface{}) error {
+			return json.Unmarshal(b, v)
+		},
+		func(v interface{}) interface{} {
+			return v
+		})
 }
 
 func (c Value) MarshalYAML() (interface{}, error) {
+	return c.marshalValue()
+}
+
+func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return c.unmarshalValue(func(v interface{}) error {
+		return unmarshal(v)
+	}, interfaceMapToStringMap)
+}
+
+func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(interface{}) interface{}) error {
+	// First, try to unmarshal as a string.
+	err := unmarshal(&c.value)
+	if err == nil {
+		c.secure = false
+		c.object = false
+		return nil
+	}
+
+	// Otherwise, try to unmarshal as an object.
+	var obj interface{}
+	if err = unmarshal(&obj); err != nil {
+		return errors.Wrapf(err, "malformed config value")
+	}
+
+	// Fix-up the object (e.g. convert `map[interface{}]interface{}` to `map[string]interface{}`).
+	obj = fix(obj)
+
+	if is, val := isSecureValue(obj); is {
+		c.value = val
+		c.secure = true
+		c.object = false
+		return nil
+	}
+
+	json, err := json.Marshal(obj)
+	if err != nil {
+		return errors.Wrapf(err, "marshalling obj")
+	}
+	c.value = string(json)
+	c.secure = hasSecureValue(obj)
+	c.object = true
+	return nil
+}
+
+func (c Value) marshalValue() (interface{}, error) {
+	if c.object {
+		var obj interface{}
+		err := json.Unmarshal([]byte(c.value), &obj)
+		return obj, err
+	}
+
 	if !c.secure {
 		return c.value, nil
 	}
@@ -93,24 +183,93 @@ func (c Value) MarshalYAML() (interface{}, error) {
 	return m, nil
 }
 
-func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var m map[string]string
-	err := unmarshal(&m)
-	if err == nil {
-		if len(m) != 1 {
-			return errors.New("malformed secure data")
+// The unserialized value from YAML needs to be serializable as JSON, but YAML will unmarshal maps as
+// `map[interface{}]interface{}` (because it supports bools as keys), which isn't supported by the JSON
+// marshaller. To address, when unserializing YAML, we convert `map[interface{}]interface{}` to
+// `map[string]interface{}`.
+func interfaceMapToStringMap(v interface{}) interface{} {
+	switch t := v.(type) {
+	case map[interface{}]interface{}:
+		m := make(map[string]interface{})
+		for key, val := range t {
+			m[fmt.Sprintf("%v", key)] = interfaceMapToStringMap(val)
 		}
-
-		val, has := m["secure"]
-		if !has {
-			return errors.New("malformed secure data")
+		return m
+	case []interface{}:
+		a := make([]interface{}, len(t))
+		for i, val := range t {
+			a[i] = interfaceMapToStringMap(val)
 		}
+		return a
+	}
+	return v
+}
 
-		c.value = val
-		c.secure = true
-		return nil
+// hasSecureValue returns true if the object contains a value that's a `map[string]string` of
+// length one with a "secure" key.
+func hasSecureValue(v interface{}) bool {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		if is, _ := isSecureValue(t); is {
+			return true
+		}
+		for _, val := range t {
+			if hasSecureValue(val) {
+				return true
+			}
+		}
+	case []interface{}:
+		for _, val := range t {
+			if hasSecureValue(val) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isSecureValue returns true if the object is a `map[string]string` of length one with a "secure" key.
+func isSecureValue(v interface{}) (bool, string) {
+	if m, isMap := v.(map[string]interface{}); isMap && len(m) == 1 {
+		if val, hasSecureKey := m["secure"]; hasSecureKey {
+			if valString, isString := val.(string); isString {
+				return true, valString
+			}
+		}
+	}
+	return false, ""
+}
+
+// decryptObject returns a new object with all secure values in the object converted to decrypted strings.
+func decryptObject(v interface{}, decrypter Decrypter) (interface{}, error) {
+	decryptIt := func(val interface{}) (interface{}, error) {
+		if isSecure, secureVal := isSecureValue(val); isSecure {
+			return decrypter.DecryptValue(secureVal)
+		}
+		return decryptObject(val, decrypter)
 	}
 
-	c.secure = false
-	return unmarshal(&c.value)
+	switch t := v.(type) {
+	case map[string]interface{}:
+		m := make(map[string]interface{})
+		for key, val := range t {
+			decrypted, err := decryptIt(val)
+			if err != nil {
+				return nil, err
+			}
+			m[key] = decrypted
+		}
+		return m, nil
+	case []interface{}:
+		a := make([]interface{}, len(t))
+		for i, val := range t {
+			decrypted, err := decryptIt(val)
+			if err != nil {
+				return nil, err
+			}
+			a[i] = decrypted
+		}
+		return a, nil
+	}
+	return v, nil
 }

@@ -175,14 +175,14 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 				continue
 			}
 
-			secret, err := v.Value(target.Decrypter)
+			secureValues, err := v.SecureValues(target.Decrypter)
 			if err != nil {
 				return eventEmitter{}, DecryptError{
 					Key: k,
 					Err: err,
 				}
 			}
-			secrets = append(secrets, secret)
+			secrets = append(secrets, secureValues...)
 		}
 	}
 

@@ -315,11 +315,11 @@ func chooseStack(
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(s backend.Stack, configArray []string) error {
+func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) error {
 	if len(configArray) == 0 {
 		return nil
 	}
-	commandLineConfig, err := parseConfig(configArray)
+	commandLineConfig, err := parseConfig(configArray, path)
 	if err != nil {
 		return err
 	}
