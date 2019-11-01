@@ -381,7 +381,7 @@ func newUpCmd() *cobra.Command {
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
 	cmd.PersistentFlags().BoolVar(
-		&path, "path", false,
+		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+

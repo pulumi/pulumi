@@ -49,6 +49,7 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type newArgs struct {
 	configArray       []string
+	configPath        bool
 	description       string
 	dir               string
 	force             bool
@@ -61,7 +62,6 @@ type newArgs struct {
 	stack             string
 	templateNameOrURL string
 	yes               bool
-	path              bool
 }
 
 func runNew(args newArgs) error {
@@ -254,7 +254,7 @@ func runNew(args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.path, opts)
+		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -387,7 +387,7 @@ func newNewCmd() *cobra.Command {
 		&args.configArray, "config", "c", []string{},
 		"Config to save")
 	cmd.PersistentFlags().BoolVar(
-		&args.path, "path", false,
+		&args.configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVarP(
 		&args.description, "description", "d", "",
