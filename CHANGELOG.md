@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 1.4.1 (2019-11-01)
 
 - Adds a **preview** of .NET support for Pulumi. This code is an preview state and is subject
   to change at any point.
