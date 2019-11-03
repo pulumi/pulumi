@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsevents"
 	"github.com/pkg/errors"
+	"github.com/rjeczalik/notify"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -432,37 +432,33 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 		}
 	}()
 
-	//TODO: This is macOS only - need to factor out to darwin build target
-	es := &fsevents.EventStream{
-		Paths:   []string{op.Root},
-		Latency: 100 * time.Millisecond,
-		EventID: fsevents.LatestEventID(),
-		Flags:   fsevents.FileEvents,
+	events := make(chan notify.EventInfo, 1)
+	if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
+		return result.FromError(err)
 	}
-	es.Start()
+	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
 		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
 
-	for events := range es.Events {
-		if len(events) > 0 {
-			display.PrintfWithWatchPrefix(time.Now(), "",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
+	for range events {
+		display.PrintfWithWatchPrefix(time.Now(), "",
+			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
-			// Perform the update operation
-			_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
-			if res != nil {
-				logging.V(5).Infof("watch update failed: %v", res.Error())
-				if res.Error() == context.Canceled {
-					return res
-				}
-				display.PrintfWithWatchPrefix(time.Now(), "",
-					op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
-			} else {
-				display.PrintfWithWatchPrefix(time.Now(), "",
-					op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
+		// Perform the update operation
+		_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		if res != nil {
+			logging.V(5).Infof("watch update failed: %v", res.Error())
+			if res.Error() == context.Canceled {
+				return res
 			}
+			display.PrintfWithWatchPrefix(time.Now(), "",
+				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
+		} else {
+			display.PrintfWithWatchPrefix(time.Now(), "",
+				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 		}
+
 	}
 
 	return nil
