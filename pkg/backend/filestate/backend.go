@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rjeczalik/notify"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -401,67 +400,7 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 
 func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-
-	opts := backend.ApplierOptions{
-		DryRun:   false,
-		ShowLink: false,
-	}
-
-	startTime := time.Now()
-
-	go func() {
-		shown := map[operations.LogEntry]bool{}
-		for {
-			logs, err := b.GetLogs(ctx, stack, op.StackConfiguration, operations.LogQuery{
-				StartTime: &startTime,
-			})
-			if err != nil {
-				logging.V(5).Infof("failed to get logs: %v", err.Error())
-			}
-
-			for _, logEntry := range logs {
-				if _, shownAlready := shown[logEntry]; !shownAlready {
-					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-
-					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", logEntry.Message)
-
-					shown[logEntry] = true
-				}
-			}
-			time.Sleep(10 * time.Second)
-		}
-	}()
-
-	events := make(chan notify.EventInfo, 1)
-	if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
-		return result.FromError(err)
-	}
-	defer notify.Stop(events)
-
-	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
-
-	for range events {
-		display.PrintfWithWatchPrefix(time.Now(), "",
-			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
-
-		// Perform the update operation
-		_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
-		if res != nil {
-			logging.V(5).Infof("watch update failed: %v", res.Error())
-			if res.Error() == context.Canceled {
-				return res
-			}
-			display.PrintfWithWatchPrefix(time.Now(), "",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
-		} else {
-			display.PrintfWithWatchPrefix(time.Now(), "",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
-		}
-
-	}
-
-	return nil
+	return backend.Watch(ctx, b, stack, op, b.apply)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.

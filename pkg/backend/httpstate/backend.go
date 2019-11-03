@@ -704,7 +704,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-	return result.FromError(fmt.Errorf("not yet implemented"))
+	return backend.Watch(ctx, b, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
