@@ -35,6 +35,7 @@ func newWatchCmd() *cobra.Command {
 	var message string
 	var stack string
 	var configArray []string
+	var path bool
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -57,15 +58,8 @@ func newWatchCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if len(configArray) > 0 {
-			commandLineConfig, err := parseConfig(configArray)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			if err = saveConfig(s, commandLineConfig); err != nil {
-				return result.FromError(errors.Wrap(err, "saving config"))
-			}
+		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
+			return result.FromError(err)
 		}
 
 		proj, root, err := readProject()
@@ -173,6 +167,9 @@ func newWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().BoolVar(
+		&path, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
