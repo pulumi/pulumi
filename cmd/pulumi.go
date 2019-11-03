@@ -60,6 +60,8 @@ func NewPulumiCmd() *cobra.Command {
 	var verbose int
 	var color string
 
+	updateCheckResult := make(chan *diag.Diag)
+
 	cmd := &cobra.Command{
 		Use:   "pulumi",
 		Short: "Pulumi command line",
@@ -115,13 +117,24 @@ func NewPulumiCmd() *cobra.Command {
 
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
 				logging.Infof("skipping update check")
+				close(updateCheckResult)
 			} else {
-				checkForUpdate()
+				// Run the version check in parallel so that it doesn't block executing the command.
+				// If there is a new version to report, we will do so after the command has finished.
+				go func() {
+					updateCheckResult <- checkForUpdate()
+					close(updateCheckResult)
+				}()
 			}
 
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			// Before exiting, if there is a new version of the CLI available, print it out.
+			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil {
+				cmdutil.Diag().Warningf(checkVersionMsg)
+			}
+
 			logging.Flush()
 			cmdutil.CloseTracing()
 
@@ -130,7 +143,6 @@ func NewPulumiCmd() *cobra.Command {
 					logging.Warningf("could not close profiling: %v", err)
 				}
 			}
-
 		},
 	}
 
@@ -200,7 +212,7 @@ func NewPulumiCmd() *cobra.Command {
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate() {
+func checkForUpdate() *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -208,7 +220,7 @@ func checkForUpdate() {
 
 	// We don't care about warning for you to update if you have installed a developer version
 	if isDevVersion(curVer) {
-		return
+		return nil
 	}
 
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
@@ -217,8 +229,10 @@ func checkForUpdate() {
 	}
 
 	if oldestAllowedVer.GT(curVer) {
-		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)))
+		return diag.RawMessage("", getUpgradeMessage(latestVer, curVer))
 	}
+
+	return nil
 }
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
