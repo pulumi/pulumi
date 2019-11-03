@@ -399,12 +399,6 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
-// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
-// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
-//
-// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
-const timeFormat = "2006-01-02T15:04:05.000Z07:00"
-
 func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
 
@@ -429,8 +423,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 				if _, shownAlready := shown[logEntry]; !shownAlready {
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
-					fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat),
-						logEntry.ID, logEntry.Message)
+					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", logEntry.Message)
 
 					shown[logEntry] = true
 				}
@@ -453,17 +446,22 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 
 	for events := range es.Events {
 		if len(events) > 0 {
-			fmt.Printf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), "", op.Opts.Display.Color.Colorize(
-				colors.SpecImportant+"Updating..."+colors.Reset))
+			display.PrintfWithWatchPrefix(time.Now(), "",
+				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
+
+			// Perform the update operation
 			_, res := b.apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 			if res != nil {
 				logging.V(5).Infof("watch update failed: %v", res.Error())
 				if res.Error() == context.Canceled {
 					return res
 				}
+				display.PrintfWithWatchPrefix(time.Now(), "",
+					op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
+			} else {
+				display.PrintfWithWatchPrefix(time.Now(), "",
+					op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 			}
-			fmt.Printf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), "", op.Opts.Display.Color.Colorize(
-				colors.SpecImportant+"Done updating."+colors.Reset))
 		}
 	}
 

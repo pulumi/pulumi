@@ -92,7 +92,8 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 	return s.Backend().Destroy(ctx, s, op)
 }
 
-// WatchStack destroys all of this stack's resources.
+// WatchStack watches the projects working directory for changes and automatically updates the
+// active stack.
 func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
 	return s.Backend().Watch(ctx, s, op)
 }

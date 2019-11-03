@@ -22,17 +22,18 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
-// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on watch
+// entries. Go does not pre-define a format string for this format, though it is similar to
+// time.RFC3339Nano.
 //
 // See https://tools.ietf.org/html/rfc5424#section-6.2.3.
-const timeFormat = "2006-01-02T15:04:05.000Z07:00"
+const timeFormat = "15:04:05.000"
 
+// ShowWatchEvents renders incoming engine events for display in Watch Mode.
 func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
@@ -44,42 +45,36 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
-		// Events ocurring early:
+		// Events occurring early:
 		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
 			// Ignore it
 			continue
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
 			p := e.Payload.(engine.DiagEventPayload)
-			if p.Ephemeral || p.Severity == diag.Debug {
-				continue
-			}
+			resourceName := ""
 			if p.URN != "" {
-				s := renderDiffDiagEvent(p, opts)
-				stdout := newPrefixer(os.Stdout, fmt.Sprintf("%30.30s[%30.30s] ", time.Now().Format(timeFormat), p.URN.Name()))
-				fprintIgnoreError(stdout, s)
+				resourceName = string(p.URN.Name())
 			}
-
+			PrintfWithWatchPrefix(time.Now(), resourceName,
+				"%s", renderDiffDiagEvent(p, opts))
 		case engine.ResourcePreEvent:
 			p := e.Payload.(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				s := fmt.Sprintf("%s %s", p.Metadata.Op, p.Metadata.URN.Type())
-				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
-				fprintIgnoreError(os.Stdout, s)
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload.(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				s := fmt.Sprintf("done %s %s", p.Metadata.Op, p.Metadata.URN.Type())
-				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
-				fprintIgnoreError(os.Stdout, s)
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOperationFailed:
 			p := e.Payload.(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
-				s := fmt.Sprintf("failed %s %s", p.Metadata.Op, p.Metadata.URN.Type())
-				s = fmt.Sprintf("%30.30s[%30.30s] %v\n", time.Now().Format(timeFormat), p.Metadata.URN.Name(), s)
-				fprintIgnoreError(os.Stdout, s)
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
@@ -87,14 +82,18 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 	}
 }
 
+// PrintfWithWatchPrefix wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
+// resource metadata.
+func PrintfWithWatchPrefix(t time.Time, resourceName string, format string, a ...interface{}) {
+	prefix := fmt.Sprintf("%12.12s[%20.20s] ", t.Format(timeFormat), string(resourceName))
+	out := &prefixer{os.Stdout, []byte(prefix)}
+	_, err := fmt.Fprintf(out, format, a...)
+	contract.IgnoreError(err)
+}
+
 type prefixer struct {
 	writer io.Writer
 	prefix []byte
-}
-
-// newPrefixer wraps an io.Writer, prepending a fixed prefix after each \n emitting on the wrapped writer
-func newPrefixer(writer io.Writer, prefix string) *prefixer {
-	return &prefixer{writer, []byte(prefix)}
 }
 
 var _ io.Writer = (*prefixer)(nil)
