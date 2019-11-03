@@ -156,13 +156,12 @@ func NewPulumiCmd() *cobra.Command {
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
-	//     - Getting Started Commands
+	//     - Getting Started Commands:
 	cmd.AddCommand(newNewCmd())
-	//     - Deploy Commands
+	//     - Deploy Commands:
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newWatchCmd())
 	//     - Stack Management Commands:
 	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newConfigCmd())
@@ -189,6 +188,9 @@ func NewPulumiCmd() *cobra.Command {
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
+		//     - Deploy Commands:
+		cmd.AddCommand(newWatchCmd())
+		//     - Query Commands:
 		cmd.AddCommand(newQueryCmd())
 		//     - Policy Management Commands:
 		cmd.AddCommand(newPolicyCmd())
