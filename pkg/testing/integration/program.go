@@ -124,6 +124,18 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
+// ConfigValue is used to provide config values to a test program.
+type ConfigValue struct {
+	// The config key to pass to `pulumi config`.
+	Key string
+	// The config value to pass to `pulumi config`.
+	Value string
+	// Secret indicates that the `--secret` flag should be specified when calling `pulumi config`.
+	Secret bool
+	// Path indicates that the `--path` flag should be specified when calling `pulumi config`.
+	Path bool
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -133,10 +145,12 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
-	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
+	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Secrets map[string]string
+	// List of config keys and values to set in order, including Secret and Path options.
+	OrderedConfig []ConfigValue
 	// SecretsProvider is the optional custom secrets provider to use instead of the default.
 	SecretsProvider string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
@@ -919,6 +933,19 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	for key, value := range pt.opts.Secrets {
 		if err := pt.runPulumiCommand("pulumi-config",
 			[]string{"config", "set", "--secret", key, value}, dir); err != nil {
+			return err
+		}
+	}
+
+	for _, cv := range pt.opts.OrderedConfig {
+		configArgs := []string{"config", "set", cv.Key, cv.Value}
+		if cv.Secret {
+			configArgs = append(configArgs, "--secret")
+		}
+		if cv.Path {
+			configArgs = append(configArgs, "--path")
+		}
+		if err := pt.runPulumiCommand("pulumi-config", configArgs, dir); err != nil {
 			return err
 		}
 	}

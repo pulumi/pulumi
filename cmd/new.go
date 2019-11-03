@@ -49,6 +49,7 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type newArgs struct {
 	configArray       []string
+	configPath        bool
 	description       string
 	dir               string
 	force             bool
@@ -253,7 +254,8 @@ func runNew(args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		if err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, opts); err != nil {
+		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		if err != nil {
 			return err
 		}
 	}
@@ -384,6 +386,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&args.configArray, "config", "c", []string{},
 		"Config to save")
+	cmd.PersistentFlags().BoolVar(
+		&args.configPath, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVarP(
 		&args.description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
@@ -724,7 +729,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 // These are passed as `-c aws:region=us-east-1 -c foo:bar=blah` and end up
 // in configArray as ["aws:region=us-east-1", "foo:bar=blah"].
 // This function converts the array into a config.Map.
-func parseConfig(configArray []string) (config.Map, error) {
+func parseConfig(configArray []string, path bool) (config.Map, error) {
 	configMap := make(config.Map)
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
@@ -739,7 +744,9 @@ func parseConfig(configArray []string) (config.Map, error) {
 			value = config.NewValue(kvp[1])
 		}
 
-		configMap[key] = value
+		if err = configMap.Set(key, value, path); err != nil {
+			return nil, err
+		}
 	}
 	return configMap, nil
 }

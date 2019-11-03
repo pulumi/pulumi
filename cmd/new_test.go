@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -446,6 +447,278 @@ func TestInvalidTemplateName(t *testing.T) {
 
 		assert.Contains(t, err.Error(), "not found")
 	})
+}
+
+func TestParseConfigSuccess(t *testing.T) {
+	tests := []struct {
+		Array    []string
+		Path     bool
+		Expected config.Map
+	}{
+		{
+			Array:    []string{},
+			Expected: config.Map{},
+		},
+		{
+			Array: []string{"my:testKey"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue(""),
+			},
+		},
+		{
+			Array: []string{"my:testKey="},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue(""),
+			},
+		},
+		{
+			Array: []string{"my:testKey=testValue"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{"my:testKey=test=Value"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("test=Value"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+				"my:testKey=rewritten",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("rewritten"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:test.Key=testValue",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:0=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "0"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:true=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "true"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				`my:["test.Key"]=testValue`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				`my:outer.inner=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Array: []string{
+				`my:outer.inner.nested=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":{"nested":"value"}}`),
+			},
+		},
+		{
+			Array: []string{
+				`my:name[0]=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "name"): config.NewObjectValue(`["value"]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:name[0][0]=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "name"): config.NewObjectValue(`[["value"]]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:servers[0].name=foo`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "servers"): config.NewObjectValue(`[{"name":"foo"}]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=false`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("false"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=true`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("true"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=10`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("10"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=-1`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("-1"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=false`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[false]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=true`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[true]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=10`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[10]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=-1`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[-1]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:names[0]=a`,
+				`my:names[1]=b`,
+				`my:names[2]=c`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "names"): config.NewObjectValue(`["a","b","c"]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:names[0]=a`,
+				`my:names[1]=b`,
+				`my:names[2]=c`,
+				`my:names[0]=rewritten`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "names"): config.NewObjectValue(`["rewritten","b","c"]`),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			actual, err := parseConfig(test.Array, test.Path)
+			assert.NoError(t, err)
+			assert.Equal(t, test.Expected, actual)
+		})
+	}
+}
+
+func TestSetFail(t *testing.T) {
+	tests := []struct {
+		Array    []string
+		Expected config.Map
+	}{
+		{
+			Array: []string{`my:[""]=value`},
+		},
+		{
+			Array: []string{"my:[0]=value"},
+		},
+		{
+			Array: []string{`my:name[-1]=value`},
+		},
+		{
+			Array: []string{`my:name[1]=value`},
+		},
+		{
+			Array: []string{`my:key.secure=value`},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			_, err := parseConfig(test.Array, true /*path*/)
+			assert.Error(t, err)
+		})
+	}
 }
 
 const projectName = "test_project"
