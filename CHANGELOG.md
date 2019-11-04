@@ -28,6 +28,9 @@ CHANGELOG
 - Support for lists and maps in config.
   [#3342](https://github.com/pulumi/pulumi/pull/3342)
 
+- `ResourceProvider#StreamInvoke` implemented, will be the basis for streaming
+  APIs in `pulumi query`. [#3424](https://github.com/pulumi/pulumi/pull/3424)
+
 ## 1.4.0 (2019-10-24)
 
 - `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
@@ -72,7 +75,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Add `helm` to `pulumi/pulumi` Dockerhub container
   [#3294](https://github.com/pulumi/pulumi/pull/3294)
 

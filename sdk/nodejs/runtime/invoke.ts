@@ -81,16 +81,59 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
     return invokeSync(tok, props, opts, syncInvokes);
 }
 
-export function streamInvoke(
+export async function streamInvoke(
     tok: string,
     props: Inputs,
     opts: InvokeOptions = {},
-): AsyncIterable<any> {
-    if (opts.async) {
-        throw Error("streamInvoke does not support async mode");
-    }
+): Promise<StreamInvokeResponse<any>> {
+    const label = `StreamInvoking function: tok=${tok} asynchronously`;
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
-    return streamInvokeAsync(tok, props, opts);
+    // Wait for all values to be available, and then perform the RPC.
+    const done = rpcKeepAlive();
+    try {
+        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
+        log.debug(
+            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput
+                ? `, obj=${JSON.stringify(serialized)}`
+                : ``,
+        );
+
+        // Fetch the monitor and make an RPC request.
+        const monitor: any = getMonitor();
+
+        const provider = await ProviderResource.register(getProvider(tok, opts));
+        const req = createInvokeRequest(tok, serialized, provider, opts);
+
+        // Call `streamInvoke`.
+        const call = monitor.streamInvoke(req, {});
+
+        // Transform the callback-oriented `streamInvoke` result into a plain-old (potentially
+        // infinite) `AsyncIterable`.
+        const listenForWatchEvents = (callback: (obj: any) => void) => {
+            return new Promise(resolve => {
+                call.on("data", function(thing: any) {
+                    const live = deserializeResponse(tok, thing);
+                    callback(live);
+                });
+                call.on("error", (err: any) => {
+                    if (err.code === 1 && err.details === "Cancelled") {
+                        return;
+                    }
+                    throw err;
+                });
+                // Infinite stream, never call `resolve`.
+            });
+        };
+        const stream: AsyncIterable<any> = asyncify.default(listenForWatchEvents);
+
+        // Return a cancellable handle to the stream.
+        return new StreamInvokeResponse(
+            stream,
+            () => call.cancel());
+    } finally {
+        done();
+    }
 }
 
 export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
@@ -193,44 +236,21 @@ For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-c
     }
 }
 
-async function* streamInvokeAsync(
-    tok: string,
-    props: Inputs,
-    opts: InvokeOptions,
-): AsyncIterable<any> {
-    const label = `StreamInvoking function: tok=${tok} asynchronously`;
-    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+// StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
+// with facilities to gracefully cancel and clean up the stream.
+export class StreamInvokeResponse<T> implements AsyncIterable<T> {
+    constructor(
+        private source: AsyncIterable<T>,
+        private cancelSource: () => void,
+    ) {}
 
-    // Wait for all values to be available, and then perform the RPC.
-    const done = rpcKeepAlive();
-    try {
-        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
-        log.debug(
-            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput
-                ? `, obj=${JSON.stringify(serialized)}`
-                : ``,
-        );
+    // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
+    public cancel() {
+        this.cancelSource();
+    }
 
-        // Fetch the monitor and make an RPC request.
-        const monitor: any = getMonitor();
-
-        const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = createInvokeRequest(tok, serialized, provider, opts);
-
-        const call = monitor.streamInvoke(req, {});
-        const listenForWatchEvents = (callback: (obj: any) => void) => {
-            return new Promise(resolve => {
-                call.on("data", function(thing: any) {
-                    const live = deserializeResponse(tok, thing);
-                    callback(live);
-                });
-                // Infinite stream, never call `resolve`.
-            });
-        };
-
-        yield* asyncify.default(listenForWatchEvents);
-    } finally {
-        done();
+    [Symbol.asyncIterator]() {
+        return this.source[Symbol.asyncIterator]();
     }
 }
 
