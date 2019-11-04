@@ -85,7 +85,7 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 // PrintfWithWatchPrefix wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
 // resource metadata.
 func PrintfWithWatchPrefix(t time.Time, resourceName string, format string, a ...interface{}) {
-	prefix := fmt.Sprintf("%12.12s[%20.20s] ", t.Format(timeFormat), string(resourceName))
+	prefix := fmt.Sprintf("%12.12s[%20.20s] ", t.Format(timeFormat), resourceName)
 	out := &prefixer{os.Stdout, []byte(prefix)}
 	_, err := fmt.Fprintf(out, format, a...)
 	contract.IgnoreError(err)
