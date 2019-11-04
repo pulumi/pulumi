@@ -105,7 +105,6 @@ type querySource struct {
 func (src *querySource) Close() error {
 	// Cancel the monitor and reclaim any associated resources.
 	src.done = true
-	close(src.langPluginFinChan)
 	return src.mon.Cancel()
 }
 

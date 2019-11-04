@@ -75,6 +75,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	if err != nil {
 		return result.FromError(err)
 	}
+	defer plugctx.Close()
 
 	return query(ctx, q, QueryOptions{
 		Events:      emitter,
