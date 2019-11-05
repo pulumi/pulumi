@@ -37,6 +37,13 @@ sudo chown <your_user_name>: /opt/pulumi
 export PATH=/opt/pulumi:/opt/pulumi/bin:$PATH
 ```
 
+You'll also need to make sure your maximum open file descriptor limit is set to 2048 at a minimum.
+
+```bash
+ulimit -n # to test
+ulimit -n 2048
+```
+
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
 0. `make ensure`, which restores/installs any build dependencies

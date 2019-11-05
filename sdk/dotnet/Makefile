@@ -51,6 +51,7 @@ lint::
 
 dotnet_test::
 	dotnet test
+	stty echo
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
