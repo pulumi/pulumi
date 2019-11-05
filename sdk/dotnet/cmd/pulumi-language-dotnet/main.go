@@ -289,8 +289,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 		return nil, err
 	}
 
-	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin
-	// name "azure"
+	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin name "azure".
 	name := strings.ToLower(packageName[len("Pulumi."):])
 
 	version := strings.TrimSpace(bytes.NewBuffer(b).String())
