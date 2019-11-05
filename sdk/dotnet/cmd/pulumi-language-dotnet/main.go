@@ -202,7 +202,7 @@ func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Cont
 func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([][]string, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-	// dotnet list package --include-transitive
+	// Execute: dotnet list package --include-transitive
 	args := []string{"list", "package", "--include-transitive"}
 	commandStr := strings.Join(args, " ")
 
