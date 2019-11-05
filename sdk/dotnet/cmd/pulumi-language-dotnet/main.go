@@ -274,8 +274,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
 		packageDir, packageName, packageVersion)
 
-	versionFilePath := path.Join(
-		packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
+	versionFilePath := path.Join(packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
 	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
 
 	if _, err := os.Stat(versionFilePath); err != nil {
