@@ -17,13 +17,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"syscall"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -65,10 +66,10 @@ func main() {
 			cmdutil.Exit(err)
 		}
 
-		glog.V(3).Infof("language host identified executor from path: `%s`", pathExec)
+		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		dotnetExec = pathExec
 	} else {
-		glog.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
 		dotnetExec = givenExecutor
 	}
 
@@ -117,37 +118,232 @@ func newLanguageHost(exec, engineAddress, tracing string) pulumirpc.LanguageRunt
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (host *dotnetLanguageHost) GetRequiredPlugins(ctx context.Context,
+func (host *dotnetLanguageHost) GetRequiredPlugins(
+	ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	// TODO: implement this.
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
-}
 
-// RPC endpoint for LanguageRuntimeServer::Run
-func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	logging.V(5).Infof("GetRequiredPlugins: %v", req.GetProgram())
+
+	// First do a `dotnet build`.  This will ensure that all the nuget dependencies of the project
+	// are restored and locally available for us.
 	if err := host.DotnetBuild(ctx, req); err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		return nil, err
 	}
 
-	return host.DotnetRun(ctx, req)
+	// now, introspect the user project to see which pulumi resource packages it references.  We'll
+	// then examine those resource packages to see what actual resource plugin versions they correspond
+	// to.
+	packageDir, err := host.DetermineDotnetPackageDirectory(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pulumiPackages, err := host.DeterminePulumiPackages(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	plugins := []*pulumirpc.PluginDependency{}
+	packages := make(map[string]string)
+	for _, parts := range pulumiPackages {
+		packageName := parts[0]
+		packageVersion := parts[1]
+
+		if existingVersion := packages[packageName]; existingVersion == packageVersion {
+			// only include distinct dependencies.
+			continue
+		}
+
+		packages[packageName] = packageVersion
+
+		plugin, err := host.DeterminePluginDependency(ctx, packageDir, packageName, packageVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		if plugin != nil {
+			plugins = append(plugins, plugin)
+		}
+	}
+
+	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.RunRequest) error {
+func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
+	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
+
+	//dotnet nuget locals global-packages --list
+	args := []string{"nuget", "locals", "global-packages", "--list"}
+	commandStr := strings.Join(args, " ")
+
+	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	if err != nil {
+		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
+		// they get displayed to the user.
+		os.Stdout.Write(infoBuffer.Bytes())
+		os.Stderr.Write(errorBuffer.Bytes())
+		return "", err
+	}
+
+	// expected output should be like so: "info : global-packages: /home/cyrusn/.nuget/packages/"
+	// so grab the portion after "global-packages:"
+	commandOutput := infoBuffer.String()
+	index := strings.Index(commandOutput, "global-packages:")
+	if index < 0 {
+		return "", errors.Errorf("Unexpected output from 'dotnet %v': %v", commandStr, commandOutput)
+	}
+
+	dir := strings.TrimSpace(commandOutput[index+len("global-packages:"):])
+	logging.V(5).Infof("GetRequiredPlugins: Package directory: %v", dir)
+
+	return dir, nil
+}
+
+func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([][]string, error) {
+	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
+
+	// dotnet list package --include-transitive
+	args := []string{"list", "package", "--include-transitive"}
+	commandStr := strings.Join(args, " ")
+
+	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	if err != nil {
+		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
+		// they get displayed to the user.
+		os.Stdout.Write(infoBuffer.Bytes())
+		os.Stderr.Write(errorBuffer.Bytes())
+		return nil, err
+	}
+
+	// expected output should be like so:
+	//
+	//    Project 'Aliases' has the following package references
+	//    [netcoreapp3.0]:
+	//    Top-level Package      Requested                        Resolved
+	//    > Pulumi               1.5.0-preview-alpha.1572911568   1.5.0-preview-alpha.1572911568
+	//
+	//    Transitive Package                                       Resolved
+	//    > Google.Protobuf                                        3.10.0
+	//    > Grpc                                                   2.24.0
+	//
+	// So grab every line.  Look at the ones starting with `>`.  Then grab the last chunk of the line.
+	//
+	commandOutput := infoBuffer.String()
+	outputLines := strings.Split(strings.Replace(commandOutput, "\r\n", "\n", -1), "\n")
+
+	sawPulumi := false
+	pulumiPackages := [][]string{}
+	for _, line := range outputLines {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+
+		if fields[0] != ">" {
+			continue
+		}
+
+		packageName := fields[1]
+		if packageName == "Pulumi" {
+			sawPulumi = true
+			continue
+		}
+
+		if !strings.HasPrefix(packageName, "Pulumi.") {
+			continue
+		}
+
+		version := fields[len(fields)-1]
+		pulumiPackages = append(pulumiPackages, []string{packageName, version})
+	}
+
+	if !sawPulumi && len(pulumiPackages) == 0 {
+		return nil, errors.Errorf(
+			"Unexpected output from 'dotnet %v'. Program does not appear to reference any 'Pulumi.*' packages.",
+			commandStr)
+	}
+
+	logging.V(5).Infof("GetRequiredPlugins: Pulumi packages: %#v", pulumiPackages)
+
+	return pulumiPackages, nil
+}
+
+func (host *dotnetLanguageHost) DeterminePluginDependency(
+	ctx context.Context, packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
+		packageDir, packageName, packageVersion)
+
+	versionFilePath := path.Join(
+		packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
+	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
+
+	if _, err := os.Stat(versionFilePath); err != nil {
+		if os.IsNotExist(err) {
+			// Pulumi package doesn't contain a version.txt file.  This is not a resource-package.
+			// just ignore it.
+			logging.V(5).Infof("GetRequiredPlugins: No such file")
+			return nil, nil
+		}
+
+		// some other error.  report it as it means we can't read this important file.
+		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(versionFilePath)
+	if err != nil {
+		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
+		return nil, err
+	}
+
+	name := strings.ToLower(packageName[len("Pulumi."):])
+	version := strings.TrimSpace(bytes.NewBuffer(b).String())
+	result := pulumirpc.PluginDependency{
+		Name:    name,
+		Kind:    "resource",
+		Version: fmt.Sprintf("v%v", version),
+		Server:  "",
+	}
+
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
+	return &result, nil
+}
+
+func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest) error {
 	args := []string{"build"}
 
 	if req.GetProgram() != "" {
 		args = append(args, req.GetProgram())
 	}
 
-	if glog.V(5) {
-		commandStr := strings.Join(args, " ")
-		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, true /*log*/)
+	if err != nil {
+		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
+		// they get displayed to the user.
+		os.Stdout.Write(infoBuffer.Bytes())
+		os.Stderr.Write(errorBuffer.Bytes())
+		return err
 	}
+
+	return nil
+}
+
+func (host *dotnetLanguageHost) RunDotnetCommand(
+	ctx context.Context, args []string, log bool) (stdout, stderr *bytes.Buffer, err error) {
+
+	commandStr := strings.Join(args, " ")
+	if logging.V(5) {
+		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+	}
+
+	infoBuffer := &bytes.Buffer{}
+	errorBuffer := &bytes.Buffer{}
 
 	// Make a connection to the real engine that we will log messages to.
 	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
 	if err != nil {
-		return errors.Wrapf(err, "language host could not make connection to engine")
+		return infoBuffer, errorBuffer, errors.Wrapf(err, "language host could not make connection to engine")
 	}
 
 	// Make a client around that connection.  We can then make our own server that will act as a
@@ -159,11 +355,9 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
 	streamID := rand.Int31()
 
-	infoBuffer := &bytes.Buffer{}
-	errorBuffer := &bytes.Buffer{}
-
 	infoWriter := &logWriter{
 		ctx:          ctx,
+		log:          log,
 		engineClient: engineClient,
 		streamID:     streamID,
 		buffer:       infoBuffer,
@@ -172,6 +366,7 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 
 	errorWriter := &logWriter{
 		ctx:          ctx,
+		log:          log,
 		engineClient: engineClient,
 		streamID:     streamID,
 		buffer:       errorBuffer,
@@ -184,51 +379,35 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	cmd.Stdout = infoWriter
 	cmd.Stderr = errorWriter
 
-	_, err = engineClient.Log(ctx, &pulumirpc.LogRequest{
-		Message:   "running 'dotnet build'",
-		Urn:       "",
-		Ephemeral: true,
-		StreamId:  streamID,
-		Severity:  pulumirpc.LogSeverity_INFO,
-	})
+	_, err = infoWriter.LogToEngine(fmt.Sprintf("running 'dotnet %v'", commandStr))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	if err := cmd.Run(); err != nil {
-		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
-		// they get displayed to the user.
-		os.Stdout.Write(infoBuffer.Bytes())
-		os.Stderr.Write(errorBuffer.Bytes())
-
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				return errors.Errorf("'dotnet build' exited with non-zero exit code: %d", status.ExitStatus())
+				return infoBuffer, errorBuffer, errors.Errorf(
+					"'dotnet %v' exited with non-zero exit code: %d", commandStr, status.ExitStatus())
 			}
 
-			return errors.Wrapf(exiterr, "'dotnet build' exited unexpectedly")
+			return infoBuffer, errorBuffer, errors.Wrapf(exiterr, "'dotnet %v' exited unexpectedly", commandStr)
 		}
 
 		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
 		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-		return errors.Wrapf(err, "Problem executing 'dotnet build'")
+		return infoBuffer, errorBuffer, errors.Wrapf(err, "Problem executing 'dotnet %v'", commandStr)
 	}
 
-	_, err = engineClient.Log(ctx, &pulumirpc.LogRequest{
-		Message:   "'dotnet build' completed successfully",
-		Urn:       "",
-		Ephemeral: true,
-		StreamId:  streamID,
-		Severity:  pulumirpc.LogSeverity_INFO,
-	})
-
-	return err
+	_, err = infoWriter.LogToEngine(fmt.Sprintf("'dotnet %v' completed successfully", commandStr))
+	return infoBuffer, errorBuffer, err
 }
 
 type logWriter struct {
 	ctx          context.Context
+	log          bool
 	engineClient pulumirpc.EngineClient
 	streamID     int32
 	severity     pulumirpc.LogSeverity
@@ -241,24 +420,29 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	_, err = w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
-		Message:   string(p),
-		Urn:       "",
-		Ephemeral: true,
-		StreamId:  w.streamID,
-		Severity:  w.severity,
-	})
-
-	if err != nil {
-		return 0, err
-	}
-
-	return len(p), nil
+	return w.LogToEngine(string(p))
 }
 
-func (host *dotnetLanguageHost) DotnetRun(
-	ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+func (w *logWriter) LogToEngine(val string) (int, error) {
+	if w.log {
+		_, err := w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
+			Message:   val,
+			Urn:       "",
+			Ephemeral: true,
+			StreamId:  w.streamID,
+			Severity:  w.severity,
+		})
 
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return len(val), nil
+}
+
+// RPC endpoint for LanguageRuntimeServer::Run
+func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")
@@ -271,9 +455,9 @@ func (host *dotnetLanguageHost) DotnetRun(
 		args = append(args, req.GetProgram())
 	}
 
-	if glog.V(5) {
+	if logging.V(5) {
 		commandStr := strings.Join(args, " ")
-		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
