@@ -172,7 +172,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
 
-	//dotnet nuget locals global-packages --list
+	// Execute: dotnet nuget locals global-packages --list
 	args := []string{"nuget", "locals", "global-packages", "--list"}
 	commandStr := strings.Join(args, " ")
 
