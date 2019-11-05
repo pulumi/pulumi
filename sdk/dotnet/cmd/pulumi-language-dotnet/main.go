@@ -324,7 +324,7 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	return nil
 }
 
-func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []string, log bool) (string, error) {
+func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []string, logToUser bool) (string, error) {
 	commandStr := strings.Join(args, " ")
 	if logging.V(5) {
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
@@ -350,7 +350,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 
 	infoWriter := &logWriter{
 		ctx:          ctx,
-		log:          log,
+		logToUser:    logToUser,
 		engineClient: engineClient,
 		streamID:     streamID,
 		buffer:       infoBuffer,
@@ -359,7 +359,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 
 	errorWriter := &logWriter{
 		ctx:          ctx,
-		log:          log,
+		logToUser:    logToUser,
 		engineClient: engineClient,
 		streamID:     streamID,
 		buffer:       errorBuffer,
@@ -372,7 +372,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 	cmd.Stdout = infoWriter
 	cmd.Stderr = errorWriter
 
-	_, err = infoWriter.LogToEngine(fmt.Sprintf("running 'dotnet %v'", commandStr))
+	_, err = infoWriter.LogToUser(fmt.Sprintf("running 'dotnet %v'", commandStr))
 	if err != nil {
 		return "", err
 	}
@@ -399,13 +399,13 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 		return "", errors.Wrapf(err, "Problem executing 'dotnet %v'", commandStr)
 	}
 
-	_, err = infoWriter.LogToEngine(fmt.Sprintf("'dotnet %v' completed successfully", commandStr))
+	_, err = infoWriter.LogToUser(fmt.Sprintf("'dotnet %v' completed successfully", commandStr))
 	return infoBuffer.String(), err
 }
 
 type logWriter struct {
 	ctx          context.Context
-	log          bool
+	logToUser    bool
 	engineClient pulumirpc.EngineClient
 	streamID     int32
 	severity     pulumirpc.LogSeverity
@@ -418,11 +418,11 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	return w.LogToEngine(string(p))
+	return w.LogToUser(string(p))
 }
 
-func (w *logWriter) LogToEngine(val string) (int, error) {
-	if w.log {
+func (w *logWriter) LogToUser(val string) (int, error) {
+	if w.logToUser {
 		_, err := w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
 			Message:   val,
 			Urn:       "",
