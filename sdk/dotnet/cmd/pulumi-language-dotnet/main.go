@@ -176,18 +176,13 @@ func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Cont
 	args := []string{"nuget", "locals", "global-packages", "--list"}
 	commandStr := strings.Join(args, " ")
 
-	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
 	if err != nil {
-		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
-		// they get displayed to the user.
-		os.Stdout.Write(infoBuffer.Bytes())
-		os.Stderr.Write(errorBuffer.Bytes())
 		return "", err
 	}
 
 	// expected output should be like so: "info : global-packages: /home/cyrusn/.nuget/packages/"
 	// so grab the portion after "global-packages:"
-	commandOutput := infoBuffer.String()
 	index := strings.Index(commandOutput, "global-packages:")
 	if index < 0 {
 		return "", errors.Errorf("Unexpected output from 'dotnet %v': %v", commandStr, commandOutput)
@@ -206,12 +201,8 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	args := []string{"list", "package", "--include-transitive"}
 	commandStr := strings.Join(args, " ")
 
-	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
 	if err != nil {
-		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
-		// they get displayed to the user.
-		os.Stdout.Write(infoBuffer.Bytes())
-		os.Stderr.Write(errorBuffer.Bytes())
 		return nil, err
 	}
 
@@ -225,7 +216,6 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	//    Transitive Package                                       Resolved
 	//    > Google.Protobuf                                        3.10.0
 	//    > Grpc                                                   2.24.0
-	commandOutput := infoBuffer.String()
 	outputLines := strings.Split(strings.Replace(commandOutput, "\r\n", "\n", -1), "\n")
 
 	sawPulumi := false
@@ -326,21 +316,15 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		args = append(args, req.GetProgram())
 	}
 
-	infoBuffer, errorBuffer, err := host.RunDotnetCommand(ctx, args, true /*log*/)
+	_, err := host.RunDotnetCommand(ctx, args, true /*log*/)
 	if err != nil {
-		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
-		// they get displayed to the user.
-		os.Stdout.Write(infoBuffer.Bytes())
-		os.Stderr.Write(errorBuffer.Bytes())
 		return err
 	}
 
 	return nil
 }
 
-func (host *dotnetLanguageHost) RunDotnetCommand(
-	ctx context.Context, args []string, log bool) (stdout, stderr *bytes.Buffer, err error) {
-
+func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []string, log bool) (string, error) {
 	commandStr := strings.Join(args, " ")
 	if logging.V(5) {
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
@@ -352,7 +336,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 	// Make a connection to the real engine that we will log messages to.
 	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
 	if err != nil {
-		return infoBuffer, errorBuffer, errors.Wrapf(err, "language host could not make connection to engine")
+		return "", errors.Wrapf(err, "language host could not make connection to engine")
 	}
 
 	// Make a client around that connection.  We can then make our own server that will act as a
@@ -390,28 +374,33 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 
 	_, err = infoWriter.LogToEngine(fmt.Sprintf("running 'dotnet %v'", commandStr))
 	if err != nil {
-		return nil, nil, err
+		return "", err
 	}
 
 	if err := cmd.Run(); err != nil {
+		// The command failed.  Dump any data we collected to the actual stdout/stderr streams so
+		// they get displayed to the user.
+		os.Stdout.Write(infoBuffer.Bytes())
+		os.Stderr.Write(errorBuffer.Bytes())
+
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				return infoBuffer, errorBuffer, errors.Errorf(
+				return "", errors.Errorf(
 					"'dotnet %v' exited with non-zero exit code: %d", commandStr, status.ExitStatus())
 			}
 
-			return infoBuffer, errorBuffer, errors.Wrapf(exiterr, "'dotnet %v' exited unexpectedly", commandStr)
+			return "", errors.Wrapf(exiterr, "'dotnet %v' exited unexpectedly", commandStr)
 		}
 
 		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
 		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-		return infoBuffer, errorBuffer, errors.Wrapf(err, "Problem executing 'dotnet %v'", commandStr)
+		return "", errors.Wrapf(err, "Problem executing 'dotnet %v'", commandStr)
 	}
 
 	_, err = infoWriter.LogToEngine(fmt.Sprintf("'dotnet %v' completed successfully", commandStr))
-	return infoBuffer, errorBuffer, err
+	return infoBuffer.String(), err
 }
 
 type logWriter struct {
