@@ -175,11 +175,13 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([][]string, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-	// Execute: dotnet list package --include-transitive
+	// Run the `dotnet list package --include-transitive` command.  Importantly, do not clutter the
+	// stream with the extra steps we're performing. This is just so we can determine the required
+	// plugins.  And, after the first time we do this, subsequent runs will see that the plugin is
+	// installed locally and not need to do anything.
 	args := []string{"list", "package", "--include-transitive"}
 	commandStr := strings.Join(args, " ")
-
-	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*logToUser*/)
 	if err != nil {
 		return nil, err
 	}
@@ -240,11 +242,13 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
 
-	// Execute: dotnet nuget locals global-packages --list
+	// Run the `dotnet nuget locals global-packages --list` command.  Importantly, do not clutter
+	// the stream with the extra steps we're performing. This is just so we can determine the
+	// required plugins.  And, after the first time we do this, subsequent runs will see that the
+	// plugin is installed locally and not need to do anything.
 	args := []string{"nuget", "locals", "global-packages", "--list"}
 	commandStr := strings.Join(args, " ")
-
-	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*logToUser*/)
 	if err != nil {
 		return "", err
 	}
@@ -318,7 +322,10 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 		args = append(args, req.GetProgram())
 	}
 
-	_, err := host.RunDotnetCommand(ctx, args, true /*log*/)
+	// Run the `dotnet build` command.  Importantly, report the output of this to the user
+	// (ephemerally) as it is happening so they're aware of what's going on and can see the progress
+	// of things.
+	_, err := host.RunDotnetCommand(ctx, args, true /*logToUser*/)
 	if err != nil {
 		return err
 	}
