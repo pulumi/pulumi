@@ -225,9 +225,6 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	//    Transitive Package                                       Resolved
 	//    > Google.Protobuf                                        3.10.0
 	//    > Grpc                                                   2.24.0
-	//
-	// So grab every line.  Look at the ones starting with `>`.  Then grab the last chunk of the line.
-	//
 	commandOutput := infoBuffer.String()
 	outputLines := strings.Split(strings.Replace(commandOutput, "\r\n", "\n", -1), "\n")
 
@@ -239,10 +236,14 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 			continue
 		}
 
+		// Has to start with `>` and have at least 3 chunks:
+		//
+		//    > name requested_ver? resolved_ver
 		if fields[0] != ">" {
 			continue
 		}
 
+		// We only care about `Pulumi.` packages
 		packageName := fields[1]
 		if packageName == "Pulumi" {
 			sawPulumi = true
@@ -274,6 +275,8 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
 		packageDir, packageName, packageVersion)
 
+	// Check for a `~/.nuget/packages/package_name/package_version/content/version.txt` file.
+
 	versionFilePath := path.Join(packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
 	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
 
@@ -296,13 +299,20 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 		return nil, err
 	}
 
+	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin
+	// name "azure"
 	name := strings.ToLower(packageName[len("Pulumi."):])
+
 	version := strings.TrimSpace(bytes.NewBuffer(b).String())
+	if !strings.HasPrefix(version, "v") {
+		// Version file has stripped off the "v" that we need. So add it back here.
+		version = fmt.Sprintf("v%v", version)
+	}
+
 	result := pulumirpc.PluginDependency{
 		Name:    name,
+		Version: version,
 		Kind:    "resource",
-		Version: fmt.Sprintf("v%v", version),
-		Server:  "",
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
