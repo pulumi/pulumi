@@ -15,7 +15,6 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - [pipenv](https://github.com/pypa/pipenv)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
-- [Istanbul](https://github.com/gotwarlost/istanbul)
 
 ## Getting dependencies on macOS
 
@@ -24,7 +23,6 @@ You can easily get all required dependencies with brew and npm
 ```bash
 brew install node pipenv python@3 typescript yarn go golangci/tap/golangci-lint
 brew cask install dotnet dotnet-sdk
-npm install -g istanbul
 ```
 
 ## Make build system
