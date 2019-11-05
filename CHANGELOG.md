@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Use the update token for renew_lease calls and update the API version to 5.
+  [#3348](https://github.com/pulumi/pulumi/pull/3348)
+
 ## 1.4.1 (2019-11-01)
 
 - Adds a **preview** of .NET support for Pulumi. This code is an preview state and is subject
