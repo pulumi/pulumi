@@ -130,31 +130,34 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 		return nil, err
 	}
 
-	// now, introspect the user project to see which pulumi resource packages it references.  We'll
-	// then examine those resource packages to see what actual resource plugin versions they correspond
-	// to.
-	packageDir, err := host.DetermineDotnetPackageDirectory(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+	// now, introspect the user project to see which pulumi resource packages it references.
 	pulumiPackages, err := host.DeterminePulumiPackages(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	// Ensure we know where the local nuget package cache directory is.  User can specify where that
+	// is located, so this makes sure we respect any custom location they may have.
+	packageDir, err := host.DetermineDotnetPackageDirectory(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Now that we know the set of pulumi packages referenced and we know where packages have been restored to,
+	// we can examine each package to determine the corresponding resource-plugin for it.
+
 	plugins := []*pulumirpc.PluginDependency{}
-	packages := make(map[string]string)
+	packageToVersion := make(map[string]string)
 	for _, parts := range pulumiPackages {
 		packageName := parts[0]
 		packageVersion := parts[1]
 
-		if existingVersion := packages[packageName]; existingVersion == packageVersion {
+		if existingVersion := packageToVersion[packageName]; existingVersion == packageVersion {
 			// only include distinct dependencies.
 			continue
 		}
 
-		packages[packageName] = packageVersion
+		packageToVersion[packageName] = packageVersion
 
 		plugin, err := host.DeterminePluginDependency(ctx, packageDir, packageName, packageVersion)
 		if err != nil {
@@ -167,31 +170,6 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	}
 
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
-}
-
-func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
-	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
-
-	// Execute: dotnet nuget locals global-packages --list
-	args := []string{"nuget", "locals", "global-packages", "--list"}
-	commandStr := strings.Join(args, " ")
-
-	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
-	if err != nil {
-		return "", err
-	}
-
-	// expected output should be like so: "info : global-packages: /home/cyrusn/.nuget/packages/"
-	// so grab the portion after "global-packages:"
-	index := strings.Index(commandOutput, "global-packages:")
-	if index < 0 {
-		return "", errors.Errorf("Unexpected output from 'dotnet %v': %v", commandStr, commandOutput)
-	}
-
-	dir := strings.TrimSpace(commandOutput[index+len("global-packages:"):])
-	logging.V(5).Infof("GetRequiredPlugins: Package directory: %v", dir)
-
-	return dir, nil
 }
 
 func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([][]string, error) {
@@ -257,6 +235,31 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	logging.V(5).Infof("GetRequiredPlugins: Pulumi packages: %#v", pulumiPackages)
 
 	return pulumiPackages, nil
+}
+
+func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
+	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
+
+	// Execute: dotnet nuget locals global-packages --list
+	args := []string{"nuget", "locals", "global-packages", "--list"}
+	commandStr := strings.Join(args, " ")
+
+	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*log*/)
+	if err != nil {
+		return "", err
+	}
+
+	// expected output should be like so: "info : global-packages: /home/cyrusn/.nuget/packages/"
+	// so grab the portion after "global-packages:"
+	index := strings.Index(commandOutput, "global-packages:")
+	if index < 0 {
+		return "", errors.Errorf("Unexpected output from 'dotnet %v': %v", commandStr, commandOutput)
+	}
+
+	dir := strings.TrimSpace(commandOutput[index+len("global-packages:"):])
+	logging.V(5).Infof("GetRequiredPlugins: Package directory: %v", dir)
+
+	return dir, nil
 }
 
 func (host *dotnetLanguageHost) DeterminePluginDependency(
