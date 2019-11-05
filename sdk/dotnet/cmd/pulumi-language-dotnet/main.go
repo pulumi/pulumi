@@ -329,9 +329,6 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
-	infoBuffer := &bytes.Buffer{}
-	errorBuffer := &bytes.Buffer{}
-
 	// Make a connection to the real engine that we will log messages to.
 	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
 	if err != nil {
@@ -346,6 +343,9 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
 	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
 	streamID := rand.Int31()
+
+	infoBuffer := &bytes.Buffer{}
+	errorBuffer := &bytes.Buffer{}
 
 	infoWriter := &logWriter{
 		ctx:          ctx,
