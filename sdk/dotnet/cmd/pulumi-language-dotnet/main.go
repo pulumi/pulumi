@@ -272,7 +272,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 
 	if _, err := os.Stat(versionFilePath); err != nil {
 		if os.IsNotExist(err) {
-			// Pulumi package doesn't contain a version.txt file.  This is not a resource-package.
+			// Pulumi package doesn't contain a version.txt file.  This is not a resource-plugin.
 			// just ignore it.
 			logging.V(5).Infof("GetRequiredPlugins: No such file")
 			return nil, nil
