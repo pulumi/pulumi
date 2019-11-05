@@ -113,17 +113,14 @@ func newWatchCmd() *cobra.Command {
 		Use:        "watch",
 		Aliases:    []string{"watch"},
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "Continuously create or update the resources in a stack",
-		Long: "Create or update the resources in a stack.\n" +
+		Short:      "Continuously update the resources in a stack",
+		Long: "Continuously update the resources in a stack.\n" +
 			"\n" +
-			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
-			"is computed by running the current Pulumi program and observing all resource allocations to produce a\n" +
-			"resource graph. This goal state is then compared against the existing state to determine what create,\n" +
-			"read, update, and/or delete operations must take place to achieve the desired goal state, in the most\n" +
-			"minimally disruptive way. This command records a full transactional snapshot of the stack's new state\n" +
-			"afterwards so that the stack may be updated incrementally again later on.\n" +
+			"This command watches the working directory for the current project and updates the active stack whenever\n" +
+			"the project changes.  In parallel, logs are collected for all resources in the stack and displayed along\n" +
+			"with update progress.\n" +
 			"\n" +
-			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
+			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
