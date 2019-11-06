@@ -18,6 +18,7 @@ import * as grpc from "grpc";
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import * as asset from "../asset";
+import { Config } from "../config";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -68,7 +69,14 @@ const providerproto = require("../proto/provider_pb.js");
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     if (opts.async) {
-        // Use specifically requested async invoking.  Respect that.
+        // User specifically requested async invoking.  Respect that.
+        return invokeAsync(tok, props, opts);
+    }
+
+    const config = new Config("pulumi");
+    const noSyncInvokes = config.getBoolean("noSyncInvokes");
+    if (noSyncInvokes) {
+        // User globally disabled sync invokes.
         return invokeAsync(tok, props, opts);
     }
 
