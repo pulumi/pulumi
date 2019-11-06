@@ -3,16 +3,16 @@ LANGHOST_PKG         := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-
 
 PROJECT_PKGS         := $(shell go list ./cmd...)
 
-# VERSION will be something like: v1.5.0-timestamp+ghash
+# VERSION will be something like: v1.5.0-alpha.1573070062+g76d79be4
 VERSION              := $(shell ../../scripts/get-version HEAD --preview)
 
-# strip v from the beginning to get: 1.5.0-timestamp+ghash
+# strip v from the beginning to get: 1.5.0-alpha.1573070062+g76d79be4
 VERSION_DOTNET       := ${VERSION:v%=%}
 
 # Grab: 1.5.0
 VERSION_FIRST_WORD   := $(strip $(word 1,$(subst -, ,${VERSION_DOTNET})))
 
-# Grab: timestamp+ghash
+# Grab: -alpha.1573070062+g76d79be4
 VERSION_SECOND_WORD  := $(strip $(word 2,$(subst -, ,${VERSION_DOTNET})))
 
 VERSION_PREFIX := ${VERSION_FIRST_WORD}
