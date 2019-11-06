@@ -3,11 +3,16 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 1.5.0 (2019-11-06)
+
 - Gracefully handle errors when resources use duplicate aliases.
+
 - Use the update token for renew_lease calls and update the API version to 5.
   [#3348](https://github.com/pulumi/pulumi/pull/3348)
+
 - Improve startup time performance by 0.5-1s by checking for a newer CLI release in parallel.
   [#3441](https://github.com/pulumi/pulumi/pull/3441)
+
 - Add an experimental `pulumi watch` command. [#3391](https://github.com/pulumi/pulumi/pull/3391)
 
 ## 1.4.1 (2019-11-01)
