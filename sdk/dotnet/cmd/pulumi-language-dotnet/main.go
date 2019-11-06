@@ -124,21 +124,31 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 	logging.V(5).Infof("GetRequiredPlugins: %v", req.GetProgram())
 
+	// Make a connection to the real engine that we will log messages to.
+	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, errors.Wrapf(err, "language host could not make connection to engine")
+	}
+
+	// Make a client around that connection.  We can then make our own server that will act as a
+	// monitor for the sdk and forward to the real monitor.
+	engineClient := pulumirpc.NewEngineClient(conn)
+
 	// First do a `dotnet build`.  This will ensure that all the nuget dependencies of the project
 	// are restored and locally available for us.
-	if err := host.DotnetBuild(ctx, req); err != nil {
+	if err := host.DotnetBuild(ctx, req, engineClient); err != nil {
 		return nil, err
 	}
 
 	// now, introspect the user project to see which pulumi resource packages it references.
-	pulumiPackages, err := host.DeterminePulumiPackages(ctx)
+	pulumiPackages, err := host.DeterminePulumiPackages(ctx, engineClient)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure we know where the local nuget package cache directory is.  User can specify where that
 	// is located, so this makes sure we respect any custom location they may have.
-	packageDir, err := host.DetermineDotnetPackageDirectory(ctx)
+	packageDir, err := host.DetermineDotnetPackageDirectory(ctx, engineClient)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +182,9 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([][]string, error) {
+func (host *dotnetLanguageHost) DeterminePulumiPackages(
+	ctx context.Context, engineClient pulumirpc.EngineClient) ([][]string, error) {
+
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
 	// Run the `dotnet list package --include-transitive` command.  Importantly, do not clutter the
@@ -181,7 +193,7 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	// installed locally and not need to do anything.
 	args := []string{"list", "package", "--include-transitive"}
 	commandStr := strings.Join(args, " ")
-	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*logToUser*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, engineClient, args, false /*logToUser*/)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +251,9 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(ctx context.Context) ([]
 	return pulumiPackages, nil
 }
 
-func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Context) (string, error) {
+func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(
+	ctx context.Context, engineClient pulumirpc.EngineClient) (string, error) {
+
 	logging.V(5).Infof("GetRequiredPlugins: Determining package directory")
 
 	// Run the `dotnet nuget locals global-packages --list` command.  Importantly, do not clutter
@@ -248,7 +262,7 @@ func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(ctx context.Cont
 	// plugin is installed locally and not need to do anything.
 	args := []string{"nuget", "locals", "global-packages", "--list"}
 	commandStr := strings.Join(args, " ")
-	commandOutput, err := host.RunDotnetCommand(ctx, args, false /*logToUser*/)
+	commandOutput, err := host.RunDotnetCommand(ctx, engineClient, args, false /*logToUser*/)
 	if err != nil {
 		return "", err
 	}
@@ -315,7 +329,9 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	return &result, nil
 }
 
-func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest) error {
+func (host *dotnetLanguageHost) DotnetBuild(
+	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest, engineClient pulumirpc.EngineClient) error {
+
 	args := []string{"build"}
 
 	if req.GetProgram() != "" {
@@ -325,7 +341,7 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	// Run the `dotnet build` command.  Importantly, report the output of this to the user
 	// (ephemerally) as it is happening so they're aware of what's going on and can see the progress
 	// of things.
-	_, err := host.RunDotnetCommand(ctx, args, true /*logToUser*/)
+	_, err := host.RunDotnetCommand(ctx, engineClient, args, true /*logToUser*/)
 	if err != nil {
 		return err
 	}
@@ -333,21 +349,13 @@ func (host *dotnetLanguageHost) DotnetBuild(ctx context.Context, req *pulumirpc.
 	return nil
 }
 
-func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []string, logToUser bool) (string, error) {
+func (host *dotnetLanguageHost) RunDotnetCommand(
+	ctx context.Context, engineClient pulumirpc.EngineClient, args []string, logToUser bool) (string, error) {
+
 	commandStr := strings.Join(args, " ")
 	if logging.V(5) {
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
-
-	// Make a connection to the real engine that we will log messages to.
-	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
-	if err != nil {
-		return "", errors.Wrapf(err, "language host could not make connection to engine")
-	}
-
-	// Make a client around that connection.  We can then make our own server that will act as a
-	// monitor for the sdk and forward to the real monitor.
-	engineClient := pulumirpc.NewEngineClient(conn)
 
 	// Buffer the writes we see from dotnet from its stdout and stderr streams. We will display
 	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
@@ -381,7 +389,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(ctx context.Context, args []str
 	cmd.Stdout = infoWriter
 	cmd.Stderr = errorWriter
 
-	_, err = infoWriter.LogToUser(fmt.Sprintf("running 'dotnet %v'", commandStr))
+	_, err := infoWriter.LogToUser(fmt.Sprintf("running 'dotnet %v'", commandStr))
 	if err != nil {
 		return "", err
 	}
