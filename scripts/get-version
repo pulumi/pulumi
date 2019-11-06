@@ -17,15 +17,26 @@ if ! git diff-files --quiet; then
     DIRTY_TAG="dirty"
 fi
 
-# If we have an exact tag, just use it.
-if git describe --tags --exact-match "${COMMITISH}" >/dev/null 2>&1; then
-    echo -n "$(git describe --tags --exact-match "${COMMITISH}")"
-    if [ ! -z "${DIRTY_TAG}" ]; then
-        echo -n "+${DIRTY_TAG}"
+# if we're passed --preview then generate the full version-timestamp+hash value.
+IN_PREVIEW=""
+for arg in "$@"
+do
+    if [[ "$arg" == "--preview" ]]; then
+        IN_PREVIEW="1"
     fi
+done
 
-    echo ""
-    exit 0
+if [ ! -z "${IN_PREVIEW}" ]; then
+    # If we have an exact tag, just use it.
+    if git describe --tags --exact-match "${COMMITISH}" >/dev/null 2>&1; then
+        echo -n "$(git describe --tags --exact-match "${COMMITISH}")"
+        if [ ! -z "${DIRTY_TAG}" ]; then
+            echo -n "+${DIRTY_TAG}"
+        fi
+
+        echo ""
+        exit 0
+    fi
 fi
 
 # Otherwise, increment the minor version version (if the package is 1.X or later) or the
@@ -52,23 +63,11 @@ else
     PATCH=0
 fi
 
-# if we're in a features/xxx branch and caller passed --embed-feature-branch then append `-xxx` to
-# the version as well.
-FEATURE_TAG=""
-for arg in "$@"
-do
-    if [[ "$arg" == "--embed-feature-branch" ]]; then
-        if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
-            FEATURE_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|-|g')
-        fi
-    fi
-done
-
 # We want to include some additional information. To the base tag we
 # add a timestamp and commit hash. We use the timestamp of the commit
 # itself, not the date it was authored (so it will change when someone
 # rebases a PR into master, for example).
-echo -n "${MAJOR}.${MINOR}.${PATCH}-alpha${FEATURE_TAG}.$(git show -s --format='%ct+g%h' ${COMMITISH})"
+echo -n "${MAJOR}.${MINOR}.${PATCH}-alpha.$(git show -s --format='%ct+g%h' ${COMMITISH})"
 if [ ! -z "${DIRTY_TAG}" ]; then
     echo -n ".${DIRTY_TAG}"
 fi
