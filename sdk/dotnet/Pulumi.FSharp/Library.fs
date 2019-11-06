@@ -19,16 +19,18 @@ module Ops =
     /// Wraps a collection of items into an <see cref="InputList{'a}}" />.
     /// </summary>
     let inputList<'a> (items: seq<Input<'a>>) =
-        let result = new InputList<'a> ()
-        for item in items do result.Add item
+        let result = new InputList<'a>()
+        for item in items do
+            result.Add item
         result
     
     /// <summary>
     /// Wraps a collection of key-value pairs into an <see cref="InputMap{'a}}" />.
     /// </summary>
     let inputMap<'a> (items: seq<string * Input<'a>>) =
-        let result = new InputMap<'a> ()
-        for item in items do result.Add item
+        let result = new InputMap<'a>()
+        for item in items do
+            result.Add item
         result
 
 /// <summary>
@@ -39,7 +41,8 @@ module Deployment =
 
     /// <summary>
     /// Runs a function as a Pulumi <see cref="Deployment" />.
-    /// Blocks internally so that this function could be used directly from the main function.
+    /// Blocks internally until the provided function completes,
+    /// so that this function could be used directly from the main function.
     /// </summary>
     let run (f: unit -> IDictionary<string, obj>) =
         Deployment.RunAsync (fun () -> f())
@@ -48,7 +51,8 @@ module Deployment =
 
     /// <summary>
     /// Runs an async function as a Pulumi <see cref="Deployment" />.
-    /// Blocks internally so that this function could be used directly from the main function.
+    /// Blocks internally until the provided function completes,
+    /// so that this function could be used directly from the main function.
     /// </summary>
     let runAsync (f: unit -> Async<IDictionary<string, obj>>) =
         Deployment.RunAsync (fun () -> f() |> Async.StartAsTask)
@@ -66,7 +70,7 @@ module Outputs =
     /// name="f"/>. The result remains an <see cref="Output{'b}"/> so that dependent resources
     /// can be properly tracked.
     /// </summary>
-    let apply<'a, 'b> (f: 'a -> 'b) (output: Output<'a>) : Output<'b> =
+    let apply<'a, 'b> (f: 'a -> 'b) (output: Output<'a>): Output<'b> =
         output.Apply f
 
     /// <summary>
@@ -74,14 +78,14 @@ module Outputs =
     /// name="f"/>. The result remains an <see cref="Output{'b}"/> so that dependent resources
     /// can be properly tracked.
     /// </summary>
-    let applyAsync<'a, 'b> (f: 'a -> Async<'b>) (output: Output<'a>) : Output<'b> =
+    let applyAsync<'a, 'b> (f: 'a -> Async<'b>) (output: Output<'a>): Output<'b> =
         output.Apply<'b> (f >> Async.StartAsTask)
 
     /// <summary>
     /// Transforms the data of <see cref="Output{'a}"/> with the provided function <paramref
     /// name="f"/> that returns <see cref="Output{'b}"/>. The result is flattened to an <see cref="Output{'b}"/>.
     /// </summary>
-    let bind<'a, 'b> (f: 'a -> Output<'b>) (output: Output<'a>) : Output<'b> =
+    let bind<'a, 'b> (f: 'a -> Output<'b>) (output: Output<'a>): Output<'b> =
         output.Apply<'b> f
     
     /// <summary>
@@ -108,6 +112,6 @@ module Outputs =
     /// <summary>
     /// Combines a list of <see cref="Output{'a}"/> to produce an <see cref="Output{List{'a}}"/>.
     /// </summary>
-    let all<'a> (values: List<Output<'a>>) : Output<List<'a>> = 
+    let all<'a> (values: List<Output<'a>>): Output<List<'a>> = 
         Output.All (values |> List.map io |> List.toArray)
         |> apply List.ofSeq
