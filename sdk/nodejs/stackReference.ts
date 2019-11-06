@@ -14,6 +14,7 @@
 
 import { all, Input, Output, output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
+import * as invoke from "./runtime/invoke";
 import { promiseResult } from "./utils";
 
 /**
@@ -36,6 +37,10 @@ export class StackReference extends CustomResource {
      */
     public readonly secretOutputNames!: Output<string[]>;
 
+    private readonly stackReferenceName: Input<string>;
+    private syncOutputs: Record<string, any> | undefined;
+    private syncSecretOutputNames: string[] | undefined;
+
     /**
      * Create a StackReference resource with the given unique name, arguments, and options.
      *
@@ -48,11 +53,15 @@ export class StackReference extends CustomResource {
     constructor(name: string, args?: StackReferenceArgs, opts?: CustomResourceOptions) {
         args = args || {};
 
+        const stackReferenceName = args.name || name;
+
         super("pulumi:pulumi:StackReference", name, {
-            name: args.name || name,
+            name: stackReferenceName,
             outputs: undefined,
             secretOutputNames: undefined,
-        }, { ...opts, id: args.name || name });
+        }, { ...opts, id: stackReferenceName });
+
+        this.stackReferenceName = stackReferenceName;
     }
 
     /**
@@ -91,21 +100,15 @@ export class StackReference extends CustomResource {
      * are secrets.
      *
      * @param name The name of the stack output to fetch.
-     * @deprecated
      */
     public getOutputSync(name: string): any {
-        const out = this.getOutput(name);
+        const [outputs, secretNames] = this.readOutputsSync("getOutputSync");
 
-        // Have to do an explicit console.log here as the call to utils.promiseResult may hang
-        // node, and that may prevent our normal logging calls from making it back to the user.
-        console.log(`"getOutputSync" is deprecated and may cause the program to hang. Please use "getOutput" instead.`);
-
-        const isSecret = promiseResult(out.isSecret);
-        if (isSecret) {
-            throw new Error("Cannot call 'getOutputSync' if the referenced stack has secret outputs. Use 'getOutput' instead.");
+        if (secretNames.indexOf(name) >= 0) {
+            throw new Error("Cannot call 'getOutputSync' if the referenced stack output is a secret. Use 'requireOutput' instead.");
         }
 
-        return promiseResult(out.promise());
+        return outputs[name];
     }
 
     /**
@@ -116,21 +119,67 @@ export class StackReference extends CustomResource {
      * are secrets.
      *
      * @param name The name of the stack output to fetch.
-     * @deprecated
      */
     public requireOutputSync(name: string): any {
-        // Have to do an explicit console.log here as the call to utils.promiseResult may hang
-        // node, and that may prevent our normal logging calls from making it back to the user.
-        console.log(`"requireOutputSync" is deprecated and may cause the program to hang. Please use "requireOutput" instead.`);
+        const [outputs, secretNames] = this.readOutputsSync("requireOutputSync");
 
-        const out = this.requireOutput(name);
-        const isSecret = promiseResult(out.isSecret);
-        if (isSecret) {
-            throw new Error("Cannot call 'requireOutputSync' if the referenced stack has secret outputs. Use 'requireOutput' instead.");
+        if (secretNames.indexOf(name) >= 0) {
+            throw new Error("Cannot call 'requireOutputSync' if the referenced stack output is a secret. Use 'requireOutput' instead.");
         }
 
-        return promiseResult(out.promise());
+        if (!outputs.hasOwnProperty(name)) {
+            throw new Error(`Required output '${name}' does not exist on stack.`);
+        }
+
+        return outputs[name];
     }
+
+    private readOutputsSync(callerName: string): [Record<string, any>, string[]] {
+        // See if we already read in the outputs synchronously.  If so, just use those values.
+        if (this.syncOutputs) {
+            return [this.syncOutputs, this.syncSecretOutputNames!];
+        }
+
+        // We need to pass along our StackReference name to the engine so it knows what results to
+        // return.  However, because we're doing this synchronously, we can only do this safely if
+        // the stack-reference name is synchronously known (i.e. it's a string and not a
+        // Promise/Output).  If it is only asynchronously known, then warn the user and make an unsafe
+        // call to the deasync lib to get the name.
+        let stackName: string;
+        if (this.stackReferenceName instanceof Promise) {
+            // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+            // node, and that may prevent our normal logging calls from making it back to the user.
+            console.log(
+                `Call made to StackReference.${callerName} with a StackReference with a Promise name. This may cause the program to hang.
+                For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
+            stackName = promiseResult(this.stackReferenceName);
+        }
+        else if (Output.isInstance(this.stackReferenceName)) {
+            console.log(
+                `Call made to StackReference.${callerName} with a StackReference with an Output name. This may cause the program to hang.
+                For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
+            stackName = promiseResult(this.stackReferenceName.promise());
+        }
+        else {
+            stackName = this.stackReferenceName;
+        }
+
+        const res = invoke.invokeSync<ReadStackOutputsResult>(
+            "pulumi:pulumi:readStackOutputs", { name: stackName });
+        this.syncOutputs = res.outputs;
+        this.syncSecretOutputNames = res.secretOutputNames;
+
+        return [this.syncOutputs, this.syncSecretOutputNames];
+    }
+}
+
+// Shape of the result that the engine returns to us when we invoke 'pulumi:pulumi:readStackOutputs'
+interface ReadStackOutputsResult {
+    name: string;
+    outputs: Record<string, any>;
+    secretOutputNames: string[];
 }
 
 /**

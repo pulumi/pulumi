@@ -80,14 +80,26 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
         return invokeAsync(tok, props, opts);
     }
 
+    const syncResult = invokeSync(tok, props, opts);
+
+    // Wrap the synchronous value in a Promise view as well so that consumers can treat it
+    // either as the real value or something they can use as a Promise.
+    return createLiftedPromise(syncResult);
+}
+
+/**
+ * Invokes the provided token *synchronously* no matter what.
+ * @internal
+ */
+export function invokeSync<T>(tok: string, props: Inputs, opts: InvokeOptions = {}): T {
     const syncInvokes = tryGetSyncInvokes();
     if (!syncInvokes) {
         // We weren't launched from a pulumi CLI that supports sync-invokes.  Let the user know they
         // should update and fall back to synchronously blocking on the async invoke.
-        return invokeFallbackToAsync(tok, props, opts);
+        return invokeFallbackToAsync<T>(tok, props, opts);
     }
 
-    return invokeSync(tok, props, opts, syncInvokes);
+    return invokeSyncWorker<T>(tok, props, opts, syncInvokes);
 }
 
 export async function streamInvoke(
@@ -141,10 +153,8 @@ export async function streamInvoke(
     }
 }
 
-export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
-    const asyncResult = invokeAsync(tok, props, opts);
-    const syncResult = utils.promiseResult(asyncResult);
-    return createLiftedPromise(syncResult);
+export function invokeFallbackToAsync<T>(tok: string, props: Inputs, opts: InvokeOptions): T {
+    return utils.promiseResult(invokeAsync(tok, props, opts));
 }
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
@@ -191,7 +201,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     }
 }
 
-function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): Promise<any> {
+function invokeSyncWorker<T>(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): T {
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -221,7 +231,7 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
     const resultValue = deserializeResponse(tok, resp);
 
-    return createLiftedPromise(resultValue);
+    return resultValue;
 
     function getProviderRefSync() {
         const provider = getProvider(tok, opts);
