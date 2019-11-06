@@ -37,6 +37,9 @@ export class StackReference extends CustomResource {
      */
     public readonly secretOutputNames!: Output<string[]>;
 
+    // Values we stash to support the getOutputSync and requireOutputSync calls without
+    // having to go through the async values above.
+
     private readonly stackReferenceName: Input<string>;
     private syncOutputs: Record<string, any> | undefined;
     private syncSecretOutputNames: string[] | undefined;
@@ -70,7 +73,7 @@ export class StackReference extends CustomResource {
      * @param name The name of the stack output to fetch.
      */
     public getOutput(name: Input<string>): Output<any> {
-        // Note that this is subltly different from "apply" here. A default "apply" will set the secret bit if any
+        // Note that this is subtly different from "apply" here. A default "apply" will set the secret bit if any
         // of the inputs are a secret, and this.outputs is always a secret if it contains any secrets. We do this dance
         // so we can ensure that the Output we return is not needlessly tainted as a secret.
         const value = all([output(name), this.outputs]).apply(([n, os]) => os[n]);
