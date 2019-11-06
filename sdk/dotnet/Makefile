@@ -5,17 +5,18 @@ PROJECT_PKGS         := $(shell go list ./cmd...)
 
 VERSION              := $(shell ../../scripts/get-version HEAD --embed-feature-branch)
 VERSION_DOTNET       := ${VERSION:v%=%}                                   # strip v from the beginning
-VERSION_FIRST_WORD   := $(strip $(word 1,$(subst -, ,${VERSION_DOTNET}))) # e.g. 1.5.0
-VERSION_SECOND_WORD  := $(strip $(word 2,$(subst -, ,${VERSION_DOTNET}))) # e.g. alpha or alpha.1
-VERSION_THIRD_WORD   := $(strip $(word 3,$(subst -, ,${VERSION_DOTNET}))) # e.g. featbranch or featbranch.1
+VERSION_FIRST_WORD   := $(word 1,$(subst -, ,${VERSION_DOTNET})) # e.g. 1.5.0
+VERSION_SECOND_WORD  := $(word 2,$(subst -, ,${VERSION_DOTNET})) # e.g. alpha or alpha.1
+VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${VERSION_DOTNET})) # e.g. featbranch or featbranch.1
 
-VERSION_PREFIX       := ${VERSION_FIRST_WORD}
+VERSION_PREFIX       := $(strip ${VERSION_FIRST_WORD})
 
-ifeq ($(VERSION_THIRD_WORD),)
-	VERSION_SUFFIX   := ${VERSION_SECOND_WORD}
+ifeq ($(strip ${VERSION_SECOND_WORD}),)
+	VERSION_SUFFIX   := preview
+else ifeq ($(strip ${VERSION_THIRD_WORD}),)
+	VERSION_SUFFIX   := preview-$(strip ${VERSION_SECOND_WORD})
 else
-	# have to use addsuffix or make adds a whitespace between the two values.
-	VERSION_SUFFIX   := $(addsuffix -$(VERSION_THIRD_WORD),${VERSION_SECOND_WORD})
+	VERSION_SUFFIX   := preview-$(strip ${VERSION_THIRD_WORD})-$(strip ${VERSION_SECOND_WORD})
 endif
 
 TESTPARALLELISM := 10
@@ -35,7 +36,7 @@ build::
 	# following:
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=preview-${VERSION_SUFFIX}
+	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
