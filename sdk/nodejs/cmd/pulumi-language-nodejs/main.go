@@ -485,6 +485,7 @@ func (host *nodeLanguageHost) execNodejs(
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
+		// #nosec G204
 		cmd := exec.Command(host.nodeBin, args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

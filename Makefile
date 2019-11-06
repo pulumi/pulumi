@@ -23,7 +23,7 @@ dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 lint::
-	golangci-lint run
+	golangci-lint run --deadline 5m
 
 test_fast::
 	$(GO_TEST_FAST) ${PROJECT_PKGS}

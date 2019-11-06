@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Gracefully handle errors when resources use duplicate aliases.
+- Use the update token for renew_lease calls and update the API version to 5.
+  [#3348](https://github.com/pulumi/pulumi/pull/3348)
+
 ## 1.4.1 (2019-11-01)
 
 - Adds a **preview** of .NET support for Pulumi. This code is an preview state and is subject
@@ -27,6 +33,9 @@ CHANGELOG
 
 - Support for lists and maps in config.
   [#3342](https://github.com/pulumi/pulumi/pull/3342)
+
+- `ResourceProvider#StreamInvoke` implemented, will be the basis for streaming
+  APIs in `pulumi query`. [#3424](https://github.com/pulumi/pulumi/pull/3424)
 
 ## 1.4.0 (2019-10-24)
 
@@ -72,7 +81,7 @@ CHANGELOG
 
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
-  
+
 - Add `helm` to `pulumi/pulumi` Dockerhub container
   [#3294](https://github.com/pulumi/pulumi/pull/3294)
 

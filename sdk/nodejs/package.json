@@ -5,11 +5,13 @@
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url" : "https://github.com/pulumi/pulumi.git",
+        "url": "https://github.com/pulumi/pulumi.git",
         "directory": "sdk/nodejs"
     },
     "dependencies": {
         "@pulumi/query": "^0.3.0",
+        "callback-to-async-iterator": "^1.1.1",
+        "deasync": "^0.1.15",
         "google-protobuf": "^3.5.0",
         "grpc": "1.21.1",
         "minimist": "^1.2.0",
@@ -21,17 +23,16 @@
         "source-map-support": "^0.4.16",
         "ts-node": "^7.0.0",
         "typescript": "^3.0.0",
-        "upath": "^1.1.0",
-        "deasync": "^0.1.15"
+        "upath": "^1.1.0"
     },
     "devDependencies": {
+        "@types/deasync": "^0.1.0",
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^2.2.42",
         "@types/node": "^12.0.0",
         "@types/normalize-package-data": "^2.4.0",
         "@types/read-package-tree": "^5.2.0",
         "@types/semver": "^5.5.0",
-        "@types/deasync": "^0.1.0",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "node-gyp": "^3.6.2",
