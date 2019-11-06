@@ -6,6 +6,11 @@ CHANGELOG
 - Use the update token for renew_lease calls and update the API version to 5.
   [#3348](https://github.com/pulumi/pulumi/pull/3348)
 
+- `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
+  the `org-name` CLI argument is now optional. If not specified; the current user account is
+  used.
+  [#3459](https://github.com/pulumi/pulumi/pull/3459)
+
 ## 1.4.1 (2019-11-01)
 
 - Adds a **preview** of .NET support for Pulumi. This code is an preview state and is subject
