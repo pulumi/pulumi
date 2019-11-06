@@ -3,6 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Gracefully handle errors when resources use duplicate aliases.
 - Use the update token for renew_lease calls and update the API version to 5.
   [#3348](https://github.com/pulumi/pulumi/pull/3348)
 
