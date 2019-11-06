@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -82,9 +83,15 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 	}
 }
 
+// Watch output is written from multiple concurrent goroutines.  For now we synchronize Printfs to
+// the watch output stream as a simple way to avoid garbled output.
+var watchPrintfMutex sync.Mutex
+
 // PrintfWithWatchPrefix wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
 // resource metadata.
 func PrintfWithWatchPrefix(t time.Time, resourceName string, format string, a ...interface{}) {
+	watchPrintfMutex.Lock()
+	defer watchPrintfMutex.Unlock()
 	prefix := fmt.Sprintf("%12.12s[%20.20s] ", t.Format(timeFormat), resourceName)
 	out := &prefixer{os.Stdout, []byte(prefix)}
 	_, err := fmt.Fprintf(out, format, a...)
@@ -102,11 +109,13 @@ func (prefixer *prefixer) Write(p []byte) (int, error) {
 	n := 0
 	lines := bytes.SplitAfter(p, []byte{'\n'})
 	for _, line := range lines {
-		if len(line) > 0 {
-			_, err := prefixer.writer.Write(prefixer.prefix)
-			if err != nil {
-				return n, err
-			}
+		// If p ends with a newline, we may see an "" as the last element of lines, which we will skip.
+		if len(line) == 0 {
+			continue
+		}
+		_, err := prefixer.writer.Write(prefixer.prefix)
+		if err != nil {
+			return n, err
 		}
 		m, err := prefixer.writer.Write(line)
 		n += m
