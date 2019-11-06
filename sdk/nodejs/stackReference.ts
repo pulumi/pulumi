@@ -91,9 +91,15 @@ export class StackReference extends CustomResource {
      * are secrets.
      *
      * @param name The name of the stack output to fetch.
+     * @deprecated
      */
     public getOutputSync(name: string): any {
         const out = this.getOutput(name);
+
+        // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+        // node, and that may prevent our normal logging calls from making it back to the user.
+        console.log(`"getOutputSync" is deprecated and may cause the program to hang. Please use "getOutput" instead.`);
+
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
             throw new Error("Cannot call 'getOutputSync' if the referenced stack has secret outputs. Use 'getOutput' instead.");
@@ -110,8 +116,13 @@ export class StackReference extends CustomResource {
      * are secrets.
      *
      * @param name The name of the stack output to fetch.
+     * @deprecated
      */
     public requireOutputSync(name: string): any {
+        // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+        // node, and that may prevent our normal logging calls from making it back to the user.
+        console.log(`"requireOutputSync" is deprecated and may cause the program to hang. Please use "requireOutput" instead.`);
+
         const out = this.requireOutput(name);
         const isSecret = promiseResult(out.isSecret);
         if (isSecret) {
