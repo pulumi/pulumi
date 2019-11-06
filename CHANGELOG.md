@@ -28,6 +28,16 @@ CHANGELOG
 
 - Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
 
+- Codepaths which have a high likelihood of causing a hang will print a message to the console
+  indicating the problem, along with a link to documentation on how to restructure code to best
+  address it.
+
+### Compatibility
+
+- `StackReference.getOutputSync` and `requireOutputSync` are deprecated as they may cause hangs on
+  some combinations of Node and certain OS platforms. `StackReference.getOutput` and `requireOutput`
+  should be used instead.
+
 ## 1.5.2 (2019-11-13)
 
 - `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
