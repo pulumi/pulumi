@@ -35,13 +35,13 @@ func newPolicyPublishCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "publish [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Publish resource policies to the Pulumi service",
-		Long: "Publish resource policies to the Pulumi service\n" +
+		Short: "Publish a Policy Pack to the Pulumi service",
+		Long: "Publish a Policy Pack to the Pulumi service\n" +
 			"\n" +
 			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
-			orgName := ""
+			var orgName string
 			if len(args) > 0 {
 				orgName = args[0]
 			}
