@@ -51,6 +51,7 @@ lint::
 
 dotnet_test::
 	dotnet test
+	# work around a bug where running `dotnet test` disables console stdinput display
 	stty echo
 
 test_fast:: dotnet_test
