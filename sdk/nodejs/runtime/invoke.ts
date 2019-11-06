@@ -74,8 +74,8 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
     }
 
     const config = new Config("pulumi");
-    const noSyncInvokes = config.getBoolean("noSyncInvokes");
-    if (noSyncInvokes) {
+    const noSyncCalls = config.getBoolean("noSyncCalls");
+    if (noSyncCalls) {
         // User globally disabled sync invokes.
         return invokeAsync(tok, props, opts);
     }
