@@ -205,7 +205,7 @@ var (
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
 func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
 	latest := struct {
-		Info apitype.UpdateInfo `json:"info,allowEmpty"`
+		Info apitype.UpdateInfo `json:"info,omitempty"`
 	}{}
 
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {

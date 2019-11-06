@@ -8,7 +8,7 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.12 or later
+- Go 1.12
 - NodeJS 6.10.X or later
 - Python 3.6 or later
 - [.NET Core](https://dotnet.microsoft.com/download)
@@ -21,7 +21,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 You can easily get all required dependencies with brew and npm
 
 ```bash
-brew install node pipenv python@3 typescript yarn go golangci/tap/golangci-lint
+brew install node pipenv python@3 typescript yarn go@1.12 golangci/tap/golangci-lint
 brew cask install dotnet dotnet-sdk
 ```
 
@@ -35,6 +35,13 @@ For historical reasons (which we'd [like to address](https://github.com/pulumi/p
 mkdir /opt/pulumi
 sudo chown <your_user_name>: /opt/pulumi
 export PATH=/opt/pulumi:/opt/pulumi/bin:$PATH
+```
+
+You'll also need to make sure your maximum open file descriptor limit is set to 2048 at a minimum.
+
+```bash
+ulimit -n # to test
+ulimit -n 2048
 ```
 
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
