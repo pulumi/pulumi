@@ -137,6 +137,8 @@ type Backend interface {
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Watch watches the project's working directory for changes and automatically updates the active stack.
+	Watch(ctx context.Context, stack Stack, op UpdateOperation) result.Result
 
 	// Query against the resource outputs in a stack's state checkpoint.
 	Query(ctx context.Context, op QueryOperation) result.Result

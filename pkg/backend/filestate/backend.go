@@ -398,6 +398,11 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
+func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply)
+}
+
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -408,7 +413,7 @@ func (b *localBackend) apply(
 	stackName := stackRef.Name()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay {
+	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)

@@ -34,9 +34,8 @@ require (
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/pkg/errors v0.8.1
-	github.com/reconquest/loreley v0.0.0-20160708080500-2ab6b7470a54 // indirect
+	github.com/rjeczalik/notify v0.9.2
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.0.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect

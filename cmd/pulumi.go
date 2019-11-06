@@ -168,9 +168,9 @@ func NewPulumiCmd() *cobra.Command {
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
-	//     - Getting Started Commands
+	//     - Getting Started Commands:
 	cmd.AddCommand(newNewCmd())
-	//     - Deploy Commands
+	//     - Deploy Commands:
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
@@ -195,16 +195,33 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
+	// We have a set of commands that are still experimental and that we add only when PULUMI_EXPERIMENTAL is set
+	// to true.
+	if hasExperimentalCommands() {
+		//     - Deploy Commands:
+		cmd.AddCommand(newWatchCmd())
+		//     - Query Commands:
+		cmd.AddCommand(newQueryCmd())
+		//     - Policy Management Commands:
+		cmd.AddCommand(newPolicyCmd())
+
+	}
+
 	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
+		//     - Diagnostic Commands:
+		cmd.AddCommand(newViewTraceCmd())
+
+		// For legacy reasons, we make these two commands available also under PULUMI_DEBUG_COMMANDS, though
+		// PULUMI_EXPERIMENTAL should be preferred.
+
+		//     - Query Commands:
 		cmd.AddCommand(newQueryCmd())
 		//     - Policy Management Commands:
 		cmd.AddCommand(newPolicyCmd())
-		//     - Diagnostic Commands:
-		cmd.AddCommand(newViewTraceCmd())
 	}
 
 	return cmd

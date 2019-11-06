@@ -349,7 +349,7 @@ func WelcomeUser(opts display.Options) {
 
   %s
 
-  Pulumi  helps you create, deploy, and manage infrastructure on any cloud using
+  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
   your favorite language. You can get started today with Pulumi at:
 
       https://www.pulumi.com/docs/get-started/
@@ -702,6 +702,11 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply)
+}
+
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
 	return b.query(ctx, op, nil /*events*/)
 }
@@ -773,7 +778,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay {
+	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())

@@ -56,6 +56,10 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
+func hasExperimentalCommands() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
+}
+
 func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
