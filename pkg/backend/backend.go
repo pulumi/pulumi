@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -49,6 +50,18 @@ type StackAlreadyExistsError struct {
 
 func (e StackAlreadyExistsError) Error() string {
 	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+}
+
+// OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
+// is over its stack limit.
+type OverStackLimitError struct {
+	Message string
+}
+
+func (e OverStackLimitError) Error() string {
+	m := e.Message
+	m = strings.Replace(m, "Conflict: ", "over stack limit: ", -1)
+	return m
 }
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
