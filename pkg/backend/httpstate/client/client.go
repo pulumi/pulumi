@@ -498,7 +498,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Policies:    analyzerInfo.Policies,
 	}
 
-	fmt.Printf("Publishing as %s\n", analyzerInfo.Name)
+	fmt.Printf("Publishing %s to %s\n", analyzerInfo.Name, orgName)
 
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)

@@ -425,7 +425,15 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 		policyPackName = split[1]
 	default:
 		return nil, errors.Errorf("could not parse policy pack name '%s'; must be of the form "+
-			"<orgName>/<policyPackName>", s)
+			"<org-name>/<policy-pack-name>", s)
+	}
+
+	if orgName == "" {
+		currentUser, userErr := b.CurrentUser()
+		if userErr != nil {
+			return nil, userErr
+		}
+		orgName = currentUser
 	}
 
 	return newCloudBackendPolicyPackReference(orgName, tokens.QName(policyPackName)), nil
