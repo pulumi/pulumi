@@ -5,6 +5,10 @@ CHANGELOG
 
 ## 1.5.0 (2019-11-06)
 
+- Include the .NET language provider in the Windows SDK.
+
+## 1.5.0 (2019-11-06)
+
 - Gracefully handle errors when resources use duplicate aliases.
 
 - Use the update token for renew_lease calls and update the API version to 5.
