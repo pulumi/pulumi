@@ -21,7 +21,7 @@ namespace Pulumi
         /// </summary>
         public ProviderResource(
             string package, string name,
-            ResourceArgs args, ResourceOptions? options = null)
+            ResourceArgs? args = null, ResourceOptions? options = null)
             : base($"pulumi:providers:{package}", name, args, options)
         {
             this.Package = package;
