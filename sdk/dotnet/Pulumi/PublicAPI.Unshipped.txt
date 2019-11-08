@@ -19,7 +19,7 @@ Pulumi.Alias.Urn.set -> void
 Pulumi.Archive
 Pulumi.Asset
 Pulumi.AssetArchive
-Pulumi.AssetArchive.AssetArchive(System.Collections.Immutable.ImmutableDictionary<string, Pulumi.AssetOrArchive> assets) -> void
+Pulumi.AssetArchive.AssetArchive(System.Collections.Generic.IDictionary<string, Pulumi.AssetOrArchive> assets) -> void
 Pulumi.AssetOrArchive
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceOptions options = null) -> void
