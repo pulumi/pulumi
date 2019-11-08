@@ -203,9 +203,20 @@ static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.Format(System.FormattableString formattableString) -> Pulumi.Output<string>
-static Pulumi.Output.Tuple<X, Y, Z>(Pulumi.Input<X> item1, Pulumi.Input<Y> item2, Pulumi.Input<Z> item3) -> Pulumi.Output<(X, Y, Z)>
-static Pulumi.Output.Tuple<X, Y>(Pulumi.Input<X> item1, Pulumi.Input<Y> item2) -> Pulumi.Output<(X, Y)>
-static Pulumi.Output.Tuple<X, Y>(Pulumi.Output<X> item1, Pulumi.Output<Y> item2) -> Pulumi.Output<(X, Y)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6, T7, T8>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3, Pulumi.Input<T4> item4, Pulumi.Input<T5> item5, Pulumi.Input<T6> item6, Pulumi.Input<T7> item7, Pulumi.Input<T8> item8) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6, T7, T8)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6, T7, T8>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3, Pulumi.Output<T4> item4, Pulumi.Output<T5> item5, Pulumi.Output<T6> item6, Pulumi.Output<T7> item7, Pulumi.Output<T8> item8) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6, T7, T8)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6, T7>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3, Pulumi.Input<T4> item4, Pulumi.Input<T5> item5, Pulumi.Input<T6> item6, Pulumi.Input<T7> item7) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6, T7)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6, T7>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3, Pulumi.Output<T4> item4, Pulumi.Output<T5> item5, Pulumi.Output<T6> item6, Pulumi.Output<T7> item7) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6, T7)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3, Pulumi.Input<T4> item4, Pulumi.Input<T5> item5, Pulumi.Input<T6> item6) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5, T6>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3, Pulumi.Output<T4> item4, Pulumi.Output<T5> item5, Pulumi.Output<T6> item6) -> Pulumi.Output<(T1, T2, T3, T4, T5, T6)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3, Pulumi.Input<T4> item4, Pulumi.Input<T5> item5) -> Pulumi.Output<(T1, T2, T3, T4, T5)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4, T5>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3, Pulumi.Output<T4> item4, Pulumi.Output<T5> item5) -> Pulumi.Output<(T1, T2, T3, T4, T5)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3, Pulumi.Input<T4> item4) -> Pulumi.Output<(T1, T2, T3, T4)>
+static Pulumi.Output.Tuple<T1, T2, T3, T4>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3, Pulumi.Output<T4> item4) -> Pulumi.Output<(T1, T2, T3, T4)>
+static Pulumi.Output.Tuple<T1, T2, T3>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2, Pulumi.Input<T3> item3) -> Pulumi.Output<(T1, T2, T3)>
+static Pulumi.Output.Tuple<T1, T2, T3>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2, Pulumi.Output<T3> item3) -> Pulumi.Output<(T1, T2, T3)>
+static Pulumi.Output.Tuple<T1, T2>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2) -> Pulumi.Output<(T1, T2)>
+static Pulumi.Output.Tuple<T1, T2>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2) -> Pulumi.Output<(T1, T2)>
 static Pulumi.Output<T>.Create(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs

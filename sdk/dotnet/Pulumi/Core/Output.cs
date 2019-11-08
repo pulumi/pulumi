@@ -13,7 +13,7 @@ namespace Pulumi
     /// <summary>
     /// Useful static utility methods for both creating and working wit <see cref="Output{T}"/>s.
     /// </summary>
-    public static class Output
+    public static partial class Output
     {
         public static Output<T> Create<T>([MaybeNull]T value)
             => Create(Task.FromResult(value));
@@ -42,28 +42,6 @@ namespace Pulumi
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(ImmutableArray<Input<T>> inputs)
             => Output<T>.All(inputs);
-
-        /// <summary>
-        /// <see cref="Tuple{X, Y, Z}(Input{X}, Input{Y}, Input{Z})"/> for more details.
-        /// </summary>
-        public static Output<(X, Y)> Tuple<X, Y>(Output<X> item1, Output<Y> item2)
-            => Tuple((Input<X>)item1, (Input<Y>)item2);
-
-        /// <summary>
-        /// <see cref="Tuple{X, Y, Z}(Input{X}, Input{Y}, Input{Z})"/> for more details.
-        /// </summary>
-        public static Output<(X, Y)> Tuple<X, Y>(Input<X> item1, Input<Y> item2)
-            => Tuple<X, Y, int>(item1, item2, 0).Apply(v => (v.Item1, v.Item2));
-
-        /// <summary>
-        /// Combines all the <see cref="Input{T}"/> values in the provided parameters and combines
-        /// them all into a single tuple containing each of their underlying values.  If any of the
-        /// <see cref="Input{T}"/>s are not known, the final result will be not known.  Similarly,
-        /// if any of the <see cref="Input{T}"/>s are secrets, then the final result will be a
-        /// secret.
-        /// </summary>
-        public static Output<(X, Y, Z)> Tuple<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
-            => Output<(X, Y, Z)>.Tuple(item1, item2, item3);
 
         /// <summary>
         /// Takes in a <see cref="FormattableString"/> with potential <see cref="Input{T}"/>s or
@@ -248,42 +226,46 @@ namespace Pulumi
             return OutputData.Create(values.MoveToImmutable(), isKnown, isSecret);
         }
 
-        internal static Output<(X, Y, Z)> Tuple<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
-            => new Output<(X, Y, Z)>(
-                GetAllResources(new IInput[] { item1, item2, item3 }),
-                TupleHelperAsync(item1, item2, item3));
+        internal static Output<(T1, T2, T3, T4, T5, T6, T7, T8)> Tuple<T1, T2, T3, T4, T5, T6, T7, T8>(
+            Input<T1> item1, Input<T2> item2, Input<T3> item3, Input<T4> item4,
+            Input<T5> item5, Input<T6> item6, Input<T7> item7, Input<T8> item8)
+            => new Output<(T1, T2, T3, T4, T5, T6, T7, T8)>(
+                GetAllResources(new IInput[] { item1, item2, item3, item4, item5, item6, item7, item8 }),
+                TupleHelperAsync(item1, item2, item3, item4, item5, item6, item7, item8));
 
-        private static ImmutableHashSet<Resource> GetAllResources(IEnumerable<IInput> inputs)
-            => ImmutableHashSet.CreateRange(inputs.SelectMany(i => i.ToOutput().Resources));
-
-        private static async Task<OutputData<(X, Y, Z)>> TupleHelperAsync<X, Y, Z>(Input<X> item1, Input<Y> item2, Input<Z> item3)
+        private static async Task<OutputData<(T1, T2, T3, T4, T5, T6, T7, T8)>> TupleHelperAsync<T1, T2, T3, T4, T5, T6, T7, T8>(
+            Input<T1> item1, Input<T2> item2, Input<T3> item3, Input<T4> item4,
+            Input<T5> item5, Input<T6> item6, Input<T7> item7, Input<T8> item8)
         {
-            (X, Y, Z) tuple;
+            (T1, T2, T3, T4, T5, T6, T7, T8) tuple = default;
             var isKnown = true;
             var isSecret = false;
 
-            {
-                var output = (Output<X>)item1;
-                var data = await output.DataTask.ConfigureAwait(false);
-                tuple.Item1 = data.Value;
-                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
-            }
-
-            {
-                var output = (Output<Y>)item2;
-                var data = await output.DataTask.ConfigureAwait(false);
-                tuple.Item2 = data.Value;
-                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
-            }
-
-            {
-                var output = (Output<Z>)item3;
-                var data = await output.DataTask.ConfigureAwait(false);
-                tuple.Item3 = data.Value;
-                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
-            }
+            Update(await GetData(item1).ConfigureAwait(false), ref tuple.Item1);
+            Update(await GetData(item2).ConfigureAwait(false), ref tuple.Item2);
+            Update(await GetData(item3).ConfigureAwait(false), ref tuple.Item3);
+            Update(await GetData(item4).ConfigureAwait(false), ref tuple.Item4);
+            Update(await GetData(item5).ConfigureAwait(false), ref tuple.Item5);
+            Update(await GetData(item6).ConfigureAwait(false), ref tuple.Item6);
+            Update(await GetData(item7).ConfigureAwait(false), ref tuple.Item7);
+            Update(await GetData(item8).ConfigureAwait(false), ref tuple.Item8);
 
             return OutputData.Create(tuple, isKnown, isSecret);
+
+            static async Task<OutputData<X>> GetData<X>(Input<X> input)
+            {
+                var output = (Output<X>)input;
+                return await output.DataTask.ConfigureAwait(false);
+            }
+
+            void Update<X>(OutputData<X> data, ref X location)
+            {
+                location = data.Value;
+                (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
+            }
         }
+
+        private static ImmutableHashSet<Resource> GetAllResources(IEnumerable<IInput> inputs)
+            => ImmutableHashSet.CreateRange(inputs.SelectMany(i => i.ToOutput().Resources));
     }
 }
