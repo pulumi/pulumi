@@ -22,6 +22,9 @@ namespace Pulumi
             var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
 
+            // Be resilient to misbehaving callers.
+            args ??= ResourceArgs.Empty;
+
             // Wait for all values to be available, and then perform the RPC.
             var argsDict = await args.ToDictionaryAsync().ConfigureAwait(false);
             var serialized = await SerializeAllPropertiesAsync($"invoke:{token}", argsDict);
