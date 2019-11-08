@@ -332,7 +332,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 func (host *dotnetLanguageHost) DotnetBuild(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest, engineClient pulumirpc.EngineClient) error {
 
-	args := []string{"build"}
+	args := []string{"build", "-nologo"}
 
 	if req.GetProgram() != "" {
 		args = append(args, req.GetProgram())
