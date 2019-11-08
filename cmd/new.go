@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -557,22 +558,22 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies() error {
-	proj, _, err := readProject()
+	proj, root, err := readProject()
 	if err != nil {
 		return err
 	}
 
-	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		return nil
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		err = npmInstallDependencies()
+		if err != nil {
+			return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment")
+		}
+	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
+		return dotnetInstallDependenciesAndBuild(proj, root)
 	}
 
-	// Run the command.
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	err = npmInstallDependencies()
-	if err != nil {
-		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment")
-	}
 	return nil
 }
 
@@ -583,6 +584,33 @@ func npmInstallDependencies() error {
 
 	err := npm.Install("", os.Stdout, os.Stderr)
 	if err != nil {
+		return err
+	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
+
+	return nil
+}
+
+// dotnetInstallDependencies will install dependencies and build the project.
+func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) error {
+	contract.Assert(proj != nil)
+
+	fmt.Println("Installing dependencies...")
+	fmt.Println()
+
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, plugctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), nil)
+	if err != nil {
+		return err
+	}
+	defer plugctx.Close()
+
+	// Call RunInstallPlugins, which will run `dotnet build`. This will automatically
+	// restore dependencies, install any plugins, and build the project so it will be
+	// prepped and ready to go for a faster initial `pulumi up`.
+	if err = engine.RunInstallPlugins(proj, pwd, main, nil, plugctx); err != nil {
 		return err
 	}
 
