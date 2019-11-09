@@ -78,26 +78,16 @@ namespace Pulumi
             var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
             var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
 
-            if (string.IsNullOrEmpty(monitor))
-                throw new InvalidOperationException("Environment did not contain: PULUMI_MONITOR");
-
-            if (string.IsNullOrEmpty(engine))
-                throw new InvalidOperationException("Environment did not contain: PULUMI_ENGINE");
-
-            if (string.IsNullOrEmpty(project))
-                throw new InvalidOperationException("Environment did not contain: PULUMI_PROJECT");
-
-            if (string.IsNullOrEmpty(stack))
-                throw new InvalidOperationException("Environment did not contain: PULUMI_STACK");
-
-            if (!bool.TryParse(dryRun, out var dryRunValue))
-                throw new InvalidOperationException("Environment did not contain a valid bool value for: PULUMI_DRY_RUN");
-
-            if (!bool.TryParse(queryMode, out var queryModeValue))
-                throw new InvalidOperationException("Environment did not contain a valid bool value for: PULUMI_QUERY_MODE");
-
-            if (!int.TryParse(parallel, out var parallelValue))
-                throw new InvalidOperationException("Environment did not contain a valid int value for: PULUMI_PARALLEL");
+            if (string.IsNullOrEmpty(monitor) ||
+                string.IsNullOrEmpty(engine) ||
+                string.IsNullOrEmpty(project) ||
+                string.IsNullOrEmpty(stack) ||
+                !bool.TryParse(dryRun, out var dryRunValue) ||
+                !bool.TryParse(queryMode, out var queryModeValue) ||
+                !int.TryParse(parallel, out var parallelValue))
+            {
+                throw new InvalidOperationException("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
+            }
 
             _isDryRun = dryRunValue;
             _stackName = stack;
