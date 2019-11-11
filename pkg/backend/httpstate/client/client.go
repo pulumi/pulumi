@@ -205,7 +205,7 @@ var (
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
 func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
 	latest := struct {
-		Info apitype.UpdateInfo `json:"info,allowEmpty"`
+		Info apitype.UpdateInfo `json:"info,omitempty"`
 	}{}
 
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
@@ -224,10 +224,18 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		if err != nil {
 			return nil, err
 		}
-		if v.Secret {
-			cfg[newKey] = config.NewSecureValue(v.String)
+		if v.Object {
+			if v.Secret {
+				cfg[newKey] = config.NewSecureObjectValue(v.String)
+			} else {
+				cfg[newKey] = config.NewObjectValue(v.String)
+			}
 		} else {
-			cfg[newKey] = config.NewValue(v.String)
+			if v.Secret {
+				cfg[newKey] = config.NewSecureValue(v.String)
+			} else {
+				cfg[newKey] = config.NewValue(v.String)
+			}
 		}
 	}
 
@@ -387,6 +395,7 @@ func (pc *Client) CreateUpdate(
 		wireConfig[k.String()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
+			Object: cv.Object(),
 		}
 	}
 
@@ -489,7 +498,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Policies:    analyzerInfo.Policies,
 	}
 
-	fmt.Printf("Publishing as %s\n", analyzerInfo.Name)
+	fmt.Printf("Publishing %s to %s\n", analyzerInfo.Name, orgName)
 
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
@@ -587,7 +596,6 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	duration time.Duration) (string, error) {
 
 	req := apitype.RenewUpdateLeaseRequest{
-		Token:    token,
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
@@ -595,8 +603,8 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// While renewing a lease uses POST, it is safe to send multiple requests (consider that we do this multiple times
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
-	if err := pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "renew_lease"), nil,
-		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
+	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil

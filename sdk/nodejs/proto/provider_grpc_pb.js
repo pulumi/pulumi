@@ -261,6 +261,19 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
+  // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
+  // of responses.
+  streamInvoke: {
+    path: '/pulumirpc.ResourceProvider/StreamInvoke',
+    requestStream: false,
+    responseStream: true,
+    requestType: provider_pb.InvokeRequest,
+    responseType: provider_pb.InvokeResponse,
+    requestSerialize: serialize_pulumirpc_InvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    responseSerialize: serialize_pulumirpc_InvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+  },
   // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
   // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
   // inputs returned by a call to Check should preserve the original representation of the properties as present in

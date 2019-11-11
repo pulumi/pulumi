@@ -3720,6 +3720,44 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
 	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// ensure failure when different resources use duplicate aliases
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:    "pkgA:index:t2",
+		name: "n2",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate})
+
+	err := snap.NormalizeURNReferences()
+	assert.Equal(t, err.Error(),
+		"Two resources ('urn:pulumi:test::test::pkgA:index:t1::n1'"+
+			" and 'urn:pulumi:test::test::pkgA:index:t2::n2') aliased to the same: 'urn:pulumi:test::test::pkgA:index:t1::n1'")
+
+	// ensure different resources can use different aliases
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:    "pkgA:index:t2",
+		name: "n2",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate})
+
+	err = snap.NormalizeURNReferences()
+	assert.Nil(t, err)
 }
 
 func TestPersistentDiff(t *testing.T) {

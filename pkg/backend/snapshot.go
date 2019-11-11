@@ -562,7 +562,9 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap := sm.snap()
-	snap.NormalizeURNReferences()
+	if err := snap.NormalizeURNReferences(); err != nil {
+		return errors.Wrap(err, "failed to normalize URN references")
+	}
 	if err := sm.persister.Save(snap); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
 	}

@@ -579,6 +579,12 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
+func (rm *resmon) StreamInvoke(
+	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
+
+	return fmt.Errorf("the resource monitor does not implement streaming invokes")
+}
+
 // ReadResource reads the current state associated with a resource from its provider plugin.
 func (rm *resmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {

@@ -44,9 +44,9 @@ install_plugin::
 install:: install_package install_plugin
 
 istanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
-	istanbul report text-summary
-	istanbul report text
+	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	./node_modules/.bin/istanbul report text-summary
+	./node_modules/.bin/istanbul report text
 
 sxs_tests::
 # Intentionally disabled as PR https://github.com/pulumi/pulumi/pull/2609 breaks SxS

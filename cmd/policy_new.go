@@ -174,7 +174,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
-	fmt.Println("Once you're done editing your Policy Pack, run `pulumi policy publish <org-name>/<policy-pack-name>`" +
+	fmt.Println("Once you're done editing your Policy Pack, run `pulumi policy publish [org-name]`" +
 		" to publish the pack.")
 	return nil
 }

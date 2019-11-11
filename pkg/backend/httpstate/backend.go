@@ -349,7 +349,7 @@ func WelcomeUser(opts display.Options) {
 
   %s
 
-  Pulumi  helps you create, deploy, and manage infrastructure on any cloud using
+  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
   your favorite language. You can get started today with Pulumi at:
 
       https://www.pulumi.com/docs/get-started/
@@ -425,7 +425,15 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 		policyPackName = split[1]
 	default:
 		return nil, errors.Errorf("could not parse policy pack name '%s'; must be of the form "+
-			"<orgName>/<policyPackName>", s)
+			"<org-name>/<policy-pack-name>", s)
+	}
+
+	if orgName == "" {
+		currentUser, userErr := b.CurrentUser()
+		if userErr != nil {
+			return nil, userErr
+		}
+		orgName = currentUser
 	}
 
 	return newCloudBackendPolicyPackReference(orgName, tokens.QName(policyPackName)), nil
@@ -589,9 +597,16 @@ func (b *cloudBackend) CreateStack(
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
-		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
+		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
-			return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
+			// A 409 error response is returned when per-stack organizations are over their limit,
+			// so we need to look at the message to differentiate.
+			if strings.Contains(errResp.Message, "already exists") {
+				return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
+			}
+			if strings.Contains(errResp.Message, "you are using") {
+				return nil, &backend.OverStackLimitError{Message: errResp.Message}
+			}
 		}
 		return nil, err
 	}
@@ -702,6 +717,11 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply)
+}
+
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
 	return b.query(ctx, op, nil /*events*/)
 }
@@ -773,7 +793,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay {
+	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
@@ -1007,10 +1027,18 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 		if err != nil {
 			return nil, err
 		}
-		if rawV.Secret {
-			c[k] = config.NewSecureValue(rawV.String)
+		if rawV.Object {
+			if rawV.Secret {
+				c[k] = config.NewSecureObjectValue(rawV.String)
+			} else {
+				c[k] = config.NewObjectValue(rawV.String)
+			}
 		} else {
-			c[k] = config.NewValue(rawV.String)
+			if rawV.Secret {
+				c[k] = config.NewSecureValue(rawV.String)
+			} else {
+				c[k] = config.NewValue(rawV.String)
+			}
 		}
 	}
 	return c, nil

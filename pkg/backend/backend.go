@@ -18,6 +18,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -49,6 +50,18 @@ type StackAlreadyExistsError struct {
 
 func (e StackAlreadyExistsError) Error() string {
 	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+}
+
+// OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
+// is over its stack limit.
+type OverStackLimitError struct {
+	Message string
+}
+
+func (e OverStackLimitError) Error() string {
+	m := e.Message
+	m = strings.Replace(m, "Conflict: ", "over stack limit: ", -1)
+	return m
 }
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
@@ -137,6 +150,8 @@ type Backend interface {
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Watch watches the project's working directory for changes and automatically updates the active stack.
+	Watch(ctx context.Context, stack Stack, op UpdateOperation) result.Result
 
 	// Query against the resource outputs in a stack's state checkpoint.
 	Query(ctx context.Context, op QueryOperation) result.Result

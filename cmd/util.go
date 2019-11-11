@@ -56,6 +56,10 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
+func hasExperimentalCommands() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
+}
+
 func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
@@ -126,8 +130,11 @@ func createStack(
 
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
-		// If it's a StackAlreadyExistsError, don't wrap it.
+		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
+			return nil, err
+		}
+		if _, ok := err.(*backend.OverStackLimitError); ok {
 			return nil, err
 		}
 		return nil, errors.Wrapf(err, "could not create stack")
@@ -315,11 +322,11 @@ func chooseStack(
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(s backend.Stack, configArray []string) error {
+func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) error {
 	if len(configArray) == 0 {
 		return nil
 	}
-	commandLineConfig, err := parseConfig(configArray)
+	commandLineConfig, err := parseConfig(configArray, path)
 	if err != nil {
 		return err
 	}
