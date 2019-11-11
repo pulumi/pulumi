@@ -71,6 +71,8 @@ from .output import (
     Output,
     Input,
     Inputs,
+    UNKNOWN,
+    contains_unknowns,
 )
 
 from .log import (

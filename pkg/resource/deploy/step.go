@@ -98,7 +98,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	// Retain the ID, and outputs:
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stable: true}) }
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
 
@@ -208,6 +208,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			s.new.ID = id
 			s.new.Outputs = outs
 		}
+	} else {
+		s.new.Outputs = s.new.Inputs
 	}
 
 	// Mark the old resource as pending deletion if necessary.
@@ -433,10 +435,12 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
 			s.new.Outputs = outs
 		}
+	} else {
+		s.new.Outputs = s.new.Inputs
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables}) }
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}

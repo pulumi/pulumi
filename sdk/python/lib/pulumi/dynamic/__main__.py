@@ -48,8 +48,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         raise NotImplementedError("unknown function %s" % request.token)
 
     def Diff(self, request, context):
-        olds = rpc.deserialize_properties(request.olds)
-        news = rpc.deserialize_properties(request.news)
+        olds = rpc.deserialize_properties(request.olds, True)
+        news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
             provider = get_provider(olds)
         else:
@@ -112,8 +112,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         return proto.CreateResponse(**fields)
 
     def Check(self, request, context):
-        olds = rpc.deserialize_properties(request.olds)
-        news = rpc.deserialize_properties(request.news)
+        olds = rpc.deserialize_properties(request.olds, True)
+        news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
             provider = get_provider(olds)
         else:

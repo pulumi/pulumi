@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, Output } from "../output";
+import { Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -179,20 +179,10 @@ export function resolveProperties(
         value = unwrapRpcSecret(value);
 
         try {
-            // If either we are performing a real deployment, or this is a stable property value, we
-            // can propagate its final value.  Otherwise, it must be undefined, since we don't know
-            // if it's final.
-            if (!isDryRun()) {
-                // normal 'pulumi up'.  resolve the output with the value we got back
-                // from the engine.  That output can always run its .apply calls.
-                resolve(value, true, isSecret);
-            }
-            else {
-                // We're previewing. If the engine was able to give us a reasonable value back,
-                // then use it. Otherwise, inform the Output that the value isn't known.
-                const isKnown = value !== undefined;
-                resolve(value, isKnown, isSecret);
-            }
+            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+            // present during previews (i.e. isDryRun() will be true).
+            resolve(value, /*isKnown*/ true, isSecret);
         }
         catch (err) {
             throw new Error(
@@ -309,6 +299,10 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return value;
     }
 
+    if (isUnknown(prop)) {
+        return unknownValue;
+    }
+
     if (CustomResource.isInstance(prop)) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
@@ -398,7 +392,7 @@ export function deserializeProperty(prop: any): any {
         throw new Error("unexpected undefined property value during deserialization");
     }
     else if (prop === unknownValue) {
-        return undefined;
+        return isDryRun() ? unknown : undefined;
     }
     else if (prop === null || typeof prop === "boolean" || typeof prop === "number" || typeof prop === "string") {
         return prop;

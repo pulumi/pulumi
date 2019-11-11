@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output, unknown } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,
@@ -193,6 +193,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
+        req.setSupportspartialvalues(true);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
