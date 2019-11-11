@@ -384,7 +384,10 @@ func (rm *queryResmon) StreamInvoke(
 		})
 	}
 
-	return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
+	if len(chkfails) > 0 {
+		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
+	}
+	return nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.
