@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const asyncify = require("callback-to-async-iterator");
-import { AsyncIterable } from "@pulumi/query/interfaces";
 import * as fs from "fs";
 import * as grpc from "grpc";
+
+import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import * as asset from "../asset";
 import { InvokeOptions } from "../invoke";
@@ -27,6 +27,7 @@ import { excessiveDebugOutput, getMonitor, rpcKeepAlive, SyncInvokes, tryGetSync
 
 import { ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
+import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
@@ -108,28 +109,24 @@ export async function streamInvoke(
         // Call `streamInvoke`.
         const call = monitor.streamInvoke(req, {});
 
-        // Transform the callback-oriented `streamInvoke` result into a plain-old (potentially
-        // infinite) `AsyncIterable`.
-        const listenForWatchEvents = (callback: (obj: any) => void) => {
-            return new Promise(resolve => {
-                call.on("data", function(thing: any) {
-                    const live = deserializeResponse(tok, thing);
-                    callback(live);
-                });
-                call.on("error", (err: any) => {
-                    if (err.code === 1 && err.details === "Cancelled") {
-                        return;
-                    }
-                    throw err;
-                });
-                // Infinite stream, never call `resolve`.
-            });
-        };
-        const stream: AsyncIterable<any> = asyncify.default(listenForWatchEvents);
+        const queue = new PushableAsyncIterable();
+        call.on("data", function(thing: any) {
+            const live = deserializeResponse(tok, thing);
+            queue.push(live);
+        });
+        call.on("error", (err: any) => {
+            if (err.code === 1 && err.details === "Cancelled") {
+                return;
+            }
+            throw err;
+        });
+        call.on("end", () => {
+            queue.complete();
+        });
 
         // Return a cancellable handle to the stream.
         return new StreamInvokeResponse(
-            stream,
+            queue,
             () => call.cancel());
     } finally {
         done();
