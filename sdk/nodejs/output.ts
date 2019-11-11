@@ -511,7 +511,7 @@ class Unknown {
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is Unknown {
-        return utils.isInstance(obj, "__pulumiUnknown");
+        return utils.isInstance<Unknown>(obj, "__pulumiUnknown");
     }
 }
 
