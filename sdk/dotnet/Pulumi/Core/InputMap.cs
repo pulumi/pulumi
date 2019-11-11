@@ -62,6 +62,22 @@ namespace Pulumi
             set => Add(key, value);
         }
 
+        public static InputMap<V> Merge(InputMap<V> first, InputMap<V> second)
+        {
+            var firstDictionary = (Input<ImmutableDictionary<string, V>>)first._outputValue;
+            var secondDictionary = (Input<ImmutableDictionary<string, V>>)second._outputValue;
+            var output = Output.Tuple(firstDictionary, secondDictionary)
+                               .Apply(dicts =>
+                               {
+                                   var result = new Dictionary<string, V>(dicts.Item1);
+                                   // Overwrite keys if duplicates are found
+                                   foreach (var (k, v) in dicts.Item2)
+                                       result[k] = v;
+                                   return result;
+                               });
+            return output;
+        }
+
         #region construct from dictionary types
 
         public static implicit operator InputMap<V>(Dictionary<string, V> values)
