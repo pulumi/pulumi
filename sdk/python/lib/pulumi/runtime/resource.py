@@ -106,8 +106,7 @@ async def prepare_resource(res: 'Resource',
         # If we were given a provider, wait for it to resolve and construct a provider reference from it.
         # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
         provider_urn = await provider.urn.future()
-        provider_id_val = await provider.id.future()
-        provider_id = rpc.UNKNOWN if known_types.is_unknown(provider_id_val) else provider_id_val
+        provider_id = await provider.id.future() or rpc.UNKNOWN
         provider_ref = f"{provider_urn}::{provider_id}"
 
     dependencies = set(explicit_urn_dependencies)
@@ -402,7 +401,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             # empty string, we should treat it as unknown. TFBridge in particular is known to send
             # the empty string as an ID when doing a preview.
             is_known = bool(resp.id)
-            resolve_id(resp.id if is_known else known_types.new_unknown(), is_known, None)
+            resolve_id(resp.id, is_known, None)
 
         await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, resolvers)
 
