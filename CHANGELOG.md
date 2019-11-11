@@ -14,7 +14,7 @@ CHANGELOG
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
 
-## 1.5.0 (2019-11-06)
+## 1.5.1 (2019-11-06)
 
 - Include the .NET language provider in the Windows SDK.
 
