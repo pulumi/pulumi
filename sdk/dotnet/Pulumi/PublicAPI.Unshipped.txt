@@ -88,6 +88,7 @@ Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancel
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
+Pulumi.InputMap<V>.AddRange(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -187,6 +188,7 @@ static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collecti
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(System.Collections.Immutable.ImmutableArray<T> values) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(T value) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(T[] values) -> Pulumi.InputList<T>
+static Pulumi.InputMap<V>.Merge(Pulumi.InputMap<V> first, Pulumi.InputMap<V> second) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Generic.Dictionary<string, V>> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Generic.IDictionary<string, V>> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, V>> values) -> Pulumi.InputMap<V>
