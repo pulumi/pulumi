@@ -617,8 +617,10 @@ class Resource:
             parent = get_root_resource()
         parent_transformations = (parent._transformations or []) if parent is not None else []
         self._transformations = (opts.transformations or []) + parent_transformations
+        self._name = name
+
         for transformation in self._transformations:
-            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+            args = ResourceTransformationArgs(resource=self, type_=t, name=self._name, props=props, opts=opts)
             tres = transformation(args)
             if tres is not None:
                 if tres.opts.parent != opts.parent:
@@ -632,7 +634,8 @@ class Resource:
                 props = tres.props
                 opts = tres.opts
 
-        self._name = name
+                if tres.name is not None:
+                    self._name = tres.name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = copy.copy(opts)
@@ -655,7 +658,7 @@ class Resource:
             opts.aliases = opts.aliases.copy()
             for parent_alias in opts.parent._aliases:
                 opts.aliases.append(inherited_child_alias(
-                    name, opts.parent._name, parent_alias, t))
+                    self._name, opts.parent._name, parent_alias, t))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -694,9 +697,9 @@ class Resource:
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            read_resource(self, t, name, props, opts)
+            read_resource(self, t, self._name, props, opts)
         else:
-            register_resource(self, t, name, custom, props, opts)
+            register_resource(self, t, self._name, custom, props, opts)
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:

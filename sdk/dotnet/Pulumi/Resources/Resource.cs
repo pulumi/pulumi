@@ -189,7 +189,7 @@ namespace Pulumi
                 options.Aliases = options.Aliases.ToList();
                 foreach (var parentAlias in options.Parent._aliases)
                 {
-                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, options.Parent.GetResourceName(), parentAlias, type));
+                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(_name, options.Parent.GetResourceName(), parentAlias, type));
                 }
 
                 this._providers = options.Parent._providers;
@@ -243,7 +243,7 @@ namespace Pulumi
             var aliases = ImmutableArray.CreateBuilder<Input<string>>();
             foreach (var alias in options.Aliases)
             {
-                aliases.Add(CollapseAliasToUrn(alias, name, type, options.Parent));
+                aliases.Add(CollapseAliasToUrn(alias, _name, type, options.Parent));
             }
             this._aliases = aliases.ToImmutable();
 

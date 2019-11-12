@@ -272,7 +272,7 @@ export abstract class Resource {
             opts.aliases = [...(opts.aliases || [])];
             if (opts.parent.__name) {
                 for (const parentAlias of (opts.parent.__aliases || [])) {
-                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                    opts.aliases.push(inheritedChildAlias(newname, opts.parent.__name, parentAlias, t));
                 }
             }
 
@@ -316,7 +316,7 @@ export abstract class Resource {
         this.__aliases = [];
         if (opts.aliases) {
             for (const alias of opts.aliases) {
-                this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
+                this.__aliases.push(collapseAliasToUrn(alias, newname, t, opts.parent));
             }
         }
 
@@ -326,13 +326,13 @@ export abstract class Resource {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
-            readResource(this, t, name, props, opts);
+            readResource(this, t, newname, props, opts);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, t, name, custom, props, opts);
+            registerResource(this, t, newname, custom, props, opts);
         }
     }
 }
@@ -577,7 +577,7 @@ export interface ResourceTransformationResult {
     /**
      * The new name to use in place of the original `name`
      */
-    name: string;
+    name?: string;
     /**
      * The new properties to use in place of the original `props`
      */
