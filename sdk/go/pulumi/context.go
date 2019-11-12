@@ -313,13 +313,13 @@ type ResourceState struct {
 }
 
 // URN will resolve to the resource's URN after registration has completed.
-func (s *ResourceState) URN() *URNOutput {
-	return s.urn
+func (state *ResourceState) URN() *URNOutput {
+	return state.urn
 }
 
 // ID will resolve to the resource's ID after registration, provided this is for a custom resource.
-func (s *ResourceState) ID() *IDOutput {
-	return s.id
+func (state *ResourceState) ID() *IDOutput {
+	return state.id
 }
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// nolint: lll
 package pulumi
 
 import (
@@ -236,7 +237,7 @@ func (out *AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) *O
 // ApplyWithContext applies a transformation to the archive value when it is available.
 func (out *AssetOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, asset.Asset) (interface{}, error)) *Output {
 	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
-		return applier(ctx, convert(v, archiveType).(asset.Asset))
+		return applier(ctx, convert(v, assetType).(asset.Asset))
 	})
 }
 
