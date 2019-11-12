@@ -690,7 +690,7 @@ class Resource:
         if opts.aliases is not None:
             for alias in opts.aliases:
                 self._aliases.append(collapse_alias_to_urn(
-                    alias, name, t, opts.parent))
+                    alias, self._name, t, opts.parent))
 
         if opts.id is not None:
             # If this resource already exists, read its state rather than registering it anew.
