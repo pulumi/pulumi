@@ -19,6 +19,10 @@ namespace Pulumi
     public readonly struct ResourceTransformationArgs
     {
         /// <summary>
+        /// The name of the Resource that is being transformed.
+        /// </summary>
+        public string Name { get; }
+        /// <summary>
         /// The Resource instance that is being transformed.
         /// </summary>
         public Resource Resource { get; }
@@ -32,8 +36,9 @@ namespace Pulumi
         public ResourceOptions Options { get; }
 
         public ResourceTransformationArgs(
-            Resource resource, ResourceArgs args, ResourceOptions options)
+            Resource resource, string name, ResourceArgs args, ResourceOptions options)
         {
+            Name = name;
             Resource = resource;
             Args = args;
             Options = options;
@@ -42,11 +47,13 @@ namespace Pulumi
 
     public readonly struct ResourceTransformationResult
     {
+        public string Name { get; }
         public ResourceArgs Args { get; }
         public ResourceOptions Options { get; }
 
-        public ResourceTransformationResult(ResourceArgs args, ResourceOptions options)
+        public ResourceTransformationResult(string name, ResourceArgs args, ResourceOptions options)
         {
+            Name = name;
             Args = args;
             Options = options;
         }

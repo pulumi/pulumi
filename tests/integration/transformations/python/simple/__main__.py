@@ -136,3 +136,15 @@ def transform_child1_depends_on_child2():
 res5 = MyOtherComponent(
     name="res5",
     opts=ResourceOptions(transformations=[transform_child1_depends_on_child2()]))
+
+# Scenario #6 - apply a transformation to change the stack name
+def res6_transformation(args: ResourceTransformationArgs):
+    print("res6 transformation")
+    return ResourceTransformationResult(
+        name="prefix:" + args.name
+    )
+
+res6 = SimpleResource(
+    name="res6",
+    args={"input": "hello"},
+    opts=ResourceOptions(transformations=[res6_transformation]))

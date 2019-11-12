@@ -139,7 +139,7 @@ namespace Pulumi
 
             foreach (var transformation in this._transformations)
             {
-                var tres = transformation(new ResourceTransformationArgs(this, args, options));
+                var tres = transformation(new ResourceTransformationArgs(this, _name, args, options));
                 if (tres != null)
                 {
                     if (tres.Value.Options.Parent != options.Parent)
@@ -156,6 +156,10 @@ namespace Pulumi
 
                     args = tres.Value.Args;
                     options = tres.Value.Options;
+
+                    if (tres.Value.Name != null){
+                        _name = tres.Value.Name;
+                    }
                 }
             }
 

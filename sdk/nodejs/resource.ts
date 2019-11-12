@@ -224,8 +224,11 @@ export abstract class Resource {
         // options assigned to this resource.
         const parent = opts.parent || getStackResource() || { __transformations: undefined };
         this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
+
+        let newname = name;
+
         for (const transformation of this.__transformations) {
-            const tres = transformation({ resource: this, type: t, name, props, opts });
+            const tres = transformation({ resource: this, type: t, name: newname, props, opts });
             if (tres) {
                 if (tres.opts.parent !== opts.parent) {
                     // This is currently not allowed because the parent tree is needed to establish what
@@ -238,10 +241,14 @@ export abstract class Resource {
                 }
                 props = tres.props;
                 opts = tres.opts;
+
+                if (tres.name) {
+                    newname = tres.name;
+                }
             }
         }
 
-        this.__name = name;
+        this.__name = newname;
 
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = Object.assign({}, opts);
@@ -567,6 +574,10 @@ export interface ResourceTransformationArgs {
  * the originally provided values.
  */
 export interface ResourceTransformationResult {
+    /**
+     * The new name to use in place of the original `name`
+     */
+    name: string;
     /**
      * The new properties to use in place of the original `props`
      */

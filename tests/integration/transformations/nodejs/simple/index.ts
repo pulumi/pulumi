@@ -152,3 +152,15 @@ const transformChild1DependsOnChild2: pulumi.ResourceTransformation = (() => {
 const res5 = new MyOtherComponent("res5", {
     transformations: [ transformChild1DependsOnChild2 ],
 });
+
+// Scenario #6 - apply a transformation to change the resource name
+const res6 = new SimpleResource("res6", { input: "hello" }, {
+    transformations: [
+        ({ props, opts, name }) => {
+            console.log("res6 transformation");
+            return {
+                name: `prefix:${name}`,
+            };
+        },
+    ],
+});

@@ -143,14 +143,16 @@ Pulumi.ResourceOptions.Version.get -> string
 Pulumi.ResourceOptions.Version.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
+Pulumi.ResourceTransformationArgs.Name.get -> string
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationArgs.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationArgs.Resource.get -> Pulumi.Resource
-Pulumi.ResourceTransformationArgs.ResourceTransformationArgs(Pulumi.Resource resource, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
+Pulumi.ResourceTransformationArgs.ResourceTransformationArgs(Pulumi.Resource resource, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
 Pulumi.ResourceTransformationResult
+Pulumi.ResourceTransformationResult.Name.get -> string
 Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
-Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
+Pulumi.ResourceTransformationResult.ResourceTransformationResult(string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
 Pulumi.Serialization.InputAttribute
 Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.Serialization.OutputAttribute

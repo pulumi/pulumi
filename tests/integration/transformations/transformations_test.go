@@ -56,6 +56,7 @@ func Validator(language string) func(t *testing.T, stack integration.RuntimeVali
 		foundRes3 := false
 		foundRes4Child := false
 		foundRes5Child := false
+		foundRes6 := false
 		for _, res := range stack.Deployment.Resources {
 			// "res1" has a transformation which adds additionalSecretOutputs
 			if res.URN.Name() == "res1" {
@@ -107,11 +108,19 @@ func Validator(language string) func(t *testing.T, stack integration.RuntimeVali
 				assert.NotNil(t, input)
 				assert.Equal(t, "b", input.(string))
 			}
+
+			// "res6" modifies addes a prefix to the name of all children.
+			if res.URN.Name() == "res6" {
+				foundRes6 = true
+				assert.Equal(t, res.Type, tokens.Type(dynamicResName))
+				assert.Equal(t, res.Name, "prefix:res6")
+			}
 		}
 		assert.True(t, foundRes1)
 		assert.True(t, foundRes2Child)
 		assert.True(t, foundRes3)
 		assert.True(t, foundRes4Child)
 		assert.True(t, foundRes5Child)
+		assert.True(t, foundRes6)
 	}
 }
