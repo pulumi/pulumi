@@ -54,9 +54,12 @@ type outputState struct {
 
 func (o *outputState) fulfill(value interface{}, known bool, err error) {
 	o.mutex.Lock()
+	defer func() {
+		o.mutex.Unlock()
+		o.cond.Broadcast()
+	}()
 
 	if o.state != outputPending {
-		o.mutex.Unlock()
 		return
 	}
 
@@ -65,9 +68,6 @@ func (o *outputState) fulfill(value interface{}, known bool, err error) {
 	} else {
 		o.state, o.value, o.known = outputResolved, value, known
 	}
-
-	o.mutex.Unlock()
-	o.cond.Broadcast()
 }
 
 func (o *outputState) resolve(value interface{}, known bool) {
