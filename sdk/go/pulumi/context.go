@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -195,7 +195,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Create resolvers for the resource's outputs.
-	outputs := makeResourceOutputs(true, props)
+	res := makeResourceState(true, props)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -204,7 +204,7 @@ func (ctx *Context) ReadResource(
 		var state *structpb.Struct
 		var err error
 		defer func() {
-			outputs.resolve(ctx.DryRun(), err, props, urn, resID, state)
+			res.resolve(ctx.DryRun(), err, props, urn, resID, state)
 			ctx.endRPC()
 		}()
 
@@ -233,15 +233,7 @@ func (ctx *Context) ReadResource(
 		}
 	}()
 
-	outs := make(map[string]*Output)
-	for k, s := range outputs.state {
-		outs[k] = s.out
-	}
-	return &ResourceState{
-		urn:   (*URNOutput)(outputs.urn.out),
-		id:    (*IDOutput)(outputs.id.out),
-		State: outs,
-	}, nil
+	return res, nil
 }
 
 // RegisterResource creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -261,7 +253,7 @@ func (ctx *Context) RegisterResource(
 	}
 
 	// Create resolvers for the resource's outputs.
-	outputs := makeResourceOutputs(custom, props)
+	res := makeResourceState(custom, props)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -271,7 +263,7 @@ func (ctx *Context) RegisterResource(
 		var state *structpb.Struct
 		var err error
 		defer func() {
-			outputs.resolve(ctx.DryRun(), err, props, urn, resID, state)
+			res.resolve(ctx.DryRun(), err, props, urn, resID, state)
 			ctx.endRPC()
 		}()
 
@@ -307,101 +299,89 @@ func (ctx *Context) RegisterResource(
 		}
 	}()
 
-	var id *IDOutput
-	if outputs.id != nil {
-		id = (*IDOutput)(outputs.id.out)
-	}
-	outs := make(map[string]*Output)
-	for k, s := range outputs.state {
-		outs[k] = s.out
-	}
-	return &ResourceState{
-		urn:   (*URNOutput)(outputs.urn.out),
-		id:    id,
-		State: outs,
-	}, nil
+	return res, nil
 }
 
-// resourceOutputs captures the outputs and resolvers for a resource operation.
-type resourceOutputs struct {
-	urn   *resourceOutput
-	id    *resourceOutput
-	state map[string]*resourceOutput
+// ResourceState contains the results of a resource registration operation.
+type ResourceState struct {
+	// urn will resolve to the resource's URN after registration has completed.
+	urn *URNOutput
+	// id will resolve to the resource's ID after registration, provided this is for a custom resource.
+	id *IDOutput
+	// State contains the full set of expected output properties and will resolve after completion.
+	State Outputs
 }
 
-// makeResourceOutputs creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
+// URN will resolve to the resource's URN after registration has completed.
+func (s *ResourceState) URN() *URNOutput {
+	return s.urn
+}
+
+// ID will resolve to the resource's ID after registration, provided this is for a custom resource.
+func (s *ResourceState) ID() *IDOutput {
+	return s.id
+}
+
+// makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func makeResourceOutputs(custom bool, props map[string]interface{}) *resourceOutputs {
-	outURN, resolveURN, rejectURN := NewOutput(nil)
-	urn := &resourceOutput{out: outURN, resolve: resolveURN, reject: rejectURN}
+func makeResourceState(custom bool, props map[string]interface{}) *ResourceState {
+	state := &ResourceState{}
 
-	var id *resourceOutput
+	state.urn = (*URNOutput)(newOutput(state))
+
 	if custom {
-		outID, resolveID, rejectID := NewOutput(nil)
-		id = &resourceOutput{out: outID, resolve: resolveID, reject: rejectID}
+		state.id = (*IDOutput)(newOutput(state))
 	}
 
-	state := make(map[string]*resourceOutput)
+	state.State = make(map[string]*Output)
 	for key := range props {
-		outState, resolveState, rejectState := NewOutput(nil)
-		state[key] = &resourceOutput{
-			out:     outState,
-			resolve: resolveState,
-			reject:  rejectState,
-		}
+		state.State[key] = newOutput(state)
 	}
 
-	return &resourceOutputs{
-		urn:   urn,
-		id:    id,
-		state: state,
-	}
+	return state
 }
 
 // resolve resolves the resource outputs using the given error and/or values.
-func (outputs *resourceOutputs) resolve(dryrun bool, err error, inputs map[string]interface{}, urn, id string,
+func (state *ResourceState) resolve(dryrun bool, err error, inputs map[string]interface{}, urn, id string,
 	result *structpb.Struct) {
-
 	var outprops map[string]interface{}
 	if err == nil {
 		outprops, err = unmarshalOutputs(result)
 	}
 	if err != nil {
 		// If there was an error, we must reject everything: URN, ID, and state properties.
-		outputs.urn.reject(err)
-		if outputs.id != nil {
-			outputs.id.reject(err)
+		state.urn.s.reject(err)
+		if state.id != nil {
+			state.id.s.reject(err)
 		}
-		for _, s := range outputs.state {
-			s.reject(err)
+		for _, o := range state.State {
+			o.s.reject(err)
 		}
-	} else {
-		// Resolve the URN and ID.
-		outputs.urn.resolve(URN(urn), true)
-		if outputs.id != nil {
-			if id == "" && dryrun {
-				outputs.id.resolve("", false)
-			} else {
-				outputs.id.resolve(ID(id), true)
-			}
-		}
+		return
+	}
 
-		// During previews, it's possible that nils will be returned due to unknown values.  This function
-		// determines the known-ed-ness of a given value below.
-		isKnown := func(v interface{}) bool {
-			return !dryrun || v != nil
-		}
+	// Resolve the URN and ID.
+	state.urn.s.resolve(URN(urn), true)
+	if state.id != nil {
+		known := id != "" || !dryrun
+		state.id.s.resolve(ID(id), known)
+	}
 
-		// Now resolve all output properties.
-		for k, s := range outputs.state {
-			v, has := outprops[k]
-			if !has && !dryrun {
-				// If we did not receive a value for a particular property, resolve it to the corresponding input
-				// if any exists.
-				v = inputs[k]
-			}
-			s.resolve(v, isKnown(v))
+	// During previews, it's possible that nils will be returned due to unknown values.  This function
+	// determines the known-ness of a given value below.
+	isKnown := func(v interface{}) bool {
+		return !dryrun || v != nil
+	}
+
+	// Now resolve all output properties.
+	for k, o := range state.State {
+		v, has := outprops[k]
+		if !has && !dryrun {
+			// If we did not receive a value for a particular property, resolve it to the corresponding input
+			// if any exists.
+			v = inputs[k]
 		}
+		o.s.resolve(v, isKnown(v))
 	}
 }
 
@@ -477,12 +457,6 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 	}, nil
 }
 
-type resourceOutput struct {
-	out     *Output
-	resolve func(interface{}, bool)
-	reject  func(error)
-}
-
 func (ctx *Context) getTimeouts(opts ...ResourceOpt) *pulumirpc.RegisterResourceRequest_CustomTimeouts {
 	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
 	for _, opt := range opts {
@@ -530,7 +504,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 	if parent == nil {
 		parentURN = ctx.stackR
 	} else {
-		urn, err := parent.URN().Value()
+		urn, _, err := parent.URN().await(context.TODO())
 		if err != nil {
 			return "", nil, false, "", false, "", err
 		}
@@ -541,7 +515,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 	if deps != nil {
 		depURNs = make([]URN, len(deps))
 		for i, r := range deps {
-			urn, err := r.URN().Value()
+			urn, _, err := r.URN().await(context.TODO())
 			if err != nil {
 				return "", nil, false, "", false, "", err
 			}
@@ -562,11 +536,11 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
-	urn, err := provider.URN().Value()
+	urn, _, err := provider.URN().await(context.TODO())
 	if err != nil {
 		return "", err
 	}
-	id, known, err := provider.ID().Value()
+	id, known, err := provider.ID().await(context.TODO())
 	if err != nil {
 		return "", err
 	}
@@ -619,26 +593,6 @@ func (ctx *Context) waitForRPCs() {
 
 	// Mark the RPCs flag so that no more RPCs are permitted.
 	ctx.rpcs = noMoreRPCs
-}
-
-// ResourceState contains the results of a resource registration operation.
-type ResourceState struct {
-	// urn will resolve to the resource's URN after registration has completed.
-	urn *URNOutput
-	// id will resolve to the resource's ID after registration, provided this is for a custom resource.
-	id *IDOutput
-	// State contains the full set of expected output properties and will resolve after completion.
-	State Outputs
-}
-
-// URN will resolve to the resource's URN after registration has completed.
-func (s *ResourceState) URN() *URNOutput {
-	return s.urn
-}
-
-// ID will resolve to the resource's ID after registration, provided this is for a custom resource.
-func (s *ResourceState) ID() *IDOutput {
-	return s.id
 }
 
 var _ Resource = (*ResourceState)(nil)

@@ -25,8 +25,10 @@ import (
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
 	// Create interesting inputs.
-	out, resolve, _ := NewOutput(nil)
-	resolve("outputty", true)
+	out, resolve, _ := NewOutput()
+	resolve("outputty")
+	out2 := newOutput()
+	out2.s.fulfill(nil, false, nil)
 	input := map[string]interface{}{
 		"s":            "a string",
 		"a":            true,
@@ -47,6 +49,8 @@ func TestMarshalRoundtrip(t *testing.T) {
 			"y": 999.9,
 			"z": false,
 		},
+		"g": out2,
+		"h": URN("foo"),
 	}
 
 	// Marshal those inputs.
@@ -83,9 +87,40 @@ func TestMarshalRoundtrip(t *testing.T) {
 				assert.Equal(t, "y", am["x"])
 				assert.Equal(t, 999.9, am["y"])
 				assert.Equal(t, false, am["z"])
+				assert.Equal(t, rpcTokenUnknownValue, res["g"])
+				assert.Equal(t, "foo", res["h"])
 			}
 		}
 	}
+}
+
+func TestResourceState(t *testing.T) {
+	state := makeResourceState(true, map[string]interface{}{"baz": nil})
+
+	s, _, _, _ := marshalInputs(map[string]interface{}{"baz": "qux"})
+	state.resolve(false, nil, nil, "foo", "bar", s)
+
+	input := map[string]interface{}{
+		"urn": state.urn,
+		"id":  state.id,
+		"baz": state.State["baz"],
+	}
+	m, pdeps, deps, err := marshalInputs(input)
+	assert.Nil(t, err)
+	assert.Equal(t, map[string][]URN{
+		"urn": {"foo"},
+		"id":  {"foo"},
+		"baz": {"foo"},
+	}, pdeps)
+	assert.Equal(t, []URN{"foo", "foo", "foo"}, deps)
+
+	res, err := unmarshalOutputs(m)
+	assert.Nil(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"urn": "foo",
+		"id":  "bar",
+		"baz": "qux",
+	}, res)
 }
 
 func TestUnmarshalUnsupportedSecret(t *testing.T) {

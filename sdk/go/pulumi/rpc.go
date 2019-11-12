@@ -20,6 +20,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
+	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -42,7 +43,7 @@ func marshalInputs(props map[string]interface{}) (*structpb.Struct, map[string][
 		// Record all dependencies accumulated from reading this property.
 		deps := make([]URN, 0, len(resourceDeps))
 		for _, dep := range resourceDeps {
-			depURN, err := dep.URN().Value()
+			depURN, _, err := dep.URN().await(context.TODO())
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -73,114 +74,135 @@ const (
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInput(v interface{}) (interface{}, []Resource, error) {
-	// If nil, just return that.
-	if v == nil {
-		return nil, nil, nil
-	}
+	for {
+		// If v is nil, just return that.
+		if v == nil {
+			return nil, nil, nil
+		}
 
-	// Next, look for some well known types.
-	switch t := v.(type) {
-	case bool, int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, string:
-		return t, nil, nil
-	case asset.Asset:
-		return map[string]interface{}{
-			rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
-			"path":                t.Path(),
-			"text":                t.Text(),
-			"uri":                 t.URI(),
-		}, nil, nil
-	case asset.Archive:
-		var assets map[string]interface{}
-		if as := t.Assets(); as != nil {
-			assets = make(map[string]interface{})
-			for k, a := range as {
-				aa, _, err := marshalInput(a)
+		// If this is an Output, recurse.
+		if out, ok := isOutput(v); ok {
+			return marshalInputOutput(out)
+		}
+
+		// Next, look for some well known types.
+		switch v := v.(type) {
+		case asset.Asset:
+			return map[string]interface{}{
+				rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
+				"path":                v.Path(),
+				"text":                v.Text(),
+				"uri":                 v.URI(),
+			}, nil, nil
+		case asset.Archive:
+			var assets map[string]interface{}
+			if as := v.Assets(); as != nil {
+				assets = make(map[string]interface{})
+				for k, a := range as {
+					aa, _, err := marshalInput(a)
+					if err != nil {
+						return nil, nil, err
+					}
+					assets[k] = aa
+				}
+			}
+
+			return map[string]interface{}{
+				rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
+				"assets":              assets,
+				"path":                v.Path(),
+				"uri":                 v.URI(),
+			}, nil, nil
+		case CustomResource:
+			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
+			e, d, err := marshalInput(v.ID())
+			if err != nil {
+				return nil, nil, err
+			}
+			return e, append([]Resource{v}, d...), nil
+		}
+
+		rv := reflect.ValueOf(v)
+		switch rv.Type().Kind() {
+		case reflect.Bool:
+			return rv.Bool(), nil, nil
+		case reflect.Int:
+			return int(rv.Int()), nil, nil
+		case reflect.Int8:
+			return int8(rv.Int()), nil, nil
+		case reflect.Int16:
+			return int16(rv.Int()), nil, nil
+		case reflect.Int32:
+			return int32(rv.Int()), nil, nil
+		case reflect.Int64:
+			return rv.Int(), nil, nil
+		case reflect.Uint:
+			return uint(rv.Uint()), nil, nil
+		case reflect.Uint8:
+			return uint8(rv.Uint()), nil, nil
+		case reflect.Uint16:
+			return uint16(rv.Uint()), nil, nil
+		case reflect.Uint32:
+			return uint32(rv.Uint()), nil, nil
+		case reflect.Uint64:
+			return rv.Uint(), nil, nil
+		case reflect.Float32:
+			return float32(rv.Float()), nil, nil
+		case reflect.Float64:
+			return rv.Float(), nil, nil
+		case reflect.Ptr, reflect.Interface:
+			// Dereference non-nil pointers and interfaces.
+			if rv.IsNil() {
+				return nil, nil, nil
+			}
+			rv = rv.Elem()
+		case reflect.Array, reflect.Slice:
+			// If an array or a slice, create a new array by recursing into elements.
+			var arr []interface{}
+			var deps []Resource
+			for i := 0; i < rv.Len(); i++ {
+				elem := rv.Index(i)
+				e, d, err := marshalInput(elem.Interface())
 				if err != nil {
 					return nil, nil, err
 				}
-				assets[k] = aa
+				arr = append(arr, e)
+				deps = append(deps, d...)
 			}
-		}
+			return arr, deps, nil
+		case reflect.Map:
+			// For maps, only support string-based keys, and recurse into the values.
+			obj := make(map[string]interface{})
+			var deps []Resource
+			for _, key := range rv.MapKeys() {
+				k, ok := key.Interface().(string)
+				if !ok {
+					return nil, nil,
+						errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
+				}
+				value := rv.MapIndex(key)
+				mv, d, err := marshalInput(value.Interface())
+				if err != nil {
+					return nil, nil, err
+				}
 
-		return map[string]interface{}{
-			rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
-			"assets":              assets,
-			"path":                t.Path(),
-			"uri":                 t.URI(),
-		}, nil, nil
-	case Output:
-		return marshalInputOutput(&t)
-	case *Output:
-		return marshalInputOutput(t)
-	case CustomResource:
-		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
-		e, d, err := marshalInput(t.ID())
-		if err != nil {
-			return nil, nil, err
+				obj[k] = mv
+				deps = append(deps, d...)
+			}
+			return obj, deps, nil
+		case reflect.String:
+			return rv.String(), nil, nil
+		default:
+			return nil, nil, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 		}
-		return e, append([]Resource{t}, d...), nil
+		v = rv.Interface()
 	}
 
-	// Finally, handle the usual primitives (numbers, strings, arrays, maps, ...)
-	rv := reflect.ValueOf(v)
-	switch rk := rv.Type().Kind(); rk {
-	case reflect.Array, reflect.Slice:
-		// If an array or a slice, create a new array by recursing into elements.
-		var arr []interface{}
-		var deps []Resource
-		for i := 0; i < rv.Len(); i++ {
-			elem := rv.Index(i)
-			e, d, err := marshalInput(elem.Interface())
-			if err != nil {
-				return nil, nil, err
-			}
-			arr = append(arr, e)
-			deps = append(deps, d...)
-		}
-		return arr, deps, nil
-	case reflect.Map:
-		// For maps, only support string-based keys, and recurse into the values.
-		obj := make(map[string]interface{})
-		var deps []Resource
-		for _, key := range rv.MapKeys() {
-			k, ok := key.Interface().(string)
-			if !ok {
-				return nil, nil,
-					errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
-			}
-			value := rv.MapIndex(key)
-			mv, d, err := marshalInput(value.Interface())
-			if err != nil {
-				return nil, nil, err
-			}
-
-			obj[k] = mv
-			deps = append(deps, d...)
-		}
-		return obj, deps, nil
-	case reflect.Ptr:
-		// See if this is an alias for *Output.  If so, convert to an *Output, and recurse.
-		ot := reflect.TypeOf(&Output{})
-		if rv.Type().ConvertibleTo(ot) {
-			oo := rv.Convert(ot)
-			return marshalInput(oo.Interface())
-		}
-
-		// For all other pointers, recurse into the underlying value.
-		if rv.IsNil() {
-			return nil, nil, nil
-		}
-		return marshalInput(rv.Elem().Interface())
-	case reflect.String:
-		return marshalInput(rv.String())
-	}
-
-	return nil, nil, errors.Errorf("unrecognized input property type: %v (%v)", v, reflect.TypeOf(v))
 }
 
 func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 	// Await the value and return its raw value.
-	ov, known, err := out.Value()
+	ov, known, err := out.s.await(context.TODO())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,11 +213,11 @@ func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 		if merr != nil {
 			return nil, nil, merr
 		}
-		return e, append(out.Deps(), d...), nil
+		return e, append(out.s.deps, d...), nil
 	}
 
 	// Otherwise, simply return the unknown value sentinel.
-	return rpcTokenUnknownValue, out.Deps(), nil
+	return rpcTokenUnknownValue, out.s.deps, nil
 }
 
 // unmarshalOutputs unmarshals all the outputs into a simple map.
