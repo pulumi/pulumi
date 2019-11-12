@@ -75,9 +75,7 @@ namespace Pulumi
         /// both input maps.</returns>
         public static InputMap<V> Merge(InputMap<V> first, InputMap<V> second)
         {
-            var firstDictionary = (Input<ImmutableDictionary<string, V>>)first._outputValue;
-            var secondDictionary = (Input<ImmutableDictionary<string, V>>)second._outputValue;
-            var output = Output.Tuple(firstDictionary, secondDictionary)
+            var output = Output.Tuple(first._outputValue, second._outputValue)
                                .Apply(dicts =>
                                {
                                    var result = new Dictionary<string, V>(dicts.Item1);
