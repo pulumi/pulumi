@@ -20,7 +20,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
@@ -77,7 +77,7 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	if err != nil {
 		return err
 	}
-	ctx.stackR, err = reg.URN().Value()
+	ctx.stackR, _, err = reg.URN().await(context.TODO())
 	if err != nil {
 		return err
 	}
