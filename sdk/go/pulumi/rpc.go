@@ -28,7 +28,9 @@ import (
 )
 
 // marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
-func marshalInputs(props map[string]interface{}) (*structpb.Struct, map[string][]URN, []URN, error) {
+func marshalInputs(props map[string]interface{},
+	keepUnknowns bool) (*structpb.Struct, map[string][]URN, []URN, error) {
+
 	var depURNs []URN
 	pmap, pdeps := make(map[string]interface{}), make(map[string][]URN)
 	for key := range props {
@@ -57,7 +59,7 @@ func marshalInputs(props map[string]interface{}) (*structpb.Struct, map[string][
 	// Marshal all properties for the RPC call.
 	m, err := plugin.MarshalProperties(
 		resource.NewPropertyMapFromMap(pmap),
-		plugin.MarshalOptions{KeepUnknowns: true},
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns},
 	)
 	return m, pdeps, depURNs, err
 }
@@ -200,7 +202,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 
 }
 
-func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
+func marshalInputOutput(out Output) (interface{}, []Resource, error) {
 	// Await the value and return its raw value.
 	ov, known, err := out.s.await(context.TODO())
 	if err != nil {
@@ -213,11 +215,11 @@ func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 		if merr != nil {
 			return nil, nil, merr
 		}
-		return e, append(out.s.deps, d...), nil
+		return e, append(out.s.dependencies(), d...), nil
 	}
 
 	// Otherwise, simply return the unknown value sentinel.
-	return rpcTokenUnknownValue, out.s.deps, nil
+	return rpcTokenUnknownValue, out.s.dependencies(), nil
 }
 
 // unmarshalOutputs unmarshals all the outputs into a simple map.

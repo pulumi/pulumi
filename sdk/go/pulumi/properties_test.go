@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func assertApplied(t *testing.T, o *Output) {
+func assertApplied(t *testing.T, o Output) {
 	_, known, err := o.s.await(context.Background())
 	assert.True(t, known)
 	assert.Nil(t, err)
@@ -58,7 +58,7 @@ func TestArrayOutputs(t *testing.T) {
 		resolve([]interface{}{nil, 0, "x"})
 	}()
 	{
-		arr := (*ArrayOutput)(out)
+		arr := ArrayOutput(out)
 		assertApplied(t, arr.Apply(func(arr []interface{}) (interface{}, error) {
 			assert.NotNil(t, arr)
 			if assert.Equal(t, 3, len(arr)) {
@@ -77,7 +77,7 @@ func TestBoolOutputs(t *testing.T) {
 		resolve(true)
 	}()
 	{
-		b := (*BoolOutput)(out)
+		b := BoolOutput(out)
 		assertApplied(t, b.Apply(func(v bool) (interface{}, error) {
 			assert.True(t, v)
 			return nil, nil
@@ -95,7 +95,7 @@ func TestMapOutputs(t *testing.T) {
 		})
 	}()
 	{
-		b := (*MapOutput)(out)
+		b := MapOutput(out)
 		assertApplied(t, b.Apply(func(v map[string]interface{}) (interface{}, error) {
 			assert.NotNil(t, v)
 			assert.Equal(t, 1, v["x"])
@@ -112,7 +112,7 @@ func TestNumberOutputs(t *testing.T) {
 		resolve(42.345)
 	}()
 	{
-		b := (*Float64Output)(out)
+		b := Float64Output(out)
 		assertApplied(t, b.Apply(func(v float64) (interface{}, error) {
 			assert.Equal(t, 42.345, v)
 			return nil, nil
@@ -126,7 +126,7 @@ func TestStringOutputs(t *testing.T) {
 		resolve("a stringy output")
 	}()
 	{
-		b := (*StringOutput)(out)
+		b := StringOutput(out)
 		assertApplied(t, b.Apply(func(v string) (interface{}, error) {
 			assert.Equal(t, "a stringy output", v)
 			return nil, nil
@@ -168,7 +168,7 @@ func TestOutputApply(t *testing.T) {
 		out, resolve, _ := NewOutput()
 		go func() { resolve(42) }()
 		var ranApp bool
-		b := (*IntOutput)(out)
+		b := IntOutput(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
@@ -184,7 +184,7 @@ func TestOutputApply(t *testing.T) {
 		out := newOutput()
 		go func() { out.s.fulfill(42, false, nil) }()
 		var ranApp bool
-		b := (*IntOutput)(out)
+		b := IntOutput(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
@@ -199,7 +199,7 @@ func TestOutputApply(t *testing.T) {
 		out, _, reject := NewOutput()
 		go func() { reject(errors.New("boom")) }()
 		var ranApp bool
-		b := (*IntOutput)(out)
+		b := IntOutput(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
@@ -214,7 +214,7 @@ func TestOutputApply(t *testing.T) {
 		out, resolve, _ := NewOutput()
 		go func() { resolve(42) }()
 		var ranApp bool
-		b := (*IntOutput)(out)
+		b := IntOutput(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 1) }()
@@ -231,7 +231,7 @@ func TestOutputApply(t *testing.T) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 2) }()
 			ranApp = true
-			return (*IntOutput)(other), nil
+			return IntOutput(other), nil
 		})
 		v, known, err = app.s.await(context.Background())
 		assert.True(t, ranApp)
@@ -244,7 +244,7 @@ func TestOutputApply(t *testing.T) {
 		out, resolve, _ := NewOutput()
 		go func() { resolve(42) }()
 		var ranApp bool
-		b := (*IntOutput)(out)
+		b := IntOutput(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
@@ -260,7 +260,7 @@ func TestOutputApply(t *testing.T) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
-			return (*IntOutput)(other), nil
+			return IntOutput(other), nil
 		})
 		v, _, err = app.s.await(context.Background())
 		assert.True(t, ranApp)

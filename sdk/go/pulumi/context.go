@@ -137,7 +137,7 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}, opts ...Invo
 
 	// Serialize arguments, first by awaiting them, and then marshaling them to the requisite gRPC values.
 	// TODO[pulumi/pulumi#1483]: feels like we should be propagating dependencies to the outputs, instead of ignoring.
-	rpcArgs, _, _, err := marshalInputs(args)
+	rpcArgs, _, _, err := marshalInputs(args, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling arguments")
 	}
@@ -305,20 +305,20 @@ func (ctx *Context) RegisterResource(
 // ResourceState contains the results of a resource registration operation.
 type ResourceState struct {
 	// urn will resolve to the resource's URN after registration has completed.
-	urn *URNOutput
+	urn URNOutput
 	// id will resolve to the resource's ID after registration, provided this is for a custom resource.
-	id *IDOutput
+	id IDOutput
 	// State contains the full set of expected output properties and will resolve after completion.
 	State Outputs
 }
 
 // URN will resolve to the resource's URN after registration has completed.
-func (state *ResourceState) URN() *URNOutput {
+func (state *ResourceState) URN() URNOutput {
 	return state.urn
 }
 
 // ID will resolve to the resource's ID after registration, provided this is for a custom resource.
-func (state *ResourceState) ID() *IDOutput {
+func (state *ResourceState) ID() IDOutput {
 	return state.id
 }
 
@@ -327,13 +327,13 @@ func (state *ResourceState) ID() *IDOutput {
 func makeResourceState(custom bool, props map[string]interface{}) *ResourceState {
 	state := &ResourceState{}
 
-	state.urn = (*URNOutput)(newOutput(state))
+	state.urn = URNOutput(newOutput(state))
 
 	if custom {
-		state.id = (*IDOutput)(newOutput(state))
+		state.id = IDOutput(newOutput(state))
 	}
 
-	state.State = make(map[string]*Output)
+	state.State = make(map[string]Output)
 	for key := range props {
 		state.State[key] = newOutput(state)
 	}
@@ -351,7 +351,7 @@ func (state *ResourceState) resolve(dryrun bool, err error, inputs map[string]in
 	if err != nil {
 		// If there was an error, we must reject everything: URN, ID, and state properties.
 		state.urn.s.reject(err)
-		if state.id != nil {
+		if state.id.s != nil {
 			state.id.s.reject(err)
 		}
 		for _, o := range state.State {
@@ -362,7 +362,7 @@ func (state *ResourceState) resolve(dryrun bool, err error, inputs map[string]in
 
 	// Resolve the URN and ID.
 	state.urn.s.resolve(URN(urn), true)
-	if state.id != nil {
+	if state.id.s != nil {
 		known := id != "" || !dryrun
 		state.id.s.resolve(ID(id), known)
 	}
@@ -410,7 +410,8 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 	timeouts := ctx.getTimeouts(opts...)
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	rpcProps, propertyDeps, rpcDeps, err := marshalInputs(props)
+	keepUnknowns := ctx.DryRun()
+	rpcProps, propertyDeps, rpcDeps, err := marshalInputs(props, keepUnknowns)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling properties")
 	}
@@ -602,7 +603,8 @@ var _ ProviderResource = (*ResourceState)(nil)
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
 func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}) error {
-	outsMarshalled, _, _, err := marshalInputs(outs)
+	keepUnknowns := ctx.DryRun()
+	outsMarshalled, _, _, err := marshalInputs(outs, keepUnknowns)
 	if err != nil {
 		return errors.Wrap(err, "marshaling outputs")
 	}

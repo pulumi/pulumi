@@ -29,6 +29,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	resolve("outputty")
 	out2 := newOutput()
 	out2.s.fulfill(nil, false, nil)
+	out3 := Output{}
 	input := map[string]interface{}{
 		"s":            "a string",
 		"a":            true,
@@ -51,10 +52,11 @@ func TestMarshalRoundtrip(t *testing.T) {
 		},
 		"g": out2,
 		"h": URN("foo"),
+		"i": out3,
 	}
 
 	// Marshal those inputs.
-	m, pdeps, deps, err := marshalInputs(input)
+	m, pdeps, deps, err := marshalInputs(input, true)
 	if !assert.Nil(t, err) {
 		assert.Equal(t, len(input), len(pdeps))
 		assert.Equal(t, 0, len(deps))
@@ -89,6 +91,48 @@ func TestMarshalRoundtrip(t *testing.T) {
 				assert.Equal(t, false, am["z"])
 				assert.Equal(t, rpcTokenUnknownValue, res["g"])
 				assert.Equal(t, "foo", res["h"])
+				assert.Equal(t, rpcTokenUnknownValue, res["i"])
+			}
+		}
+	}
+
+	// Marshal those inputs without unknowns.
+	m, pdeps, deps, err = marshalInputs(input, false)
+	if !assert.Nil(t, err) {
+		assert.Equal(t, len(input), len(pdeps))
+		assert.Equal(t, 0, len(deps))
+
+		// Now just unmarshal and ensure the resulting map matches.
+		res, err := unmarshalOutputs(m)
+		if !assert.Nil(t, err) {
+			if !assert.NotNil(t, res) {
+				assert.Equal(t, "a string", res["s"])
+				assert.Equal(t, true, res["a"])
+				assert.Equal(t, 42, res["b"])
+				assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(asset.Asset).Text())
+				assert.Equal(t, "foo.txt", res["cFileAsset"].(asset.Asset).Path())
+				assert.Equal(t, "https://pulumi.com/fake/asset.txt", res["cRemoteAsset"].(asset.Asset).URI())
+				ar := res["dAssetArchive"].(asset.Archive).Assets()
+				assert.Equal(t, 2, len(ar))
+				assert.Equal(t, "bar.txt", ar["subAsset"].(asset.Asset).Path())
+				assert.Equal(t, "bar.zip", ar["subrchive"].(asset.Archive).Path())
+				assert.Equal(t, "foo.zip", res["dFileArchive"].(asset.Archive).Path())
+				assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(asset.Archive).URI())
+				assert.Equal(t, "outputty", res["e"])
+				aa := res["fArray"].([]interface{})
+				assert.Equal(t, 4, len(aa))
+				assert.Equal(t, 0, aa[0])
+				assert.Equal(t, 1.3, aa[1])
+				assert.Equal(t, "x", aa[2])
+				assert.Equal(t, false, aa[3])
+				am := res["fMap"].(map[string]interface{})
+				assert.Equal(t, 3, len(am))
+				assert.Equal(t, "y", am["x"])
+				assert.Equal(t, 999.9, am["y"])
+				assert.Equal(t, false, am["z"])
+				assert.Equal(t, nil, res["g"])
+				assert.Equal(t, "foo", res["h"])
+				assert.Equal(t, nil, res["i"])
 			}
 		}
 	}
@@ -97,7 +141,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 func TestResourceState(t *testing.T) {
 	state := makeResourceState(true, map[string]interface{}{"baz": nil})
 
-	s, _, _, _ := marshalInputs(map[string]interface{}{"baz": "qux"})
+	s, _, _, _ := marshalInputs(map[string]interface{}{"baz": "qux"}, true)
 	state.resolve(false, nil, nil, "foo", "bar", s)
 
 	input := map[string]interface{}{
@@ -105,7 +149,7 @@ func TestResourceState(t *testing.T) {
 		"id":  state.id,
 		"baz": state.State["baz"],
 	}
-	m, pdeps, deps, err := marshalInputs(input)
+	m, pdeps, deps, err := marshalInputs(input, true)
 	assert.Nil(t, err)
 	assert.Equal(t, map[string][]URN{
 		"urn": {"foo"},

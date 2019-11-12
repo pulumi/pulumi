@@ -52,7 +52,18 @@ type outputState struct {
 	deps []Resource // the dependencies associated with this output property.
 }
 
+func (o *outputState) dependencies() []Resource {
+	if o == nil {
+		return nil
+	}
+	return o.deps
+}
+
 func (o *outputState) fulfill(value interface{}, known bool, err error) {
+	if o == nil {
+		return
+	}
+
 	o.mutex.Lock()
 	defer func() {
 		o.mutex.Unlock()
@@ -80,6 +91,11 @@ func (o *outputState) reject(err error) {
 
 func (o *outputState) await(ctx context.Context) (interface{}, bool, error) {
 	for {
+		if o == nil {
+			// If the state is nil, treat its value as resolved and unknown.
+			return nil, false, nil
+		}
+
 		o.mutex.Lock()
 		for o.state == outputPending {
 			if ctx.Err() != nil {
@@ -101,8 +117,8 @@ func (o *outputState) await(ctx context.Context) (interface{}, bool, error) {
 	}
 }
 
-func newOutput(deps ...Resource) *Output {
-	out := &Output{
+func newOutput(deps ...Resource) Output {
+	out := Output{
 		s: &outputState{
 			deps: deps,
 		},
@@ -112,26 +128,22 @@ func newOutput(deps ...Resource) *Output {
 	return out
 }
 
-var outputType = reflect.TypeOf((**Output)(nil)).Elem()
+var outputType = reflect.TypeOf(Output{})
 
-func isOutput(v interface{}) (*Output, bool) {
+func isOutput(v interface{}) (Output, bool) {
 	if v != nil {
 		rv := reflect.ValueOf(v)
 		if rv.Type().ConvertibleTo(outputType) {
-			return rv.Convert(outputType).Interface().(*Output), true
-		}
-		if rv.Type().ConvertibleTo(outputType.Elem()) {
-			o := rv.Convert(outputType.Elem()).Interface().(Output)
-			return &o, true
+			return rv.Convert(outputType).Interface().(Output), true
 		}
 	}
-	return nil, false
+	return Output{}, false
 }
 
 // NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
 // function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
 // error; exactly one function must be called. This acts like a promise.
-func NewOutput() (*Output, func(interface{}), func(error)) {
+func NewOutput() (Output, func(interface{}), func(error)) {
 	out := newOutput()
 
 	resolve := func(v interface{}) {
@@ -147,7 +159,7 @@ func NewOutput() (*Output, func(interface{}), func(error)) {
 // ApplyWithContext transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Output {
+func (out Output) Apply(applier func(v interface{}) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(v)
 	})
@@ -157,8 +169,8 @@ func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Outp
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
 // The provided context can be used to reject the output as canceled.
-func (out *Output) ApplyWithContext(ctx context.Context,
-	applier func(ctx context.Context, v interface{}) (interface{}, error)) *Output {
+func (out Output) ApplyWithContext(ctx context.Context,
+	applier func(ctx context.Context, v interface{}) (interface{}, error)) Output {
 
 	result := newOutput(out.s.deps...)
 	go func() {
@@ -182,7 +194,7 @@ func (out *Output) ApplyWithContext(ctx context.Context,
 }
 
 // Outputs is a map of property name to value, one for each resource output property.
-type Outputs map[string]*Output
+type Outputs map[string]Output
 
 // ArchiveOutput is an Output that is typed to return archive values.
 type ArchiveOutput Output
@@ -190,15 +202,15 @@ type ArchiveOutput Output
 var archiveType = reflect.TypeOf((*asset.Archive)(nil)).Elem()
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *ArchiveOutput) Apply(applier func(asset.Archive) (interface{}, error)) *Output {
+func (out ArchiveOutput) Apply(applier func(asset.Archive) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v asset.Archive) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *ArchiveOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, asset.Archive) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out ArchiveOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, asset.Archive) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, archiveType).(asset.Archive))
 	})
 }
@@ -209,15 +221,15 @@ type ArrayOutput Output
 var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *ArrayOutput) Apply(applier func([]interface{}) (interface{}, error)) *Output {
+func (out ArrayOutput) Apply(applier func([]interface{}) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v []interface{}) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *ArrayOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, []interface{}) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out ArrayOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, []interface{}) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, arrayType).([]interface{}))
 	})
 }
@@ -228,15 +240,15 @@ type AssetOutput Output
 var assetType = reflect.TypeOf((*asset.Asset)(nil)).Elem()
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) *Output {
+func (out AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v asset.Asset) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *AssetOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, asset.Asset) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out AssetOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, asset.Asset) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, assetType).(asset.Asset))
 	})
 }
@@ -247,15 +259,15 @@ type BoolOutput Output
 var boolType = reflect.TypeOf(false)
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *BoolOutput) Apply(applier func(bool) (interface{}, error)) *Output {
+func (out BoolOutput) Apply(applier func(bool) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v bool) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *BoolOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, bool) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out BoolOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, bool) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, boolType).(bool))
 	})
 }
@@ -266,15 +278,15 @@ type Float32Output Output
 var float32Type = reflect.TypeOf(float32(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Float32Output) Apply(applier func(float32) (interface{}, error)) *Output {
+func (out Float32Output) Apply(applier func(float32) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v float32) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Float32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, float32) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Float32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, float32) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, float32Type).(float32))
 	})
 }
@@ -285,15 +297,15 @@ type Float64Output Output
 var float64Type = reflect.TypeOf(float64(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Float64Output) Apply(applier func(float64) (interface{}, error)) *Output {
+func (out Float64Output) Apply(applier func(float64) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v float64) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Float64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, float64) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Float64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, float64) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, float64Type).(float64))
 	})
 }
@@ -303,7 +315,7 @@ type IDOutput Output
 
 var stringType = reflect.TypeOf("")
 
-func (out *IDOutput) await(ctx context.Context) (ID, bool, error) {
+func (out IDOutput) await(ctx context.Context) (ID, bool, error) {
 	id, known, err := out.s.await(ctx)
 	if !known || err != nil {
 		return "", known, err
@@ -312,15 +324,15 @@ func (out *IDOutput) await(ctx context.Context) (ID, bool, error) {
 }
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *IDOutput) Apply(applier func(ID) (interface{}, error)) *Output {
+func (out IDOutput) Apply(applier func(ID) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v ID) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *IDOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, ID) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out IDOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, ID) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, ID(convert(v, stringType).(string)))
 	})
 }
@@ -331,15 +343,15 @@ type IntOutput Output
 var intType = reflect.TypeOf(int(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *IntOutput) Apply(applier func(int) (interface{}, error)) *Output {
+func (out IntOutput) Apply(applier func(int) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v int) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *IntOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, int) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out IntOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, int) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, intType).(int))
 	})
 }
@@ -350,15 +362,15 @@ type Int8Output Output
 var int8Type = reflect.TypeOf(int8(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Int8Output) Apply(applier func(int8) (interface{}, error)) *Output {
+func (out Int8Output) Apply(applier func(int8) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v int8) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Int8Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int8) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Int8Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int8) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, int8Type).(int8))
 	})
 }
@@ -369,15 +381,15 @@ type Int16Output Output
 var int16Type = reflect.TypeOf(int16(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Int16Output) Apply(applier func(int16) (interface{}, error)) *Output {
+func (out Int16Output) Apply(applier func(int16) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v int16) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Int16Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int16) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Int16Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int16) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, int16Type).(int16))
 	})
 }
@@ -388,15 +400,15 @@ type Int32Output Output
 var int32Type = reflect.TypeOf(int32(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Int32Output) Apply(applier func(int32) (interface{}, error)) *Output {
+func (out Int32Output) Apply(applier func(int32) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v int32) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Int32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int32) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Int32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int32) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, int32Type).(int32))
 	})
 }
@@ -407,15 +419,15 @@ type Int64Output Output
 var int64Type = reflect.TypeOf(int64(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Int64Output) Apply(applier func(int64) (interface{}, error)) *Output {
+func (out Int64Output) Apply(applier func(int64) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v int64) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Int64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int64) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Int64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, int64) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, int64Type).(int64))
 	})
 }
@@ -426,15 +438,15 @@ type MapOutput Output
 var mapType = reflect.TypeOf(map[string]interface{}{})
 
 // Apply applies a transformation to the number value when it is available.
-func (out *MapOutput) Apply(applier func(map[string]interface{}) (interface{}, error)) *Output {
+func (out MapOutput) Apply(applier func(map[string]interface{}) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v map[string]interface{}) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the number value when it is available.
-func (out *MapOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, map[string]interface{}) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out MapOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, map[string]interface{}) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, mapType).(map[string]interface{}))
 	})
 }
@@ -443,15 +455,15 @@ func (out *MapOutput) ApplyWithContext(ctx context.Context, applier func(context
 type StringOutput Output
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Output {
+func (out StringOutput) Apply(applier func(string) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v string) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *StringOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, string) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out StringOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, string) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, stringType).(string))
 	})
 }
@@ -462,15 +474,15 @@ type UintOutput Output
 var uintType = reflect.TypeOf(uint(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *UintOutput) Apply(applier func(uint) (interface{}, error)) *Output {
+func (out UintOutput) Apply(applier func(uint) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v uint) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *UintOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, uint) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out UintOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, uint) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, uintType).(uint))
 	})
 }
@@ -481,15 +493,15 @@ type Uint8Output Output
 var uint8Type = reflect.TypeOf(uint8(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Uint8Output) Apply(applier func(uint8) (interface{}, error)) *Output {
+func (out Uint8Output) Apply(applier func(uint8) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v uint8) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Uint8Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint8) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Uint8Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint8) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, uint8Type).(uint8))
 	})
 }
@@ -500,15 +512,15 @@ type Uint16Output Output
 var uint16Type = reflect.TypeOf(uint16(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Uint16Output) Apply(applier func(uint16) (interface{}, error)) *Output {
+func (out Uint16Output) Apply(applier func(uint16) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v uint16) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Uint16Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint16) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Uint16Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint16) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, uint16Type).(uint16))
 	})
 }
@@ -519,15 +531,15 @@ type Uint32Output Output
 var uint32Type = reflect.TypeOf(uint32(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Uint32Output) Apply(applier func(uint32) (interface{}, error)) *Output {
+func (out Uint32Output) Apply(applier func(uint32) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v uint32) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Uint32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint32) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Uint32Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint32) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, uint32Type).(uint32))
 	})
 }
@@ -538,15 +550,15 @@ type Uint64Output Output
 var uint64Type = reflect.TypeOf(uint64(0))
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *Uint64Output) Apply(applier func(uint64) (interface{}, error)) *Output {
+func (out Uint64Output) Apply(applier func(uint64) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v uint64) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *Uint64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint64) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out Uint64Output) ApplyWithContext(ctx context.Context, applier func(context.Context, uint64) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, convert(v, uint64Type).(uint64))
 	})
 }
@@ -554,7 +566,7 @@ func (out *Uint64Output) ApplyWithContext(ctx context.Context, applier func(cont
 // URNOutput is an Output that is typed to return URN values.
 type URNOutput Output
 
-func (out *URNOutput) await(ctx context.Context) (URN, bool, error) {
+func (out URNOutput) await(ctx context.Context) (URN, bool, error) {
 	urn, known, err := out.s.await(ctx)
 	if !known || err != nil {
 		return "", known, err
@@ -563,15 +575,15 @@ func (out *URNOutput) await(ctx context.Context) (URN, bool, error) {
 }
 
 // Apply applies a transformation to the archive value when it is available.
-func (out *URNOutput) Apply(applier func(URN) (interface{}, error)) *Output {
+func (out URNOutput) Apply(applier func(URN) (interface{}, error)) Output {
 	return out.ApplyWithContext(context.Background(), func(_ context.Context, v URN) (interface{}, error) {
 		return applier(v)
 	})
 }
 
 // ApplyWithContext applies a transformation to the archive value when it is available.
-func (out *URNOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, URN) (interface{}, error)) *Output {
-	return (*Output)(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
+func (out URNOutput) ApplyWithContext(ctx context.Context, applier func(context.Context, URN) (interface{}, error)) Output {
+	return Output(out).ApplyWithContext(ctx, func(ctx context.Context, v interface{}) (interface{}, error) {
 		return applier(ctx, URN(convert(v, stringType).(string)))
 	})
 }
