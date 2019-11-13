@@ -160,7 +160,7 @@ export class StackReference extends CustomResource {
         }
         else if (Output.isInstance(this.stackReferenceName)) {
             console.log(
-                `Call made to StackReference.${callerName} with a StackReference with an Output name. This may cause the program to hang.
+                `Call made to StackReference.${callerName} with a StackReference with an Output name. This is now deprecated and may cause the program to hang.
                 For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
 
             stackName = promiseResult(this.stackReferenceName.promise());
