@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support for a `go run` style workflow. Building or installing a pulumi program written in go is
+  now optional. [3503](https://github.com/pulumi/pulumi/pull/3503)
 - `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
   the `org-name` CLI argument is now optional. If not specified; the current user account is
   used.
