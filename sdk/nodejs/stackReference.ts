@@ -153,7 +153,7 @@ export class StackReference extends CustomResource {
             // Have to do an explicit console.log here as the call to utils.promiseResult may hang
             // node, and that may prevent our normal logging calls from making it back to the user.
             console.log(
-                `Call made to StackReference.${callerName} with a StackReference with a Promise name. This may cause the program to hang.
+                `Call made to StackReference.${callerName} with a StackReference with a Promise name. This is now deprecated and may cause the program to hang.
                 For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
 
             stackName = promiseResult(this.stackReferenceName);
