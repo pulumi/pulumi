@@ -244,7 +244,7 @@ function invokeSyncWorker<T>(tok: string, props: any, opts: InvokeOptions, syncI
             // Have to do an explicit console.log here as the call to utils.promiseResult may hang
             // node, and that may prevent our normal logging calls from making it back to the user.
             console.log(
-`Synchronous call made to "${tok}" with an unregistered provider. This may cause the program to hang.
+`Synchronous call made to "${tok}" with an unregistered provider. This is now deprecated and may cause the program to hang.
 For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-call`);
             utils.promiseResult(ProviderResource.register(provider));
         }
