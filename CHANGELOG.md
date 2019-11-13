@@ -28,9 +28,8 @@ CHANGELOG
 
 - Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
 
-- Codepaths which have a high likelihood of causing a hang will print a message to the console
-  indicating the problem, along with a link to documentation on how to restructure code to best
-  address it.
+- Codepaths which could result in a hang will print a message to the console indicating the problem, along with a link
+  to documentation on how to restructure code to best address it.
 
 ### Compatibility
 
