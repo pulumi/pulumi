@@ -285,8 +285,9 @@ func (ctx *Context) RegisterResource(
 			Provider:             inputs.provider,
 			PropertyDependencies: inputs.rpcPropertyDeps,
 			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
-			ImportId:             inputs.importID,
-			CustomTimeouts:       inputs.customTimeouts,
+			//TODO
+			ImportId:       inputs.importID,
+			CustomTimeouts: inputs.customTimeouts,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -389,6 +390,7 @@ func (state *ResourceState) resolve(dryrun bool, err error, inputs map[string]in
 type resourceInputs struct {
 	parent              string
 	deps                []string
+	ignoreChanges       []string
 	protect             bool
 	provider            string
 	rpcProps            *structpb.Struct
@@ -480,6 +482,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 	var provider ProviderResource
 	var deleteBeforeReplace bool
 	var importID ID
+	var ignoreChanges []string
 	for _, opt := range opts {
 		if parent == nil && opt.Parent != nil {
 			parent = opt.Parent
@@ -493,11 +496,14 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 		if provider == nil && opt.Provider != nil {
 			provider = opt.Provider
 		}
-		if !deleteBeforeReplace && opt.DeleteBeforeReplace {
+		if !deleteBeforeReplace && opt.DeleteBeforeReplace { // is this value ever returned? TODO
 			deleteBeforeReplace = true
 		}
 		if importID == "" && opt.Import != "" {
 			importID = opt.Import
+		}
+		if ignoreChanges == nil && opt.IgnoreChanges != nil {
+			ignoreChanges = opt.IgnoreChanges
 		}
 	}
 
