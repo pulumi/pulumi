@@ -84,6 +84,15 @@ func TestEmptyGo(t *testing.T) {
 	})
 }
 
+// TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
+func TestEmptyGoRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:         filepath.Join("empty", "gorun"),
+		Quick:       true,
+		GoRunInvoke: true,
+	})
+}
+
 // TestEmptyDotNet simply tests that we can run an empty .NET project.
 func TestEmptyDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

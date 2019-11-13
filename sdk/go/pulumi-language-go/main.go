@@ -92,6 +92,8 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{}, nil
 }
 
+var unableToFindProgramTemplate = "unable to find program: %s"
+
 // findProgram attempts to find the needed program in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func findProgram(program string) (string, error) {
@@ -123,7 +125,7 @@ func findProgram(program string) (string, error) {
 		return fullPath, nil
 	}
 
-	return "", errors.Errorf("unable to find program: %s", program)
+	return "", errors.Errorf(unableToFindProgramTemplate, program)
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
@@ -135,18 +137,44 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
+	// by default we try to run a named executable on the path, but we will fallback to 'go run' style execution
+	goRunInvoke := false
+
 	// The program to execute is simply the name of the project.  This ensures good Go toolability, whereby
 	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
 	program, err := findProgram(req.GetProject())
 	if err != nil {
-		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
+		message := "problem executing program (could not run language executor)"
+		if err.Error() == fmt.Sprintf(unableToFindProgramTemplate, req.GetProject()) {
+			logging.V(5).Infof("Unable to find program %s in $PATH, attempting invocation via 'go run'", program)
+			program, err = findProgram("go")
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			goRunInvoke = true
+		} else {
+			return nil, errors.Wrap(err, message)
+		}
 	}
 
 	logging.V(5).Infof("language host launching process: %s", program)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(program)
+	var cmd *exec.Cmd
+
+	if goRunInvoke {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to get current working directory")
+		}
+		args := []string{"run", cwd}
+		// go run $cwd
+		cmd = exec.Command(program, args...)
+	} else {
+		cmd = exec.Command(program)
+	}
+
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -237,6 +237,9 @@ type ProgramTestOptions struct {
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
 	DotNetBin string
 
+	// If true, we skip the build step producing a named go binary and will fallback to invocation via 'go run'
+	GoRunInvoke bool
+
 	// Additional environment variables to pass for each command we run.
 	Env []string
 }
@@ -1608,6 +1611,12 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return err
 	}
+
+	// skip building if the 'go run' invocation path is requested.
+	if pt.opts.GoRunInvoke {
+		return nil
+	}
+
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
 }
