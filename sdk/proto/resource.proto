@@ -98,7 +98,6 @@ message RegisterResourceRequest {
     string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
     CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
     bool deleteBeforeReplaceDefined = 18;                       // true if the deleteBeforeReplace property should be treated as defined even if it is false.
-    bool supportsPartialValues = 19;                            // true if the request is from an SDK that supports partially-known properties during preview.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

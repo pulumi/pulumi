@@ -819,26 +819,19 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
 
-	// Filter out partially-known values if the requestor does not support them.
-	state, outputs := result.State, result.State.Outputs
-	if !req.GetSupportsPartialValues() {
-		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", state.URN)
-		filtered := resource.PropertyMap{}
-		for k, v := range outputs {
-			if !v.ContainsUnknowns() {
-				filtered[k] = v
-			}
-		}
-		outputs = filtered
+	state := result.State
+	stable := result.Stable
+	var stables []string
+	for _, sta := range result.Stables {
+		stables = append(stables, string(sta))
 	}
-
 	logging.V(5).Infof(
-		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
-		state.Type, state.URN, len(outputs))
+		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
+		state.Type, state.URN, stable, len(stables), len(state.Outputs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+	obj, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
 		Label:        label,
 		KeepUnknowns: true,
 		KeepSecrets:  req.GetAcceptSecrets(),
@@ -847,9 +840,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	return &pulumirpc.RegisterResourceResponse{
-		Urn:    string(state.URN),
-		Id:     string(state.ID),
-		Object: obj,
+		Urn:     string(state.URN),
+		Id:      string(state.ID),
+		Object:  obj,
+		Stable:  stable,
+		Stables: stables,
 	}, nil
 }
 

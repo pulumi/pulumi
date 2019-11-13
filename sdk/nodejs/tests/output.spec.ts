@@ -15,8 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, OutputInstance, all, concat, interpolate, output, unknown } from "../output";
-import { Resource } from "../resource";
+import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
@@ -37,30 +36,6 @@ function mustCompile(): Output<Widget> {
             whatever: 1,
         }
     })
-}
-
-// mockOutput returns a value that looks like an Output, but allows for greater control over its behavior. This can be
-// used to simulate outputs from downlevel SDKs.
-function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<any>): any {
-    isKnown = isKnown instanceof Promise ? isKnown : Promise.resolve(isKnown);
-    value = value instanceof Promise ? value : Promise.resolve(value);
-
-    return {
-        __pulumiOutput: true,
-        isKnown: isKnown,
-        isSecret: Promise.resolve(false),
-        promise: () => value,
-        resources: () => new Set<Resource>(),
-
-        apply(callback: any): any {
-            return mockOutput(isKnown, value.then(async (v: any) => {
-                if (!isKnown) {
-                    return undefined;
-                }
-                return callback(v);
-            }));
-        }
-    }
 }
 
 describe("output", () => {
@@ -94,7 +69,7 @@ describe("output", () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error("foo")), Promise.resolve(false)));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error()), Promise.resolve(false)));
 
         try {
             const isKnown = await output2.isKnown;
@@ -331,37 +306,6 @@ describe("output", () => {
             const secret = await result.isSecret;
             assert.equal(secret, true);
         }));
-
-        it("is unknown if the value is or contains unknowns", asyncTest(async () => {
-            runtime._setIsDryRun(true);
-
-            const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve(["foo", unknown]), Promise.resolve(true), Promise.resolve(false));
-            const o3 = new Output(new Set(), Promise.resolve({"foo": "foo", unknown}), Promise.resolve(true), Promise.resolve(false));
-
-            assert.equal(await o1.isKnown, false);
-            assert.equal(await o2.isKnown, false);
-            assert.equal(await o3.isKnown, false);
-        }));
-
-        it("is unknown if the result after apply is unknown or contains unknowns", asyncTest(async () => {
-            runtime._setIsDryRun(true);
-
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
-            const r1 = o1.apply(v => unknown);
-            const r2 = o1.apply(v => [v, unknown]);
-            const r3 = o1.apply(v => <any>{v, unknown});
-            const r4 = (<any>o1.apply(v => unknown)).apply((v: any) => v, true);
-            const r5 = (<any>o1.apply(v => [v, unknown])).apply((v: any) => v, true);
-            const r6 = (<any>o1.apply(v => <any>{v, unknown})).apply((v: any) => v, true);
-
-            assert.equal(await r1.isKnown, false);
-            assert.equal(await r2.isKnown, false);
-            assert.equal(await r3.isKnown, false);
-            assert.equal(await r4.isKnown, false);
-            assert.equal(await r5.isKnown, false);
-            assert.equal(await r6.isKnown, false);
-        }));
     });
 
     describe("concat", () => {
@@ -466,101 +410,6 @@ describe("output", () => {
         it("does not lift __ properties", asyncTest(async () => {
             const output1 = output({ a: 1, b: 2 });
             assert.strictEqual((<any>output1).__pulumiResource, undefined);
-        }));
-
-        it("lifts properties from values with nested unknowns", asyncTest(async () => {
-            runtime._setIsDryRun(true);
-
-            const output1 = output({
-                foo: "foo",
-                bar: unknown,
-                baz: Promise.resolve(unknown),
-                qux: mockOutput(false, undefined),
-            });
-            assert.equal(await output1.isKnown, false);
-
-            const result1 = output1.foo;
-            assert.equal(await result1.isKnown, true);
-            assert.equal(await (<any>result1).promise(/*withUnknowns*/ true), "foo");
-
-            const result2 = output1.bar;
-            assert.equal(await result2.isKnown, false);
-            assert.equal(await (<any>result2).promise(/*withUnknowns*/ true), unknown);
-
-            const result3 = output1.baz;
-            assert.equal(await result3.isKnown, false);
-            assert.equal(await (<any>result3).promise(/*withUnknowns*/ true), unknown);
-
-            const result4 = output1.qux;
-            assert.equal(await result4.isKnown, false);
-            assert.equal(await (<any>result4).promise(/*withUnknowns*/ true), unknown);
-
-            const result5 = (<any>output1.baz).qux;
-            assert.equal(await result5.isKnown, false);
-            assert.equal(await (<any>result5).promise(/*withUnknowns*/ true), unknown);
-
-            const output2 = output([ "foo", unknown, mockOutput(false, undefined) ]);
-            assert.equal(await output2.isKnown, false);
-
-            const result6 = output2[0];
-            assert.equal(await result6.isKnown, true);
-            assert.equal(await (<any>result6).promise(/*withUnknowns*/ true), "foo");
-
-            const result7 = output2[1];
-            assert.equal(await result7.isKnown, false);
-            assert.equal(await (<any>result7).promise(/*withUnknowns*/ true), unknown);
-
-            const result8 = output2[2];
-            assert.equal(await result8.isKnown, false);
-            assert.equal(await (<any>result8).promise(/*withUnknowns*/ true), unknown);
-
-            const output3 = all([ unknown, mockOutput(false, undefined), output([ "foo", unknown ])]);
-            assert.equal(await output3.isKnown, false);
-
-            const result9 = output3[0];
-            assert.equal(await result9.isKnown, false);
-            assert.equal(await (<any>result9).promise(/*withUnknowns*/ true), unknown);
-
-            const result10 = output3[1];
-            assert.equal(await result10.isKnown, false);
-            assert.equal(await (<any>result10).promise(/*withUnknowns*/ true), unknown);
-
-            const result11 = output3[2];
-            assert.equal(await result11.isKnown, false);
-
-            const result12 = (<any>result11)[0];
-            assert.equal(await result12.isKnown, true);
-            assert.equal(await (<any>result12).promise(/*withUnknowns*/ true), "foo");
-
-            const result13 = (<any>result11)[1];
-            assert.equal(await result13.isKnown, false);
-            assert.equal(await (<any>result13).promise(/*withUnknowns*/ true), unknown);
-
-            const output4 = all({
-                foo: unknown,
-                bar: mockOutput(false, undefined),
-                baz: output({ foo: "foo", qux: unknown }),
-            });
-            assert.equal(await output4.isKnown, false);
-
-            const result14 = output4.foo;
-            assert.equal(await result14.isKnown, false);
-            assert.equal(await (<any>result14).promise(/*withUnknowns*/ true), unknown);
-
-            const result15 = output4.bar;
-            assert.equal(await result15.isKnown, false);
-            assert.equal(await (<any>result15).promise(/*withUnknowns*/ true), unknown);
-
-            const result16 = output4.baz;
-            assert.equal(await result16.isKnown, false);
-
-            const result17 = (<any>result16).foo;
-            assert.equal(await result17.isKnown, true);
-            assert.equal(await (<any>result17).promise(/*withUnknowns*/ true), "foo");
-
-            const result18 = (<any>result16).qux;
-            assert.equal(await result18.isKnown, false);
-            assert.equal(await (<any>result18).promise(/*withUnknowns*/ true), unknown);
         }));
     });
 });

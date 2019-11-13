@@ -1270,21 +1270,3 @@ func TestCloudSecretProvider(t *testing.T) {
 	// Also run with local backend
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }
-
-func TestPartialValuesNode(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:                      filepath.Join("partial_values", "nodejs"),
-		Dependencies:             []string{"@pulumi/pulumi"},
-		AllowEmptyPreviewChanges: true,
-	})
-}
-
-func TestPartialValuesPython(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("partial_values", "python"),
-		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		AllowEmptyPreviewChanges: true,
-	})
-}
