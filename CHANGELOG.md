@@ -12,6 +12,8 @@ CHANGELOG
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
 
+- Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
+
 ## 1.5.2 (2019-11-13)
 
 - `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
