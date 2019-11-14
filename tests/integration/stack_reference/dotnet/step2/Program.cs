@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pulumi;
 
@@ -16,10 +15,20 @@ class Program
             var slug = $"{org}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
             var a = new StackReference(slug);
 
-            return new Dictionary<string, object>
+            var gotError = false;
+            try
             {
-                { "val", new[] { "a", "b" } }
-            };
+                await a.GetOutputValueAsync("val2");
+            }
+            catch
+            {
+                gotError = true;
+            }
+
+            if (!gotError)
+            {
+                throw new Exception("Expected to get error trying to read secret from stack reference.");
+            }
         });
     }
 }

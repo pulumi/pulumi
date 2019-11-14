@@ -88,7 +88,6 @@ Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancel
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
-Pulumi.InputMap<V>.AddRange(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -161,6 +160,21 @@ Pulumi.Serialization.OutputConstructorAttribute
 Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
 Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
+Pulumi.StackReference
+Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.GetOutputValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
+Pulumi.StackReference.GetSecretOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.Name.get -> Pulumi.Output<string>
+Pulumi.StackReference.Outputs.get -> Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, object>>
+Pulumi.StackReference.RequireOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.RequireOutputValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
+Pulumi.StackReference.RequireSecretOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.SecretOutputNames.get -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<string>>
+Pulumi.StackReference.StackReference(string name, Pulumi.StackReferenceArgs args = null, Pulumi.ResourceOptions options = null) -> void
+Pulumi.StackReferenceArgs
+Pulumi.StackReferenceArgs.Name.get -> Pulumi.Input<string>
+Pulumi.StackReferenceArgs.Name.set -> void
+Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ComponentResourceOptions
