@@ -76,10 +76,27 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
-// TestEmptyGo simply tests that we can run an empty Go project.
+// TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "go"),
+		Dir:      filepath.Join("empty", "go"),
+		Quick:    true,
+		RunBuild: true,
+	})
+}
+
+// TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
+func TestEmptyGoRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "gorun"),
+		Quick: true,
+	})
+}
+
+// TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
+func TestEmptyGoRunMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "gorun_main"),
 		Quick: true,
 	})
 }
@@ -959,6 +976,7 @@ func TestConfigBasicGo(t *testing.T) {
 			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
+		RunBuild: true,
 	})
 }
 

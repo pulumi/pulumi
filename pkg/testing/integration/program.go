@@ -1608,6 +1608,12 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return err
 	}
+
+	// skip building if the 'go run' invocation path is requested.
+	if !pt.opts.RunBuild {
+		return nil
+	}
+
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
 }

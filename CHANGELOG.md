@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support for a `go run` style workflow. Building or installing a pulumi program written in go is
+  now optional. [3503](https://github.com/pulumi/pulumi/pull/3503)
+
 - Re-apply "propagate resource inputs to resource state during preview, including first-class unknown values." The new
   set of changes have additional fixes to ensure backwards compatibility with earlier code. This allows the preview to
   better estimate the state of a resource after an update, including property values that were populated using defaults
