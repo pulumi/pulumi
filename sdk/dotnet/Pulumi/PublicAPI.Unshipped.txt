@@ -106,6 +106,7 @@ Pulumi.Output<T>
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+Pulumi.OutputExtensions
 Pulumi.ProviderResource
 Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.RemoteArchive
@@ -220,5 +221,8 @@ static Pulumi.Output.Tuple<T1, T2, T3>(Pulumi.Output<T1> item1, Pulumi.Output<T2
 static Pulumi.Output.Tuple<T1, T2>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2) -> Pulumi.Output<(T1, T2)>
 static Pulumi.Output.Tuple<T1, T2>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2) -> Pulumi.Output<(T1, T2)>
 static Pulumi.Output<T>.Create(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
+static Pulumi.OutputExtensions.First<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<T>
+static Pulumi.OutputExtensions.GetAt<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array, Pulumi.Input<int> index) -> Pulumi.Output<T>
+static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<int>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
