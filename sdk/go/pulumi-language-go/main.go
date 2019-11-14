@@ -142,6 +142,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// The program to execute is simply the name of the project.  This ensures good Go toolability, whereby
 	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
+	// For ease of use, if we don't find a pre-built program, we attempt to invoke via 'go run' on behalf of the user.
 	program, err := findProgram(req.GetProject())
 	if err != nil {
 		const message = "problem executing program (could not run language executor)"
@@ -169,7 +170,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			return nil, errors.Wrap(err, "unable to get current working directory")
 		}
 
-		goFileSearchPattern := fmt.Sprintf("%s/*.go", cwd)
+		goFileSearchPattern := filepath.Join(cwd, "*.go")
 		if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 			return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
 		}
