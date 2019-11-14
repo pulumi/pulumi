@@ -93,6 +93,15 @@ func TestEmptyGoRun(t *testing.T) {
 	})
 }
 
+// TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
+func TestEmptyGoRunMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:         filepath.Join("empty", "gorun_main"),
+		Quick:       true,
+		GoRunInvoke: true,
+	})
+}
+
 // TestEmptyDotNet simply tests that we can run an empty .NET project.
 func TestEmptyDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
