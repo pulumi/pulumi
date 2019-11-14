@@ -23,13 +23,13 @@ namespace Pulumi
         /// The outputs of the referenced stack.
         /// </summary>
         [Output("outputs")]
-        public Output<ImmutableDictionary<string, object>> Outputs { get; private set; } = null!;
+        internal Output<ImmutableDictionary<string, object>> Outputs { get; private set; } = null!;
 
         /// <summary>
         /// The names of any stack outputs which contain secrets.
         /// </summary>
         [Output("secretOutputNames")]
-        public Output<ImmutableArray<string>> SecretOutputNames { get; private set; } = null!;
+        internal Output<ImmutableArray<string>> SecretOutputNames { get; private set; } = null!;
 
         /// <summary>
         /// Create a <see cref="StackReference"/> resource with the given unique name, arguments, and options.
@@ -58,10 +58,10 @@ namespace Pulumi
             // of the inputs are a secret, and this.Outputs is always a secret if it contains any secrets. We do this dance
             // so we can ensure that the Output we return is not needlessly tainted as a secret.
             var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
-            var value = Output.Tuple(name, inputs).Apply(v => v.Item2.ContainsKey(v.Item1) ? v.Item2[v.Item1] : default);
+            var value = Output.Tuple(name, inputs).Apply(v =>
+                v.Item2.TryGetValue(v.Item1, out var result) ? result : null);
 
-            var isSecret = IsSecretOutputName(name);
-            return new Output<object?>(value.Resources, value.ChangeSecretness(isSecret));
+            return value.WithIsSecret(IsSecretOutputName(name));
         }
 
         /// <summary>
@@ -72,14 +72,13 @@ namespace Pulumi
         public Output<object> RequireOutput(Input<string> name)
         {
             var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
-            var value = Output.Tuple(name, inputs).Apply(v => 
-                v.Item2.ContainsKey(v.Item1) 
-                    ? v.Item2[v.Item1]
+            var value = Output.Tuple(name, inputs).Apply(v =>
+                v.Item2.TryGetValue(v.Item1, out var result)
+                    ? result
                     : throw new KeyNotFoundException(
                         $"Required output '{name}' does not exist on stack '{Deployment.Instance.StackName}'."));
 
-            var isSecret = IsSecretOutputName(name);
-            return new Output<object>(value.Resources, value.ChangeSecretness(isSecret));
+            return value.WithIsSecret(IsSecretOutputName(name));
         }
 
         /// <summary>
@@ -132,8 +131,9 @@ namespace Pulumi
         public Output<object?> GetSecretOutput(Input<string> name)
         {
             var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
-            var value = Output.Tuple(name, inputs).Apply(v => v.Item2.ContainsKey(v.Item1) ? v.Item2[v.Item1] : default);
-            return new Output<object?>(value.Resources, value.ChangeSecretness(Task.FromResult(true)));
+            var value = Output.Tuple(name, inputs).Apply(v =>
+                v.Item2.TryGetValue(v.Item1, out var result) ? result : null);
+            return value.WithIsSecret(Task.FromResult(true));
         }
 
         /// <summary>
@@ -145,11 +145,11 @@ namespace Pulumi
         {
             var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
             var value = Output.Tuple(name, inputs).Apply(v =>
-                v.Item2.ContainsKey(v.Item1)
-                    ? v.Item2[v.Item1]
+                v.Item2.TryGetValue(v.Item1, out var result)
+                    ? result
                     : throw new KeyNotFoundException(
                         $"Required output '{name}' does not exist on stack '{Deployment.Instance.StackName}'."));
-            return new Output<object>(value.Resources, value.ChangeSecretness(Task.FromResult(true)));
+            return value.WithIsSecret(Task.FromResult(true));
         }
 
         private async Task<bool> IsSecretOutputName(Input<string> name)
