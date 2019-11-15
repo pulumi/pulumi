@@ -285,9 +285,9 @@ func (ctx *Context) RegisterResource(
 			Provider:             inputs.provider,
 			PropertyDependencies: inputs.rpcPropertyDeps,
 			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
-			//TODO
-			ImportId:       inputs.importID,
-			CustomTimeouts: inputs.customTimeouts,
+			ImportId:             inputs.importID,
+			CustomTimeouts:       inputs.customTimeouts,
+			IgnoreChanges:        inputs.ignoreChanges,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -390,7 +390,6 @@ func (state *ResourceState) resolve(dryrun bool, err error, inputs map[string]in
 type resourceInputs struct {
 	parent              string
 	deps                []string
-	ignoreChanges       []string
 	protect             bool
 	provider            string
 	rpcProps            *structpb.Struct
@@ -398,13 +397,14 @@ type resourceInputs struct {
 	deleteBeforeReplace bool
 	importID            string
 	customTimeouts      *pulumirpc.RegisterResourceRequest_CustomTimeouts
+	ignoreChanges       []string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...ResourceOpt) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, deleteBeforeReplace, importID, err := ctx.getOpts(opts...)
+	parent, optDeps, protect, provider, deleteBeforeReplace, importID, ignoreChanges, err := ctx.getOpts(opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -457,6 +457,7 @@ func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...
 		deleteBeforeReplace: deleteBeforeReplace,
 		importID:            string(importID),
 		customTimeouts:      timeouts,
+		ignoreChanges:       ignoreChanges,
 	}, nil
 }
 
@@ -475,7 +476,7 @@ func (ctx *Context) getTimeouts(opts ...ResourceOpt) *pulumirpc.RegisterResource
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool, ID, error) {
+func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool, ID, []string, error) {
 	var parent Resource
 	var deps []Resource
 	var protect bool
@@ -513,7 +514,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 	} else {
 		urn, _, err := parent.URN().await(context.TODO())
 		if err != nil {
-			return "", nil, false, "", false, "", err
+			return "", nil, false, "", false, "", nil, err
 		}
 		parentURN = urn
 	}
@@ -524,7 +525,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 		for i, r := range deps {
 			urn, _, err := r.URN().await(context.TODO())
 			if err != nil {
-				return "", nil, false, "", false, "", err
+				return "", nil, false, "", false, "", nil, err
 			}
 			depURNs[i] = urn
 		}
@@ -534,12 +535,12 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 	if provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return "", nil, false, "", false, "", err
+			return "", nil, false, "", false, "", nil, err
 		}
 		providerRef = pr
 	}
 
-	return parentURN, depURNs, protect, providerRef, false, importID, nil
+	return parentURN, depURNs, protect, providerRef, false, importID, ignoreChanges, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {

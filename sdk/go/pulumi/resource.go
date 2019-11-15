@@ -56,8 +56,6 @@ type ResourceOpt struct {
 	Parent Resource
 	// DependsOn is an optional array of explicit dependencies on other resources.
 	DependsOn []Resource
-	// Ignore changes to any of the specified properties.
-	IgnoreChanges []string
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
@@ -71,6 +69,8 @@ type ResourceOpt struct {
 	Import ID
 	// CustomTimeouts is an optional configuration block used for CRUD operations
 	CustomTimeouts *CustomTimeouts
+	// Ignore changes to any of the specified properties.
+	IgnoreChanges []string
 }
 
 // InvokeOpt contains optional settings that control an invoke's behavior.
