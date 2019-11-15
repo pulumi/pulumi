@@ -497,7 +497,7 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 		if provider == nil && opt.Provider != nil {
 			provider = opt.Provider
 		}
-		if !deleteBeforeReplace && opt.DeleteBeforeReplace { // is this value ever returned? TODO
+		if !deleteBeforeReplace && opt.DeleteBeforeReplace {
 			deleteBeforeReplace = true
 		}
 		if importID == "" && opt.Import != "" {
