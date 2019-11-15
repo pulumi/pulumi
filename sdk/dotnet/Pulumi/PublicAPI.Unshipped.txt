@@ -80,7 +80,7 @@ Pulumi.IDeployment.IsDryRun.get -> bool
 Pulumi.IDeployment.ProjectName.get -> string
 Pulumi.IDeployment.StackName.get -> string
 Pulumi.Input<T>
-Pulumi.Input<T>.ToOutput() -> Pulumi.Output<T>
+Pulumi.InputExtensions
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
@@ -88,7 +88,6 @@ Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancel
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
-Pulumi.InputMap<V>.AddRange(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -103,6 +102,7 @@ Pulumi.InvokeOptions.Version.set -> void
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>
+Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
@@ -173,6 +173,11 @@ static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output<U>
+static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
+static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
+static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, U> func) -> Pulumi.Output<U>
+static Pulumi.InputExtensions.ToOutput<T>(this Pulumi.Input<T> input) -> Pulumi.Output<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T> value) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T>[] values) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Generic.IEnumerable<T>> values) -> Pulumi.InputList<T>
