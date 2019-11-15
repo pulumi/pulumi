@@ -23,13 +23,13 @@ namespace Pulumi
         /// The outputs of the referenced stack.
         /// </summary>
         [Output("outputs")]
-        internal Output<ImmutableDictionary<string, object>> Outputs { get; private set; } = null!;
+        public Output<ImmutableDictionary<string, object>> Outputs { get; private set; } = null!;
 
         /// <summary>
         /// The names of any stack outputs which contain secrets.
         /// </summary>
         [Output("secretOutputNames")]
-        internal Output<ImmutableArray<string>> SecretOutputNames { get; private set; } = null!;
+        public Output<ImmutableArray<string>> SecretOutputNames { get; private set; } = null!;
 
         /// <summary>
         /// Create a <see cref="StackReference"/> resource with the given unique name, arguments, and options.
