@@ -159,7 +159,7 @@ func newWatchCmd() *cobra.Command {
 		"Optional message to associate with each update operation")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() {
+	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more policy packs as part of each update")

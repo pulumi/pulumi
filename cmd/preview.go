@@ -165,7 +165,7 @@ func newPreviewCmd() *cobra.Command {
 		"Optional message to associate with the preview operation")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() {
+	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more analyzers as part of this update")
