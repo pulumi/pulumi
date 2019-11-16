@@ -57,7 +57,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		})
 	}
 
-	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name),
+	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), ctx.Pwd})
 	if err != nil {
 		return nil, err
@@ -90,7 +90,13 @@ func NewPolicyAnalyzer(
 			"does not support resource policies", string(name))
 	}
 
-	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
+	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
+	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
+	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
+	// node_modules is used.
+	pwd := policyPackPath
+	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), policyPackPath})
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {

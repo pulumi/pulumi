@@ -61,7 +61,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	}
 	args = append(args, host.ServerAddr())
 
-	plug, err := newPlugin(ctx, path, runtime, args)
+	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args)
 	if err != nil {
 		return nil, err
 	}
