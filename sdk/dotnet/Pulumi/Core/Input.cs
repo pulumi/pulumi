@@ -2,6 +2,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 
 namespace Pulumi
 {
@@ -42,10 +43,37 @@ namespace Pulumi
         public static implicit operator Output<T>(Input<T> input)
             => input._outputValue;
 
-        public Output<T> ToOutput()
-            => this;
-
         IOutput IInput.ToOutput()
-            => ToOutput();
+            => this.ToOutput();
+    }
+
+    public static class InputExtensions
+    {
+        /// <summary>
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}?})"/> for more details.
+        /// </summary>
+        public static Output<U> Apply<T, U>(this Input<T>? input, Func<T, U> func)
+            => input.ToOutput().Apply(func);
+
+        /// <summary>
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}?})"/> for more details.
+        /// </summary>
+        public static Output<U> Apply<T, U>(this Input<T>? input, Func<T, Task<U>> func)
+            => input.ToOutput().Apply(func);
+
+        /// <summary>
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}?})"/> for more details.
+        /// </summary>
+        public static Output<U> Apply<T, U>(this Input<T>? input, Func<T, Input<U>?> func)
+            => input.ToOutput().Apply(func);
+
+        /// <summary>
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}?})"/> for more details.
+        /// </summary>
+        public static Output<U> Apply<T, U>(this Input<T>? input, Func<T, Output<U>?> func)
+            => input.ToOutput().Apply(func);
+
+        public static Output<T> ToOutput<T>(this Input<T>? input)
+            => input ?? Output.Create(default(T)!);
     }
 }
