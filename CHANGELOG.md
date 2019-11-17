@@ -11,6 +11,8 @@ CHANGELOG
   better estimate the state of a resource after an update, including property values that were populated using defaults
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
+  
+- Validate StackName when passing a non-default secrets provider to `pulumi stack init`
 
 ## 1.5.2 (2019-11-13)
 
