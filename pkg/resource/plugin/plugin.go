@@ -107,7 +107,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, e
 				break
 			}
 
-			// We may be trying to run a plugin that isn't present in the SDK installed with the stack.
+			// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
 			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
 			//
 			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
