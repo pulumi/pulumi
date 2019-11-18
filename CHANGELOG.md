@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
+
 - Support for a `go run` style workflow. Building or installing a pulumi program written in go is
   now optional. [3503](https://github.com/pulumi/pulumi/pull/3503)
 
