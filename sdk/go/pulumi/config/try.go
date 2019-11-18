@@ -15,6 +15,8 @@
 package config
 
 import (
+	"encoding/json"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
@@ -101,6 +103,18 @@ func TryInt64(ctx *pulumi.Context, key string) (int64, error) {
 		return 0, err
 	}
 	return cast.ToInt64(v), nil
+}
+
+// TryObject loads an optional configuration value by its key into the specified output variable, or returns an error if unable to do so.
+func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
+	v, err := Try(ctx, key)
+	if err != nil {
+		return err
+	}
+	if err = json.Unmarshal([]byte(v), output); err != nil {
+		return err
+	}
+	return nil
 }
 
 // TryUint loads an optional configuration value by its key, as a uint, or returns an error if it doesn't exist.
