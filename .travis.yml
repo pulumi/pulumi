@@ -10,7 +10,7 @@ matrix:
     os: linux
     env: NODE_VERSION=v8.16.0
 language: go
-go: 1.12.9
+go: 1.13.x
 sudo: true
 git:
   depth: false
