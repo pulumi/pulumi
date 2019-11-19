@@ -125,6 +125,9 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}, opts ...Invo
 	// Check for a provider option.
 	var provider string
 	for _, opt := range opts {
+		if opt.Parent != nil && opt.Provider == nil {
+			// do something heres
+		}
 		if opt.Provider != nil {
 			pr, err := ctx.resolveProviderReference(opt.Provider)
 			if err != nil {

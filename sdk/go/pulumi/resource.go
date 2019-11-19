@@ -75,6 +75,8 @@ type ResourceOpt struct {
 
 // InvokeOpt contains optional settings that control an invoke's behavior.
 type InvokeOpt struct {
+	// Parent is an optional parent resource to use for default options for this invoke.
+	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
 }

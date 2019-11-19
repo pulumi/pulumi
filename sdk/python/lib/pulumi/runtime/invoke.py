@@ -120,7 +120,7 @@ def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> InvokeResult:
 
     async def do_invoke():
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
-        if opts.parent is not None and opts.provider is None:
+        if opts.parent is not None and opts.provider is None: # pattern match this
             opts.provider = opts.parent.get_provider(tok)
 
         # Construct a provider reference from the given provider, if one was provided to us.
