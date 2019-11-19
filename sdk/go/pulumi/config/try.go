@@ -105,16 +105,14 @@ func TryInt64(ctx *pulumi.Context, key string) (int64, error) {
 	return cast.ToInt64(v), nil
 }
 
-// TryObject loads an optional configuration value by its key into the specified output variable, or returns an error if unable to do so.
+// TryObject loads an optional configuration value by its key into the output variable,
+// or returns an error if unable to do so.
 func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
 	v, err := Try(ctx, key)
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal([]byte(v), output); err != nil {
-		return err
-	}
-	return nil
+	return json.Unmarshal([]byte(v), output)
 }
 
 // TryUint loads an optional configuration value by its key, as a uint, or returns an error if it doesn't exist.

@@ -62,9 +62,6 @@ func TestConfig(t *testing.T) {
 		Foo: fooMap,
 		Bar: "abc",
 	}
-	clearTestStruct := func(ts *TestStruct) {
-		*ts = TestStruct{}
-	}
 
 	// Test basic keys.
 	assert.Equal(t, "testpkg:sss", cfg.fullKey("sss"))
@@ -79,17 +76,17 @@ func TestConfig(t *testing.T) {
 	err = cfg.GetObject("missing", &testStruct)
 	assert.Equal(t, emptyTestStruct, testStruct)
 	assert.Nil(t, err)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	// malformed key GetObj
 	err = cfg.GetObject("malobj", &testStruct)
 	assert.Equal(t, emptyTestStruct, testStruct)
 	assert.NotNil(t, err)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	// GetObj
 	err = cfg.GetObject("obj", &testStruct)
 	assert.Equal(t, expectedTestStruct, testStruct)
 	assert.Nil(t, err)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 
 	// Test Require, which panics for missing entries.
 	assert.Equal(t, "a string value", cfg.Require("sss"))
@@ -98,8 +95,11 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, 99.963, cfg.RequireFloat64("fpfpfp"))
 	cfg.RequireObject("obj", &testStruct)
 	assert.Equal(t, expectedTestStruct, testStruct)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	// GetObj panics if value is malformed
+	willPanic := func() { cfg.RequireObject("malobj", &testStruct) }
+	assert.Panics(t, willPanic)
+	testStruct = TestStruct{}
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -108,7 +108,7 @@ func TestConfig(t *testing.T) {
 		}()
 		cfg.RequireObject("malobj", &testStruct)
 	}()
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -135,17 +135,17 @@ func TestConfig(t *testing.T) {
 	err = cfg.TryObject("obj", &testStruct)
 	assert.Nil(t, err)
 	assert.Equal(t, expectedTestStruct, testStruct)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	// missing TryObject
 	err = cfg.TryObject("missing", &testStruct)
 	assert.NotNil(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	// malformed TryObject
 	err = cfg.TryObject("malobj", &testStruct)
 	assert.NotNil(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
-	clearTestStruct(&testStruct)
+	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
 	assert.NotNil(t, err)
 }

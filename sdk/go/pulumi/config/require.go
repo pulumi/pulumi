@@ -80,7 +80,8 @@ func RequireInt64(ctx *pulumi.Context, key string) int64 {
 	return cast.ToInt64(v)
 }
 
-// RequireObject loads an optional configuration value by its key into the output variable, or panics if unable to do so.
+// RequireObject loads an optional configuration value by its key into the output variable,
+// or panics if unable to do so.
 func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
 	v := Require(ctx, key)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
