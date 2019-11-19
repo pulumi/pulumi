@@ -106,7 +106,7 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Outpu
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
 Pulumi.ProviderResource
-Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args = null, Pulumi.ResourceOptions options = null) -> void
+Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.RemoteArchive
 Pulumi.RemoteArchive.RemoteArchive(string uri) -> void
 Pulumi.RemoteAsset
