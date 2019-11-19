@@ -8,7 +8,7 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.12
+- Go 1.13
 - NodeJS 6.10.X or later
 - Python 3.6 or later
 - [.NET Core](https://dotnet.microsoft.com/download)
@@ -21,7 +21,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 You can easily get all required dependencies with brew and npm
 
 ```bash
-brew install node pipenv python@3 typescript yarn go@1.12 golangci/tap/golangci-lint
+brew install node pipenv python@3 typescript yarn go@1.13 golangci/tap/golangci-lint
 brew cask install dotnet dotnet-sdk
 ```
 
