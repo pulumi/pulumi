@@ -104,8 +104,9 @@ func TestEmptyGoRunMain(t *testing.T) {
 // TestEmptyDotNet simply tests that we can run an empty .NET project.
 func TestEmptyDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("empty", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 	})
 }
 
@@ -333,8 +334,9 @@ func TestStackOutputsPython(t *testing.T) {
 
 func TestStackOutputsDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("stack_outputs", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("stack_outputs", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
@@ -981,8 +983,9 @@ func TestConfigBasicGo(t *testing.T) {
 // Tests basic configuration from the perspective of a Pulumi .NET program.
 func TestConfigBasicDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("config_basic", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
 		},
@@ -1119,8 +1122,9 @@ func TestStackReferenceDotNet(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir:   filepath.Join("stack_reference", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("stack_reference", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
