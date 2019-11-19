@@ -69,6 +69,8 @@ type ResourceOpt struct {
 	Import ID
 	// CustomTimeouts is an optional configuration block used for CRUD operations
 	CustomTimeouts *CustomTimeouts
+	// Ignore changes to any of the specified properties.
+	IgnoreChanges []string
 }
 
 // InvokeOpt contains optional settings that control an invoke's behavior.
