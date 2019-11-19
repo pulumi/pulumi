@@ -134,15 +134,18 @@ export class StackReference extends CustomResource {
 
         // If the synchronous readStackOutputs call is supported by the engine, use its results.
         if (supported) {
-            if (required && !outputs.hasOwnProperty(name)) {
-                throw new Error(`Required output '${name}' does not exist on stack '${stackName}'.`);
+            if (required && !outputs.hasOwnProperty(outputName)) {
+                throw new Error(`Required output '${outputName}' does not exist on stack '${stackName}'.`);
             }
 
-            return [outputs[name], secretNames.includes(name)];
+            return [outputs[outputName], secretNames.includes(outputName)];
         }
 
         // Otherwise, fall back to promiseResult.
-        const out = required ? this.requireOutput(name) : this.getOutput(name);
+        console.log(`StackReference.${callerName} may cause your program to hang. Please update to the latest version of the Pulumi CLI.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
+        const out = required ? this.requireOutput(outputName) : this.getOutput(outputName);
         return [promiseResult(out.promise()), promiseResult(out.isSecret)];
     }
 
