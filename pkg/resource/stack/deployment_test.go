@@ -15,6 +15,8 @@
 package stack
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,4 +192,138 @@ func TestUnknownSig(t *testing.T) {
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
 	assert.Error(t, err)
+}
+
+func TestCustomSerialization(t *testing.T) {
+	textAsset, err := resource.NewTextAsset("alpha beta gamma")
+	assert.NoError(t, err)
+
+	strProp := resource.NewStringProperty("strProp")
+
+	computed := resource.NewComputedProperty(resource.Computed{Element: strProp})
+	output := resource.NewOutputProperty(resource.Output{Element: strProp})
+
+	secretElement := resource.Secret{Element: strProp}
+	secret := resource.NewSecretProperty(&secretElement)
+
+	propMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+		// Primitive types
+		"nil":     nil,
+		"bool":    true,
+		"int32":   int64(41),
+		"int64":   int64(42),
+		"float32": float32(2.5),
+		"float64": float64(1.5),
+		"string":  "string literal",
+
+		// Data structures
+		"array":       []interface{}{"a", true, float64(32)},
+		"array-empty": []interface{}{},
+
+		"map": map[string]interface{}{
+			"a": true,
+			"b": float64(88),
+			"c": "c-see-saw",
+			"d": "d-dee-daw",
+		},
+		"map-empty": map[string]interface{}{},
+
+		// Specialized resource types
+		"asset-text": textAsset,
+
+		"computed": computed,
+		"output":   output,
+		"secret":   secret,
+	})
+
+	// BUG? Shouldn't this be true because of the "secret" field?
+	assert.False(t, propMap.ContainsSecrets())
+	// BUG? How would this ever be true? Is there a special way to
+	// mark computed/output as being unknown?
+	assert.False(t, propMap.ContainsUnknowns())
+
+	// Confirm the expected shape of serializing a ResourceProperty and PropertyMap using the
+	// reflection-based default JSON encoder. This should NOT be used when serializing resources,
+	// but we confirm the expected shape here while we migrate older code that relied on the
+	// specific format.
+	t.Run("SerializeToJSON", func(t *testing.T) {
+		b, err := json.Marshal(propMap)
+		if err != nil {
+			t.Fatalf("Marshalling PropertyMap: %v", err)
+		}
+		json := string(b)
+
+		// Look for the specific JSON serialization of the properties.
+		tests := []string{
+			`"bool":{"V":true}`,
+			`"string":{"V":"string literal"}}`,
+
+			`array":{"V":[{"V":"a"},{"V":true},{"V":32}]}`,
+			`"map-empty":{"V":{}}`,
+
+			// Assets
+			`"asset-text":{"V":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}}`,
+
+			// Wrapped properties
+			// BUG? Why isn't the nested ResourceProperty serialized here?
+			// Shouldn't this be "output": { "V": { "strProp" } }
+			`"computed":{"V":{}}`,
+			`"output":{"V":{}}`,
+			`"secret":{"V":{}}`,
+		}
+
+		for _, want := range tests {
+			if !strings.Contains(json, want) {
+				t.Errorf("Did not find expected snippet: %v", want)
+			}
+		}
+
+		if t.Failed() {
+			t.Logf("Full JSON encoding:\n%v", json)
+		}
+	})
+
+	// Using stack.SerializeProperties will get the correct behavior and should be used
+	// whenever persisting resources into some durable form.
+	t.Run("SerializeProperties", func(t *testing.T) {
+		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter)
+		assert.NoError(t, err)
+
+		// Now JSON encode the results?
+		b, err := json.Marshal(serializedPropMap)
+		if err != nil {
+			t.Fatalf("Marshalling PropertyMap: %v", err)
+		}
+		json := string(b)
+
+		// Look for the specific JSON serialization of the properties.
+		tests := []string{
+			`"bool":true`,
+			`"string":"string literal"}`,
+
+			`"array":["a",true,32]`,
+			`"map":{"a":true,"b":88,"c":"c-see-saw","d":"d-dee-daw"}`,
+			`"map-empty":{}`,
+
+			// Assets
+			`"asset-text":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}`,
+
+			// Wrapped properties
+			// BUG? Why isn't the nested ResourceProperty serialized here?
+			// Shouldn't this be "output": "strProp"
+			`"computed":{}`,
+			`"output":{}`,
+			`"secret":{}`,
+		}
+
+		for _, want := range tests {
+			if !strings.Contains(json, want) {
+				t.Errorf("Did not find expected snippet: %v", want)
+			}
+		}
+
+		if t.Failed() {
+			t.Logf("Full JSON encoding:\n%v", json)
+		}
+	})
 }
