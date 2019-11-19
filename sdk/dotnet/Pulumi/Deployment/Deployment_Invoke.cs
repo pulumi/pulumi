@@ -17,7 +17,7 @@ namespace Pulumi
             => InvokeAsync<T>(token, args, options, convertResult: true);
 
         private async Task<T> InvokeAsync<T>(
-            string token, ResourceArgs? args, InvokeOptions? options, bool convertResult)
+            string token, ResourceArgs args, InvokeOptions? options, bool convertResult)
         {
             var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
