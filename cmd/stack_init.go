@@ -98,6 +98,10 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
+			if err := workspace.ValidateStackName(stackName); err != nil {
+				return err
+			}
+
 			stackRef, err := b.ParseStackReference(stackName)
 			if err != nil {
 				return err
