@@ -10,7 +10,7 @@ namespace Pulumi
 {
     public sealed partial class Deployment
     {
-        Task IDeployment.InvokeAsync(string token, ResourceArgs? args, InvokeOptions? options)
+        Task IDeployment.InvokeAsync(string token, ResourceArgs args, InvokeOptions? options)
             => InvokeAsync<object>(token, args, options, convertResult: false);
 
         Task<T> IDeployment.InvokeAsync<T>(string token, ResourceArgs? args, InvokeOptions? options)
