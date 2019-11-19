@@ -100,8 +100,8 @@ func NewPolicyAnalyzer(
 		[]string{host.ServerAddr(), policyPackPath})
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
-			return nil, fmt.Errorf("the Pulumi SDK used with this stack does not appear to support policy as code.\n" +
-				"Upgrading to a newer version of the Pulumi SDK may fix this problem.")
+			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
+				"try running npm install or yarn install in %q", policyPackPath)
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}

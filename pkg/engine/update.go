@@ -74,6 +74,10 @@ type UpdateOptions struct {
 	// Specific resources to update during an update operation.
 	UpdateTargets []resource.URN
 
+	// true if we're allowing dependent targets to change, even if not specified in one of the above
+	// XXXTargets lists.
+	TargetDependents bool
+
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 

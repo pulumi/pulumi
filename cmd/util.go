@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -123,6 +124,21 @@ func createStack(
 	} else if !isDefaultSecretsProvider {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
+
+		// Azure KeyVault never used to require an algorithm and there's no real reason to require it,
+		// but if someone specifies one, don't clobber it.
+		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+			parsed, err := url.Parse(secretsProvider)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to parse secrets provider URL")
+			}
+
+			if parsed.Query().Get("algorithm") == "" {
+				parsed.Query().Set("algorithm", "RSA-OAEP-256")
+				secretsProvider = parsed.String()
+			}
+		}
+
 		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return nil, secretsErr
 		}

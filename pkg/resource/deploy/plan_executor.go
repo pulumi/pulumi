@@ -19,12 +19,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -269,32 +267,14 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if res == nil && !pe.stepExec.Errored() {
-		resourcesSeen := pe.stepGen.resourceStates
-		resources := make([]plugin.AnalyzerResource, 0, len(resourcesSeen))
-		for _, v := range resourcesSeen {
-			resources = append(resources, plugin.AnalyzerResource{
-				Type: v.Type,
-				// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
-				// to verify the final stack is in a compliant state.
-				Properties: v.Outputs,
-			})
-		}
-
-		analyzers := pe.stepGen.plan.ctx.Host.ListAnalyzers()
-		for _, analyzer := range analyzers {
-			diagnostics, aErr := analyzer.AnalyzeStack(resources)
-			if aErr != nil {
-				return result.FromError(aErr)
-			}
-			for _, d := range diagnostics {
-				pe.stepGen.hasPolicyViolations = pe.stepGen.hasPolicyViolations || (d.EnforcementLevel == apitype.Mandatory)
-				pe.stepGen.opts.Events.OnPolicyViolation("" /* don't associate with any particular URN */, d)
-			}
+		res := pe.stepGen.AnalyzeResources()
+		if res != nil {
+			return res
 		}
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if res != nil || pe.stepExec.Errored() || pe.stepGen.hasPolicyViolations {
+	if res != nil || pe.stepExec.Errored() || pe.stepGen.Errored() {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		pe.reportExecResult("failed", preview)

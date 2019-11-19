@@ -185,6 +185,7 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			ReplaceTargets:    planResult.Options.ReplaceTargets,
 			DestroyTargets:    planResult.Options.DestroyTargets,
 			UpdateTargets:     planResult.Options.UpdateTargets,
+			TargetDependents:  planResult.Options.TargetDependents,
 			TrustDependencies: planResult.Options.trustDependencies,
 			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}

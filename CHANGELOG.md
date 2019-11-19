@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
+
 - Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
 
 - Support for a `go run` style workflow. Building or installing a pulumi program written in go is
@@ -13,8 +15,16 @@ CHANGELOG
   better estimate the state of a resource after an update, including property values that were populated using defaults
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
+  
+- Validate StackName when passing a non-default secrets provider to `pulumi stack init`
 
 - Add support for go1.13.x
+
+- `pulumi update --target` and `pulumi destroy --target` will both error if they determine a
+  dependent resource needs to be updated, destroyed, or created that was not was specified in the
+  `--target` list.  To proceed with an `update/destroy` after this error, either specify all the
+  reported resources as `--target`s, or pass the `--target-dependents` flag to allow necessary
+  changes to unspecified dependent targets.
 
 ## 1.5.2 (2019-11-13)
 
