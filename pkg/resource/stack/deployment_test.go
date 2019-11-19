@@ -200,11 +200,11 @@ func TestCustomSerialization(t *testing.T) {
 
 	strProp := resource.NewStringProperty("strProp")
 
-	computed := resource.NewComputedProperty(resource.Computed{Element: strProp})
-	output := resource.NewOutputProperty(resource.Output{Element: strProp})
+	computed := resource.Computed{Element: strProp}
+	output := resource.Output{Element: strProp}
 
 	secretElement := resource.Secret{Element: strProp}
-	secret := resource.NewSecretProperty(&secretElement)
+	secret := &resource.Secret{Element: strProp}
 
 	propMap := resource.NewPropertyMapFromMap(map[string]interface{}{
 		// Primitive types
