@@ -18,6 +18,12 @@ CHANGELOG
 
 - Add support for go1.13.x
 
+- `pulumi update --target` and `pulumi destroy --target` will both error if they determine a
+  dependent resource needs to be updated, destroyed, or created that was not was specified in the
+  `--target` list.  To proceed with an `update/destroy` after this error, either specify all the
+  reported resources as `--target`s, or pass the `--target-dependents` flag to allow necessary
+  changes to unspecified dependent targets.
+
 ## 1.5.2 (2019-11-13)
 
 - `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
