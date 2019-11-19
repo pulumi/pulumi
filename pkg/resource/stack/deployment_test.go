@@ -202,8 +202,6 @@ func TestCustomSerialization(t *testing.T) {
 
 	computed := resource.Computed{Element: strProp}
 	output := resource.Output{Element: strProp}
-
-	secretElement := resource.Secret{Element: strProp}
 	secret := &resource.Secret{Element: strProp}
 
 	propMap := resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -236,11 +234,8 @@ func TestCustomSerialization(t *testing.T) {
 		"secret":   secret,
 	})
 
-	// BUG? Shouldn't this be true because of the "secret" field?
-	assert.False(t, propMap.ContainsSecrets())
-	// BUG? How would this ever be true? Is there a special way to
-	// mark computed/output as being unknown?
-	assert.False(t, propMap.ContainsUnknowns())
+	assert.True(t, propMap.ContainsSecrets())
+	assert.True(t, propMap.ContainsUnknowns())
 
 	// Confirm the expected shape of serializing a ResourceProperty and PropertyMap using the
 	// reflection-based default JSON encoder. This should NOT be used when serializing resources,
@@ -255,21 +250,28 @@ func TestCustomSerialization(t *testing.T) {
 
 		// Look for the specific JSON serialization of the properties.
 		tests := []string{
+			// Primitives
+			`"nil":{"V":null}`,
 			`"bool":{"V":true}`,
 			`"string":{"V":"string literal"}}`,
+			`"float32":{"V":2.5}`,
+			`"float64":{"V":1.5}`,
+			`"int32":{"V":41}`,
+			`"int64":{"V":42}`,
 
+			// Data structures
 			`array":{"V":[{"V":"a"},{"V":true},{"V":32}]}`,
+			`"array-empty":{"V":[]}`,
+			`"map":{"V":{"a":{"V":true},"b":{"V":88},"c":{"V":"c-see-saw"},"d":{"V":"d-dee-daw"}}}`,
 			`"map-empty":{"V":{}}`,
 
-			// Assets
+			// Specialized resource types
+			// nolint: lll
 			`"asset-text":{"V":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}}`,
 
-			// Wrapped properties
-			// BUG? Why isn't the nested ResourceProperty serialized here?
-			// Shouldn't this be "output": { "V": { "strProp" } }
-			`"computed":{"V":{}}`,
-			`"output":{"V":{}}`,
-			`"secret":{"V":{}}`,
+			`"computed":{"V":{"Element":{"V":"strProp"}}}`,
+			`"output":{"V":{"Element":{"V":"strProp"}}}`,
+			`"secret":{"V":{"Element":{"V":"strProp"}}}`,
 		}
 
 		for _, want := range tests {
@@ -298,27 +300,41 @@ func TestCustomSerialization(t *testing.T) {
 
 		// Look for the specific JSON serialization of the properties.
 		tests := []string{
+			// Primitives
 			`"bool":true`,
-			`"string":"string literal"}`,
+			`"string":"string literal"`,
+			`"float32":2.5`,
+			`"float64":1.5`,
+			`"int32":41`,
+			`"int64":42`,
 
+			// Data structures
 			`"array":["a",true,32]`,
+			`"array-empty":[]`,
 			`"map":{"a":true,"b":88,"c":"c-see-saw","d":"d-dee-daw"}`,
 			`"map-empty":{}`,
 
-			// Assets
+			// Specialized resource types
+			// nolint: lll
 			`"asset-text":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}`,
 
-			// Wrapped properties
-			// BUG? Why isn't the nested ResourceProperty serialized here?
-			// Shouldn't this be "output": "strProp"
-			`"computed":{}`,
-			`"output":{}`,
-			`"secret":{}`,
+			`"secret":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","ciphertext":"[secret]"}`,
 		}
-
 		for _, want := range tests {
 			if !strings.Contains(json, want) {
 				t.Errorf("Did not find expected snippet: %v", want)
+			}
+		}
+
+		// Some properties are explicitly _not_ in serialized output.
+		negativeTests := []string{
+			`"nil"`,
+			`"computed"`,
+			`"output"`,
+		}
+		for _, doNotWant := range negativeTests {
+			if strings.Contains(json, doNotWant) {
+				t.Errorf("Found unexpected snippet: %v", doNotWant)
 			}
 		}
 
