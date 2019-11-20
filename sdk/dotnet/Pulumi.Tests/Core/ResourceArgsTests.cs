@@ -51,7 +51,7 @@ namespace Pulumi.Tests.Core
             Assert.NotNull(sValue);
             Assert.Null(arrayValue);
 
-            var output = sValue!.ToOutput();
+            var output = ((IInput)sValue!).ToOutput();
             var data = await output.GetDataAsync();
             Assert.Equal("val", data.Value);
         }
@@ -74,7 +74,7 @@ namespace Pulumi.Tests.Core
                 Assert.Null(sValue);
                 Assert.NotNull(arrayValue);
 
-                var output = arrayValue!.ToOutput();
+                var output = ((IInput)arrayValue!).ToOutput();
                 var data = await output.GetDataAsync();
                 AssertEx.SequenceEqual(
                     ImmutableArray<bool>.Empty.Add(true), (ImmutableArray<bool>)data.Value!);
@@ -122,11 +122,8 @@ namespace Pulumi.Tests.Core
             Assert.NotNull(arrayValue);
             Assert.NotNull(mapValue);
 
-            var arrayVal = (await arrayValue!.ToOutput().GetDataAsync()).Value;
-            Assert.Equal("[ true, false ]", arrayVal);
-
-            var mapVal = (await mapValue!.ToOutput().GetDataAsync()).Value;
-            Assert.Equal("{ \"k1\": 1, \"k2\": 2 }", mapVal);
+            Assert.Equal("[ true, false ]", arrayValue);
+            Assert.Equal("{ \"k1\": 1, \"k2\": 2 }", mapValue);
         }
 
         #endregion
