@@ -68,6 +68,7 @@ func TestDotNetAliases(t *testing.T) {
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:   path.Join(d, "step1"),
+				Dependencies: []string{"Pulumi"},
 				Quick: true,
 				EditDirs: []integration.EditDir{
 					{
