@@ -19,6 +19,6 @@ namespace Pulumi
         Task SetRootResourceAsync(Stack stack);
 
         void ReadOrRegisterResource(Resource resource, ResourceArgs args, ResourceOptions opts);
-        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object>> outputs);
+        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object?>> outputs);
     }
 }
