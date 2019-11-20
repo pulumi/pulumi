@@ -15,6 +15,8 @@
 package stack
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,4 +192,154 @@ func TestUnknownSig(t *testing.T) {
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
 	assert.Error(t, err)
+}
+
+func TestCustomSerialization(t *testing.T) {
+	textAsset, err := resource.NewTextAsset("alpha beta gamma")
+	assert.NoError(t, err)
+
+	strProp := resource.NewStringProperty("strProp")
+
+	computed := resource.Computed{Element: strProp}
+	output := resource.Output{Element: strProp}
+	secret := &resource.Secret{Element: strProp}
+
+	propMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+		// Primitive types
+		"nil":     nil,
+		"bool":    true,
+		"int32":   int64(41),
+		"int64":   int64(42),
+		"float32": float32(2.5),
+		"float64": float64(1.5),
+		"string":  "string literal",
+
+		// Data structures
+		"array":       []interface{}{"a", true, float64(32)},
+		"array-empty": []interface{}{},
+
+		"map": map[string]interface{}{
+			"a": true,
+			"b": float64(88),
+			"c": "c-see-saw",
+			"d": "d-dee-daw",
+		},
+		"map-empty": map[string]interface{}{},
+
+		// Specialized resource types
+		"asset-text": textAsset,
+
+		"computed": computed,
+		"output":   output,
+		"secret":   secret,
+	})
+
+	assert.True(t, propMap.ContainsSecrets())
+	assert.True(t, propMap.ContainsUnknowns())
+
+	// Confirm the expected shape of serializing a ResourceProperty and PropertyMap using the
+	// reflection-based default JSON encoder. This should NOT be used when serializing resources,
+	// but we confirm the expected shape here while we migrate older code that relied on the
+	// specific format.
+	t.Run("SerializeToJSON", func(t *testing.T) {
+		b, err := json.Marshal(propMap)
+		if err != nil {
+			t.Fatalf("Marshalling PropertyMap: %v", err)
+		}
+		json := string(b)
+
+		// Look for the specific JSON serialization of the properties.
+		tests := []string{
+			// Primitives
+			`"nil":{"V":null}`,
+			`"bool":{"V":true}`,
+			`"string":{"V":"string literal"}}`,
+			`"float32":{"V":2.5}`,
+			`"float64":{"V":1.5}`,
+			`"int32":{"V":41}`,
+			`"int64":{"V":42}`,
+
+			// Data structures
+			`array":{"V":[{"V":"a"},{"V":true},{"V":32}]}`,
+			`"array-empty":{"V":[]}`,
+			`"map":{"V":{"a":{"V":true},"b":{"V":88},"c":{"V":"c-see-saw"},"d":{"V":"d-dee-daw"}}}`,
+			`"map-empty":{"V":{}}`,
+
+			// Specialized resource types
+			// nolint: lll
+			`"asset-text":{"V":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}}`,
+
+			`"computed":{"V":{"Element":{"V":"strProp"}}}`,
+			`"output":{"V":{"Element":{"V":"strProp"}}}`,
+			`"secret":{"V":{"Element":{"V":"strProp"}}}`,
+		}
+
+		for _, want := range tests {
+			if !strings.Contains(json, want) {
+				t.Errorf("Did not find expected snippet: %v", want)
+			}
+		}
+
+		if t.Failed() {
+			t.Logf("Full JSON encoding:\n%v", json)
+		}
+	})
+
+	// Using stack.SerializeProperties will get the correct behavior and should be used
+	// whenever persisting resources into some durable form.
+	t.Run("SerializeProperties", func(t *testing.T) {
+		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter)
+		assert.NoError(t, err)
+
+		// Now JSON encode the results?
+		b, err := json.Marshal(serializedPropMap)
+		if err != nil {
+			t.Fatalf("Marshalling PropertyMap: %v", err)
+		}
+		json := string(b)
+
+		// Look for the specific JSON serialization of the properties.
+		tests := []string{
+			// Primitives
+			`"bool":true`,
+			`"string":"string literal"`,
+			`"float32":2.5`,
+			`"float64":1.5`,
+			`"int32":41`,
+			`"int64":42`,
+
+			// Data structures
+			`"array":["a",true,32]`,
+			`"array-empty":[]`,
+			`"map":{"a":true,"b":88,"c":"c-see-saw","d":"d-dee-daw"}`,
+			`"map-empty":{}`,
+
+			// Specialized resource types
+			// nolint: lll
+			`"asset-text":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}`,
+
+			`"secret":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","ciphertext":"[secret]"}`,
+		}
+		for _, want := range tests {
+			if !strings.Contains(json, want) {
+				t.Errorf("Did not find expected snippet: %v", want)
+			}
+		}
+
+		// Some properties are explicitly _not_ in serialized output.
+		negativeTests := []string{
+			`"nil"`,
+			`"computed"`,
+			`"output"`,
+		}
+		for _, doNotWant := range negativeTests {
+			if strings.Contains(json, doNotWant) {
+				t.Errorf("Found unexpected snippet: %v", doNotWant)
+			}
+		}
+
+		if t.Failed() {
+			t.Logf("Full JSON encoding:\n%v", json)
+		}
+	})
 }
