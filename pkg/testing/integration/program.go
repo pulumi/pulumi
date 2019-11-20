@@ -724,6 +724,7 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string,
 					return false, nil, errors.Errorf("%v did not succeed after %v tries", cmd, try+1)
 				}
 
+				pt.t.Logf("%v failed: %v; retrying...", cmd, runerr)
 				return false, nil, nil
 			}
 
