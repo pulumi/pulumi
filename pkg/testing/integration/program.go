@@ -57,6 +57,7 @@ import (
 const PythonRuntime = "python"
 const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
+const DotNetRuntime = "dotnet"
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -123,6 +124,18 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
+// ConfigValue is used to provide config values to a test program.
+type ConfigValue struct {
+	// The config key to pass to `pulumi config`.
+	Key string
+	// The config value to pass to `pulumi config`.
+	Value string
+	// Secret indicates that the `--secret` flag should be specified when calling `pulumi config`.
+	Secret bool
+	// Path indicates that the `--path` flag should be specified when calling `pulumi config`.
+	Path bool
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -132,10 +145,12 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
-	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
+	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Secrets map[string]string
+	// List of config keys and values to set in order, including Secret and Path options.
+	OrderedConfig []ConfigValue
 	// SecretsProvider is the optional custom secrets provider to use instead of the default.
 	SecretsProvider string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
@@ -219,6 +234,8 @@ type ProgramTestOptions struct {
 	GoBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
+	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
+	DotNetBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -575,6 +592,7 @@ type programTester struct {
 	yarnBin   string              // the `yarn` binary we are using.
 	goBin     string              // the `go` binary we are using.
 	pipenvBin string              // The `pipenv` binary we are using.
+	dotNetBin string              // the `dotnet` binary we are using.
 	eventLog  string              // The path to the event log for this test.
 }
 
@@ -602,6 +620,10 @@ func (pt *programTester) getGoBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *programTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+func (pt *programTester) getDotNetBin() (string, error) {
+	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -911,6 +933,19 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	for key, value := range pt.opts.Secrets {
 		if err := pt.runPulumiCommand("pulumi-config",
 			[]string{"config", "set", "--secret", key, value}, dir); err != nil {
+			return err
+		}
+	}
+
+	for _, cv := range pt.opts.OrderedConfig {
+		configArgs := []string{"config", "set", cv.Key, cv.Value}
+		if cv.Secret {
+			configArgs = append(configArgs, "--secret")
+		}
+		if cv.Path {
+			configArgs = append(configArgs, "--path")
+		}
+		if err := pt.runPulumiCommand("pulumi-config", configArgs, dir); err != nil {
 			return err
 		}
 	}
@@ -1373,6 +1408,8 @@ func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
 	}
@@ -1571,6 +1608,53 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return err
 	}
+
+	// skip building if the 'go run' invocation path is requested.
+	if !pt.opts.RunBuild {
+		return nil
+	}
+
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+}
+
+// prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
+func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+	dotNetBin, err := pt.getDotNetBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `dotnet` binary")
+	}
+
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
+	if localNuget == "" {
+		localNuget = "/opt/pulumi/nuget"
+	}
+
+	for _, dep := range pt.opts.Dependencies {
+
+		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
+		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.?.*.nupkg"))
+		if err != nil {
+			return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
+		}
+		if len(matches) != 1 {
+			return errors.New(fmt.Sprintf("attempting to find a local Pulumi NuGet package yielded %v results", matches))
+		}
+		file := filepath.Base(matches[0])
+		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
+		version := r.Replace(file)
+
+		err = pt.runCommand("dotnet-add-package",
+			[]string{dotNetBin, "add", "package", dep, "-s", localNuget, "-v", version}, cwd)
+		if err != nil {
+			return errors.Wrapf(err, "failed to add dependency on %s", dep)
+		}
+	}
+
+	return nil
 }

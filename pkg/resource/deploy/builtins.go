@@ -142,20 +142,35 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	if tok != readStackResourceOutputs {
+
+	switch tok {
+	case readStackOutputs:
+		outs, err := p.readStackReference(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	case readStackResourceOutputs:
+		outs, err := p.readStackResourceOutputs(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	default:
 		return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
 	}
+}
 
-	outs, err := p.readStackResourceOutputs(args)
-	if err != nil {
-		return nil, nil, err
-	}
+func (p *builtinProvider) StreamInvoke(
+	tok tokens.ModuleMember, args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 
-	return outs, nil, nil
+	return nil, fmt.Errorf("the builtin provider does not implement streaming invokes")
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {

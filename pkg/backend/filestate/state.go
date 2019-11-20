@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/engine"
+
 	"github.com/pkg/errors"
 	"gocloud.dev/gcerrors"
 
@@ -49,6 +51,19 @@ const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
+type localQuery struct {
+	root string
+	proj *workspace.Project
+}
+
+func (q *localQuery) GetRoot() string {
+	return q.root
+}
+
+func (q *localQuery) GetProject() *workspace.Project {
+	return q.proj
+}
+
 // update is an implementation of engine.Update backed by local state.
 type update struct {
 	root    string
@@ -67,6 +82,12 @@ func (u *update) GetProject() *workspace.Project {
 
 func (u *update) GetTarget() *deploy.Target {
 	return u.target
+}
+
+func (b *localBackend) newQuery(ctx context.Context,
+	op backend.QueryOperation) (engine.QueryInfo, error) {
+
+	return &localQuery{root: op.Root, proj: op.Proj}, nil
 }
 
 func (b *localBackend) newUpdate(stackName tokens.QName, op backend.UpdateOperation) (*update, error) {

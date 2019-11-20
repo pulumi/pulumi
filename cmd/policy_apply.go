@@ -25,10 +25,10 @@ import (
 
 func newPolicyApplyCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "apply <orgName>/<policyPackName> <version>",
+		Use:   "apply <org-name>/<policy-pack-name> <version>",
 		Args:  cmdutil.ExactArgs(2),
-		Short: "Apply a set of policies to a Pulumi organization",
-		Long:  "Apply a set of policies to a Pulumi organization",
+		Short: "Apply a Policy Pack to a Pulumi organization",
+		Long:  "Apply a Policy Pack to a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			//
 			// Obtain current PolicyPack, tied to the Pulumi service backend.

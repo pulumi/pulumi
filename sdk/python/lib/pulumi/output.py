@@ -81,13 +81,11 @@ class Output(Generic[T]):
 
     def __init__(self, resources: Set['Resource'], future: Awaitable[T],
                  is_known: Awaitable[bool], is_secret: Optional[Awaitable[bool]] = None) -> None:
-
+        is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
 
         async def is_value_known() -> bool:
-            if not await is_known:
-                return False
-            return not contains_unknowns(await future)
+            return await is_known and not contains_unknowns(await future)
 
         self._resources = resources
         self._future = future
@@ -103,8 +101,13 @@ class Output(Generic[T]):
     def resources(self) -> Set['Resource']:
         return self._resources
 
-    def future(self) -> Awaitable[T]:
-        return self._future
+    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[T]:
+        # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
+        # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
+        async def get_value() -> T:
+            val = await self._future
+            return None if not with_unknowns and contains_unknowns(val) else val
+        return asyncio.ensure_future(get_value())
 
     def is_known(self) -> Awaitable[bool]:
         return self._is_known
@@ -132,39 +135,34 @@ class Output(Generic[T]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        inner_is_known: asyncio.Future = asyncio.Future()
-        inner_is_secret: asyncio.Future = asyncio.Future()
-
-        # The "is_known" coroutine that we pass to the output we're about to create is derived from
-        # the conjunction of the two is_knowns that we know about: our own (self._is_known) and a future
-        # that we will resolve when running the apply.
-        async def is_known() -> bool:
-            inner = await inner_is_known
-            known = await self._is_known
-            return inner and (known or run_with_unknowns)
-
-        # The "is_secret" coroutine that we pass to the output we're about to create is derived from
-        # the disjunction of the two is_secret that we know about: our own (self._is_secret) and a future
-        # that we will resolve when running the apply.
-        async def is_secret() -> bool:
-            inner = await inner_is_secret
-            secret = await self._is_secret
-            return inner or secret
+        result_is_known: asyncio.Future = asyncio.Future()
+        result_is_secret: asyncio.Future = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
             try:
+                # Await this output's details.
+                is_known = await self._is_known
+                is_secret = await self._is_secret
                 value = await self._future
+
                 if runtime.is_dry_run():
-                    # During previews only perform the apply if the engine was able to
-                    # give us an actual value for this Output.
-                    apply_during_preview = await self._is_known
-                    if not apply_during_preview and not run_with_unknowns:
+                    # During previews only perform the apply if the engine was able togive us an actual value for this
+                    # Output or if the caller is able to tolerate unknown values.
+                    apply_during_preview = is_known or run_with_unknowns
+
+                    if not apply_during_preview:
                         # We didn't actually run the function, our new Output is definitely
                         # **not** known and **not** secret
-                        inner_is_known.set_result(False)
-                        inner_is_secret.set_result(False)
+                        result_is_known.set_result(False)
+                        result_is_secret.set_result(False)
                         return cast(U, None)
+
+                    # If we are running with unknown values and the value is explicitly unknown but does not actually
+                    # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
+                    # that expect to see unknowns during preview in outputs that are not known will always do so.
+                    if not is_known and run_with_unknowns and not contains_unknowns(value):
+                        value = UNKNOWN
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
@@ -172,36 +170,34 @@ class Output(Generic[T]):
                 if isinstance(transformed, Output):
                     transformed_as_output = cast(Output[U], transformed)
                     # Forward along the inner output's _is_known and _is_secret values.
-                    inner_is_known.set_result(await transformed_as_output._is_known)
-                    inner_is_secret.set_result(await transformed_as_output._is_secret)
-                    return await transformed.future()
+                    result_is_known.set_result(await transformed_as_output._is_known)
+                    result_is_secret.set_result(await transformed_as_output._is_secret or is_secret)
+                    return await transformed.future(with_unknowns=True)
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):
                     # Since transformed is not an Output, it is both known and not a secret.
-                    inner_is_known.set_result(True)
-                    inner_is_secret.set_result(False)
+                    result_is_known.set_result(True)
+                    result_is_secret.set_result(False)
                     return await cast(Awaitable[U], transformed)
 
                 #  3. transformed is U. It is trivially known.
-                inner_is_known.set_result(True)
-                inner_is_secret.set_result(False)
+                result_is_known.set_result(True)
+                result_is_secret.set_result(False)
                 return cast(U, transformed)
             finally:
                 # Always resolve the future if it hasn't been done already.
-                if not inner_is_known.done():
+                if not result_is_known.done():
                     # Try and set the result. This might fail if we're shutting down,
                     # so swallow that error if that occurs.
                     try:
-                        inner_is_known.set_result(False)
-                        inner_is_secret.set_result(False)
+                        result_is_known.set_result(False)
+                        result_is_secret.set_result(False)
                     except RuntimeError:
                         pass
 
         run_fut = asyncio.ensure_future(run())
-        is_known_fut = asyncio.ensure_future(is_known())
-        is_secret_fut = asyncio.ensure_future(is_secret())
-        return Output(self._resources, run_fut, is_known_fut, is_secret_fut)
+        return Output(self._resources, run_fut, result_is_known, result_is_secret)
 
     def __getattr__(self, item: str) -> 'Output[Any]':
         """
@@ -234,6 +230,7 @@ class Output(Generic[T]):
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
         :rtype: Output[T]
         """
+
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
             return val.apply(Output.from_input, True)
@@ -315,7 +312,7 @@ class Output(Generic[T]):
 
         # gather_futures, which aggregates the list of futures in each input to a future of a list.
         async def gather_futures(outputs):
-            value_futures = list(map(lambda o: asyncio.ensure_future(o.future()), outputs))
+            value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
             return await asyncio.gather(*value_futures)
 
         # First, map all inputs to outputs using `from_input`.

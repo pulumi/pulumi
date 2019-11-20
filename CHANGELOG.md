@@ -19,6 +19,128 @@ export default async () => {
   This allows for an easy approach to create a Pulumi app that needs to perform async/await
   operations at the top-level of the program.
 
+- Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
+
+- Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
+
+- Support for a `go run` style workflow. Building or installing a pulumi program written in go is
+  now optional. [3503](https://github.com/pulumi/pulumi/pull/3503)
+
+- Re-apply "propagate resource inputs to resource state during preview, including first-class unknown values." The new
+  set of changes have additional fixes to ensure backwards compatibility with earlier code. This allows the preview to
+  better estimate the state of a resource after an update, including property values that were populated using defaults
+  calculated by the provider.
+  [#3327](https://github.com/pulumi/pulumi/pull/3327)
+
+- Validate StackName when passing a non-default secrets provider to `pulumi stack init`
+
+- Add support for go1.13.x
+
+- `pulumi update --target` and `pulumi destroy --target` will both error if they determine a
+  dependent resource needs to be updated, destroyed, or created that was not was specified in the
+  `--target` list.  To proceed with an `update/destroy` after this error, either specify all the
+  reported resources as `--target`s, or pass the `--target-dependents` flag to allow necessary
+  changes to unspecified dependent targets.
+
+- Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
+
+- Codepaths which could result in a hang will print a message to the console indicating the problem, along with a link
+  to documentation on how to restructure code to best address it.
+
+### Compatibility
+
+- `StackReference.getOutputSync` and `requireOutputSync` are deprecated as they may cause hangs on
+  some combinations of Node and certain OS platforms. `StackReference.getOutput` and `requireOutput`
+  should be used instead.
+
+## 1.5.2 (2019-11-13)
+
+- `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
+  the `org-name` CLI argument is now optional. If not specified; the current user account is
+  used.
+  [#3459](https://github.com/pulumi/pulumi/pull/3459)
+
+- Refactor the Output API in the Go SDK.
+  [#3496](https://github.com/pulumi/pulumi/pull/3496)
+
+## 1.5.1 (2019-11-06)
+
+- Include the .NET language provider in the Windows SDK.
+
+## 1.5.0 (2019-11-06)
+
+- Gracefully handle errors when resources use duplicate aliases.
+
+- Use the update token for renew_lease calls and update the API version to 5.
+  [#3348](https://github.com/pulumi/pulumi/pull/3348)
+
+- Improve startup time performance by 0.5-1s by checking for a newer CLI release in parallel.
+  [#3441](https://github.com/pulumi/pulumi/pull/3441)
+
+- Add an experimental `pulumi watch` command. [#3391](https://github.com/pulumi/pulumi/pull/3391)
+
+## 1.4.1 (2019-11-01)
+
+- Adds a **preview** of .NET support for Pulumi. This code is an preview state and is subject
+  to change at any point.
+
+- Fix another colorizer issue that could cause garbled output for messages that did not end in colorization tags.
+  [#3417](https://github.com/pulumi/pulumi/pull/3417)
+
+- Verify deployment integrity during import and issue an error if verification fails. The state file can still be
+  imported by passing the `--force` flag.
+  [#3422](https://github.com/pulumi/pulumi/pull/3422)
+
+- Omit unknowns in resources in stack outputs during preview.
+  [#3427](https://github.com/pulumi/pulumi/pull/3427)
+
+- `pulumi update` can now be instructed that a set of resources should be replaced by adding a
+  `--replace urn` argument.  Multiple resources can be specified using `--replace urn1 --replace urn2`. In order to
+  replace exactly one resource and leave other resources unchanged, invoke `pulumi update --replace urn --target urn`,
+  or `pulumi update --target-replace urn` for short.
+  [#3418](https://github.com/pulumi/pulumi/pull/3418)
+
+- `pulumi stack` now renders the stack as a tree view.
+  [#3430](https://github.com/pulumi/pulumi/pull/3430)
+
+- Support for lists and maps in config.
+  [#3342](https://github.com/pulumi/pulumi/pull/3342)
+
+- `ResourceProvider#StreamInvoke` implemented, will be the basis for streaming
+  APIs in `pulumi query`. [#3424](https://github.com/pulumi/pulumi/pull/3424)
+
+## 1.4.0 (2019-10-24)
+
+- `FileAsset` in the Python SDK now accepts anything implementing `os.PathLike` in addition to `str`.
+  [#3368](https://github.com/pulumi/pulumi/pull/3368)
+
+- Fix colorization on Windows 10, and fix a colorizer bug that could cause garbled output for resources with long
+  status messages.
+  [#3385](https://github.com/pulumi/pulumi/pull/3385)
+
+## 1.3.4 (2019-10-18)
+
+- Remove unintentional console outupt introduced in 1.3.3.
+
+## 1.3.3 (2019-10-17)
+
+- Fix an issue with first-class providers introduced in 1.3.2.
+
+## 1.3.2 (2019-10-16)
+
+- Fix hangs and crashes related to use of `getResource` (i.e. `aws.ec2.getSubnetIds(...)`) methods,
+  including frequent hangs on Node.js 12. This fixes https://github.com/pulumi/pulumi/issues/3260)
+  and [hangs](https://github.com/pulumi/pulumi/issues/3309).
+
+  Some less common existing styles of using `getResource` calls are also deprecated as part of this
+  change, and users should see https://www.pulumi.com/docs/troubleshooting/#synchronous-call for
+  details on adjusting their code if needed.
+
+## 1.3.1 (2019-10-09)
+
+- Revert "propagate resource inputs to resource state during preview". These changes had a critical issue that needs
+  further investigation.
+
 ## 1.3.0 (2019-10-09)
 
 - Propagate resource inputs to resource state during preview, including first-class unknown values. This allows the
@@ -32,6 +154,9 @@ export default async () => {
 - Support renaming stack projects via `pulumi stack rename`.
   [#3292](https://github.com/pulumi/pulumi/pull/3292)
 
+- Add `helm` to `pulumi/pulumi` Dockerhub container
+  [#3294](https://github.com/pulumi/pulumi/pull/3294)
+
 - Make the location of `.pulumi` folder configurable with an environment variable.
   [#3300](https://github.com/pulumi/pulumi/pull/3300) (Fixes [#2966](https://github.com/pulumi/pulumi/issues/2966))
 
@@ -41,6 +166,8 @@ export default async () => {
 - Adds the ability to provide transformations to modify the properties and resource options that
   will be used for any child resource of a component or stack.
   [#3174](https://github.com/pulumi/pulumi/pull/3174)
+
+- Add resource transformations support in Python. [#3319](https://github.com/pulumi/pulumi/pull/3319)
 
 ## 1.2.0 (2019-09-26)
 

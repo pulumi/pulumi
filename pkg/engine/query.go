@@ -37,8 +37,8 @@ type QueryOptions struct {
 	tracingSpan opentracing.Span
 }
 
-func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
-	contract.Require(u != nil, "update")
+func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
+	contract.Require(q != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
@@ -56,27 +56,28 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 	}("query", ctx.ParentSpan)
 	defer tracingSpan.Finish()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeQueryEventEmitter(ctx.Events)
 	if err != nil {
 		return result.FromError(err)
 	}
+	defer emitter.Close()
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
 	diag := newEventSink(emitter, false)
 	statusDiag := newEventSink(emitter, true)
 
-	proj, target := u.GetProject(), u.GetTarget()
+	proj := q.GetProject()
 	contract.Assert(proj != nil)
-	contract.Assert(target != nil)
 
-	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: u.GetRoot()}, opts.host,
-		target, diag, statusDiag, tracingSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
+		opts.host, nil, diag, statusDiag, tracingSpan)
 	if err != nil {
 		return result.FromError(err)
 	}
+	defer plugctx.Close()
 
-	return query(ctx, u, QueryOptions{
+	return query(ctx, q, QueryOptions{
 		Events:      emitter,
 		Diag:        diag,
 		StatusDiag:  statusDiag,
@@ -88,12 +89,11 @@ func Query(ctx *Context, u UpdateInfo, opts UpdateOptions) result.Result {
 	})
 }
 
-func newQuerySource(ctx context.Context, client deploy.BackendClient, u UpdateInfo,
+func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
 	opts QueryOptions) (deploy.QuerySource, error) {
 
-	allPlugins, _, err := installPlugins(u.GetProject(), opts.pwd,
-		opts.main,
-		u.GetTarget(), opts.plugctx)
+	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
+		nil, opts.plugctx)
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +107,19 @@ func newQuerySource(ctx context.Context, client deploy.BackendClient, u UpdateIn
 	}
 
 	if opts.tracingSpan != nil {
-		ctx = opentracing.ContextWithSpan(ctx, opts.tracingSpan)
+		cancel = opentracing.ContextWithSpan(cancel, opts.tracingSpan)
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-	return deploy.NewQuerySource(ctx, opts.plugctx, client, &deploy.EvalRunInfo{
-		Proj:    u.GetProject(),
+	return deploy.NewQuerySource(cancel, opts.plugctx, client, &deploy.EvalRunInfo{
+		Proj:    q.GetProject(),
 		Pwd:     opts.pwd,
 		Program: opts.main,
-		Target:  u.GetTarget(),
-	})
+	}, defaultProviderVersions, nil)
 }
 
-func query(ctx *Context, u UpdateInfo, opts QueryOptions) result.Result {
+func query(ctx *Context, q QueryInfo, opts QueryOptions) result.Result {
 	// Make the current working directory the same as the program's, and restore it upon exit.
 	done, chErr := fsutil.Chdir(opts.plugctx.Pwd)
 	if chErr != nil {
@@ -128,20 +127,20 @@ func query(ctx *Context, u UpdateInfo, opts QueryOptions) result.Result {
 	}
 	defer done()
 
-	if res := runQuery(ctx, u, opts); res != nil {
+	if res := runQuery(ctx, q, opts); res != nil {
 		if res.IsBail() {
 			return res
 		}
-		return result.Error("an error occurred while running the query")
+		return result.Errorf("an error occurred while running the query: %v", res.Error())
 	}
 	return nil
 }
 
-func runQuery(cancelCtx *Context, u UpdateInfo, opts QueryOptions) result.Result {
+func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	contract.Ignore(cancelFunc)
 
-	src, err := newQuerySource(ctx, cancelCtx.BackendClient, u, opts)
+	src, err := newQuerySource(ctx, cancelCtx.BackendClient, q, opts)
 	if err != nil {
 		return result.FromError(err)
 	}

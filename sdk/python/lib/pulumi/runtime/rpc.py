@@ -450,7 +450,7 @@ async def resolve_outputs(res: 'Resource',
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None and not contains_unknowns(value), is_secret, None)
+            resolve(value, value is not None, is_secret, None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a

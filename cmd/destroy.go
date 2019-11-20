@@ -47,6 +47,7 @@ func newDestroyCmd() *cobra.Command {
 	var suppressOutputs bool
 	var yes bool
 	var targets *[]string
+	var targetDependents bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -92,7 +93,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			proj, root, err := readProject(pulumiAppProj)
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -118,11 +119,12 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:       parallel,
-				Debug:          debug,
-				Refresh:        refresh,
-				DestroyTargets: targetUrns,
-				UseLegacyDiff:  useLegacyDiff(),
+				Parallel:         parallel,
+				Debug:            debug,
+				Refresh:          refresh,
+				DestroyTargets:   targetUrns,
+				TargetDependents: targetDependents,
+				UseLegacyDiff:    useLegacyDiff(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
@@ -163,6 +165,9 @@ func newDestroyCmd() *cobra.Command {
 		"target", "t", []string{},
 		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
 			" Multiple resources can be specified using: --target urn1 --target urn2")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows destroying of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(

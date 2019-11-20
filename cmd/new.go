@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -49,6 +50,7 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type newArgs struct {
 	configArray       []string
+	configPath        bool
 	description       string
 	dir               string
 	force             bool
@@ -94,19 +96,9 @@ func runNew(args newArgs) error {
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {
-		// Ensure the directory exists.
-		if err = os.MkdirAll(args.dir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "creating the directory")
-		}
-
-		// Change the working directory to the specified directory.
-		if err = os.Chdir(args.dir); err != nil {
-			return errors.Wrap(err, "changing the working directory")
-		}
-
-		// Get the new working directory.
-		if cwd, err = os.Getwd(); err != nil {
-			return errors.Wrap(err, "getting the working directory")
+		cwd, err = useSpecifiedDir(args.dir)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -133,7 +125,7 @@ func runNew(args newArgs) error {
 	}
 
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline)
+	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
 		return err
 	}
@@ -160,7 +152,7 @@ func runNew(args newArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd); err != nil {
 			if os.IsNotExist(err) {
 				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 			}
@@ -229,7 +221,7 @@ func runNew(args newArgs) error {
 	}
 
 	// Actually copy the files.
-	if err = template.CopyTemplateFiles(cwd, args.force, args.name, args.description); err != nil {
+	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
 			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 		}
@@ -240,7 +232,7 @@ func runNew(args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, _, err := readProject(pulumiAppProj)
+	proj, _, err := readProject()
 	if err != nil {
 		return err
 	}
@@ -263,7 +255,8 @@ func runNew(args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		if err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, opts); err != nil {
+		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		if err != nil {
 			return err
 		}
 	}
@@ -294,6 +287,28 @@ func runNew(args newArgs) error {
 	}
 
 	return nil
+}
+
+// Ensure the directory exists and uses it as the current working
+// directory.
+func useSpecifiedDir(dir string) (string, error) {
+	// Ensure the directory exists.
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return "", errors.Wrap(err, "creating the directory")
+	}
+
+	// Change the working directory to the specified directory.
+	if err := os.Chdir(dir); err != nil {
+		return "", errors.Wrap(err, "changing the working directory")
+	}
+
+	// Get the new working directory.
+	var cwd string
+	var err error
+	if cwd, err = os.Getwd(); err != nil {
+		return "", errors.Wrap(err, "getting the working directory")
+	}
+	return cwd, nil
 }
 
 // newNewCmd creates a New command with default dependencies.
@@ -345,7 +360,7 @@ func newNewCmd() *cobra.Command {
 		defaultHelp(cmd, args)
 
 		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates("", false /*offline*/)
+		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
 		if err != nil {
 			logging.Warningf("could not retrieve templates: %v", err)
 			return
@@ -372,6 +387,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&args.configArray, "config", "c", []string{},
 		"Config to save")
+	cmd.PersistentFlags().BoolVar(
+		&args.configPath, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVarP(
 		&args.description, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
@@ -540,24 +558,60 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies() error {
-	proj, _, err := readProject(pulumiAppProj)
+	proj, root, err := readProject()
 	if err != nil {
 		return err
 	}
 
-	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		return nil
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		err = npmInstallDependencies()
+		if err != nil {
+			return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment")
+		}
+	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
+		return dotnetInstallDependenciesAndBuild(proj, root)
 	}
+
+	return nil
+}
+
+// npmInstallDependencies will install dependencies for the project or Policy Pack by running `npm install`.
+func npmInstallDependencies() error {
+	fmt.Println("Installing dependencies...")
+	fmt.Println()
+
+	err := npm.Install("", os.Stdout, os.Stderr)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
+
+	return nil
+}
+
+// dotnetInstallDependencies will install dependencies and build the project.
+func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) error {
+	contract.Assert(proj != nil)
 
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	// Run the command.
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	err = npm.Install("", os.Stdout, os.Stderr)
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, plugctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), nil)
 	if err != nil {
-		return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment")
+		return err
+	}
+	defer plugctx.Close()
+
+	// Call RunInstallPlugins, which will run `dotnet build`. This will automatically
+	// restore dependencies, install any plugins, and build the project so it will be
+	// prepped and ready to go for a faster initial `pulumi up`.
+	if err = engine.RunInstallPlugins(proj, pwd, main, nil, plugctx); err != nil {
+		return err
 	}
 
 	fmt.Println("Finished installing dependencies")
@@ -703,7 +757,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 // These are passed as `-c aws:region=us-east-1 -c foo:bar=blah` and end up
 // in configArray as ["aws:region=us-east-1", "foo:bar=blah"].
 // This function converts the array into a config.Map.
-func parseConfig(configArray []string) (config.Map, error) {
+func parseConfig(configArray []string, path bool) (config.Map, error) {
 	configMap := make(config.Map)
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
@@ -718,7 +772,9 @@ func parseConfig(configArray []string) (config.Map, error) {
 			value = config.NewValue(kvp[1])
 		}
 
-		configMap[key] = value
+		if err = configMap.Set(key, value, path); err != nil {
+			return nil, err
+		}
 	}
 	return configMap, nil
 }

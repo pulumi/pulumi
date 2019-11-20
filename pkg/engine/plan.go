@@ -182,8 +182,10 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			Refresh:           planResult.Options.Refresh,
 			RefreshOnly:       planResult.Options.isRefresh,
 			RefreshTargets:    planResult.Options.RefreshTargets,
+			ReplaceTargets:    planResult.Options.ReplaceTargets,
 			DestroyTargets:    planResult.Options.DestroyTargets,
 			UpdateTargets:     planResult.Options.UpdateTargets,
+			TargetDependents:  planResult.Options.TargetDependents,
 			TrustDependencies: planResult.Options.trustDependencies,
 			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}

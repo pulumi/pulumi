@@ -129,11 +129,8 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 
 func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 	rm := &queryResmon{}
-	_, err := rm.Invoke(context.TODO(), &pulumirpc.InvokeRequest{Tok: "foo"})
-	assert.Error(t, err)
-	assert.Equal(t, "Query mode does not support invoke call for operation 'foo'", err.Error())
 
-	_, err = rm.ReadResource(context.TODO(), nil)
+	_, err := rm.ReadResource(context.TODO(), nil)
 	assert.Error(t, err)
 	assert.Equal(t, "Query mode does not support reading resources", err.Error())
 
@@ -156,10 +153,10 @@ func newTestQuerySource(mon SourceResourceMonitor,
 	cancel, cancelFunc := context.WithCancel(context.Background())
 
 	return &querySource{
-		mon:           mon,
-		runLangPlugin: runLangPlugin,
-		finChan:       make(chan result.Result),
-		cancel:        cancel,
+		mon:               mon,
+		runLangPlugin:     runLangPlugin,
+		langPluginFinChan: make(chan result.Result),
+		cancel:            cancel,
 	}, cancelFunc
 }
 

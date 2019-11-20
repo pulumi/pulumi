@@ -40,25 +40,52 @@ type stepGenerator struct {
 	plan *Plan   // the plan to which this step generator belongs
 	opts Options // options for this step generator
 
-	// signals that one or more PolicyViolationEvents have been reported to the user, and the plan
-	// should terminate in error. This primarily allows `preview` to aggregate many policy violation
-	// events and report them all at once.
-	hasPolicyViolations bool
+	updateTargetsOpt  map[resource.URN]bool // the set of resources to update; resources not in this set will be same'd
+	replaceTargetsOpt map[resource.URN]bool // the set of resoures to replace
 
-	urns           map[resource.URN]bool            // set of URNs discovered for this plan
-	reads          map[resource.URN]bool            // set of URNs read for this plan
-	deletes        map[resource.URN]bool            // set of URNs deleted in this plan
-	replaces       map[resource.URN]bool            // set of URNs replaced in this plan
-	updates        map[resource.URN]bool            // set of URNs updated in this plan
-	creates        map[resource.URN]bool            // set of URNs created in this plan
-	sames          map[resource.URN]bool            // set of URNs that were not changed in this plan
+	// signals that one or more errors have been reported to the user, and the plan should terminate
+	// in error. This primarily allows `preview` to aggregate many policy violation events and
+	// report them all at once.
+	sawError bool
+
+	urns     map[resource.URN]bool // set of URNs discovered for this plan
+	reads    map[resource.URN]bool // set of URNs read for this plan
+	deletes  map[resource.URN]bool // set of URNs deleted in this plan
+	replaces map[resource.URN]bool // set of URNs replaced in this plan
+	updates  map[resource.URN]bool // set of URNs updated in this plan
+	creates  map[resource.URN]bool // set of URNs created in this plan
+	sames    map[resource.URN]bool // set of URNs that were not changed in this plan
+
+	// set of URNs that would have been created, but were filtered out because the user didn't
+	// specify them with --target
+	skippedCreates map[resource.URN]bool
+
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
+	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
+
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
+
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
+}
+
+func (sg *stepGenerator) isTargetedUpdate() bool {
+	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
+}
+
+func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
+	return sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn]
+}
+
+func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
+	return sg.replaceTargetsOpt != nil && sg.replaceTargetsOpt[urn]
+}
+
+func (sg *stepGenerator) Errored() bool {
+	return sg.sawError
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -124,13 +151,60 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
-func (sg *stepGenerator) GenerateSteps(
-	updateTargetsOpt map[resource.URN]bool, event RegisterResourceEvent) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
+	steps, res := sg.generateSteps(event)
+	if res != nil {
+		contract.Assert(len(steps) == 0)
+		return nil, res
+	}
+	if !sg.isTargetedUpdate() {
+		return steps, nil
+	}
 
+	// We got a set of steps to perfom during a targeted update. If any of the steps are not same steps and depend on
+	// creates we skipped because they were not in the --target list, issue an error that that the create was necessary
+	// and that the user must target the resource to create.
+	for _, step := range steps {
+		if step.Op() == OpSame || step.New() == nil {
+			continue
+		}
+
+		for _, urn := range step.New().Dependencies {
+			if sg.skippedCreates[urn] {
+				// Targets were specified, but didn't include this resource to create.  And a
+				// resource we are producing a step for does depend on this created resource.
+				// Give a particular error in that case to let them know.  Also mark that we're
+				// in an error state so that we eventually will error out of the entire
+				// application run.
+				d := diag.GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(step.URN())
+
+				sg.plan.Diag().Errorf(d, step.URN(), urn)
+				sg.sawError = true
+
+				if !sg.plan.preview {
+					// In preview we keep going so that the user will hear about all the problems and can then
+					// fix up their command once (as opposed to adding a target, rerunning, adding a target,
+					// rerunning, etc. etc.).
+					//
+					// Doing a normal run.  We should not proceed here at all.  We don't want to create
+					// something the user didn't ask for.
+					return nil, result.Bail()
+				}
+
+				// Remove the resource from the list of skipped creates so that we do not issue duplicate diagnostics.
+				delete(sg.skippedCreates, urn)
+			}
+		}
+	}
+
+	return steps, nil
+}
+
+func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-	// generate an URN for this new resource.
+	// Generate a URN for this new resource, confirm we haven't seen it before in this plan.
 	urn := sg.plan.generateURN(goal.Parent, goal.Type, goal.Name)
 	if sg.urns[urn] {
 		invalid = true
@@ -179,8 +253,9 @@ func (sg *stepGenerator) GenerateSteps(
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
 
-	// Is this thing a provider resource? If so, stash it - we might need it later when calculating replacement
-	// of resources that use this provider.
+	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
+	// lookup providers for calculating replacement of resources that use the provider.
+	sg.resourceStates[urn] = new
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -223,8 +298,9 @@ func (sg *stepGenerator) GenerateSteps(
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-		// don't consider those inputs since Pulumi does not own them.
-		if recreating || wasExternal {
+		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+		// targeted for replacement, ignore its old state.
+		if recreating || wasExternal || sg.isTargetedReplace(urn) {
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
@@ -254,23 +330,23 @@ func (sg *stepGenerator) GenerateSteps(
 		}
 	}
 
-	// Get the final list of policy packs.
+	// Send the resource off to any Analyzers before being operated on.
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
-
 	for _, analyzer := range analyzers {
-		var diagnostics []plugin.AnalyzeDiagnostic
-		diagnostics, err = analyzer.Analyze(new.Type, inputs)
+		r := plugin.AnalyzerResource{
+			Type:       new.Type,
+			Properties: inputs,
+		}
+		diagnostics, err := analyzer.Analyze(r)
 		if err != nil {
 			return nil, result.FromError(err)
 		}
 		for _, d := range diagnostics {
-			// TODO(hausdorff): Batch up failures and report them all at once during preview. This
-			// will cause them to fail eagerly.
 			if d.EnforcementLevel == apitype.Mandatory {
 				if !sg.plan.preview {
 					invalid = true
 				}
-				sg.hasPolicyViolations = true
+				sg.sawError = true
 			}
 			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
@@ -349,7 +425,7 @@ func (sg *stepGenerator) GenerateSteps(
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
-		if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
+		if !sg.isTargetedForUpdate(urn) {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -375,26 +451,38 @@ func (sg *stepGenerator) GenerateSteps(
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
-	if updateTargetsOpt != nil && !updateTargetsOpt[urn] {
-		d := diag.GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn)
-
-		if sg.plan.preview {
-			// During preview we only warn here but let the planning proceed.  This allows the user
-			// to hear about *all* the potential resources they'd need to add a -target arg for.
-			// This prevents the annoying scenario where you get notified about a problem, fix it,
-			// rerun and then get notified about the very next problem.
-			sg.plan.Diag().Warningf(d, urn)
-		} else {
-			// Targets were specified, but didn't include this resource to create.  Give a particular
-			// error in that case and stop immediately.
-			sg.plan.Diag().Errorf(d, urn)
-			return nil, result.Bail()
-		}
-	}
-
 	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
+
+	// We're in the create stage now.  In a normal run just issue a 'create step'. If, however, the
+	// user is doing a run with `--target`s, then we need to operate specially here.
+	//
+	// 1. If the user did include this resource urn in the --target list, then we can proceed
+	// normally and issue a create step for this.
+	//
+	// 2. However, if they did not include the resource in the --target list, then we want to flat
+	// out ignore it (just like we ignore updates to resource not in the --target list).  This has
+	// interesting implications though. Specifically, what to do if a prop from this resource is
+	// then actually needed by a property we *are* doing a targeted create/update for.
+	//
+	// In that case, we want to error to force the user to be explicit about wanting this resource
+	// to be created. However, we can't issue the error until later on when the resource is
+	// referenced. So, to support this we create a special "same" step here for this resource. That
+	// "same" step has a bit on it letting us know that it is for this case. If we then later see a
+	// resource that depends on this resource, we will issue an error letting the user know.
+	//
+	// We will also not record this non-created resource into the checkpoint as it doesn't actually
+	// exist.
+
+	if !sg.isTargetedForUpdate(urn) &&
+		!providers.IsProviderType(goal.Type) {
+
+		sg.sames[urn] = true
+		sg.skippedCreates[urn] = true
+		return []Step{NewSkippedCreateStep(sg.plan, event, new)}, nil
+	}
+
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
@@ -443,7 +531,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 
 			// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 			// had assumed that we were going to carry them over from the old resource, which is no longer true.
-			if prov != nil {
+			//
+			// Note that if we're performing a targeted replace, we already have the correct inputs.
+			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
 				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 				if err != nil {
@@ -627,6 +717,34 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 		dels = filtered
 	}
 
+	deletingUnspecifiedTarget := false
+	for _, step := range dels {
+		urn := step.URN()
+		if targetsOpt != nil && !targetsOpt[urn] && !sg.opts.TargetDependents {
+			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
+
+			// Targets were specified, but didn't include this resource to create.  Report all the
+			// problematic targets so the user doesn't have to keep adding them one at a time and
+			// re-running the operation.
+			//
+			// Mark that step generation entered an error state so that the entire app run fails.
+			sg.plan.Diag().Errorf(d, urn)
+			sg.sawError = true
+
+			deletingUnspecifiedTarget = true
+		}
+	}
+
+	if deletingUnspecifiedTarget && !sg.plan.preview {
+		// In preview we keep going so that the user will hear about all the problems and can then
+		// fix up their command once (as opposed to adding a target, rerunning, adding a target,
+		// rerunning, etc. etc.).
+		//
+		// Doing a normal run.  We should not proceed here at all.  We don't want to delete
+		// something the user didn't ask for.
+		return nil, result.Bail()
+	}
+
 	return dels, nil
 }
 
@@ -644,6 +762,14 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// Now actually use all the requested targets to figure out the exact set to delete.
 	for target := range targetsOpt {
 		current := sg.plan.olds[target]
+		if current == nil {
+			// user specified a target that didn't exist.  they will have already gotten a warning
+			// about this when we called checkTargets.  explicitly ignore this target since it won't
+			// be something we could possibly be trying to delete, nor could have dependents we
+			// might need to replace either.
+			continue
+		}
+
 		resourcesToDelete[target] = true
 
 		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
@@ -879,6 +1005,11 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
+	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
+	if sg.isTargetedReplace(urn) {
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil
+	}
+
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
 	providerChanged, err := sg.providerChanged(urn, old, new)
@@ -1008,7 +1139,7 @@ func (sg *stepGenerator) loadResourceProvider(
 	}
 	p, ok := sg.plan.GetProvider(ref)
 	if !ok {
-		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn, refErr)
+		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn)
 		return nil, result.Bail()
 	}
 	return p, nil
@@ -1099,7 +1230,17 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	}
 
 	// Walk the root resource's dependents in order and build up the set of resources that require replacement.
-	for _, d := range sg.plan.depGraph.DependingOn(root) {
+	//
+	// NOTE: the dependency graph we use for this calculation is based on the dependency graph from the last snapshot.
+	// If there are resources in this graph that used to depend on the root but have been re-registered such that they
+	// no longer depend on the root, we may make incorrect decisions. To avoid that, we rely on the observation that
+	// dependents can only have been _removed_ from the base dependency graph: for a dependent to have been added,
+	// it would have had to have been registered prior to the root, which is not a valid operation. This means that
+	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
+	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
+	// encountered while walking the old dependency graph to determine the set of dependents.
+	impossibleDependents := sg.urns
+	for _, d := range sg.plan.depGraph.DependingOn(root, impossibleDependents) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
 			return nil, res
@@ -1113,11 +1254,42 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	return toReplace, nil
 }
 
+func (sg *stepGenerator) AnalyzeResources() result.Result {
+	resourcesSeen := sg.resourceStates
+	resources := make([]plugin.AnalyzerResource, 0, len(resourcesSeen))
+	for _, v := range resourcesSeen {
+		resources = append(resources, plugin.AnalyzerResource{
+			Type: v.Type,
+			// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
+			// to verify the final stack is in a compliant state.
+			Properties: v.Outputs,
+		})
+	}
+
+	analyzers := sg.plan.ctx.Host.ListAnalyzers()
+	for _, analyzer := range analyzers {
+		diagnostics, aErr := analyzer.AnalyzeStack(resources)
+		if aErr != nil {
+			return result.FromError(aErr)
+		}
+		for _, d := range diagnostics {
+			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
+			sg.opts.Events.OnPolicyViolation("" /* don't associate with any particular URN */, d)
+		}
+	}
+
+	return nil
+}
+
 // newStepGenerator creates a new step generator that operates on the given plan.
-func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
+func newStepGenerator(
+	plan *Plan, opts Options, updateTargetsOpt, replaceTargetsOpt map[resource.URN]bool) *stepGenerator {
+
 	return &stepGenerator{
 		plan:                 plan,
 		opts:                 opts,
+		updateTargetsOpt:     updateTargetsOpt,
+		replaceTargetsOpt:    replaceTargetsOpt,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
@@ -1125,8 +1297,10 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
+		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
+		resourceStates:       make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}

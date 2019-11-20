@@ -26,6 +26,8 @@ const (
 	DisplayDiff
 	// DisplayQuery displays query output.
 	DisplayQuery
+	// DisplayQuery displays query output.
+	DisplayWatch
 )
 
 // Options controls how the output of events are rendered

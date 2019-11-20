@@ -47,9 +47,9 @@ type Stack interface {
 	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Watch this stack.
+	Watch(ctx context.Context, op UpdateOperation) result.Result
 
-	// Query this stack's state.
-	Query(ctx context.Context, op UpdateOperation) result.Result
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
@@ -62,69 +62,71 @@ type Stack interface {
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 }
 
-// Query executes a query program against a stack's resource outputs.
-func Query(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Query(ctx, s.Ref(), op)
-}
-
 // RemoveStack returns the stack, or returns an error if it cannot.
 func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
-	return s.Backend().RemoveStack(ctx, s.Ref(), force)
+	return s.Backend().RemoveStack(ctx, s, force)
 }
 
+// RenameStack renames the stack, or returns an error if it cannot.
 func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
-	return s.Backend().RenameStack(ctx, s.Ref(), newName)
+	return s.Backend().RenameStack(ctx, s, newName)
 }
 
 // PreviewStack previews changes to this stack.
 func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	return s.Backend().Preview(ctx, s.Ref(), op)
+	return s.Backend().Preview(ctx, s, op)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	return s.Backend().Update(ctx, s.Ref(), op)
+	return s.Backend().Update(ctx, s, op)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
 func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	return s.Backend().Refresh(ctx, s.Ref(), op)
+	return s.Backend().Refresh(ctx, s, op)
 }
 
 // DestroyStack destroys all of this stack's resources.
 func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	return s.Backend().Destroy(ctx, s.Ref(), op)
+	return s.Backend().Destroy(ctx, s, op)
+}
+
+// WatchStack watches the projects working directory for changes and automatically updates the
+// active stack.
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
+	return s.Backend().Watch(ctx, s, op)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
-	return s.Backend().GetLatestConfiguration(ctx, s.Ref())
+	return s.Backend().GetLatestConfiguration(ctx, s)
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s.Ref(), cfg, query)
+	return s.Backend().GetLogs(ctx, s, cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
 func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
-	return s.Backend().ExportDeployment(ctx, s.Ref())
+	return s.Backend().ExportDeployment(ctx, s)
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
 func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.UntypedDeployment) error {
-	return s.Backend().ImportDeployment(ctx, s.Ref(), deployment)
+	return s.Backend().ImportDeployment(ctx, s, deployment)
 }
 
 // GetStackTags fetches the stack's existing tags.
 func GetStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
-	return s.Backend().GetStackTags(ctx, s.Ref())
+	return s.Backend().GetStackTags(ctx, s)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
-	return s.Backend().UpdateStackTags(ctx, s.Ref(), tags)
+	return s.Backend().UpdateStackTags(ctx, s, tags)
 }
 
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment

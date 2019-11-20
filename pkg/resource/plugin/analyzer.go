@@ -32,11 +32,21 @@ type Analyzer interface {
 	// Name fetches an analyzer's qualified name.
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
-	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeDiagnostic, error)
+	// Is called before the resource is modified.
+	Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error)
+	// AnalyzeStack analyzes all resources after a successful preview or update.
+	// Is called after all resources have been processed, and all changes applied.
+	AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+}
+
+// AnalyzerResource mirrors a resource that is sent to the analyzer.
+type AnalyzerResource struct {
+	Type       tokens.Type
+	Properties resource.PropertyMap
 }
 
 // AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason

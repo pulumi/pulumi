@@ -238,6 +238,64 @@ func PrintObject(
 	}
 }
 
+func massageStackPreviewAdd(p resource.PropertyValue) {
+	switch {
+	case p.IsArray():
+		for _, v := range p.ArrayValue() {
+			massageStackPreviewAdd(v)
+		}
+	case p.IsObject():
+		delete(p.ObjectValue(), "@isPulumiResource")
+		for _, v := range p.ObjectValue() {
+			massageStackPreviewAdd(v)
+		}
+	}
+}
+
+func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
+	switch {
+	case diff.Array != nil:
+		for _, p := range diff.Array.Adds {
+			massageStackPreviewAdd(p)
+		}
+		for _, d := range diff.Array.Updates {
+			massageStackPreviewDiff(d, inResource)
+		}
+	case diff.Object != nil:
+		massageStackPreviewOutputDiff(diff.Object, inResource)
+	}
+}
+
+// massageStackPreviewOutputDiff removes any adds of unknown values nested inside Pulumi resources present in a stack's
+// outputs.
+func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
+	if diff == nil {
+		return
+	}
+
+	_, isResource := diff.Adds["@isPulumiResource"]
+	if isResource {
+		delete(diff.Adds, "@isPulumiResource")
+
+		for k, v := range diff.Adds {
+			if v.IsComputed() {
+				delete(diff.Adds, k)
+			}
+		}
+	}
+
+	for _, p := range diff.Adds {
+		massageStackPreviewAdd(p)
+	}
+	for k, d := range diff.Updates {
+		if isResource && d.New.IsComputed() && !shouldPrintPropertyValue(d.Old, false) {
+			delete(diff.Updates, k)
+		} else {
+			massageStackPreviewDiff(d, inResource)
+		}
+	}
+}
+
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
@@ -298,6 +356,12 @@ func GetResourceOutputsPropertiesString(
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
 		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
+
+		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
+		// they have no corresponding output in the old state.
+		if planning && step.URN.Type() == resource.RootStackType {
+			massageStackPreviewOutputDiff(outputDiff, false)
+		}
 	}
 
 	// If we asked to not show-sames, and no outputs changed then don't show anything at all here.

@@ -65,11 +65,18 @@ type UpdateOptions struct {
 	// Specific resources to refresh during a refresh operation.
 	RefreshTargets []resource.URN
 
+	// Specific resources to replace during an update operation.
+	ReplaceTargets []resource.URN
+
 	// Specific resources to destroy during a destroy operation.
 	DestroyTargets []resource.URN
 
 	// Specific resources to update during an update operation.
 	UpdateTargets []resource.URN
+
+	// true if we're allowing dependent targets to change, even if not specified in one of the above
+	// XXXTargets lists.
+	TargetDependents bool
 
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
@@ -114,6 +121,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	if err != nil {
 		return nil, result.FromError(err)
 	}
+	defer emitter.Close()
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
@@ -121,6 +130,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 	}, dryRun)
+}
+
+// RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
+func RunInstallPlugins(
+	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
+	_, _, err := installPlugins(proj, pwd, main, target, plugctx)
+	return err
 }
 
 func installPlugins(

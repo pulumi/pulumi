@@ -61,6 +61,10 @@ type SameStep struct {
 	reg  RegisterResourceEvent // the registration intent to convey a URN back to.
 	old  *resource.State       // the state of the resource before this step.
 	new  *resource.State       // the state of the resource after this step.
+
+	// If this is a same-step for a resource being created but which was not --target'ed by the user
+	// (and thus was skipped).
+	skippedCreate bool
 }
 
 var _ Step = (*SameStep)(nil)
@@ -84,6 +88,28 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 	}
 }
 
+// NewSkippedCreateStep produces a SameStep for a resource that was created but not targeted
+// by the user (and thus was skipped). These act as no-op steps (hence 'same') since we are not
+// actually creating the resource, but ensure that we complete resource-registration and convey the
+// right information downstream. For example, we will not write these into the checkpoint file.
+func NewSkippedCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
+	contract.Assert(new != nil)
+	contract.Assert(new.URN != "")
+	contract.Assert(new.ID == "")
+	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
+	contract.Assert(!new.Delete)
+
+	// Make the old state here a direct copy of the new state
+	old := *new
+	return &SameStep{
+		plan:          plan,
+		reg:           reg,
+		old:           &old,
+		new:           new,
+		skippedCreate: true,
+	}
+}
+
 func (s *SameStep) Op() StepOp           { return OpSame }
 func (s *SameStep) Plan() *Plan          { return s.plan }
 func (s *SameStep) Type() tokens.Type    { return s.new.Type }
@@ -100,6 +126,10 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	s.new.Outputs = s.old.Outputs
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
+}
+
+func (s *SameStep) IsSkippedCreate() bool {
+	return s.skippedCreate
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.

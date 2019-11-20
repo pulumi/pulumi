@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output, unknown } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,
@@ -25,6 +25,7 @@ import {
     CustomResource,
     CustomResourceOptions,
     ID,
+    ProviderResource,
     Resource,
     ResourceOptions,
     URN,
@@ -162,16 +163,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                                  props: Inputs, opts: ResourceOptions): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
-
-    // If there are transformations registered, invoke them in order to transform the properties and
-    // options assigned to this resource.
-    for (const transformation of (res.__transformations || [])) {
-        const tres = transformation({ resource: res, type: t, name, props, opts });
-        if (tres) {
-            props = tres.props;
-            opts = tres.opts;
-        }
-    }
 
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
@@ -330,14 +321,9 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     let providerRef: string | undefined;
     let importID: ID | undefined;
     if (custom) {
-        if ((<CustomResourceOptions>opts).provider !== undefined) {
-            const provider = (<CustomResourceOptions>opts).provider!;
-            const providerURN = await provider.urn.promise();
-            const providerID = await provider.id.promise() || unknownValue;
-            providerRef = `${providerURN}::${providerID}`;
-        }
-
-        importID = (<CustomResourceOptions>opts).import;
+        const customOpts = <CustomResourceOptions>opts;
+        importID = customOpts.import;
+        providerRef = await ProviderResource.register(opts.provider);
     }
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
@@ -413,7 +399,7 @@ async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Res
     // [Comp1, Cust1, Comp2, Cust2, Cust3]
     const transitivelyReachableResources = getTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-    const transitivelyReachableCustomResources =  [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    const transitivelyReachableCustomResources = [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
@@ -536,7 +522,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
             const label = `monitor.registerResourceOutputs(${urn}, ...)`;
             await debuggablePromise(new Promise((resolve, reject) =>
                 (monitor as any).registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
-                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
+                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
                         `err: ${err}, resp: ${innerResponse}`);
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
@@ -553,7 +539,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                         resolve();
                     }
                 })), label);
-            }
+        }
     }, false);
 }
 

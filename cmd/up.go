@@ -51,6 +51,7 @@ func newUpCmd() *cobra.Command {
 	var message string
 	var stack string
 	var configArray []string
+	var path bool
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -66,7 +67,10 @@ func newUpCmd() *cobra.Command {
 	var suppressOutputs bool
 	var yes bool
 	var secretsProvider string
-	var targets *[]string
+	var targets []string
+	var replaces []string
+	var targetReplaces []string
+	var targetDependents bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -76,11 +80,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(s, configArray); err != nil {
+		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
 			return result.FromError(err)
 		}
 
-		proj, root, err := readProject(pulumiAppProj)
+		proj, root, err := readProject()
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -100,9 +104,19 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
-		targetUrns := []resource.URN{}
-		for _, t := range *targets {
-			targetUrns = append(targetUrns, resource.URN(t))
+		targetURNs := []resource.URN{}
+		for _, t := range targets {
+			targetURNs = append(targetURNs, resource.URN(t))
+		}
+
+		replaceURNs := []resource.URN{}
+		for _, r := range replaces {
+			replaceURNs = append(replaceURNs, resource.URN(r))
+		}
+
+		for _, tr := range targetReplaces {
+			targetURNs = append(targetURNs, resource.URN(tr))
+			replaceURNs = append(replaceURNs, resource.URN(tr))
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -110,8 +124,10 @@ func newUpCmd() *cobra.Command {
 			Parallel:             parallel,
 			Debug:                debug,
 			Refresh:              refresh,
+			ReplaceTargets:       replaceURNs,
 			UseLegacyDiff:        useLegacyDiff(),
-			UpdateTargets:        targetUrns,
+			UpdateTargets:        targetURNs,
+			TargetDependents:     targetDependents,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -138,7 +154,7 @@ func newUpCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
 	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false)
+		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -214,12 +230,12 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
-		if err = template.CopyTemplateFiles(temp, true, name, description); err != nil {
+		if err = workspace.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
 			return result.FromError(err)
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := readProject(pulumiAppProj)
+		proj, root, err := readProject()
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -240,7 +256,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, opts.Display); err != nil {
+		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -366,6 +382,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().BoolVar(
+		&path, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
@@ -375,13 +394,23 @@ func newUpCmd() *cobra.Command {
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
 
-	targets = cmd.PersistentFlags().StringArrayP(
-		"target", "t", []string{},
+	cmd.PersistentFlags().StringArrayVarP(
+		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
-			" Multiple resources can be specified using: --target urn1 --target urn2")
+			" Multiple resources can be specified using --target urn1 --target urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&replaces, "replace", []string{},
+		"Specify resources to replace. Multiple resources can be specified using --replace run1 --replace urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&targetReplaces, "target-replace", []string{},
+		"Specify a single resource URN to replace. Other resources will not be updated."+
+			" Shorthand for --target urn --replace urn.")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows updating of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() {
+	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more policy packs as part of this update")
@@ -434,6 +463,7 @@ func handleConfig(
 	template workspace.Template,
 	configArray []string,
 	yes bool,
+	path bool,
 	opts display.Options) error {
 
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
@@ -460,7 +490,7 @@ func handleConfig(
 		// the stack's `pulumi:template` config value.
 	} else {
 		// Get config values passed on the command line.
-		commandLineConfig, parseErr := parseConfig(configArray)
+		commandLineConfig, parseErr := parseConfig(configArray, path)
 		if parseErr != nil {
 			return parseErr
 		}

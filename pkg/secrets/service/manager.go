@@ -101,10 +101,11 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		return nil, errors.Wrap(err, "unmarshalling state")
 	}
 
-	token, err := workspace.GetAccessToken(s.URL)
+	account, err := workspace.GetAccount(s.URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting access token")
 	}
+	token := account.AccessToken
 
 	if token == "" {
 		return nil, errors.Errorf("could not find access token for %s, have you logged in?", s.URL)
