@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
 
@@ -8,17 +8,17 @@ namespace Pulumi
     /// An automatically generated logical URN, used to stably identify resources. These are created
     /// automatically by Pulumi to identify resources.  They cannot be manually constructed.
     /// </summary>
-    internal static class Urn
+    public static class Urn
     {
         /// <summary>
         /// Computes a URN from the combination of a resource name, resource type, optional parent,
         /// optional project and optional stack.
         /// </summary>
         /// <returns></returns>
-        internal static Output<string> Create(
+        public static Output<string> Create(
             Input<string> name, Input<string> type,
-            Resource? parent, Input<string>? parentUrn,
-            Input<string>? project, Input<string>? stack)
+            Resource? parent = null, Input<string>? parentUrn = null,
+            Input<string>? project = null, Input<string>? stack = null)
         {
             if (parent != null && parentUrn != null)
                 throw new ArgumentException("Only one of 'parent' and 'parentUrn' can be non-null.");
@@ -36,7 +36,7 @@ namespace Pulumi
             }
             else
             {
-                parentPrefix = Output.Create($"urn:pulumi:{stack ?? Deployment.Instance.StackName}::{project ?? Deployment.Instance.ProjectName}::");
+                parentPrefix = Output.Format($"urn:pulumi:{stack ?? Deployment.Instance.StackName}::{project ?? Deployment.Instance.ProjectName}::");
             }
 
             return Output.Format($"{parentPrefix}{type}::{name}");

@@ -61,3 +61,23 @@ func TestPythonAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestDotNetAliases(t *testing.T) {
+	for _, dir := range dirs {
+		d := path.Join("dotnet", dir)
+		t.Run(d, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:          path.Join(d, "step1"),
+				Dependencies: []string{"Pulumi"},
+				Quick:        true,
+				EditDirs: []integration.EditDir{
+					{
+						Dir:             path.Join(d, "step2"),
+						Additive:        true,
+						ExpectNoChanges: true,
+					},
+				},
+			})
+		})
+	}
+}
