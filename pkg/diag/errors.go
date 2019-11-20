@@ -26,7 +26,7 @@ func newError(urn resource.URN, id ID, message string) *Diag {
 // Plan and apply errors are in the [2000,3000) range.
 
 func GetResourceOperationFailedError(urn resource.URN) *Diag {
-	return newError(urn, 2000, "Resource operation failed: %v")
+	return newError(urn, 2000, "%v")
 }
 
 func GetDuplicateResourceURNError(urn resource.URN) *Diag {
