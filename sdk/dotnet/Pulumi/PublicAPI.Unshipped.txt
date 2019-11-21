@@ -233,9 +233,14 @@ static Pulumi.Output.Tuple<T1, T2, T3>(Pulumi.Output<T1> item1, Pulumi.Output<T2
 static Pulumi.Output.Tuple<T1, T2>(Pulumi.Input<T1> item1, Pulumi.Input<T2> item2) -> Pulumi.Output<(T1, T2)>
 static Pulumi.Output.Tuple<T1, T2>(Pulumi.Output<T1> item1, Pulumi.Output<T2> item2) -> Pulumi.Output<(T1, T2)>
 static Pulumi.Output<T>.Create(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
+static Pulumi.OutputExtensions.AsT0<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<T0>
+static Pulumi.OutputExtensions.AsT1<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<T1>
 static Pulumi.OutputExtensions.First<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<T>
 static Pulumi.OutputExtensions.GetAt<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array, Pulumi.Input<int> index) -> Pulumi.Output<T>
+static Pulumi.OutputExtensions.IsT0<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<bool>
+static Pulumi.OutputExtensions.IsT1<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<bool>
 static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<int>
+static Pulumi.OutputExtensions.Value<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<object>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static Pulumi.Urn.Create(Pulumi.Input<string> name, Pulumi.Input<string> type, Pulumi.Resource parent = null, Pulumi.Input<string> parentUrn = null, Pulumi.Input<string> project = null, Pulumi.Input<string> stack = null) -> Pulumi.Output<string>
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
