@@ -5,7 +5,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using Google.Protobuf.WellKnownTypes;
-using OneOf;
 
 namespace Pulumi.Serialization
 {
@@ -94,7 +93,7 @@ namespace Pulumi.Serialization
 
             if (targetType.IsConstructedGenericType)
             {
-                if (targetType.GetGenericTypeDefinition() == typeof(OneOf<,>))
+                if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
                     return TryConvertOneOf(context, val, targetType);
 
                 if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
@@ -152,14 +151,14 @@ namespace Pulumi.Serialization
             var (val1, exception1) = TryConvertObject($"{context}.AsT0", val, firstType);
             if (exception1 == null)
             {
-                var fromT0Method = oneOfType.GetMethod(nameof(OneOf<int, int>.FromT0), BindingFlags.Public | BindingFlags.Static);
+                var fromT0Method = oneOfType.GetMethod(nameof(Union<int, int>.FromT0), BindingFlags.Public | BindingFlags.Static);
                 return (fromT0Method.Invoke(null, new[] { val1 }), null);
             }
 
             var (val2, exception2) = TryConvertObject($"{context}.AsT1", val, secondType);
             if (exception2 == null)
             {
-                var fromT1Method = oneOfType.GetMethod(nameof(OneOf<int, int>.FromT1), BindingFlags.Public | BindingFlags.Static);
+                var fromT1Method = oneOfType.GetMethod(nameof(Union<int, int>.FromT1), BindingFlags.Public | BindingFlags.Static);
                 return (fromT1Method.Invoke(null, new[] { val2 }), null);
             }
 
@@ -261,7 +260,7 @@ namespace Pulumi.Serialization
                     CheckTargetType(context, targetType.GenericTypeArguments.Single());
                     return;
                 }
-                else if (targetType.GetGenericTypeDefinition() == typeof(OneOf<,>))
+                else if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
                 {
                     CheckTargetType(context, targetType.GenericTypeArguments[0]);
                     CheckTargetType(context, targetType.GenericTypeArguments[1]);

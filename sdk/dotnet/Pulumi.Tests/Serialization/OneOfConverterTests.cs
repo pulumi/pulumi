@@ -5,18 +5,17 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using OneOf;
 using Pulumi.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization
 {
-    public class OneOfConverterTests : ConverterTests
+    public class UnionConverterTests : ConverterTests
     {
         [Fact]
         public void T0()
         {
-            var data = Converter.ConvertValue<OneOf<int, string>>("", new Value { NumberValue = 1 });
+            var data = Converter.ConvertValue<Union<int, string>>("", new Value { NumberValue = 1 });
             Assert.True(data.Value.IsT0);
             Assert.True(data.IsKnown);
             Assert.Equal(1, data.Value.AsT0);
@@ -25,7 +24,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void T1()
         {
-            var data = Converter.ConvertValue<OneOf<int, string>>("", new Value { StringValue = "foo" });
+            var data = Converter.ConvertValue<Union<int, string>>("", new Value { StringValue = "foo" });
             Assert.True(data.Value.IsT1);
             Assert.True(data.IsKnown);
             Assert.Equal("foo", data.Value.AsT1);
@@ -34,7 +33,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task MixedList()
         {
-            var data = Converter.ConvertValue<ImmutableArray<OneOf<int, string>>>("",
+            var data = Converter.ConvertValue<ImmutableArray<Union<int, string>>>("",
                 await SerializeToValueAsync(new List<object> { 1, "foo" }));
             Assert.True(data.IsKnown);
             Assert.Equal(2, data.Value.Length);
@@ -51,7 +50,7 @@ namespace Pulumi.Tests.Serialization
         {
             Assert.Throws<InvalidOperationException>(() =>
             {
-                var data = Converter.ConvertValue<OneOf<int, string>>("", new Value { BoolValue = true });
+                var data = Converter.ConvertValue<Union<int, string>>("", new Value { BoolValue = true });
             });
         }
     }
