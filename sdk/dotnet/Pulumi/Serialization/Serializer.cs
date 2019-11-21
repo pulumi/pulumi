@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using OneOf;
 
 namespace Pulumi.Serialization
 {
@@ -98,10 +99,20 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             {
                 if (_excessiveDebugOutput)
                 {
-                    Log.Debug($"Serialize property[{ctx}]: Recursing into input");
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into IInput");
                 }
 
                 return await SerializeAsync(ctx, input.ToOutput()).ConfigureAwait(false);
+            }
+
+            if (prop is IOneOf oneOf)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into IOneOf");
+                }
+
+                return await SerializeAsync(ctx, oneOf.Value).ConfigureAwait(false);
             }
 
             if (prop is IOutput output)
