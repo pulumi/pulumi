@@ -314,9 +314,7 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
-			dst[string(k)] = v
-		}
+		dst[string(k)] = v
 	}
 	return dst, nil
 }
