@@ -9,6 +9,8 @@ namespace Pulumi
     /// </summary>
     public static class OutputExtensions
     {
+        #region Output<ImmutableArray<>>
+
         /// <summary>
         /// Convert an output containing an array to an output containing the array element
         /// at the specified index.
@@ -39,5 +41,19 @@ namespace Pulumi
         /// <returns>An <see cref="Output{T}"/> containing the array length.</returns>
         public static Output<int> Length<T>(this Output<ImmutableArray<T>> array)
             => array.Apply(xs => xs.Length);
-    } 
+
+        #endregion
+
+        #region Output<Union<,>>
+
+        public static Output<bool> IsT0<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.IsT0);
+        public static Output<bool> IsT1<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.IsT1);
+
+        public static Output<T0> AsT0<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.AsT0);
+        public static Output<T1> AsT1<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.AsT1);
+
+        public static Output<object> Value<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.Value);
+
+        #endregion
+    }
 }
