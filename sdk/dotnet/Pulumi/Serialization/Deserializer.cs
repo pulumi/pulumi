@@ -75,6 +75,13 @@ namespace Pulumi.Serialization
 
                     foreach (var (key, element) in v.StructValue.Fields)
                     {
+                        // Unilaterally skip properties considered internal by the Pulumi engine.
+                        // These don't actually contribute to the exposed shape of the object, do
+                        // not need to be passed back to the engine, and often will not match the
+                        // expected type we are deserializing into.
+                        if (key.StartsWith("__"))
+                            continue;
+
                         var elementData = Deserialize(element);
                         (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
                         result.Add(key, elementData.Value);
