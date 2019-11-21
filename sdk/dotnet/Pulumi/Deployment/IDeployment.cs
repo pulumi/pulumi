@@ -31,12 +31,12 @@ namespace Pulumi
         /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
         /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
         /// </summary>
-        Task<T> InvokeAsync<T>(string token, ResourceArgs args, InvokeOptions? options = null);
+        Task<T> InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options = null);
 
         /// <summary>
-        /// Same as <see cref="InvokeAsync{T}(string, ResourceArgs, InvokeOptions)"/>, however the
+        /// Same as <see cref="InvokeAsync{T}(string, InvokeArgs, InvokeOptions)"/>, however the
         /// return value is ignored.
         /// </summary>
-        Task InvokeAsync(string token, ResourceArgs args, InvokeOptions? options = null);
+        Task InvokeAsync(string token, InvokeArgs args, InvokeOptions? options = null);
     }
 }

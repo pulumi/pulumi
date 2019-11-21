@@ -74,8 +74,8 @@ Pulumi.FileArchive.FileArchive(string path) -> void
 Pulumi.FileAsset
 Pulumi.FileAsset.FileAsset(string path) -> void
 Pulumi.IDeployment
-Pulumi.IDeployment.InvokeAsync(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
-Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
+Pulumi.IDeployment.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
+Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
 Pulumi.IDeployment.IsDryRun.get -> bool
 Pulumi.IDeployment.ProjectName.get -> string
 Pulumi.IDeployment.StackName.get -> string
