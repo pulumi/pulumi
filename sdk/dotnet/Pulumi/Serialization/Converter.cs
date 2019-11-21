@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -18,7 +19,7 @@ namespace Pulumi.Serialization
 
         public static OutputData<object?> ConvertValue(string context, Value value, System.Type targetType)
         {
-            CheckTargetType(context, targetType);
+            CheckTargetType(context, targetType, new HashSet<System.Type>());
 
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = ConvertObject(context, deserialized, targetType);
@@ -232,8 +233,12 @@ namespace Pulumi.Serialization
             return (builderToImmutable.Invoke(builder, null), null);
         }
 
-        public static void CheckTargetType(string context, System.Type targetType)
+        public static void CheckTargetType(string context, System.Type targetType, HashSet<System.Type> seenTypes)
         {
+            // types can be recursive.  So only dive into a type if it's the first time we're seeing it.
+            if (!seenTypes.Add(targetType))
+                return;
+
             if (targetType == typeof(bool) ||
                 targetType == typeof(int) ||
                 targetType == typeof(double) ||
@@ -257,18 +262,18 @@ namespace Pulumi.Serialization
             {
                 if (targetType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 {
-                    CheckTargetType(context, targetType.GenericTypeArguments.Single());
+                    CheckTargetType(context, targetType.GenericTypeArguments.Single(), seenTypes);
                     return;
                 }
                 else if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
                 {
-                    CheckTargetType(context, targetType.GenericTypeArguments[0]);
-                    CheckTargetType(context, targetType.GenericTypeArguments[1]);
+                    CheckTargetType(context, targetType.GenericTypeArguments[0], seenTypes);
+                    CheckTargetType(context, targetType.GenericTypeArguments[1], seenTypes);
                     return;
                 }
                 else if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
                 {
-                    CheckTargetType(context, targetType.GenericTypeArguments.Single());
+                    CheckTargetType(context, targetType.GenericTypeArguments.Single(), seenTypes);
                     return;
                 }
                 else if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
@@ -281,7 +286,7 @@ $@"{context} contains invalid type {targetType.FullName}:
     The only allowed ImmutableDictionary 'TKey' type is 'String'.");
                     }
 
-                    CheckTargetType(context, dictTypeArgs[1]);
+                    CheckTargetType(context, dictTypeArgs[1], seenTypes);
                     return;
                 }
                 else
@@ -311,7 +316,7 @@ $@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contai
 
             foreach (var param in constructor.GetParameters())
             {
-                CheckTargetType($@"{targetType.FullName}({param.Name})", param.ParameterType);
+                CheckTargetType($@"{targetType.FullName}({param.Name})", param.ParameterType, seenTypes);
             }
         }
 

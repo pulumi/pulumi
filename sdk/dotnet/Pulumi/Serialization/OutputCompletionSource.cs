@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -81,7 +82,7 @@ namespace Pulumi.Serialization
                 }
 
                 var outputTypeArg = propType.GenericTypeArguments.Single();
-                Converter.CheckTargetType(propFullName, outputTypeArg);
+                Converter.CheckTargetType(propFullName, outputTypeArg, new HashSet<Type>());
 
                 var ocsType = typeof(OutputCompletionSource<>).MakeGenericType(outputTypeArg);
                 var ocsContructor = ocsType.GetConstructors().Single();
