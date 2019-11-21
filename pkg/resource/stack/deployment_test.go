@@ -318,6 +318,10 @@ func TestCustomSerialization(t *testing.T) {
 			// nolint: lll
 			`"asset-text":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}`,
 
+			// Computed values are replaced with a magic constant.
+			`"computed":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"`,
+			// Secrets are serialized with the special sig key, and their underlying cipher text.
+			// Since we passed in a config.BlindingCrypter the cipher text isn't super-useful.
 			`"secret":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","ciphertext":"[secret]"}`,
 		}
 		for _, want := range tests {
@@ -329,7 +333,6 @@ func TestCustomSerialization(t *testing.T) {
 		// Some properties are explicitly _not_ in serialized output.
 		negativeTests := []string{
 			`"nil"`,
-			`"computed"`,
 			`"output"`,
 		}
 		for _, doNotWant := range negativeTests {
