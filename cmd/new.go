@@ -565,10 +565,9 @@ func installDependencies() error {
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		err = npmInstallDependencies()
-		if err != nil {
-			return errors.Wrapf(err, "npm install failed; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment")
+		if bin, err := nodeInstallDependencies(); err != nil {
+			return errors.Wrapf(err, "%s install failed; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment", bin)
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
 		return dotnetInstallDependenciesAndBuild(proj, root)
@@ -577,23 +576,24 @@ func installDependencies() error {
 	return nil
 }
 
-// npmInstallDependencies will install dependencies for the project or Policy Pack by running `npm install`.
-func npmInstallDependencies() error {
+// nodeInstallDependencies will install dependencies for the project or Policy Pack by running `npm install` or
+// `yarn install`.
+func nodeInstallDependencies() (string, error) {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	err := npm.Install("", os.Stdout, os.Stderr)
+	bin, err := npm.Install("", os.Stdout, os.Stderr)
 	if err != nil {
-		return err
+		return bin, err
 	}
 
 	fmt.Println("Finished installing dependencies")
 	fmt.Println()
 
-	return nil
+	return bin, nil
 }
 
-// dotnetInstallDependencies will install dependencies and build the project.
+// dotnetInstallDependenciesAndBuild will install dependencies and build the project.
 func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) error {
 	contract.Assert(proj != nil)
 
