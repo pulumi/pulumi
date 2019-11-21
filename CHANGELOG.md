@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Support for setting the `PULUMI_PREFER_YARN` environment variable to opt-in to using `yarn` instead of `npm` for
+  installing Node.js dependencies. [#3556](https://github.com/pulumi/pulumi/pull/3556)
+
 ## 1.6.0 (2019-11-20)
 
 - Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
@@ -8,7 +13,7 @@ CHANGELOG
 - Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
 
 - Support for a `go run` style workflow. Building or installing a pulumi program written in go is
-  now optional. [3503](https://github.com/pulumi/pulumi/pull/3503)
+  now optional. [#3503](https://github.com/pulumi/pulumi/pull/3503)
 
 - Re-apply "propagate resource inputs to resource state during preview, including first-class unknown values." The new
   set of changes have additional fixes to ensure backwards compatibility with earlier code. This allows the preview to
