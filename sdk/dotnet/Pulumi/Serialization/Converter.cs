@@ -51,6 +51,9 @@ namespace Pulumi.Serialization
             if (targetIsNullable)
                 return ConvertObject(context, val, targetType.GenericTypeArguments.Single());
 
+            if (targetType == typeof(object))
+                return EnsureType<object>(context, val);
+
             if (targetType == typeof(string))
                 return EnsureType<string>(context, val);
 
@@ -182,7 +185,8 @@ namespace Pulumi.Serialization
 
         public static void CheckTargetType(string context, System.Type targetType)
         {
-            if (targetType == typeof(bool) ||
+            if (targetType == typeof(object) ||
+                targetType == typeof(bool) ||
                 targetType == typeof(int) ||
                 targetType == typeof(double) ||
                 targetType == typeof(string) ||
