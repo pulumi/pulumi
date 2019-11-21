@@ -37,6 +37,12 @@ const (
 	// need to be at least one less than the current schema version so that old deployments can
 	// be migrated to the current schema.
 	DeploymentSchemaVersionOldestSupported = 1
+
+	// computedValue is a magic number we emit for a value of a resource.Property value
+	// whenever we need to serialize a resource.Computed. (Since the real/actual value
+	// is not known.) This allows us to persist engine events and resource states that
+	// indicate a value will changed... but is unknown what it will change to.
+	computedValuePlaceholder = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 )
 
 var (
@@ -319,8 +325,15 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[
 func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (interface{}, error) {
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
 	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
-	if prop.IsComputed() || !prop.HasValue() {
+	if !prop.HasValue() {
 		return nil, nil
+	}
+
+	// A computed value marks something that will be determined at a later time. (e.g. the result of
+	// a computation that we don't perform during a preview operation.) We serialize a magic constant
+	// to record its existence.
+	if prop.IsComputed() {
+		return computedValuePlaceholder, nil
 	}
 
 	// For arrays, make sure to recurse.
@@ -433,6 +446,9 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 		case float64:
 			return resource.NewNumberProperty(w), nil
 		case string:
+			if w == computedValuePlaceholder {
+				return resource.MakeComputed(resource.NewStringProperty("")), nil
+			}
 			return resource.NewStringProperty(w), nil
 		case []interface{}:
 			var arr []resource.PropertyValue
