@@ -49,8 +49,6 @@ Pulumi.Config.RequireSecret(string key) -> Pulumi.Output<string>
 Pulumi.Config.RequireSecretBoolean(string key) -> Pulumi.Output<bool>
 Pulumi.Config.RequireSecretInt32(string key) -> Pulumi.Output<int>
 Pulumi.Config.RequireSecretObject<T>(string key) -> Pulumi.Output<T>
-Pulumi.Core.InputOneOf<T0, T1>
-Pulumi.Core.InputOneOf<T0, T1>.InputOneOf() -> void
 Pulumi.CustomResource
 Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.CustomResource.Id.get -> Pulumi.Output<string>
@@ -95,6 +93,8 @@ Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
+Pulumi.InputOneOf<T0, T1>
+Pulumi.InputOneOf<T0, T1>.InputOneOf() -> void
 Pulumi.InvokeArgs
 Pulumi.InvokeArgs.InvokeArgs() -> void
 Pulumi.InvokeOptions
@@ -172,10 +172,6 @@ Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
 Pulumi.Urn
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ComponentResourceOptions
-static Pulumi.Core.InputOneOf<T0, T1>.implicit operator Pulumi.Core.InputOneOf<T0, T1>(Pulumi.Output<T0> value) -> Pulumi.Core.InputOneOf<T0, T1>
-static Pulumi.Core.InputOneOf<T0, T1>.implicit operator Pulumi.Core.InputOneOf<T0, T1>(Pulumi.Output<T1> value) -> Pulumi.Core.InputOneOf<T0, T1>
-static Pulumi.Core.InputOneOf<T0, T1>.implicit operator Pulumi.Core.InputOneOf<T0, T1>(T0 value) -> Pulumi.Core.InputOneOf<T0, T1>
-static Pulumi.Core.InputOneOf<T0, T1>.implicit operator Pulumi.Core.InputOneOf<T0, T1>(T1 value) -> Pulumi.Core.InputOneOf<T0, T1>
 static Pulumi.CustomResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.CustomResourceOptions
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
@@ -211,6 +207,10 @@ static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<Sys
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, V>> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Generic.Dictionary<string, V> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> Pulumi.InputMap<V>
+static Pulumi.InputOneOf<T0, T1>.implicit operator Pulumi.InputOneOf<T0, T1>(Pulumi.Output<T0> value) -> Pulumi.InputOneOf<T0, T1>
+static Pulumi.InputOneOf<T0, T1>.implicit operator Pulumi.InputOneOf<T0, T1>(Pulumi.Output<T1> value) -> Pulumi.InputOneOf<T0, T1>
+static Pulumi.InputOneOf<T0, T1>.implicit operator Pulumi.InputOneOf<T0, T1>(T0 value) -> Pulumi.InputOneOf<T0, T1>
+static Pulumi.InputOneOf<T0, T1>.implicit operator Pulumi.InputOneOf<T0, T1>(T1 value) -> Pulumi.InputOneOf<T0, T1>
 static Pulumi.Log.Debug(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void

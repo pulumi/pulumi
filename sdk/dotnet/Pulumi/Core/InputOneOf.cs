@@ -2,7 +2,7 @@
 
 using OneOf;
 
-namespace Pulumi.Core
+namespace Pulumi
 {
     /// <summary>
     /// Represents an <see cref="Input{T}"/> value that can be one of two different types. For
