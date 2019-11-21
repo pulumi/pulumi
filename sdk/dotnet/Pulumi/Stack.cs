@@ -44,10 +44,10 @@ namespace Pulumi
         /// <summary>
         /// The outputs of this stack, if the <c>init</c> callback exited normally.
         /// </summary>
-        public readonly Output<IDictionary<string, object>> Outputs =
-            Output.Create<IDictionary<string, object>>(ImmutableDictionary<string, object>.Empty);
+        public readonly Output<IDictionary<string, object?>> Outputs =
+            Output.Create<IDictionary<string, object?>>(ImmutableDictionary<string, object?>.Empty);
 
-        internal Stack(Func<Task<IDictionary<string, object>>> init)
+        internal Stack(Func<Task<IDictionary<string, object?>>> init)
             : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
         {
             Deployment.InternalInstance.Stack = this;
@@ -62,7 +62,7 @@ namespace Pulumi
             }
         }
 
-        private async Task<IDictionary<string, object>> RunInitAsync(Func<Task<IDictionary<string, object>>> init)
+        private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
         {
             // Ensure we are known as the root resource.  This is needed before we execute any user
             // code as many codepaths will request the root resource.
@@ -70,7 +70,7 @@ namespace Pulumi
 
             var dictionary = await init().ConfigureAwait(false);
             return dictionary == null
-                ? ImmutableDictionary<string, object>.Empty
+                ? ImmutableDictionary<string, object?>.Empty
                 : dictionary.ToImmutableDictionary();
         }
     }

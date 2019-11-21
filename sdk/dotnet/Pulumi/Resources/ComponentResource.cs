@@ -39,15 +39,15 @@ namespace Pulumi
         /// state as quickly as possible (instead of waiting until the entire application completes).
         /// </summary>
         protected void RegisterOutputs()
-            => RegisterOutputs(ImmutableDictionary<string, object>.Empty);
+            => RegisterOutputs(ImmutableDictionary<string, object?>.Empty);
 
-        protected void RegisterOutputs(IDictionary<string, object> outputs)
+        protected void RegisterOutputs(IDictionary<string, object?> outputs)
             => RegisterOutputs(Task.FromResult(outputs ?? throw new ArgumentNullException(nameof(outputs))));
 
-        protected void RegisterOutputs(Task<IDictionary<string, object>> outputs)
+        protected void RegisterOutputs(Task<IDictionary<string, object?>> outputs)
             => RegisterOutputs(Output.Create(outputs ?? throw new ArgumentNullException(nameof(outputs))));
 
-        protected void RegisterOutputs(Output<IDictionary<string, object>> outputs)
+        protected void RegisterOutputs(Output<IDictionary<string, object?>> outputs)
             => Deployment.InternalInstance.RegisterResourceOutputs(this, outputs ?? throw new ArgumentNullException(nameof(outputs)));
     }
 }

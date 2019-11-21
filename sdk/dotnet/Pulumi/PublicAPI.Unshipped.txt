@@ -76,12 +76,14 @@ Pulumi.FileArchive.FileArchive(string path) -> void
 Pulumi.FileAsset
 Pulumi.FileAsset.FileAsset(string path) -> void
 Pulumi.IDeployment
-Pulumi.IDeployment.InvokeAsync(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
-Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.ResourceArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
+Pulumi.IDeployment.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
+Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
 Pulumi.IDeployment.IsDryRun.get -> bool
 Pulumi.IDeployment.ProjectName.get -> string
 Pulumi.IDeployment.StackName.get -> string
 Pulumi.Input<T>
+Pulumi.InputArgs
+Pulumi.InputArgs.InputArgs() -> void
 Pulumi.InputExtensions
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
@@ -93,6 +95,8 @@ Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
+Pulumi.InvokeArgs
+Pulumi.InvokeArgs.InvokeArgs() -> void
 Pulumi.InvokeOptions
 Pulumi.InvokeOptions.InvokeOptions() -> void
 Pulumi.InvokeOptions.Parent.get -> Pulumi.Resource
@@ -243,4 +247,5 @@ static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.I
 static Pulumi.OutputExtensions.Value<T0, T1>(this Pulumi.Output<OneOf.OneOf<T0, T1>> output) -> Pulumi.Output<object>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static Pulumi.Urn.Create(Pulumi.Input<string> name, Pulumi.Input<string> type, Pulumi.Resource parent = null, Pulumi.Input<string> parentUrn = null, Pulumi.Input<string> project = null, Pulumi.Input<string> stack = null) -> Pulumi.Output<string>
+static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
