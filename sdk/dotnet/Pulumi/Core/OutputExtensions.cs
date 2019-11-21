@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Immutable;
-using OneOf;
 
 namespace Pulumi
 {
@@ -45,15 +44,15 @@ namespace Pulumi
 
         #endregion
 
-        #region Output<OneOf<,>>
+        #region Output<Union<,>>
 
-        public static Output<bool> IsT0<T0, T1>(this Output<OneOf<T0, T1>> output) => output.Apply(v => v.IsT0);
-        public static Output<bool> IsT1<T0, T1>(this Output<OneOf<T0, T1>> output) => output.Apply(v => v.IsT1);
+        public static Output<bool> IsT0<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.IsT0);
+        public static Output<bool> IsT1<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.IsT1);
 
-        public static Output<T0> AsT0<T0, T1>(this Output<OneOf<T0, T1>> output) => output.Apply(v => v.AsT0);
-        public static Output<T1> AsT1<T0, T1>(this Output<OneOf<T0, T1>> output) => output.Apply(v => v.AsT1);
+        public static Output<T0> AsT0<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.AsT0);
+        public static Output<T1> AsT1<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.AsT1);
 
-        public static Output<object> Value<T0, T1>(this Output<OneOf<T0, T1>> output) => output.Apply(v => v.Value);
+        public static Output<object> Value<T0, T1>(this Output<Union<T0, T1>> output) => output.Apply(v => v.Value);
 
         #endregion
     }
