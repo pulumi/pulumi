@@ -10,7 +10,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        void IDeploymentInternal.RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object>> outputs)
+        void IDeploymentInternal.RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object?>> outputs)
         {
             // RegisterResourceOutputs is called in a fire-and-forget manner.  Make sure we keep track of
             // this task so that the application will not quit until this async work completes.
@@ -20,7 +20,7 @@ namespace Pulumi
         }
 
         private async Task RegisterResourceOutputsAsync(
-            Resource resource, Output<IDictionary<string, object>> outputs)
+            Resource resource, Output<IDictionary<string, object?>> outputs)
         {
             var opLabel = $"monitor.registerResourceOutputs(...)";
 
@@ -28,9 +28,8 @@ namespace Pulumi
             // Additionally, the output properties might have come from other resources, so we must await those too.
             var urn = await resource.Urn.GetValueAsync().ConfigureAwait(false);
             var props = await outputs.GetValueAsync().ConfigureAwait(false);
-            var propInputs = props.ToDictionary(kvp => kvp.Key, kvp => (IInput?)(Input<object?>)kvp.Value.ToObjectOutput());
 
-            var serialized = await SerializeAllPropertiesAsync(opLabel, propInputs).ConfigureAwait(false);
+            var serialized = await SerializeAllPropertiesAsync(opLabel, props).ConfigureAwait(false);
             Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +
                 (_excessiveDebugOutput ? $", outputs ={JsonFormatter.Default.Format(serialized)}" : ""));
 
