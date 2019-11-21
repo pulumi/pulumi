@@ -82,8 +82,9 @@ func Install(dir string, stdout, stderr io.Writer) (string, error) {
 	return bin, nil
 }
 
-// getCmd returns the `npm` or `yarn` command depending on whether `PULUMI_PREFER_YARN` is set and yarn can be found
-// on the $PATH. If `npm` is being used, true is returned (false for `yarn`), and the file (either "npm" or "yarn").
+// getCmd returns the exec.Cmd used to install NPM dependencies. It will either use `npm` or `yarn` depending
+// on what is available on the current path, and if `PULUMI_PREFER_YARN` is truthy.
+// The boolean return parameter indicates if `npm` is chosen or not (instead of `yarn`).
 func getCmd(command string) (*exec.Cmd, bool, string, error) {
 	if preferYarn() {
 		const file = "yarn"
