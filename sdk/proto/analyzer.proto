@@ -41,6 +41,8 @@ service Analyzer {
 message AnalyzeRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
+    string urn = 3;
+    string name = 4;
 }
 
 // Resource defines the view of a Pulumi-managed resource as sent to Analyzers. The properties
@@ -49,6 +51,8 @@ message AnalyzeRequest {
 message AnalyzerResource {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
+    string urn = 3;                        // the URN of the resource.
+    string name = 4;
 }
 
 message AnalyzeStackRequest {
@@ -73,6 +77,7 @@ message AnalyzeDiagnostic {
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
     repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
     EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
+    string urn = 8;                        // URN of the resource that violates the policy.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.

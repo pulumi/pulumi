@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -124,7 +125,7 @@ func (a *analyzer) label() string {
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
-	t, props := r.Type, r.Properties
+	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
@@ -134,7 +135,9 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	}
 
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+		Urn:        string(urn),
 		Type:       string(t),
+		Name:       string(name),
 		Properties: mprops,
 	})
 	if err != nil {
@@ -165,7 +168,9 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 		}
 
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
+			Urn:        string(resource.URN),
 			Type:       string(resource.Type),
+			Name:       string(resource.Name),
 			Properties: props,
 		}
 	}
@@ -294,6 +299,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 			Message:           protoD.Message,
 			Tags:              protoD.Tags,
 			EnforcementLevel:  enforcementLevel,
+			URN:               resource.URN(protoD.Urn),
 		}
 	}
 

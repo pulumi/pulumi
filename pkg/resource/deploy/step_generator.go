@@ -334,7 +334,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, analyzer := range analyzers {
 		r := plugin.AnalyzerResource{
+			URN:        new.URN,
 			Type:       new.Type,
+			Name:       new.URN.Name(),
 			Properties: inputs,
 		}
 		diagnostics, err := analyzer.Analyze(r)
@@ -348,6 +350,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 				sg.sawError = true
 			}
+			// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
 			sg.opts.Events.OnPolicyViolation(new.URN, d)
 		}
 	}
@@ -1259,7 +1262,9 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 	resources := make([]plugin.AnalyzerResource, 0, len(resourcesSeen))
 	for _, v := range resourcesSeen {
 		resources = append(resources, plugin.AnalyzerResource{
+			URN:  v.URN,
 			Type: v.Type,
+			Name: v.URN.Name(),
 			// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
 			// to verify the final stack is in a compliant state.
 			Properties: v.Outputs,
@@ -1274,7 +1279,15 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 		}
 		for _, d := range diagnostics {
 			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
-			sg.opts.Events.OnPolicyViolation("" /* don't associate with any particular URN */, d)
+			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
+			// Otherwise, use the default URN value ("") to not associate the violation with any particular URN.
+			var urn resource.URN
+			if d.URN != "" {
+				if _, ok := resourcesSeen[d.URN]; ok {
+					urn = d.URN
+				}
+			}
+			sg.opts.Events.OnPolicyViolation(urn, d)
 		}
 	}
 
