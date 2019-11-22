@@ -32,6 +32,7 @@ type Provider struct {
 	Package tokens.Package
 	Version semver.Version
 
+	Config     resource.PropertyMap
 	configured bool
 
 	CheckConfigF func(urn resource.URN, olds,
@@ -99,6 +100,7 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 	prov.configured = true
 
 	if prov.ConfigureF == nil {
+		prov.Config = inputs
 		return nil
 	}
 	return prov.ConfigureF(inputs)
