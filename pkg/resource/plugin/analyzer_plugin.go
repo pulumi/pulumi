@@ -98,7 +98,7 @@ func NewPolicyAnalyzer(
 	// node_modules is used.
 	pwd := policyPackPath
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), policyPackPath})
+		[]string{host.ServerAddr(), "."})
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
