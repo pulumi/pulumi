@@ -314,25 +314,22 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
-			dst[string(k)] = v
-		}
+		dst[string(k)] = v
 	}
 	return dst, nil
 }
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
 func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (interface{}, error) {
-	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
-	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
-	if !prop.HasValue() {
+	// Serialize nulls as nil.
+	if prop.IsNull() {
 		return nil, nil
 	}
 
 	// A computed value marks something that will be determined at a later time. (e.g. the result of
 	// a computation that we don't perform during a preview operation.) We serialize a magic constant
 	// to record its existence.
-	if prop.IsComputed() {
+	if prop.IsComputed() || prop.IsOutput() {
 		return computedValuePlaceholder, nil
 	}
 

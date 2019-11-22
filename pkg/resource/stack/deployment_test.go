@@ -307,6 +307,7 @@ func TestCustomSerialization(t *testing.T) {
 			`"float64":1.5`,
 			`"int32":41`,
 			`"int64":42`,
+			`"nil":null`,
 
 			// Data structures
 			`"array":["a",true,32]`,
@@ -320,6 +321,8 @@ func TestCustomSerialization(t *testing.T) {
 
 			// Computed values are replaced with a magic constant.
 			`"computed":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"`,
+			`"output":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"`,
+
 			// Secrets are serialized with the special sig key, and their underlying cipher text.
 			// Since we passed in a config.BlindingCrypter the cipher text isn't super-useful.
 			`"secret":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","ciphertext":"[secret]"}`,
@@ -327,17 +330,6 @@ func TestCustomSerialization(t *testing.T) {
 		for _, want := range tests {
 			if !strings.Contains(json, want) {
 				t.Errorf("Did not find expected snippet: %v", want)
-			}
-		}
-
-		// Some properties are explicitly _not_ in serialized output.
-		negativeTests := []string{
-			`"nil"`,
-			`"output"`,
-		}
-		for _, doNotWant := range negativeTests {
-			if strings.Contains(json, doNotWant) {
-				t.Errorf("Found unexpected snippet: %v", doNotWant)
 			}
 		}
 
