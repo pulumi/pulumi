@@ -153,7 +153,7 @@ namespace Pulumi.Serialization
             {
                 using (var writer = new Utf8JsonWriter(stream))
                 {
-                    var exception = WriteJson(context, writer, val);
+                    var exception = TryWriteJson(context, writer, val);
                     if (exception != null)
                         return (null, exception);
                 }
@@ -165,7 +165,7 @@ namespace Pulumi.Serialization
             }
         }
 
-        private static InvalidOperationException? WriteJson(string context, Utf8JsonWriter writer, object? val)
+        private static InvalidOperationException? TryWriteJson(string context, Utf8JsonWriter writer, object? val)
         {
             switch (val)
             {
@@ -185,7 +185,7 @@ namespace Pulumi.Serialization
                     writer.WriteStartArray();
                     foreach (var element in v)
                     {
-                        var exception = WriteJson(context, writer, element);
+                        var exception = TryWriteJson(context, writer, element);
                         if (exception != null)
                             return exception;
                     }
@@ -196,7 +196,7 @@ namespace Pulumi.Serialization
                     foreach (var (key, element) in v)
                     {
                         writer.WritePropertyName(key);
-                        var exception = WriteJson(context, writer, element);
+                        var exception = TryWriteJson(context, writer, element);
                         if (exception != null)
                             return exception;
                     }
