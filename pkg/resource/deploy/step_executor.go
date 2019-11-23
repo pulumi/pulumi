@@ -182,7 +182,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	e.Done()
 }
 
-// Errored returnes whether or not this step executor saw a step whose execution ended in failure.
+// Errored returns whether or not this step executor saw a step whose execution ended in failure.
 func (se *stepExecutor) Errored() bool {
 	return se.sawError.Load().(bool)
 }

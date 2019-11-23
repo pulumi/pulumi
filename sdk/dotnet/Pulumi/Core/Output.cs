@@ -156,6 +156,12 @@ namespace Pulumi
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
+        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// </summary>
+        public Output<U> Apply<U>(Func<T, Input<U>?> func)
+            => Apply(t => func(t).ToOutput());
+
+        /// <summary>
         /// Transforms the data of this <see cref="Output{T}"/> with the provided <paramref
         /// name="func"/>. The result remains an <see cref="Output{T}"/> so that dependent resources
         /// can be properly tracked.
@@ -184,11 +190,11 @@ namespace Pulumi
         /// run during <c>pulumi preview</c> (as the values of resources are of course not known
         /// then).
         /// </summary>
-        public Output<U> Apply<U>(Func<T, Output<U>> func)
+        public Output<U> Apply<U>(Func<T, Output<U>?> func)
             => new Output<U>(Resources, ApplyHelperAsync(DataTask, func));
 
         private static async Task<OutputData<U>> ApplyHelperAsync<U>(
-            Task<OutputData<T>> dataTask, Func<T, Output<U>> func)
+            Task<OutputData<T>> dataTask, Func<T, Output<U>?> func)
         {
             var data = await dataTask.ConfigureAwait(false);
 
@@ -200,6 +206,11 @@ namespace Pulumi
             }
 
             var inner = func(data.Value);
+            if (inner == null)
+            {
+                return OutputData.Create(default(U)!, data.IsKnown, data.IsSecret);
+            }
+
             var innerData = await inner.DataTask.ConfigureAwait(false);
 
             return OutputData.Create(

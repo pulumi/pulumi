@@ -67,7 +67,7 @@ var nextStreamID int32
 // the stack's Pulumi SDK did not have the required modules. i.e. is too old.
 var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy as code")
 
-func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -80,7 +80,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, ctx.Pwd)
+	plug, err := execPlugin(bin, args, pwd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -107,7 +107,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 				break
 			}
 
-			// We may be trying to run a plugin that isn't present in the SDK installed with the stack.
+			// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
 			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
 			//
 			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it

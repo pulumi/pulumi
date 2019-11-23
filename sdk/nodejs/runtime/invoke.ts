@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const asyncify = require("callback-to-async-iterator");
-import { AsyncIterable } from "@pulumi/query/interfaces";
 import * as fs from "fs";
 import * as grpc from "grpc";
 
+import { AsyncIterable } from "@pulumi/query/interfaces";
+
 import * as asset from "../asset";
+import { Config } from "../config";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -27,6 +28,7 @@ import { excessiveDebugOutput, getMonitor, rpcKeepAlive, SyncInvokes, tryGetSync
 
 import { ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
+import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
@@ -67,18 +69,37 @@ const providerproto = require("../proto/provider_pb.js");
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     if (opts.async) {
-        // Use specifically requested async invoking.  Respect that.
+        // User specifically requested async invoking.  Respect that.
         return invokeAsync(tok, props, opts);
     }
 
+    const config = new Config("pulumi");
+    const noSyncCalls = config.getBoolean("noSyncCalls");
+    if (noSyncCalls) {
+        // User globally disabled sync invokes.
+        return invokeAsync(tok, props, opts);
+    }
+
+    const syncResult = invokeSync(tok, props, opts);
+
+    // Wrap the synchronous value in a Promise view as well so that consumers can treat it
+    // either as the real value or something they can use as a Promise.
+    return createLiftedPromise(syncResult);
+}
+
+/**
+ * Invokes the provided token *synchronously* no matter what.
+ * @internal
+ */
+export function invokeSync<T>(tok: string, props: Inputs, opts: InvokeOptions = {}): T {
     const syncInvokes = tryGetSyncInvokes();
     if (!syncInvokes) {
         // We weren't launched from a pulumi CLI that supports sync-invokes.  Let the user know they
         // should update and fall back to synchronously blocking on the async invoke.
-        return invokeFallbackToAsync(tok, props, opts);
+        return invokeFallbackToAsync<T>(tok, props, opts);
     }
 
-    return invokeSync(tok, props, opts, syncInvokes);
+    return invokeSyncWorker<T>(tok, props, opts, syncInvokes);
 }
 
 export async function streamInvoke(
@@ -108,38 +129,32 @@ export async function streamInvoke(
         // Call `streamInvoke`.
         const call = monitor.streamInvoke(req, {});
 
-        // Transform the callback-oriented `streamInvoke` result into a plain-old (potentially
-        // infinite) `AsyncIterable`.
-        const listenForWatchEvents = (callback: (obj: any) => void) => {
-            return new Promise(resolve => {
-                call.on("data", function(thing: any) {
-                    const live = deserializeResponse(tok, thing);
-                    callback(live);
-                });
-                call.on("error", (err: any) => {
-                    if (err.code === 1 && err.details === "Cancelled") {
-                        return;
-                    }
-                    throw err;
-                });
-                // Infinite stream, never call `resolve`.
-            });
-        };
-        const stream: AsyncIterable<any> = asyncify.default(listenForWatchEvents);
+        const queue = new PushableAsyncIterable();
+        call.on("data", function(thing: any) {
+            const live = deserializeResponse(tok, thing);
+            queue.push(live);
+        });
+        call.on("error", (err: any) => {
+            if (err.code === 1 && err.details === "Cancelled") {
+                return;
+            }
+            throw err;
+        });
+        call.on("end", () => {
+            queue.complete();
+        });
 
         // Return a cancellable handle to the stream.
         return new StreamInvokeResponse(
-            stream,
+            queue,
             () => call.cancel());
     } finally {
         done();
     }
 }
 
-export function invokeFallbackToAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
-    const asyncResult = invokeAsync(tok, props, opts);
-    const syncResult = utils.promiseResult(asyncResult);
-    return createLiftedPromise(syncResult);
+export function invokeFallbackToAsync<T>(tok: string, props: Inputs, opts: InvokeOptions): T {
+    return utils.promiseResult(invokeAsync(tok, props, opts));
 }
 
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
@@ -186,7 +201,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     }
 }
 
-function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): Promise<any> {
+function invokeSyncWorker<T>(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): T {
     const label = `Invoking function: tok=${tok} synchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -216,7 +231,7 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
     const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
     const resultValue = deserializeResponse(tok, resp);
 
-    return createLiftedPromise(resultValue);
+    return resultValue;
 
     function getProviderRefSync() {
         const provider = getProvider(tok, opts);
@@ -226,8 +241,10 @@ function invokeSync(tok: string, props: any, opts: InvokeOptions, syncInvokes: S
         }
 
         if (provider.__registrationId === undefined) {
-            log.warn(
-`Synchronous call made to "${tok}" with an unregistered provider.
+            // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+            // node, and that may prevent our normal logging calls from making it back to the user.
+            console.log(
+`Synchronous call made to "${tok}" with an unregistered provider. This is now deprecated and may cause the program to hang.
 For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-call`);
             utils.promiseResult(ProviderResource.register(provider));
         }

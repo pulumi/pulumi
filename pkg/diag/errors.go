@@ -25,8 +25,8 @@ func newError(urn resource.URN, id ID, message string) *Diag {
 
 // Plan and apply errors are in the [2000,3000) range.
 
-func GetPlanApplyFailedError(urn resource.URN) *Diag {
-	return newError(urn, 2000, "Plan apply failed: %v")
+func GetResourceOperationFailedError(urn resource.URN) *Diag {
+	return newError(urn, 2000, "%v")
 }
 
 func GetDuplicateResourceURNError(urn resource.URN) *Diag {
@@ -72,6 +72,11 @@ func GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(urn resource.URN
 	return newError(urn, 2012, "Cannot delete parent resource '%v' without also deleting child '%v'.")
 }
 
-func GetResourceIsBeingCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
-	return newError(urn, 2013, "Resource '%v' is being created but was not specified in -target list.")
+func GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
+	return newError(urn, 2013, `Resource '%v' depends on '%v' which was was not specified in --target list.`)
+}
+
+func GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
+	return newError(urn, 2014, `Resource '%v' will be destroyed but was not specified in --target list.
+Either include resource in --target list or pass --target-dependents to proceed.`)
 }

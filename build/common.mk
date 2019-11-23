@@ -112,6 +112,7 @@ PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
 GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" go test -short -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
 GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" go test -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all ensure only_build only_test build lint install test_all core
 
@@ -151,8 +152,13 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; \
-		elif [ -e 'go.mod' ]; then echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor; fi
+ifeq ($(NOPROXY), true)
+	@echo "GO111MODULE=on go mod tidy"; GO111MODULE=on go mod tidy
+	@echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor
+else
+	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+endif
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::

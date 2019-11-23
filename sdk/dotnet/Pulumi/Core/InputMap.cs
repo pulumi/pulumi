@@ -62,6 +62,31 @@ namespace Pulumi
             set => Add(key, value);
         }
 
+        /// <summary>
+        /// Merge two instances of <see cref="InputMap{V}"/>. Returns a new <see cref="InputMap{V}"/>
+        /// without modifying any of the arguments. 
+        /// <para/>If both maps contain the same key, the value from the second map takes over.
+        /// </summary>
+        /// <param name="first">The first <see cref="InputMap{V}"/>. Has lower priority in case of
+        /// key clash.</param>
+        /// <param name="second">The second <see cref="InputMap{V}"/>. Has higher priority in case of
+        /// key clash.</param>
+        /// <returns>A new instance of <see cref="InputMap{V}"/> that contains the items from
+        /// both input maps.</returns>
+        public static InputMap<V> Merge(InputMap<V> first, InputMap<V> second)
+        {
+            var output = Output.Tuple(first._outputValue, second._outputValue)
+                               .Apply(dicts =>
+                               {
+                                   var result = new Dictionary<string, V>(dicts.Item1);
+                                   // Overwrite keys if duplicates are found
+                                   foreach (var (k, v) in dicts.Item2)
+                                       result[k] = v;
+                                   return result;
+                               });
+            return output;
+        }
+
         #region construct from dictionary types
 
         public static implicit operator InputMap<V>(Dictionary<string, V> values)

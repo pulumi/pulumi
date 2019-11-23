@@ -3,16 +3,57 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
-  the `org-name` CLI argument is now optional. If not specified; the current user account is
-  used.
-  [#3459](https://github.com/pulumi/pulumi/pull/3459)
+- Support for setting the `PULUMI_PREFER_YARN` environment variable to opt-in to using `yarn` instead of `npm` for
+  installing Node.js dependencies. [#3556](https://github.com/pulumi/pulumi/pull/3556)
+
+- Fix regression that prevented relative paths passed to `--policy-pack` from working.
+  [#3565](https://github.com/pulumi/pulumi/issues/3564)
+
+## 1.6.0 (2019-11-20)
+
+- Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
+
+- Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
+
+- Support for a `go run` style workflow. Building or installing a pulumi program written in go is
+  now optional. [#3503](https://github.com/pulumi/pulumi/pull/3503)
 
 - Re-apply "propagate resource inputs to resource state during preview, including first-class unknown values." The new
   set of changes have additional fixes to ensure backwards compatibility with earlier code. This allows the preview to
   better estimate the state of a resource after an update, including property values that were populated using defaults
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
+  
+- Validate StackName when passing a non-default secrets provider to `pulumi stack init`
+
+- Add support for go1.13.x
+
+- `pulumi update --target` and `pulumi destroy --target` will both error if they determine a
+  dependent resource needs to be updated, destroyed, or created that was not was specified in the
+  `--target` list.  To proceed with an `update/destroy` after this error, either specify all the
+  reported resources as `--target`s, or pass the `--target-dependents` flag to allow necessary
+  changes to unspecified dependent targets.
+
+- Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
+
+- Codepaths which could result in a hang will print a message to the console indicating the problem, along with a link
+  to documentation on how to restructure code to best address it.
+
+### Compatibility
+
+- `StackReference.getOutputSync` and `requireOutputSync` are deprecated as they may cause hangs on
+  some combinations of Node and certain OS platforms. `StackReference.getOutput` and `requireOutput`
+  should be used instead.
+
+## 1.5.2 (2019-11-13)
+
+- `pulumi policy publish` now determines the Policy Pack name from the Policy Pack, and the
+  the `org-name` CLI argument is now optional. If not specified; the current user account is
+  used.
+  [#3459](https://github.com/pulumi/pulumi/pull/3459)
+
+- Refactor the Output API in the Go SDK.
+  [#3496](https://github.com/pulumi/pulumi/pull/3496)
 
 ## 1.5.1 (2019-11-06)
 

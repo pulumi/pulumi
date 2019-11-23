@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -19,6 +19,6 @@ namespace Pulumi
         Task SetRootResourceAsync(Stack stack);
 
         void ReadOrRegisterResource(Resource resource, ResourceArgs args, ResourceOptions opts);
-        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object>> outputs);
+        void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object?>> outputs);
     }
 }

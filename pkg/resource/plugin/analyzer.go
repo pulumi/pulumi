@@ -45,7 +45,9 @@ type Analyzer interface {
 
 // AnalyzerResource mirrors a resource that is sent to the analyzer.
 type AnalyzerResource struct {
+	URN        resource.URN
 	Type       tokens.Type
+	Name       tokens.QName
 	Properties resource.PropertyMap
 }
 
@@ -59,6 +61,7 @@ type AnalyzeDiagnostic struct {
 	Message           string
 	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
+	URN               resource.URN
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.

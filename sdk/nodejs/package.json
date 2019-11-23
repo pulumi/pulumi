@@ -10,10 +10,9 @@
     },
     "dependencies": {
         "@pulumi/query": "^0.3.0",
-        "callback-to-async-iterator": "^1.1.1",
         "deasync": "^0.1.15",
         "google-protobuf": "^3.5.0",
-        "grpc": "1.21.1",
+        "grpc": "1.24.2",
         "minimist": "^1.2.0",
         "normalize-package-data": "^2.4.0",
         "protobufjs": "^6.8.6",

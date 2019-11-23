@@ -1,6 +1,6 @@
-﻿# Experimental .NET Language Provider
+﻿# .NET Language Provider (Preview)
 
-An early prototype of a .NET language provider for Pulumi.
+A .NET language provider for Pulumi (currently in preview).
 
 
 ## Building and Running
@@ -10,9 +10,10 @@ To build, you'll want to install the .NET Core 3.0 SDK or greater, and ensure
 directory or the `sdk/dotnet` directory will build and install the language
 plugin.
 
-Once this is done you can write a Pulumi app written on top of .NET.  See the 
-`sdk/dotnet/examples` directory showing how this can be done with C#, F#, or VB.
-Your application will need to reference the `Pulumi.dll` built above.
+Once this is done you can write a Pulumi app written on top of .NET. You can find
+many [examples](https://github.com/pulumi/examples) showing how this can be done with C#, F#, or VB.
+Your application will need to reference the [Pulumi NuGet package](https://www.nuget.org/packages/Pulumi/)
+or the `Pulumi.dll` built above.
 
 Here's a simple example of a Pulumi app written in C# that creates some simple
 AWS resources:

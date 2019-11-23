@@ -169,9 +169,20 @@ type sameSnapshotMutation struct {
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
-func (ssm *sameSnapshotMutation) mustWrite(old, new *resource.State) bool {
+func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
+	old := step.Old()
+	new := step.New()
+
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
+
+	if step.IsSkippedCreate() {
+		// In the case of a 'resource create' in a program that wasn't specified by the user in the
+		// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
+		// doesn't exist at all.  That way when the program runs the next time, we'll actually
+		// create it.
+		return false
+	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
@@ -246,7 +257,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		//
 		// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
 		// changes.
-		if !ssm.mustWrite(step.Old(), step.New()) {
+		if !ssm.mustWrite(step.(*deploy.SameStep)) {
 			logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
 			return false
 		}

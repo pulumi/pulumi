@@ -2,8 +2,8 @@
 
 using System;
 using System.Collections;
-using System.Collections.Immutable;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
@@ -98,10 +98,20 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             {
                 if (_excessiveDebugOutput)
                 {
-                    Log.Debug($"Serialize property[{ctx}]: Recursing into input");
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into IInput");
                 }
 
                 return await SerializeAsync(ctx, input.ToOutput()).ConfigureAwait(false);
+            }
+
+            if (prop is IUnion union)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into IUnion");
+                }
+
+                return await SerializeAsync(ctx, union.Value).ConfigureAwait(false);
             }
 
             if (prop is IOutput output)

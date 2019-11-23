@@ -21,14 +21,14 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, IInput?> args)
+            string label, IDictionary<string, object?> args)
         {
             return SerializeFilteredPropertiesAsync(
-                label, Output.Create(args), key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName);
+                label, args, key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
-            string label, Input<IDictionary<string, IInput?>> args)
+            string label, IDictionary<string, object?> args)
         {
             var result = await SerializeFilteredPropertiesAsync(label, args, _ => true).ConfigureAwait(false);
             return result.Serialized;
@@ -40,20 +40,18 @@ namespace Pulumi
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, Input<IDictionary<string, IInput?>> args, Predicate<string> acceptKey)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey)
         {
-            var props = await args.ToOutput().GetValueAsync().ConfigureAwait(false);
-
             var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
             var result = ImmutableDictionary.CreateBuilder<string, object>();
 
-            foreach (var (key, input) in props)
+            foreach (var (key, val) in args)
             {
                 if (acceptKey(key))
                 {
                     // We treat properties with null values as if they do not exist.
                     var serializer = new Serializer(_excessiveDebugOutput);
-                    var v = await serializer.SerializeAsync($"{label}.{key}", input).ConfigureAwait(false);
+                    var v = await serializer.SerializeAsync($"{label}.{key}", val).ConfigureAwait(false);
                     if (v != null)
                     {
                         result[key] = v;
