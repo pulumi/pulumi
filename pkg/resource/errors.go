@@ -29,3 +29,12 @@ func NewErrors(errs []error) error {
 func NewPropertyError(typ string, property string, err error) error {
 	return mapper.NewFieldError(typ, property, err)
 }
+
+// Truncate does stuff
+func Truncate(str, suffix string, length int) string {
+	if len(str) < length {
+		return str
+	} else {
+		return str[:length] + suffix
+	}
+}
