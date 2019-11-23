@@ -5296,8 +5296,6 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		}),
 	}
 
-	const resType = "pkgA:index:typ"
-
 	inputsA := map[string]interface{}{"A": "foo"}
 
 	optsA := pulumi.ResourceOpt{}
@@ -5385,5 +5383,5 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 			return res
 		},
 	}}
-	snap = p.Run(t, snap)
+	p.Run(t, snap)
 }
