@@ -3,8 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
@@ -92,6 +94,9 @@ namespace Pulumi.Serialization
             if (targetType == typeof(AssetOrArchive))
                 return TryEnsureType<AssetOrArchive>(context, val);
 
+            if (targetType == typeof(JsonElement))
+                return TryConvertJsonElement(context, val);
+
             if (targetType.IsConstructedGenericType)
             {
                 if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
@@ -139,6 +144,67 @@ namespace Pulumi.Serialization
             }
 
             return (constructor.Invoke(arguments), null);
+        }
+
+        private static (object?, InvalidOperationException?) TryConvertJsonElement(
+            string context, object val)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream))
+                {
+                    var exception = WriteJson(context, writer, val);
+                    if (exception != null)
+                        return (null, exception);
+                }
+
+                stream.Position = 0;
+                var document = JsonDocument.Parse(stream);
+                var element = document.RootElement;
+                return (element, null);
+            }
+        }
+
+        private static InvalidOperationException? WriteJson(string context, Utf8JsonWriter writer, object? val)
+        {
+            switch (val)
+            {
+                case string v:
+                    writer.WriteStringValue(v);
+                    return null;
+                case double v:
+                    writer.WriteNumberValue(v);
+                    return null;
+                case bool v:
+                    writer.WriteBooleanValue(v);
+                    return null;
+                case null:
+                    writer.WriteNullValue();
+                    return null;
+                case ImmutableArray<object?> v:
+                    writer.WriteStartArray();
+                    foreach (var element in v)
+                    {
+                        var exception = WriteJson(context, writer, element);
+                        if (exception != null)
+                            return exception;
+                    }
+                    writer.WriteEndArray();
+                    return null;
+                case ImmutableDictionary<string, object?> v:
+                    writer.WriteStartObject();
+                    foreach (var (key, element) in v)
+                    {
+                        writer.WritePropertyName(key);
+                        var exception = WriteJson(context, writer, element);
+                        if (exception != null)
+                            return exception;
+                    }
+                    writer.WriteEndObject();
+                    return null;
+                default:
+                    return new InvalidOperationException($"Unexpected type {val.GetType().FullName} when converting {context} to {nameof(JsonElement)}");
+            }
         }
 
         private static (T, InvalidOperationException?) TryEnsureType<T>(string context, object val)
@@ -245,7 +311,8 @@ namespace Pulumi.Serialization
                 targetType == typeof(string) ||
                 targetType == typeof(Asset) ||
                 targetType == typeof(Archive) ||
-                targetType == typeof(AssetOrArchive))
+                targetType == typeof(AssetOrArchive) ||
+                targetType == typeof(JsonElement))
             {
                 return;
             }
