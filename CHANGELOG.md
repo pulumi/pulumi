@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix go SDK DeleteBeforeReplace [#3572](https://github.com/pulumi/pulumi/pull/3572)
+
 - Support for setting the `PULUMI_PREFER_YARN` environment variable to opt-in to using `yarn` instead of `npm` for
   installing Node.js dependencies. [#3556](https://github.com/pulumi/pulumi/pull/3556)
 
