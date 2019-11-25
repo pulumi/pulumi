@@ -5268,6 +5268,124 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	setupAndRunProgram(ignoreChanges)
 }
 
+func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputsA := map[string]interface{}{"A": "foo"}
+
+	optsA := pulumi.ResourceOpt{}
+
+	dbrValue, dbrA := true, (*bool)(nil)
+	getDbr := func() bool {
+		if dbrA == nil {
+			return false
+		}
+		return *dbrA
+	}
+
+	var stackURN, provURN, urnA resource.URN = "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+		"urn:pulumi:test::test::pulumi:providers:pkgA::provA", "urn:pulumi:test::test::pkgA:m:typA::resA"
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		assert.NoError(t, err)
+
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			provider, err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", true,
+				map[string]interface{}{})
+			assert.NoError(t, err)
+			optsA.Provider = provider
+			optsA.DeleteBeforeReplace = getDbr()
+			fmt.Println(getDbr())
+			_, err = ctx.RegisterResource("pkgA:m:typA", "resA", true, inputsA, optsA)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+	})
+
+	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	// Change the value of resA.A. Should create before replace
+	inputsA["A"] = "bar"
+	p.Steps = []TestStep{{
+		Op: Update,
+
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+
+			AssertSameSteps(t, []StepSummary{
+				{Op: deploy.OpSame, URN: stackURN},
+				{Op: deploy.OpSame, URN: provURN},
+				{Op: deploy.OpCreateReplacement, URN: urnA},
+				{Op: deploy.OpReplace, URN: urnA},
+				{Op: deploy.OpDeleteReplaced, URN: urnA},
+			}, j.SuccessfulSteps())
+
+			return res
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A.
+	// replacement should be delete-before-replace.
+	dbrA, inputsA["A"] = &dbrValue, "baz"
+	p.Steps = []TestStep{{
+		Op: Update,
+
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			AssertSameSteps(t, []StepSummary{
+				{Op: deploy.OpSame, URN: stackURN},
+				{Op: deploy.OpSame, URN: provURN},
+				{Op: deploy.OpDeleteReplaced, URN: urnA},
+				{Op: deploy.OpReplace, URN: urnA},
+				{Op: deploy.OpCreateReplacement, URN: urnA},
+			}, j.SuccessfulSteps())
+
+			return res
+		},
+	}}
+	p.Run(t, snap)
+}
+
 // ensures that RegisterResource, ReadResource (TODO https://github.com/pulumi/pulumi/issues/3562),
 // and Invoke all respect the provider hierarchy
 // most specific providers are used first 1. resource.provider, 2. resource.providers, 3. resource.parent.providers

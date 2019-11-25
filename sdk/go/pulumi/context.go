@@ -633,7 +633,7 @@ func (ctx *Context) getOpts(t string, opts ...ResourceOpt) (URN, []URN, bool, st
 		providerRef = pr
 	}
 
-	return parentURN, depURNs, protect, providerRef, false, importID, ignoreChanges, nil
+	return parentURN, depURNs, protect, providerRef, deleteBeforeReplace, importID, ignoreChanges, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
