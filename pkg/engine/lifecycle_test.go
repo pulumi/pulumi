@@ -5376,7 +5376,41 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			childWithOverrideProvider := childWithOverride.GetProvider("pkgB:m:typB")
 			assert.Same(t, providerBOverride, childWithOverrideProvider)
 
-			// TODO: add ReadResource tests after https://github.com/pulumi/pulumi/issues/3562
+			// pass in a fake ID
+			testID := pulumi.ID("testID")
+
+			// read a component resource that uses provider map
+			componentResource, err = ctx.ReadResource("pkgA:m:typA", "readResA", testID,
+				map[string]interface{}{}, pulumi.ResourceOpt{
+					Providers: componentProviders,
+				})
+			assert.NoError(t, err)
+			// component uses specified provider from map
+			componentResultProvider = componentResource.GetProvider("pkgA:m:typA")
+			assert.Same(t, providerA, componentResultProvider)
+
+			// read a child resource
+			childResource, err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID,
+				map[string]interface{}{}, pulumi.ResourceOpt{
+					Parent: componentResource,
+				})
+			assert.NoError(t, err)
+
+			// child uses provider value from parent
+			childResultProvider = childResource.GetProvider("pkgB:m:typB")
+			assert.Same(t, providerB, childResultProvider)
+
+			// read a child with a provider specified
+			childWithOverride, err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID,
+				map[string]interface{}{}, pulumi.ResourceOpt{
+					Parent:   componentResource,
+					Provider: providerBOverride,
+				})
+			assert.NoError(t, err)
+
+			// child uses the specified provider, and not the provider from the parent
+			childWithOverrideProvider = childWithOverride.GetProvider("pkgB:m:typB")
+			assert.Same(t, providerBOverride, childWithOverrideProvider)
 
 			// invoke with specific provider
 			_, err = ctx.Invoke("pkgB:do:something", map[string]interface{}{
