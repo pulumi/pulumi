@@ -5,6 +5,8 @@ CHANGELOG
 
 - Support passing a parent and providers for `ReadResource`, `RegisterResource`, and `Invoke` in the go SDK. [#3563](https://github.com/pulumi/pulumi/pull/3563)
 
+- Fix go SDK ReadResource [#3581](https://github.com/pulumi/pulumi/pull/3581)
+
 - Fix go SDK DeleteBeforeReplace [#3572](https://github.com/pulumi/pulumi/pull/3572)
 
 - Support for setting the `PULUMI_PREFER_YARN` environment variable to opt-in to using `yarn` instead of `npm` for
