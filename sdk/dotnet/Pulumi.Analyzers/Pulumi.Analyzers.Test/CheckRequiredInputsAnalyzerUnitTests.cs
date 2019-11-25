@@ -18,14 +18,18 @@ namespace Pulumi.Analyzers.Test
         public static List<string> GetSources()
         {
             var assembly = typeof(UnitTest).Assembly;
+            foreach (var resourceName in assembly.GetManifestResourceNames())
+            {
+                Console.WriteLine("res name: " + resourceName);
+            }
 
             return new List<string>
             {
-                ReadStream(assembly, "Pulumi.Analyzers.Test.Input.cs"),
-                ReadStream(assembly, "Pulumi.Analyzers.Test.InputList.cs"),
-                ReadStream(assembly, "Pulumi.Analyzers.Test.InputMap.cs"),
-                ReadStream(assembly, "Pulumi.Analyzers.Test.InputArgs.cs"),
-                ReadStream(assembly, "Pulumi.Analyzers.Test.Attributes.cs"),
+                ReadStream(assembly, "Input.cs"),
+                ReadStream(assembly, "InputList.cs"),
+                ReadStream(assembly, "InputMap.cs"),
+                ReadStream(assembly, "InputArgs.cs"),
+                ReadStream(assembly, "Attributes.cs"),
             };
         }
 

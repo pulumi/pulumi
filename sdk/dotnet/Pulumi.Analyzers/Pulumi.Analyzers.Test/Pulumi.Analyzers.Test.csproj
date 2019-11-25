@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
@@ -18,11 +18,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\Pulumi\Core\Input.cs" />
-    <EmbeddedResource Include="..\..\Pulumi\Core\InputList.cs" />
-    <EmbeddedResource Include="..\..\Pulumi\Core\InputMap.cs" />
-    <EmbeddedResource Include="..\..\Pulumi\Resources\InputArgs.cs" />
-    <EmbeddedResource Include="..\..\Pulumi\Serialization\Attributes.cs" />
+    <EmbeddedResource Include="..\..\Pulumi\Core\Input.cs">
+      <LogicalName>Input.cs</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\Pulumi\Core\InputList.cs">
+      <LogicalName>InputList.cs</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\Pulumi\Core\InputMap.cs">
+      <LogicalName>InputMap.cs</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\Pulumi\Resources\InputArgs.cs">
+      <LogicalName>InputArgs.cs</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\Pulumi\Serialization\Attributes.cs">
+      <LogicalName>Attributes.cs</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   
 </Project>
