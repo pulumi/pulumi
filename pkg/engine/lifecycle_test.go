@@ -5392,12 +5392,15 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-					assert.Equal(t, "someId", id)
+					assert.Equal(t, resource.ID("someId"), id)
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}, nil
 		}),
 	}
+
+	var stackURN, defaultProviderURN, urnA resource.URN = "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+		"urn:pulumi:test::test::pulumi:providers:pkgA::default", "urn:pulumi:test::test::pkgA:m:typA::resA"
 
 	setupAndRunProgram := func() *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -5422,7 +5425,24 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
 			Options: UpdateOptions{host: host},
-			Steps:   []TestStep{{Op: Update}},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+						evts []Event, res result.Result) result.Result {
+
+						assert.Nil(t, res)
+
+						AssertSameSteps(t, []StepSummary{
+							{Op: deploy.OpCreate, URN: stackURN},
+							{Op: deploy.OpCreate, URN: defaultProviderURN},
+							{Op: deploy.OpRead, URN: urnA},
+						}, j.SuccessfulSteps())
+
+						return res
+					},
+				},
+			},
 		}
 		return p.Run(t, nil)
 	}
