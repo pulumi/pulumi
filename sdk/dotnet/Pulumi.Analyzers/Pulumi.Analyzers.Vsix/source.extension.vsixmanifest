@@ -3,7 +3,7 @@
   <Metadata>
     <Identity Id="Pulumi.Analyzers.8a3c47be-f36d-4d7d-a7b8-f43f29aebdf1" Version="1.0" Language="en-US" Publisher="cyrus"/>
     <DisplayName>Pulumi.Analyzers</DisplayName>
-    <Description xml:space="preserve">This is a sample diagnostic extension for the .NET Compiler Platform ("Roslyn").</Description>
+    <Description xml:space="preserve">Analyzers for the Pulumi .NET sdk.</Description>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0,)" />
