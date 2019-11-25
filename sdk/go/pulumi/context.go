@@ -221,6 +221,7 @@ func (ctx *Context) ReadResource(
 			Parent:     inputs.parent,
 			Properties: inputs.rpcProps,
 			Provider:   inputs.provider,
+			Id:         string(id),
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)

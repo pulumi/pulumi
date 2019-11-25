@@ -5385,3 +5385,47 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	}}
 	p.Run(t, snap)
 }
+
+func TestReadResourceGolangLifecycle(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					assert.Equal(t, "someId", id)
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	setupAndRunProgram := func() *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+				Project:     info.Project,
+				Stack:       info.Stack,
+				Parallel:    info.Parallel,
+				DryRun:      info.DryRun,
+				MonitorAddr: info.MonitorAddress,
+			})
+			assert.NoError(t, err)
+
+			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+				opts := pulumi.ResourceOpt{}
+				_, err := ctx.ReadResource("pkgA:m:typA", "resA", "someId", map[string]interface{}{}, opts)
+				assert.NoError(t, err)
+
+				return nil
+			})
+		})
+
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{host: host},
+			Steps:   []TestStep{{Op: Update}},
+		}
+		return p.Run(t, nil)
+	}
+
+	setupAndRunProgram()
+}
