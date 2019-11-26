@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 1.6.1 (2019-11-26)
 
 - Support passing a parent and providers for `ReadResource`, `RegisterResource`, and `Invoke` in the go SDK. [#3563](https://github.com/pulumi/pulumi/pull/3563)
 
