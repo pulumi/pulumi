@@ -205,11 +205,7 @@ func (ctx *Context) ReadResource(
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(true, props)
 
-	providers := mergeProviders(t, opts...)
-
-	for k, v := range providers {
-		res.providers[k] = v
-	}
+	res.providers = mergeProviders(t, opts...)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -223,7 +219,7 @@ func (ctx *Context) ReadResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err := ctx.prepareResourceInputs(props, t, opts...)
+		inputs, err := ctx.prepareResourceInputs(props, t, res.providers, opts...)
 		if err != nil {
 			return
 		}
@@ -270,11 +266,7 @@ func (ctx *Context) RegisterResource(
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(custom, props)
 
-	providers := mergeProviders(t, opts...)
-
-	for k, v := range providers {
-		res.providers[k] = v
-	}
+	res.providers = mergeProviders(t, opts...)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -289,7 +281,7 @@ func (ctx *Context) RegisterResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err := ctx.prepareResourceInputs(props, t, opts...)
+		inputs, err := ctx.prepareResourceInputs(props, t, res.providers, opts...)
 		if err != nil {
 			return
 		}
@@ -365,31 +357,27 @@ func mergeProviders(t string, opts ...ResourceOpt) map[string]ProviderResource {
 		}
 	}
 
-	mergedProviders := make(map[string]ProviderResource)
-
-	// copy parent providers
+	// copy parent providers, giving precedence to existing providers
 	if parent != nil {
 		rs, ok := parent.(*ResourceState)
 		if ok {
 			for k, v := range rs.providers {
-				mergedProviders[k] = v
+				if _, has := providers[k]; !has {
+					providers[k] = v
+				}
 			}
 		}
 
 	}
-	// copy specified providers
-	for k, v := range providers {
-		mergedProviders[k] = v
-	}
 
 	pkg := getPackage(t)
 
-	// copy specified provider
+	// copy specified provider which has highest precedence
 	if provider != nil {
-		mergedProviders[pkg] = provider
+		providers[pkg] = provider
 	}
 
-	return mergedProviders
+	return providers
 }
 
 // GetProvider takes a URN and returns the associated provider
@@ -488,10 +476,11 @@ type resourceInputs struct {
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props map[string]interface{}, t string,
-	opts ...ResourceOpt) (*resourceInputs, error) {
+	providers map[string]ProviderResource, opts ...ResourceOpt) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, deleteBeforeReplace, importID, ignoreChanges, err := ctx.getOpts(t, opts...)
+	parent, optDeps, protect, provider, deleteBeforeReplace,
+		importID, ignoreChanges, err := ctx.getOpts(t, providers, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -563,7 +552,8 @@ func (ctx *Context) getTimeouts(opts ...ResourceOpt) *pulumirpc.RegisterResource
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(t string, opts ...ResourceOpt) (URN, []URN, bool, string, bool, ID, []string, error) {
+func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts ...ResourceOpt) (
+	URN, []URN, bool, string, bool, ID, []string, error) {
 	var parent Resource
 	var deps []Resource
 	var protect bool
@@ -617,8 +607,6 @@ func (ctx *Context) getOpts(t string, opts ...ResourceOpt) (URN, []URN, bool, st
 			depURNs[i] = urn
 		}
 	}
-
-	providers := mergeProviders(t, opts...)
 
 	if provider == nil {
 		pkg := getPackage(t)
