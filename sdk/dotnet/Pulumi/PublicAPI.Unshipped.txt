@@ -83,6 +83,8 @@ Pulumi.Input<T>
 Pulumi.InputArgs
 Pulumi.InputArgs.InputArgs() -> void
 Pulumi.InputExtensions
+Pulumi.InputJson
+Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
@@ -201,6 +203,12 @@ static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Fun
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, U> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.ToOutput<T>(this Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonDocument> document) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonElement> element) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<string> json) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(System.Text.Json.JsonDocument document) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(System.Text.Json.JsonElement element) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(string json) -> Pulumi.InputJson
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T> value) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T>[] values) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Generic.IEnumerable<T>> values) -> Pulumi.InputList<T>

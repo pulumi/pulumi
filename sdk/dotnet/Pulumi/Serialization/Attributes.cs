@@ -26,7 +26,7 @@ namespace Pulumi.Serialization
     /// Note: for simple inputs (i.e. <see cref="Input{T}"/> this should just be placed on the
     /// property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
     /// 
-    /// For collection inputs (i.e. <see cref="InputList{T}"/> this shuld be placed on the
+    /// For collection inputs (i.e. <see cref="InputList{T}"/> this should be placed on the
     /// backing field for the property.  i.e.
     /// 
     /// <code>

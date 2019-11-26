@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 
@@ -37,6 +38,7 @@ namespace Pulumi.Serialization
         /// <item><see cref="Archive"/>s</item>
         /// <item><see cref="Resource"/>s</item>
         /// <item><see cref="ResourceArgs"/>s</item>
+        /// <item><see cref="JsonElement"/></item>
         /// </list>
         /// Additionally, other more complex objects can be serialized as long as they are built
         /// out of serializable objects.  These complex objects include:
@@ -112,6 +114,16 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 }
 
                 return await SerializeAsync(ctx, union.Value).ConfigureAwait(false);
+            }
+
+            if (prop is JsonElement element)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into Json");
+                }
+
+                return SerializeJson(ctx, element);
             }
 
             if (prop is IOutput output)
@@ -191,6 +203,47 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 return await SerializeListAsync(ctx, list).ConfigureAwait(false);
 
             throw new InvalidOperationException($"{prop.GetType().FullName} is not a supported argument type.\n\t{ctx}");
+        }
+
+        private object? SerializeJson(string ctx, JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Undefined:
+                case JsonValueKind.Null:
+                    return null;
+                case JsonValueKind.String:
+                    return element.GetString();
+                case JsonValueKind.Number:
+                    return element.GetDouble();
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return element.GetBoolean();
+                case JsonValueKind.Array:
+                {
+                    var result = ImmutableArray.CreateBuilder<object?>();
+                    var index = 0;
+                    foreach (var child in element.EnumerateArray())
+                    {
+                        result.Add(SerializeJson($"{ctx}[{index}]", child));
+                        index++;
+                    }
+
+                    return result.ToImmutable();
+                }
+                case JsonValueKind.Object:
+                {
+                    var result = ImmutableDictionary.CreateBuilder<string, object?>();
+                    foreach (var x in element.EnumerateObject())
+                    {
+                        result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
+                    }
+
+                    return result.ToImmutable();
+                }
+                default:
+                    throw new InvalidOperationException($"Unknown {nameof(JsonElement)}.{nameof(JsonElement.ValueKind)}: {element.ValueKind}");
+            }
         }
 
         private async Task<ImmutableDictionary<string, object>> SerializeAssetOrArchiveAsync(string ctx, AssetOrArchive assetOrArchive)
