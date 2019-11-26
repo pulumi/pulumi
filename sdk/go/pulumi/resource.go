@@ -60,6 +60,8 @@ type ResourceOpt struct {
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
 	Provider ProviderResource
+	// Providers is an optional map of package to provider resource for a component resource.
+	Providers map[string]ProviderResource
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -75,6 +77,8 @@ type ResourceOpt struct {
 
 // InvokeOpt contains optional settings that control an invoke's behavior.
 type InvokeOpt struct {
+	// Parent is an optional parent resource to use for default provider options for this invoke.
+	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
 }

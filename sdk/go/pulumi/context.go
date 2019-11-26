@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"sort"
+	"strings"
 	"sync"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -125,6 +126,13 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}, opts ...Invo
 	// Check for a provider option.
 	var provider string
 	for _, opt := range opts {
+		if opt.Parent != nil && opt.Provider == nil {
+			// attempt to use parent provider if no other is specified.
+			v, ok := opt.Parent.(*ResourceState)
+			if ok {
+				opt.Provider = v.GetProvider(tok)
+			}
+		}
 		if opt.Provider != nil {
 			pr, err := ctx.resolveProviderReference(opt.Provider)
 			if err != nil {
@@ -197,6 +205,8 @@ func (ctx *Context) ReadResource(
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(true, props)
 
+	res.providers = mergeProviders(t, opts...)
+
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
@@ -209,7 +219,7 @@ func (ctx *Context) ReadResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err := ctx.prepareResourceInputs(props, opts...)
+		inputs, err := ctx.prepareResourceInputs(props, t, res.providers, opts...)
 		if err != nil {
 			return
 		}
@@ -256,6 +266,8 @@ func (ctx *Context) RegisterResource(
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(custom, props)
 
+	res.providers = mergeProviders(t, opts...)
+
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
 	go func() {
@@ -269,7 +281,7 @@ func (ctx *Context) RegisterResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err := ctx.prepareResourceInputs(props, opts...)
+		inputs, err := ctx.prepareResourceInputs(props, t, res.providers, opts...)
 		if err != nil {
 			return
 		}
@@ -312,6 +324,8 @@ type ResourceState struct {
 	id IDOutput
 	// State contains the full set of expected output properties and will resolve after completion.
 	State Outputs
+	// Map from pkg to provider
+	providers map[string]ProviderResource
 }
 
 // URN will resolve to the resource's URN after registration has completed.
@@ -322,6 +336,63 @@ func (state *ResourceState) URN() URNOutput {
 // ID will resolve to the resource's ID after registration, provided this is for a custom resource.
 func (state *ResourceState) ID() IDOutput {
 	return state.id
+}
+
+// checks all possible sources of providers and merges them with preference given to the most specific
+func mergeProviders(t string, opts ...ResourceOpt) map[string]ProviderResource {
+	var parent Resource
+	var provider ProviderResource
+	providers := make(map[string]ProviderResource)
+	for _, opt := range opts {
+		if parent == nil && opt.Parent != nil {
+			parent = opt.Parent
+		}
+		if provider == nil && opt.Provider != nil {
+			provider = opt.Provider
+		}
+		if len(providers) == 0 && opt.Providers != nil {
+			for k, v := range opt.Providers {
+				providers[k] = v
+			}
+		}
+	}
+
+	// copy parent providers, giving precedence to existing providers
+	if parent != nil {
+		rs, ok := parent.(*ResourceState)
+		if ok {
+			for k, v := range rs.providers {
+				if _, has := providers[k]; !has {
+					providers[k] = v
+				}
+			}
+		}
+
+	}
+
+	pkg := getPackage(t)
+
+	// copy specified provider which has highest precedence
+	if provider != nil {
+		providers[pkg] = provider
+	}
+
+	return providers
+}
+
+// GetProvider takes a URN and returns the associated provider
+func (state *ResourceState) GetProvider(t string) ProviderResource {
+	pkg := getPackage(t)
+	return state.providers[pkg]
+}
+
+// getPackage takes in a type and returns the pkg
+func getPackage(t string) string {
+	components := strings.Split(t, ":")
+	if len(components) != 3 {
+		return ""
+	}
+	return components[0]
 }
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
@@ -339,6 +410,8 @@ func makeResourceState(custom bool, props map[string]interface{}) *ResourceState
 	for key := range props {
 		state.State[key] = newOutput(state)
 	}
+
+	state.providers = make(map[string]ProviderResource)
 
 	return state
 }
@@ -402,10 +475,12 @@ type resourceInputs struct {
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
-func (ctx *Context) prepareResourceInputs(props map[string]interface{}, opts ...ResourceOpt) (*resourceInputs, error) {
+func (ctx *Context) prepareResourceInputs(props map[string]interface{}, t string,
+	providers map[string]ProviderResource, opts ...ResourceOpt) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, deleteBeforeReplace, importID, ignoreChanges, err := ctx.getOpts(opts...)
+	parent, optDeps, protect, provider, deleteBeforeReplace,
+		importID, ignoreChanges, err := ctx.getOpts(t, providers, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -477,7 +552,8 @@ func (ctx *Context) getTimeouts(opts ...ResourceOpt) *pulumirpc.RegisterResource
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool, ID, []string, error) {
+func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts ...ResourceOpt) (
+	URN, []URN, bool, string, bool, ID, []string, error) {
 	var parent Resource
 	var deps []Resource
 	var protect bool
@@ -530,6 +606,11 @@ func (ctx *Context) getOpts(opts ...ResourceOpt) (URN, []URN, bool, string, bool
 			}
 			depURNs[i] = urn
 		}
+	}
+
+	if provider == nil {
+		pkg := getPackage(t)
+		provider = providers[pkg]
 	}
 
 	var providerRef string

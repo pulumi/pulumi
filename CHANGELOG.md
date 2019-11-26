@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support passing a parent and providers for `ReadResource`, `RegisterResource`, and `Invoke` in the go SDK. [#3563](https://github.com/pulumi/pulumi/pull/3563)
+
 - Fix go SDK ReadResource [#3581](https://github.com/pulumi/pulumi/pull/3581)
 
 - Fix go SDK DeleteBeforeReplace [#3572](https://github.com/pulumi/pulumi/pull/3572)
