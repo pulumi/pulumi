@@ -1272,7 +1272,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          path.Join(d, "dotnet", "step1"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"Pulumi"},
 		Config: map[string]string{
 			"org": owner,
 		},
