@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -57,7 +58,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		})
 	}
 
-	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name),
+	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), ctx.Pwd})
 	if err != nil {
 		return nil, err
@@ -90,12 +91,18 @@ func NewPolicyAnalyzer(
 			"does not support resource policies", string(name))
 	}
 
-	plug, err := newPlugin(ctx, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), policyPackPath})
+	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
+	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
+	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
+	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
+	// node_modules is used.
+	pwd := policyPackPath
+	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		[]string{host.ServerAddr(), "."})
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
-			return nil, fmt.Errorf("the Pulumi SDK used with this stack does not appear to support policy as code.\n" +
-				"Upgrading to a newer version of the Pulumi SDK may fix this problem.")
+			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
+				"try running npm install or yarn install in %q", policyPackPath)
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
@@ -118,7 +125,7 @@ func (a *analyzer) label() string {
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
-	t, props := r.Type, r.Properties
+	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
@@ -128,7 +135,9 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	}
 
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+		Urn:        string(urn),
 		Type:       string(t),
+		Name:       string(name),
 		Properties: mprops,
 	})
 	if err != nil {
@@ -159,7 +168,9 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 		}
 
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
+			Urn:        string(resource.URN),
 			Type:       string(resource.Type),
+			Name:       string(resource.Name),
 			Properties: props,
 		}
 	}
@@ -288,6 +299,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 			Message:           protoD.Message,
 			Tags:              protoD.Tags,
 			EnforcementLevel:  enforcementLevel,
+			URN:               resource.URN(protoD.Urn),
 		}
 	}
 

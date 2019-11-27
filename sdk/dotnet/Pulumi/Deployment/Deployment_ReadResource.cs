@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;

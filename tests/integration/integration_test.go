@@ -76,10 +76,27 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
-// TestEmptyGo simply tests that we can run an empty Go project.
+// TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "go"),
+		Dir:      filepath.Join("empty", "go"),
+		Quick:    true,
+		RunBuild: true,
+	})
+}
+
+// TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
+func TestEmptyGoRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "gorun"),
+		Quick: true,
+	})
+}
+
+// TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
+func TestEmptyGoRunMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "gorun_main"),
 		Quick: true,
 	})
 }
@@ -87,8 +104,9 @@ func TestEmptyGo(t *testing.T) {
 // TestEmptyDotNet simply tests that we can run an empty .NET project.
 func TestEmptyDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("empty", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 	})
 }
 
@@ -210,9 +228,7 @@ func TestStackTagValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "error: could not create stack:")
-		assert.Contains(t, stderr, "validating stack properties:")
-		assert.Contains(t, stderr, "stack name may only contain alphanumeric, hyphens, underscores, or periods")
+		assert.Contains(t, stderr, "stack name may only contain alphanumeric, hyphens, underscores, and periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
@@ -318,8 +334,9 @@ func TestStackOutputsPython(t *testing.T) {
 
 func TestStackOutputsDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("stack_outputs", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("stack_outputs", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
@@ -959,14 +976,16 @@ func TestConfigBasicGo(t *testing.T) {
 			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
+		RunBuild: true,
 	})
 }
 
 // Tests basic configuration from the perspective of a Pulumi .NET program.
 func TestConfigBasicDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "dotnet"),
-		Quick: true,
+		Dir:          filepath.Join("config_basic", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
 		},
@@ -1105,7 +1124,7 @@ func TestStackReferenceDotnet(t *testing.T) {
 
 	opts := &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_reference", "dotnet"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dependencies: []string{"Pulumi"},
 		Quick:        true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),

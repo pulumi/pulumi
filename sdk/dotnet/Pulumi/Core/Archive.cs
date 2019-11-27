@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using Pulumi.Serialization;
 
@@ -22,8 +23,8 @@ namespace Pulumi
     /// </summary>
     public sealed class AssetArchive : Archive
     {
-        public AssetArchive(ImmutableDictionary<string, AssetOrArchive> assets)
-            : base(Constants.ArchiveAssetsName, assets)
+        public AssetArchive(IDictionary<string, AssetOrArchive> assets)
+            : base(Constants.ArchiveAssetsName, assets.ToImmutableDictionary())
         {
         }
     }

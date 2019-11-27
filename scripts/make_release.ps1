@@ -2,7 +2,6 @@
 Set-StrictMode -Version 2.0
 $ErrorActionPreference="Stop"
 
-$NodeVersion = "v6.10.2"
 $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
 $GitHash=$(git rev-parse HEAD)

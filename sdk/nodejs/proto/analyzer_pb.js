@@ -70,7 +70,9 @@ proto.pulumirpc.AnalyzeRequest.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.AnalyzeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    name: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -116,6 +118,14 @@ proto.pulumirpc.AnalyzeRequest.deserializeBinaryFromReader = function(msg, reade
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUrn(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -158,6 +168,20 @@ proto.pulumirpc.AnalyzeRequest.serializeBinaryToWriter = function(message, write
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getUrn();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
     );
   }
 };
@@ -205,6 +229,36 @@ proto.pulumirpc.AnalyzeRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.AnalyzeRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional string urn = 3;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeRequest.prototype.getUrn = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeRequest.prototype.setUrn = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string name = 4;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeRequest.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeRequest.prototype.setName = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -256,7 +310,9 @@ proto.pulumirpc.AnalyzerResource.prototype.toObject = function(opt_includeInstan
 proto.pulumirpc.AnalyzerResource.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    name: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -302,6 +358,14 @@ proto.pulumirpc.AnalyzerResource.deserializeBinaryFromReader = function(msg, rea
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUrn(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -344,6 +408,20 @@ proto.pulumirpc.AnalyzerResource.serializeBinaryToWriter = function(message, wri
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getUrn();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
     );
   }
 };
@@ -391,6 +469,36 @@ proto.pulumirpc.AnalyzerResource.prototype.clearProperties = function() {
  */
 proto.pulumirpc.AnalyzerResource.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional string urn = 3;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzerResource.prototype.getUrn = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzerResource.prototype.setUrn = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string name = 4;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzerResource.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzerResource.prototype.setName = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -790,7 +898,8 @@ proto.pulumirpc.AnalyzeDiagnostic.toObject = function(includeInstance, msg) {
     description: jspb.Message.getFieldWithDefault(msg, 4, ""),
     message: jspb.Message.getFieldWithDefault(msg, 5, ""),
     tagsList: jspb.Message.getRepeatedField(msg, 6),
-    enforcementlevel: jspb.Message.getFieldWithDefault(msg, 7, 0)
+    enforcementlevel: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    urn: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -854,6 +963,10 @@ proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader = function(msg, re
     case 7:
       var value = /** @type {!proto.pulumirpc.EnforcementLevel} */ (reader.readEnum());
       msg.setEnforcementlevel(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUrn(value);
       break;
     default:
       reader.skipField();
@@ -930,6 +1043,13 @@ proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter = function(message, wr
   if (f !== 0.0) {
     writer.writeEnum(
       7,
+      f
+    );
+  }
+  f = message.getUrn();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -1052,6 +1172,21 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.getEnforcementlevel = function() {
 /** @param {!proto.pulumirpc.EnforcementLevel} value */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.setEnforcementlevel = function(value) {
   jspb.Message.setProto3EnumField(this, 7, value);
+};
+
+
+/**
+ * optional string urn = 8;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.getUrn = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzeDiagnostic.prototype.setUrn = function(value) {
+  jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

@@ -16,7 +16,7 @@ namespace Pulumi
             => RunAsync(() =>
             {
                 action();
-                return ImmutableDictionary<string, object>.Empty;
+                return ImmutableDictionary<string, object?>.Empty;
             });
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace Pulumi
         /// </summary>
         /// <param name="func"></param>
         /// <returns></returns>
-        public static Task<int> RunAsync(Func<IDictionary<string, object>> func)
+        public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Pulumi
         /// can optionally return an <see cref="IDictionary{TKey, TValue}"/>.  The keys and values
         /// in this dictionary will become the outputs for the Pulumi Stack that is created.
         /// </summary>
-        public static Task<int> RunAsync(Func<Task<IDictionary<string, object>>> func)
+        public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 

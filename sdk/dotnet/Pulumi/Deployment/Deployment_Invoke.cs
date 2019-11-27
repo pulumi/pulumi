@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2018, Pulumi Corporation
+﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
@@ -10,20 +10,20 @@ namespace Pulumi
 {
     public sealed partial class Deployment
     {
-        Task IDeployment.InvokeAsync(string token, ResourceArgs args, InvokeOptions? options)
+        Task IDeployment.InvokeAsync(string token, InvokeArgs args, InvokeOptions? options)
             => InvokeAsync<object>(token, args, options, convertResult: false);
 
-        Task<T> IDeployment.InvokeAsync<T>(string token, ResourceArgs args, InvokeOptions? options)
+        Task<T> IDeployment.InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options)
             => InvokeAsync<T>(token, args, options, convertResult: true);
 
         private async Task<T> InvokeAsync<T>(
-            string token, ResourceArgs args, InvokeOptions? options, bool convertResult)
+            string token, InvokeArgs args, InvokeOptions? options, bool convertResult)
         {
             var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
 
             // Be resilient to misbehaving callers.
-            args ??= ResourceArgs.Empty;
+            args ??= InvokeArgs.Empty;
 
             // Wait for all values to be available, and then perform the RPC.
             var argsDict = await args.ToDictionaryAsync().ConfigureAwait(false);

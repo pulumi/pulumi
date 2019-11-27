@@ -23,6 +23,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 )
 
+type TestStruct struct {
+	Foo map[string]string
+	Bar string
+}
+
 // TestConfig tests the basic config wrapper.
 func TestConfig(t *testing.T) {
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
@@ -31,11 +36,32 @@ func TestConfig(t *testing.T) {
 			"testpkg:bbb":    "true",
 			"testpkg:intint": "42",
 			"testpkg:fpfpfp": "99.963",
+			"testpkg:obj": `
+				{
+					"foo": {
+						"a": "1",
+						"b": "2"
+					},
+					"bar": "abc"
+				}
+			`,
+			"testpkg:malobj": "not_a_struct",
 		},
 	})
 	assert.Nil(t, err)
 
 	cfg := New(ctx, "testpkg")
+
+	var testStruct TestStruct
+	var emptyTestStruct TestStruct
+
+	fooMap := make(map[string]string)
+	fooMap["a"] = "1"
+	fooMap["b"] = "2"
+	expectedTestStruct := TestStruct{
+		Foo: fooMap,
+		Bar: "abc",
+	}
 
 	// Test basic keys.
 	assert.Equal(t, "testpkg:sss", cfg.fullKey("sss"))
@@ -46,12 +72,43 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, 42, cfg.GetInt("intint"))
 	assert.Equal(t, 99.963, cfg.GetFloat64("fpfpfp"))
 	assert.Equal(t, "", cfg.Get("missing"))
+	// missing key GetObj
+	err = cfg.GetObject("missing", &testStruct)
+	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.Nil(t, err)
+	testStruct = TestStruct{}
+	// malformed key GetObj
+	err = cfg.GetObject("malobj", &testStruct)
+	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.NotNil(t, err)
+	testStruct = TestStruct{}
+	// GetObj
+	err = cfg.GetObject("obj", &testStruct)
+	assert.Equal(t, expectedTestStruct, testStruct)
+	assert.Nil(t, err)
+	testStruct = TestStruct{}
 
 	// Test Require, which panics for missing entries.
 	assert.Equal(t, "a string value", cfg.Require("sss"))
 	assert.Equal(t, true, cfg.RequireBool("bbb"))
 	assert.Equal(t, 42, cfg.RequireInt("intint"))
 	assert.Equal(t, 99.963, cfg.RequireFloat64("fpfpfp"))
+	cfg.RequireObject("obj", &testStruct)
+	assert.Equal(t, expectedTestStruct, testStruct)
+	testStruct = TestStruct{}
+	// GetObj panics if value is malformed
+	willPanic := func() { cfg.RequireObject("malobj", &testStruct) }
+	assert.Panics(t, willPanic)
+	testStruct = TestStruct{}
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected malformed value for RequireObject to panic")
+			}
+		}()
+		cfg.RequireObject("malobj", &testStruct)
+	}()
+	testStruct = TestStruct{}
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -74,6 +131,21 @@ func TestConfig(t *testing.T) {
 	k4, err := cfg.TryFloat64("fpfpfp")
 	assert.Nil(t, err)
 	assert.Equal(t, 99.963, k4)
+	// happy path TryObject
+	err = cfg.TryObject("obj", &testStruct)
+	assert.Nil(t, err)
+	assert.Equal(t, expectedTestStruct, testStruct)
+	testStruct = TestStruct{}
+	// missing TryObject
+	err = cfg.TryObject("missing", &testStruct)
+	assert.NotNil(t, err)
+	assert.Equal(t, emptyTestStruct, testStruct)
+	testStruct = TestStruct{}
+	// malformed TryObject
+	err = cfg.TryObject("malobj", &testStruct)
+	assert.NotNil(t, err)
+	assert.Equal(t, emptyTestStruct, testStruct)
+	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
 	assert.NotNil(t, err)
 }

@@ -224,12 +224,11 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	fmt.Println()
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	err = npm.Install(finalDir, nil, os.Stderr)
-	if err != nil {
+	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
-			"failed to install dependencies of policy pack; you may need to re-run `npm install` "+
-				"in %q before this policy pack works", finalDir)
+			"failed to install dependencies of policy pack; you may need to re-run `%s install` "+
+				"in %q before this policy pack works", bin, finalDir)
 	}
 
 	fmt.Println("Finished installing dependencies")

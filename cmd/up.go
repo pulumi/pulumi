@@ -70,6 +70,7 @@ func newUpCmd() *cobra.Command {
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
+	var targetDependents bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -126,6 +127,7 @@ func newUpCmd() *cobra.Command {
 			ReplaceTargets:       replaceURNs,
 			UseLegacyDiff:        useLegacyDiff(),
 			UpdateTargets:        targetURNs,
+			TargetDependents:     targetDependents,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -403,9 +405,12 @@ func newUpCmd() *cobra.Command {
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+
 			" Shorthand for --target urn --replace urn.")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows updating of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() {
+	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more policy packs as part of this update")

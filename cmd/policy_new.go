@@ -163,8 +163,8 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := npmInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "npm install failed; rerun manually to try again.")
+		if bin, err := nodeInstallDependencies(); err != nil {
+			return errors.Wrapf(err, "%s install failed; rerun manually to try again.", bin)
 		}
 	}
 

@@ -94,6 +94,11 @@ if [ -e package.json ]; then
     fi
 fi
 
+# If the user is running the Python SDK, we will need to install their requirements as well.
+if [ -e requirements.txt ]; then
+    pip3 install -r requirements.txt
+fi
+
 # Now just pass along all arguments to the Pulumi CLI, sending the output to a file for
 # later use. Note that we exit immediately on failure (under set -e), so we `tee` stdout, but
 # allow errors to be surfaced in the Actions log.
