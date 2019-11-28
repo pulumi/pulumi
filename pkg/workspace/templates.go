@@ -466,7 +466,7 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 		return PolicyPackTemplate{}, errors.Errorf("%s is not a directory", path)
 	}
 
-	pack, err := LoadPolicyPack(filepath.Join(path, "PulumiPolicy.yaml"))
+	pack, err := LoadPolicyPack(filepath.Join(path, PolicyPackFile))
 	if err != nil {
 		return PolicyPackTemplate{}, err
 	}

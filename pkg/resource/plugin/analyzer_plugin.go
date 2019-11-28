@@ -16,6 +16,8 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
@@ -73,32 +75,44 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-const policyAnalyzerName = "policy"
+const nodejsPolicyAnalyzerName = "policy"
 
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
-func NewPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+func NewPolicyAnalyzer(host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+	// There are two cases to consider here:
+	//     1) The policyPackPath refers to a file. In that case, we assume it is a policy plugin binary,
+	//        and we will load it directly, taking the parent directory as the pwd.
+	//     2) The policyPackPath refers to a directory. In that case, we use the legacy behavior of assuming
+	//        that plugin directory contains a legacy-style Node.js policy pack, and load it with our shim.
+	// TODO: we need to reconcile all of this.
+	var pluginBin string
+	var pluginPwd string
+	var pluginArgs []string
 
-	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-	_, pluginPath, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
+	info, err := os.Stat(policyPackPath)
 	if err != nil {
-		return nil, rpcerror.Convert(err)
-	} else if pluginPath == "" {
-		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
-			"plugin that runs policy plugins is missing. This might occur when the plugin "+
-			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
-			"does not support resource policies", string(name))
+		return nil, errors.Wrapf(err, "policy pack not found at path '%s'", policyPackPath)
+	}
+	if info.IsDir() {
+		// In the case it's a directory, we assume it refers to the Node.js loader. Therefore, we
+		// look for the standard Node.js loader (i.e., `pulumi-analyzer-${nodejsPolicyAnalyzerName}`).
+		_, pluginBin, err = workspace.GetPluginPath(workspace.AnalyzerPlugin, nodejsPolicyAnalyzerName, nil)
+		if err != nil {
+			return nil, rpcerror.Convert(err)
+		} else if pluginBin == "" {
+			return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
+				"plugin that runs policy plugins is missing. This might occur when the plugin "+
+				"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
+				"does not support resource policies", string(name))
+		}
+	} else {
+		// In the case it's a binary, we will load the plugin directly. It is assumed to be self-contained.
+		pluginBin = policyPackPath
+		pluginPwd = filepath.Dir(pluginBin)
+		pluginArgs = []string{host.ServerAddr()}
 	}
 
-	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
-	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
-	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
-	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
-	// node_modules is used.
-	pwd := policyPackPath
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), "."})
+	plug, err := newPlugin(ctx, pluginPwd, pluginBin, fmt.Sprintf("%v (analyzer)", name), pluginArgs)
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+

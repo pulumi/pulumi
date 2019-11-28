@@ -168,7 +168,7 @@ func newPreviewCmd() *cobra.Command {
 	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
-			"Run one or more analyzers as part of this update")
+			"Run one or more policy packs as part of this update")
 	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
