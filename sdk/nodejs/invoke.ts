@@ -34,10 +34,4 @@ export interface InvokeOptions {
      * invoke.
      */
     version?: string;
-
-    /**
-     * Invoke this function asynchronously.  If 'true' is passed in here, then an invoked function
-     * will only supply the `Promise<>` side of its result.
-     */
-    async?: boolean;
 }

@@ -63,7 +63,6 @@
         "cmd/run-policy-pack/run.ts",
 
         "tests/config.spec.ts",
-        "tests/deasync.spec.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/options.spec.ts",
