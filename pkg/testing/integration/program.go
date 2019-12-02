@@ -1668,7 +1668,7 @@ func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.?.*.nupkg"))
+		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
 		if err != nil {
 			return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
 		}
