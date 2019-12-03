@@ -404,14 +404,15 @@ func LoadTemplate(path string) (Template, error) {
 
 // CopyTemplateFilesDryRun does a dry run of copying a template to a destination directory,
 // to ensure it won't overwrite any files.
-func CopyTemplateFilesDryRun(sourceDir, destDir string) error {
+func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	var existing []string
-	if err := walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
-		if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
-			existing = append(existing, filepath.Base(dest))
-		}
-		return nil
-	}); err != nil {
+	if err := walkFiles(sourceDir, destDir, projectName,
+		func(info os.FileInfo, source string, dest string) error {
+			if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
+				existing = append(existing, filepath.Base(dest))
+			}
+			return nil
+		}); err != nil {
 		return err
 	}
 
@@ -425,35 +426,36 @@ func CopyTemplateFilesDryRun(sourceDir, destDir string) error {
 func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
 
-	return walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
-		if info.IsDir() {
-			// Create the destination directory.
-			return os.Mkdir(dest, 0700)
-		}
-
-		// Read the source file.
-		b, err := ioutil.ReadFile(source)
-		if err != nil {
-			return err
-		}
-
-		// Transform only if it isn't a binary file.
-		result := b
-		if !isBinary(b) {
-			transformed := transform(string(b), projectName, projectDescription)
-			result = []byte(transformed)
-		}
-
-		// Write to the destination file.
-		err = writeAllBytes(dest, result, force)
-		if err != nil {
-			// An existing file has shown up in between the dry run and the actual copy operation.
-			if os.IsExist(err) {
-				return newExistingFilesError([]string{filepath.Base(dest)})
+	return walkFiles(sourceDir, destDir, projectName,
+		func(info os.FileInfo, source string, dest string) error {
+			if info.IsDir() {
+				// Create the destination directory.
+				return os.Mkdir(dest, 0700)
 			}
-		}
-		return err
-	})
+
+			// Read the source file.
+			b, err := ioutil.ReadFile(source)
+			if err != nil {
+				return err
+			}
+
+			// Transform only if it isn't a binary file.
+			result := b
+			if !isBinary(b) {
+				transformed := transform(string(b), projectName, projectDescription)
+				result = []byte(transformed)
+			}
+
+			// Write to the destination file.
+			err = writeAllBytes(dest, result, force)
+			if err != nil {
+				// An existing file has shown up in between the dry run and the actual copy operation.
+				if os.IsExist(err) {
+					return newExistingFilesError([]string{filepath.Base(dest)})
+				}
+			}
+			return err
+		})
 }
 
 // LoadPolicyPackTemplate returns a Policy Pack template from a path.
@@ -643,7 +645,7 @@ func getValidProjectName(name string) string {
 
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
-func walkFiles(sourceDir string, destDir string,
+func walkFiles(sourceDir string, destDir string, projectName string,
 	actionFn func(info os.FileInfo, source string, dest string) error) error {
 
 	contract.Require(sourceDir != "", "sourceDir")
@@ -669,7 +671,7 @@ func walkFiles(sourceDir string, destDir string,
 				return err
 			}
 
-			if err := walkFiles(source, dest, actionFn); err != nil {
+			if err := walkFiles(source, dest, projectName, actionFn); err != nil {
 				return err
 			}
 		} else {
@@ -678,7 +680,10 @@ func walkFiles(sourceDir string, destDir string,
 				continue
 			}
 
-			if err := actionFn(info, source, dest); err != nil {
+			// The file name may contain a placeholder for project name: replace it with the actual value.
+			newDest := transform(dest, projectName, "")
+
+			if err := actionFn(info, source, newDest); err != nil {
 				return err
 			}
 		}
