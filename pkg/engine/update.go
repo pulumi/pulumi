@@ -16,10 +16,12 @@ package engine
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -184,16 +186,34 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy) error {
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPackPaths []string,
+	opts *plugin.PolicyAnalyzerOptions) error {
+
+	// Install and load required policy packs.
 	for _, policy := range policies {
 		policyPath, err := policy.Install(context.Background())
 		if err != nil {
 			return err
 		}
 
-		_, err = plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath)
+		_, err = plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Load local policy packs.
+	for _, path := range localPolicyPackPaths {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+
+		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), path, opts)
+		if err != nil {
+			return err
+		} else if analyzer == nil {
+			return errors.Errorf("analyzer could not be loaded from path %q", path)
 		}
 	}
 
@@ -226,7 +246,19 @@ func newUpdateSource(
 	// Step 2: Install and load policy plugins.
 	//
 
-	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies); err != nil {
+	// Decrypt the configuration.
+	config, err := target.Config.Decrypt(target.Decrypter)
+	if err != nil {
+		return nil, err
+	}
+	analyzerOpts := plugin.PolicyAnalyzerOptions{
+		Project: proj.Name.String(),
+		Stack:   target.Name.String(),
+		Config:  config,
+		DryRun:  dryRun,
+	}
+	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies, opts.LocalPolicyPackPaths,
+		&analyzerOpts); err != nil {
 		return nil, err
 	}
 

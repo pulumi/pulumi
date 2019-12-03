@@ -15,7 +15,9 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/blang/semver"
@@ -59,7 +61,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), ctx.Pwd})
+		[]string{host.ServerAddr(), ctx.Pwd}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ const policyAnalyzerName = "policy"
 
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	_, pluginPath, err := workspace.GetPluginPath(
@@ -91,6 +93,12 @@ func NewPolicyAnalyzer(
 			"does not support resource policies", string(name))
 	}
 
+	// Create the environment variables from the options.
+	env, err := constructEnv(opts)
+	if err != nil {
+		return nil, err
+	}
+
 	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
 	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
 	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
@@ -98,7 +106,7 @@ func NewPolicyAnalyzer(
 	// node_modules is used.
 	pwd := policyPackPath
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), "."})
+		[]string{host.ServerAddr(), "."}, env)
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
@@ -304,4 +312,47 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 	}
 
 	return diagnostics, nil
+}
+
+func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
+	env := os.Environ()
+
+	maybeAppendEnv := func(k, v string) {
+		if v != "" {
+			env = append(env, k+"="+v)
+		}
+	}
+
+	config, err := constructConfig(opts)
+	if err != nil {
+		return nil, err
+	}
+	maybeAppendEnv("PULUMI_CONFIG", config)
+
+	if opts != nil {
+		maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
+		maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
+		maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+	}
+
+	return env, nil
+}
+
+// constructConfig json-serializes the configuration data.
+func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
+	if opts == nil || opts.Config == nil {
+		return "", nil
+	}
+
+	config := make(map[string]string)
+	for k, v := range opts.Config {
+		config[k.String()] = v
+	}
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configJSON), nil
 }
