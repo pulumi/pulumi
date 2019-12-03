@@ -217,8 +217,7 @@ ${defaultMessage}`);
 
     programStarted();
 
-    // Construct a `Stack` resource to represent the outputs of the program.
-    return runtime.runInPulumiStack(() => {
+    const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
@@ -227,7 +226,17 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            return require(program);
+            // Execute the module and capture any module outputs it exported. If the exported value
+            // was itself a Function, then just execute it.  This allows for exported top level
+            // async functions that pulumi programs can live in.  Finally, await the value we get
+            // back.  That way, if it is async and throws an exception, we properly capture it here
+            // and handle it.
+            const reqResult = require(program);
+            const invokeResult = reqResult instanceof Function
+                ? reqResult()
+                : reqResult;
+
+            return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
@@ -243,5 +252,8 @@ ${defaultMessage}`);
 
             throw e;
         }
-    });
+    };
+
+    // Construct a `Stack` resource to represent the outputs of the program.
+    return runtime.runInPulumiStack(runProgram);
 }
