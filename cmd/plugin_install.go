@@ -115,8 +115,10 @@ func newPluginInstallCmd() *cobra.Command {
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
 				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
-				cmdutil.Diag().Infoerrf(
-					diag.Message("", "%s installing"), label)
+				if verbose {
+					cmdutil.Diag().Infoerrf(
+						diag.Message("", "%s installing"), label)
+				}
 
 				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
 				// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
