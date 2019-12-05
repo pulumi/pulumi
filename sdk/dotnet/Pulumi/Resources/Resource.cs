@@ -157,7 +157,7 @@ namespace Pulumi
                     args = tres.Value.Args;
                     options = tres.Value.Options;
 
-                    if (tres.Value.Name != null){
+                    if (!string.IsNullOrEmpty(tres.Value.Name)){
                         _name = tres.Value.Name;
                     }
                 }

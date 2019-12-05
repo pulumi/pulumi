@@ -634,7 +634,7 @@ class Resource:
                 props = tres.props
                 opts = tres.opts
 
-                if tres.name is not None:
+                if tres.name and isinstance(tres.name, str):
                     self._name = tres.name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
