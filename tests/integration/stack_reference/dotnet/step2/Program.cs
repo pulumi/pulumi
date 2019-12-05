@@ -18,7 +18,7 @@ class Program
             var gotError = false;
             try
             {
-                await a.GetOutputValueAsync("val2");
+                await a.GetValueAsync("val2");
             }
             catch
             {

@@ -172,13 +172,11 @@ Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.StackReference
 Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
-Pulumi.StackReference.GetOutputValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
-Pulumi.StackReference.GetSecretOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.GetValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
 Pulumi.StackReference.Name.get -> Pulumi.Output<string>
 Pulumi.StackReference.Outputs.get -> Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, object>>
 Pulumi.StackReference.RequireOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
-Pulumi.StackReference.RequireOutputValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
-Pulumi.StackReference.RequireSecretOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.RequireValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
 Pulumi.StackReference.SecretOutputNames.get -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<string>>
 Pulumi.StackReference.StackReference(string name, Pulumi.StackReferenceArgs args = null, Pulumi.ResourceOptions options = null) -> void
 Pulumi.StackReferenceArgs

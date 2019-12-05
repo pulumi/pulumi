@@ -89,7 +89,7 @@ namespace Pulumi
         /// </summary>
         /// <param name="name">The name of the stack output to fetch.</param>
         /// <returns>The value of the referenced stack output.</returns>
-        public async Task<object?> GetOutputValueAsync(Input<string> name)
+        public async Task<object?> GetValueAsync(Input<string> name)
         {
             var output = this.GetOutput(name);
             var data = await output.DataTask.ConfigureAwait(false);
@@ -110,7 +110,7 @@ namespace Pulumi
         /// </summary>
         /// <param name="name">The name of the stack output to fetch.</param>
         /// <returns>The value of the referenced stack output.</returns>
-        public async Task<object> RequireOutputValueAsync(Input<string> name)
+        public async Task<object> RequireValueAsync(Input<string> name)
         {
             var output = this.RequireOutput(name);
             var data = await output.DataTask.ConfigureAwait(false);
@@ -121,35 +121,6 @@ namespace Pulumi
             }
 
             return data.Value;
-        }
-
-        /// <summary>
-        /// Fetches the value of the named stack output as a secret, or null if the stack output was not found.
-        /// </summary>
-        /// <param name="name">The name of the stack output to fetch.</param>
-        /// <returns>An <see cref="Output{T}"/> containing the requested value.</returns>
-        public Output<object?> GetSecretOutput(Input<string> name)
-        {
-            var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
-            var value = Output.Tuple(name, inputs).Apply(v =>
-                v.Item2.TryGetValue(v.Item1, out var result) ? result : null);
-            return value.WithIsSecret(Task.FromResult(true));
-        }
-
-        /// <summary>
-        /// Fetches the value of the named stack output as a secret, or throws an error if the output was not found.
-        /// </summary>
-        /// <param name="name">The name of the stack output to fetch.</param>
-        /// <returns>An <see cref="Output{T}"/> containing the requested value.</returns>
-        public Output<object> RequireSecretOutput(Input<string> name)
-        {
-            var inputs = (Input<ImmutableDictionary<string, object>>)this.Outputs;
-            var value = Output.Tuple(name, inputs).Apply(v =>
-                v.Item2.TryGetValue(v.Item1, out var result)
-                    ? result
-                    : throw new KeyNotFoundException(
-                        $"Required output '{name}' does not exist on stack '{Deployment.Instance.StackName}'."));
-            return value.WithIsSecret(Task.FromResult(true));
         }
 
         private async Task<bool> IsSecretOutputName(Input<string> name)
@@ -179,7 +150,7 @@ namespace Pulumi
         /// <summary>
         /// The name of the stack to reference.
         /// </summary>
-        [Input("name")]
+        [Input("name", required: true)]
         public Input<string>? Name { get; set; } = null!;
     }
 }

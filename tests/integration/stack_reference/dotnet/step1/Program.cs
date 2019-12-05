@@ -16,7 +16,7 @@ class Program
             var slug = $"{org}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
             var a = new StackReference(slug);
 
-            var oldVal = (string[])await a.GetOutputValueAsync("val");
+            var oldVal = (string[])await a.GetValueAsync("val");
             if (oldVal.Length != 2 || oldVal[0] != "a" || oldVal[1] != "b")
             {
                 throw new Exception("Invalid result");
