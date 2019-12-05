@@ -131,6 +131,16 @@ namespace Pulumi
         internal static Output<T> CreateSecret(Task<T> value)
             => Create(value, isSecret: true);
 
+        internal Output<T> WithIsSecret(Task<bool> isSecret)
+        {
+            async Task<OutputData<T>> GetData()
+            {
+                var data = await this.DataTask.ConfigureAwait(false);
+                return new OutputData<T>(data.Value, data.IsKnown, await isSecret.ConfigureAwait(false));
+            }
+            return new Output<T>(this.Resources, GetData());
+        }
+
         private static Output<T> Create(Task<T> value, bool isSecret)
         {
             if (value == null)

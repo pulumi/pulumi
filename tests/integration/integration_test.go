@@ -1078,7 +1078,7 @@ func TestStackReferenceNodeJS(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir:          "stack_reference",
+		Dir:          filepath.Join("stack_reference", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		Config: map[string]string{
@@ -1116,7 +1116,8 @@ func TestStackReferencePython(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
-func TestStackReferenceDotNet(t *testing.T) {
+// Tests that stack references work in .NET.
+func TestStackReferenceDotnet(t *testing.T) {
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -1127,6 +1128,16 @@ func TestStackReferenceDotNet(t *testing.T) {
 		Quick:        true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -1218,7 +1229,7 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 	})
 }
 
-func TestStackReferenceSecrets(t *testing.T) {
+func TestStackReferenceSecretsNodejs(t *testing.T) {
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -1227,7 +1238,7 @@ func TestStackReferenceSecrets(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          path.Join(d, "step1"),
+		Dir:          path.Join(d, "nodejs", "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Config: map[string]string{
 			"org": owner,
@@ -1235,7 +1246,40 @@ func TestStackReferenceSecrets(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:             path.Join(d, "step2"),
+				Dir:             path.Join(d, "nodejs", "step2"),
+				Additive:        true,
+				ExpectNoChanges: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					_, isString := stackInfo.Outputs["refNormal"].(string)
+					assert.Truef(t, isString, "referenced non-secret output was not a string")
+
+					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
+					assert.Truef(t, ok, "secret output was not serialized as a secret")
+					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+				},
+			},
+		},
+	})
+}
+
+func TestStackReferenceSecretsDotnet(t *testing.T) {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	d := "stack_reference_secrets"
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          path.Join(d, "dotnet", "step1"),
+		Dependencies: []string{"Pulumi"},
+		Config: map[string]string{
+			"org": owner,
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             path.Join(d, "dotnet", "step2"),
 				Additive:        true,
 				ExpectNoChanges: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
