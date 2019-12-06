@@ -2,7 +2,6 @@
 
 using System.Text.Json;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
 using Xunit;
 
@@ -34,26 +33,26 @@ namespace Pulumi.Tests.Serialization
             public Input<SimpleResourceArgs1>? V { get; set; }
         }
 
-        private async Task Test(object args)
+        private async Task Test(object args, string expected)
         {
             var serialized = await SerializeToValueAsync(args);
             var converted = Converter.ConvertValue<JsonElement>("", serialized);
-            var s = converted.Value.GetProperty("v").GetProperty("s").GetString();
-            Assert.Equal("value", s);
+            var value = converted.Value.GetProperty("v").GetProperty("s").GetString();
+            Assert.Equal(expected, value);
         }
 
         [Fact]
         public async Task InvokeArgs()
         {
-            var args = new ComplexInvokeArgs1 { V = new SimpleInvokeArgs1 { S = "value" } };
-            await Test(args);
+            var args = new ComplexInvokeArgs1 { V = new SimpleInvokeArgs1 { S = "value1" } };
+            await Test(args, "value1");
         }
 
         [Fact]
         public async Task ResourceArgs()
         {
-            var args = new ComplexResourceArgs1 { V = new SimpleResourceArgs1 { S = "value" } };
-            await Test(args);
+            var args = new ComplexResourceArgs1 { V = new SimpleResourceArgs1 { S = "value2" } };
+            await Test(args, "value2");
         }
     }
 }
