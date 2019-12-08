@@ -56,10 +56,9 @@ func TestPulumiContainerImages(t *testing.T) {
 	}
 	e.DeleteEnvironment()
 
-	// TODO[pulumi/actions/issues/19]: Update container to include .NET runtime.
-	// t.Run("dotnet", func(t *testing.T) {
-	// 	testRuntimeWorksInContainer(t, "dotnet", pulumiContainerToTest)
-	// })
+	t.Run("dotnet", func(t *testing.T) {
+		testRuntimeWorksInContainer(t, "dotnet", pulumiContainerToTest)
+	})
 
 	t.Run("nodejs", func(t *testing.T) {
 		testRuntimeWorksInContainer(t, "nodejs", pulumiContainerToTest)

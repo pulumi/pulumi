@@ -15,6 +15,7 @@ RUN apt-get update -y && \
     git \
     gnupg \
     software-properties-common \
+    wget \
   && \
   # Get all of the signatures we need all at once
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
@@ -45,6 +46,16 @@ RUN apt-get update -y && \
   pip install awscli --upgrade && \
   # Clean up the lists work
   rm -rf /var/lib/apt/lists/*
+
+# Install .NET Core SDK
+RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsoft-prod.deb \
+      -O packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb && \
+    apt-get update -y && \
+    apt-get install -y \
+      apt-transport-https \
+      dotnet-sdk-3.1
 
 # Install Helm
 RUN curl -L https://git.io/get_helm.sh | bash
