@@ -777,7 +777,7 @@ export const Output: OutputConstructor = <any>OutputImpl;
 export type Lifted<T> =
     // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
     // members to Output<T>, we just return `{}` which will leave it untouched.
-    T extends Resource ? {} :
+    //
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
     T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
     T extends Array<infer U> ? LiftedArray<U> :
