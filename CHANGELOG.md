@@ -17,6 +17,22 @@ CHANGELOG
 
 ## 1.6.0 (2019-11-20)
 
+- A Pulumi JavaScript/TypeScript app can now consist of a single exported top level function. i.e.:
+
+```ts
+module.exports = async () => {
+}
+
+//
+
+export = async () => {
+
+}
+```
+
+  This allows for an easy approach to create a Pulumi app that needs to perform async/await
+  operations at the top-level of the program.
+
 - Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
 
 - Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
@@ -29,7 +45,7 @@ CHANGELOG
   better estimate the state of a resource after an update, including property values that were populated using defaults
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
-  
+
 - Validate StackName when passing a non-default secrets provider to `pulumi stack init`
 
 - Add support for go1.13.x
