@@ -11,7 +11,7 @@ module.exports = async () => {
 
 //
 
-export default async () => {
+export = async () => {
 
 }
 ```
