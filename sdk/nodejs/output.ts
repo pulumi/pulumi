@@ -775,9 +775,6 @@ export const Output: OutputConstructor = <any>OutputImpl;
  * ```
  */
 export type Lifted<T> =
-    // Output<T> is an intersection type with 'Lifted<T>'.  So, when we don't want to add any
-    // members to Output<T>, we just return `{}` which will leave it untouched.
-    T extends Resource ? {} :
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
     T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
     T extends Array<infer U> ? LiftedArray<U> :
@@ -789,7 +786,8 @@ type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? nev
 // Lift up all the non-function properties.  If it was optional before, keep it optional after.
 // If it's require before, keep it required afterwards.
 export type LiftedObject<T, K extends keyof T> = {
-    [P in K]: Output<T[P]>
+    [P in K]: T[P] extends OutputInstance<infer T1> ? Output<T1> :
+              T[P] extends Promise<infer T2> ? Output<T2> : Output<T[P]>
 };
 
 export type LiftedArray<T> = {
