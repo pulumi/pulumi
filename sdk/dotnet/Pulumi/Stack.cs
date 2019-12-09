@@ -3,18 +3,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Pulumi
 {
     /// <summary>
-    /// Stack is the root resource for a Pulumi stack. Before invoking the <c>init</c> callback, it
-    /// registers itself as the root resource with the Pulumi engine.
-    /// 
-    /// An instance of this will be automatically created when any <see
-    /// cref="Deployment.RunAsync(Action)"/> overload is called.
+    /// Stack is the root resource for a Pulumi stack. Derive from this class to create your
+    /// stack definitions.
     /// </summary>
-    internal sealed class Stack : ComponentResource
+    public class Stack : ComponentResource
     {
         /// <summary>
         /// Constant to represent the 'root stack' resource for a Pulumi application.  The purpose
@@ -31,7 +30,7 @@ namespace Pulumi
         /// may look a bit confusing and may incorrectly look like something that could be removed
         /// without changing semantics.
         /// </summary>
-        public static readonly Resource? Root = null;
+        internal static readonly Resource? Root = null;
 
         /// <summary>
         /// <see cref="_rootPulumiStackTypeName"/> is the type name that should be used to construct
@@ -44,14 +43,25 @@ namespace Pulumi
         /// <summary>
         /// The outputs of this stack, if the <c>init</c> callback exited normally.
         /// </summary>
-        public readonly Output<IDictionary<string, object?>> Outputs =
+        internal Output<IDictionary<string, object?>> Outputs =
             Output.Create<IDictionary<string, object?>>(ImmutableDictionary<string, object?>.Empty);
 
-        internal Stack(Func<Task<IDictionary<string, object?>>> init)
+        /// <summary>
+        /// Create a Stack with stack resources defined in derived class constructor.
+        /// </summary>
+        public Stack()
             : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
         {
             Deployment.InternalInstance.Stack = this;
+        }
 
+        /// <summary>
+        /// Create a Stack with stack resources created by the <c>init</c> callback.
+        /// An instance of this will be automatically created when any <see
+        /// cref="Deployment.RunAsync(Action)"/> overload is called.
+        /// </summary>
+        internal Stack(Func<Task<IDictionary<string, object?>>> init) : this()
+        {
             try
             {
                 this.Outputs = Output.Create(RunInitAsync(init));
@@ -62,12 +72,24 @@ namespace Pulumi
             }
         }
 
+        /// <summary>
+        /// Register each public property of type <see cref="Output{T}"/> as a stack output.
+        /// Called by <see cref="Deployment.RunAsync{T}()"/> overload.
+        /// </summary>
+        internal void RegisterPropertyOutputs()
+        {
+            var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                        let propertyType = property.PropertyType
+                        where propertyType.GetGenericTypeDefinition() == typeof(Output<>)
+                        select new KeyValuePair<string, object?>(property.Name, property.GetValue(this));
+
+            IDictionary<string, object?> outputs = new Dictionary<string, object?>(query);
+            this.Outputs = Output.Create(outputs);
+            this.RegisterOutputs(this.Outputs);
+        }
+
         private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
         {
-            // Ensure we are known as the root resource.  This is needed before we execute any user
-            // code as many codepaths will request the root resource.
-            await Deployment.InternalInstance.SetRootResourceAsync(this).ConfigureAwait(false);
-
             var dictionary = await init().ConfigureAwait(false);
             return dictionary == null
                 ? ImmutableDictionary<string, object?>.Empty

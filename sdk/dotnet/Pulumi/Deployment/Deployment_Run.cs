@@ -36,7 +36,7 @@ namespace Pulumi
         /// static Task&lt;int&gt; Main(string[] args)
         /// {
         ///     // program initialization code ...
-        ///     
+        ///
         ///     return Deployment.Run(async () =>
         ///     {
         ///         // Code that creates resources.
@@ -56,6 +56,12 @@ namespace Pulumi
         /// in this dictionary will become the outputs for the Pulumi Stack that is created.
         /// </summary>
         public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
+            => CreateRunner().RunAsync(func);
+
+        public static Task<int> RunAsync<T>() where T : Stack, new()
+            => CreateRunner().RunAsync<T>();
+
+        private static IRunner CreateRunner()
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
@@ -68,7 +74,7 @@ namespace Pulumi
             Serilog.Log.Debug("Creating new Deployment.");
             var deployment = new Deployment();
             Instance = deployment;
-            return deployment._runner.RunAsync(func);
+            return deployment._runner;
         }
     }
 }
