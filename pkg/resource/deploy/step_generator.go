@@ -321,6 +321,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			Type:       new.Type,
 			Name:       new.URN.Name(),
 			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Parent:                  new.Parent,
+				Protect:                 new.Protect,
+				Dependencies:            new.Dependencies,
+				Provider:                new.Provider,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.Aliases,
+				CustomTimeouts:          new.CustomTimeouts,
+			},
 		}
 		diagnostics, err := analyzer.Analyze(r)
 		if err != nil {
@@ -1251,6 +1260,15 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
 			// to verify the final stack is in a compliant state.
 			Properties: v.Outputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Parent:                  v.Parent,
+				Protect:                 v.Protect,
+				Dependencies:            v.Dependencies,
+				Provider:                v.Provider,
+				AdditionalSecretOutputs: v.AdditionalSecretOutputs,
+				Aliases:                 v.Aliases,
+				CustomTimeouts:          v.CustomTimeouts,
+			},
 		})
 	}
 

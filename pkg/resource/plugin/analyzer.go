@@ -49,6 +49,18 @@ type AnalyzerResource struct {
 	Type       tokens.Type
 	Name       tokens.QName
 	Properties resource.PropertyMap
+	Options    AnalyzerResourceOptions
+}
+
+// AnalyzerResourceOptions mirrors resource options sent to the analyzer.
+type AnalyzerResourceOptions struct {
+	Parent                  resource.URN            // an optional parent URN for this resource.
+	Protect                 bool                    // true to protect this resource from deletion.
+	Dependencies            []resource.URN          // dependencies of this resource object.
+	Provider                string                  // the provider to use for this resource.
+	AdditionalSecretOutputs []resource.PropertyKey  // outputs that should always be treated as secrets.
+	Aliases                 []resource.URN          // additional URNs that should be aliased to this resource.
+	CustomTimeouts          resource.CustomTimeouts // an optional config object for resource options
 }
 
 // AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason

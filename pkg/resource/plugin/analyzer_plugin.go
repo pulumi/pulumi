@@ -147,6 +147,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		Type:       string(t),
 		Name:       string(name),
 		Properties: mprops,
+		Options:    convertResourceOptions(r.Options),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -180,6 +181,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 			Type:       string(resource.Type),
 			Name:       string(resource.Name),
 			Properties: props,
+			Options:    convertResourceOptions(resource.Options),
 		}
 	}
 
@@ -275,6 +277,38 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+func convertResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
+	secs := make([]string, len(opts.AdditionalSecretOutputs))
+	for idx := range opts.AdditionalSecretOutputs {
+		secs[idx] = string(opts.AdditionalSecretOutputs[idx])
+	}
+
+	result := &pulumirpc.AnalyzerResourceOptions{
+		Parent:                  string(opts.Parent),
+		Protect:                 opts.Protect,
+		Dependencies:            convertURNs(opts.Dependencies),
+		Provider:                opts.Provider,
+		AdditionalSecretOutputs: secs,
+		Aliases:                 convertURNs(opts.Aliases),
+	}
+	if opts.CustomTimeouts.IsNotEmpty() {
+		result.CustomTimeouts = &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
+			Create: opts.CustomTimeouts.Create,
+			Update: opts.CustomTimeouts.Update,
+			Delete: opts.CustomTimeouts.Delete,
+		}
+	}
+	return result
+}
+
+func convertURNs(urns []resource.URN) []string {
+	result := make([]string, len(urns))
+	for idx := range urns {
+		result[idx] = string(urns[idx])
+	}
+	return result
 }
 
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {

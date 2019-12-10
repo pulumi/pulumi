@@ -23,7 +23,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"f\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\"h\n\x10\x41nalyzerResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\"E\n\x13\x41nalyzeStackRequest\x12.\n\tresources\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.AnalyzerResource\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xd2\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x0b\n\x03urn\x18\x08 \x01(\t\"Z\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\"\x8c\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel*/\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x32\xa4\x02\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x9b\x01\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\"\x9d\x01\n\x10\x41nalyzerResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\"\xa1\x02\n\x17\x41nalyzerResourceOptions\x12\x0e\n\x06parent\x18\x01 \x01(\t\x12\x0f\n\x07protect\x18\x02 \x01(\x08\x12\x14\n\x0c\x64\x65pendencies\x18\x03 \x03(\t\x12\x10\n\x08provider\x18\x04 \x01(\t\x12\x1f\n\x17\x61\x64\x64itionalSecretOutputs\x18\x05 \x03(\t\x12\x0f\n\x07\x61liases\x18\x06 \x03(\t\x12I\n\x0e\x63ustomTimeouts\x18\x07 \x01(\x0b\x32\x31.pulumirpc.AnalyzerResourceOptions.CustomTimeouts\x1a@\n\x0e\x43ustomTimeouts\x12\x0e\n\x06\x63reate\x18\x01 \x01(\x01\x12\x0e\n\x06update\x18\x02 \x01(\x01\x12\x0e\n\x06\x64\x65lete\x18\x03 \x01(\x01\"E\n\x13\x41nalyzeStackRequest\x12.\n\tresources\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.AnalyzerResource\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xd2\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x0b\n\x03urn\x18\x08 \x01(\t\"Z\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\"\x8c\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel*/\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x32\xa4\x02\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 
@@ -44,8 +44,8 @@ _ENFORCEMENTLEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=901,
-  serialized_end=948,
+  serialized_start=1301,
+  serialized_end=1348,
 )
 _sym_db.RegisterEnumDescriptor(_ENFORCEMENTLEVEL)
 
@@ -90,6 +90,13 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='options', full_name='pulumirpc.AnalyzeRequest.options', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -102,8 +109,8 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=102,
-  serialized_end=204,
+  serialized_start=103,
+  serialized_end=258,
 )
 
 
@@ -142,6 +149,13 @@ _ANALYZERRESOURCE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='options', full_name='pulumirpc.AnalyzerResource.options', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -154,8 +168,125 @@ _ANALYZERRESOURCE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=206,
-  serialized_end=310,
+  serialized_start=261,
+  serialized_end=418,
+)
+
+
+_ANALYZERRESOURCEOPTIONS_CUSTOMTIMEOUTS = _descriptor.Descriptor(
+  name='CustomTimeouts',
+  full_name='pulumirpc.AnalyzerResourceOptions.CustomTimeouts',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='create', full_name='pulumirpc.AnalyzerResourceOptions.CustomTimeouts.create', index=0,
+      number=1, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='update', full_name='pulumirpc.AnalyzerResourceOptions.CustomTimeouts.update', index=1,
+      number=2, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='delete', full_name='pulumirpc.AnalyzerResourceOptions.CustomTimeouts.delete', index=2,
+      number=3, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=646,
+  serialized_end=710,
+)
+
+_ANALYZERRESOURCEOPTIONS = _descriptor.Descriptor(
+  name='AnalyzerResourceOptions',
+  full_name='pulumirpc.AnalyzerResourceOptions',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='parent', full_name='pulumirpc.AnalyzerResourceOptions.parent', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='protect', full_name='pulumirpc.AnalyzerResourceOptions.protect', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dependencies', full_name='pulumirpc.AnalyzerResourceOptions.dependencies', index=2,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='provider', full_name='pulumirpc.AnalyzerResourceOptions.provider', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='additionalSecretOutputs', full_name='pulumirpc.AnalyzerResourceOptions.additionalSecretOutputs', index=4,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='aliases', full_name='pulumirpc.AnalyzerResourceOptions.aliases', index=5,
+      number=6, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='customTimeouts', full_name='pulumirpc.AnalyzerResourceOptions.customTimeouts', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_ANALYZERRESOURCEOPTIONS_CUSTOMTIMEOUTS, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=421,
+  serialized_end=710,
 )
 
 
@@ -185,8 +316,8 @@ _ANALYZESTACKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=312,
-  serialized_end=381,
+  serialized_start=712,
+  serialized_end=781,
 )
 
 
@@ -216,8 +347,8 @@ _ANALYZERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=383,
-  serialized_end=451,
+  serialized_start=783,
+  serialized_end=851,
 )
 
 
@@ -296,8 +427,8 @@ _ANALYZEDIAGNOSTIC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=454,
-  serialized_end=664,
+  serialized_start=854,
+  serialized_end=1064,
 )
 
 
@@ -341,8 +472,8 @@ _ANALYZERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=666,
-  serialized_end=756,
+  serialized_start=1066,
+  serialized_end=1156,
 )
 
 
@@ -400,12 +531,16 @@ _POLICYINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=759,
-  serialized_end=899,
+  serialized_start=1159,
+  serialized_end=1299,
 )
 
 _ANALYZEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_ANALYZEREQUEST.fields_by_name['options'].message_type = _ANALYZERRESOURCEOPTIONS
 _ANALYZERRESOURCE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_ANALYZERRESOURCE.fields_by_name['options'].message_type = _ANALYZERRESOURCEOPTIONS
+_ANALYZERRESOURCEOPTIONS_CUSTOMTIMEOUTS.containing_type = _ANALYZERRESOURCEOPTIONS
+_ANALYZERRESOURCEOPTIONS.fields_by_name['customTimeouts'].message_type = _ANALYZERRESOURCEOPTIONS_CUSTOMTIMEOUTS
 _ANALYZESTACKREQUEST.fields_by_name['resources'].message_type = _ANALYZERRESOURCE
 _ANALYZERESPONSE.fields_by_name['diagnostics'].message_type = _ANALYZEDIAGNOSTIC
 _ANALYZEDIAGNOSTIC.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
@@ -413,6 +548,7 @@ _ANALYZERINFO.fields_by_name['policies'].message_type = _POLICYINFO
 _POLICYINFO.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
 DESCRIPTOR.message_types_by_name['AnalyzeRequest'] = _ANALYZEREQUEST
 DESCRIPTOR.message_types_by_name['AnalyzerResource'] = _ANALYZERRESOURCE
+DESCRIPTOR.message_types_by_name['AnalyzerResourceOptions'] = _ANALYZERRESOURCEOPTIONS
 DESCRIPTOR.message_types_by_name['AnalyzeStackRequest'] = _ANALYZESTACKREQUEST
 DESCRIPTOR.message_types_by_name['AnalyzeResponse'] = _ANALYZERESPONSE
 DESCRIPTOR.message_types_by_name['AnalyzeDiagnostic'] = _ANALYZEDIAGNOSTIC
@@ -434,6 +570,21 @@ AnalyzerResource = _reflection.GeneratedProtocolMessageType('AnalyzerResource', 
   # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerResource)
   ))
 _sym_db.RegisterMessage(AnalyzerResource)
+
+AnalyzerResourceOptions = _reflection.GeneratedProtocolMessageType('AnalyzerResourceOptions', (_message.Message,), dict(
+
+  CustomTimeouts = _reflection.GeneratedProtocolMessageType('CustomTimeouts', (_message.Message,), dict(
+    DESCRIPTOR = _ANALYZERRESOURCEOPTIONS_CUSTOMTIMEOUTS,
+    __module__ = 'analyzer_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerResourceOptions.CustomTimeouts)
+    ))
+  ,
+  DESCRIPTOR = _ANALYZERRESOURCEOPTIONS,
+  __module__ = 'analyzer_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerResourceOptions)
+  ))
+_sym_db.RegisterMessage(AnalyzerResourceOptions)
+_sym_db.RegisterMessage(AnalyzerResourceOptions.CustomTimeouts)
 
 AnalyzeStackRequest = _reflection.GeneratedProtocolMessageType('AnalyzeStackRequest', (_message.Message,), dict(
   DESCRIPTOR = _ANALYZESTACKREQUEST,
@@ -478,8 +629,8 @@ _ANALYZER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=951,
-  serialized_end=1243,
+  serialized_start=1351,
+  serialized_end=1643,
   methods=[
   _descriptor.MethodDescriptor(
     name='Analyze',
