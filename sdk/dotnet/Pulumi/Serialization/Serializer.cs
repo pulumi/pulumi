@@ -84,8 +84,8 @@ namespace Pulumi.Serialization
                 return prop;
             }
 
-            if (prop is ResourceArgs args)
-                return await SerializeResourceArgsAsync(ctx, args).ConfigureAwait(false);
+            if (prop is InputArgs args)
+                return await SerializeInputArgsAsync(ctx, args).ConfigureAwait(false);
 
             if (prop is AssetOrArchive assetOrArchive)
                 return await SerializeAssetOrArchiveAsync(ctx, assetOrArchive).ConfigureAwait(false);
@@ -262,7 +262,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return builder.ToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeResourceArgsAsync(string ctx, ResourceArgs args)
+        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args)
         {
             if (_excessiveDebugOutput)
             {
