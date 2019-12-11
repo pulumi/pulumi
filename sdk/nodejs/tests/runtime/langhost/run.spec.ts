@@ -1118,10 +1118,26 @@ describe("rpc", () => {
                 return { failures: undefined, ret: args };
             },
         },
+        "async_components": {
+            program: path.join(base, "064.async_components"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
+                if (name === "c") {
+                    dependencies = dependencies || [];
+                    dependencies.sort();
+                    // resource 'c' should see resources 'a' and 'b' as dependencies (even though
+                    // they are async constructed by the component)
+                    assert.deepEqual(dependencies, ["test:index:CustResource::a", "test:index:CustResource::b"]);
+                }
+
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
-        // if (casename.indexOf("provider_in_parent_invokes") < 0) {
+        // if (casename.indexOf("async_components") < 0) {
         //     continue;
         // }
 
