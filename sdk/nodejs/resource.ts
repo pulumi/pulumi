@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { util } from "protobufjs";
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource, unknownValue } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
+
+// tslint:disable: variable-name
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -77,14 +78,12 @@ export abstract class Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
-    // tslint:disable-next-line:variable-name
     public readonly __pulumiResource: boolean = true;
 
     /**
      * @internal
      * The optional parent of this resource.
      */
-    // tslint:disable-next-line:variable-name
     public readonly __parentResource: Resource | undefined;
 
     /**
@@ -125,7 +124,6 @@ export abstract class Resource {
      * need to reference the urn of a component resource.  So it's acceptable if that sort of
      * pattern failed in practice.
      */
-    // tslint:disable-next-line:variable-name
     public __childResources: Set<Resource> | undefined;
 
     /**
@@ -138,7 +136,6 @@ export abstract class Resource {
      * @internal
      * When set to true, protect ensures this resource cannot be deleted.
      */
-    // tslint:disable-next-line:variable-name
     private readonly __protect: boolean;
 
     /**
@@ -149,7 +146,6 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
-    // tslint:disable-next-line:variable-name
     __transformations?: ResourceTransformation[];
 
     /**
@@ -160,7 +156,6 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
-    // tslint:disable-next-line:variable-name
     readonly __aliases?: Input<URN>[];
 
     /**
@@ -171,14 +166,12 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
-    // tslint:disable-next-line:variable-name
     private readonly __name?: string;
 
     /**
      * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
-    // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
@@ -642,7 +635,6 @@ export abstract class CustomResource extends Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
-    // tslint:disable-next-line:variable-name
     public readonly __pulumiCustomResource: boolean;
 
     /**
@@ -650,7 +642,6 @@ export abstract class CustomResource extends Resource {
      * Private field containing the type ID for this object. Useful for implementing `isInstance` on
      * classes that inherit from `CustomResource`.
      */
-    // tslint:disable-next-line:variable-name
     public readonly __pulumiType: string;
 
     /**
@@ -702,7 +693,6 @@ export abstract class ProviderResource extends CustomResource {
     private readonly pkg: string;
 
     /** @internal */
-    // tslint:disable-next-line: variable-name
     public __registrationId?: string;
 
     public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
@@ -748,8 +738,19 @@ export class ComponentResource extends Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
-    // tslint:disable-next-line:variable-name
-    public readonly __pulumiComponentResource: boolean;
+    public readonly __pulumiComponentResource = true;
+
+    // A promise that can be used to wait until this component is considered constructed (i.e. all
+    // its initial children have been created).  This value is only set to a real promise when a
+    // component states explicitly that it is async-constructed, otherwise it is 'undefined' (which
+    // is also what the value will be in SxS scenarios).
+    //
+    // This promise can be used internally to ensure that we can walk the tree of children only once
+    // they have actually been created.
+
+    /** @internal */
+    public readonly __isConstructed: Promise<void> | undefined;
+    private __resolveIsConstructed?: () => void;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -771,8 +772,14 @@ export class ComponentResource extends Resource {
      * @param unused [Deprecated].  Component resources do not communicate or store their properties
      *               with the Pulumi engine.
      * @param opts A bag of options that control this resource's behavior.
+     * @param asyncConstructed If this is a component that will construct its children
+     * asynchronously. Components that do this *must* call [registerOutputs] to signal when
+     * construction is complete.  If [registerOutputs] is not called then hangs will occur if
+     * another resource 'dependsOn' this resource.
      */
-    constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, unused?: Inputs,
+                opts: ComponentResourceOptions = {},
+                asyncConstructed: boolean = false) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
@@ -782,7 +789,12 @@ export class ComponentResource extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
-        this.__pulumiComponentResource = true;
+
+        if (asyncConstructed) {
+            this.__isConstructed = new Promise(resolve => {
+                this.__resolveIsConstructed = resolve;
+            });
+        }
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by
@@ -793,6 +805,12 @@ export class ComponentResource extends Resource {
     // quickly as possible (instead of waiting until the entire application completes).
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         registerResourceOutputs(this, outputs || {});
+
+        // If we're an async-constructed component, mark that we're now fully constructed and our
+        // children can be introspected.
+        if (this.__resolveIsConstructed) {
+            this.__resolveIsConstructed();
+        }
     }
 }
 
