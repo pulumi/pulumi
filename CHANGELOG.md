@@ -3,21 +3,20 @@ CHANGELOG
 
 ## 1.7.0 (2019-12-11)
 
-- A Pulumi JavaScript/TypeScript app can now consist of a single exported top level function. i.e.:
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. i.e.:
 
-```ts
-module.exports = async () => {
-}
+  ```ts
+  // JavaScript
+  module.exports = async () => {
+  }
 
-//
+  //TypeScript
+  export = async () => {
+  }
+  ```
 
-export = async () => {
-
-}
-```
-
-  This allows for an easy approach to create a Pulumi app that needs to perform async/await
-  operations at the top-level of the program.
+  This allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
+  operations at the top-level. [#3321](https://github.com/pulumi/pulumi/pull/3321)
 
 ## 1.6.1 (2019-11-26)
 
