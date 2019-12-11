@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 1.7.0 (2019-12-11)
 
 - A Pulumi JavaScript/TypeScript app can now consist of a single exported top level function. i.e.:
 
