@@ -4,7 +4,7 @@ namespace Pulumi
 {
     /// <summary>
     /// Options to help control the behavior of <see cref="IDeployment.InvokeAsync{T}(string,
-    /// ResourceArgs, InvokeOptions)"/>.
+    /// InvokeArgs, InvokeOptions)"/>.
     /// </summary>
     public class InvokeOptions
     {
