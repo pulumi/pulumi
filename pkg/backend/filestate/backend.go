@@ -107,11 +107,16 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
+	p, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
 	blobmux := blob.DefaultURLMux()
 
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
-	if strings.HasPrefix(u, gcsblob.Scheme) {
+	if p.Scheme == gcsblob.Scheme {
 		blobmux, err = GoogleCredentialsMux(context.TODO())
 		if err != nil {
 			return nil, err
@@ -124,10 +129,6 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
-		p, err := url.Parse(u)
-		if err != nil {
-			return nil, err
-		}
 		bucketSubDir := strings.TrimLeft(p.Path, "/")
 		if bucketSubDir != "" {
 			if !strings.HasSuffix(bucketSubDir, "/") {
