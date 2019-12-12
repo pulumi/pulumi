@@ -30,6 +30,8 @@ func newPreviewCmd() *cobra.Command {
 	var expectNop bool
 	var message string
 	var stack string
+	var configArray []string
+	var configPath bool
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -40,6 +42,7 @@ func newPreviewCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showReads bool
 	var suppressOutputs bool
 
 	var cmd = &cobra.Command{
@@ -77,6 +80,7 @@ func newPreviewCmd() *cobra.Command {
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
+					ShowReads:            showReads,
 					SuppressOutputs:      suppressOutputs,
 					IsInteractive:        cmdutil.Interactive(),
 					Type:                 displayType,
@@ -91,7 +95,12 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject(pulumiAppProj)
+			// Save any config values passed via flags.
+			if err := parseAndSaveConfigArray(s, configArray, configPath); err != nil {
+				return result.FromError(err)
+			}
+
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -144,13 +153,19 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the preview")
+	cmd.PersistentFlags().BoolVar(
+		&configPath, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the preview operation")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() {
+	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more analyzers as part of this update")
@@ -170,9 +185,14 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
+
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showReads, "show-reads", false,
+		"Show resources that are being read in, alongside those being managed directly in the stack")
+
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

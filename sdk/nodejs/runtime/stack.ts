@@ -15,8 +15,8 @@
 import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output, secret } from "../output";
-import { ComponentResource, Resource } from "../resource";
-import { getRootResource, isQueryMode, setRootResource } from "./settings";
+import { ComponentResource, Resource, ResourceTransformation } from "../resource";
+import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -25,16 +25,23 @@ import { getRootResource, isQueryMode, setRootResource } from "./settings";
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
+let stackResource: Stack | undefined;
+
+// Get the root stack resource for the current stack deployment
+export function getStackResource(): Stack | undefined {
+    return stackResource;
+}
+
 /**
  * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
  * returned by the callback will be stored as output properties on this resulting Stack object.
  */
-export function runInPulumiStack(init: () => any): Promise<Inputs | undefined> {
+export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | undefined> {
     if (!isQueryMode()) {
         const stack = new Stack(init);
         return stack.outputs.promise();
     } else {
-        return Promise.resolve(init());
+        return init();
     }
 }
 
@@ -48,7 +55,7 @@ class Stack extends ComponentResource {
      */
     public readonly outputs: Output<Inputs | undefined>;
 
-    constructor(init: () => Inputs) {
+    constructor(init: () => Promise<Inputs>) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
         this.outputs = output(this.runInit(init));
     }
@@ -59,16 +66,20 @@ class Stack extends ComponentResource {
      *
      * @param init The callback to run in the context of this Pulumi stack
      */
-    private async runInit(init: () => Inputs): Promise<Inputs | undefined> {
+    private async runInit(init: () => Promise<Inputs>): Promise<Inputs | undefined> {
         const parent = await getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
-
         await setRootResource(this);
+
+        // Set the global reference to the stack resource before invoking this init() function
+        stackResource = this;
+
         let outputs: Inputs | undefined;
         try {
-            outputs = await massage(init(), []);
+            const inputs = await init();
+            outputs = await massage(inputs, []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
@@ -166,7 +177,13 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (Resource.isInstance(prop)) {
         // Emit a resource as a normal pojo.  But filter out all our internal properties so that
         // they don't clutter the display/checkpoint with values not relevant to the application.
-        return serializeAllKeys(n => !n.startsWith("__"));
+        //
+        // In preview only, we mark the POJO with "@isPulumiResource" to indicate that it is derived
+        // from a resource. This allows the engine to perform resource-specific filtering of unknowns
+        // from output diffs during a preview. This filtering is not necessary during an update because
+        // all property values are known.
+        const pojo = await serializeAllKeys(n => !n.startsWith("__"));
+        return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
     }
 
     if (prop instanceof Array) {
@@ -190,4 +207,14 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
 
         return obj;
     }
+}
+
+/**
+ * Add a transformation to all future resources constructed in this Pulumi stack.
+ */
+export function registerStackTransformation(t: ResourceTransformation) {
+    if (!stackResource) {
+        throw new Error("The root stack resource was referenced before it was initialized.");
+    }
+    stackResource.__transformations = [...(stackResource.__transformations || []), t];
 }

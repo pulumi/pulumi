@@ -85,6 +85,12 @@ func (c *Config) GetInt64(key string) int64 {
 	return GetInt64(c.ctx, c.fullKey(key))
 }
 
+// GetObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) GetObject(key string, output interface{}) error {
+	return GetObject(c.ctx, c.fullKey(key), output)
+}
+
 // GetUint loads an optional uint configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetUint(key string) uint {
 	return GetUint(c.ctx, c.fullKey(key))
@@ -155,6 +161,12 @@ func (c *Config) RequireInt64(key string) int64 {
 	return RequireInt64(c.ctx, c.fullKey(key))
 }
 
+// RequireObject loads a required configuration value into the specified output by its key,
+// or panics if unable to do so.
+func (c *Config) RequireObject(key string, output interface{}) {
+	RequireObject(c.ctx, c.fullKey(key), output)
+}
+
 // RequireUint loads a uint configuration value by its key, or panics if it doesn't exist.
 func (c *Config) RequireUint(key string) uint {
 	return RequireUint(c.ctx, c.fullKey(key))
@@ -223,6 +235,12 @@ func (c *Config) TryInt32(key string) (int32, error) {
 // TryInt64 loads an optional int64 configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryInt64(key string) (int64, error) {
 	return TryInt64(c.ctx, c.fullKey(key))
+}
+
+// TryObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) TryObject(key string, output interface{}) error {
+	return TryObject(c.ctx, c.fullKey(key), output)
 }
 
 // TryUint loads an optional uint configuration value by its key, or returns an error if it doesn't exist.

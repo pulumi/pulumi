@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -51,6 +52,7 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	if err != nil {
 		return "", false, errors.Wrapf(err, "could not connect to resource monitor")
 	}
+	defer contract.IgnoreClose(conn)
 
 	// Fire up a resource monitor client
 	resmon := pulumirpc.NewResourceMonitorClient(conn)

@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -141,6 +142,12 @@ func (prov *testProvider) Delete(urn resource.URN,
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
+}
+func (prov *testProvider) StreamInvoke(
+	tok tokens.ModuleMember, args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+
+	return nil, fmt.Errorf("not implemented")
 }
 func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{

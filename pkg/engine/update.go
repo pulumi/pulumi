@@ -43,11 +43,11 @@ type RequiredPolicy interface {
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
-// This structre is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
+// This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
 // nolint: structcheck
 type UpdateOptions struct {
-	// an optional set of paths of policy packs to run as part of this deployment.
+	// LocalPolicyPackPaths contains an optional set of paths to policy packs to run as part of this deployment.
 	LocalPolicyPackPaths []string
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
@@ -61,6 +61,22 @@ type UpdateOptions struct {
 
 	// true if the plan should refresh before executing.
 	Refresh bool
+
+	// Specific resources to refresh during a refresh operation.
+	RefreshTargets []resource.URN
+
+	// Specific resources to replace during an update operation.
+	ReplaceTargets []resource.URN
+
+	// Specific resources to destroy during a destroy operation.
+	DestroyTargets []resource.URN
+
+	// Specific resources to update during an update operation.
+	UpdateTargets []resource.URN
+
+	// true if we're allowing dependent targets to change, even if not specified in one of the above
+	// XXXTargets lists.
+	TargetDependents bool
 
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
@@ -105,6 +121,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	if err != nil {
 		return nil, result.FromError(err)
 	}
+	defer emitter.Close()
+
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
@@ -112,6 +130,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 	}, dryRun)
+}
+
+// RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
+func RunInstallPlugins(
+	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
+	_, _, err := installPlugins(proj, pwd, main, target, plugctx)
+	return err
 }
 
 func installPlugins(
@@ -221,6 +246,14 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		return nil, result.FromError(err)
 	}
 
+	policies := map[string]string{}
+	for _, p := range opts.RequiredPolicies {
+		policies[p.Name()] = p.Version()
+	}
+	for _, path := range opts.LocalPolicyPackPaths {
+		policies[path] = "(local)"
+	}
+
 	var resourceChanges ResourceChanges
 	var res result.Result
 	if planResult != nil {
@@ -235,7 +268,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, res = printPlan(ctx, planResult, dryRun)
+			resourceChanges, res = printPlan(ctx, planResult, dryRun, policies)
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			opts.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
@@ -248,8 +281,10 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			resourceChanges = ResourceChanges(actions.Ops)
 
 			if len(resourceChanges) != 0 {
+
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
+				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start),
+					resourceChanges, policies)
 			}
 		}
 	}
@@ -321,7 +356,7 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(errorURN), err)
+		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
 		if reportStep {
 			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 		}

@@ -168,6 +168,11 @@ func (planResult *planResult) Chdir() (func(), error) {
 func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) result.Result {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
+	// Inject our opentracing span into the context.
+	if planResult.Ctx.TracingSpan != nil {
+		ctx = opentracing.ContextWithSpan(ctx, planResult.Ctx.TracingSpan)
+	}
+
 	done := make(chan bool)
 	var walkResult result.Result
 	go func() {
@@ -176,6 +181,11 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			Parallel:          planResult.Options.Parallel,
 			Refresh:           planResult.Options.Refresh,
 			RefreshOnly:       planResult.Options.isRefresh,
+			RefreshTargets:    planResult.Options.RefreshTargets,
+			ReplaceTargets:    planResult.Options.ReplaceTargets,
+			DestroyTargets:    planResult.Options.DestroyTargets,
+			UpdateTargets:     planResult.Options.UpdateTargets,
+			TargetDependents:  planResult.Options.TargetDependents,
 			TrustDependencies: planResult.Options.trustDependencies,
 			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}
@@ -208,7 +218,9 @@ func (planResult *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChanges, result.Result) {
+func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[string]string,
+) (ResourceChanges, result.Result) {
+
 	planResult.Options.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
@@ -223,7 +235,7 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool) (ResourceChang
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	planResult.Options.Events.previewSummaryEvent(changes)
+	planResult.Options.Events.previewSummaryEvent(changes, policies)
 	return changes, nil
 }
 

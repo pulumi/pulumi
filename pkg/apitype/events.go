@@ -74,6 +74,8 @@ type SummaryEvent struct {
 	// ResourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
 	// which is not exported in this package.
 	ResourceChanges map[string]int `json:"resourceChanges"`
+	// PolicyPacks run during update. Maps PolicyPackName -> version.
+	PolicyPacks map[string]string
 }
 
 // DiffKind describes the kind of a particular property diff.

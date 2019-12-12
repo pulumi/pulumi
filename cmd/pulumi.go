@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -56,6 +59,8 @@ func NewPulumiCmd() *cobra.Command {
 	var profiling string
 	var verbose int
 	var color string
+
+	updateCheckResult := make(chan *diag.Diag)
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -112,13 +117,24 @@ func NewPulumiCmd() *cobra.Command {
 
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
 				logging.Infof("skipping update check")
+				close(updateCheckResult)
 			} else {
-				checkForUpdate()
+				// Run the version check in parallel so that it doesn't block executing the command.
+				// If there is a new version to report, we will do so after the command has finished.
+				go func() {
+					updateCheckResult <- checkForUpdate()
+					close(updateCheckResult)
+				}()
 			}
 
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			// Before exiting, if there is a new version of the CLI available, print it out.
+			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil {
+				cmdutil.Diag().Warningf(checkVersionMsg)
+			}
+
 			logging.Flush()
 			cmdutil.CloseTracing()
 
@@ -127,7 +143,6 @@ func NewPulumiCmd() *cobra.Command {
 					logging.Warningf("could not close profiling: %v", err)
 				}
 			}
-
 		},
 	}
 
@@ -144,7 +159,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
-		"Emit tracing to a Zipkin-compatible tracing endpoint")
+		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
@@ -153,9 +168,9 @@ func NewPulumiCmd() *cobra.Command {
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
-	//     - Getting Started Commands
+	//     - Getting Started Commands:
 	cmd.AddCommand(newNewCmd())
-	//     - Deploy Commands
+	//     - Deploy Commands:
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
@@ -180,11 +195,30 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
+	// We have a set of commands that are still experimental and that we add only when PULUMI_EXPERIMENTAL is set
+	// to true.
+	if hasExperimentalCommands() {
+		//     - Deploy Commands:
+		cmd.AddCommand(newWatchCmd())
+		//     - Query Commands:
+		cmd.AddCommand(newQueryCmd())
+		//     - Policy Management Commands:
+		cmd.AddCommand(newPolicyCmd())
+
+	}
+
 	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")
+		//     - Diagnostic Commands:
+		cmd.AddCommand(newViewTraceCmd())
+
+		// For legacy reasons, we make these two commands available also under PULUMI_DEBUG_COMMANDS, though
+		// PULUMI_EXPERIMENTAL should be preferred.
+
+		//     - Query Commands:
 		cmd.AddCommand(newQueryCmd())
 		//     - Policy Management Commands:
 		cmd.AddCommand(newPolicyCmd())
@@ -195,7 +229,7 @@ func NewPulumiCmd() *cobra.Command {
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate() {
+func checkForUpdate() *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -203,7 +237,7 @@ func checkForUpdate() {
 
 	// We don't care about warning for you to update if you have installed a developer version
 	if isDevVersion(curVer) {
-		return
+		return nil
 	}
 
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
@@ -212,8 +246,10 @@ func checkForUpdate() {
 	}
 
 	if oldestAllowedVer.GT(curVer) {
-		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)))
+		return diag.RawMessage("", getUpgradeMessage(latestVer, curVer))
 	}
+
+	return nil
 }
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
@@ -228,6 +264,15 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
+	}
+
+	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
+	if err != nil {
+		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+	}
+	if isBrew {
+		// When consulting Homebrew for version info, we just use the latest version as the oldest allowed.
+		latest, oldest = brewLatest, brewLatest
 	}
 
 	err = cacheVersionInfo(latest, oldest)
@@ -339,7 +384,7 @@ func getUpgradeCommand() string {
 		return "$ brew upgrade pulumi"
 	}
 
-	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
+	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, workspace.BookkeepingDir, "bin") {
 		return ""
 	}
 
@@ -397,6 +442,49 @@ func isBrewInstall(exe string) (bool, error) {
 
 	brewPrefixExePath := filepath.Join(brewPrefixPath, "bin", "pulumi")
 	return exePath == brewPrefixExePath, nil
+}
+
+func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+
+	isBrew, err := isBrewInstall(exe)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	if !isBrew {
+		return semver.Version{}, false, nil
+	}
+
+	url, err := url.Parse("https://formulae.brew.sh/api/formula/pulumi.json")
+	contract.AssertNoError(err)
+
+	resp, err := httputil.DoWithRetry(&http.Request{
+		Method: http.MethodGet,
+		URL:    url,
+	}, http.DefaultClient)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	defer contract.IgnoreClose(resp.Body)
+
+	type versions struct {
+		Stable string `json:"stable"`
+	}
+	var formula struct {
+		Versions versions `json:"versions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&formula); err != nil {
+		return semver.Version{}, false, err
+	}
+
+	stable, err := semver.ParseTolerant(formula.Versions.Stable)
+	if err != nil {
+		return semver.Version{}, false, err
+	}
+	return stable, true, nil
 }
 
 func isDevVersion(s semver.Version) bool {

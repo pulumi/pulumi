@@ -55,6 +55,8 @@ func ShowEvents(
 	case DisplayQuery:
 		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
 			"directly instead of through ShowEvents")
+	case DisplayWatch:
+		ShowWatchEvents(op, action, events, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}

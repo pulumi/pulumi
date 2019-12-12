@@ -63,7 +63,11 @@ var pluginRPCMaxMessageSize = 1024 * 1024 * 400
 // time.
 var nextStreamID int32
 
-func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
+// errRunPolicyModuleNotFound is returned when we determine that the plugin failed to load because
+// the stack's Pulumi SDK did not have the required modules. i.e. is too old.
+var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy as code")
+
+func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -76,7 +80,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, ctx.Pwd)
+	plug, err := execPlugin(bin, args, pwd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -93,6 +97,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	errStreamID := atomic.AddInt32(&nextStreamID, 1)
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
+	var sawPolicyModuleNotFoundErr bool
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
 
@@ -100,6 +105,15 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 			msg, readerr := reader.ReadString('\n')
 			if readerr != nil {
 				break
+			}
+
+			// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
+			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
+			//
+			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
+			// is a well-known problem and return a better error as appropriate.
+			if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
+				sawPolicyModuleNotFoundErr = true
 			}
 
 			if strings.TrimSpace(msg) != "" {
@@ -127,7 +141,14 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
 			killerr := plug.Proc.Kill()
-			contract.IgnoreError(killerr) // we are ignoring because the readerr trumps it.
+			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
+
+			// If from the output we have seen, return a specific error if possible.
+			if sawPolicyModuleNotFoundErr {
+				return nil, errRunPolicyModuleNotFound
+			}
+
+			// Fall back to a generic, opaque error.
 			if port == "" {
 				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
 			}
@@ -221,8 +242,8 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 			args = append(args, "-v="+strconv.Itoa(logging.Verbose))
 		}
 	}
-	// Always flow tracing settings.
-	if cmdutil.TracingEndpoint != "" {
+	// Flow tracing settings if we are using a remote collector.
+	if cmdutil.TracingEndpoint != "" && !cmdutil.TracingToFile {
 		args = append(args, "--tracing", cmdutil.TracingEndpoint)
 	}
 	args = append(args, pluginArgs...)
@@ -249,8 +270,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 
 func (p *plugin) Close() error {
 	if p.Conn != nil {
-		closerr := p.Conn.Close()
-		contract.IgnoreError(closerr)
+		contract.IgnoreClose(p.Conn)
 	}
 
 	var result error

@@ -15,6 +15,8 @@
 package deploytest
 
 import (
+	"fmt"
+
 	"github.com/blang/semver"
 	uuid "github.com/satori/go.uuid"
 
@@ -30,6 +32,7 @@ type Provider struct {
 	Package tokens.Package
 	Version semver.Version
 
+	Config     resource.PropertyMap
 	configured bool
 
 	CheckConfigF func(urn resource.URN, olds,
@@ -97,6 +100,7 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 	prov.configured = true
 
 	if prov.ConfigureF == nil {
+		prov.Config = inputs
 		return nil
 	}
 	return prov.ConfigureF(inputs)
@@ -154,4 +158,11 @@ func (prov *Provider) Invoke(tok tokens.ModuleMember,
 		return resource.PropertyMap{}, nil, nil
 	}
 	return prov.InvokeF(tok, args)
+}
+
+func (prov *Provider) StreamInvoke(
+	tok tokens.ModuleMember, args resource.PropertyMap,
+	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+
+	return nil, fmt.Errorf("not implemented")
 }

@@ -56,7 +56,7 @@ func newStackSelectCmd() *cobra.Command {
 
 			if stack != "" {
 				// A stack was given, ask the backend about it
-				stackRef, stackErr := b.ParseStackReference(args[0])
+				stackRef, stackErr := b.ParseStackReference(stack)
 				if stackErr != nil {
 					return stackErr
 				}

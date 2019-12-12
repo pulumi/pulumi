@@ -319,10 +319,15 @@ type SecretV1 struct {
 
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
-	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
+	// When Object is false: String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext
+	// (for secrets). When Object is true: String is a JSON encoded object. If both Object and Secret are true, then the
+	// object contains at least one secure value. Secure values in an object are encoded as `{"secure":"ciphertext"}`
+	// where ciphertext is the base64-encoded ciphertext.
 	String string `json:"string"`
 	// Secret is true if this value is a secret and false otherwise.
 	Secret bool `json:"secret"`
+	// Object is true if this value is a JSON encoded object.
+	Object bool `json:"object"`
 }
 
 // StackTagName is the key for the tags bag in stack. This is just a string, but we use a type alias to provide a richer
@@ -361,7 +366,6 @@ type Stack struct {
 	StackName   tokens.QName `json:"stackName"`
 
 	ActiveUpdate string                  `json:"activeUpdate"`
-	Resources    []ResourceV1            `json:"resources,omitempty"`
 	Tags         map[StackTagName]string `json:"tags,omitempty"`
 
 	Version int `json:"version"`

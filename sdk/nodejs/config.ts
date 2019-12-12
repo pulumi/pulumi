@@ -325,7 +325,7 @@ export class Config {
 /**
  * StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
  */
-interface StringConfigOptions<K extends string = string> {
+export interface StringConfigOptions<K extends string = string> {
     /**
      * The legal enum values. If it does not match, a ConfigEnumError is thrown.
      */
@@ -347,7 +347,7 @@ interface StringConfigOptions<K extends string = string> {
 /**
  * NumberConfigOptions may be used to constrain the set of legal values a number config value may contain.
  */
-interface NumberConfigOptions {
+export interface NumberConfigOptions {
     /**
      * The minimum number value, inclusive. If the number is less than this, a ConfigRangeError is thrown.
      */

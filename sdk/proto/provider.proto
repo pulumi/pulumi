@@ -33,6 +33,10 @@ service ResourceProvider {
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
 
+    // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
+    // of responses.
+    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
     // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
     // inputs returned by a call to Check should preserve the original representation of the properties as present in

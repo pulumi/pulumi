@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
 )
@@ -13,16 +14,49 @@ func main() {
 		// Just test that basic config works.
 		cfg := config.New(ctx, "config_basic_go")
 
-		// This value is plaintext and doesn't require encryption.
-		value := cfg.Require("aConfigValue")
-		if value != "this value is a value" {
-			return fmt.Errorf("aConfigValue not the expected value; got %s", value)
+		tests := []struct {
+			Key      string
+			Expected string
+		}{
+			{
+				Key:      "aConfigValue",
+				Expected: `this value is a value`,
+			},
+			{
+				Key:      "bEncryptedSecret",
+				Expected: `this super secret is encrypted`,
+			},
+			{
+				Key:      "outer",
+				Expected: `{"inner":"value"}`,
+			},
+			{
+				Key:      "names",
+				Expected: `["a","b","c","super secret name"]`,
+			},
+			{
+				Key:      "servers",
+				Expected: `[{"host":"example","port":80}]`,
+			},
+			{
+				Key:      "a",
+				Expected: `{"b":[{"c":true},{"c":false}]}`,
+			},
+			{
+				Key:      "tokens",
+				Expected: `["shh"]`,
+			},
+			{
+				Key:      "foo",
+				Expected: `{"bar":"don't tell"}`,
+			},
 		}
 
-		// This value is a secret and is encrypted using the passphrase `supersecret`.
-		secret := cfg.Require("bEncryptedSecret")
-		if secret != "this super secret is encrypted" {
-			return fmt.Errorf("bEncryptedSecret not the expected value; got %s", secret)
+		for _, test := range tests {
+			value := cfg.Require(test.Key)
+			if value != test.Expected {
+				return fmt.Errorf("%q not the expected value; got %q", test.Key, value)
+			}
 		}
 
 		return nil

@@ -26,6 +26,8 @@ const (
 	DisplayDiff
 	// DisplayQuery displays query output.
 	DisplayQuery
+	// DisplayQuery displays query output.
+	DisplayWatch
 )
 
 // Options controls how the output of events are rendered
@@ -34,6 +36,7 @@ type Options struct {
 	ShowConfig           bool                // true if we should show configuration information.
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
+	ShowReads            bool                // true to show resources that are being read in
 	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SummaryDiff          bool                // true if diff display should be summarized.
 	IsInteractive        bool                // true if we should display things interactively.

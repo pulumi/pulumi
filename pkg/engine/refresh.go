@@ -39,6 +39,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	if err != nil {
 		return nil, result.FromError(err)
 	}
+	defer emitter.Close()
 
 	// Force opts.Refresh to true.
 	opts.Refresh = true

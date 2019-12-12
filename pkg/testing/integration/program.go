@@ -57,6 +57,7 @@ import (
 const PythonRuntime = "python"
 const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
+const DotNetRuntime = "dotnet"
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -123,6 +124,18 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
+// ConfigValue is used to provide config values to a test program.
+type ConfigValue struct {
+	// The config key to pass to `pulumi config`.
+	Key string
+	// The config value to pass to `pulumi config`.
+	Value string
+	// Secret indicates that the `--secret` flag should be specified when calling `pulumi config`.
+	Secret bool
+	// Path indicates that the `--path` flag should be specified when calling `pulumi config`.
+	Path bool
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -132,10 +145,12 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
-	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"})
+	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Config map[string]string
-	// Map of secure config keys and values to set on the stack (e.g. {"aws:region": "us-east-2"})
+	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Secrets map[string]string
+	// List of config keys and values to set in order, including Secret and Path options.
+	OrderedConfig []ConfigValue
 	// SecretsProvider is the optional custom secrets provider to use instead of the default.
 	SecretsProvider string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
@@ -158,6 +173,9 @@ type ProgramTestOptions struct {
 	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
 	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
 	ExpectRefreshChanges bool
+	// RetryFailedSteps indicates that failed updates, refreshes, and destroys should be retried after a brief
+	// intermission. A maximum of 3 retries will be attempted.
+	RetryFailedSteps bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
@@ -219,6 +237,8 @@ type ProgramTestOptions struct {
 	GoBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
+	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
+	DotNetBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -313,11 +333,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
-	if overrides.CloudURL != "" {
-		opts.CloudURL = overrides.CloudURL
-	}
-	if overrides.Tracing != "" {
-		opts.Tracing = overrides.Tracing
+	if overrides.SecretsProvider != "" {
+		opts.SecretsProvider = overrides.SecretsProvider
 	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
@@ -328,11 +345,11 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.RelativeWorkDir != "" {
 		opts.RelativeWorkDir = overrides.RelativeWorkDir
 	}
-	if overrides.ReportStats != nil {
-		opts.ReportStats = overrides.ReportStats
+	if overrides.AllowEmptyPreviewChanges {
+		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
 	}
-	if overrides.RunBuild {
-		opts.RunBuild = overrides.RunBuild
+	if overrides.AllowEmptyUpdateChanges {
+		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
 	}
 	if overrides.ExpectFailure {
 		opts.ExpectFailure = overrides.ExpectFailure
@@ -346,14 +363,50 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
-	if overrides.AllowEmptyPreviewChanges {
-		opts.AllowEmptyPreviewChanges = overrides.AllowEmptyPreviewChanges
+	if overrides.Quick {
+		opts.Quick = overrides.Quick
 	}
-	if overrides.AllowEmptyUpdateChanges {
-		opts.AllowEmptyUpdateChanges = overrides.AllowEmptyUpdateChanges
+	if overrides.PreviewCommandlineFlags != nil {
+		opts.PreviewCommandlineFlags = append(opts.PreviewCommandlineFlags, overrides.PreviewCommandlineFlags...)
 	}
-	if overrides.Bin != "" {
-		opts.Bin = overrides.Bin
+	if overrides.UpdateCommandlineFlags != nil {
+		opts.UpdateCommandlineFlags = append(opts.UpdateCommandlineFlags, overrides.UpdateCommandlineFlags...)
+	}
+	if overrides.QueryCommandlineFlags != nil {
+		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
+	}
+	if overrides.RunBuild {
+		opts.RunBuild = overrides.RunBuild
+	}
+	if overrides.RunUpdateTest {
+		opts.RunUpdateTest = overrides.RunUpdateTest
+	}
+	if overrides.CloudURL != "" {
+		opts.CloudURL = overrides.CloudURL
+	}
+	if overrides.StackName != "" {
+		opts.StackName = overrides.StackName
+	}
+	if overrides.Tracing != "" {
+		opts.Tracing = overrides.Tracing
+	}
+	if overrides.NoParallel {
+		opts.NoParallel = overrides.NoParallel
+	}
+	if overrides.PrePulumiCommand != nil {
+		opts.PrePulumiCommand = overrides.PrePulumiCommand
+	}
+	if overrides.ReportStats != nil {
+		opts.ReportStats = overrides.ReportStats
+	}
+	if overrides.Stdout != nil {
+		opts.Stdout = overrides.Stdout
+	}
+	if overrides.Stderr != nil {
+		opts.Stderr = overrides.Stderr
+	}
+	if overrides.Verbose {
+		opts.Verbose = overrides.Verbose
 	}
 	if overrides.DebugLogLevel != 0 {
 		opts.DebugLogLevel = overrides.DebugLogLevel
@@ -361,11 +414,20 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.DebugUpdates {
 		opts.DebugUpdates = overrides.DebugUpdates
 	}
+	if overrides.Bin != "" {
+		opts.Bin = overrides.Bin
+	}
+	if overrides.YarnBin != "" {
+		opts.YarnBin = overrides.YarnBin
+	}
+	if overrides.GoBin != "" {
+		opts.GoBin = overrides.GoBin
+	}
+	if overrides.PipenvBin != "" {
+		opts.PipenvBin = overrides.PipenvBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
-	}
-	if overrides.RunUpdateTest {
-		opts.RunUpdateTest = overrides.RunUpdateTest
 	}
 	return opts
 }
@@ -527,21 +589,28 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 
 // programTester contains state associated with running a single test pass.
 type programTester struct {
-	t         *testing.T          // the Go tester for this run.
-	opts      *ProgramTestOptions // options that control this test run.
-	bin       string              // the `pulumi` binary we are using.
-	yarnBin   string              // the `yarn` binary we are using.
-	goBin     string              // the `go` binary we are using.
-	pipenvBin string              // The `pipenv` binary we are using.
-	eventLog  string              // The path to the event log for this test.
+	t            *testing.T          // the Go tester for this run.
+	opts         *ProgramTestOptions // options that control this test run.
+	bin          string              // the `pulumi` binary we are using.
+	yarnBin      string              // the `yarn` binary we are using.
+	goBin        string              // the `go` binary we are using.
+	pipenvBin    string              // The `pipenv` binary we are using.
+	dotNetBin    string              // the `dotnet` binary we are using.
+	eventLog     string              // The path to the event log for this test.
+	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	stackName := opts.GetStackName()
+	maxStepTries := 1
+	if opts.RetryFailedSteps {
+		maxStepTries = 3
+	}
 	return &programTester{
-		t:        t,
-		opts:     opts,
-		eventLog: path.Join(os.TempDir(), string(stackName)+"-events.json"),
+		t:            t,
+		opts:         opts,
+		eventLog:     path.Join(os.TempDir(), string(stackName)+"-events.json"),
+		maxStepTries: maxStepTries,
 	}
 }
 
@@ -560,6 +629,10 @@ func (pt *programTester) getGoBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *programTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+func (pt *programTester) getDotNetBin() (string, error) {
+	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -602,7 +675,7 @@ func (pt *programTester) runCommand(name string, args []string, wd string) error
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
 
-func (pt *programTester) runPulumiCommand(name string, args []string, wd string) error {
+func (pt *programTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
 	cmd, err := pt.pulumiCmd(args)
 	if err != nil {
 		return err
@@ -616,11 +689,13 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		}
 	}
 
+	isUpdate := args[0] == "preview" || args[0] == "up" || args[0] == "destroy" || args[0] == "refresh"
+
 	// If we're doing a preview or an update and this project is a Python project, we need to run
 	// the command in the context of the virtual environment that Pipenv created in order to pick up
 	// the correct version of Python.  We also need to do this for destroy and refresh so that
 	// dynamic providers are run in the right virtual environment.
-	if args[0] == "preview" || args[0] == "up" || args[0] == "destroy" || args[0] == "refresh" {
+	if isUpdate {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil
@@ -638,13 +713,31 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		}
 	}
 
-	runErr := pt.runCommand(name, cmd, wd)
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok && isUpdate && !expectFailure {
+				// the update command failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= pt.maxStepTries {
+					return false, nil, errors.Errorf("%v did not succeed after %v tries", cmd, try+1)
+				}
+
+				pt.t.Logf("%v failed: %v; retrying...", cmd, runerr)
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
 	if postFn != nil {
-		if postErr := postFn(runErr); postErr != nil {
-			return multierror.Append(runErr, postErr)
+		if postErr := postFn(err); postErr != nil {
+			return multierror.Append(err, postErr)
 		}
 	}
-	return runErr
+	return err
 }
 
 func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
@@ -660,8 +753,8 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 				return true, nil, nil
 			} else if _, ok := runerr.(*exec.ExitError); ok {
 				// yarn failed, let's try again, assuming we haven't failed a few times.
-				if try > 3 {
-					return false, nil, errors.Errorf("%v did not complete after %v tries", cmd, try)
+				if try+1 >= 3 {
+					return false, nil, errors.Errorf("%v did not complete after %v tries", cmd, try+1)
 				}
 
 				return false, nil, nil
@@ -845,7 +938,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 			stackInitName = string(pt.opts.GetStackName())
 		}
 
-		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir); err != nil {
+		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir, false); err != nil {
 			return err
 		}
 	}
@@ -855,20 +948,33 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	if pt.opts.SecretsProvider != "" {
 		stackInitArgs = append(stackInitArgs, "--secrets-provider", pt.opts.SecretsProvider)
 	}
-	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
+	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir, false); err != nil {
 		return err
 	}
 
 	for key, value := range pt.opts.Config {
 		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", key, value}, dir); err != nil {
+			[]string{"config", "set", key, value}, dir, false); err != nil {
 			return err
 		}
 	}
 
 	for key, value := range pt.opts.Secrets {
 		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", "--secret", key, value}, dir); err != nil {
+			[]string{"config", "set", "--secret", key, value}, dir, false); err != nil {
+			return err
+		}
+	}
+
+	for _, cv := range pt.opts.OrderedConfig {
+		configArgs := []string{"config", "set", cv.Key, cv.Value}
+		if cv.Secret {
+			configArgs = append(configArgs, "--secret")
+		}
+		if cv.Path {
+			configArgs = append(configArgs, "--path")
+		}
+		if err := pt.runPulumiCommand("pulumi-config", configArgs, dir, false); err != nil {
 			return err
 		}
 	}
@@ -883,7 +989,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
-	if err := pt.runPulumiCommand("pulumi-destroy", destroy, dir); err != nil {
+	if err := pt.runPulumiCommand("pulumi-destroy", destroy, dir, false); err != nil {
 		return err
 	}
 
@@ -893,7 +999,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	}
 
 	if !pt.opts.SkipStackRemoval {
-		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
+		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir, false)
 	}
 	return nil
 }
@@ -943,7 +1049,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
 		}
-		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
+		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir, false); err != nil {
 			return err
 		}
 	}
@@ -960,11 +1066,11 @@ func (pt *programTester) exportImport(dir string) error {
 		contract.IgnoreError(os.Remove(filepath.Join(dir, "stack.json")))
 	}()
 
-	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir); err != nil {
+	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
 		return err
 	}
 
-	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir)
+	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
 }
 
 func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
@@ -991,7 +1097,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 
 	// If not in quick mode, run an explicit preview.
 	if !pt.opts.Quick {
-		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
+		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir, shouldFail); err != nil {
 			if shouldFail {
 				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
 				return nil
@@ -1001,7 +1107,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	}
 
 	// Now run an update.
-	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
+	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir, shouldFail); err != nil {
 		if shouldFail {
 			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
 			return nil
@@ -1028,7 +1134,7 @@ func (pt *programTester) query(dir string, name string, shouldFail bool) error {
 	}
 
 	// Now run a query.
-	if err := pt.runPulumiCommand("pulumi-query-"+name, query, dir); err != nil {
+	if err := pt.runPulumiCommand("pulumi-query-"+name, query, dir, shouldFail); err != nil {
 		if shouldFail {
 			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
 			return nil
@@ -1177,7 +1283,8 @@ func (pt *programTester) performExtraRuntimeValidation(
 	fileName := path.Join(tempDir, "stack.json")
 
 	// Invoke `pulumi stack export`
-	if err = pt.runPulumiCommand("pulumi-export", []string{"stack", "export", "--file", fileName}, dir); err != nil {
+	if err = pt.runPulumiCommand("pulumi-export",
+		[]string{"stack", "export", "--file", fileName}, dir, false); err != nil {
 		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 
@@ -1331,6 +1438,8 @@ func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
 	}
@@ -1529,6 +1638,53 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return err
 	}
+
+	// skip building if the 'go run' invocation path is requested.
+	if !pt.opts.RunBuild {
+		return nil
+	}
+
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+}
+
+// prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
+func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+	dotNetBin, err := pt.getDotNetBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `dotnet` binary")
+	}
+
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
+	if localNuget == "" {
+		localNuget = "/opt/pulumi/nuget"
+	}
+
+	for _, dep := range pt.opts.Dependencies {
+
+		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
+		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		if err != nil {
+			return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
+		}
+		if len(matches) != 1 {
+			return errors.New(fmt.Sprintf("attempting to find a local Pulumi NuGet package yielded %v results", matches))
+		}
+		file := filepath.Base(matches[0])
+		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
+		version := r.Replace(file)
+
+		err = pt.runCommand("dotnet-add-package",
+			[]string{dotNetBin, "add", "package", dep, "-s", localNuget, "-v", version}, cwd)
+		if err != nil {
+			return errors.Wrapf(err, "failed to add dependency on %s", dep)
+		}
+	}
+
+	return nil
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
@@ -43,6 +44,7 @@ func newRefreshCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
+	var targets *[]string
 
 	var cmd = &cobra.Command{
 		Use:   "refresh",
@@ -90,7 +92,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject(pulumiAppProj)
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -110,10 +112,16 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			targetUrns := []resource.URN{}
+			for _, t := range *targets {
+				targetUrns = append(targetUrns, resource.URN(t))
+			}
+
 			opts.Engine = engine.UpdateOptions{
-				Parallel:      parallel,
-				Debug:         debug,
-				UseLegacyDiff: useLegacyDiff(),
+				Parallel:       parallel,
+				Debug:          debug,
+				UseLegacyDiff:  useLegacyDiff(),
+				RefreshTargets: targetUrns,
 			}
 
 			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
@@ -155,6 +163,10 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
+
+	targets = cmd.PersistentFlags().StringArrayP(
+		"target", "t", []string{},
+		"Specify a single resource URN to refresh. Multiple resource can be specified using: --target urn1 --target urn2")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(

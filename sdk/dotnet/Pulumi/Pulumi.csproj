@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Pulumi</Authors>
+    <Company>Pulumi Corp.</Company>
+    <Description>The Pulumi .NET SDK lets you write cloud programs in C#, F#, and VB.NET.</Description>
+    <PackageProjectUrl>https://www.pulumi.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pulumi/pulumi</RepositoryUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageIcon>pulumi_logo_64x64.png</PackageIcon>
+
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>.\Pulumi.xml</DocumentationFile>
+    <NoWarn>1701;1702;1591;NU5105</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="2.9.6">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="OneOf" Version="2.1.151" />
+    <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
+    <PackageReference Include="Serilog" Version="2.9.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
+
+    <PackageReference Include="Google.Protobuf" Version="3.10.0" />
+    <PackageReference Include="Grpc" Version="2.24.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.24.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\..\proto\*.proto" Access="internal" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="PublicAPI.Shipped.txt" />
+    <None Remove="PublicAPI.Unshipped.txt" />
+    <None Remove="Pulumi.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\pulumi_logo_64x64.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

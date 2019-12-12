@@ -15,14 +15,9 @@
 package colors
 
 import (
-	"regexp"
-
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
-
-// Colorization is an instruction to perform a certain kind of colorization.
 type Colorization string
 
 const (
@@ -44,36 +39,13 @@ func (c Colorization) Colorize(v string) string {
 		return v
 	case Always:
 		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
-		return colorizeText(v)
+		return colorizeText(v, Always, -1)
 	case Never:
-		// Remove all the colors that any other layers added.
-		return tagRegexp.ReplaceAllString(v, "")
+		return colorizeText(v, Never, -1)
 	default:
 		contract.Failf("Unexpected colorization value: %v", c)
 		return ""
 	}
-}
-
-// SplitIntoTextAndTags breaks up a colorized string into alternating sections of a raw-text-chunk
-// and then a color-tag.  The returned array will always be non empty, with the first and last
-// elements in the array being (possibly empty) raw-text-chunks.  For example, if you started with
-// "<%fg 8>hello<%fg 7>", this would return:  ["", "<%fg 8>", "hello", "<%fg 7>", ""]
-func SplitIntoTextAndTags(v string) []string {
-	tagIndices := tagRegexp.FindAllStringIndex(v, -1)
-
-	currentIndex := 0
-	textAndTags := []string{}
-	for _, tagPair := range tagIndices {
-		tagStart := tagPair[0]
-		tagEnd := tagPair[1]
-		textAndTags = append(textAndTags, v[currentIndex:tagStart])
-		textAndTags = append(textAndTags, v[tagStart:tagEnd])
-		currentIndex = tagEnd
-	}
-
-	textAndTags = append(textAndTags, v[currentIndex:])
-
-	return textAndTags
 }
 
 // TrimColorizedString takes a string with embedded color tags and returns a new string (still with
@@ -83,41 +55,5 @@ func SplitIntoTextAndTags(v string) []string {
 // string as the embedded color tags would count against it, even though they end up with no length
 // when actually interpretted by the console.
 func TrimColorizedString(v string, maxRuneLength int) string {
-	textAndTags := SplitIntoTextAndTags(v)
-
-	currentRuneLength := 0
-	trimmed := ""
-
-	for i := 0; i < len(textAndTags); i++ {
-		textOrTag := textAndTags[i]
-
-		if i%2 == 0 {
-			contract.Assertf(!tagRegexp.MatchString(textOrTag), "Got a tag when we did not expect it")
-
-			chunk := textOrTag
-			chunkRunes := []rune(chunk)
-			chunkRunesLen := len(chunkRunes)
-
-			if currentRuneLength+chunkRunesLen > maxRuneLength {
-				// adding this text chunk will cause us to go past the max length we allow.
-				// just take whatever subportion we can and stop what we're doing.
-				trimmed += string(chunkRunes[0 : maxRuneLength-currentRuneLength])
-				break
-			} else {
-				// can safely add this text chunk
-				trimmed += chunk
-				currentRuneLength += chunkRunesLen
-			}
-		} else {
-			contract.Assertf(tagRegexp.MatchString(textOrTag), "Should have gotten a tag")
-
-			// can safely add the tag to the trimmed string.  tags don't contribute any actual length.
-			trimmed += textOrTag
-		}
-	}
-
-	// add a trailing reset, so that any unclosed tags will be closed.
-	trimmed += Reset
-
-	return trimmed
+	return colorizeText(v, Raw, maxRuneLength)
 }

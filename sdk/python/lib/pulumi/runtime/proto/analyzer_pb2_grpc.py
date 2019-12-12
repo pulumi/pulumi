@@ -24,6 +24,11 @@ class AnalyzerStub(object):
         request_serializer=analyzer__pb2.AnalyzeRequest.SerializeToString,
         response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
         )
+    self.AnalyzeStack = channel.unary_unary(
+        '/pulumirpc.Analyzer/AnalyzeStack',
+        request_serializer=analyzer__pb2.AnalyzeStackRequest.SerializeToString,
+        response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
+        )
     self.GetAnalyzerInfo = channel.unary_unary(
         '/pulumirpc.Analyzer/GetAnalyzerInfo',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -45,6 +50,16 @@ class AnalyzerServicer(object):
 
   def Analyze(self, request, context):
     """Analyze analyzes a single resource object, and returns any errors that it finds.
+    Called with the "inputs" to the resource, before it is updated.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def AnalyzeStack(self, request, context):
+    """AnalyzeStack analyzes all resources within a stack, at the end of a successful
+    preview or update. The provided resources are the "outputs", after any mutations
+    have taken place.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -70,6 +85,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
       'Analyze': grpc.unary_unary_rpc_method_handler(
           servicer.Analyze,
           request_deserializer=analyzer__pb2.AnalyzeRequest.FromString,
+          response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
+      ),
+      'AnalyzeStack': grpc.unary_unary_rpc_method_handler(
+          servicer.AnalyzeStack,
+          request_deserializer=analyzer__pb2.AnalyzeStackRequest.FromString,
           response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
       ),
       'GetAnalyzerInfo': grpc.unary_unary_rpc_method_handler(

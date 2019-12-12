@@ -2,7 +2,6 @@
 Set-StrictMode -Version 2.0
 $ErrorActionPreference="Stop"
 
-$NodeVersion = "v6.10.2"
 $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
 $GitHash=$(git rev-parse HEAD)
@@ -31,6 +30,7 @@ function CopyPackage($pathToModule, $moduleName) {
 RunGoBuild "github.com/pulumi/pulumi"
 RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
 RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python"
+RunGoBuild "github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet"
 RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 

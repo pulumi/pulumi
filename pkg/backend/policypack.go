@@ -17,15 +17,18 @@ package backend
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/pkg/workspace"
+
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.
 type PublishOperation struct {
-	Root    string
-	PlugCtx *plugin.Context
-	Scopes  CancellationScopeSource
+	Root       string
+	PlugCtx    *plugin.Context
+	PolicyPack *workspace.PolicyPackProject
+	Scopes     CancellationScopeSource
 }
 
 // ApplyOperation publishes a PolicyPack to the backend.
