@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. i.e.:
+
+  ```sh
+   export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
+   pulumi login gs://my-bucket
+  ```
+
+  [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
+
 ## 1.7.0 (2019-12-11)
 
 - A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. i.e.:
