@@ -1137,9 +1137,9 @@ describe("rpc", () => {
     };
 
     for (const casename of Object.keys(cases)) {
-        if (casename.indexOf("async_components") < 0) {
-            continue;
-        }
+        // if (casename.indexOf("async_components") < 0) {
+        //     continue;
+        // }
 
         const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
