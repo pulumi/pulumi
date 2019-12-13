@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## Master (unreleased)
+## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
   `Output`s across different versions of the `@pulumi/pulumi` sdk
