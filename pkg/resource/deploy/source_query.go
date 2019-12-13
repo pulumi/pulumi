@@ -50,7 +50,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	provs ProviderSource) (QuerySource, error) {
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(client)
+	builtins := newBuiltinProvider(plugctx, client)
 
 	reg, err := providers.NewRegistry(plugctx.Host, nil, false, builtins)
 	if err != nil {

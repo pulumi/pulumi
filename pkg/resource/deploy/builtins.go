@@ -18,14 +18,18 @@ type builtinProvider struct {
 	backendClient BackendClient
 	context       context.Context
 	cancel        context.CancelFunc
+	pluginCtx     *plugin.Context
 }
 
-func newBuiltinProvider(backendClient BackendClient) *builtinProvider {
-	ctx, cancel := context.WithCancel(context.Background())
+var _ plugin.Provider = (*builtinProvider)(nil)
+
+func newBuiltinProvider(pluginCtx *plugin.Context, backendClient BackendClient) *builtinProvider {
+	ctx, cancel := context.WithCancel(pluginCtx.Request())
 	return &builtinProvider{
 		backendClient: backendClient,
 		context:       ctx,
 		cancel:        cancel,
+		pluginCtx:     pluginCtx,
 	}
 }
 
@@ -144,6 +148,7 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+const remoteConstructResource = "pulumi:pulumi:remoteConstructResource"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -157,6 +162,12 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 		return outs, nil, nil
 	case readStackResourceOutputs:
 		outs, err := p.readStackResourceOutputs(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	case remoteConstructResource:
+		outs, err := p.remoteConstructResource(args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -228,5 +239,47 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	return resource.PropertyMap{
 		"name":    name,
 		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) remoteConstructResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	name, ok := inputs["runtime"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	path, ok := inputs["path"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	monitorAddr, ok := inputs["monitorAddr"]
+	contract.Assert(ok)
+	contract.Assert(name.IsString())
+
+	runtime, err := p.pluginCtx.Host.LanguageRuntime(name.StringValue())
+	if err != nil {
+		return nil, err
+	}
+
+	msg, bail, err := runtime.Run(plugin.RunInfo{
+		MonitorAddress: monitorAddr.StringValue(),
+		Args:           []string{},
+		DryRun:         false,
+		Project:        "remote-" + name.StringValue(),
+		Stack:          "foobar",
+		Pwd:            p.pluginCtx.Pwd,
+		Program:        path.StringValue(),
+	})
+
+	pluginfo, err := runtime.GetPluginInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.PropertyMap{
+		"name":    resource.NewStringProperty(pluginfo.Name),
+		"path":    resource.NewStringProperty(pluginfo.Path),
+		"size":    resource.NewNumberProperty(float64(pluginfo.Size)),
+		"message": resource.NewStringProperty(msg),
+		"bail":    resource.NewBoolProperty(bail),
 	}, nil
 }
