@@ -32,6 +32,7 @@ from .settings import (
 from .stack import (
     run_in_stack,
     get_root_resource,
+    register_stack_transformation,
 )
 
 from .invoke import (

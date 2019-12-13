@@ -296,25 +296,14 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 func (display *ProgressDisplay) getMessagePadding(
 	uncolorizedColumns []string, columnIndex int, maxColumnLengths []int) string {
 
-	extraWhitespace := 1
-
-	// In the terminal we try to align the status messages for each resource.
-	// do not bother with this in the non-terminal case.
+	extraWhitespace := " "
 	if columnIndex >= 0 && display.isTerminal {
 		column := uncolorizedColumns[columnIndex]
 		maxLength := maxColumnLengths[columnIndex]
-
-		extraWhitespace = maxLength - utf8.RuneCountInString(column)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxLength, column)
-
-		// Place two spaces between all columns (except after the first column).  The first
-		// column already has a ": " so it doesn't need the extra space.
-		if columnIndex >= 0 {
-			extraWhitespace += 2
-		}
+		extraWhitespace = messagePadding(column, maxLength, 2)
 	}
 
-	return strings.Repeat(" ", extraWhitespace)
+	return extraWhitespace
 }
 
 // Gets the fully padded message to be shown.  The message will always include the ID of the
@@ -739,10 +728,12 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// If we get stack outputs, display them at the end.
 	var wroteOutputs bool
-	if display.stackUrn != "" && display.seenStackOutputs && !display.opts.SuppressOutputs {
+	if display.stackUrn != "" && !display.opts.SuppressOutputs {
 		stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+
 		props := engine.GetResourceOutputsPropertiesString(
-			stackStep, 1, display.isPreview, display.opts.Debug, false /* refresh */)
+			stackStep, 1, display.isPreview, display.opts.Debug,
+			false /* refresh */, display.opts.ShowSameResources)
 		if props != "" {
 			if !wroteDiagnosticHeader {
 				display.writeBlankLine()
@@ -886,7 +877,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	// At this point, all events should relate to resources.
 	eventUrn, metadata := getEventUrnAndMetadata(event)
-	if metadata != nil {
+
+	// If we're suppressing reads from the tree-view, then convert notifications about reads into
+	// ephemeral messages that will go into the info column.
+	if metadata != nil && !display.opts.ShowReads {
 		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
 			// just flat out ignore read discards/replace.  They're only relevant in the context of
 			// 'reads', and we only present reads as an ephemeral diagnostic anyways.

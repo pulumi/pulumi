@@ -38,7 +38,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
-	"github.com/pulumi/pulumi/pkg/workspace"
+)
+
+const (
+	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
+	// Copied from workspace.BookkeepingDir to break import cycle.
+	BookkeepingDir = ".pulumi"
 )
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
@@ -828,7 +833,7 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 
 			// If this is a .pulumi directory, we will skip this by default.
 			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
-			if f.Name() == workspace.BookkeepingDir {
+			if f.Name() == BookkeepingDir {
 				if f.IsDir() {
 					return filepath.SkipDir
 				}

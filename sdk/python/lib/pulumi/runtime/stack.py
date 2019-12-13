@@ -20,8 +20,8 @@ import collections
 from inspect import isawaitable
 from typing import Callable, Any, Dict, List
 
-from ..resource import ComponentResource, Resource
-from .settings import get_project, get_stack, get_root_resource, set_root_resource
+from ..resource import ComponentResource, Resource, ResourceTransformation
+from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
 from .. import log
 
@@ -149,6 +149,17 @@ def massage(attr: Any, seen: List[Any]):
     if isawaitable(attr):
         return Output.from_input(attr).apply(lambda v: massage(v, seen))
 
+    if isinstance(attr, Resource):
+        result = massage(attr.__dict__, seen)
+
+        # In preview only, we mark the result with "@isPulumiResource" to indicate that it is derived
+        # from a resource. This allows the engine to perform resource-specific filtering of unknowns
+        # from output diffs during a preview. This filtering is not necessary during an update because
+        # all property values are known.
+        if is_dry_run():
+            result["@isPulumiResource"] = True
+        return result
+
     if hasattr(attr, "__dict__"):
         # recurse on the dictionary itself.  It will be handled above.
         return massage(attr.__dict__, seen)
@@ -186,3 +197,15 @@ def is_primitive(attr: Any) -> bool:
         pass
 
     return True
+
+def register_stack_transformation(t: ResourceTransformation):
+    """
+    Add a transformation to all future resources constructed in this Pulumi stack.
+    """
+    root_resource = get_root_resource()
+    if root_resource is None:
+        raise Exception("The root stack resource was referenced before it was initialized.")
+    if root_resource._transformations is None:
+        root_resource._transformations = [t]
+    else:
+        root_resource._transformations = root_resource._transformations + [t]

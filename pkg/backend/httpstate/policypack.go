@@ -119,7 +119,12 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Obtaining policy metadata from policy plugin")
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(pack.Ref().Name(), op.PlugCtx.Pwd)
+	abs, err := filepath.Abs(op.PlugCtx.Pwd)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -129,11 +134,12 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	analyzerInfo.Name = string(pack.ref.name)
+	// Update the name from the metadata.
+	pack.ref.name = tokens.QName(analyzerInfo.Name)
 
 	fmt.Println("Compressing policy pack")
 
-	if runtime := pack.b.currentProject.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
+	if runtime := op.PolicyPack.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
 		return result.Errorf(
 			"failed to publish policies because Pulumi.yaml requests unsupported runtime %s",
 			runtime)
@@ -204,7 +210,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 		return errors.Wrap(err, "moving plugin")
 	}
 
-	proj, err := workspace.LoadProject(path.Join(finalDir, "Pulumi.yaml"))
+	proj, err := workspace.LoadPolicyPack(path.Join(finalDir, "PulumiPolicy.yaml"))
 	if err != nil {
 		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
 	}
@@ -218,12 +224,11 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	fmt.Println()
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	err = npm.Install(finalDir, nil, os.Stderr)
-	if err != nil {
+	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
-			"failed to install dependencies of policy pack; you may need to re-run `npm install` "+
-				"in %q before this policy pack works", finalDir)
+			"failed to install dependencies of policy pack; you may need to re-run `%s install` "+
+				"in %q before this policy pack works", bin, finalDir)
 	}
 
 	fmt.Println("Finished installing dependencies")

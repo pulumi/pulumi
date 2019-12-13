@@ -94,6 +94,7 @@ function usage(): void {
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
+    console.error(`        --sync=path         path to synchronous 'invoke' endpoints`);
     console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
@@ -146,6 +147,7 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_PARALLEL", argv["parallel"]);
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
+    addToEnvIfDefined("PULUMI_NODEJS_SYNC", argv["sync"]);
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {

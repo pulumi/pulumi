@@ -238,25 +238,96 @@ func PrintObject(
 	}
 }
 
+func massageStackPreviewAdd(p resource.PropertyValue) {
+	switch {
+	case p.IsArray():
+		for _, v := range p.ArrayValue() {
+			massageStackPreviewAdd(v)
+		}
+	case p.IsObject():
+		delete(p.ObjectValue(), "@isPulumiResource")
+		for _, v := range p.ObjectValue() {
+			massageStackPreviewAdd(v)
+		}
+	}
+}
+
+func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
+	switch {
+	case diff.Array != nil:
+		for _, p := range diff.Array.Adds {
+			massageStackPreviewAdd(p)
+		}
+		for _, d := range diff.Array.Updates {
+			massageStackPreviewDiff(d, inResource)
+		}
+	case diff.Object != nil:
+		massageStackPreviewOutputDiff(diff.Object, inResource)
+	}
+}
+
+// massageStackPreviewOutputDiff removes any adds of unknown values nested inside Pulumi resources present in a stack's
+// outputs.
+func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
+	if diff == nil {
+		return
+	}
+
+	_, isResource := diff.Adds["@isPulumiResource"]
+	if isResource {
+		delete(diff.Adds, "@isPulumiResource")
+
+		for k, v := range diff.Adds {
+			if v.IsComputed() {
+				delete(diff.Adds, k)
+			}
+		}
+	}
+
+	for _, p := range diff.Adds {
+		massageStackPreviewAdd(p)
+	}
+	for k, d := range diff.Updates {
+		if isResource && d.New.IsComputed() && !shouldPrintPropertyValue(d.Old, false) {
+			delete(diff.Updates, k)
+		} else {
+			massageStackPreviewDiff(d, inResource)
+		}
+	}
+}
+
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning bool, debug bool, refresh bool) string {
-	// We should only print outputs if the outputs are known to be complete. This will be the case if we are
+	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
+
+	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
+	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+		showSames = true
+	}
+
+	// We should only print outputs for normal resources if the outputs are known to be complete.
+	// This will be the case if we are:
+	//
 	//   1) not doing a preview
 	//   2) doing a refresh
 	//   3) doing a read
 	//   4) doing an import
 	//
-	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation of Read, but
-	// the upshot is that either way we're ending up with outputs that are exactly accurate. If we are not sure that we
-	// are in one of the above states, we shouldn't try to print outputs.
+	// Technically, 2-4 are the same, since they're all bottoming out at a provider's implementation
+	// of Read, but the upshot is that either way we're ending up with outputs that are exactly
+	// accurate. If we are not sure that we are in one of the above states, we shouldn't try to
+	// print outputs.
+	//
+	// Note: we always show the outputs for the stack itself.  These are valuable enough to want
+	// to always see.
 	if planning {
 		printOutputDuringPlanning := refresh ||
 			step.Op == deploy.OpRead ||
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
-			step.Op == deploy.OpImportReplacement
+			step.Op == deploy.OpImportReplacement ||
+			step.URN.Type() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -268,24 +339,34 @@ func GetResourceOutputsPropertiesString(
 		return ""
 	}
 
-	b := &bytes.Buffer{}
-
 	// Only certain kinds of steps have output properties associated with them.
-	new := step.New
-	if new == nil || new.Outputs == nil {
-		return ""
+	var ins resource.PropertyMap
+	var outs resource.PropertyMap
+	if step.New == nil || step.New.Outputs == nil {
+		ins = make(resource.PropertyMap)
+		outs = make(resource.PropertyMap)
+	} else {
+		ins = step.New.Inputs
+		outs = step.New.Outputs
 	}
 	op := step.Op
-
-	// First fetch all the relevant property maps that we may consult.
-	ins := new.Inputs
-	outs := new.Outputs
 
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
 		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
+
+		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
+		// they have no corresponding output in the old state.
+		if planning && step.URN.Type() == resource.RootStackType {
+			massageStackPreviewOutputDiff(outputDiff, false)
+		}
+	}
+
+	// If we asked to not show-sames, and no outputs changed then don't show anything at all here.
+	if outputDiff == nil && !showSames {
+		return ""
 	}
 
 	var keys []resource.PropertyKey
@@ -296,6 +377,8 @@ func GetResourceOutputsPropertiesString(
 	}
 	maxkey := maxKey(keys)
 
+	b := &bytes.Buffer{}
+
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
 		out := outs[k]
@@ -305,18 +388,23 @@ func GetResourceOutputsPropertiesString(
 		// - the property that is present in the inputs is different
 		// - we are doing a refresh, in which case we always want to show state differences
 		if outputDiff != nil || (!IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
-			print := true
 			if in, has := ins[k]; has && !refresh {
-				print = (out.Diff(in, IsInternalPropertyKey) != nil)
+				if out.Diff(in, IsInternalPropertyKey) == nil {
+					continue
+				}
 			}
 
-			if print {
-				if outputDiff != nil {
-					printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
-				} else {
-					printPropertyTitle(b, string(k), maxkey, indent, op, false)
-					printPropertyValue(b, out, planning, indent, op, false, debug)
-				}
+			// If we asked to not show-sames, and this is a same output, then filter it out of what
+			// we display.
+			if !showSames && outputDiff != nil && outputDiff.Same(k) {
+				continue
+			}
+
+			if outputDiff != nil {
+				printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
+			} else {
+				printPropertyTitle(b, string(k), maxkey, indent, op, false)
+				printPropertyValue(b, out, planning, indent, op, false, debug)
 			}
 		}
 	}

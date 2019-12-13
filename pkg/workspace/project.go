@@ -131,6 +131,30 @@ func (proj *Project) Save(path string) error {
 	return ioutil.WriteFile(path, b, 0644)
 }
 
+type PolicyPackProject struct {
+	// Runtime is a required runtime that executes code.
+	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Main is an optional override for the program's main entry-point location.
+	Main string `json:"main,omitempty" yaml:"main,omitempty"`
+
+	// Description is an optional informational description.
+	Description *string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Author is an optional author that created this project.
+	Author *string `json:"author,omitempty" yaml:"author,omitempty"`
+	// Website is an optional website for additional info about this project.
+	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
+	// License is the optional license governing this project's usage.
+	License *string `json:"license,omitempty" yaml:"license,omitempty"`
+}
+
+func (proj *PolicyPackProject) Validate() error {
+	if proj.Runtime.Name() == "" {
+		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	return nil
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
@@ -262,6 +286,34 @@ func LoadProject(path string) (*Project, error) {
 	}
 
 	var proj Project
+	err = m.Unmarshal(b, &proj)
+	if err != nil {
+		return nil, err
+	}
+
+	err = proj.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &proj, err
+}
+
+// LoadPolicyPack reads a policy pack definition from a file.
+func LoadPolicyPack(path string) (*PolicyPackProject, error) {
+	contract.Require(path != "", "path")
+
+	m, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var proj PolicyPackProject
 	err = m.Unmarshal(b, &proj)
 	if err != nil {
 		return nil, err

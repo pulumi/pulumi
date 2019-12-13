@@ -88,6 +88,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			MaybeCorrupt:    p.MaybeCorrupt,
 			DurationSeconds: int(p.Duration.Seconds()),
 			ResourceChanges: changes,
+			PolicyPacks:     p.PolicyPacks,
 		}
 
 	case engine.ResourcePreEvent:

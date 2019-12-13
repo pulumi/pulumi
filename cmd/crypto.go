@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package cmd
 
 import (
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 )
@@ -50,22 +52,28 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		return nil, err
 	}
 
-	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-		return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
-	}
+	sm, err := func() (secrets.Manager, error) {
+		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
+			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
+		}
 
-	if ps.EncryptionSalt != "" {
-		return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
-	}
+		if ps.EncryptionSalt != "" {
+			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+		}
 
-	switch stack := s.(type) {
-	case httpstate.Stack:
-		return newServiceSecretsManager(stack)
-	case filestate.Stack:
-		return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
-	}
+		switch stack := s.(type) {
+		case httpstate.Stack:
+			return newServiceSecretsManager(stack)
+		case filestate.Stack:
+			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+		}
 
-	return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
+		return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
+	}()
+	if err != nil {
+		return nil, err
+	}
+	return stack.NewCachingSecretsManager(sm), nil
 }
 
 func validateSecretsProvider(typ string) error {

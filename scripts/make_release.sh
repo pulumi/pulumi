@@ -8,7 +8,7 @@ readonly ROOT=$(dirname "${0}")/..
 readonly PUBDIR=$(mktemp -d)
 readonly GITHASH=$(git rev-parse HEAD)
 readonly PUBFILE=$(dirname "${PUBDIR})/${GITHASH}.tgz")
-readonly VERSION=$("${ROOT}/scripts/get-version")
+readonly VERSION=$("${ROOT}/scripts/get-version" HEAD)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
@@ -49,6 +49,7 @@ copy_package() {
 run_go_build "${ROOT}"
 run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-language-nodejs"
 run_go_build "${ROOT}/sdk/python/cmd/pulumi-language-python"
+run_go_build "${ROOT}/sdk/dotnet/cmd/pulumi-language-dotnet"
 run_go_build "${ROOT}/sdk/go/pulumi-language-go"
 
 # Copy over the language and dynamic resource providers.

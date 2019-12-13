@@ -29,18 +29,19 @@ type ResourceMonitor struct {
 }
 
 type ResourceOptions struct {
-	Parent              resource.URN
-	Protect             bool
-	Dependencies        []resource.URN
-	Provider            string
-	Inputs              resource.PropertyMap
-	PropertyDeps        map[resource.PropertyKey][]resource.URN
-	DeleteBeforeReplace *bool
-	Version             string
-	IgnoreChanges       []string
-	Aliases             []resource.URN
-	ImportID            resource.ID
-	CustomTimeouts      *resource.CustomTimeouts
+	Parent                resource.URN
+	Protect               bool
+	Dependencies          []resource.URN
+	Provider              string
+	Inputs                resource.PropertyMap
+	PropertyDeps          map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace   *bool
+	Version               string
+	IgnoreChanges         []string
+	Aliases               []resource.URN
+	ImportID              resource.ID
+	CustomTimeouts        *resource.CustomTimeouts
+	SupportsPartialValues *bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -94,6 +95,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.DeleteBeforeReplace != nil {
 		deleteBeforeReplace = *opts.DeleteBeforeReplace
 	}
+	supportsPartialValues := true
+	if opts.SupportsPartialValues != nil {
+		supportsPartialValues = *opts.SupportsPartialValues
+	}
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -111,6 +116,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Aliases:                    aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
+		SupportsPartialValues:      supportsPartialValues,
 	}
 
 	// submit request

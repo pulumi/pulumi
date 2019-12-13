@@ -23,11 +23,14 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -48,6 +51,8 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -68,6 +73,8 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -90,6 +97,8 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -112,6 +121,8 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -133,6 +144,8 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 }
 
 func TestCreatingProjectWithDefaultName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -142,6 +155,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		interactive:       true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
 	}
@@ -149,13 +163,15 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 }
 
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -166,19 +182,22 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		name:              uniqueProjectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	removeStack(t, "dev")
+	removeStack(t, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
 func TestCreatingProjectWithPromptedName(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -201,6 +220,8 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -225,6 +246,8 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -248,6 +271,8 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -276,6 +301,8 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -303,6 +330,8 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -329,6 +358,8 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
+	skipIfShort(t)
+
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
@@ -354,7 +385,10 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 }
 
 func TestInvalidTemplateName(t *testing.T) {
+	skipIfShort(t)
+
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
+		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -371,6 +405,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
+		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -390,6 +425,8 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
+		t.Parallel()
+
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -410,6 +447,278 @@ func TestInvalidTemplateName(t *testing.T) {
 
 		assert.Contains(t, err.Error(), "not found")
 	})
+}
+
+func TestParseConfigSuccess(t *testing.T) {
+	tests := []struct {
+		Array    []string
+		Path     bool
+		Expected config.Map
+	}{
+		{
+			Array:    []string{},
+			Expected: config.Map{},
+		},
+		{
+			Array: []string{"my:testKey"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue(""),
+			},
+		},
+		{
+			Array: []string{"my:testKey="},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue(""),
+			},
+		},
+		{
+			Array: []string{"my:testKey=testValue"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{"my:testKey=test=Value"},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("test=Value"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+				"my:testKey=rewritten",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("rewritten"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:test.Key=testValue",
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:testKey=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:0=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "0"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				"my:true=testValue",
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "true"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				`my:["test.Key"]=testValue`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
+			},
+		},
+		{
+			Array: []string{
+				`my:outer.inner=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Array: []string{
+				`my:outer.inner.nested=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":{"nested":"value"}}`),
+			},
+		},
+		{
+			Array: []string{
+				`my:name[0]=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "name"): config.NewObjectValue(`["value"]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:name[0][0]=value`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "name"): config.NewObjectValue(`[["value"]]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:servers[0].name=foo`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "servers"): config.NewObjectValue(`[{"name":"foo"}]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=false`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("false"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=true`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("true"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=10`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("10"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey=-1`,
+			},
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewValue("-1"),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=false`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[false]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=true`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[true]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=10`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[10]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:testKey[0]=-1`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[-1]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:names[0]=a`,
+				`my:names[1]=b`,
+				`my:names[2]=c`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "names"): config.NewObjectValue(`["a","b","c"]`),
+			},
+		},
+		{
+			Array: []string{
+				`my:names[0]=a`,
+				`my:names[1]=b`,
+				`my:names[2]=c`,
+				`my:names[0]=rewritten`,
+			},
+			Path: true,
+			Expected: config.Map{
+				config.MustMakeKey("my", "names"): config.NewObjectValue(`["rewritten","b","c"]`),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			actual, err := parseConfig(test.Array, test.Path)
+			assert.NoError(t, err)
+			assert.Equal(t, test.Expected, actual)
+		})
+	}
+}
+
+func TestSetFail(t *testing.T) {
+	tests := []struct {
+		Array    []string
+		Expected config.Map
+	}{
+		{
+			Array: []string{`my:[""]=value`},
+		},
+		{
+			Array: []string{"my:[0]=value"},
+		},
+		{
+			Array: []string{`my:name[-1]=value`},
+		},
+		{
+			Array: []string{`my:name[1]=value`},
+		},
+		{
+			Array: []string{`my:key.secure=value`},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			_, err := parseConfig(test.Array, true /*path*/)
+			assert.Error(t, err)
+		})
+	}
 }
 
 const projectName = "test_project"
@@ -457,6 +766,14 @@ func removeStack(t *testing.T, name string) {
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), ref, false)
+	stack, err := b.GetStack(context.Background(), ref)
 	assert.NoError(t, err)
+	_, err = b.RemoveStack(context.Background(), stack, false)
+	assert.NoError(t, err)
+}
+
+func skipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipped in short test run")
+	}
 }

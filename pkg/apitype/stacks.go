@@ -41,7 +41,7 @@ type CreateStackRequest struct {
 	StackName string `json:"stackName"`
 
 	// An optional set of tags to apply to the stack.
-	Tags map[StackTagName]string `json:"tags,omitEmpty"`
+	Tags map[StackTagName]string `json:"tags,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.

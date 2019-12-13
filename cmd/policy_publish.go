@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/engine"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
@@ -31,16 +33,36 @@ import (
 
 func newPolicyPublishCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "publish <orgName>/<policyPackName>",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Publish resource policies to the Pulumi service",
-		Long:  "Publish resource policies to the Pulumi service",
+		Use:   "publish [org-name]",
+		Args:  cmdutil.MaximumNArgs(1),
+		Short: "Publish a Policy Pack to the Pulumi service",
+		Long: "Publish a Policy Pack to the Pulumi service\n" +
+			"\n" +
+			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+
+			var orgName string
+			if len(args) > 0 {
+				orgName = args[0]
+			}
+
+			//
+			// Construct a policy pack reference of the form `<org-name>/<policy-pack-name>`
+			// with the org name and an empty policy pack name. The policy pack name is empty
+			// because it will be determined as part of the publish operation. If the org name
+			// is empty, the current user account is used.
+			//
+
+			if strings.Contains(orgName, "/") {
+				return errors.New("organization name must not contain slashes")
+			}
+			policyPackRef := fmt.Sprintf("%s/", orgName)
+
 			//
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
 			//
 
-			policyPack, err := requirePolicyPack(args[0])
+			policyPack, err := requirePolicyPack(policyPackRef)
 			if err != nil {
 				return err
 			}
@@ -49,14 +71,19 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Load metadata about the current project.
 			//
 
-			proj, root, err := readProject(pulumiPolicyProj)
+			proj, root, err := readPolicyProject()
 			if err != nil {
 				return err
 			}
 
-			projinfo := &engine.Projinfo{Proj: proj, Root: root}
-			_ /*pwd*/, _ /*main*/, plugctx, err := engine.ProjectInfoContext(
-				projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), nil)
+			projinfo := &engine.PolicyPackInfo{Proj: proj, Root: root}
+			pwd, _, err := projinfo.GetPwdMain()
+			if err != nil {
+				return err
+			}
+
+			plugctx, err := plugin.NewContext(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd,
+				projinfo.Proj.Runtime.Options(), nil)
 			if err != nil {
 				return err
 			}
@@ -66,7 +93,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			//
 
 			res := policyPack.Publish(commandContext(), backend.PublishOperation{
-				Root: root, PlugCtx: plugctx, Scopes: cancellationScopes})
+				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
 			if res != nil && res.Error() != nil {
 				return res.Error()
 			}

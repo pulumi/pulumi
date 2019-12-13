@@ -52,7 +52,7 @@ func newPluginCmd() *cobra.Command {
 
 // getProjectPlugins fetches a list of plugins used by this project.
 func getProjectPlugins() ([]workspace.PluginInfo, error) {
-	proj, root, err := readProject(pulumiAppProj)
+	proj, root, err := readProject()
 	if err != nil {
 		return nil, err
 	}

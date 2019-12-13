@@ -15,6 +15,8 @@
 package config
 
 import (
+	"encoding/json"
+
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
@@ -88,6 +90,17 @@ func GetInt64(ctx *pulumi.Context, key string) int64 {
 		return cast.ToInt64(v)
 	}
 	return 0
+}
+
+// GetObject attempts to load an optional configuration value by its key into the specified output variable.
+func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
+	if v, ok := ctx.GetConfig(key); ok {
+		if err := json.Unmarshal([]byte(v), output); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetUint loads an optional configuration value by its key, as a uint, or returns 0 if it doesn't exist.

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
@@ -45,6 +46,8 @@ func newDestroyCmd() *cobra.Command {
 	var skipPreview bool
 	var suppressOutputs bool
 	var yes bool
+	var targets *[]string
+	var targetDependents bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -90,7 +93,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			proj, root, err := readProject(pulumiAppProj)
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -110,11 +113,18 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			targetUrns := []resource.URN{}
+			for _, t := range *targets {
+				targetUrns = append(targetUrns, resource.URN(t))
+			}
+
 			opts.Engine = engine.UpdateOptions{
-				Parallel:      parallel,
-				Debug:         debug,
-				Refresh:       refresh,
-				UseLegacyDiff: useLegacyDiff(),
+				Parallel:         parallel,
+				Debug:            debug,
+				Refresh:          refresh,
+				DestroyTargets:   targetUrns,
+				TargetDependents: targetDependents,
+				UseLegacyDiff:    useLegacyDiff(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
@@ -127,11 +137,11 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 			})
 
-			if res == nil {
+			if res == nil && len(*targets) == 0 {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
 					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
-			} else if res.Error() == context.Canceled {
+			} else if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}
 			return PrintEngineResult(res)
@@ -150,6 +160,14 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
+
+	targets = cmd.PersistentFlags().StringArrayP(
+		"target", "t", []string{},
+		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
+			" Multiple resources can be specified using: --target urn1 --target urn2")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows destroying of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
@@ -176,6 +194,7 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")

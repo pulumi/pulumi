@@ -37,6 +37,12 @@ const (
 	// need to be at least one less than the current schema version so that old deployments can
 	// be migrated to the current schema.
 	DeploymentSchemaVersionOldestSupported = 1
+
+	// computedValue is a magic number we emit for a value of a resource.Property value
+	// whenever we need to serialize a resource.Computed. (Since the real/actual value
+	// is not known.) This allows us to persist engine events and resource states that
+	// indicate a value will changed... but is unknown what it will change to.
+	computedValuePlaceholder = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 )
 
 var (
@@ -308,19 +314,23 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter) (map[
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
-			dst[string(k)] = v
-		}
+		dst[string(k)] = v
 	}
 	return dst, nil
 }
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
 func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (interface{}, error) {
-	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
-	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
-	if prop.IsComputed() || !prop.HasValue() {
+	// Serialize nulls as nil.
+	if prop.IsNull() {
 		return nil, nil
+	}
+
+	// A computed value marks something that will be determined at a later time. (e.g. the result of
+	// a computation that we don't perform during a preview operation.) We serialize a magic constant
+	// to record its existence.
+	if prop.IsComputed() || prop.IsOutput() {
+		return computedValuePlaceholder, nil
 	}
 
 	// For arrays, make sure to recurse.
@@ -361,7 +371,16 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter) (
 		if err != nil {
 			return nil, errors.Wrap(err, "encoding serialized property value")
 		}
-		ciphertext, err := enc.EncryptValue(string(bytes))
+		plaintext := string(bytes)
+
+		// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
+		// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
+		var ciphertext string
+		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
+		} else {
+			ciphertext, err = enc.EncryptValue(plaintext)
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to encrypt secret value")
 		}
@@ -424,6 +443,9 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 		case float64:
 			return resource.NewNumberProperty(w), nil
 		case string:
+			if w == computedValuePlaceholder {
+				return resource.MakeComputed(resource.NewStringProperty("")), nil
+			}
 			return resource.NewStringProperty(w), nil
 		case []interface{}:
 			var arr []resource.PropertyValue
@@ -476,7 +498,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
-					return resource.MakeSecret(ev), nil
+					prop := resource.MakeSecret(ev)
+					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
+					// new *resource.Secret as the key.
+					if cachingCrypter, ok := dec.(*cachingCrypter); ok {
+						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
+					}
+					return prop, nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

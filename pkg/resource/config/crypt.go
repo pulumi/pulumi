@@ -58,16 +58,53 @@ func (nopCrypter) EncryptValue(plaintext string) (string, error) {
 	return plaintext, nil
 }
 
-// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "[secret]", it can
-// be used when you want to display configuration information to a user but don't want to prompt for a password
-// so secrets will not be decrypted.
-func NewBlindingDecrypter() Decrypter {
-	return blindingDecrypter{}
+// TrackingDecrypter is a Decrypter that keeps track if decrypted values, which
+// can be retrieved via SecureValues().
+type TrackingDecrypter interface {
+	Decrypter
+	SecureValues() []string
 }
 
-type blindingDecrypter struct{}
+// NewTrackingDecrypter returns a Decrypter that keeps track of decrypted values.
+func NewTrackingDecrypter(decrypter Decrypter) TrackingDecrypter {
+	return &trackingDecrypter{decrypter: decrypter}
+}
 
-func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
+type trackingDecrypter struct {
+	decrypter    Decrypter
+	secureValues []string
+}
+
+func (t *trackingDecrypter) DecryptValue(ciphertext string) (string, error) {
+	v, err := t.decrypter.DecryptValue(ciphertext)
+	if err != nil {
+		return "", err
+	}
+	t.secureValues = append(t.secureValues, v)
+	return v, nil
+}
+
+func (t *trackingDecrypter) SecureValues() []string {
+	return t.secureValues
+}
+
+// BlindingCrypter returns a Crypter that instead of decrypting or encrypting data, just returns "[secret]", it can
+// be used when you want to display configuration information to a user but don't want to prompt for a password
+// so secrets will not be decrypted or encrypted.
+var BlindingCrypter Crypter = blindingCrypter{}
+
+// NewBlindingDecrypter returns a blinding decrypter.
+func NewBlindingDecrypter() Decrypter {
+	return blindingCrypter{}
+}
+
+type blindingCrypter struct{}
+
+func (b blindingCrypter) DecryptValue(ciphertext string) (string, error) {
+	return "[secret]", nil
+}
+
+func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
 	return "[secret]", nil
 }
 

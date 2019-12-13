@@ -23,7 +23,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"K\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xc5\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\"Z\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\"\x8c\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel*/\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x32\xd6\x01\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"f\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\"h\n\x10\x41nalyzerResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\"E\n\x13\x41nalyzeStackRequest\x12.\n\tresources\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.AnalyzerResource\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xd2\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x0b\n\x03urn\x18\x08 \x01(\t\"Z\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\"\x8c\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel*/\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x32\xa4\x02\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 
@@ -44,8 +44,8 @@ _ENFORCEMENTLEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=684,
-  serialized_end=731,
+  serialized_start=901,
+  serialized_end=948,
 )
 _sym_db.RegisterEnumDescriptor(_ENFORCEMENTLEVEL)
 
@@ -76,6 +76,20 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.AnalyzeRequest.urn', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='pulumirpc.AnalyzeRequest.name', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -89,7 +103,90 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=102,
-  serialized_end=177,
+  serialized_end=204,
+)
+
+
+_ANALYZERRESOURCE = _descriptor.Descriptor(
+  name='AnalyzerResource',
+  full_name='pulumirpc.AnalyzerResource',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='type', full_name='pulumirpc.AnalyzerResource.type', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.AnalyzerResource.properties', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.AnalyzerResource.urn', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='pulumirpc.AnalyzerResource.name', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=206,
+  serialized_end=310,
+)
+
+
+_ANALYZESTACKREQUEST = _descriptor.Descriptor(
+  name='AnalyzeStackRequest',
+  full_name='pulumirpc.AnalyzeStackRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='resources', full_name='pulumirpc.AnalyzeStackRequest.resources', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=312,
+  serialized_end=381,
 )
 
 
@@ -119,8 +216,8 @@ _ANALYZERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=179,
-  serialized_end=247,
+  serialized_start=383,
+  serialized_end=451,
 )
 
 
@@ -180,6 +277,13 @@ _ANALYZEDIAGNOSTIC = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.AnalyzeDiagnostic.urn', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -192,8 +296,8 @@ _ANALYZEDIAGNOSTIC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=250,
-  serialized_end=447,
+  serialized_start=454,
+  serialized_end=664,
 )
 
 
@@ -237,8 +341,8 @@ _ANALYZERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=449,
-  serialized_end=539,
+  serialized_start=666,
+  serialized_end=756,
 )
 
 
@@ -296,16 +400,20 @@ _POLICYINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=542,
-  serialized_end=682,
+  serialized_start=759,
+  serialized_end=899,
 )
 
 _ANALYZEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_ANALYZERRESOURCE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_ANALYZESTACKREQUEST.fields_by_name['resources'].message_type = _ANALYZERRESOURCE
 _ANALYZERESPONSE.fields_by_name['diagnostics'].message_type = _ANALYZEDIAGNOSTIC
 _ANALYZEDIAGNOSTIC.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
 _ANALYZERINFO.fields_by_name['policies'].message_type = _POLICYINFO
 _POLICYINFO.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
 DESCRIPTOR.message_types_by_name['AnalyzeRequest'] = _ANALYZEREQUEST
+DESCRIPTOR.message_types_by_name['AnalyzerResource'] = _ANALYZERRESOURCE
+DESCRIPTOR.message_types_by_name['AnalyzeStackRequest'] = _ANALYZESTACKREQUEST
 DESCRIPTOR.message_types_by_name['AnalyzeResponse'] = _ANALYZERESPONSE
 DESCRIPTOR.message_types_by_name['AnalyzeDiagnostic'] = _ANALYZEDIAGNOSTIC
 DESCRIPTOR.message_types_by_name['AnalyzerInfo'] = _ANALYZERINFO
@@ -319,6 +427,20 @@ AnalyzeRequest = _reflection.GeneratedProtocolMessageType('AnalyzeRequest', (_me
   # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzeRequest)
   ))
 _sym_db.RegisterMessage(AnalyzeRequest)
+
+AnalyzerResource = _reflection.GeneratedProtocolMessageType('AnalyzerResource', (_message.Message,), dict(
+  DESCRIPTOR = _ANALYZERRESOURCE,
+  __module__ = 'analyzer_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerResource)
+  ))
+_sym_db.RegisterMessage(AnalyzerResource)
+
+AnalyzeStackRequest = _reflection.GeneratedProtocolMessageType('AnalyzeStackRequest', (_message.Message,), dict(
+  DESCRIPTOR = _ANALYZESTACKREQUEST,
+  __module__ = 'analyzer_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzeStackRequest)
+  ))
+_sym_db.RegisterMessage(AnalyzeStackRequest)
 
 AnalyzeResponse = _reflection.GeneratedProtocolMessageType('AnalyzeResponse', (_message.Message,), dict(
   DESCRIPTOR = _ANALYZERESPONSE,
@@ -356,8 +478,8 @@ _ANALYZER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=734,
-  serialized_end=948,
+  serialized_start=951,
+  serialized_end=1243,
   methods=[
   _descriptor.MethodDescriptor(
     name='Analyze',
@@ -369,9 +491,18 @@ _ANALYZER = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='AnalyzeStack',
+    full_name='pulumirpc.Analyzer.AnalyzeStack',
+    index=1,
+    containing_service=None,
+    input_type=_ANALYZESTACKREQUEST,
+    output_type=_ANALYZERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='GetAnalyzerInfo',
     full_name='pulumirpc.Analyzer.GetAnalyzerInfo',
-    index=1,
+    index=2,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=_ANALYZERINFO,
@@ -380,7 +511,7 @@ _ANALYZER = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetPluginInfo',
     full_name='pulumirpc.Analyzer.GetPluginInfo',
-    index=2,
+    index=3,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=plugin__pb2._PLUGININFO,

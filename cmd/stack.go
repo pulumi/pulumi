@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -105,22 +107,11 @@ func newStackCmd() *cobra.Command {
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				rows := []cmdutil.TableRow{}
-
-				for _, res := range snap.Resources {
-					columns := []string{string(res.Type), string(res.URN.Name())}
-					additionalInfo := ""
-
-					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
-					// this on a single line, but this can get quite lengthy and so this formatting is better.
-					if showURNs {
-						additionalInfo += fmt.Sprintf("        URN: %s\n", res.URN)
+				rows, ok := renderTree(snap, showURNs, showIDs)
+				if !ok {
+					for _, res := range snap.Resources {
+						rows = append(rows, renderResourceRow(res, "", "    ", showURNs, showIDs))
 					}
-					if showIDs && res.ID != "" {
-						additionalInfo += fmt.Sprintf("        ID: %s\n", res.ID)
-					}
-
-					rows = append(rows, cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo})
 				}
 
 				cmdutil.PrintTable(cmdutil.Table{
@@ -130,7 +121,7 @@ func newStackCmd() *cobra.Command {
 				})
 
 				outputs, err := getStackOutputs(snap, showSecrets)
-				if err != nil {
+				if err == nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
@@ -214,4 +205,100 @@ func stringifyOutput(v interface{}) string {
 	}
 
 	return string(b)
+}
+
+type treeNode struct {
+	res      *resource.State
+	children []*treeNode
+}
+
+func renderNode(node *treeNode, padding, branch string, showURNs, showIDs bool, rows *[]cmdutil.TableRow) {
+	padBranch := ""
+	switch branch {
+	case "├─ ":
+		padBranch = "│  "
+	case "└─ ":
+		padBranch = "   "
+	}
+	childPadding := padding + padBranch
+
+	infoBranch := "   "
+	if len(node.children) > 0 {
+		infoBranch = "│  "
+	}
+	infoPadding := childPadding + infoBranch
+
+	*rows = append(*rows, renderResourceRow(node.res, padding+branch, infoPadding, showURNs, showIDs))
+
+	for i, child := range node.children {
+		childBranch := "├─ "
+		if i == len(node.children)-1 {
+			childBranch = "└─ "
+		}
+		renderNode(child, childPadding, childBranch, showURNs, showIDs, rows)
+	}
+}
+
+func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableRow, bool) {
+	var root *treeNode
+	var orphans []*treeNode
+	nodes := make(map[resource.URN]*treeNode)
+	for _, res := range snap.Resources {
+		node, ok := nodes[res.URN]
+		if !ok {
+			node = &treeNode{res: res}
+			nodes[res.URN] = node
+		} else {
+			node.res = res
+		}
+
+		switch {
+		case res.Parent != "":
+			p, ok := nodes[res.Parent]
+			if !ok {
+				p = &treeNode{}
+				nodes[res.Parent] = p
+			}
+			p.children = append(p.children, node)
+		case res.Type == resource.RootStackType:
+			root = node
+		default:
+			orphans = append(orphans, node)
+		}
+	}
+
+	// If we don't have a root, we can't display the tree.
+	if root == nil {
+		return nil, false
+	}
+
+	// Make sure all of our nodes have states.
+	for _, n := range nodes {
+		if n.res == nil {
+			return nil, false
+		}
+	}
+
+	// Parent all of our orphans to the root.
+	root.children = append(root.children, orphans...)
+
+	var rows []cmdutil.TableRow
+	renderNode(root, "", "", showURNs, showIDs, &rows)
+	return rows, true
+}
+
+func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
+	columns := []string{prefix + string(res.Type), string(res.URN.Name())}
+	additionalInfo := ""
+
+	// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
+	// this on a single line, but this can get quite lengthy and so this formatting is better.
+	if showURN {
+		additionalInfo += fmt.Sprintf("    %sURN: %s\n", infoPrefix, res.URN)
+	}
+	if showID && res.ID != "" {
+		additionalInfo += fmt.Sprintf("    %sID: %s\n", infoPrefix, res.ID)
+	}
+
+	return cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo}
 }

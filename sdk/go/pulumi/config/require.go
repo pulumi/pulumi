@@ -15,6 +15,8 @@
 package config
 
 import (
+	"encoding/json"
+
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -76,6 +78,15 @@ func RequireInt32(ctx *pulumi.Context, key string) int32 {
 func RequireInt64(ctx *pulumi.Context, key string) int64 {
 	v := Require(ctx, key)
 	return cast.ToInt64(v)
+}
+
+// RequireObject loads an optional configuration value by its key into the output variable,
+// or panics if unable to do so.
+func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
+	v := Require(ctx, key)
+	if err := json.Unmarshal([]byte(v), output); err != nil {
+		contract.Failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+	}
 }
 
 // RequireUint loads an optional configuration value by its key, as a uint, or panics if it doesn't exist.

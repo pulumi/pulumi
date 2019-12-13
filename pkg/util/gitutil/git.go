@@ -205,7 +205,9 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	}
 
 	// Since the vcsKind is not Azure, we can try to detect the other kinds of VCS.
-	split := strings.Split(project, "/")
+	// We are splitting in two because some VCS providers (e.g. GitLab) allow for
+	// subgroups.
+	split := strings.SplitN(project, "/", 2)
 	if len(split) != 2 {
 		return nil, errors.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}

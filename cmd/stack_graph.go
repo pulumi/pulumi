@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/graph"
@@ -42,7 +43,7 @@ func newStackGraphCmd() *cobra.Command {
 	var stackName string
 
 	cmd := &cobra.Command{
-		Use:   "graph",
+		Use:   "graph [filename]",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Export a stack's dependency graph to a file",
 		Long: "Export a stack's dependency graph to a file.\n" +
@@ -100,8 +101,9 @@ func newStackGraphCmd() *cobra.Command {
 // `dependencyEdge` implements graph.Edge, `dependencyVertex` implements graph.Vertex, and
 // `dependencyGraph` implements `graph.Graph`.
 type dependencyEdge struct {
-	to   *dependencyVertex
-	from *dependencyVertex
+	to     *dependencyVertex
+	from   *dependencyVertex
+	labels []string
 }
 
 // In this simple case, edges have no data.
@@ -109,9 +111,8 @@ func (edge *dependencyEdge) Data() interface{} {
 	return nil
 }
 
-// In this simple case, edges have no label.
 func (edge *dependencyEdge) Label() string {
-	return ""
+	return strings.Join(edge.labels, ", ")
 }
 
 func (edge *dependencyEdge) To() graph.Vertex {
@@ -224,11 +225,20 @@ func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 
 	for _, vertex := range dg.vertices {
 		if !ignoreDependencyEdges {
+			// If we have per-property dependency information, annotate the dependency edges
+			// we generate with the names of the properties associated with each dependency.
+			depBlame := make(map[resource.URN][]string)
+			for k, deps := range vertex.resource.PropertyDependencies {
+				for _, dep := range deps {
+					depBlame[dep] = append(depBlame[dep], string(k))
+				}
+			}
+
 			// Incoming edges are directly stored within the checkpoint file; they represent
 			// resources on which this vertex immediately depends upon.
 			for _, dep := range vertex.resource.Dependencies {
 				vertexWeDependOn := vertex.graph.vertices[dep]
-				edge := &dependencyEdge{to: vertex, from: vertexWeDependOn}
+				edge := &dependencyEdge{to: vertex, from: vertexWeDependOn, labels: depBlame[dep]}
 				vertex.incomingEdges = append(vertex.incomingEdges, edge)
 				vertexWeDependOn.outgoingEdges = append(vertexWeDependOn.outgoingEdges, edge)
 			}

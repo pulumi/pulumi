@@ -107,11 +107,16 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
+	p, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
 	blobmux := blob.DefaultURLMux()
 
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
-	if strings.HasPrefix(u, gcsblob.Scheme) {
+	if p.Scheme == gcsblob.Scheme {
 		blobmux, err = GoogleCredentialsMux(context.TODO())
 		if err != nil {
 			return nil, err
@@ -124,10 +129,6 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
-		p, err := url.Parse(u)
-		if err != nil {
-			return nil, err
-		}
 		bucketSubDir := strings.TrimLeft(p.Path, "/")
 		if bucketSubDir != "" {
 			if !strings.HasSuffix(bucketSubDir, "/") {
@@ -196,7 +197,7 @@ func Login(d diag.Sink, url string) (Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccessToken(be.URL(), "", true)
+	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
 }
 
 func (b *localBackend) local() {}
@@ -307,8 +308,8 @@ func (b *localBackend) ListStacks(
 	return results, nil
 }
 
-func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
-	stackName := stackRef.Name()
+func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
@@ -322,8 +323,8 @@ func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackRe
 	return false, b.removeStack(stackName)
 }
 
-func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackReference, newName tokens.QName) error {
-	stackName := stackRef.Name()
+func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+	stackName := stack.Ref().Name()
 	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
@@ -340,12 +341,12 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName); err != nil {
+		if err = edit.RenameStack(snap, newName, ""); err != nil {
 			return err
 		}
 	}
 
-	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot)
+	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
 	if _, err = b.saveStack(newName, snap, nil); err != nil {
 		return err
 	}
@@ -359,9 +360,9 @@ func (b *localBackend) RenameStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
-	stackRef backend.StackReference) (config.Map, error) {
+	stack backend.Stack) (config.Map, error) {
 
-	hist, err := b.GetHistory(ctx, stackRef)
+	hist, err := b.GetHistory(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
 	}
@@ -380,14 +381,8 @@ func (b *localBackend) PackPolicies(
 	return result.Error("File state backend does not support resource policy")
 }
 
-func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	// Get the stack.
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -396,42 +391,29 @@ func (b *localBackend) Preview(ctx context.Context, stackRef backend.StackRefere
 	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
 }
 
-func (b *localBackend) Update(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Query(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
+
+	return b.query(ctx, op, nil /*events*/)
+}
+
+func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) result.Result {
-
-	stack, err := b.GetStack(ctx, stackRef)
-	if err != nil {
-		return result.FromError(err)
-	}
-
-	return b.query(ctx, stack, op, nil /*events*/)
+	return backend.Watch(ctx, b, stack, op, b.apply)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
@@ -444,7 +426,7 @@ func (b *localBackend) apply(
 	stackName := stackRef.Name()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay {
+	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
@@ -590,12 +572,10 @@ func (b *localBackend) apply(
 }
 
 // query executes a query program against the resource outputs of a locally hosted stack.
-func (b *localBackend) query(ctx context.Context, stack backend.Stack, op backend.UpdateOperation,
-	events chan<- engine.Event) result.Result {
+func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
+	callerEventsOpt chan<- engine.Event) result.Result {
 
-	// TODO: Consider implementing this for local backend. We left it out for the initial cut
-	// because we weren't sure we wanted to commit to it.
-	return result.Error("Local backend does not support querying over the state")
+	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
@@ -607,10 +587,10 @@ func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference, cfg backend.StackConfiguration,
+func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
-	stackName := stackRef.Name()
+	stackName := stack.Ref().Name()
 	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
@@ -639,9 +619,9 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 }
 
 func (b *localBackend) ExportDeployment(ctx context.Context,
-	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+	stk backend.Stack) (*apitype.UntypedDeployment, error) {
 
-	stackName := stackRef.Name()
+	stackName := stk.Ref().Name()
 	snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
@@ -667,10 +647,10 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}, nil
 }
 
-func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
+func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
-	stackName := stackRef.Name()
+	stackName := stk.Ref().Name()
 	_, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
@@ -686,7 +666,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 }
 
 func (b *localBackend) Logout() error {
-	return workspace.DeleteAccessToken(b.originalURL)
+	return workspace.DeleteAccount(b.originalURL)
 }
 
 func (b *localBackend) CurrentUser() (string, error) {
@@ -737,7 +717,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 // GetStackTags fetches the stack's existing tags.
 func (b *localBackend) GetStackTags(ctx context.Context,
-	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
+	stack backend.Stack) (map[apitype.StackTagName]string, error) {
 
 	// The local backend does not currently persist tags.
 	return nil, errors.New("stack tags not supported in --local mode")
@@ -745,7 +725,7 @@ func (b *localBackend) GetStackTags(ctx context.Context,
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *localBackend) UpdateStackTags(ctx context.Context,
-	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
+	stack backend.Stack, tags map[apitype.StackTagName]string) error {
 
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")

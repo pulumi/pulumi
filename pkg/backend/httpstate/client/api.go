@@ -165,7 +165,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 	// Specify the specific API version we accept.
-	req.Header.Set("Accept", "application/vnd.pulumi+3")
+	req.Header.Set("Accept", "application/vnd.pulumi+5")
 
 	// Apply credentials if provided.
 	if tok.String() != "" {

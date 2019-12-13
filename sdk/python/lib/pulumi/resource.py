@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
-from typing import Optional, List, Any, Mapping, Union, TYPE_CHECKING
+from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING
 
 import copy
 
@@ -202,6 +202,80 @@ def collapse_alias_to_urn(
 
     return Output.from_input(alias).apply(collapse_alias_to_urn_worker)
 
+class ResourceTransformationArgs:
+    """
+    ResourceTransformationArgs is the argument bag passed to a resource transformation.
+    """
+
+    resource: 'Resource'
+    """
+    The Resource instance that is being transformed.
+    """
+
+    type_: str
+    """
+    The type of the Resource.
+    """
+
+    name: str
+    """
+    The name of the Resource.
+    """
+
+    props: 'Inputs'
+    """
+    The original properties passed to the Resource constructor.
+    """
+
+    opts: 'ResourceOptions'
+    """
+    The original resource options passed to the Resource constructor.
+    """
+
+    def __init__(self,
+                 resource: 'Resource',
+                 type_: str,
+                 name: str,
+                 props: 'Inputs',
+                 opts: 'ResourceOptions') -> None:
+        self.resource = resource
+        self.type_ = type_
+        self.name = name
+        self.props = props
+        self.opts = opts
+
+class ResourceTransformationResult:
+    """
+    ResourceTransformationResult is the result that must be returned by a resource transformation
+    callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
+    the originally provided values.
+    """
+
+    props: 'Inputs'
+    """
+    The new properties to use in place of the original `props`.
+    """
+
+    opts: 'ResourceOptions'
+    """
+    The new resource options to use in place of the original `opts`
+    """
+
+    def __init__(self,
+                 props: 'Inputs',
+                 opts: 'ResourceOptions') -> None:
+        self.props = props
+        self.opts = opts
+
+ResourceTransformation = Callable[[ResourceTransformationArgs], Optional[ResourceTransformationResult]]
+"""
+ResourceTransformation is the callback signature for the `transformations` resource option.  A
+transformation is passed the same set of inputs provided to the `Resource` constructor, and can
+optionally return back alternate values for the `props` and/or `opts` prior to the resource
+actually being created.  The effect will be as though those props and opts were passed in place
+of the original call to the `Resource` constructor.  If the transformation returns undefined,
+this indicates that the resource will not be transformed.
+"""
 
 class ResourceOptions:
     """
@@ -271,6 +345,13 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
+    transformations: Optional[List[ResourceTransformation]]
+    """
+    Optional list of transformations to apply to this resource during construction. The
+    transformations are applied in order, and are applied prior to transformation applied to
+    parents walking from the resource up to the stack.
+    """
+
     id: Optional['Input[str]']
     """
     An optional existing ID to load, rather than create.
@@ -298,7 +379,8 @@ class ResourceOptions:
                  additional_secret_outputs: Optional[List[str]] = None,
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
-                 custom_timeouts: Optional['CustomTimeouts'] = None) -> None:
+                 custom_timeouts: Optional['CustomTimeouts'] = None,
+                 transformations: Optional[List[ResourceTransformation]] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -315,12 +397,14 @@ class ResourceOptions:
                or replacements.
         :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
-        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
         :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
         :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
+        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
+        :param Optional[transformations] transformations: If provided, a list of transformations to apply to this resource
+               during construction.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -340,6 +424,7 @@ class ResourceOptions:
         self.custom_timeouts = custom_timeouts
         self.id = id
         self.import_ = import_
+        self.transformations = transformations
 
         if depends_on is not None:
             for dep in depends_on:
@@ -401,6 +486,7 @@ class ResourceOptions:
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
+        dest.transformations = _merge_lists(dest.transformations, source.transformations)
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -424,7 +510,7 @@ def _expand_providers(options: 'ResourceOptions'):
 
     # Convert 'providers' map to list form.
     if options.providers is not None and not isinstance(options.providers, list):
-        options.providers = options.providers.values()
+        options.providers = list(options.providers.values())
 
     options.provider = None
 
@@ -447,10 +533,10 @@ def _collapse_providers(opts: 'ResourceOptions'):
 
 def _merge_lists(dest, source):
     if dest is None:
-        dest = []
+        return source
 
     if source is None:
-        source = []
+        return dest
 
     return dest + source
 
@@ -475,6 +561,11 @@ class Resource:
     _protect: bool
     """
     When set to true, protect ensures this resource cannot be deleted.
+    """
+
+    _transformations: 'List[ResourceTransformation]'
+    """
+    A collection of transformations to apply as part of resource registration.
     """
 
     _aliases: 'Input[str]'
@@ -518,6 +609,28 @@ class Resource:
             opts = ResourceOptions()
         elif not isinstance(opts, ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
+
+        # Before anything else - if there are transformations registered, give them a chance to run to modify the user provided
+        # properties and options assigned to this resource.
+        parent = opts.parent
+        if parent is None:
+            parent = get_root_resource()
+        parent_transformations = (parent._transformations or []) if parent is not None else []
+        self._transformations = (opts.transformations or []) + parent_transformations
+        for transformation in self._transformations:
+            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+            tres = transformation(args)
+            if tres is not None:
+                if tres.opts.parent != opts.parent:
+                    # This is currently not allowed because the parent tree is needed to establish what
+                    # transformation to apply in the first place, and to compute inheritance of other
+                    # resource options in the Resource constructor before transformations are run (so
+                    # modifying it here would only even partially take affect).  It's theoretically
+                    # possible this restriction could be lifted in the future, but for now just
+                    # disallow re-parenting resources in transformations to be safe.
+                    raise Exception("Transformations cannot currently be used to change the `parent` of a resource.")
+                props = tres.props
+                opts = tres.opts
 
         self._name = name
 

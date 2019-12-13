@@ -226,6 +226,10 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			"git@ssh.dev.azure.com:v3/owner-name/project/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "project/_git/repo-name", Kind: AzureDevOpsHostName},
 		},
+		{
+			"git@gitlab.com:owner-name/group/sub-group/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "group/sub-group/repo-name", Kind: GitLabHostName},
+		},
 
 		//HTTPS remotes
 		{

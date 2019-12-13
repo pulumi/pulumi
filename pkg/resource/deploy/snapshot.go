@@ -75,7 +75,7 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 // of a resource in the resources map.
 //
 // Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
-func (snap *Snapshot) NormalizeURNReferences() {
+func (snap *Snapshot) NormalizeURNReferences() error {
 	if snap != nil {
 		aliased := make(map[resource.URN]resource.URN)
 		fixUrn := func(urn resource.URN) resource.URN {
@@ -109,12 +109,14 @@ func (snap *Snapshot) NormalizeURNReferences() {
 				// same resource multiple times.  That's fine, only error if we see the same alias,
 				// but it maps to *different* resources.
 				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
-					contract.Assertf(!has, "Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+					return errors.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
 				}
 				aliased[alias] = state.URN
 			}
 		}
 	}
+
+	return nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,

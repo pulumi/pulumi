@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { util } from "protobufjs";
-import { ResourceError, RunError } from "./errors";
-import { all, Input, Inputs, interpolate, Output, output } from "./output";
+import { ResourceError } from "./errors";
+import { Input, Inputs, interpolate, Output, output } from "./output";
+import { getStackResource, unknownValue } from "./runtime";
 import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
@@ -142,10 +143,21 @@ export abstract class Resource {
 
     /**
      * @internal
+     * A collection of transformations to apply as part of resource registration.
+     *
+     * Note: This is marked optional only because older versions of this library may not have had
+     * this property, and marking optional forces consumers of the property to defensively handle
+     * cases where they are passed "old" resources.
+     */
+    // tslint:disable-next-line:variable-name
+    __transformations?: ResourceTransformation[];
+
+    /**
+     * @internal
      * A list of aliases applied to this resource.
      *
      * Note: This is marked optional only because older versions of this library may not have had
-     * this property, and marking optional forces conumers of the property to defensively handle
+     * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
@@ -156,7 +168,7 @@ export abstract class Resource {
      * The name assigned to the resource at construction.
      *
      * Note: This is marked optional only because older versions of this library may not have had
-     * this property, and marking optional forces conumers of the property to defensively handle
+     * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
     // tslint:disable-next-line:variable-name
@@ -208,6 +220,27 @@ export abstract class Resource {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
+        // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
+        // options assigned to this resource.
+        const parent = opts.parent || getStackResource() || { __transformations: undefined };
+        this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
+        for (const transformation of this.__transformations) {
+            const tres = transformation({ resource: this, type: t, name, props, opts });
+            if (tres) {
+                if (tres.opts.parent !== opts.parent) {
+                    // This is currently not allowed because the parent tree is needed to establish what
+                    // transformation to apply in the first place, and to compute inheritance of other
+                    // resource options in the Resource constructor before transformations are run (so
+                    // modifying it here would only even partially take affect).  It's theoretically
+                    // possible this restriction could be lifted in the future, but for now just
+                    // disallow re-parenting resources in transformations to be safe.
+                    throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
+                }
+                props = tres.props;
+                opts = tres.opts;
+            }
+        }
+
         this.__name = name;
 
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
@@ -240,12 +273,12 @@ export abstract class Resource {
         }
 
         if (custom) {
-            const provider = (<CustomResourceOptions>opts).provider;
+            const provider = opts.provider;
             if (provider === undefined) {
                 if (opts.parent) {
                     // If no provider was given, but we have a parent, then inherit the
                     // provider from our parent.
-                    (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
+                    opts.provider = opts.parent.getProvider(t);
                 }
             } else {
                 // If a provider was specified, add it to the providers map under this type's package so that
@@ -466,6 +499,12 @@ export interface ResourceOptions {
      * An optional customTimeouts configuration block.
      */
     customTimeouts?: CustomTimeouts;
+    /**
+     * Optional list of transformations to apply to this resource during construction. The
+     * transformations are applied in order, and are applied prior to transformation applied to
+     * parents walking from the resource up to the stack.
+     */
+    transformations?: ResourceTransformation[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -484,6 +523,58 @@ export interface CustomTimeouts {
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
+}
+
+/**
+ * ResourceTransformation is the callback signature for the `transformations` resource option.  A
+ * transformation is passed the same set of inputs provided to the `Resource` constructor, and can
+ * optionally return back alternate values for the `props` and/or `opts` prior to the resource
+ * actually being created.  The effect will be as though those props and opts were passed in place
+ * of the original call to the `Resource` constructor.  If the transformation returns undefined,
+ * this indicates that the resource will not be transformed.
+ */
+export type ResourceTransformation = (args: ResourceTransformationArgs) => ResourceTransformationResult | undefined;
+
+/**
+ * ResourceTransformationArgs is the argument bag passed to a resource transformation.
+ */
+export interface ResourceTransformationArgs {
+    /**
+     * The Resource instance that is being transformed.
+     */
+    resource: Resource;
+    /**
+     * The type of the Resource.
+     */
+    type: string;
+    /**
+     * The name of the Resource.
+     */
+    name: string;
+    /**
+     * The original properties passed to the Resource constructor.
+     */
+    props: Inputs;
+    /**
+     * The original resource options passed to the Resource constructor.
+     */
+    opts: ResourceOptions;
+}
+
+/**
+ * ResourceTransformationResult is the result that must be returned by a resource transformation
+ * callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
+ * the originally provided values.
+ */
+export interface ResourceTransformationResult {
+    /**
+     * The new properties to use in place of the original `props`
+     */
+    props: Inputs;
+    /**
+     * The new resource options to use in place of the original `opts`
+     */
+    opts: ResourceOptions;
 }
 
 /**
@@ -609,6 +700,24 @@ export abstract class CustomResource extends Resource {
 export abstract class ProviderResource extends CustomResource {
     /** @internal */
     private readonly pkg: string;
+
+    /** @internal */
+    // tslint:disable-next-line: variable-name
+    public __registrationId?: string;
+
+    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
+        if (provider === undefined) {
+            return undefined;
+        }
+
+        if (!provider.__registrationId) {
+            const providerURN = await provider.urn.promise();
+            const providerID = await provider.id.promise() || unknownValue;
+            provider.__registrationId = `${providerURN}::${providerID}`;
+        }
+
+        return provider.__registrationId;
+    }
 
     /**
      * Creates and registers a new provider resource for a particular package.
