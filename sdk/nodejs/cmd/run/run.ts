@@ -255,5 +255,5 @@ ${defaultMessage}`);
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    return runtime.runInPulumiStack(runProgram);
+    return argv["stack"] !== "remote" ? runtime.runInPulumiStack(runProgram) : runProgram();
 }

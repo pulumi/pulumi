@@ -6,4 +6,4 @@ class MyResource(ComponentResource):
         super().__init__("my:module:Resource", name, None, opts)
 
 
-MyResource("testResource1")
+MyResource("testResource3")

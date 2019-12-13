@@ -249,11 +249,19 @@ func (p *builtinProvider) remoteConstructResource(inputs resource.PropertyMap) (
 
 	path, ok := inputs["path"]
 	contract.Assert(ok)
-	contract.Assert(name.IsString())
+	contract.Assert(path.IsString())
 
 	monitorAddr, ok := inputs["monitorAddr"]
 	contract.Assert(ok)
-	contract.Assert(name.IsString())
+	contract.Assert(monitorAddr.IsString())
+
+	dryRun, ok := inputs["dryRun"]
+	contract.Assert(ok)
+	contract.Assert(dryRun.IsBool())
+
+	pwd, ok := inputs["pwd"]
+	contract.Assert(ok)
+	contract.Assert(pwd.IsString())
 
 	runtime, err := p.pluginCtx.Host.LanguageRuntime(name.StringValue())
 	if err != nil {
@@ -263,22 +271,14 @@ func (p *builtinProvider) remoteConstructResource(inputs resource.PropertyMap) (
 	msg, bail, err := runtime.Run(plugin.RunInfo{
 		MonitorAddress: monitorAddr.StringValue(),
 		Args:           []string{},
-		DryRun:         false,
+		DryRun:         dryRun.BoolValue(),
 		Project:        "remote-" + name.StringValue(),
-		Stack:          "foobar",
-		Pwd:            p.pluginCtx.Pwd,
+		Stack:          "remote",
+		Pwd:            pwd.StringValue(),
 		Program:        path.StringValue(),
 	})
 
-	pluginfo, err := runtime.GetPluginInfo()
-	if err != nil {
-		return nil, err
-	}
-
 	return resource.PropertyMap{
-		"name":    resource.NewStringProperty(pluginfo.Name),
-		"path":    resource.NewStringProperty(pluginfo.Path),
-		"size":    resource.NewNumberProperty(float64(pluginfo.Size)),
 		"message": resource.NewStringProperty(msg),
 		"bail":    resource.NewBoolProperty(bail),
 	}, nil
