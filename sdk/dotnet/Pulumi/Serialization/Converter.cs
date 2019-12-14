@@ -16,7 +16,8 @@ namespace Pulumi.Serialization
         public static OutputData<T> ConvertValue<T>(string context, Value value)
         {
             var (data, isKnown, isSecret) = ConvertValue(context, value, typeof(T));
-            return new OutputData<T>((T)data!, isKnown, isSecret);
+            return new OutputData<T>(
+                ImmutableHashSet<Resource>.Empty, (T)data!, isKnown, isSecret);
         }
 
         public static OutputData<object?> ConvertValue(string context, Value value, System.Type targetType)
@@ -26,7 +27,8 @@ namespace Pulumi.Serialization
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = ConvertObject(context, deserialized, targetType);
 
-            return new OutputData<object?>(converted, isKnown, isSecret);
+            return new OutputData<object?>(
+                ImmutableHashSet<Resource>.Empty, converted, isKnown, isSecret);
         }
 
         private static object? ConvertObject(string context, object? val, System.Type targetType)

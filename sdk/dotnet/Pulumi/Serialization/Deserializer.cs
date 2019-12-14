@@ -19,16 +19,19 @@ namespace Pulumi.Serialization
                 value.StringValue == Constants.UnknownValue)
             {
                 // always deserialize unknown as the null value.
-                return new OutputData<T>(default!, isKnown: false, isSecret);
+                return new OutputData<T>(
+                    ImmutableHashSet<Resource>.Empty, default!, isKnown: false, isSecret);
             }
 
             if (TryDeserializeAssetOrArchive(value, out var assetOrArchive))
             {
-                return new OutputData<T>((T)(object)assetOrArchive, isKnown: true, isSecret);
+                return new OutputData<T>(
+                    ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
 
             var innerData = func(value);
-            return OutputData.Create(innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
+            return OutputData.Create(
+                innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
         }
 
         private static OutputData<T> DeserializeOneOf<T>(Value value, Value.KindOneofCase kind, Func<Value, OutputData<T>> func)
@@ -36,7 +39,8 @@ namespace Pulumi.Serialization
                 v.KindCase == kind ? func(v) : throw new InvalidOperationException($"Trying to deserialize {v.KindCase} as a {kind}"));
 
         private static OutputData<T> DeserializePrimitive<T>(Value value, Value.KindOneofCase kind, Func<Value, T> func)
-            => DeserializeOneOf(value, kind, v => OutputData.Create(func(v), isKnown: true, isSecret: false));
+            => DeserializeOneOf(value, kind, v => OutputData.Create(
+                ImmutableHashSet<Resource>.Empty, func(v), isKnown: true, isSecret: false));
 
         private static OutputData<bool> DeserializeBoolean(Value value)
             => DeserializePrimitive(value, Value.KindOneofCase.BoolValue, v => v.BoolValue);
@@ -51,6 +55,7 @@ namespace Pulumi.Serialization
             => DeserializeOneOf(value, Value.KindOneofCase.ListValue,
                 v =>
                 {
+                    var resources = ImmutableHashSet.CreateBuilder<Resource>();
                     var result = ImmutableArray.CreateBuilder<object?>();
                     var isKnown = true;
                     var isSecret = false;
@@ -59,16 +64,19 @@ namespace Pulumi.Serialization
                     {
                         var elementData = Deserialize(element);
                         (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
+                        resources.UnionWith(elementData.Resources);
                         result.Add(elementData.Value);
                     }
 
-                    return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
+                    return OutputData.Create(
+                        resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
                 });
 
         private static OutputData<ImmutableDictionary<string, object?>> DeserializeStruct(Value value)
             => DeserializeOneOf(value, Value.KindOneofCase.StructValue,
                 v =>
                 {
+                    var resources = ImmutableHashSet.CreateBuilder<Resource>();
                     var result = ImmutableDictionary.CreateBuilder<string, object?>();
                     var isKnown = true;
                     var isSecret = false;
@@ -85,9 +93,11 @@ namespace Pulumi.Serialization
                         var elementData = Deserialize(element);
                         (isKnown, isSecret) = OutputData.Combine(elementData, isKnown, isSecret);
                         result.Add(key, elementData.Value);
+                        resources.UnionWith(elementData.Resources);
                     }
 
-                    return OutputData.Create(result.ToImmutable(), isKnown, isSecret);
+                    return OutputData.Create(
+                        resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
                 });
 
         public static OutputData<object?> Deserialize(Value value)
@@ -99,7 +109,7 @@ namespace Pulumi.Serialization
                     Value.KindOneofCase.BoolValue => DeserializeBoolean(v),
                     Value.KindOneofCase.StructValue => DeserializeStruct(v),
                     Value.KindOneofCase.ListValue => DeserializeList(v),
-                    Value.KindOneofCase.NullValue => new OutputData<object?>(null, isKnown: true, isSecret: false),
+                    Value.KindOneofCase.NullValue => new OutputData<object?>(ImmutableHashSet<Resource>.Empty, null, isKnown: true, isSecret: false),
                     Value.KindOneofCase.None => throw new InvalidOperationException("Should never get 'None' type when deserializing protobuf"),
                     _ => throw new InvalidOperationException("Unknown type when deserializing protobuf: " + v.KindCase),
                 });

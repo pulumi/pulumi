@@ -31,7 +31,7 @@ namespace Pulumi
         {
             var output = obj is IInput input ? input.ToOutput() : obj as IOutput;
             return output != null
-                ? new Output<object?>(output.Resources, output.GetDataAsync())
+                ? new Output<object?>(output.GetDataAsync())
                 : Output.Create(obj);
         }
 
