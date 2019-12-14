@@ -26,7 +26,6 @@ import * as utils from "./utils";
  */
 class OutputImpl<T> implements OutputInstance<T> {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
@@ -34,13 +33,10 @@ class OutputImpl<T> implements OutputInstance<T> {
     // tslint:disable-next-line:variable-name
     public readonly __pulumiOutput: boolean = true;
 
-    /**
-     * @internal
-     */
+    // tslint:disable-next-line: variable-name
     public readonly __data: Promise<OutputData<T>>;
 
     /**
-     * @internal
      * Method that actually produces the concrete value of this output, as well as the total
      * deployment-time set of resources this output depends on. If the value of the output is not
      * known (i.e. isKnown resolves to false), this promise should resolve to undefined unless the
@@ -49,6 +45,10 @@ class OutputImpl<T> implements OutputInstance<T> {
      * Only callable on the outside.
      */
     public readonly promise: (withUnknowns?: boolean) => Promise<T>;
+
+    // Legacy properties.  Used for compat with previous versions of pulumi.
+    public get isSecret() { return this.__data.then(d => d.isSecret); }
+    public get isKnown() { return this.__data.then(d => d.isKnown); }
 
     /**
      * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
@@ -103,11 +103,15 @@ class OutputImpl<T> implements OutputInstance<T> {
     }
 
     /** @internal */
-    public constructor(data: Promise<OutputData<T>>) {
-        this.__data = data;
+    public constructor(data: Promise<OutputData<T>> | OutputData<T>) {
+        if (data instanceof Set) {
+            throw new Error("Legacy output was not updated to new API.")
+        }
+
+        this.__data = data instanceof Promise ? data : Promise.resolve(data);
 
         // this.resources = () => new Set<Resource>(resourcesArray);
-        this.promise = (withUnknowns?: boolean) => data.then(d => d.valueWithUnknowns(withUnknowns));
+        this.promise = (withUnknowns?: boolean) => this.__data.then(d => d.valueWithUnknowns(withUnknowns));
 
         this.toString = () => {
             const message =
@@ -263,8 +267,7 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
     }
     else if (isUnknown(val)) {
         // Turn unknowns into unknown outputs.
-        return <any>new Output(Promise.resolve(
-            new OutputData(new Set(), <any>val, /*isKnown*/ false, /*isSecret*/ false)));
+        return <any>new Output(new OutputData(new Set(), <any>val, /*isKnown*/ false, /*isSecret*/ false));
     }
     else if (val instanceof Promise) {
         // For a promise, we can just treat the same as an output that points to that resource. So
@@ -304,9 +307,6 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 }
 
 interface LegacyOutput<T> extends OutputInstance<T> {
-    readonly isSecret: Promise<boolean>;
-    readonly isKnown: Promise<boolean>;
-    readonly promise: (withUnknowns?: boolean) => Promise<T>;
     readonly resources: () => Set<Resource>;
 }
 
@@ -326,8 +326,7 @@ export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 }
 
 function createSimpleOutput(val: any) {
-    return new Output(Promise.resolve(
-        new OutputData(new Set(), val, /*isKnown:*/ true, /*isSecret:*/ false)));
+    return new Output(new OutputData(new Set(), val, /*isKnown:*/ true, /*isSecret:*/ false));
 }
 
 /**
@@ -657,7 +656,12 @@ async function applyHelperAsync<T, U>(
  * for working with the underlying value of an [Output<T>].
  */
 export interface OutputInstance<T> {
-    /** @internal */ __data: Promise<OutputData<T>>;
+    /** @internal */ readonly __data: Promise<OutputData<T>>;
+
+    // Legacy properties.  Used for compat with previous versions of pulumi.
+    /** @internal */ readonly isSecret: Promise<boolean>;
+    /** @internal */ readonly isKnown: Promise<boolean>;
+    // End legacy properties
 
     /** @internal */ promise(withUnknowns?: boolean): Promise<T>;
 
@@ -714,6 +718,7 @@ export interface OutputConstructor {
     isInstance<T>(obj: any): obj is Output<T>;
 
     /** @internal */ new<T>(data: Promise<OutputData<T>>): Output<T>;
+    /** @internal */ new<T>(data: OutputData<T>): Output<T>;
 }
 
 /**

@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { output, Output, Resource } from "../index";
+import { output, Output, OutputData } from "../index";
 import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
@@ -41,12 +41,12 @@ function testOutput(val: any) {
 function testResources(val: any, expected: any, resources: TestResource[]) {
     return asyncTest(async () => {
         const unwrapped = output(val);
-        const actual = await unwrapped.promise();
+        const actual = await unwrapped.__data;
 
-        assert.deepStrictEqual(actual, expected);
-        assert.deepStrictEqual(unwrapped.resources(), new Set(resources));
+        assert.deepStrictEqual(actual.value, expected);
+        assert.deepStrictEqual(actual.resources, new Set(resources));
 
-        const unwrappedResources: TestResource[] = <any>[...unwrapped.resources()];
+        const unwrappedResources: TestResource[] = <any>[...actual.resources];
         unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
 
         resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
@@ -134,9 +134,9 @@ describe("unwrap", () => {
     });
 
     function createOutput<T>(cv: T, ...resources: TestResource[]): Output<T> {
-        return Output.isInstance<T>(cv)
-            ? cv
-            : new Output(<any>new Set(resources), Promise.resolve(cv), Promise.resolve(true), Promise.resolve(false))
+        return Output.isInstance<T>(cv) ? cv :
+               cv instanceof Promise ? <any>new Output(cv.then(v => new OutputData(<any>new Set(resources), v, true, false))) :
+                                       <any>new Output(new OutputData(<any>new Set(resources), cv, true, false));
     }
 
     describe("preserves resources", () => {

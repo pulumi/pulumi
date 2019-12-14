@@ -19,8 +19,7 @@ import { Output, OutputData } from "./output";
 import { getConfig } from "./runtime";
 
 function makeSecret<T>(value: T): Output<T> {
-    return new Output(Promise.resolve(
-        new OutputData(new Set(), value, /*isKnown:*/ true, /*isSecret*/ true)));
+    return new Output(new OutputData(new Set(), value, /*isKnown:*/ true, /*isSecret*/ true));
 }
 
 /**
