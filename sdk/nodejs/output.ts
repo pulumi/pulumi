@@ -278,8 +278,17 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         // downlevel SxS SDKs. This ensures that first-class unknowns are properly represented in the system: if this
         // was a downlevel output where val.isKnown resolves to false, this guarantees that the returned output's
         // promise resolves to unknown.
-        const newOutput = new Output(val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret);
-        return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
+
+        if (isLegacyOutput(val)) {
+            // down-level output.
+            const newOutput = new Output(Promise.all([val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret]).then(
+                ([v, isKnown, isSecret]) => new OutputData(val.resources(), v, isKnown, isSecret)));
+            return (<OutputImpl<any>>newOutput).apply(output, /*runWithUnknowns*/ true);
+        }
+        else {
+            const newOutput = new Output(val.__data.then(d => new OutputData(d.resources, d.value, d.isKnown, d.isSecret)));
+            return (<OutputImpl<any>>newOutput).apply(output, /*runWithUnknowns*/ true);
+        }
     }
     else if (val instanceof Array) {
         return <any>all(val.map(output));
@@ -292,6 +301,17 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 
         return <any>all(unwrappedObject);
     }
+}
+
+interface LegacyOutput<T> extends OutputInstance<T> {
+    readonly isSecret: Promise<boolean>;
+    readonly isKnown: Promise<boolean>;
+    readonly promise: (withUnknowns?: boolean) => Promise<T>;
+    readonly resources: () => Set<Resource>;
+}
+
+function isLegacyOutput<T>(o: OutputInstance<T>): o is LegacyOutput<T> {
+    return (<LegacyOutput<T>>o).resources instanceof Function;
 }
 
 /**
@@ -353,7 +373,7 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     }
 
     function processOutputArray(allOutputs: Output<Unwrap<T>>[]): Promise<OutputData<Unwrap<T>[]>> {
-        return processPromiseArray(Promise.all(allOutputs.map(o => o.__data)))
+        return processPromiseArray(Promise.all(allOutputs.map(o => o.__data)));
     }
 
     async function processPromiseArray(promiseArray: Promise<OutputData<Unwrap<T>>[]>) {
@@ -602,7 +622,7 @@ async function applyHelperAsync<T, U>(
         }
     }
 
-    let transformed = await func(value);
+    const transformed = await func(value);
     if (Output.isInstance(transformed)) {
         // Note: if the func returned a Output, we unwrap that to get the inner value returned by
         // that Output.
@@ -610,7 +630,7 @@ async function applyHelperAsync<T, U>(
         // pass the Output we got back through our helper to make sure its
         const transformedOutput = output(transformed);
 
-        const innerData = await transformed.__data;
+        const innerData = await transformedOutput.__data;
 
         const allResources = new Set<Resource>(resources);
         for (const resource of innerData.resources) {
@@ -618,7 +638,7 @@ async function applyHelperAsync<T, U>(
         }
         return new OutputData<U>(
             allResources,
-            innerData.value,
+            <U>innerData.value,
             innerData.isKnown,
             innerData.isSecret);
     }
