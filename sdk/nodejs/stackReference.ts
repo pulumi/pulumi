@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, Input, Output, output } from "./output";
+import { all, Input, Output, output, OutputData } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
 import * as invoke from "./runtime/invoke";
 import { promiseResult } from "./utils";
@@ -79,7 +79,8 @@ export class StackReference extends CustomResource {
         // of the inputs are a secret, and this.outputs is always a secret if it contains any secrets. We do this dance
         // so we can ensure that the Output we return is not needlessly tainted as a secret.
         const value = all([output(name), this.outputs]).apply(([n, os]) => os[n]);
-        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
+        return new Output(Promise.all([value.__data, isSecretOutputName(this, output(name))]).then(
+            ([data, isSecret]) => new OutputData(data.resources, data.value, data.isKnown, isSecret)));
     }
 
     /**
@@ -94,7 +95,9 @@ export class StackReference extends CustomResource {
             }
             return os[n];
         });
-        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
+
+        return new Output(Promise.all([value.__data, isSecretOutputName(this, output(name))]).then(
+            ([data, isSecret]) => new OutputData(data.resources, data.value, data.isKnown, isSecret)));
     }
 
     /**
@@ -146,7 +149,8 @@ export class StackReference extends CustomResource {
 For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
 
         const out = required ? this.requireOutput(outputName) : this.getOutput(outputName);
-        return [promiseResult(out.promise()), promiseResult(out.isSecret)];
+        const data = promiseResult(out.__data);
+        return [data.value, data.isSecret];
     }
 
     private readOutputsSync(callerName: string): [string, Record<string, any>, string[], boolean] {
@@ -214,22 +218,24 @@ export interface StackReferenceArgs {
     readonly name?: Input<string>;
 }
 
-async function isSecretOutputName(sr: StackReference, name: Input<string>): Promise<boolean> {
-    const nameOutput = output(name);
-
+async function isSecretOutputName(sr: StackReference, name: Output<string>): Promise<boolean> {
     // If either the name or set of secret outputs is unknown, we can't do anything smart, so we just copy the
     // secretness from the entire outputs value.
-    if (!((await nameOutput.isKnown) && (await sr.secretOutputNames.isKnown))) {
-        return await sr.outputs.isSecret;
+    const nameData = await name.__data;
+    const secretNamesData = await sr.secretOutputNames.__data;
+    const stackOutputsData = await sr.outputs.__data;
+
+    if (!nameData.isKnown || !secretNamesData.isKnown) {
+        return stackOutputsData.isSecret;
     }
 
     // Otherwise, if we have a list of outputs we know are secret, we can use that list to determine if this
     // output should be secret. Names could be falsy here in cases where we are using an older CLI that did
     // not return this information (in this case we again fallback to the secretness of outputs value).
-    const names = await sr.secretOutputNames.promise();
-    if (!names) {
-        return await sr.outputs.isSecret;
+    const secretNames = secretNamesData.value;
+    if (!secretNames) {
+        return stackOutputsData.isSecret;
     }
 
-    return names.includes(await nameOutput.promise());
+    return secretNames.includes(nameData.value);
 }

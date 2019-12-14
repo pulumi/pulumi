@@ -1262,10 +1262,6 @@ async function getOrCreateEntryAsync(
     }
 }
 
-async function isOutputAsync(obj: any): Promise<boolean> {
-    return Output.isInstance(obj);
-}
-
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.

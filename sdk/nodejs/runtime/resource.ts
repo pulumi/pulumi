@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output, unknown } from "../output";
+import { Input, Inputs, Output, OutputData, output, unknown } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,
@@ -63,7 +63,7 @@ interface ResourceResolverOperation {
     // A resolver for a resource's URN.
     resolveURN: (urn: URN) => void;
     // A resolver for a resource's ID (for custom resources only).
-    resolveID: ((v: ID, performApply: boolean) => void) | undefined;
+    resolveID: (v: ID, performApply: boolean) => void;
     // A collection of resolvers for a resource's properties.
     resolvers: OutputResolvers;
     // A parent URN, fully resolved, if any.
@@ -103,7 +103,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
-        const resolvedID = await serializeProperty(label, id, new Set());
+        const resolvedID: ID = await serializeProperty(label, id, new Set());
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
@@ -148,7 +148,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
             resop.resolveURN(resp.getUrn());
-            resop.resolveID!(resolvedID, resolvedID !== undefined);
+            resop.resolveID(resolvedID, resolvedID !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
     }), label);
@@ -270,31 +270,31 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
-    let resolveURN: (urn: URN) => void;
-    (res as any).urn = new Output(
-        res,
+    let resolveURNOutputData: (data: OutputData<URN>) => void;
+    const resolveURN = (urn: URN) =>
+        resolveURNOutputData(new OutputData<URN>(new Set([res]), urn, /*isKnown:*/ true, /*isSecret:*/ false));
+
+    const urnOutput = new Output(
         debuggablePromise(
-            new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`),
-        /*isKnown:*/ Promise.resolve(true),
-        /*isSecret:*/ Promise.resolve(false));
+            new Promise<OutputData<URN>>(resolve => resolveURNOutputData = resolve),
+            `resolveURN(${label})`));
+
+    // @ts-ignore: Ignore overwriting readonly prop.
+    res.urn = urnOutput;
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
+    let resolveIDOutputData: (data: OutputData<ID>) => void;
+    const resolveID = (v: ID, isKnown: boolean) => {
+        if (resolveIDOutputData) {
+            resolveIDOutputData(new OutputData(new Set([res]), v, isKnown, /*isSecret:*/ false));
+        }
+    };
     if (custom) {
-        let resolveValue: (v: ID) => void;
-        let resolveIsKnown: (v: boolean) => void;
-        (res as any).id = new Output(
-            res,
-            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>(
-                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
-            Promise.resolve(false));
+        const idOutput = new Output(
+            debuggablePromise(new Promise<OutputData<ID>>(resolve => resolveIDOutputData = resolve), `resolveID(${label})`));
 
-        resolveID = (v, isKnown) => {
-            resolveValue(v);
-            resolveIsKnown(isKnown);
-        };
+        // @ts-ignore: Ignore overwriting readonly prop.
+        (<CustomResource>res).id = idOutput;
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
@@ -448,8 +448,10 @@ async function gatherExplicitDependencies(
         } else if (Output.isInstance(dependsOn)) {
             // Recursively gather dependencies, await the promise, and append the output's dependencies.
             const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(v => gatherExplicitDependencies(v));
-            const urns = await dos.promise();
-            const implicits = await gatherExplicitDependencies([...dos.resources()]);
+            let urns = await dos.promise();
+
+            const data = await dos.__data;
+            const implicits = await gatherExplicitDependencies([...data.resources]);
             return urns.concat(implicits);
         } else {
             if (!Resource.isInstance(dependsOn)) {
