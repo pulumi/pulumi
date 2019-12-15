@@ -79,15 +79,21 @@ class Output(Generic[T]):
     The list of resources that this output value depends on.
     """
 
-    def __init__(self, resources: Awaitable[Set['Resource']], future: Awaitable[T],
-                 is_known: Awaitable[bool], is_secret: Optional[Awaitable[bool]] = None) -> None:
+    def __init__(self, resources: Union[Awaitable[Set['Resource']], Set['Resource']],
+                 future: Awaitable[T], is_known: Awaitable[bool],
+                 is_secret: Optional[Awaitable[bool]] = None) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
 
         async def is_value_known() -> bool:
             return await is_known and not contains_unknowns(await future)
 
-        self._resources = resources
+        if isinstance(resources, set):
+            self._resources = asyncio.Future()
+            self._resources.set_result(resources)
+        else:
+            self._resources = asyncio.ensure_future(resources)
+
         self._future = future
         self._is_known = asyncio.ensure_future(is_value_known())
 
