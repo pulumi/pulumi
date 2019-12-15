@@ -128,7 +128,7 @@ class NextSerializationTests(unittest.TestCase):
 
         known_fut = asyncio.Future()
         known_fut.set_result(False)
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
 
         # For compatibility, future() should still return 42 even if the value is unknown.
         prop = await out.future()
@@ -138,7 +138,7 @@ class NextSerializationTests(unittest.TestCase):
         fut.set_result(UNKNOWN)
         known_fut = asyncio.Future()
         known_fut.set_result(True)
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
 
         # For compatibility, is_known() should return False and future() should return None when the value contains
         # first-class unknowns.
@@ -278,17 +278,17 @@ class NextSerializationTests(unittest.TestCase):
         fut.set_result(UNKNOWN)
         known_fut = asyncio.Future()
         known_fut.set_result(True)
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
         self.assertFalse(await out.is_known())
 
         fut = asyncio.Future()
         fut.set_result(["foo", UNKNOWN])
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
         self.assertFalse(await out.is_known())
 
         fut = asyncio.Future()
         fut.set_result({"foo": "foo", "bar": UNKNOWN})
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
         self.assertFalse(await out.is_known())
 
     @async_test
@@ -297,7 +297,7 @@ class NextSerializationTests(unittest.TestCase):
         fut.set_result("foo")
         known_fut = asyncio.Future()
         known_fut.set_result(True)
-        out = Output({}, fut, known_fut)
+        out = Output(set(), fut, known_fut)
 
         r1 = out.apply(lambda v: UNKNOWN)
         r2 = out.apply(lambda v: [v, UNKNOWN])
@@ -386,7 +386,7 @@ class NextSerializationTests(unittest.TestCase):
             await asyncio.sleep(0)
             return True
 
-        out = Output({}, value(), is_known())
+        out = Output(set(), value(), is_known())
 
         self.assertTrue(await out.is_known())
         self.assertEqual(42, await out.future())
