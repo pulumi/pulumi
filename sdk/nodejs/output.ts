@@ -69,6 +69,10 @@ class OutputImpl<T> implements OutputInstance<T> {
      * The list of resource that this output value depends on.
      *
      * Only callable on the outside.
+     *
+     * Normally returns a Promise<Set>.  However, is typed to return a Set as well to properly
+     * represent and force us to handle values produced by older versions of the sdk in SxS
+     * scenarios.
      */
     public readonly resources: () => Set<Resource> | Promise<Set<Resource>>;
 
