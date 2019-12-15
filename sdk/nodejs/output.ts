@@ -141,12 +141,12 @@ class OutputImpl<T> implements OutputInstance<T> {
 
     /** @internal */
     public constructor(
-            resources1: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
+            resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
             promise: Promise<T>,
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>) {
 
-        const resources = Promise.resolve(resources1).then(rs => {
+        const resourcesSet = Promise.resolve(resources).then(rs => {
             if (Array.isArray(rs)) {
                 return new Set(rs);
             } else if (rs instanceof Set) {
@@ -161,7 +161,7 @@ class OutputImpl<T> implements OutputInstance<T> {
         this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
         this.isSecret = isSecret;
 
-        this.resources = () => resources;
+        this.resources = () => resourcesSet;
         this.promise = (withUnknowns?: boolean) => OutputImpl.getPromisedValue(promise, withUnknowns);
 
         this.toString = () => {
