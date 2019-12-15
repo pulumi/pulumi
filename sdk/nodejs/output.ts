@@ -671,7 +671,7 @@ export interface OutputInstance<T> {
      * ```
      *
      * In this example, taking a dependency on d2 means a resource will depend on all the resources
-     * of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
+     * of d1.  It will *also* depend on the resources of v.x.y.OtherDep.
      *
      * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
      * If you need have multiple Outputs and a single Output is needed that combines both
