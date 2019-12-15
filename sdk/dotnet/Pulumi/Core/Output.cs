@@ -248,8 +248,7 @@ namespace Pulumi
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
-            return OutputData.Create(
-                resources.ToImmutable(), values.MoveToImmutable(), isKnown, isSecret);
+            return OutputData.Create(resources.ToImmutable(), values.MoveToImmutable(), isKnown, isSecret);
         }
 
         internal static Output<(T1, T2, T3, T4, T5, T6, T7, T8)> Tuple<T1, T2, T3, T4, T5, T6, T7, T8>(

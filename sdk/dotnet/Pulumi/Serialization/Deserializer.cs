@@ -65,8 +65,7 @@ namespace Pulumi.Serialization
                         result.Add(elementData.Value);
                     }
 
-                    return OutputData.Create(
-                        resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
+                    return OutputData.Create(resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
                 });
 
         private static OutputData<ImmutableDictionary<string, object?>> DeserializeStruct(Value value)
@@ -93,8 +92,7 @@ namespace Pulumi.Serialization
                         resources.UnionWith(elementData.Resources);
                     }
 
-                    return OutputData.Create(
-                        resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
+                    return OutputData.Create(resources.ToImmutable(), result.ToImmutable(), isKnown, isSecret);
                 });
 
         public static OutputData<object?> Deserialize(Value value)
