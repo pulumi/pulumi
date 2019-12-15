@@ -146,15 +146,10 @@ class OutputImpl<T> implements OutputInstance<T> {
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>) {
 
-        const resourcesSet = Promise.resolve(resources).then(rs => {
-            if (Array.isArray(rs)) {
-                return new Set(rs);
-            } else if (rs instanceof Set) {
-                return new Set(rs);
-            } else {
-                return new Set([rs]);
-            }
-        });
+        const resourcesSet = Promise.resolve(resources).then(
+            rs => Array.isArray(rs) ? new Set(rs) :
+                  rs instanceof Set ? new Set(rs) :
+                  new Set([rs]));
 
         // We are only known if we are not explicitly unknown and the resolved value of the output
         // contains no distinguished unknown values.
