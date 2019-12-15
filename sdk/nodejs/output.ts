@@ -306,13 +306,11 @@ async function applyHelperAsync<T, U>(
     const transformed = await func(value);
     if (Output.isInstance(transformed)) {
         // Note: if the func returned a Output, we unwrap that to get the inner value returned by
-        // that Output.  Note that we are *not* capturing the Resources of this inner Output.
-        // That's intentional.  As the Output returned is only supposed to be related this *this*
-        // Output object, those resources should already be in our transitively reachable resource
-        // graph.
+        // that Output.  Note that we *ar*e capturing the Resources of this inner Output and lifting
+        // them up to the outer Output as well.
 
         // Note: we intentionally await all the promises of the transformed value.  This way we
-        // properly propogate any rejections of any of them through ourselves as well.
+        // properly propagate any rejections of any of them through ourselves as well.
         const innerValue = await transformed.promise(/*withUnknowns*/ true);
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
