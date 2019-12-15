@@ -291,8 +291,5 @@ namespace Pulumi
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
         }
-
-        //private static ImmutableHashSet<Resource> GetAllResources(IEnumerable<IInput> inputs)
-        //    => ImmutableHashSet.CreateRange(inputs.SelectMany(i => i.ToOutput().Resources));
     }
 }
