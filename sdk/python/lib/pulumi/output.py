@@ -74,12 +74,12 @@ class Output(Generic[T]):
     Future that actually produces the concrete value of this output.
     """
 
-    _resources: Set['Resource']
+    _resources: Awaitable[Set['Resource']]
     """
     The list of resources that this output value depends on.
     """
 
-    def __init__(self, resources: Set['Resource'], future: Awaitable[T],
+    def __init__(self, resources: Awaitable[Set['Resource']], future: Awaitable[T],
                  is_known: Awaitable[bool], is_secret: Optional[Awaitable[bool]] = None) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
@@ -98,7 +98,7 @@ class Output(Generic[T]):
             self._is_secret.set_result(False)
 
     # Private implementation details - do not document.
-    def resources(self) -> Set['Resource']:
+    def resources(self) -> Awaitable[Set['Resource']]:
         return self._resources
 
     def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[T]:
@@ -135,6 +135,7 @@ class Output(Generic[T]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
+        result_resources: asyncio.Future = asyncio.Future()
         result_is_known: asyncio.Future = asyncio.Future()
         result_is_secret: asyncio.Future = asyncio.Future()
 
@@ -142,6 +143,7 @@ class Output(Generic[T]):
         async def run() -> U:
             try:
                 # Await this output's details.
+                resources = await self._resources
                 is_known = await self._is_known
                 is_secret = await self._is_secret
                 value = await self._future
@@ -154,6 +156,7 @@ class Output(Generic[T]):
                     if not apply_during_preview:
                         # We didn't actually run the function, our new Output is definitely
                         # **not** known and **not** secret
+                        result_resources.set_result(resources)
                         result_is_known.set_result(False)
                         result_is_secret.set_result(False)
                         return cast(U, None)
@@ -170,6 +173,8 @@ class Output(Generic[T]):
                 if isinstance(transformed, Output):
                     transformed_as_output = cast(Output[U], transformed)
                     # Forward along the inner output's _is_known and _is_secret values.
+                    transformed_resources = await transformed_as_output._resources
+                    result_resources.set_result(resources | transformed_resources)
                     result_is_known.set_result(await transformed_as_output._is_known)
                     result_is_secret.set_result(await transformed_as_output._is_secret or is_secret)
                     return await transformed.future(with_unknowns=True)
@@ -177,11 +182,13 @@ class Output(Generic[T]):
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):
                     # Since transformed is not an Output, it is both known and not a secret.
+                    result_resources.set_result(resources)
                     result_is_known.set_result(True)
                     result_is_secret.set_result(False)
                     return await cast(Awaitable[U], transformed)
 
                 #  3. transformed is U. It is trivially known.
+                result_resources.set_result(resources)
                 result_is_known.set_result(True)
                 result_is_secret.set_result(False)
                 return cast(U, transformed)
@@ -191,13 +198,14 @@ class Output(Generic[T]):
                     # Try and set the result. This might fail if we're shutting down,
                     # so swallow that error if that occurs.
                     try:
+                        result_resources.set_result(resources)
                         result_is_known.set_result(False)
                         result_is_secret.set_result(False)
                     except RuntimeError:
                         pass
 
         run_fut = asyncio.ensure_future(run())
-        return Output(self._resources, run_fut, result_is_known, result_is_secret)
+        return Output(result_resources, run_fut, result_is_known, result_is_secret)
 
     def __getattr__(self, item: str) -> 'Output[Any]':
         """
@@ -309,6 +317,11 @@ class Output(Generic[T]):
             each_is_secret = await asyncio.gather(*is_secret_futures)
             return any(each_is_secret)
 
+        async def get_resources(outputs):
+            resources_futures = list(map(lambda o: o._resources, outputs))
+            resources_agg = await asyncio.gather(*resources_futures)
+            # Merge the list of resource dependencies across all inputs.
+            return reduce(lambda acc, r: acc.union(r), resources_agg, set())
 
         # gather_futures, which aggregates the list of futures in each input to a future of a list.
         async def gather_futures(outputs):
@@ -318,16 +331,14 @@ class Output(Generic[T]):
         # First, map all inputs to outputs using `from_input`.
         all_outputs = list(map(Output.from_input, args))
 
-        # Merge the list of resource dependencies across all inputs.
-        resources = reduce(lambda acc, r: acc.union(r.resources()), all_outputs, set())
-
         # Aggregate the list of futures into a future of lists.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
 
         # Aggregate whether or not this output is known.
+        resources_futures = asyncio.ensure_future(get_resources(all_outputs))
         known_futures = asyncio.ensure_future(is_known(all_outputs))
         secret_futures = asyncio.ensure_future(is_secret(all_outputs))
-        return Output(resources, value_futures, known_futures, secret_futures)
+        return Output(resources_futures, value_futures, known_futures, secret_futures)
 
     @staticmethod
     def concat(*args: List[Input[str]]) -> 'Output[str]':
