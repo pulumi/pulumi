@@ -19,19 +19,16 @@ namespace Pulumi.Serialization
                 value.StringValue == Constants.UnknownValue)
             {
                 // always deserialize unknown as the null value.
-                return new OutputData<T>(
-                    ImmutableHashSet<Resource>.Empty, default!, isKnown: false, isSecret);
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, default!, isKnown: false, isSecret);
             }
 
             if (TryDeserializeAssetOrArchive(value, out var assetOrArchive))
             {
-                return new OutputData<T>(
-                    ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
 
             var innerData = func(value);
-            return OutputData.Create(
-                innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
+            return OutputData.Create(innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
         }
 
         private static OutputData<T> DeserializeOneOf<T>(Value value, Value.KindOneofCase kind, Func<Value, OutputData<T>> func)
