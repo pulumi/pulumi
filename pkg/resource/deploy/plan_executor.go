@@ -269,7 +269,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	if res == nil && !pe.stepExec.Errored() {
 		res := pe.stepGen.AnalyzeResources()
 		if res != nil {
-			return res
+			if resErr := res.Error(); resErr != nil {
+				logging.V(4).Infof("planExecutor.Execute(...): error analyzing resources: %v", resErr)
+				pe.reportError("", resErr)
+			}
+			return result.Bail()
 		}
 	}
 

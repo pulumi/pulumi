@@ -55,3 +55,9 @@ declare let localUnshippedDerivedComponentResource: LocalUnshippedResourceExampl
 
 latestShippedResource = localUnshippedDerivedComponentResource;
 localUnshippedResource = latestShippedDerivedComponentResource;
+
+declare let latestOutput: latestShipped.Output<any>;
+declare let localOutput: localUnshipped.Output<any>;
+
+latestOutput = localOutput;
+localOutput = latestOutput;

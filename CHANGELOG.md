@@ -3,21 +3,37 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- A Pulumi JavaScript/TypeScript app can now consist of a single exported top level function. i.e.:
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
 
-```ts
-module.exports = async () => {
-}
+  ```sh
+   export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
+   pulumi login gs://my-bucket
+  ```
 
-//
+- Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
+  [#3612](https://github.com/pulumi/pulumi/pull/3612)
 
-export = async () => {
+## 1.7.1 (2019-12-13)
 
-}
-```
+- Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
+  `Output`s across different versions of the `@pulumi/pulumi` SDK. [#3658](https://github.com/pulumi/pulumi/pull/3658)
 
-  This allows for an easy approach to create a Pulumi app that needs to perform async/await
-  operations at the top-level of the program.
+## 1.7.0 (2019-12-11)
+
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. i.e.:
+
+  ```ts
+  // JavaScript
+  module.exports = async () => {
+  }
+
+  //TypeScript
+  export = async () => {
+  }
+  ```
+
+  This allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
+  operations at the top-level. [#3321](https://github.com/pulumi/pulumi/pull/3321)
 
 ## 1.6.1 (2019-11-26)
 

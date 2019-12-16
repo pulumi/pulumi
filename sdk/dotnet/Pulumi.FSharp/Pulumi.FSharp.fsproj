@@ -10,6 +10,7 @@
     <RepositoryUrl>https://github.com/pulumi/pulumi</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageIcon>pulumi_logo_64x64.png</PackageIcon>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
