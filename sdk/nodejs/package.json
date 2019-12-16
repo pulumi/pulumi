@@ -21,7 +21,7 @@
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
         "ts-node": "^8.5.4",
-        "typescript": "^3.7.3",
+        "typescript": "~3.7.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
