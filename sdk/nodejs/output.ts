@@ -66,6 +66,25 @@ class OutputImpl<T> implements OutputInstance<T> {
     public readonly __data: Promise<OutputData<T>>;
 
     /**
+     * @internal
+     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
+     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
+     * additional resources created from it via an [all] or [apply], such that they are also treated as
+     * secrets.
+     */
+    public isSecret: Promise<boolean>;
+
+    /**
+     * @internal
+     * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
+     * an Output value may not be known (because it would have to actually be computed by doing an
+     * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
+     * may not expect an undefined value.  So, instead, we just transition to another Output
+     * value that itself knows it should not perform .apply calls.
+     */
+    public isKnown: Promise<boolean>;
+
+    /**
      * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
      * to is asynchronously computed (and thus, this is akin to calling [toString] on a [Promise]).
      *
@@ -119,25 +138,6 @@ class OutputImpl<T> implements OutputInstance<T> {
 
     /**
      * @internal
-     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
-     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
-     * additional resources created from it via an [all] or [apply], such that they are also treated as
-     * secrets.
-     */
-    public get isSecret(): Promise<boolean> { return this.__data.then(d => d.isSecret); }
-
-    /**
-     * @internal
-     * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
-     * an Output value may not be known (because it would have to actually be computed by doing an
-     * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
-     * may not expect an undefined value.  So, instead, we just transition to another Output
-     * value that itself knows it should not perform .apply calls.
-     */
-    public get isKnown(): Promise<boolean> { return this.__data.then(d => d.isKnown); }
-
-    /**
-     * @internal
      * Method that actually produces the concrete value of this output, as well as the total
      * deployment-time set of resources this output depends on. If the value of the output is not
      * known (i.e. isKnown resolves to false), this promise should resolve to undefined unless the
@@ -175,6 +175,9 @@ class OutputImpl<T> implements OutputInstance<T> {
                              .then(([resourcesSet, val, isKnown, isSecret]) =>
                                 new OutputData<T>(resourcesSet, val, isKnown, isSecret));
 
+        this.isKnown = this.__data.then(d => d.isKnown);
+        this.isSecret = this.__data.then(d => d.isSecret);
+
         this.toString = () => {
             const message =
 `Calling [toString] on an [Output<T>] is not supported.
@@ -207,13 +210,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
                 // on `Output<T>`.
                 for (let o = obj; o; o = Object.getPrototypeOf(o)) {
                     if (o.hasOwnProperty(prop)) {
-                        const descriptor = Object.getOwnPropertyDescriptor(o, prop)!;
-                        if (descriptor.get) {
-                            return descriptor.get.call(obj);
-                        }
-                        else {
-                            return (<any>o)[prop];
-                        }
+                        return (<any>o)[prop];
                     }
                 }
 
