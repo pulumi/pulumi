@@ -17,6 +17,33 @@ import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
 
+class OutputData<T> {
+    public readonly resources: Set<Resource> ;
+    public readonly value: T;
+    public readonly isKnown: boolean;
+    public readonly isSecret: boolean;
+
+    constructor(resources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean) {
+        this.resources = resources;
+        this.value = value;
+        this.isSecret = isSecret;
+
+        // We are only known if we are not explicitly unknown and the resolved value of the output
+        // contains no distinguished unknown values.
+        this.isKnown = isKnown && !containsUnknowns(value);
+        this.isSecret = isSecret;
+    }
+
+    public valueWithUnknowns(withUnknowns?: boolean) {
+        // If the caller did not explicitly ask to see unknown values and val contains unknowns,
+        // return undefined. This preserves compatibility with earlier versions of the Pulumi SDK.
+        if (!withUnknowns && containsUnknowns(this.value)) {
+            return <T><any>undefined;
+        }
+        return this.value;
+    }
+}
+
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
  * Output holds onto a piece of Data and the Resource it was generated from. An Output value can
@@ -34,47 +61,9 @@ class OutputImpl<T> implements OutputInstance<T> {
     // tslint:disable-next-line:variable-name
     public readonly __pulumiOutput: boolean = true;
 
-    /**
-     * @internal
-     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
-     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
-     * additional resources created from it via an [all] or [apply], such that they are also treated as
-     * secrets.
-     */
-    public readonly isSecret: Promise<boolean>;
-
-    /**
-     * @internal
-     * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
-     * an Output value may not be known (because it would have to actually be computed by doing an
-     * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
-     * may not expect an undefined value.  So, instead, we just transition to another Output
-     * value that itself knows it should not perform .apply calls.
-     */
-    public readonly isKnown: Promise<boolean>;
-
-    /**
-     * @internal
-     * Method that actually produces the concrete value of this output, as well as the total
-     * deployment-time set of resources this output depends on. If the value of the output is not
-     * known (i.e. isKnown resolves to false), this promise should resolve to undefined unless the
-     * `withUnknowns` flag is passed, in which case it will resolve to `unknown`.
-     *
-     * Only callable on the outside.
-     */
-    public readonly promise: (withUnknowns?: boolean) => Promise<T>;
-
-    /**
-     * @internal
-     * The list of resource that this output value depends on.
-     *
-     * Only callable on the outside.
-     *
-     * Normally returns a Promise<Set>.  However, is typed to return a Set as well to properly
-     * represent and force us to handle values produced by older versions of the sdk in SxS
-     * scenarios.
-     */
-    public readonly resources: () => Set<Resource> | Promise<Set<Resource>>;
+    /** @internal */
+    // tslint:disable-next-line: variable-name
+    public readonly __data: Promise<OutputData<T>>;
 
     /**
      * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
@@ -128,16 +117,47 @@ class OutputImpl<T> implements OutputInstance<T> {
         return utils.isInstance(obj, "__pulumiOutput");
     }
 
-    /** @internal */
-    static async getPromisedValue<T>(promise: Promise<T>, withUnknowns?: boolean): Promise<T> {
-        // If the caller did not explicitly ask to see unknown values and val contains unknowns, return undefined. This
-        // preserves compatibility with earlier versions of the Pulumi SDK.
-        const val = await promise;
-        if (!withUnknowns && containsUnknowns(val)) {
-            return <T><any>undefined;
-        }
-        return val;
-    }
+    /**
+     * @internal
+     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
+     * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
+     * additional resources created from it via an [all] or [apply], such that they are also treated as
+     * secrets.
+     */
+    public get isSecret(): Promise<boolean> { return this.__data.then(d => d.isSecret); }
+
+    /**
+     * @internal
+     * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
+     * an Output value may not be known (because it would have to actually be computed by doing an
+     * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
+     * may not expect an undefined value.  So, instead, we just transition to another Output
+     * value that itself knows it should not perform .apply calls.
+     */
+    public get isKnown(): Promise<boolean> { return this.__data.then(d => d.isKnown); }
+
+    /**
+     * @internal
+     * Method that actually produces the concrete value of this output, as well as the total
+     * deployment-time set of resources this output depends on. If the value of the output is not
+     * known (i.e. isKnown resolves to false), this promise should resolve to undefined unless the
+     * `withUnknowns` flag is passed, in which case it will resolve to `unknown`.
+     *
+     * Only callable on the outside.
+     */
+    public promise(withUnknowns?: boolean): Promise<T> { return this.__data.then(d => d.valueWithUnknowns(withUnknowns)); }
+
+    /**
+     * @internal
+     * The list of resource that this output value depends on.
+     *
+     * Only callable on the outside.
+     *
+     * Normally returns a Promise<Set>.  However, is typed to return a Set as well to properly
+     * represent and force us to handle values produced by older versions of the sdk in SxS
+     * scenarios.
+     */
+    public resources(): Set<Resource> | Promise<Set<Resource>> { return this.__data.then(d => d.resources); }
 
     /** @internal */
     public constructor(
@@ -151,13 +171,9 @@ class OutputImpl<T> implements OutputInstance<T> {
                   rs instanceof Set ? new Set(rs) :
                   new Set([rs]));
 
-        // We are only known if we are not explicitly unknown and the resolved value of the output
-        // contains no distinguished unknown values.
-        this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
-        this.isSecret = isSecret;
-
-        this.resources = () => resourcesSet;
-        this.promise = (withUnknowns?: boolean) => OutputImpl.getPromisedValue(promise, withUnknowns);
+        this.__data = Promise.all([resourcesSet, promise, isKnown, isSecret])
+                             .then(([resourcesSet, val, isKnown, isSecret]) =>
+                                new OutputData<T>(resourcesSet, val, isKnown, isSecret));
 
         this.toString = () => {
             const message =
@@ -191,7 +207,13 @@ This function may throw in a future version of @pulumi/pulumi.`;
                 // on `Output<T>`.
                 for (let o = obj; o; o = Object.getPrototypeOf(o)) {
                     if (o.hasOwnProperty(prop)) {
-                        return (<any>o)[prop];
+                        const descriptor = Object.getOwnPropertyDescriptor(o, prop)!;
+                        if (descriptor.get) {
+                            return descriptor.get.call(obj);
+                        }
+                        else {
+                            return (<any>o)[prop];
+                        }
                     }
                 }
 
@@ -648,6 +670,8 @@ export type UnwrappedObject<T> = {
  * for working with the underlying value of an [Output<T>].
  */
 export interface OutputInstance<T> {
+    /** @internal */ readonly __data: Promise<OutputData<T>>;
+
     /** @internal */ readonly isKnown: Promise<boolean>;
     /** @internal */ readonly isSecret: Promise<boolean>;
     /** @internal */ promise(withUnknowns?: boolean): Promise<T>;

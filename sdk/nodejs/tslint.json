@@ -53,7 +53,6 @@
         "no-internal-module": true,
         "no-parameter-properties": false,
         "no-require-imports": false,
-        "no-shadowed-variable": true,
         "no-string-literal": false,
         "no-switch-case-fall-through": true,
         "no-trailing-whitespace": true,
