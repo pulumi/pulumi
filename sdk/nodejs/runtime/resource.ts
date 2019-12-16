@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output, unknown } from "../output";
+import { Input, Inputs, Output, output, unknown, OutputData } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,
@@ -270,14 +270,14 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
-    let resolveURN: (urn: URN) => void;
-    (res as any).urn = new Output(
-        res,
-        debuggablePromise(
-            new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`),
-        /*isKnown:*/ Promise.resolve(true),
-        /*isSecret:*/ Promise.resolve(false));
+    let resolveUrnData: (data: OutputData<URN>) => void;
+    const resolveUrn = (urn: URN) => resolveUrnData(new OutputData(new Set([res]), urn, /*isKnown:*/ true, /*isSecret:*/ false));
+    const urnOutput = new Output(debuggablePromise(
+        new Promise<OutputData<URN>>(resolve => resolveUrnData = resolve),
+        `resolveURN(${label})`));
+
+    // @ts-ignore, ignore overwriting of this readonly field.
+    res.urn = urnOutput;
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: any, performApply: boolean) => void) | undefined;
@@ -357,7 +357,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     }
 
     return {
-        resolveURN: resolveURN!,
+        resolveURN: resolveUrn,
         resolveID: resolveID,
         resolvers: resolvers,
         serializedProps: serializedProps,
