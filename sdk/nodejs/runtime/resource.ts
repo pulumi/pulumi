@@ -60,10 +60,6 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
-    // A resolver for a resource's URN.
-    resolveURN: (urn: URN) => void;
-    // A resolver for a resource's ID (for custom resources only).
-    resolveID: ((v: ID, performApply: boolean) => void) | undefined;
     // A collection of resolvers for a resource's properties.
     resolvers: OutputResolvers;
     // A parent URN, fully resolved, if any.
@@ -83,6 +79,10 @@ interface ResourceResolverOperation {
     aliases: URN[];
     // An ID to import, if any.
     import: ID | undefined;
+    // A resolver for a resource's URN.
+    resolveURN(urn: URN): void;
+    // A resolver for a resource's ID (for custom resources only).
+    resolveID(v: ID, isKnown: boolean): void;
 }
 
 /**
@@ -148,7 +148,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
             resop.resolveURN(resp.getUrn());
-            resop.resolveID!(resolvedID, resolvedID !== undefined);
+            resop.resolveID(resolvedID, resolvedID !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
     }), label);
@@ -280,21 +280,20 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     res.urn = urnOutput;
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
-    if (custom) {
-        let resolveValue: (v: ID) => void;
-        let resolveIsKnown: (v: boolean) => void;
-        (res as any).id = new Output(
-            res,
-            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>(
-                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
-            Promise.resolve(false));
+    let resolveIdData: (data: OutputData<ID>) => void;
+    const resolveID = (id: ID, isKnown: boolean) => {
+        if (resolveIdData) {
+            resolveIdData(new OutputData(new Set([res]), id, isKnown, /*isSecret:*/ false));
+        }
+    };
 
-        resolveID = (v, isKnown) => {
-            resolveValue(v);
-            resolveIsKnown(isKnown);
-        };
+    if (custom) {
+        const idOutput = new Output(debuggablePromise(
+            new Promise<OutputData<ID>>(resolve => resolveIdData = resolve),
+            `resolveID(${label})`));
+
+        // @ts-ignore, ignore overwriting of this readonly field.
+        res.id = idOutput;
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
