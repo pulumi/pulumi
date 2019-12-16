@@ -3,19 +3,17 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. i.e.:
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
 
   ```sh
    export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
    pulumi login gs://my-bucket
   ```
 
-  [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
-
 ## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
-  `Output`s across different versions of the `@pulumi/pulumi` sdk
+  `Output`s across different versions of the `@pulumi/pulumi` SDK. [#3658](https://github.com/pulumi/pulumi/pull/3658)
 
 ## 1.7.0 (2019-12-11)
 
