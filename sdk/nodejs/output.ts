@@ -42,6 +42,11 @@ class OutputData<T> {
         }
         return this.value;
     }
+
+    public apply<U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean): Promise<OutputData<U>> {
+        return applyHelperAsync<T, U>(
+            this.resources, this.value, this.isKnown, this.isSecret, func, !!runWithUnknowns);
+    }
 }
 
 /**
@@ -160,20 +165,26 @@ class OutputImpl<T> implements OutputInstance<T> {
     public resources(): Set<Resource> | Promise<Set<Resource>> { return this.__data.then(d => d.resources); }
 
     /** @internal */
-    public constructor(
-            resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
-            promise: Promise<T>,
-            isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>) {
+    public constructor(data: Promise<OutputData<T>>);
+    /** @internal */
+    public constructor(resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
+                       promise: Promise<T>, isKnown: Promise<boolean>, isSecret: Promise<boolean>);
+    public constructor(resourcesOrData: Promise<OutputData<T>> | Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
+                       promise?: Promise<T>, isKnown?: Promise<boolean>, isSecret?: Promise<boolean>) {
 
-        const resourcesSet = Promise.resolve(resources).then(
-            rs => Array.isArray(rs) ? new Set(rs) :
-                  rs instanceof Set ? new Set(rs) :
-                  new Set([rs]));
+        if (promise === undefined) {
+            this.__data = <Promise<OutputData<T>>>resourcesOrData;
+        }
+        else {
+            const resourcesSet = Promise.resolve(<Set<Resource>>resourcesOrData).then(
+                rs => Array.isArray(rs) ? new Set(rs) :
+                    rs instanceof Set ? new Set(rs) :
+                    new Set([rs]));
 
-        this.__data = Promise.all([resourcesSet, promise, isKnown, isSecret])
-                             .then(([resourcesSet, val, isKnown, isSecret]) =>
-                                new OutputData<T>(resourcesSet, val, isKnown, isSecret));
+            this.__data = Promise.all([resourcesSet, promise, <Promise<boolean>>isKnown, <Promise<boolean>>isSecret])
+                                .then(([resourcesSet, val, isKnown, isSecret]) =>
+                                    new OutputData<T>(resourcesSet, val, isKnown, isSecret));
+        }
 
         this.isKnown = this.__data.then(d => d.isKnown);
         this.isSecret = this.__data.then(d => d.isSecret);
@@ -285,20 +296,15 @@ To manipulate the value of this Output, use '.apply' instead.`);
     // advantage of this to allow proxied property accesses to return known values even if other properties of
     // the containing object are unknown.
     public apply<U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean): Output<U> {
-        const applied = Promise.all([this.resources(), this.promise(/*withUnknowns*/ true), this.isKnown, this.isSecret])
-                               .then(([resources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(resources, value, isKnown, isSecret, func, !!runWithUnknowns));
-
-        const result = new OutputImpl<U>(
-            applied.then(a => a.resources), applied.then(a => a.value),
-            applied.then(a => a.isKnown), applied.then(a => a.isSecret));
-        return <Output<U>><any>result;
+        return <Output<U>><unknown>new OutputImpl<U>(
+            this.__data.then(d => d.apply(func, runWithUnknowns)));
     }
 }
 
 // tslint:disable:max-line-length
 async function applyHelperAsync<T, U>(
         resources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
-        func: (t: T) => Input<U>, runWithUnknowns: boolean) {
+        func: (t: T) => Input<U>, runWithUnknowns: boolean): Promise<OutputData<U>> {
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
@@ -306,12 +312,7 @@ async function applyHelperAsync<T, U>(
 
         if (!applyDuringPreview) {
             // We didn't actually run the function, our new Output is definitely **not** known.
-            return {
-                resources,
-                value: <U><any>undefined,
-                isKnown: false,
-                isSecret,
-            };
+            return new OutputData<U>(resources, <U><any>undefined, /*isKnown:*/ false, isSecret);
         }
 
         // If we are running with unknown values and the value is explicitly unknown but does not actually
@@ -340,22 +341,12 @@ async function applyHelperAsync<T, U>(
             totalResources.add(res);
         }
 
-        return {
-            resources: totalResources,
-            value: innerValue,
-            isKnown: innerIsKnown,
-            isSecret: isSecret || innerIsSecret,
-        };
+        return new OutputData<U>(totalResources, innerValue, innerIsKnown, isSecret || innerIsSecret);
     }
 
     // We successfully ran the inner function.  Our new Output should be considered known.  We
     // preserve secretness from our original Output to the new one we're creating.
-    return {
-        resources,
-        value: transformed,
-        isKnown: true,
-        isSecret,
-    };
+    return new OutputData<U>(resources, transformed, /*isKnown:*/ true, isSecret);
 }
 
 // Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
