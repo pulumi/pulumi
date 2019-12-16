@@ -61,7 +61,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), ctx.Pwd}, nil)
+		[]string{host.ServerAddr(), ctx.Pwd}, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +314,9 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 	return diagnostics, nil
 }
 
+// constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
+// is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
+// how config is passed to each language runtime plugin.
 func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
 	env := os.Environ()
 
@@ -338,7 +341,7 @@ func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
 	return env, nil
 }
 
-// constructConfig json-serializes the configuration data.
+// constructConfig JSON-serializes the configuration data.
 func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
 	if opts == nil || opts.Config == nil {
 		return "", nil

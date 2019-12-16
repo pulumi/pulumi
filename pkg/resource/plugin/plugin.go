@@ -43,8 +43,10 @@ type plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
-	Bin    string
-	Args   []string
+	Bin  string
+	Args []string
+	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
+	// https://golang.org/pkg/os/exec/#Cmd (each entry is of the form "key=value").
 	Env    []string
 	Conn   *grpc.ClientConn
 	Proc   *os.Process

@@ -124,7 +124,7 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return result.FromError(err)
 	}
