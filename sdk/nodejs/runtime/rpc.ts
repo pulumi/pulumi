@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, isUnknown, Output, unknown } from "../output";
+import { Input, Inputs, isUnknown, Output, unknown, OutputData, isSecretOutput } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -48,28 +48,14 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
 
-        let resolveValue: (v: any) => void;
-        let resolveIsKnown: (v: boolean) => void;
-        let resolveIsSecret: (v: boolean) => void;
-
-        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) => {
-            resolveValue(v);
-            resolveIsKnown(isKnown);
-            resolveIsSecret(isSecret);
-        };
+        let resolveData: (data: OutputData<any>) => void;
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) =>
+            resolveData(new OutputData(new Set([onto]), v, isKnown, isSecret));
 
         const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
-        (<any>onto)[k] = new Output(
-            onto,
-            debuggablePromise(
-                new Promise<any>(resolve => resolveValue = resolve),
-                `transferProperty(${label}, ${k}, ${propString})`),
-            debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsKnown = resolve),
-                `transferIsStable(${label}, ${k}, ${propString})`),
-            debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsSecret = resolve),
-                `transferIsSecret(${label}, ${k}, ${props[k]})`));
+        (<any>onto)[k] = new Output(debuggablePromise(
+            new Promise<OutputData<any>>(resolve => resolveData = resolve),
+            `transferProperty(${label}, ${k}, ${propString})`));
     }
 
     return resolvers;
