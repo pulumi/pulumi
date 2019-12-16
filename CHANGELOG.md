@@ -12,6 +12,11 @@ CHANGELOG
 
   [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
 
+## 1.7.1 (2019-12-13)
+
+- Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
+  `Output`s across different versions of the `@pulumi/pulumi` sdk
+
 ## 1.7.0 (2019-12-11)
 
 - A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. i.e.:

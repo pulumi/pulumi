@@ -384,7 +384,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
 
 	cmd.Stdout = infoWriter
 	cmd.Stderr = errorWriter
@@ -477,7 +477,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = host.constructEnv(req, config)

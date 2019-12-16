@@ -47,9 +47,8 @@ istanbul_tests::
 	./node_modules/.bin/istanbul report text
 
 sxs_tests::
-# Intentionally disabled as PR https://github.com/pulumi/pulumi/pull/2609 breaks SxS
-# will be renabled once that goes in.
-#	pushd tests/sxs && yarn && tsc && popd
+	pushd tests/sxs_ts_3.6 && yarn && tsc && popd
+	pushd tests/sxs_ts_latest && yarn && tsc && popd
 
 test_fast:: sxs_tests istanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
