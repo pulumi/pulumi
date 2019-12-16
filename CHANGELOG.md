@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Update version of TypeScript used by Pulumi to 3.7.3.
+
 - Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
 
   ```sh
