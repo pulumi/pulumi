@@ -15,11 +15,11 @@
 import * as util from "util";
 import { RunError } from "./errors";
 import { getProject } from "./metadata";
-import { Output } from "./output";
+import { Output, OutputData } from "./output";
 import { getConfig } from "./runtime";
 
 function makeSecret<T>(value: T): Output<T> {
-    return new Output([], Promise.resolve(value), Promise.resolve(true), Promise.resolve(true));
+    return new Output(Promise.resolve(new OutputData(new Set(), value, /*isKnown:*/ true, /*isSecret:*/ true)));
 }
 
 /**

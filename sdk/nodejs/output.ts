@@ -17,7 +17,8 @@ import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
 
-class OutputData<T> {
+/** @internal */
+export class OutputData<T> {
     public readonly resources: Set<Resource> ;
     public readonly value: T;
     public readonly isKnown: boolean;
@@ -717,11 +718,10 @@ export interface OutputConstructor {
 
     isInstance<T>(obj: any): obj is Output<T>;
 
+    /** @internal */ new<T>(data: Promise<OutputData<T>>): Output<T>;
     /** @internal */ new<T>(
             resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
-            promise: Promise<T>,
-            isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>): Output<T>;
+            promise: Promise<T>, isKnown: Promise<boolean>, isSecret: Promise<boolean>): Output<T>;
 }
 
 /**
