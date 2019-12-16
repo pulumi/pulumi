@@ -43,8 +43,11 @@ type plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
-	Bin    string
-	Args   []string
+	Bin  string
+	Args []string
+	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
+	// https://golang.org/pkg/os/exec/#Cmd (each entry is of the form "key=value").
+	Env    []string
 	Conn   *grpc.ClientConn
 	Proc   *os.Process
 	Stdin  io.WriteCloser
@@ -67,7 +70,7 @@ var nextStreamID int32
 // the stack's Pulumi SDK did not have the required modules. i.e. is too old.
 var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy as code")
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -80,7 +83,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, e
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, pwd)
+	plug, err := execPlugin(bin, args, pwd, env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -231,7 +234,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args []string) (*plugin, e
 	return plug, nil
 }
 
-func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
+func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	var args []string
 	// Flow the logging information if set.
 	if logging.LogFlow {
@@ -251,6 +254,9 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
+	if len(env) > 0 {
+		cmd.Env = env
+	}
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
 	err, _ := cmd.StderrPipe()
@@ -261,6 +267,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	return &plugin{
 		Bin:    bin,
 		Args:   args,
+		Env:    env,
 		Proc:   cmd.Process,
 		Stdin:  in,
 		Stdout: out,

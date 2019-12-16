@@ -30,7 +30,7 @@ import (
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	"gocloud.dev/blob/gcsblob"     // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -106,16 +107,28 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), u)
+	p, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
+	blobmux := blob.DefaultURLMux()
+
+	// for gcp we want to support additional credentials
+	// schemes on top of go-cloud's default credentials mux.
+	if p.Scheme == gcsblob.Scheme {
+		blobmux, err = GoogleCredentialsMux(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	bucket, err := blobmux.OpenBucket(context.TODO(), u)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
-		p, err := url.Parse(u)
-		if err != nil {
-			return nil, err
-		}
 		bucketSubDir := strings.TrimLeft(p.Path, "/")
 		if bucketSubDir != "" {
 			if !strings.HasSuffix(bucketSubDir, "/") {
@@ -541,7 +554,12 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
-				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+				// we log a warning here rather then returning an error to avoid exiting
+				// pulumi with an error code.
+				// printing a statefile perma link happens after all the providers have finished
+				// deploying the infrastructure, failing the pulumi update because there was a
+				// problem printing a statefile perma link can be missleading in automated CI environments.
+				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
 			}
 		}
 

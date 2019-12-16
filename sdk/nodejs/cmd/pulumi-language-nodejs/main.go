@@ -571,7 +571,7 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, addr
 	return args
 }
 
-// constructConfig json-serializes the configuration data given as part of
+// constructConfig JSON-serializes the configuration data given as part of
 // a RunRequest.
 func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, error) {
 	configMap := req.GetConfig()
