@@ -49,22 +49,25 @@ namespace Pulumi
         /// <summary>
         /// Create a Stack with stack resources defined in derived class constructor.
         /// </summary>
-        public Stack()
-            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
+        public Stack() : this(null)
         {
-            Deployment.InternalInstance.Stack = this;
         }
+
+        protected virtual void Initialize() { }
+        protected virtual Task InitializeAsync() => Task.FromResult(0);
 
         /// <summary>
         /// Create a Stack with stack resources created by the <c>init</c> callback.
         /// An instance of this will be automatically created when any <see
         /// cref="Deployment.RunAsync(Action)"/> overload is called.
         /// </summary>
-        internal Stack(Func<Task<IDictionary<string, object?>>> init) : this()
+        internal Stack(Func<Task<IDictionary<string, object?>>>? init)
+            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
         {
+            Deployment.InternalInstance.Stack = this;
             try
             {
-                this.Outputs = Output.Create(RunInitAsync(init));
+                this.Outputs = Output.Create(RunInitAsync(init ?? InitializePropertyOutputs));
             }
             finally
             {
@@ -72,20 +75,17 @@ namespace Pulumi
             }
         }
 
-        /// <summary>
-        /// Register each public property of type <see cref="Output{T}"/> as a stack output.
-        /// Called by <see cref="Deployment.RunAsync{T}()"/> overload.
-        /// </summary>
-        internal void RegisterPropertyOutputs()
+        private async Task<IDictionary<string, object?>> InitializePropertyOutputs()
         {
+            Initialize();
+            await InitializeAsync().ConfigureAwait(false);
+
             var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                         let propertyType = property.PropertyType
                         where propertyType.GetGenericTypeDefinition() == typeof(Output<>)
                         select new KeyValuePair<string, object?>(property.Name, property.GetValue(this));
 
-            IDictionary<string, object?> outputs = new Dictionary<string, object?>(query);
-            this.Outputs = Output.Create(outputs);
-            this.RegisterOutputs(this.Outputs);
+            return new Dictionary<string, object?>(query);
         }
 
         private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)

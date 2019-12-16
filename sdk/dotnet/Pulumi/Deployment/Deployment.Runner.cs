@@ -15,12 +15,11 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
-            public async Task<int> RunAsync<T>() where T : Stack, new()
+            public Task<int> RunAsync<T>() where T : Stack, new()
             {
                 var stack = new T();
-                stack.RegisterPropertyOutputs();
                 RegisterTask("User program code.", stack.Outputs.DataTask);
-                return await WhileRunningAsync();
+                return WhileRunningAsync();
             }
 
             public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
