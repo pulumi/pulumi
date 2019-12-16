@@ -18,8 +18,7 @@ import * as path from "path";
 import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import { disconnectSync } from "../../runtime/settings";
-import { runInPulumiStack } from "../../runtime/stack";
+import * as runtime from "../../runtime";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -226,7 +225,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", disconnectSync);
+    process.on("exit", runtime.disconnectSync);
 
     opts.programStarted();
 
@@ -270,5 +269,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         }
     };
 
-    return opts.runInStack ? runInPulumiStack(runProgram) : runProgram();
+    return opts.runInStack ? runtime.runInPulumiStack(runProgram) : runProgram();
 }

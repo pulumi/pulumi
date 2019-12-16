@@ -10,6 +10,9 @@ CHANGELOG
    pulumi login gs://my-bucket
   ```
 
+- Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
+  [#3612](https://github.com/pulumi/pulumi/pull/3612)
+
 ## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
