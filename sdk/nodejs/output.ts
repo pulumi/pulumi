@@ -306,7 +306,7 @@ async function applyHelperAsync<T, U>(
     const transformed = await func(value);
     if (Output.isInstance(transformed)) {
         // Note: if the func returned a Output, we unwrap that to get the inner value returned by
-        // that Output.  Note that we *ar*e capturing the Resources of this inner Output and lifting
+        // that Output.  Note that we *are* capturing the Resources of this inner Output and lifting
         // them up to the outer Output as well.
 
         // Note: we intentionally await all the promises of the transformed value.  This way we
