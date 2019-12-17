@@ -8,16 +8,16 @@ using Pulumi.Serialization;
 class MyStack : Stack
 {
     [Output("abc")]
-    public Output<string>? Abc { get; private set; }
+    public string? Abc { get; private set; }
 
     [Output("xyz")]
-    public Output<string>? Xyz { get; private set; }
+    public string? Xyz { get; private set; }
 
     [Output("foo")]
-    public Output<int>? Foo { get; private set; }
+    public int? Foo { get; private set; }
 
     // This should NOT be exported as stack output due to the missing attribute
-    public Output<string>? Bar { get; private set; }
+    public string? Bar { get; private set; }
 
     public MyStack()
     {
