@@ -23,6 +23,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -232,6 +233,21 @@ func (b *localBackend) SupportsOrganizations() bool {
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+}
+
+// ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
+// httpstate backend.
+func (b *localBackend) ValidateStackName(stackName string) error {
+	if strings.Index(stackName, "/") != -1 {
+		return errors.New("stack names may not contain slashes")
+	}
+
+	validNameRegex := regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+	if !validNameRegex.MatchString(stackName) {
+		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, or periods")
+	}
+
+	return nil
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
