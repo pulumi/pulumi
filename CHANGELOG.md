@@ -1,7 +1,21 @@
 CHANGELOG
 =========
 
-## Master (unreleased)
+## HEAD (Unreleased)
+
+- Update version of TypeScript used by Pulumi to 3.7.3.
+
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
+
+  ```sh
+   export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
+   pulumi login gs://my-bucket
+  ```
+
+- Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
+  [#3612](https://github.com/pulumi/pulumi/pull/3612)
+
+## 1.7.1 (2019-12-13)
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics.  Specifically, the
   `Ouput` returned from a `.apply` call will include all the resources of the `Output` it was called
@@ -24,7 +38,7 @@ Now it will include all the resources tracked by Output `y` as well.
 ## 1.7.1 (2019-12-11)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
-  `Output`s across different versions of the `@pulumi/pulumi` sdk
+  `Output`s across different versions of the `@pulumi/pulumi` SDK. [#3658](https://github.com/pulumi/pulumi/pull/3658)
 
 ## 1.7.0 (2019-12-11)
 

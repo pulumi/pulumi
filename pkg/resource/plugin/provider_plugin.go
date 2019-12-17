@@ -77,7 +77,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		})
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
+	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
+		[]string{host.ServerAddr()}, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}
