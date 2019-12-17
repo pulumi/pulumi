@@ -8,32 +8,32 @@ using Pulumi.Serialization;
 class MyStack : Stack
 {
     [Output("abc")]
-    public string? Abc { get; private set; }
+    public Output<string> Abc { get; private set; }
 
     [Output("xyz")]
-    public string? Xyz { get; private set; }
+    public Output<string> Xyz { get; private set; }
 
     [Output("foo")]
-    public int? Foo { get; private set; }
+    public Output<int> Foo { get; private set; }
 
     // This should NOT be exported as stack output due to the missing attribute
-    public string? Bar { get; private set; }
+    public Output<string> Bar { get; private set; }
 
     public MyStack()
     {
-        this.Abc = "ABC";
+        this.Abc = Output.Create("ABC");
     }
 
     protected override void Initialize()
     {
-        this.Xyz = "XYZ";
+        this.Xyz = Output.Create("XYZ");
     }
 
     protected override async Task InitializeAsync()
     {
         await Task.Delay(10); // mocks some async work
-        this.Foo = 42;
-        this.Bar = "this should not come to output";
+        this.Foo = Output.Create(42);
+        this.Bar = Output.Create("this should not come to output");
     }
 }
 
