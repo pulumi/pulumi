@@ -15,9 +15,11 @@ CHANGELOG
 - Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
   [#3612](https://github.com/pulumi/pulumi/pull/3612)
 
+- Add the .NET Core 3.0 runtime to the pulumi/pulumi container. [#3616](https://github.com/pulumi/pulumi/pull/3616).
+
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
 
-## 1.7.1 (2019-12-11)
+## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
   `Output`s across different versions of the `@pulumi/pulumi` SDK. [#3658](https://github.com/pulumi/pulumi/pull/3658)

@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { output, Output, Resource } from "../index";
+import { all, output, Output, Resource } from "../index";
 import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
@@ -244,6 +244,11 @@ describe("unwrap", () => {
             createOutput(Promise.resolve({ a: createOutput(1, r4, r5)}), r1, r2),
             { a: 1 },
             [r1, r2, r4, r5]));
+
+        it("across 'all'", testResources(
+            all([Promise.resolve({ a: createOutput(1, r1, r2)}), Promise.resolve({ b: createOutput(2, r3, r4)})]),
+            [{ a: 1 }, { b: 2 }],
+            [r1, r2, r3, r4]));
     });
 
 
