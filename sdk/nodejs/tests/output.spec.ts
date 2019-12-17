@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, OutputInstance, all, concat, interpolate, output, unknown } from "../output";
+import { Output, all, concat, interpolate, output, unknown } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
