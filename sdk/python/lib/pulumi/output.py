@@ -178,7 +178,7 @@ class Output(Generic[T]):
                 #  1. transformed is an Output[U]
                 if isinstance(transformed, Output):
                     transformed_as_output = cast(Output[U], transformed)
-                    # Forward along the inner output's _is_known and _is_secret values.
+                    # Forward along the inner output's _resources, _is_known and _is_secret values.
                     transformed_resources = await transformed_as_output._resources
                     result_resources.set_result(resources | transformed_resources)
                     result_is_known.set_result(await transformed_as_output._is_known)
