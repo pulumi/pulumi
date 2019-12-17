@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Pulumi.Serialization;
 
 namespace Pulumi
 {
@@ -53,8 +54,23 @@ namespace Pulumi
         {
         }
 
+        /// <summary>
+        /// Override this method in a derived class and instantiate any resources in its implementation.
+        /// If asynchronous code is needed, use <see cref="InitializeAsync"/> instead.
+        /// <para>The method can also populate any output properties of the stack.</para>
+        /// <para>There's no need to call base.Initialize() from the overriden method, as the base
+        /// implementaion is empty.</para>
+        /// </summary>
         protected virtual void Initialize() { }
-        protected virtual Task InitializeAsync() => Task.FromResult(0);
+
+        /// <summary>
+        /// Override this method in a derived class and instantiate any resources in its implementation.
+        /// If asynchronous code is not needed, use <see cref="Initialize"/> instead.
+        /// <para>The method can also populate any output properties of the stack.</para>
+        /// <para>There's no need to call base.InitializeAsync() from the overriden method, as the base
+        /// implementaion is empty.</para>
+        /// </summary>
+        protected virtual Task InitializeAsync() => Task.CompletedTask;
 
         /// <summary>
         /// Create a Stack with stack resources created by the <c>init</c> callback.
@@ -81,9 +97,9 @@ namespace Pulumi
             await InitializeAsync().ConfigureAwait(false);
 
             var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                        let propertyType = property.PropertyType
-                        where propertyType.GetGenericTypeDefinition() == typeof(Output<>)
-                        select new KeyValuePair<string, object?>(property.Name, property.GetValue(this));
+                        let attr = property.GetCustomAttribute<OutputAttribute>()
+                        where attr != null
+                        select new KeyValuePair<string, object?>(attr.Name, property.GetValue(this));
 
             return new Dictionary<string, object?>(query);
         }

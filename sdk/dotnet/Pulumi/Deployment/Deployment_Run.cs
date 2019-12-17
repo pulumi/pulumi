@@ -28,7 +28,7 @@ namespace Pulumi
             => RunAsync(() => Task.FromResult(func()));
 
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/> is the
+        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/> is an
         /// entry-point to a Pulumi application. .NET applications should perform all startup logic
         /// they need in their <c>Main</c> method and then end with:
         /// <para>
@@ -58,8 +58,34 @@ namespace Pulumi
         public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
             => CreateRunner().RunAsync(func);
 
-        public static Task<int> RunAsync<T>() where T : Stack, new()
-            => CreateRunner().RunAsync<T>();
+        /// <summary>
+        /// <see cref="RunAsync{TStack}()"/> is an
+        /// entry-point to a Pulumi application. .NET applications should perform all startup logic
+        /// they need in their <c>Main</c> method and then end with:
+        /// <para>
+        /// <c>
+        /// static Task&lt;int&gt; Main(string[] args)
+        /// {
+        ///     // program initialization code ...
+        ///
+        ///     return Deployment.Run&lt;MyStack&gt;();
+        /// }
+        /// </c>
+        /// </para>
+        /// <para>
+        /// Deployment will instantiate a new stack instance based on the type passed as TStack type parameter.
+        /// Importantly, cloud resources cannot be created outside of the <see cref="Stack"/> component.
+        /// </para>
+        /// <para>
+        /// Because cloud Resource construction is
+        /// inherently asynchronous, the result of this function is a <see cref="Task{T}"/> which should
+        /// then be returned or awaited.  This will ensure that any problems that are encountered during
+        /// the running of the program are properly reported.  Failure to do this may lead to the
+        /// program ending early before all resources are properly registered.
+        /// </para>
+        /// </summary>
+        public static Task<int> RunAsync<TStack>() where TStack : Stack, new()
+            => CreateRunner().RunAsync<TStack>();
 
         private static IRunner CreateRunner()
         {

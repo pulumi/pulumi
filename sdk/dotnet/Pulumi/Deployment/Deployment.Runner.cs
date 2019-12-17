@@ -15,9 +15,9 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
-            public Task<int> RunAsync<T>() where T : Stack, new()
+            public Task<int> RunAsync<TStack>() where TStack : Stack, new()
             {
-                var stack = new T();
+                var stack = new TStack();
                 RegisterTask("User program code.", stack.Outputs.DataTask);
                 return WhileRunningAsync();
             }
