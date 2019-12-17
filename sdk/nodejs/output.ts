@@ -146,6 +146,7 @@ class OutputImpl<T> implements OutputInstance<T> {
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>) {
 
+        // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesSet = Promise.resolve(resources).then(
             rs => Array.isArray(rs) ? new Set(rs) :
                   rs instanceof Set ? new Set(rs) :
