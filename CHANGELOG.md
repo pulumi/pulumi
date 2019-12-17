@@ -17,6 +17,10 @@ CHANGELOG
 
 - Add the .NET Core 3.0 runtime to the pulumi/pulumi container. [#3616](https://github.com/pulumi/pulumi/pull/3616).
 
+- Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
+  `--target-dependents` to align with `pulumi up`.
+  [#3675](https://github.com/pulumi/pulumi/pull/3675).
+
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
   [#3663](https://github.com/pulumi/pulumi/pull/3663)
 
