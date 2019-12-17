@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
@@ -34,16 +35,21 @@ func newPreviewCmd() *cobra.Command {
 	var configPath bool
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var policyPackPaths []string
 	var diffDisplay bool
 	var eventLogPath string
-	var jsonDisplay bool
 	var parallel int
+	var refresh bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
+	var targets []string
+	var replaces []string
+	var targetReplaces []string
+	var targetDependents bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -68,29 +74,21 @@ func newPreviewCmd() *cobra.Command {
 				displayType = display.DisplayDiff
 			}
 
-			opts := backend.UpdateOptions{
-				Engine: engine.UpdateOptions{
-					LocalPolicyPackPaths: policyPackPaths,
-					Parallel:             parallel,
-					Debug:                debug,
-					UseLegacyDiff:        useLegacyDiff(),
-				},
-				Display: display.Options{
-					Color:                cmdutil.GetGlobalColorization(),
-					ShowConfig:           showConfig,
-					ShowReplacementSteps: showReplacementSteps,
-					ShowSameResources:    showSames,
-					ShowReads:            showReads,
-					SuppressOutputs:      suppressOutputs,
-					IsInteractive:        cmdutil.Interactive(),
-					Type:                 displayType,
-					JSONDisplay:          jsonDisplay,
-					EventLogPath:         eventLogPath,
-					Debug:                debug,
-				},
+			displayOpts := display.Options{
+				Color:                cmdutil.GetGlobalColorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				ShowReads:            showReads,
+				SuppressOutputs:      suppressOutputs,
+				IsInteractive:        cmdutil.Interactive(),
+				Type:                 displayType,
+				JSONDisplay:          jsonDisplay,
+				EventLogPath:         eventLogPath,
+				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+			s, err := requireStack(stack, true, displayOpts, true /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -105,7 +103,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata("", root)
+			m, err := getUpdateMetadata(message, root)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
@@ -118,6 +116,35 @@ func newPreviewCmd() *cobra.Command {
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			}
+
+			targetURNs := []resource.URN{}
+			for _, t := range targets {
+				targetURNs = append(targetURNs, resource.URN(t))
+			}
+
+			replaceURNs := []resource.URN{}
+			for _, r := range replaces {
+				replaceURNs = append(replaceURNs, resource.URN(r))
+			}
+
+			for _, tr := range targetReplaces {
+				targetURNs = append(targetURNs, resource.URN(tr))
+				replaceURNs = append(replaceURNs, resource.URN(tr))
+			}
+
+			opts := backend.UpdateOptions{
+				Engine: engine.UpdateOptions{
+					LocalPolicyPackPaths: policyPackPaths,
+					Parallel:             parallel,
+					Debug:                debug,
+					Refresh:              refresh,
+					ReplaceTargets:       replaceURNs,
+					UseLegacyDiff:        useLegacyDiff(),
+					UpdateTargets:        targetURNs,
+					TargetDependents:     targetDependents,
+				},
+				Display: displayOpts,
 			}
 
 			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
@@ -164,6 +191,21 @@ func newPreviewCmd() *cobra.Command {
 		&message, "message", "m", "",
 		"Optional message to associate with the preview operation")
 
+	cmd.PersistentFlags().StringArrayVarP(
+		&targets, "target", "t", []string{},
+		"Specify a single resource URN to update. Other resources will not be updated."+
+			" Multiple resources can be specified using --target urn1 --target urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&replaces, "replace", []string{},
+		"Specify resources to replace. Multiple resources can be specified using --replace run1 --replace urn2")
+	cmd.PersistentFlags().StringArrayVar(
+		&targetReplaces, "target-replace", []string{},
+		"Specify a single resource URN to replace. Other resources will not be updated."+
+			" Shorthand for --target urn --replace urn.")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows updating of dependent targets discovered but not specified in --target list")
+
 	// Flags for engine.UpdateOptions.
 	if hasDebugCommands() || hasExperimentalCommands() {
 		cmd.PersistentFlags().StringSliceVar(
@@ -179,6 +221,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+	cmd.PersistentFlags().BoolVarP(
+		&refresh, "refresh", "r", false,
+		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
