@@ -269,7 +269,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        for (const resource of prop.resources()) {
+        for (const resource of await prop.resources()) {
             dependentResources.add(resource);
         }
 

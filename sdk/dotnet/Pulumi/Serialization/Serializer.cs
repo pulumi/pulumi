@@ -133,8 +133,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
 
-                this.DependentResources.AddRange(output.Resources);
                 var data = await output.GetDataAsync().ConfigureAwait(false);
+                this.DependentResources.AddRange(data.Resources);
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
                 // sentinel. We will do the former for all outputs created directly by user code (such outputs always
