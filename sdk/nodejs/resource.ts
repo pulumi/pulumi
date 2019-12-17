@@ -814,12 +814,14 @@ export class ComponentResource<TData = any> extends Resource {
         return this.__data;
     }
 
-    // registerOutputs registers synthetic outputs that a component has initialized, usually by
-    // allocating other child sub-resources and propagating their resulting property values.
-    // ComponentResources should always call this at the end of their constructor to indicate that
-    // they are done creating child resources.  While not strictly necessary, this helps the
-    // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
-    // quickly as possible (instead of waiting until the entire application completes).
+    /**
+     * registerOutputs registers synthetic outputs that a component has initialized, usually by
+     * allocating other child sub-resources and propagating their resulting property values.
+     *
+     * ComponentResources can call this at the end of their constructor to indicate that they are
+     * done creating child resources.  This is not strictly necessary as this will automatically be
+     * called after the `initialize` method completes.
+     */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         if (this.__registered) {
             return;
