@@ -29,11 +29,8 @@ import (
 func TestPulumiContainerImages(t *testing.T) {
 	const pulumiContainerToTest = "pulumi/actions:latest"
 
-	// Default to skipping the tests unless running on a developer's machine.
-	// We don't want these running in CI without a secure way to transmit the
-	// Pulumi access token without it showing up in logs, etc.
-	if os.Getenv("RUNING_CONTAINER_TESTS_LOCALLY") == "" {
-		t.Skip("Skipping tests because RUNING_CONTAINER_TESTS_LOCALLY wasn't set.")
+	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
+		t.Skip("Skipping container runtime tests because RUN_CONTAINER_TESTS not set.")
 	}
 
 	// Confirm we have credentials.
