@@ -232,7 +232,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	return env, nil
 }
 
-// constructConfig json-serializes the configuration data given as part of a RunRequest.
+// constructConfig JSON-serializes the configuration data given as part of a RunRequest.
 func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, error) {
 	configMap := req.GetConfig()
 	if configMap == nil {

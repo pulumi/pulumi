@@ -778,7 +778,12 @@ export type Lifted<T> =
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
     T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
     T extends Array<infer U> ? LiftedArray<U> :
-    LiftedObject<T, NonFunctionPropertyNames<T>>;
+    T extends object ? LiftedObject<T, NonFunctionPropertyNames<T>> :
+    // fallback to lifting no properties.  Note that `Lifted` is used in
+    //    Output<T> = OutputInstance<T> & Lifted<T>
+    // so returning an empty object just means that we're adding nothing to Output<T>.
+    // This is needed for cases like `Output<any>`.
+    {};
 
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
