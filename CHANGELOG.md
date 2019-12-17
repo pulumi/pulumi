@@ -15,25 +15,7 @@ CHANGELOG
 - Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
   [#3612](https://github.com/pulumi/pulumi/pull/3612)
 
-## 1.7.1 (2019-12-13)
-
-- `Output.apply` (for the JS, Python and .Net sdks) has updated semantics.  Specifically, the
-  `Ouput` returned from a `.apply` call will include all the resources of the `Output` it was called
-  on, as well as all the resources of an Output returned by the function passed to the `.apply`
-  call.  This helps ensure that complex operations involving Outputs and `.apply` do not lose track
-  of all dependent resources.
-
-For example:
-
-```ts
-const x: Output<X> = ...;
-const y: Output<Y> = ...;
-
-const z = x.apply(_ => y);
-```
-
-Previously, the resources tracked by Output `z` would only include the ones tracked by Output `x`.
-Now it will include all the resources tracked by Output `y` as well.
+- `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
 
 ## 1.7.1 (2019-12-11)
 
