@@ -4,13 +4,18 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// convertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
+// ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
 // EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
+//
+// IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
+// blinding encrypter, and unrecoverable. So this operation is inherently lossy.
 func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
@@ -182,19 +187,22 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	}
 }
 
+// convertStepEventStateMetadata converts the internal StepEventStateMetadata to the API type
+// we send over the wire.
+//
+// IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
+// in the resource state will be lost and unrecoverable.
 func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.StepEventStateMetadata {
 	if md == nil {
 		return nil
 	}
 
-	inputs := make(map[string]interface{})
-	for k, v := range md.Inputs {
-		inputs[string(k)] = v
-	}
-	outputs := make(map[string]interface{})
-	for k, v := range md.Outputs {
-		outputs[string(k)] = v
-	}
+	encrypter := config.BlindingCrypter
+	inputs, err := stack.SerializeProperties(md.Inputs, encrypter)
+	contract.IgnoreError(err)
+
+	outputs, err := stack.SerializeProperties(md.Outputs, encrypter)
+	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
 		Type: string(md.Type),

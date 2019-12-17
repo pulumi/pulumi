@@ -180,7 +180,8 @@ func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	return nil, nil
 }
 
-func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string) (plugin.Analyzer, error) {
+func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
+	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 
