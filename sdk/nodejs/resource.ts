@@ -702,7 +702,7 @@ export abstract class ProviderResource extends CustomResource {
     private readonly pkg: string;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // tslint:disable-next-line: variable-name
     public __registrationId?: string;
 
     public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
