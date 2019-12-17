@@ -17,6 +17,8 @@ CHANGELOG
 
 - Add the .NET Core 3.0 runtime to the pulumi/pulumi container. [#3616](https://github.com/pulumi/pulumi/pull/3616).
 
+- `ComponentResource`s now have built-in support for asynchronously constructing their children. See https://github.com/pulumi/pulumi/pull/3676 for more details.
+
 ## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
