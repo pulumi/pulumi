@@ -18,7 +18,7 @@ CHANGELOG
 - Add the .NET Core 3.0 runtime to the pulumi/pulumi container. [#3616](https://github.com/pulumi/pulumi/pull/3616).
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
-  https://github.com/pulumi/pulumi/pull/3663
+  [#3663](https://github.com/pulumi/pulumi/pull/3663)
 
 ## 1.7.1 (2019-12-13)
 
