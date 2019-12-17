@@ -775,11 +775,10 @@ export class ComponentResource<TData = any> extends Resource {
      *
      * @param t The type of the resource.
      * @param name The _unique_ name of the resource.
-     * @param unused [Deprecated].  Component resources do not communicate or store their properties
-     *               with the Pulumi engine.
+     * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
@@ -789,11 +788,11 @@ export class ComponentResource<TData = any> extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
-        this.__data = this.initializeAndRegisterOutputs();
+        this.__data = this.initializeAndRegisterOutputs(args);
     }
 
-    private async initializeAndRegisterOutputs() {
-        const data = await this.initialize();
+    private async initializeAndRegisterOutputs(args: Inputs) {
+        const data = await this.initialize(args);
         this.registerOutputs();
         return data;
     }
@@ -803,7 +802,7 @@ export class ComponentResource<TData = any> extends Resource {
      * automatically when constructed.  The data will be available immediately for subclass
      * constructors to use.  To access the data use `.getData`.
      */
-    protected async initialize(): Promise<TData> {
+    protected async initialize(args: Inputs): Promise<TData> {
         return <TData>undefined!;
     }
 
