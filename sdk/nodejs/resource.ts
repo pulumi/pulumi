@@ -19,8 +19,6 @@ import { readResource, registerResource, registerResourceOutputs } from "./runti
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
-// tslint:disable: variable-name
-
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
@@ -78,12 +76,14 @@ export abstract class Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
+    // tslint:disable-next-line:variable-name
     public readonly __pulumiResource: boolean = true;
 
     /**
      * @internal
      * The optional parent of this resource.
      */
+    // tslint:disable-next-line:variable-name
     public readonly __parentResource: Resource | undefined;
 
     /**
@@ -124,6 +124,7 @@ export abstract class Resource {
      * need to reference the urn of a component resource.  So it's acceptable if that sort of
      * pattern failed in practice.
      */
+    // tslint:disable-next-line:variable-name
     public __childResources: Set<Resource> | undefined;
 
     /**
@@ -136,6 +137,7 @@ export abstract class Resource {
      * @internal
      * When set to true, protect ensures this resource cannot be deleted.
      */
+    // tslint:disable-next-line:variable-name
     private readonly __protect: boolean;
 
     /**
@@ -146,6 +148,7 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
+    // tslint:disable-next-line:variable-name
     __transformations?: ResourceTransformation[];
 
     /**
@@ -156,6 +159,7 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
+    // tslint:disable-next-line:variable-name
     readonly __aliases?: Input<URN>[];
 
     /**
@@ -166,12 +170,14 @@ export abstract class Resource {
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
      */
+    // tslint:disable-next-line:variable-name
     private readonly __name?: string;
 
     /**
      * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
+    // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
@@ -635,6 +641,7 @@ export abstract class CustomResource extends Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
+    // tslint:disable-next-line:variable-name
     public readonly __pulumiCustomResource: boolean;
 
     /**
@@ -642,6 +649,7 @@ export abstract class CustomResource extends Resource {
      * Private field containing the type ID for this object. Useful for implementing `isInstance` on
      * classes that inherit from `CustomResource`.
      */
+    // tslint:disable-next-line:variable-name
     public readonly __pulumiType: string;
 
     /**
@@ -693,6 +701,7 @@ export abstract class ProviderResource extends CustomResource {
     private readonly pkg: string;
 
     /** @internal */
+    // tslint:disable-next-line:variable-name
     public __registrationId?: string;
 
     public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
@@ -738,6 +747,7 @@ export class ComponentResource<TData = any> extends Resource {
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
+    // tslint:disable-next-line:variable-name
     public readonly __pulumiComponentResource = true;
 
     /** @internal */
