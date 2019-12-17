@@ -35,21 +35,24 @@ func (az azurePipelinesCI) DetectVars() Vars {
 	v.SHA = os.Getenv("BUILD_SOURCEVERSION")
 	v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
 	v.CommitMessage = os.Getenv("BUILD_SOURCEVERSIONMESSAGE")
+
+	orgURI := os.Getenv("SYSTEM_TEAMFOUNDATIONCOLLECTIONURI")
+	projectName := os.Getenv("SYSTEM_TEAMPROJECT")
+	v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
+
 	// Azure Pipelines can be connected to external repos.
 	// So we check if the provider is GitHub, then we use
 	// `SYSTEM_PULLREQUEST_PULLREQUESTNUMBER` instead of `SYSTEM_PULLREQUEST_PULLREQUESTID`.
 	// The PR ID/number only applies to Git repos.
 	vcsProvider := os.Getenv("BUILD_REPOSITORY_PROVIDER")
 	switch vcsProvider {
-	case "TfsGit":
-		orgURI := os.Getenv("SYSTEM_PULLREQUEST_TEAMFOUNDATIONCOLLECTIONURI")
-		projectName := os.Getenv("SYSTEM_TEAMPROJECT")
-		v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
-		// TfsGit is a git repo hosted on Azure DevOps.
-		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
 	case "GitHub":
-		// GitHub is a git repo hosted on GitHub.
+		// The number of the pull request that caused this build.
+		// This variable is populated for pull requests from GitHub
+		// which have a different pull request ID and pull request number.
 		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+	default:
+		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
 	}
 
 	return v
