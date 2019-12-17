@@ -12,18 +12,12 @@ class CustResource extends pulumi.CustomResource {
 class CompResource extends pulumi.ComponentResource {
     constructor(name, opts) {
         super("test:index:CompResource", name, {}, opts)
-
-        // Kick off async work that actually makes our children.
-        this.asyncInitialize().then(_ => this.registerOutputs());
     }
 
-    async asyncInitialize() {
+    /** @override */
+    async initialize() {
         new CustResource("a", { parent: this });
         new CustResource("b", { parent: this });
-    }
-
-    isAsyncConstructed() {
-        return true;
     }
 }
 

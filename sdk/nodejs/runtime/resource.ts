@@ -423,9 +423,11 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(resou
                 result.add(resource);
 
                 if (ComponentResource.isInstance(resource)) {
-                    // This await is safe even if __isConstructed is undefined.
-                    await resource.__isConstructed;
-                    await addTransitivelyReferencedChildResourcesOfComponentResources(resource.__childResources, result);
+                    // This await is safe even if __isConstructed is undefined. Ensure that the
+                    // resource has completely finished construction.  That way all parent/child
+                    // relationships will have been setup.
+                    await resource.__data;
+                    addTransitivelyReferencedChildResourcesOfComponentResources(resource.__childResources, result);
                 }
             }
         }

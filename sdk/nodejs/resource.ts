@@ -733,24 +733,19 @@ export abstract class ProviderResource extends CustomResource {
  * level abstraction. The component resource itself is a resource, but does not require custom CRUD
  * operations for provisioning.
  */
-export class ComponentResource extends Resource {
+export class ComponentResource<TData = any> extends Resource {
     /**
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     public readonly __pulumiComponentResource = true;
 
-    // A promise that can be used to wait until this component is considered constructed (i.e. all
-    // its initial children have been created).  This value is only set to a real promise when a
-    // component states explicitly that it is async-constructed, otherwise it is 'undefined' (which
-    // is also what the value will be in SxS scenarios).
-    //
-    // This promise can be used internally to ensure that we can walk the tree of children only once
-    // they have actually been created.
-
     /** @internal */
-    public readonly __isConstructed: Promise<void> | undefined;
-    private __resolveIsConstructed?: () => void;
+    // tslint:disable-next-line:variable-name
+    public readonly __data: Promise<TData>;
+
+    // tslint:disable-next-line:variable-name
+    private __registered = false;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -783,22 +778,29 @@ export class ComponentResource extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
+        this.__data = this.initializeAndRegisterOutputs();
+    }
 
-        if (this.isAsyncConstructed()) {
-            this.__isConstructed = new Promise(resolve => {
-                this.__resolveIsConstructed = resolve;
-            });
-        }
+    private async initializeAndRegisterOutputs() {
+        const data = await this.initialize();
+        this.registerOutputs();
+        return data;
     }
 
     /**
-     * If this is a component that will construct its children  asynchronously. Components that do
-     * this *must* call [registerOutputs] to signal when construction is complete.  If
-     * [registerOutputs] is not called then hangs will occur if another resource 'dependsOn' this
-     * resource.
+     * Can be overridden by a subclass to asynchronously initialize data for this Component
+     * automatically when constructed.  The data will be available (in Promise form) immediately
+     * for subclass constructors to use.
      */
-    protected isAsyncConstructed() {
-        return false;
+    protected async initialize(): Promise<TData> {
+        return <TData>undefined!;
+    }
+
+    /**
+     * Retrieves the data produces by [initialize].
+     */
+    protected getData(): Promise<TData> {
+        return this.__data;
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by
@@ -808,13 +810,12 @@ export class ComponentResource extends Resource {
     // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
     // quickly as possible (instead of waiting until the entire application completes).
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
-        registerResourceOutputs(this, outputs || {});
-
-        // If we're an async-constructed component, mark that we're now fully constructed and our
-        // children can be introspected.
-        if (this.__resolveIsConstructed) {
-            this.__resolveIsConstructed();
+        if (this.__registered) {
+            return;
         }
+
+        this.__registered = true;
+        registerResourceOutputs(this, outputs || {});
     }
 }
 
@@ -825,7 +826,6 @@ export class ComponentResource extends Resource {
 export const testingOptions = {
     isDryRun: false,
 };
-
 
 /**
  * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the
