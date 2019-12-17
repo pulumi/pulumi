@@ -1123,16 +1123,12 @@ describe("rpc", () => {
             expectResourceCount: 5,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
-                dependencies = dependencies || [];
-                dependencies.sort();
-                if (name === "c") {
-                    // resource 'c' should see resources 'a' and 'b' as dependencies (even though
-                    // they are async constructed by the component)
-                    assert.deepEqual(dependencies, ["test:index:CustResource::a", "test:index:CustResource::b"]);
-                }
-                else if (name === "d") {
-                    // resource 'd' should see resources 'a' and 'b' as dependencies (even though
-                    // they are async constructed by the component)
+
+                if (name === "c" || name === "d") {
+                    dependencies = dependencies || [];
+                    dependencies.sort();
+                    // resources 'c' and 'd' should see resources 'a' and 'b' as dependencies (even
+                    // though they are async constructed by the component)
                     assert.deepEqual(dependencies, ["test:index:CustResource::a", "test:index:CustResource::b"]);
                 }
 
