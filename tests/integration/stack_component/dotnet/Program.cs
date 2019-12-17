@@ -1,0 +1,42 @@
+﻿// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
+
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Pulumi;
+
+class MyStack : Stack
+{
+    [Output("abc")]
+    public Output<string>? Abc { get; private set; }
+
+    [Output("xyz")]
+    public Output<string>? Xyz { get; private set; }
+
+    [Output("foo")]
+    public Output<int>? Foo { get; private set; }
+
+    // This should NOT be exported as stack output due to the missing attribute
+    public Output<string>? Bar { get; private set; }
+
+    public MyStack()
+    {
+        this.Abc = "ABC";
+    }
+
+    protected override void Initialize()
+    {
+        this.Xyz = "XYZ";
+    }
+
+    protected override async Task InitializeAsync()
+    {
+        await Task.Delay(10); // mocks some async work
+        this.Foo = 42;
+        this.Bar = "this should not come to output";
+    }
+}
+
+class Program
+{
+    static Task<int> Main(string[] args) => Deployment.RunAsync<MyStack>();
+}

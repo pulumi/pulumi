@@ -505,6 +505,30 @@ func TestStackDependencyGraph(t *testing.T) {
 	})
 }
 
+// TestStackComponentDotNet tests the programming model of defining a stack as an explicit top-level component.
+func TestStackComponentDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_component", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with three outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 3, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["abc"])
+				assert.Equal(t, "XYZ", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
+}
+
 // TestConfigSave ensures that config commands in the Pulumi CLI work as expected.
 func TestConfigSave(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
