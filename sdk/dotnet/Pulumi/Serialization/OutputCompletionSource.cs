@@ -24,15 +24,15 @@ namespace Pulumi.Serialization
 
     internal class OutputCompletionSource<T> : IOutputCompletionSource
     {
+        private readonly ImmutableHashSet<Resource> _resources;
         private readonly TaskCompletionSource<OutputData<T>> _taskCompletionSource;
         public readonly Output<T> Output;
 
         public OutputCompletionSource(Resource? resource)
         {
+            _resources = resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource);
             _taskCompletionSource = new TaskCompletionSource<OutputData<T>>();
-            Output = new Output<T>(
-                resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource),
-                _taskCompletionSource.Task);
+            Output = new Output<T>(_taskCompletionSource.Task);
         }
 
         public System.Type TargetType => typeof(T);
@@ -40,13 +40,16 @@ namespace Pulumi.Serialization
         IOutput IOutputCompletionSource.Output => Output;
 
         public void SetStringValue(string value, bool isKnown)
-            => _taskCompletionSource.SetResult(new OutputData<T>((T)(object)value, isKnown, isSecret: false));
+            => _taskCompletionSource.SetResult(new OutputData<T>(
+                _resources, (T)(object)value, isKnown, isSecret: false));
 
         public void SetValue(OutputData<object?> data)
-            => _taskCompletionSource.SetResult(new OutputData<T>((T)data.Value!, data.IsKnown, data.IsSecret));
+            => _taskCompletionSource.SetResult(new OutputData<T>(
+                _resources, (T)data.Value!, data.IsKnown, data.IsSecret));
 
         public void TrySetDefaultResult(bool isKnown)
-            => _taskCompletionSource.TrySetResult(new OutputData<T>(default!, isKnown, isSecret: false));
+            => _taskCompletionSource.TrySetResult(new OutputData<T>(
+                _resources, default!, isKnown, isSecret: false));
 
         public void TrySetException(Exception exception)
             => _taskCompletionSource.TrySetException(exception);

@@ -80,7 +80,7 @@ namespace Pulumi
     /// </summary>
     internal interface IOutput
     {
-        ImmutableHashSet<Resource> Resources { get; }
+        Task<ImmutableHashSet<Resource>> GetResourcesAsync();
 
         /// <summary>
         /// Returns an <see cref="Output{T}"/> equivalent to this, except with our
@@ -105,14 +105,10 @@ namespace Pulumi
     /// </summary>
     public sealed class Output<T> : IOutput
     {
-        internal ImmutableHashSet<Resource> Resources { get; private set; }
         internal Task<OutputData<T>> DataTask { get; private set; }
 
-        internal Output(ImmutableHashSet<Resource> resources, Task<OutputData<T>> dataTask)
-        {
-            Resources = resources;
-            DataTask = dataTask;
-        }
+        internal Output(Task<OutputData<T>> dataTask)
+            => DataTask = dataTask;
 
         internal async Task<T> GetValueAsync()
         {
@@ -120,7 +116,11 @@ namespace Pulumi
             return data.Value;
         }
 
-        ImmutableHashSet<Resource> IOutput.Resources => this.Resources;
+        async Task<ImmutableHashSet<Resource>> IOutput.GetResourcesAsync()
+        {
+            var data = await DataTask.ConfigureAwait(false);
+            return data.Resources;
+        }
 
         async Task<OutputData<object?>> IOutput.GetDataAsync()
             => await DataTask.ConfigureAwait(false);
@@ -136,9 +136,10 @@ namespace Pulumi
             async Task<OutputData<T>> GetData()
             {
                 var data = await this.DataTask.ConfigureAwait(false);
-                return new OutputData<T>(data.Value, data.IsKnown, await isSecret.ConfigureAwait(false));
+                return new OutputData<T>(data.Resources, data.Value, data.IsKnown, await isSecret.ConfigureAwait(false));
             }
-            return new Output<T>(this.Resources, GetData());
+
+            return new Output<T>(GetData());
         }
 
         private static Output<T> Create(Task<T> value, bool isSecret)
@@ -149,8 +150,8 @@ namespace Pulumi
             }
 
             var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => OutputData.Create(t, isKnown: true, isSecret: isSecret));
-            return new Output<T>(ImmutableHashSet<Resource>.Empty, tcs.Task);
+            value.Assign(tcs, t => OutputData.Create(ImmutableHashSet<Resource>.Empty, t, isKnown: true, isSecret: isSecret));
+            return new Output<T>(tcs.Task);
         }
 
         /// <summary>
@@ -201,37 +202,39 @@ namespace Pulumi
         /// then).
         /// </summary>
         public Output<U> Apply<U>(Func<T, Output<U>?> func)
-            => new Output<U>(Resources, ApplyHelperAsync(DataTask, func));
+            => new Output<U>(ApplyHelperAsync(DataTask, func));
 
         private static async Task<OutputData<U>> ApplyHelperAsync<U>(
             Task<OutputData<T>> dataTask, Func<T, Output<U>?> func)
         {
             var data = await dataTask.ConfigureAwait(false);
-
+            var resources = data.Resources;
             // During previews only perform the apply if the engine was able to
             // give us an actual value for this Output.
             if (!data.IsKnown && Deployment.Instance.IsDryRun)
             {
-                return new OutputData<U>(default!, isKnown: false, data.IsSecret);
+                return new OutputData<U>(resources, default!, isKnown: false, data.IsSecret);
             }
 
             var inner = func(data.Value);
             if (inner == null)
             {
-                return OutputData.Create(default(U)!, data.IsKnown, data.IsSecret);
+                return OutputData.Create(resources, default(U)!, data.IsKnown, data.IsSecret);
             }
 
             var innerData = await inner.DataTask.ConfigureAwait(false);
 
             return OutputData.Create(
-                innerData.Value, data.IsKnown && innerData.IsKnown, data.IsSecret || innerData.IsSecret);
+                data.Resources.Union(innerData.Resources), innerData.Value,
+                data.IsKnown && innerData.IsKnown, data.IsSecret || innerData.IsSecret);
         }
 
         internal static Output<ImmutableArray<T>> All(ImmutableArray<Input<T>> inputs)
-            => new Output<ImmutableArray<T>>(GetAllResources(inputs), AllHelperAsync(inputs));
+            => new Output<ImmutableArray<T>>(AllHelperAsync(inputs));
 
         private static async Task<OutputData<ImmutableArray<T>>> AllHelperAsync(ImmutableArray<Input<T>> inputs)
         {
+            var resources = ImmutableHashSet.CreateBuilder<Resource>();
             var values = ImmutableArray.CreateBuilder<T>(inputs.Length);
             var isKnown = true;
             var isSecret = false;
@@ -241,23 +244,24 @@ namespace Pulumi
                 var data = await output.DataTask.ConfigureAwait(false);
 
                 values.Add(data.Value);
+                resources.UnionWith(data.Resources);
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
 
-            return OutputData.Create(values.MoveToImmutable(), isKnown, isSecret);
+            return OutputData.Create(resources.ToImmutable(), values.MoveToImmutable(), isKnown, isSecret);
         }
 
         internal static Output<(T1, T2, T3, T4, T5, T6, T7, T8)> Tuple<T1, T2, T3, T4, T5, T6, T7, T8>(
             Input<T1> item1, Input<T2> item2, Input<T3> item3, Input<T4> item4,
             Input<T5> item5, Input<T6> item6, Input<T7> item7, Input<T8> item8)
             => new Output<(T1, T2, T3, T4, T5, T6, T7, T8)>(
-                GetAllResources(new IInput[] { item1, item2, item3, item4, item5, item6, item7, item8 }),
                 TupleHelperAsync(item1, item2, item3, item4, item5, item6, item7, item8));
 
         private static async Task<OutputData<(T1, T2, T3, T4, T5, T6, T7, T8)>> TupleHelperAsync<T1, T2, T3, T4, T5, T6, T7, T8>(
             Input<T1> item1, Input<T2> item2, Input<T3> item3, Input<T4> item4,
             Input<T5> item5, Input<T6> item6, Input<T7> item7, Input<T8> item8)
         {
+            var resources = ImmutableHashSet.CreateBuilder<Resource>();
             (T1, T2, T3, T4, T5, T6, T7, T8) tuple = default;
             var isKnown = true;
             var isSecret = false;
@@ -271,7 +275,7 @@ namespace Pulumi
             Update(await GetData(item7).ConfigureAwait(false), ref tuple.Item7);
             Update(await GetData(item8).ConfigureAwait(false), ref tuple.Item8);
 
-            return OutputData.Create(tuple, isKnown, isSecret);
+            return OutputData.Create(resources.ToImmutable(), tuple, isKnown, isSecret);
 
             static async Task<OutputData<X>> GetData<X>(Input<X> input)
             {
@@ -281,12 +285,10 @@ namespace Pulumi
 
             void Update<X>(OutputData<X> data, ref X location)
             {
+                resources.UnionWith(data.Resources);
                 location = data.Value;
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
         }
-
-        private static ImmutableHashSet<Resource> GetAllResources(IEnumerable<IInput> inputs)
-            => ImmutableHashSet.CreateRange(inputs.SelectMany(i => i.ToOutput().Resources));
     }
 }

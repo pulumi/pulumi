@@ -151,7 +151,8 @@ async def serialize_property(value: 'Input[Any]',
         return await serialize_property(future_return, deps, input_transformer)
 
     if known_types.is_output(value):
-        deps.extend(value.resources())
+        value_resources = await value.resources()
+        deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
         # "unknown value" sentinel. We will do the former for all outputs created directly by user

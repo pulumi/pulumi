@@ -25,7 +25,8 @@ namespace Pulumi.Tests.Serialization
             };
 
         protected Output<T> CreateUnknownOutput<T>(T value)
-            => new Output<T>(ImmutableHashSet<Resource>.Empty, Task.FromResult(new OutputData<T>(value, isKnown: false, isSecret: false)));
+            => new Output<T>(Task.FromResult(new OutputData<T>(
+                ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false)));
 
         protected async Task<Value> SerializeToValueAsync(object? value)
         {

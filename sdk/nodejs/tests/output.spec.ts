@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, OutputInstance, all, concat, interpolate, output, unknown } from "../output";
+import { Output, all, concat, interpolate, output, unknown } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
@@ -138,12 +138,12 @@ describe("output", () => {
     }));
 
     describe("isKnown", () => {
-        function or<T>(output1: Output<T>, output2: Output<T>): Output<T>;
-        function or<T>(output1: any, output2: any): any {
+        function or<T>(output1: Output<T>, output2: Output<T>): Output<T> {
             const val1 = output1.promise();
             const val2 = output2.promise();
             return new Output<T>(
-                new Set([...output1.resources(), ...output2.resources()]),
+                Promise.all([output1.resources(), output2.resources()])
+                       .then(([r1, r2]) => new Set([...r1, ...r2])),
                 Promise.all([val1, val2])
                        .then(([val1, val2]) => val1 || val2),
                 Promise.all([val1, output1.isKnown, output2.isKnown])
