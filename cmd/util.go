@@ -192,8 +192,12 @@ func requireStack(
 		return stack, err
 	}
 
-	// No stack was found.  If we're in a terminal, prompt to create one.
-	if offerNew && cmdutil.Interactive() {
+	// No stack was found. Prompt to create one.
+	if offerNew {
+		if !cmdutil.Interactive() {
+			return nil, errors.Errorf("The stack '%s' does not exist. Unable to create in non-interactive shell.", stackName)
+		}
+
 		fmt.Printf("The stack '%s' does not exist.\n", stackName)
 		fmt.Printf("\n")
 		_, err = cmdutil.ReadConsole("If you would like to create this stack now, please press <ENTER>, otherwise " +
