@@ -1,6 +1,8 @@
 CHANGELOG
 =========
 
+- Top-level Stack component in the .NET SDK ([#3618](https://github.com/pulumi/pulumi/pull/3618)).
+
 ## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
