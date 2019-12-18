@@ -79,7 +79,13 @@ export class StackReference extends CustomResource {
         // of the inputs are a secret, and this.outputs is always a secret if it contains any secrets. We do this dance
         // so we can ensure that the Output we return is not needlessly tainted as a secret.
         const value = all([output(name), this.outputs]).apply(([n, os]) => os[n]);
-        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
+
+        // 'value' is an Output produced by our own `.apply` implementation.  So it's safe to
+        // `.allResources!` on it.
+        return new Output(
+            value.resources(), value.promise(),
+            value.isKnown, isSecretOutputName(this, output(name)),
+            value.allResources!());
     }
 
     /**
@@ -94,7 +100,10 @@ export class StackReference extends CustomResource {
             }
             return os[n];
         });
-        return new Output(value.resources(), value.promise(), value.isKnown, isSecretOutputName(this, output(name)));
+        return new Output(
+            value.resources(), value.promise(),
+            value.isKnown, isSecretOutputName(this, output(name)),
+            value.allResources!());
     }
 
     /**

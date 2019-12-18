@@ -54,6 +54,11 @@ export function values(obj: object): any[] {
     return result;
 }
 
+/** @internal */
+export function union<T>(set1: Set<T>, set2: Set<T>) {
+    return new Set([...set1, ...set2]);
+}
+
 /**
  * Synchronously blocks until the result of this promise is computed.  If the promise is rejected,
  * this will throw the error the promise was rejected with.  If this promise does not complete this
