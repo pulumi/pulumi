@@ -69,7 +69,8 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
                 `transferIsStable(${label}, ${k}, ${propString})`),
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsSecret = resolve),
-                `transferIsSecret(${label}, ${k}, ${props[k]})`));
+                `transferIsSecret(${label}, ${k}, ${props[k]})`),
+            Promise.resolve(onto));
     }
 
     return resolvers;
@@ -269,8 +270,17 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
-        for (const resource of await prop.resources()) {
+        // handle serializing both old-style outputs (with sync resources) and new-style outputs
+        // (with async resources).
+
+        for (const resource of prop.resources()) {
             dependentResources.add(resource);
+        }
+
+        if (prop.allResources) {
+            for (const resource of await prop.allResources()) {
+                dependentResources.add(resource);
+            }
         }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"

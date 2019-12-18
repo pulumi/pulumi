@@ -70,11 +70,15 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * Only callable on the outside.
      *
-     * Normally returns a Promise<Set>.  However, is typed to return a Set as well to properly
-     * represent and force us to handle values produced by older versions of the sdk in SxS
-     * scenarios.
+     * This only returns the set of dependent resources that were known at Output construction time.
+     * It represents the `@pulumi/pulumi` api prior to the addition of 'async resource'
+     * dependencies.  Code inside @pulumi/pulumi should use `.allResources` instead.
      */
-    public readonly resources: () => Set<Resource> | Promise<Set<Resource>>;
+    public readonly resources: () => Set<Resource>;
+
+    // Marked as optional for sxs scenarios.
+    /** @internal */
+    public readonly allResources?: () => Promise<Set<Resource>>;
 
     /**
      * [toString] on an [Output<T>] is not supported.  This is because the value an [Output] points
@@ -141,23 +145,24 @@ class OutputImpl<T> implements OutputInstance<T> {
 
     /** @internal */
     public constructor(
-            resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
+            resources: Set<Resource> | Resource[] | Resource,
             promise: Promise<T>,
             isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>) {
+            isSecret: Promise<boolean>,
+            allResources: Promise<Set<Resource> | Resource[] | Resource>) {
 
         // Always create a copy so that no one accidentally modifies our Resource list.
-        const resourcesSet = Promise.resolve(resources).then(
-            rs => Array.isArray(rs) ? new Set(rs) :
-                  rs instanceof Set ? new Set(rs) :
-                  new Set([rs]));
+        const resourcesCopy = copyResources(resources);
+        const allResourcesCopy = allResources.then(r => utils.union(copyResources(r), resourcesCopy));
 
         // We are only known if we are not explicitly unknown and the resolved value of the output
         // contains no distinguished unknown values.
         this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
         this.isSecret = isSecret;
 
-        this.resources = () => resourcesSet;
+        this.resources = () => resourcesCopy;
+        this.allResources = () => allResourcesCopy;
+
         this.promise = (withUnknowns?: boolean) => OutputImpl.getPromisedValue(promise, withUnknowns);
 
         this.toString = () => {
@@ -267,19 +272,31 @@ To manipulate the value of this Output, use '.apply' instead.`);
     // advantage of this to allow proxied property accesses to return known values even if other properties of
     // the containing object are unknown.
     public apply<U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean): Output<U> {
-        const applied = Promise.all([this.resources(), this.promise(/*withUnknowns*/ true), this.isKnown, this.isSecret])
-                               .then(([resources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(resources, value, isKnown, isSecret, func, !!runWithUnknowns));
+        // we're inside the modern `output` code, so it's safe to call `.allResources!` here.
+
+        const applied = Promise.all([this.allResources!(), this.promise(/*withUnknowns*/ true), this.isKnown, this.isSecret])
+                               .then(([allResources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(allResources, value, isKnown, isSecret, func, !!runWithUnknowns));
 
         const result = new OutputImpl<U>(
-            applied.then(a => a.resources), applied.then(a => a.value),
-            applied.then(a => a.isKnown), applied.then(a => a.isSecret));
+            this.resources(),
+            applied.then(a => a.value),
+            applied.then(a => a.isKnown),
+            applied.then(a => a.isSecret),
+            applied.then(a => a.allResources));
         return <Output<U>><any>result;
     }
 }
 
+function copyResources(resources: Set<Resource> | Resource[] | Resource) {
+    const copy = Array.isArray(resources) ? new Set(resources) :
+                 resources instanceof Set ? new Set(resources) :
+                 new Set([resources]);
+    return copy;
+}
+
 // tslint:disable:max-line-length
 async function applyHelperAsync<T, U>(
-        resources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
+        allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
         func: (t: T) => Input<U>, runWithUnknowns: boolean) {
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
@@ -289,7 +306,7 @@ async function applyHelperAsync<T, U>(
         if (!applyDuringPreview) {
             // We didn't actually run the function, our new Output is definitely **not** known.
             return {
-                resources,
+                allResources,
                 value: <U><any>undefined,
                 isKnown: false,
                 isSecret,
@@ -315,15 +332,17 @@ async function applyHelperAsync<T, U>(
         const innerValue = await transformed.promise(/*withUnknowns*/ true);
         const innerIsKnown = await transformed.isKnown;
         const innerIsSecret = await (transformed.isSecret || Promise.resolve(false));
-        const innerResources = await transformed.resources();
 
-        const totalResources = new Set(resources);
-        for (const res of innerResources) {
-            totalResources.add(res);
-        }
+        // If we're working with a new-style output, grab all its resources and merge into ours.
+        // otherwise, if this is an old-style output, just grab the resources it was known to have
+        // at construction time.
+        const innerResources = transformed.allResources
+            ? await transformed.allResources()
+            : transformed.resources();
 
+        const totalResources = utils.union(allResources, innerResources);
         return {
-            resources: totalResources,
+            allResources: totalResources,
             value: innerValue,
             isKnown: innerIsKnown,
             isSecret: isSecret || innerIsSecret,
@@ -333,7 +352,7 @@ async function applyHelperAsync<T, U>(
     // We successfully ran the inner function.  Our new Output should be considered known.  We
     // preserve secretness from our original Output to the new one we're creating.
     return {
-        resources,
+        allResources,
         value: transformed,
         isKnown: true,
         isSecret,
@@ -381,13 +400,15 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
     }
     else if (isUnknown(val)) {
         // Turn unknowns into unknown outputs.
-        return <any>new Output(new Set(), Promise.resolve(<any>val), /*isKnown*/ Promise.resolve(false), /*isSecret*/ Promise.resolve(false));
+        return <any>new Output(
+            new Set(), Promise.resolve(<any>val), /*isKnown*/ Promise.resolve(false), /*isSecret*/ Promise.resolve(false), Promise.resolve(new Set()));
     }
     else if (val instanceof Promise) {
         // For a promise, we can just treat the same as an output that points to that resource. So
         // we just create an Output around the Promise, and immediately apply the unwrap function on
         // it to transform the value it points at.
-        const newOutput = new Output(new Set(), val, /*isKnown*/ Promise.resolve(true), /*isSecret*/ Promise.resolve(false));
+        const newOutput = new Output(
+            new Set(), val, /*isKnown*/ Promise.resolve(true), /*isSecret*/ Promise.resolve(false), Promise.resolve(new Set()));
         return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
     }
     else if (Output.isInstance(val)) {
@@ -395,7 +416,9 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         // downlevel SxS SDKs. This ensures that first-class unknowns are properly represented in the system: if this
         // was a downlevel output where val.isKnown resolves to false, this guarantees that the returned output's
         // promise resolves to unknown.
-        const newOutput = new Output(val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret);
+        const allResources = val.allResources ? val.allResources() : Promise.resolve(new Set<Resource>());
+        const newOutput = new Output(
+            val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
         return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
     }
     else if (val instanceof Array) {
@@ -418,7 +441,11 @@ export function secret<T>(val: Input<T>): Output<Unwrap<T>>;
 export function secret<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const o = output(val);
-    return new Output(o.resources(), o.promise(/*withUnknowns*/ true), o.isKnown, Promise.resolve(true));
+
+    // we called `output` right above this, so it's safe to call `.allResources` on the result.
+    return new Output(
+        o.resources(), o.promise(/*withUnknowns*/ true),
+        o.isKnown, Promise.resolve(true), o.allResources!());
 }
 
 function createSimpleOutput(val: any) {
@@ -426,7 +453,8 @@ function createSimpleOutput(val: any) {
         new Set(),
         Promise.resolve(val),
         /*isKnown*/ Promise.resolve(true),
-        /*isSecret */ Promise.resolve(false));
+        /*isSecret */ Promise.resolve(false),
+        Promise.resolve(new Set()));
 }
 
 /**
@@ -459,18 +487,18 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
     if (val instanceof Array) {
         const allOutputs = val.map(v => output(v));
 
-        const [resources, isKnown, isSecret] = getResourcesAndDetails(allOutputs);
+        const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allOutputs);
         const promisedArray = Promise.all(allOutputs.map(o => o.promise(/*withUnknowns*/ true)));
 
-        return new Output<Unwrap<T>[]>(resources, promisedArray, isKnown, isSecret);
+        return new Output<Unwrap<T>[]>(syncResources, promisedArray, isKnown, isSecret, allResources);
     } else {
         const keysAndOutputs = Object.keys(val).map(key => ({ key, value: output(val[key]) }));
         const allOutputs = keysAndOutputs.map(kvp => kvp.value);
 
-        const [resources, isKnown, isSecret] = getResourcesAndDetails(allOutputs);
+        const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allOutputs);
         const promisedObject = getPromisedObject(keysAndOutputs);
 
-        return new Output<Record<string, Unwrap<T>>>(resources, promisedObject, isKnown, isSecret);
+        return new Output<Record<string, Unwrap<T>>>(syncResources, promisedObject, isKnown, isSecret, allResources);
     }
 }
 
@@ -484,17 +512,26 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Promise<Set<Resource>>, Promise<boolean>, Promise<boolean>] {
-    const resources = Promise.all(allOutputs.map(o => o.resources())).then(arr => {
-        const resourceSet = new Set<Resource>();
+function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Set<Resource>, Promise<boolean>, Promise<boolean>, Promise<Set<Resource>>] {
+    const syncResources = new Set<Resource>();
+    for (const op of allOutputs) {
+        for (const res of op.resources()) {
+            syncResources.add(res);
+        }
+    }
+
+    // All the outputs were generated in `function all` using `output(v)`.  So it's safe
+    // to call `.allResources!` here.
+    const allResources = Promise.all(allOutputs.map(o => o.allResources!())).then(arr => {
+        const result = new Set<Resource>();
 
         for (const set of arr) {
             for (const res of set) {
-                resourceSet.add(res);
+                result.add(res);
             }
         }
 
-        return resourceSet;
+        return result;
     });
 
     // A merged output is known if all of its inputs are known.
@@ -503,7 +540,7 @@ function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Promise<Se
     // A merged output is secret if any of its inputs are secret.
     const isSecret = Promise.all(allOutputs.map(o => isSecretOutput(o))).then(ps => ps.some(b => b));
 
-    return [resources, isKnown, isSecret];
+    return [syncResources, isKnown, isSecret, allResources];
 }
 
 /**
@@ -649,10 +686,12 @@ export type UnwrappedObject<T> = {
  * for working with the underlying value of an [Output<T>].
  */
 export interface OutputInstance<T> {
+    /** @internal */ allResources?: () => Promise<Set<Resource>>;
+
     /** @internal */ readonly isKnown: Promise<boolean>;
     /** @internal */ readonly isSecret: Promise<boolean>;
     /** @internal */ promise(withUnknowns?: boolean): Promise<T>;
-    /** @internal */ resources(): Set<Resource> | Promise<Set<Resource>>;
+    /** @internal */ resources(): Set<Resource>;
 
     /**
      * Transforms the data of the output with the provided func.  The result remains a
@@ -707,10 +746,11 @@ export interface OutputConstructor {
     isInstance<T>(obj: any): obj is Output<T>;
 
     /** @internal */ new<T>(
-            resources: Set<Resource> | Resource[] | Resource | Promise<Set<Resource> | Resource[] | Resource>,
+            resources: Set<Resource> | Resource[] | Resource,
             promise: Promise<T>,
             isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>): Output<T>;
+            isSecret: Promise<boolean>,
+            allResources: Promise<Set<Resource> | Resource[] | Resource>): Output<T>;
 }
 
 /**

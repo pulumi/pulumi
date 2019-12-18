@@ -277,7 +277,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
             new Promise<URN>(resolve => resolveURN = resolve),
             `resolveURN(${label})`),
         /*isKnown:*/ Promise.resolve(true),
-        /*isSecret:*/ Promise.resolve(false));
+        /*isSecret:*/ Promise.resolve(false),
+        Promise.resolve(res));
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: any, performApply: boolean) => void) | undefined;
@@ -289,7 +290,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
             debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
             debuggablePromise(new Promise<boolean>(
                 resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
-            Promise.resolve(false));
+            Promise.resolve(false),
+            Promise.resolve(res));
 
         resolveID = (v, isKnown) => {
             resolveValue(v);

@@ -38,21 +38,31 @@ function testOutput(val: any) {
     return test(output(val), val);
 }
 
-function testResources(val: any, expected: any, resources: TestResource[], withUnknowns?: boolean) {
+function testResources(val: any, expected: any, resources: TestResource[], allResources: TestResource[], withUnknowns?: boolean) {
     return asyncTest(async () => {
         const unwrapped = output(val);
         const actual = await unwrapped.promise(withUnknowns);
 
+        const syncResources = unwrapped.resources();
+        const asyncResources = await unwrapped.allResources!()
+
         assert.deepStrictEqual(actual, expected);
-        assert.deepStrictEqual(await unwrapped.resources(), new Set(resources));
+        assert.deepStrictEqual(syncResources, new Set(resources));
+        assert.deepStrictEqual(asyncResources, new Set(allResources));
 
-        const unwrappedResources: TestResource[] = <any>[...await unwrapped.resources()];
-        unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
+        for (const res of syncResources) {
+            if (!asyncResources.has(res)) {
+                assert.fail(`async resources did not contain: ${(<TestResource><any>res).name}`)
+            }
+        }
 
-        resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
-        assert.equal(
-            JSON.stringify(unwrappedResources),
-            JSON.stringify(resources));
+        // const unwrappedResources: TestResource[] = <any>[...await unwrapped.resources()];
+        // unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
+
+        // resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
+        // assert.equal(
+        //     JSON.stringify(unwrappedResources),
+        //     JSON.stringify(resources));
     });
 }
 
@@ -136,7 +146,7 @@ describe("unwrap", () => {
     function createOutput<T>(cv: T, ...resources: TestResource[]): Output<T> {
         return Output.isInstance<T>(cv)
             ? cv
-            : new Output(<any>new Set(resources), Promise.resolve(cv), Promise.resolve(true), Promise.resolve(false))
+            : new Output(<any>new Set(resources), Promise.resolve(cv), Promise.resolve(true), Promise.resolve(false), Promise.resolve(<any>new Set(resources)))
     }
 
     describe("preserves resources", () => {
@@ -152,52 +162,62 @@ describe("unwrap", () => {
         it("with single output", testResources(
             createOutput(3, r1, r2),
             3,
+            [r1, r2],
             [r1, r2]));
 
         it("inside array", testResources(
             [createOutput(3, r1, r2)],
             [3],
+            [r1, r2],
             [r1, r2]));
 
         it("inside multi array", testResources(
             [createOutput(1, r1, r2),createOutput(2, r2, r3)],
             [1, 2],
+            [r1, r2, r3],
             [r1, r2, r3]));
 
         it("inside nested array", testResources(
             [createOutput(1, r1, r2), createOutput(2, r2, r3), [createOutput(3, r5)]],
             [1, 2, [3]],
+            [r1, r2, r3, r5],
             [r1, r2, r3, r5]));
 
         it("inside object", testResources(
             { a: createOutput(3, r1, r2) },
             { a: 3 },
+            [r1, r2],
             [r1, r2]));
 
         it("inside multi object", testResources(
             { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3) },
             { a: 1, b: 2 },
+            [r1, r2, r3],
             [r1, r2, r3]));
 
         it("inside nested object", testResources(
             { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: { d: createOutput(3, r5) } },
             { a: 1, b: 2, c: { d: 3 } },
+            [r1, r2, r3, r5],
             [r1, r2, r3, r5]));
 
         it("across inner promise", testResources(
             createOutput(Promise.resolve(3), r1, r2),
             3,
+            [r1, r2],
             [r1, r2]));
 
         describe("with unknowns", () => {
             it("across 'all' without unknowns", testResources(
                 all([Promise.resolve({ a: createOutput(unknown, r1, r2)}), Promise.resolve({ b: createOutput(unknown, r3, r4)})]),
                 undefined,
+                [],
                 [r1, r2, r3, r4]));
 
             it("across 'all' with unknowns", testResources(
                 all([Promise.resolve({ a: createOutput(unknown, r1, r2)}), Promise.resolve({ b: createOutput(unknown, r3, r4)})]),
                 [{a: unknown}, {b: unknown}],
+                [],
                 [r1, r2, r3, r4],
                 /*withUnknowns:*/ true));
         });
@@ -206,51 +226,61 @@ describe("unwrap", () => {
             it("inside and outside of array", testResources(
                 createOutput([createOutput(3, r1, r2)], r2, r3),
                 [3],
+                [r2, r3],
                 [r1, r2, r3]));
 
             it("inside and outside of object", testResources(
                 createOutput({ a: createOutput(3, r1, r2) }, r2, r3),
                 { a: 3 },
+                [r2, r3],
                 [r1, r2, r3]));
 
             it("inside nested object and array", testResources(
-                { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: { d: createOutput([createOutput(3, r5)], r6)  } },
+                { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: { d: createOutput([createOutput(3, r5)], r6) } },
                 { a: 1, b: 2, c: { d: [3] } },
+                [r1, r2, r3, r6],
                 [r1, r2, r3, r5, r6]));
 
             it("inside nested array and object", testResources(
                 { a: createOutput(1, r1, r2), b: createOutput(2, r2, r3), c: createOutput([{ d: createOutput(3, r5) }], r6) },
                 { a: 1, b: 2, c: [{ d: 3 }] },
+                [r1, r2, r3, r6],
                 [r1, r2, r3, r5, r6]));
 
             it("across outer promise", testResources(
                 Promise.resolve(createOutput(3, r1, r2)),
                 3,
+                [],
                 [r1, r2]));
 
             it("across inner and outer promise", testResources(
                 Promise.resolve(createOutput(Promise.resolve(3), r1, r2)),
                 3,
+                [],
                 [r1, r2]));
 
             it("across promise and inner object", testResources(
                 Promise.resolve(createOutput(Promise.resolve({ a: createOutput(1, r4, r5)}), r1, r2)),
                 { a: 1 },
+                [],
                 [r1, r2, r4, r5]));
 
             it("across promise and inner array and object", testResources(
                 Promise.resolve(createOutput([Promise.resolve({ a: createOutput(1, r4, r5)})], r1, r2)),
                 [{ a: 1 }],
+                [],
                 [r1, r2, r4, r5]));
 
             it("across inner object", testResources(
                 createOutput(Promise.resolve({ a: createOutput(1, r4, r5)}), r1, r2),
                 { a: 1 },
+                [r1, r2],
                 [r1, r2, r4, r5]));
 
             it("across 'all'", testResources(
                 all([Promise.resolve({ a: createOutput(1, r1, r2)}), Promise.resolve({ b: createOutput(2, r3, r4)})]),
                 [{ a: 1 }, { b: 2 }],
+                [],
                 [r1, r2, r3, r4]));
         });
     });
