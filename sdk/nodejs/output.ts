@@ -151,6 +151,11 @@ class OutputImpl<T> implements OutputInstance<T> {
             isSecret: Promise<boolean>,
             allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined) {
 
+        // We are only known if we are not explicitly unknown and the resolved value of the output
+        // contains no distinguished unknown values.
+        this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
+        this.isSecret = isSecret;
+
         // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesCopy = copyResources(resources);
 
@@ -158,11 +163,6 @@ class OutputImpl<T> implements OutputInstance<T> {
         // all we have.  That way this is always ensured to be a superset of the list of sync resources.
         allResources = allResources || Promise.resolve([]);
         const allResourcesCopy = allResources.then(r => utils.union(copyResources(r), resourcesCopy));
-
-        // We are only known if we are not explicitly unknown and the resolved value of the output
-        // contains no distinguished unknown values.
-        this.isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
-        this.isSecret = isSecret;
 
         this.resources = () => resourcesCopy;
         this.allResources = () => allResourcesCopy;
