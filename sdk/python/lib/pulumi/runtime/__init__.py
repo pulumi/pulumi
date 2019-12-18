@@ -44,3 +44,7 @@ from .stack import (
 from .invoke import (
     invoke,
 )
+
+from .rpc import (
+    register_proxy_constructor,
+)

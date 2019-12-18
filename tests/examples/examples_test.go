@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -334,6 +335,14 @@ func getCwd(t *testing.T) string {
 func getBaseOptions() integration.ProgramTestOptions {
 	return integration.ProgramTestOptions{
 		Dependencies: []string{"@pulumi/pulumi"},
+	}
+}
+
+func getPythonBaseOptions() integration.ProgramTestOptions {
+	return integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "sdk", "python", "env", "src"),
+		},
 	}
 }
 

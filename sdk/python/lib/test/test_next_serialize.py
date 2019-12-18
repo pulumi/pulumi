@@ -34,8 +34,8 @@ class FakeCustomResource:
     Fake CustomResource class that duck-types to the real CustomResource.
     This class is substituted for the real CustomResource for the below test.
     """
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, urn):
+        self.urn = Output.from_input(urn)
 
 
 def async_test(coro):
@@ -85,11 +85,13 @@ class NextSerializationTests(unittest.TestCase):
 
     @async_test
     async def test_custom_resource(self):
-        res = FakeCustomResource("some-id")
+        fake_urn = "urn:pulumi:mystack::myproject::my:mod:Fake::fake"
+        res = FakeCustomResource(fake_urn)
         deps = []
         prop = await rpc.serialize_property(res, deps)
         self.assertListEqual([res], deps)
-        self.assertEqual("some-id", prop)
+        self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
+        self.assertEqual(fake_urn, prop["urn"])
 
     @async_test
     async def test_string_asset(self):

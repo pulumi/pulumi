@@ -60,6 +60,8 @@ class Settings:
         self.dry_run = dry_run
         self.test_mode_enabled = test_mode_enabled
         self.legacy_apply_enabled = legacy_apply_enabled
+        self.monitor_addr = monitor
+        self.engine_addr = engine
 
         if self.test_mode_enabled is None:
             self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"

@@ -36,6 +36,7 @@ type MarshalOptions struct {
 	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
 	KeepSecrets        bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
 	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
+	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
 	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
 }
 
@@ -161,6 +162,16 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			"value":         v.SecretValue().Element,
 		})
 		return MarshalPropertyValue(secret, opts)
+	} else if v.IsResource() {
+		if !opts.KeepResources {
+			logging.V(5).Infof("marshalling resource value as raw urn as opts.KeepResources is false")
+			return MarshalPropertyValue(v.ResourceValue().Urn, opts)
+		}
+		res := resource.NewObjectProperty(resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.ResourceSig),
+			"urn":           v.ResourceValue().Urn,
+		})
+		return MarshalPropertyValue(res, opts)
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s]: %v (type=%v)", opts.Label, v.V, reflect.TypeOf(v.V))
@@ -345,6 +356,16 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			}
 			s := resource.MakeSecret(value)
 			return &s, nil
+		case resource.ResourceSig:
+			urn, ok := obj["urn"]
+			if !ok {
+				return nil, errors.New("malformed RPC resource: missing urn")
+			}
+			if !urn.IsString() {
+				return nil, errors.New("malformed RPC resource: urn not a string")
+			}
+			r := resource.NewResourceProperty(resource.Resource{Urn: urn})
+			return &r, nil
 		default:
 			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 		}

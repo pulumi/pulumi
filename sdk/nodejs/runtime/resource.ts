@@ -154,6 +154,50 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     }), label);
 }
 
+// The shape of data returned by the built-in invoke to `pulumi:pulumi:readStackResource`.
+interface StackResourceResult {
+    urn: string;
+    // The output properties of the resource represented by `urn` as registered in the Pulumi
+    // engine.
+    outputs: Record<string, any>;
+}
+
+/**
+ * Gets an existing custom resource's state from the engine.  Assumes that the resource has already
+ * been registered by some other code, and looks it up by URN.
+ */
+export function getResource(res: Resource, t: string, name: string, custom: boolean, props: Inputs, opts: ResourceOptions): void {
+    const urn: Input<URN> | undefined = opts.urn;
+    if (!urn) {
+        throw new Error("Cannot get resource whose options are lacking a URN value");
+    }
+
+    const label = `resource:${name}[${t}]#...`;
+    log.debug(`Getting resource: id=${Output.isInstance(urn) ? "Output<T>" : urn}, t=${t}, name=${name}`);
+
+    const monitor = getMonitor();
+    const resopAsync = prepareResource(label, res, custom, props, opts);
+
+    debuggablePromise(resopAsync.then(async (resop) => {
+        const resolvedURN = await serializeProperty(label, urn, new Set());
+        log.debug(`GetResource RPC prepared: id=${resolvedURN}, t=${t}, name=${name}` +
+            (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
+
+        const result: StackResourceResult = await invoke("pulumi:pulumi:readStackResource", {
+            urn: resolvedURN,
+        }, { async: true });
+
+        // Now resolve everything: the URN, the ID (if the resource is a `CustomResource`), and the
+        // output properties.
+        resop.resolveURN(resolvedURN);
+        if (custom) {
+            resop.resolveID!(result.outputs.id, result.outputs.id !== undefined);
+        }
+        resolveProperties(res, resop.resolvers, t, name, result.outputs);
+    }), label);
+}
+
+
 /**
  * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
  * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
@@ -514,7 +558,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         // The registration could very well still be taking place, so we will need to wait for its URN.
         // Additionally, the output properties might have come from other resources, so we must await those too.
         const urn = await res.urn.promise();
-        const resolved = await serializeProperties(opLabel, { outputs });
+        const resolved = await serializeProperties(opLabel, { outputs }, { keepResources: true });
         const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));

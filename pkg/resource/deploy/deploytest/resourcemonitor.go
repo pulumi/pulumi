@@ -133,6 +133,25 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, nil
 }
 
+func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
+	// marshal outputs
+	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{KeepUnknowns: true, KeepResources: true})
+	if err != nil {
+		return err
+	}
+
+	// submit request
+	_, err = rm.resmon.RegisterResourceOutputs(context.Background(), &pulumirpc.RegisterResourceOutputsRequest{
+		Urn:     string(urn),
+		Outputs: outs,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
 	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
 
@@ -191,7 +210,10 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepResources: true,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

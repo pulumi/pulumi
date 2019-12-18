@@ -76,7 +76,7 @@
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
-        "tests/runtime/langhost/run.spec.ts"
+        "tests/runtime/langhost/run.spec.ts",
     ]
 }
 

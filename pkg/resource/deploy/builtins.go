@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -19,14 +20,16 @@ type builtinProvider struct {
 	backendClient BackendClient
 	context       context.Context
 	cancel        context.CancelFunc
+	plan          *Plan
 }
 
-func newBuiltinProvider(backendClient BackendClient) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, plan *Plan) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		backendClient: backendClient,
 		context:       ctx,
 		cancel:        cancel,
+		plan:          plan,
 	}
 }
 
@@ -148,8 +151,17 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+// readStackOutputs returns the full set of stack outputs from a target stack.
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
+
+// readStackResourceOutputs returns the resource outputs for every resource in a taraget stack.  If
+// targeting the current stack, it returns results from the initial checkpoint, not the live
+// registered resource state.
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+
+// readStackResource returns the live registered resource outputs for the target resource from the
+// current stack.
+const readStackResource = "pulumi:pulumi:readStackResource"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -163,6 +175,12 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 		return outs, nil, nil
 	case readStackResourceOutputs:
 		outs, err := p.readStackResourceOutputs(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	case readStackResource:
+		outs, err := p.readStackResource(args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -239,5 +257,32 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	return resource.PropertyMap{
 		"name":    name,
 		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	logging.V(9).Infof("builtinProvider: %v(inputs=%v)", readStackResource, inputs)
+	urnProp, ok := inputs["urn"]
+	if !ok {
+		return nil, fmt.Errorf("readStackResource missing required 'urn' argument")
+	}
+	if !urnProp.IsString() {
+		return nil, fmt.Errorf("readStackResource 'urn' argument expected string got %v", urnProp)
+	}
+	urn := resource.URN(urnProp.StringValue())
+
+	urnState, ok := p.plan.current.Load(urn)
+	if !ok || urnState == nil {
+		return nil, fmt.Errorf("resource '%s' not yet registered in current stack state", urn)
+	}
+	state := urnState.(*resource.State)
+	contract.Assert(state.URN == urn)
+
+	logging.V(9).Infof("builtinProvider: %v(inputs=%v) => (outputs=%v)", readStackResource, inputs, state.Outputs)
+
+	return resource.PropertyMap{
+		"urn":     resource.NewStringProperty(string(state.URN)),
+		"id":      resource.NewStringProperty(string(state.ID)),
+		"outputs": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }

@@ -15,7 +15,7 @@
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource, unknownValue } from "./runtime";
-import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
@@ -174,6 +174,12 @@ export abstract class Resource {
     // tslint:disable-next-line:variable-name
     private readonly __name?: string;
 
+    /* @internal Whether or not this resources contruction registered a resource with the Pulumi
+     * engine.  If false, it is not safe to `registerResourceOutputs` on this resource.
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __wasRegistered?: boolean;
+
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      * @internal
@@ -218,6 +224,9 @@ export abstract class Resource {
         }
         if (!name) {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
+        }
+        if (opts.id && opts.urn) {
+            throw new ResourceError(`Resource options specified mututally exlusive 'id' and 'urn' options`, opts.parent);
         }
 
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
@@ -313,19 +322,27 @@ export abstract class Resource {
             }
         }
 
-        if (opts.id) {
+        if (opts.urn) {
+            // Assume that the resource has already been registered by another piece of code, and
+            // populate this resource object with the state of that resource as retrieved from the
+            // engine.
+            getResource(this, t, name, custom, props, opts);
+            this.__wasRegistered = false;
+        } else if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
             readResource(this, t, name, props, opts);
+            this.__wasRegistered = false;
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
             registerResource(this, t, name, custom, props, opts);
+            this.__wasRegistered = true;
         }
     }
 }
@@ -458,9 +475,13 @@ export interface ResourceOptions {
     // that mergeOptions works properly for it.
 
     /**
-     * An optional existing ID to load, rather than create.
+     * An optional existing ID to load, rather than create. At most one of `id` and `urn` can be set.
      */
     id?: Input<ID>;
+    /**
+     * An optional existing URN to load, rather than create. At most one of `urn` and `id` can be set.
+     */
+    urn?: Input<URN>;
     /**
      * An optional parent resource to which this resource belongs.
      */
@@ -757,7 +778,7 @@ export class ComponentResource<TData = any> extends Resource {
 
     /** @internal */
     // tslint:disable-next-line:variable-name
-    private __registered = false;
+    private __registeredOutputs = false;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -780,22 +801,22 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}) {
-        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
-        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
-        // only as a container for other resources.  Another way to think about this is that a normal
-        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
-        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
-        // for a component resource.  The component is just used for organizational purposes and does
-        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
-        // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
+        super(type, name, /*custom:*/ false, args, opts);
         this.__data = this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */
     private async initializeAndRegisterOutputs(args: Inputs) {
         const data = await this.initialize(args);
-        this.registerOutputs();
+        if (this.__wasRegistered) {
+            // If the resource construction was registered with the engine (that is, unless `urn` or
+            // `id` opts were passed), we will automatically "finalize" the resource registration by
+            // calling `registerOutputs`.  If the user already called this in the constructor, their
+            // outputs will win (due to the `await` above causing a delay of a turn on the event
+            // loop) and this will be a no-op.  If they did not, we will invoke this on the next
+            // turn after the (potentially overriden) `initialize` returns.
+            this.registerOutputs();
+        }
         return data;
     }
 
@@ -825,11 +846,11 @@ export class ComponentResource<TData = any> extends Resource {
      * called after the `initialize` method completes.
      */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
-        if (this.__registered) {
+        if (this.__registeredOutputs) {
             return;
         }
 
-        this.__registered = true;
+        this.__registeredOutputs = true;
         registerResourceOutputs(this, outputs || {});
     }
 }
