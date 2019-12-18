@@ -427,10 +427,16 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
     }
     else if (Output.isInstance(val)) {
-        // We create a new output here from the raw pieces of the original output in order to accommodate outputs from
-        // downlevel SxS SDKs. This ensures that first-class unknowns are properly represented in the system: if this
-        // was a downlevel output where val.isKnown resolves to false, this guarantees that the returned output's
-        // promise resolves to unknown.
+        // We create a new output here from the raw pieces of the original output in order to
+        // accommodate outputs from downlevel SxS SDKs.  This ensures that within this package it is
+        // safe to assume the implementation of any Output returned by the `output` function.
+        //
+        // This includes:
+        // 1. that first-class unknowns are properly represented in the system: if this was a
+        //    downlevel output where val.isKnown resolves to false, this guarantees that the
+        //    returned output's promise resolves to unknown.
+        // 2. That the `isSecret` property is available.
+        // 3. That the `.allResources` is available.
         const allResources = val.allResources ? val.allResources() : Promise.resolve(new Set<Resource>());
         const newOutput = new Output(
             val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
