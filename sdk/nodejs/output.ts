@@ -66,7 +66,7 @@ class OutputImpl<T> implements OutputInstance<T> {
 
     /**
      * @internal
-     * The list of resource that this output value depends on.
+     * The list of resources that this output value depends on.
      *
      * Only callable on the outside.
      *
@@ -76,8 +76,21 @@ class OutputImpl<T> implements OutputInstance<T> {
      */
     public readonly resources: () => Set<Resource>;
 
+    /**
+     * @internal
+     * The entire list of resources that this output depends on.
+     *
+     * This includes both the dependent resources that were known when the Output was explicitly
+     * instantiated, along with any dependent resources produced asynchronously and returned from
+     * the function passed to `Output.apply`.
+     *
+     * This should be used whenever available inside this package.  However, code that uses this
+     * should be resilient to it being absent and should fall back to using `.resources()` instead.
+     *
+     * Note: it is fine to use this property if it is guaranteed that it is on an output produced by
+     * this SDK (and not another sxs version).
+     */
     // Marked as optional for sxs scenarios.
-    /** @internal */
     public readonly allResources?: () => Promise<Set<Resource>>;
 
     /**
