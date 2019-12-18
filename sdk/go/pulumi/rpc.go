@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/context"
 
@@ -254,15 +255,30 @@ func marshalInputAndDetermineSecret(v interface{},
 				Path:   v.Path(),
 				URI:    v.URI(),
 			}), deps, secret, nil
-		case CustomResource:
+		case Resource:
 			deps = append(deps, v)
 
-			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
-			e, d, err := marshalInput(v.ID(), idType, await)
+			urn, known, secretURN, err := v.URN().awaitURN(context.Background())
 			if err != nil {
 				return resource.PropertyValue{}, nil, false, err
 			}
-			return e, append(deps, d...), secret, nil
+			contract.Assert(known)
+			contract.Assert(!secretURN)
+
+			var id ID
+			if custom, ok := v.(CustomResource); ok {
+				resID, known, secretID, err := custom.ID().awaitID(context.Background())
+				if err != nil {
+					return resource.PropertyValue{}, nil, false, err
+				}
+				contract.Assert(!secretID)
+				if !known {
+					return resource.MakeComputed(resource.NewStringProperty("")), deps, secret, nil
+				}
+				id = resID
+			}
+
+			return resource.MakeResourceReference(resource.URN(urn), resource.ID(id), ""), deps, secret, nil
 		}
 
 		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
@@ -440,6 +456,23 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		default:
 		}
 		return nil, false, errors.New("expected asset to be one of File, String, or Remote; got none")
+	case v.IsResourceReference():
+		ref := v.ResourceReferenceValue()
+
+		resName := ref.URN.Name()
+		resType := ref.URN.Type()
+		pkgName := resType.Package()
+		resourcePackage, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
+		if !ok {
+			err := fmt.Errorf("unable to deserialize resource URN %v, no resource package is registered for type %v",
+				ref.URN, pkgName)
+			return nil, false, err
+		}
+		resource, err := resourcePackage.(ResourcePackage).Construct(string(resName), string(resType), nil, string(ref.URN))
+		if err != nil {
+			return nil, false, err
+		}
+		return resource, false, nil
 	default:
 		return v.V, false, nil
 	}
@@ -491,6 +524,17 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 			return false, err
 		}
 		return true, nil
+	case v.IsResourceReference():
+		res, secret, err := unmarshalPropertyValue(v)
+		if err != nil {
+			return false, err
+		}
+		resV := reflect.ValueOf(res).Elem()
+		if !resV.Type().AssignableTo(dest.Type()) {
+			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
+		}
+		dest.Set(resV)
+		return secret, nil
 	}
 
 	// Unmarshal based on the desired type.
@@ -617,5 +661,24 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		return secret, nil
 	default:
 		return false, fmt.Errorf("cannot unmarshal into type %v", dest.Type())
+	}
+}
+
+type ResourcePackage interface {
+	Construct(name, typ string, args map[string]interface{}, urn string) (Resource, error)
+}
+
+var resourcePackages sync.Map // map[string]ResourcePackage
+
+func packageKey(name, version string) string {
+	return fmt.Sprintf("%s@%s", name, version)
+}
+
+// RegisterResourcePackage register a resource pacakge with the Pulumi runtime.
+func RegisterResourcePackage(name, version string, pkg ResourcePackage) {
+	key := packageKey(name, version)
+	existing, hasExisting := resourcePackages.LoadOrStore(key, pkg)
+	if hasExisting {
+		panic(fmt.Errorf("a resource package for %v is already registered: %v", key, existing))
 	}
 }

@@ -61,6 +61,7 @@ type provider struct {
 	cfgknown               bool                             // true if all configuration values are known.
 	cfgdone                chan bool                        // closed when configuration has completed.
 	acceptSecrets          bool                             // true if this plugin can consume strongly-typed secrets.
+	acceptResources        bool                             // true if this plugin can consume strongly-typed resource refs.
 	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 }
@@ -155,18 +156,20 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -198,6 +201,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 			KeepUnknowns:   allowUnknowns,
 			RejectUnknowns: !allowUnknowns,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -256,18 +260,20 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: true,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: true,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -430,7 +436,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 
 		if v.ContainsUnknowns() {
-			p.cfgknown, p.acceptSecrets = false, false
+			p.cfgknown, p.acceptSecrets, p.acceptResources = false, false, false
 			close(p.cfgdone)
 			return nil
 		}
@@ -452,9 +458,10 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	}
 
 	minputs, err := MarshalProperties(inputs, MarshalOptions{
-		Label:        fmt.Sprintf("%s.inputs", label),
-		KeepUnknowns: true,
-		KeepSecrets:  true,
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
 	})
 	if err != nil {
 		p.cfgerr = errors.Wrapf(err, "marshaling provider inputs")
@@ -466,9 +473,10 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
 		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
-			AcceptSecrets: true,
-			Variables:     config,
-			Args:          minputs,
+			AcceptSecrets:   true,
+			AcceptResources: true,
+			Variables:       config,
+			Args:            minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
@@ -476,7 +484,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.acceptSecrets, p.supportsPreview = resp.GetAcceptSecrets(), resp.GetSupportsPreview()
+		p.acceptSecrets, p.supportsPreview, p.acceptResources = resp.GetAcceptSecrets(), resp.GetSupportsPreview(), resp.GetAcceptResources()
 		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
@@ -503,17 +511,19 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -538,6 +548,7 @@ func (p *provider) Check(urn resource.URN,
 			KeepUnknowns:   allowUnknowns,
 			RejectUnknowns: !allowUnknowns,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -595,14 +606,16 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		ElideAssetContents: true,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -677,9 +690,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	contract.Assert(p.cfgknown)
 
 	mprops, err := MarshalProperties(props, MarshalOptions{
-		Label:        fmt.Sprintf("%s.inputs", label),
-		KeepUnknowns: preview,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  preview,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
@@ -714,9 +728,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
-		KeepSecrets:    true,
+		Label:         fmt.Sprintf("%s.outputs", label),
+		KeepUnknowns:  preview,
+		KeepSecrets:   true,
+		KeepResources: true,
 	})
 	if err != nil {
 		return "", nil, resourceStatus, err
@@ -768,6 +783,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			Label:              label,
 			ElideAssetContents: true,
 			KeepSecrets:        p.acceptSecrets,
+			KeepResources:      p.acceptResources,
 		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
@@ -778,6 +794,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
@@ -819,6 +836,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		Label:          fmt.Sprintf("%s.outputs", label),
 		RejectUnknowns: true,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
@@ -830,6 +848,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			Label:          label + ".inputs",
 			RejectUnknowns: true,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
@@ -887,14 +906,16 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		Label:              fmt.Sprintf("%s.olds", label),
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: preview,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  preview,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -928,6 +949,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		Label:          fmt.Sprintf("%s.outputs", label),
 		RejectUnknowns: true,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return nil, resourceStatus, err
@@ -960,6 +982,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return resource.StatusOK, err
@@ -1119,8 +1142,9 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:       fmt.Sprintf("%s.args", label),
-		KeepSecrets: p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1138,6 +1162,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		Label:          fmt.Sprintf("%s.returns", label),
 		RejectUnknowns: true,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1177,8 +1202,9 @@ func (p *provider) StreamInvoke(
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:       fmt.Sprintf("%s.args", label),
-		KeepSecrets: p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, err
@@ -1206,6 +1232,7 @@ func (p *provider) StreamInvoke(
 			Label:          fmt.Sprintf("%s.returns", label),
 			RejectUnknowns: true,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, err

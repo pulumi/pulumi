@@ -58,6 +58,8 @@ namespace Pulumi
         internal IEngine Engine { get; }
         internal IMonitor Monitor { get; }
 
+		internal bool SupportsResourceReferences { get; }
+
         internal Stack? _stack;
         internal Stack Stack
         {
@@ -117,6 +119,8 @@ namespace Pulumi
             this.Monitor = monitor;
             _runner = new Runner(this);
             _logger = new Logger(this, this.Engine);
+
+			this.SupportsResourceReferences = monitorSupportsFeature(this.Monitor, "resourceReferences");
         }
 
         string IDeployment.ProjectName => _projectName;
@@ -131,5 +135,11 @@ namespace Pulumi
             get => Stack;
             set => Stack = value;
         }
+
+		private static bool monitorSupportsFeature(IMonitor monitor, string feature)
+		{
+			var result = monitor.SupportsFeatureAsync(new Pulumirpc.SupportsFeatureRequest {Id = feature }).Result;
+			return result.HasSupport;
+		}
     }
 }

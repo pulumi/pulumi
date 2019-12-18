@@ -19,6 +19,9 @@ namespace Pulumi
             this._client = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure, grpcChannelOptions));
         }
         
+		public async Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
+			=> await this._client.SupportsFeatureAsync(request);
+
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
             => await this._client.InvokeAsync(request);
         

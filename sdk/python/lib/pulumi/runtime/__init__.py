@@ -48,3 +48,7 @@ from .invoke import (
 from ._json import (
     to_json,
 )
+
+from .rpc import (
+    register_resource_package,
+)

@@ -48,6 +48,9 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 _special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
 """special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
 
+_special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
+"""special_resource_sig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go"""
+
 _INT_OR_FLOAT = six.integer_types + (float,)
 
 def isLegalProtobufValue(value: Any) -> bool:
@@ -104,10 +107,25 @@ async def serialize_property(value: 'Input[Any]',
     if known_types.is_unknown(value):
         return UNKNOWN
 
-    if known_types.is_custom_resource(value):
-        resource = cast('CustomResource', value)
+    if known_types.is_resource(value):
+        resource = cast('Resource', value)
         deps.append(resource)
-        return await serialize_property(resource.id, deps, input_transformer)
+
+        is_custom = known_types.is_custom_resource(value)
+        resource_id = cast('CustomResource', value).id if is_custom else None
+
+        # If we're retaining resources, serialize the resource as a reference.
+        if await settings.monitor_supports_resource_references():
+            res = {
+                _special_sig_key: _special_resource_sig,
+                "urn": await serialize_property(resource.urn, deps, input_transformer)
+            }
+            if is_custom:
+                res["id"] = await serialize_property(resource_id, deps, input_transformer)
+            return res
+
+        # Otherwise, serialize the resource as either its ID (for custom resources) or its URN (for component resources)
+        return await serialize_property(resource_id if is_custom else resource.urn, deps, input_transformer)
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would
@@ -246,6 +264,21 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             raise AssertionError("Invalid archive encountered when unmarshalling resource property")
         if props_struct[_special_sig_key] == _special_secret_sig:
             return wrap_rpc_secret(deserialize_property(props_struct["value"]))
+        if props_struct[_special_sig_key] == _special_resource_sig:
+            urn = props_struct["urn"]
+            version = props_struct["version"]
+
+            urn_parts = urn.split("::")
+            qualified_type = urn_parts[2]
+            typ = qualified_type.split("$")[-1]
+            typ_parts = typ.split(":")
+            pkg_name = typ_parts[0]
+            resource_package = RESOURCE_PACKAGES.get(package_key(pkg_name, version))
+            if resource_package is None:
+                raise Exception(f"Unable to deserialize resource URN {urn}, no resource package is registered for type {typ}.")
+            urn_name = urn_parts[3]
+            resource = resource_package.construct(urn_name, typ, {}, {"urn": urn})
+            return cast('Resource', resource)
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
@@ -538,6 +571,10 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
+    await resolve_properties(resolvers, all_properties)
+
+async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any]):
+
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
         if key in ["id", "urn"]:
@@ -598,3 +635,15 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, None, exn)
+
+RESOURCE_PACKAGES: Dict[str, Any] = dict()
+
+def package_key(typ: str, version: str) -> str:
+    return f"{typ}@{version}"
+
+def register_resource_package(typ: str, version: str, package):
+    key = package_key(typ, version)
+    existing = RESOURCE_PACKAGES.get(key, None)
+    if existing is not None:
+        raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
+    RESOURCE_PACKAGES[key] = package

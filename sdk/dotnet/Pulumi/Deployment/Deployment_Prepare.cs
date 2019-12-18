@@ -31,7 +31,7 @@ namespace Pulumi
             LogExcessive($"Serializing properties: t={type}, name={name}, custom={custom}");
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
             var (serializedProps, propertyToDirectDependencies) =
-                await SerializeResourcePropertiesAsync(label, dictionary).ConfigureAwait(false);
+                await SerializeResourcePropertiesAsync(label, dictionary, this.SupportsResourceReferences).ConfigureAwait(false);
             LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}");
 
             // Wait for the parent to complete.

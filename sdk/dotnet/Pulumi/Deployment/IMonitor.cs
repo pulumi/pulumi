@@ -7,6 +7,8 @@ namespace Pulumi
 {
     internal interface IMonitor
     {
+		Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request);
+
         Task<InvokeResponse> InvokeAsync(InvokeRequest request);
         
         Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request);

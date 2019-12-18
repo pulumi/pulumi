@@ -5527,6 +5527,57 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestResourceReferences(t *testing.T) {
+	var urnA resource.URN
+	var idA resource.ID
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			v := &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if urn.Name() == "resB" {
+						propA, ok := news["resA"]
+						assert.True(t, ok)
+						assert.Equal(t, resource.MakeResourceReference(urnA, idA, ""), propA)
+					}
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}
+			return v, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		var err error
+		urnA, idA, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		ins := resource.PropertyMap{
+			"resA": resource.MakeResourceReference(urnA, idA, ""),
+		}
+		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, ins, props)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 3),
+	}
+	p.Run(t, nil)
+}
+
 type updateContext struct {
 	*deploytest.ResourceMonitor
 

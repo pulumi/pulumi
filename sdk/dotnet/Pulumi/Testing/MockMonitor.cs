@@ -23,6 +23,12 @@ namespace Pulumi.Testing
             _mocks = mocks;
         }
 
+		public Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
+		{
+			var hasSupport = request.Id == "secrets" || request.Id == "resourceReferences";
+			return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
+		}
+
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
         {
             var result = await _mocks.CallAsync(request.Tok, ToDictionary(request.Args), request.Provider)
@@ -104,7 +110,7 @@ namespace Pulumi.Testing
         private async Task<Struct> SerializeAsync(object o)
         {
             var dict = (o as IDictionary<string, object>)?.ToImmutableDictionary()
-                       ?? await _serializer.SerializeAsync("", o).ConfigureAwait(false) as ImmutableDictionary<string, object>
+                       ?? await _serializer.SerializeAsync("", o, true).ConfigureAwait(false) as ImmutableDictionary<string, object>
                        ?? throw new InvalidOperationException($"{o.GetType().FullName} is not a supported argument type");
             return Serializer.CreateStruct(dict);
         }
