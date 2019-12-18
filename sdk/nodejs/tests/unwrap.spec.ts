@@ -55,14 +55,6 @@ function testResources(val: any, expected: any, resources: TestResource[], allRe
                 assert.fail(`async resources did not contain: ${(<TestResource><any>res).name}`)
             }
         }
-
-        // const unwrappedResources: TestResource[] = <any>[...await unwrapped.resources()];
-        // unwrappedResources.sort((r1, r2) => r1.name.localeCompare(r2.name));
-
-        // resources.sort((r1, r2) => r1.name.localeCompare(r2.name));
-        // assert.equal(
-        //     JSON.stringify(unwrappedResources),
-        //     JSON.stringify(resources));
     });
 }
 
