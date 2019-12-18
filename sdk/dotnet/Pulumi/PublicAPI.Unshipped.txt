@@ -294,5 +294,3 @@ static Pulumi.Union<T0, T1>.implicit operator Pulumi.Union<T0, T1>(T1 t) -> Pulu
 static Pulumi.Urn.Create(Pulumi.Input<string> name, Pulumi.Input<string> type, Pulumi.Resource parent = null, Pulumi.Input<string> parentUrn = null, Pulumi.Input<string> project = null, Pulumi.Input<string> stack = null) -> Pulumi.Output<string>
 static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
-virtual Pulumi.Stack.Initialize() -> void
-virtual Pulumi.Stack.InitializeAsync() -> System.Threading.Tasks.Task
