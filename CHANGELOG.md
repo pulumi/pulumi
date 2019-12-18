@@ -3,6 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+
 - Update version of TypeScript used by Pulumi to 3.7.3.
 
 - Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
@@ -20,7 +21,7 @@ CHANGELOG
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
   [#3675](https://github.com/pulumi/pulumi/pull/3675).
-  
+
 - `ComponentResource`s now have built-in support for asynchronously constructing their children. See https://github.com/pulumi/pulumi/pull/3676 for more details.
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
