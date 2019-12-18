@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { Input, Inputs, isUnknown, Output, unknown } from "../output";
+import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
@@ -273,7 +273,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // handle serializing both old-style outputs (with sync resources) and new-style outputs
         // (with async resources).
 
-        const propResources = prop.allResources ? await prop.allResources() : prop.resources();
+        const propResources = await getAllResources(prop);
         for (const resource of propResources) {
             dependentResources.add(resource);
         }

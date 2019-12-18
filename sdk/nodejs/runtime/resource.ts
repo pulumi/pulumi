@@ -17,7 +17,7 @@ import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output, unknown } from "../output";
+import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     ComponentResource,
@@ -455,7 +455,7 @@ async function gatherExplicitDependencies(
             // Recursively gather dependencies, await the promise, and append the output's dependencies.
             const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply(v => gatherExplicitDependencies(v));
             const urns = await dos.promise();
-            const dosResources = dos.allResources ? await dos.allResources() : dos.resources();
+            const dosResources = await getAllResources(dos);
             const implicits = await gatherExplicitDependencies([...dosResources]);
             return urns.concat(implicits);
         } else {

@@ -304,6 +304,13 @@ To manipulate the value of this Output, use '.apply' instead.`);
     }
 }
 
+/** @internal */
+export function getAllResources<T>(op: OutputInstance<T>): Promise<Set<Resource>> {
+    return op.allResources instanceof Function
+        ? op.allResources()
+        : Promise.resolve(op.resources());
+}
+
 function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     const copy = Array.isArray(resources) ? new Set(resources) :
                  resources instanceof Set ? new Set(resources) :
@@ -353,8 +360,7 @@ async function applyHelperAsync<T, U>(
         // If we're working with a new-style output, grab all its resources and merge into ours.
         // otherwise, if this is an old-style output, just grab the resources it was known to have
         // at construction time.
-        const innerResources = transformed.allResources ? await transformed.allResources() : transformed.resources();
-
+        const innerResources = await getAllResources(transformed);
         const totalResources = utils.union(allResources, innerResources);
         return {
             allResources: totalResources,
@@ -437,7 +443,7 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
         //    returned output's promise resolves to unknown.
         // 2. That the `isSecret` property is available.
         // 3. That the `.allResources` is available.
-        const allResources = val.allResources ? val.allResources() : Promise.resolve(new Set<Resource>());
+        const allResources = getAllResources(val);
         const newOutput = new Output(
             val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
         return <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true);
