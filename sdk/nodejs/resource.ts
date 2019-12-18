@@ -755,6 +755,7 @@ export class ComponentResource<TData = any> extends Resource {
     // tslint:disable-next-line:variable-name
     public readonly __data: Promise<TData>;
 
+    /** @internal */
     // tslint:disable-next-line:variable-name
     private __registered = false;
 
