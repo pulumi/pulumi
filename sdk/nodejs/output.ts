@@ -149,10 +149,14 @@ class OutputImpl<T> implements OutputInstance<T> {
             promise: Promise<T>,
             isKnown: Promise<boolean>,
             isSecret: Promise<boolean>,
-            allResources: Promise<Set<Resource> | Resource[] | Resource>) {
+            allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined) {
 
         // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesCopy = copyResources(resources);
+
+        // Create a copy of the async resources.  Populate this with the sync-resources if that's
+        // all we have.  That way this is always ensured to be a superset of the list of sync resources.
+        allResources = allResources || Promise.resolve([]);
         const allResourcesCopy = allResources.then(r => utils.union(copyResources(r), resourcesCopy));
 
         // We are only known if we are not explicitly unknown and the resolved value of the output
