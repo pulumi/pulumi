@@ -336,9 +336,7 @@ async function applyHelperAsync<T, U>(
         // If we're working with a new-style output, grab all its resources and merge into ours.
         // otherwise, if this is an old-style output, just grab the resources it was known to have
         // at construction time.
-        const innerResources = transformed.allResources
-            ? await transformed.allResources()
-            : transformed.resources();
+        const innerResources = transformed.allResources ? await transformed.allResources() : transformed.resources();
 
         const totalResources = utils.union(allResources, innerResources);
         return {
