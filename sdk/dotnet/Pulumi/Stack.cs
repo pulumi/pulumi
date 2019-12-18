@@ -50,8 +50,10 @@ namespace Pulumi
         /// <summary>
         /// Create a Stack with stack resources defined in derived class constructor.
         /// </summary>
-        public Stack() : this(null)
+        public Stack()
+            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
         {
+            Deployment.InternalInstance.Stack = this;
         }
 
         /// <summary>
@@ -59,15 +61,11 @@ namespace Pulumi
         /// An instance of this will be automatically created when any <see
         /// cref="Deployment.RunAsync(Action)"/> overload is called.
         /// </summary>
-        internal Stack(Func<Task<IDictionary<string, object?>>>? init)
-            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
+        internal Stack(Func<Task<IDictionary<string, object?>>> init) : this()
         {
-            Deployment.InternalInstance.Stack = this;
             try
             {
-                this.Outputs = init != null 
-                    ? Output.Create(RunInitAsync(init))
-                    : Output.Create(InitializePropertyOutputs());
+                this.Outputs = Output.Create(RunInitAsync(init));
             }
             finally
             {
@@ -75,14 +73,16 @@ namespace Pulumi
             }
         }
 
-        private IDictionary<string, object?> InitializePropertyOutputs()
+        internal void RegisterPropertyOutputs()
         {
             var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                         let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
                         select new KeyValuePair<string, object?>(attr.Name, property.GetValue(this));
 
-            return new Dictionary<string, object?>(query);
+            IDictionary<string, object?> outputs = new Dictionary<string, object?>(query);
+            this.Outputs = Output.Create(outputs);
+            this.RegisterOutputs(this.Outputs);
         }
 
         private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)

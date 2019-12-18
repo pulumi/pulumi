@@ -18,6 +18,7 @@ namespace Pulumi
             public Task<int> RunAsync<TStack>() where TStack : Stack, new()
             {
                 var stack = new TStack();
+                stack.RegisterPropertyOutputs();
                 RegisterTask("User program code.", stack.Outputs.DataTask);
                 return WhileRunningAsync();
             }
