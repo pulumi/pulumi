@@ -792,6 +792,7 @@ export class ComponentResource<TData = any> extends Resource {
         this.__data = this.initializeAndRegisterOutputs(args);
     }
 
+    /** @internal */
     private async initializeAndRegisterOutputs(args: Inputs) {
         const data = await this.initialize(args);
         this.registerOutputs();
@@ -835,6 +836,8 @@ export class ComponentResource<TData = any> extends Resource {
 
 (<any>ComponentResource).doNotCapture = true;
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
+(<any>ComponentResource.prototype).initialize.doNotCapture = true;
+(<any>ComponentResource.prototype).initializeAndRegisterOutputs.doNotCapture = true;
 
 /** @internal */
 export const testingOptions = {
