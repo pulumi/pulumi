@@ -23,35 +23,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPolicyApplyCmd() *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "apply <org-name>/<policy-pack-name> <version>",
-		Args:  cmdutil.ExactArgs(2),
-		Short: "Apply a Policy Pack to a Pulumi organization",
-		Long:  "Apply a Policy Pack to a Pulumi organization",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			//
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			//
+type policyDisableArgs struct {
+	policyGroup string
+}
 
-			policyPack, err := requirePolicyPack(args[0])
+func newPolicyDisableCmd() *cobra.Command {
+	args := policyDisableArgs{}
+
+	var cmd = &cobra.Command{
+		Use:   "disable <org-name>/<policy-pack-name> <version>",
+		Args:  cmdutil.ExactArgs(2),
+		Short: "Disable a Policy Pack for a Pulumi organization",
+		Long:  "Disable a Policy Pack for a Pulumi organization",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			policyPack, err := requirePolicyPack(cliArgs[0])
 			if err != nil {
 				return err
 			}
 
-			version, err := strconv.Atoi(args[1])
+			version, err := strconv.Atoi(cliArgs[1])
 			if err != nil {
 				return errors.Wrapf(err, "Could not parse version (should be an integer)")
 			}
 
-			//
-			// Attempt to publish the PolicyPack.
-			//
-
-			return policyPack.Apply(commandContext(), backend.ApplyOperation{
+			// Attempt to disable the Policy Pack.
+			return policyPack.Disable(commandContext(), args.policyGroup, backend.PolicyPackOperation{
 				Version: version, Scopes: cancellationScopes})
 		}),
 	}
+
+	cmd.PersistentFlags().StringVar(
+		&args.policyGroup, "policy-group", "",
+		"The Policy Group for which the Policy Pack will be disabled; if not specified, the default Policy Group is used")
 
 	return cmd
 }

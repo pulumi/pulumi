@@ -107,3 +107,27 @@ type GetStackPolicyPacksResponse struct {
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
+
+// UpdatePolicyGroupRequest modifies a Policy Group.
+type UpdatePolicyGroupRequest struct {
+	NewName *string `json:"newName,omitempty"`
+
+	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
+	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
+
+	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
+	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+}
+
+// PulumiStackReference contains a name and some information for the frontend to construct a route.
+type PulumiStackReference struct {
+	Name           string `json:"name"`
+	RoutingProject string `json:"routingProject"`
+}
+
+// PolicyPackMetadata is the metadata of a Policy Pack.
+type PolicyPackMetadata struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Version     int    `json:"version"`
+}
