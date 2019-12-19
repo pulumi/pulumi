@@ -40,7 +40,22 @@ func (az azurePipelinesCI) DetectVars() Vars {
 	projectName := os.Getenv("SYSTEM_TEAMPROJECT")
 	v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
 
-	v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+	// Azure Pipelines can be connected to external repos.
+	// If the repo provider is GitHub, then we need to use
+	// `SYSTEM_PULLREQUEST_PULLREQUESTNUMBER` instead of
+	// `SYSTEM_PULLREQUEST_PULLREQUESTID`. For other Git repos,
+	// `SYSTEM_PULLREQUEST_PULLREQUESTID` may be the only variable
+	// that is set if the build is running for a PR build.
+	//
+	// Note that the PR ID/number only applies to Git repos.
+	vcsProvider := os.Getenv("BUILD_REPOSITORY_PROVIDER")
+	switch vcsProvider {
+	case "GitHub":
+		// GitHub is a git repo hosted on GitHub.
+		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+	default:
+		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
+	}
 
 	return v
 }
