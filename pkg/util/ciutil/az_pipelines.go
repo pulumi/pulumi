@@ -33,23 +33,38 @@ func (az azurePipelinesCI) DetectVars() Vars {
 	v.BuildID = os.Getenv("BUILD_BUILDID")
 	v.BuildType = os.Getenv("BUILD_REASON")
 	v.SHA = os.Getenv("BUILD_SOURCEVERSION")
-	v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
 	v.CommitMessage = os.Getenv("BUILD_SOURCEVERSIONMESSAGE")
+
+	orgURI := os.Getenv("SYSTEM_TEAMFOUNDATIONCOLLECTIONURI")
+	projectName := os.Getenv("SYSTEM_TEAMPROJECT")
+	v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
+
 	// Azure Pipelines can be connected to external repos.
-	// So we check if the provider is GitHub, then we use
-	// `SYSTEM_PULLREQUEST_PULLREQUESTNUMBER` instead of `SYSTEM_PULLREQUEST_PULLREQUESTID`.
-	// The PR ID/number only applies to Git repos.
+	// If the repo provider is GitHub, then we need to use
+	// `SYSTEM_PULLREQUEST_PULLREQUESTNUMBER` instead of
+	// `SYSTEM_PULLREQUEST_PULLREQUESTID`. For other Git repos,
+	// `SYSTEM_PULLREQUEST_PULLREQUESTID` may be the only variable
+	// that is set if the build is running for a PR build.
+	//
+	// Note that the PR ID/number only applies to Git repos.
 	vcsProvider := os.Getenv("BUILD_REPOSITORY_PROVIDER")
 	switch vcsProvider {
-	case "TfsGit":
-		orgURI := os.Getenv("SYSTEM_PULLREQUEST_TEAMFOUNDATIONCOLLECTIONURI")
-		projectName := os.Getenv("SYSTEM_TEAMPROJECT")
-		v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
-		// TfsGit is a git repo hosted on Azure DevOps.
-		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
 	case "GitHub":
 		// GitHub is a git repo hosted on GitHub.
 		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+	default:
+		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
+	}
+
+	// Build.SourceBranchName is the last part of the head.
+	// If the build is running because of a PR, we should use the
+	// PR source branch name, instead of Build.SourceBranchName.
+	// That's because Build.SourceBranchName will always be `merge` --
+	// the last part of `refs/pull/1/merge`.
+	if v.PRNumber != "" {
+		v.BranchName = os.Getenv("SYSTEM_PULLREQUEST_SOURCEBRANCH")
+	} else {
+		v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
 	}
 
 	return v
