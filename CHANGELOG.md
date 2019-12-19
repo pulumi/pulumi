@@ -34,6 +34,9 @@ CHANGELOG
 
 - Fix bug in determining PRNumber and BuildURL for an Azure Pipelines CI environment. [#3677](https://github.com/pulumi/pulumi/pull/3677)
 
+-  Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs. Change `pulumi policy apply` to `pulumi policy enable`, and allow
+   users to specify the Policy Group.
+
 ## 1.7.1 (2019-12-13)
 
 - Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
