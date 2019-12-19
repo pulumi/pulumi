@@ -78,13 +78,35 @@ namespace Pulumi
         /// </summary>
         internal void RegisterPropertyOutputs()
         {
-            var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                        let attr = property.GetCustomAttribute<OutputAttribute>()
-                        where attr != null
-                        select new KeyValuePair<string, object?>(attr.Name, property.GetValue(this));
+            var outputs = (from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                           let attr = property.GetCustomAttribute<OutputAttribute>()
+                           where attr != null
+                           select new KeyValuePair<string, object?>(attr.Name, property.GetValue(this))).ToList();
 
-            IDictionary<string, object?> outputs = new Dictionary<string, object?>(query);
-            this.Outputs = Output.Create(outputs);
+            // Check that none of the values are null: catch unassigned outputs
+            var nulls = (from kv in outputs
+                         where kv.Value == null
+                         select kv.Key).ToList();
+            if (nulls.Any())
+            {
+                var message = $"Output(s) '{string.Join(", ", nulls)}' have no value assigned. Output values must be assigned inside Stack constructor.";
+                throw new RunException(message);
+            }
+
+            // Check that all the values are Output<T>
+            var wrongTypes = (from kv in outputs
+                              let type = kv.Value.GetType()
+                              let isOutput = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Output<>)
+                              where !isOutput
+                              select kv.Key).ToList();
+            if (wrongTypes.Any())
+            {
+                var message = $"Output(s) '{string.Join(", ", wrongTypes)}' have incorrect type. Output values must be assignable to Output<T>.";
+                throw new RunException(message);
+            }
+
+            IDictionary<string, object?> dict = new Dictionary<string, object?>(outputs);
+            this.Outputs = Output.Create(dict);
             this.RegisterOutputs(this.Outputs);
         }
 
