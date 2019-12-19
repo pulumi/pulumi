@@ -33,7 +33,6 @@ func (az azurePipelinesCI) DetectVars() Vars {
 	v.BuildID = os.Getenv("BUILD_BUILDID")
 	v.BuildType = os.Getenv("BUILD_REASON")
 	v.SHA = os.Getenv("BUILD_SOURCEVERSION")
-	v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
 	v.CommitMessage = os.Getenv("BUILD_SOURCEVERSIONMESSAGE")
 
 	orgURI := os.Getenv("SYSTEM_TEAMFOUNDATIONCOLLECTIONURI")
@@ -55,6 +54,17 @@ func (az azurePipelinesCI) DetectVars() Vars {
 		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
 	default:
 		v.PRNumber = os.Getenv("SYSTEM_PULLREQUEST_PULLREQUESTID")
+	}
+
+	// Build.SourceBranchName is the last part of the head.
+	// If the build is running because of a PR, we should use the
+	// PR source branch name, instead of Build.SourceBranchName.
+	// That's because Build.SourceBranchName will always be `merge` --
+	// the last part of `refs/pull/1/merge`.
+	if v.PRNumber != "" {
+		v.BranchName = os.Getenv("SYSTEM_PULLREQUEST_SOURCEBRANCH")
+	} else {
+		v.BranchName = os.Getenv("BUILD_SOURCEBRANCHNAME")
 	}
 
 	return v
