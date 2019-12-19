@@ -73,6 +73,9 @@ namespace Pulumi
             }
         }
 
+        /// <summary>
+        /// Inspect all public properties of the stack to find outputs. Validate the values and register them as stack outputs.
+        /// </summary>
         internal void RegisterPropertyOutputs()
         {
             var query = from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
