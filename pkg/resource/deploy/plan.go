@@ -117,6 +117,7 @@ type Plan struct {
 	preview              bool                             // true if this plan is to be previewed rather than applied.
 	depGraph             *graph.DependencyGraph           // the dependency graph of the old snapshot
 	providers            *providers.Registry              // the provider registry for this plan.
+	current              map[resource.URN]*resource.State // a map of all current resources
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -258,8 +259,19 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		depGraph = graph.NewDependencyGraph(oldResources)
 	}
 
+	plan := &Plan{
+		ctx:                  ctx,
+		target:               target,
+		prev:                 prev,
+		olds:                 olds,
+		source:               source,
+		localPolicyPackPaths: localPolicyPackPaths,
+		preview:              preview,
+		depGraph:             depGraph,
+	}
+
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient)
+	builtins := newBuiltinProvider(backendClient, plan)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -269,17 +281,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		return nil, err
 	}
 
-	return &Plan{
-		ctx:                  ctx,
-		target:               target,
-		prev:                 prev,
-		olds:                 olds,
-		source:               source,
-		localPolicyPackPaths: localPolicyPackPaths,
-		preview:              preview,
-		depGraph:             depGraph,
-		providers:            reg,
-	}, nil
+	plan.providers = reg
+
+	return plan, nil
 }
 
 func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }

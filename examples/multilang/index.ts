@@ -5,22 +5,18 @@ interface RemoteMyComponentArgs {
     input1: pulumi.Input<number>;
 }
 
-class RemoteMyComponent {
-    public urn: pulumi.Output<string>;
-    public id: pulumi.Output<string>;
-    public output1: pulumi.Output<number>;
+class MyComponent extends pulumi.ComponentResource {
+    public myid!: pulumi.Output<string>;
+    public output1!: pulumi.Output<number>;
     constructor(name: string, args: RemoteMyComponentArgs) {
         const p = remote.construct("./mycomponent", "MyComponent", name, args);
-        // TODO: This should have a dependency on the URN. 
-        this.urn = pulumi.output(p.then(r => <string>r.urn));
-        this.id = pulumi.output(p.then(r => <string>r.id));
-        this.output1 = pulumi.output(p.then(r => <number>r.output1));
+        const urn = p.then(r => <string>r.urn);
+        super("t", name, { ...args, myid: undefined, output1: undefined }, { urn });
     }
 }
 
-const res = new RemoteMyComponent("n", {
-    input1: Promise.resolve(42),
+const res2 = new MyComponent("n", {
+    input1: Promise.resolve(24),
 });
 
-export const id = res.id;
-export const output1 = res.output1;
+export const id2 = res2.myid;

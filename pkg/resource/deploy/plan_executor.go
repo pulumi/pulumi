@@ -168,6 +168,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 
 	// Set up a step generator for this plan.
 	pe.stepGen = newStepGenerator(pe.plan, opts, updateTargetsOpt, replaceTargetsOpt)
+	pe.plan.current = pe.stepGen.resourceStates
 
 	// Retire any pending deletes that are currently present in this plan.
 	if res := pe.retirePendingDeletes(callerCtx, opts, preview); res != nil {

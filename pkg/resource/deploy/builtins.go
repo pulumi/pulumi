@@ -19,14 +19,16 @@ type builtinProvider struct {
 	backendClient BackendClient
 	context       context.Context
 	cancel        context.CancelFunc
+	plan          *Plan
 }
 
-func newBuiltinProvider(backendClient BackendClient) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, plan *Plan) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		backendClient: backendClient,
 		context:       ctx,
 		cancel:        cancel,
+		plan:          plan,
 	}
 }
 
@@ -150,6 +152,7 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+const readStackResource = "pulumi:pulumi:readStackResource"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -163,6 +166,12 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 		return outs, nil, nil
 	case readStackResourceOutputs:
 		outs, err := p.readStackResourceOutputs(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	case readStackResource:
+		outs, err := p.readStackResource(args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -239,5 +248,18 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	return resource.PropertyMap{
 		"name":    name,
 		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	urn, ok := inputs["urn"]
+	contract.Assert(ok)
+	contract.Assert(urn.IsString())
+
+	state := p.plan.current[resource.URN(urn.StringValue())]
+
+	return resource.PropertyMap{
+		"urn":     resource.NewStringProperty(string(state.URN)),
+		"outputs": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }
