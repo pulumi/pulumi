@@ -89,7 +89,7 @@ namespace Pulumi
                          select kv.Key).ToList();
             if (nulls.Any())
             {
-                var message = $"Output(s) '{string.Join(", ", nulls)}' have no value assigned. Output values must be assigned inside Stack constructor.";
+                var message = $"Output(s) '{string.Join(", ", nulls)}' have no value assigned. [Output] attributed properties must be assigned inside Stack constructor.";
                 throw new RunException(message);
             }
 
@@ -101,7 +101,7 @@ namespace Pulumi
                               select kv.Key).ToList();
             if (wrongTypes.Any())
             {
-                var message = $"Output(s) '{string.Join(", ", wrongTypes)}' have incorrect type. Output values must be assignable to Output<T>.";
+                var message = $"Output(s) '{string.Join(", ", wrongTypes)}' have incorrect type. [Output] attributed properties must be instances of Output<T>.";
                 throw new RunException(message);
             }
 
