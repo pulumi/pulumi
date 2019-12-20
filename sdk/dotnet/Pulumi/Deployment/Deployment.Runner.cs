@@ -17,10 +17,18 @@ namespace Pulumi
 
             public Task<int> RunAsync<TStack>() where TStack : Stack, new()
             {
-                var stack = new TStack();
-                // Stack doesn't call RegisterOutputs, so we register them on its behalf.
-                stack.RegisterPropertyOutputs();
-                RegisterTask("User program code.", stack.Outputs.DataTask);
+                try
+                {
+                    var stack = new TStack();
+                    // Stack doesn't call RegisterOutputs, so we register them on its behalf.
+                    stack.RegisterPropertyOutputs();
+                    RegisterTask("User program code.", stack.Outputs.DataTask);
+                }
+                catch (Exception ex)
+                {
+                    return HandleExceptionAsync(ex);
+                }
+
                 return WhileRunningAsync();
             }
 
