@@ -522,7 +522,7 @@ func TestStackComponentDotNet(t *testing.T) {
 				assert.Equal(t, 0, len(stackRes.Inputs))
 				assert.Equal(t, 2, len(stackRes.Outputs))
 				assert.Equal(t, "ABC", stackRes.Outputs["abc"])
-				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+				assert.Equal(t, float64(42), stackRes.Outputs["Foo"])
 			}
 		},
 	})

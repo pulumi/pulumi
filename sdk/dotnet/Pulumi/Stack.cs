@@ -81,7 +81,7 @@ namespace Pulumi
             var outputs = (from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                            let attr = property.GetCustomAttribute<OutputAttribute>()
                            where attr != null
-                           let name = attr.Name ?? CamelCase(property.Name)
+                           let name = attr.Name ?? property.Name
                            select new KeyValuePair<string, object?>(name, property.GetValue(this))).ToList();
 
             // Check that none of the values are null: catch unassigned outputs
@@ -109,10 +109,6 @@ namespace Pulumi
             IDictionary<string, object?> dict = new Dictionary<string, object?>(outputs);
             this.Outputs = Output.Create(dict);
             this.RegisterOutputs(this.Outputs);
-
-            return;
-
-            string CamelCase(string name) => char.ToLowerInvariant(name[0]) + name.Substring(1);
         }
 
         private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)

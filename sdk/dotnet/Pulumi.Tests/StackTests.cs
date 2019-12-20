@@ -33,7 +33,7 @@ namespace Pulumi.Tests
             var (stack, outputs) = await Run<ValidStack>();
             Assert.Equal(2, outputs.Count);
             Assert.Same(stack.ExplicitName, outputs["foo"]);
-            Assert.Same(stack.ImplicitName, outputs["implicitName"]);
+            Assert.Same(stack.ImplicitName, outputs["ImplicitName"]);
         }
 
         private class NullOutputStack : Stack
