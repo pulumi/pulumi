@@ -153,6 +153,65 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         });
     }), label);
 }
+interface StackResourceOutputsResult {
+    // The stack name
+    name: string;
+    // Each resource in the stack
+    outputs: {
+        [urn: string]: {
+            // The type token of the resource
+            type: string;
+            // The outputs of the resource
+            outputs: Record<string, any>;
+        },
+    };
+}
+
+interface StackResourceResult {
+    urn: string;
+    outputs: Record<string, any>;
+}
+
+/**
+ * Gets an existing custom resource's state from the engine.  Assumes that the resouce has already
+ * been registered by some other code, and looks it up by URN.
+ */
+export function getResource(res: Resource, t: string, name: string, custom: boolean, props: Inputs, opts: ResourceOptions): void {
+    const urn: Input<URN> | undefined = opts.urn;
+    if (!urn) {
+        throw new Error("Cannot get resource whose options are lacking a URN value");
+    }
+
+    const label = `resource:${name}[${t}]#...`;
+    log.debug(`Getting resource: id=${Output.isInstance(urn) ? "Output<T>" : urn}, t=${t}, name=${name}`);
+
+    const monitor = getMonitor();
+    console.log(`getResource: props=${JSON.stringify(props)}`);
+    const resopAsync = prepareResource(label, res, custom, props, opts);
+
+    const preallocError = new Error();
+    debuggablePromise(resopAsync.then(async (resop) => {
+        const resolvedURN = await serializeProperty(label, urn, new Set());
+        log.debug(`GetResource RPC prepared: id=${resolvedURN}, t=${t}, name=${name}` +
+            (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
+
+        console.log(`Resolved URN: ${resolvedURN}`);
+        const result = await invoke("pulumi:pulumi:readStackResource", {
+            urn: resolvedURN,
+        });
+        console.log(`Got stack resource outputs: ${JSON.stringify(result)}`);
+
+        // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
+        resop.resolveURN(resolvedURN);
+        if (custom) {
+            resop.resolveID!(result.outputs.id, result.outputs.id !== undefined);
+        }
+        console.log("resolving outputs...");
+        console.log(resop.resolvers);
+        resolveProperties(res, resop.resolvers, t, name, props);
+    }), label);
+}
+
 
 /**
  * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
@@ -299,6 +358,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         };
     }
 
+    console.log(`prepareResource: props=${JSON.stringify(props)}`);
+
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
@@ -357,6 +418,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
             aliases.push(aliasVal);
         }
     }
+
+    console.log(`prepareResource: serializedProps=${JSON.stringify(serializedProps)}`);
 
     return {
         resolveURN: resolveURN!,

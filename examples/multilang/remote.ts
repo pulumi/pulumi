@@ -45,6 +45,6 @@ export async function construct(libraryPath: string, resource: string, name: str
 `, context);
 
     const res = await donePromise;
-    const outs = await pulumi.runtime.deserializeProperties(res)
+    const outs = await pulumi.runtime.deserializeProperties(res);
     return outs;
 }

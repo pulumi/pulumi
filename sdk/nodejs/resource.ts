@@ -16,7 +16,7 @@ import { util } from "protobufjs";
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource, unknownValue } from "./runtime";
-import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
@@ -313,7 +313,12 @@ export abstract class Resource {
             }
         }
 
-        if (opts.id) {
+        if (opts.urn) {
+            // Assume that the resource has already been registered by another piece of code, and
+            // populate this resource object with the state of that resource as retrieved from the
+            // engine.
+            getResource(this, t, name, custom, props, opts);
+        } else if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
                 throw new ResourceError(
@@ -461,6 +466,10 @@ export interface ResourceOptions {
      * An optional existing ID to load, rather than create.
      */
     id?: Input<ID>;
+    /**
+     * An optional existing URN to load, rather than create.
+     */
+    urn?: Input<URN>;
     /**
      * An optional parent resource to which this resource belongs.
      */
