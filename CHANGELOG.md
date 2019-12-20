@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## 1.8.1 (2019-12-20)
+
+- Fix a panic in `pulumi stack select`.
+
 ## 1.8.0 (2019-12-19)
 
 - Update version of TypeScript used by Pulumi to 3.7.3.
