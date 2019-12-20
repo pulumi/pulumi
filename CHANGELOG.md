@@ -3,13 +3,13 @@ CHANGELOG
 
 ## 1.8.1 (2019-12-20)
 
-- Fix a panic in `pulumi stack select`.
+- Fix a panic in `pulumi stack select`. [#3687](https://github.com/pulumi/pulumi/pull/3687)
 
 ## 1.8.0 (2019-12-19)
 
-- Update version of TypeScript used by Pulumi to 3.7.3.
+- Update version of TypeScript used by Pulumi to `3.7.3`.
 
-- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906) (Fixes [#2790](https://github.com/pulumi/pulumi/issues/2790), [#2791](https://github.com/pulumi/pulumi/issues/2791))
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend. [#2906](https://github.com/pulumi/pulumi/pull/2906)
 
   ```sh
    export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
@@ -19,13 +19,13 @@ CHANGELOG
 - Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
   [#3612](https://github.com/pulumi/pulumi/pull/3612)
 
-- Add the .NET Core 3.0 runtime to the pulumi/pulumi container. [#3616](https://github.com/pulumi/pulumi/pull/3616).
+- Add the .NET Core 3.0 runtime to the `pulumi/pulumi` container. [#3616](https://github.com/pulumi/pulumi/pull/3616)
 
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
-  [#3675](https://github.com/pulumi/pulumi/pull/3675).
+  [#3675](https://github.com/pulumi/pulumi/pull/3675)
   
-- `ComponentResource`s now have built-in support for asynchronously constructing their children. See https://github.com/pulumi/pulumi/pull/3676 for more details.
+- `ComponentResource`s now have built-in support for asynchronously constructing their children. [#3676](https://github.com/pulumi/pulumi/pull/3676)
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
   [#3663](https://github.com/pulumi/pulumi/pull/3663)
