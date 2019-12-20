@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 1.8.0 (2019-12-19)
 
 - Update version of TypeScript used by Pulumi to 3.7.3.
 
