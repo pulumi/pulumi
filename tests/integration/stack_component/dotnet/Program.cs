@@ -10,7 +10,7 @@ class MyStack : Stack
     [Output("abc")]
     public Output<string> Abc { get; private set; }
 
-    [Output("foo")]
+    [Output]
     public Output<int> Foo { get; private set; }
 
     // This should NOT be exported as stack output due to the missing attribute

@@ -15,11 +15,15 @@ namespace Pulumi.Tests
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> Foo { get; }
+            public Output<string> ExplicitName { get; }
+
+            [Output]
+            public Output<string> ImplicitName { get; }
 
             public ValidStack()
             {
-                this.Foo = Output.Create("bar");
+                this.ExplicitName = Output.Create("bar");
+                this.ImplicitName = Output.Create("buzz");
             }
         }
 
@@ -27,7 +31,9 @@ namespace Pulumi.Tests
         public async Task ValidStackInstantiationSucceeds()
         {
             var (stack, outputs) = await Run<ValidStack>();
-            Assert.Same(stack.Foo, outputs["foo"]);
+            Assert.Equal(2, outputs.Count);
+            Assert.Same(stack.ExplicitName, outputs["foo"]);
+            Assert.Same(stack.ImplicitName, outputs["implicitName"]);
         }
 
         private class NullOutputStack : Stack
@@ -101,8 +107,6 @@ namespace Pulumi.Tests
             // Assert
             Assert.NotNull(outputs);
             var values = await outputs!.DataTask;
-
-            Assert.Equal(1, values.Value.Count);
             return (stack, values.Value);
         }
     }

@@ -81,6 +81,11 @@ namespace Pulumi.Serialization
                     throw new InvalidOperationException($"{propFullName} did not have a 'set' method");
                 }
 
+                if (attr.Name == null)
+                {
+                    throw new InvalidOperationException($"[Output] attribute on {propFullName} did not have a name");
+                }
+
                 var outputTypeArg = propType.GenericTypeArguments.Single();
                 Converter.CheckTargetType(propFullName, outputTypeArg, new HashSet<Type>());
 
