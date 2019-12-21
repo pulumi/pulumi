@@ -5,6 +5,7 @@ set -o errexit
 set -o pipefail
 
 readonly SCRIPT_DIR="$( cd "$( dirname "${0}" )" && pwd )"
+readonly ROOT=${SCRIPT_DIR}/..
 
 if [ -z "${1:-}" ]; then
     >&2 echo "error: missing version to publish"
@@ -42,7 +43,13 @@ for container in pulumi actions; do
 done
 
 echo "Running container runtime tests..."
-RUN_CONTAINER_TESTS=true go test tests/containers/...
+GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+docker run -e RUN_CONTAINER_TESTS=true \
+	-e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
+	--volume /tmp:/src \
+	--entrypoint /bin/bash \
+	pulumi/actions:latest \
+	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v"
 
 echo "Publishing containers..."
 for container in pulumi actions; do
