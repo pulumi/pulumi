@@ -181,7 +181,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 	if err != nil {
 		return nil, fmt.Errorf(
-			"Failed to locate any of '%v' on your PATH.  Have you installed Python 3.6 or greater?", pythonCmds)
+			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+			pythonCmds)
 	}
 
 	cmd := exec.Command(pythonPath, args...)

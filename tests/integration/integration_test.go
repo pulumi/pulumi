@@ -1149,8 +1149,8 @@ func TestPython3NotInstalled(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
 	expectedError := fmt.Sprintf(
-		"error: Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?",
-		badPython)
+		"error: Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: path.Join("empty", "python"),
 		Dependencies: []string{
