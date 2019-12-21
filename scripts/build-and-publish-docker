@@ -48,8 +48,8 @@ docker run -e RUN_CONTAINER_TESTS=true \
 	-e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
 	--volume /tmp:/src \
 	--entrypoint /bin/bash \
-	pulumi/actions:latest \
-	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v"
+	pulumi/pulumi:latest \
+	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v -test.run TestPulumiDockerImage"
 
 echo "Publishing containers..."
 for container in pulumi actions; do
