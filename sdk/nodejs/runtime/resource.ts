@@ -153,22 +153,13 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         });
     }), label);
 }
-interface StackResourceOutputsResult {
-    // The stack name
-    name: string;
-    // Each resource in the stack
-    outputs: {
-        [urn: string]: {
-            // The type token of the resource
-            type: string;
-            // The outputs of the resource
-            outputs: Record<string, any>;
-        },
-    };
-}
 
+// The shape of data returned by the built-in invoke to `pulumi:pulumi:readStackResource`.
 interface StackResourceResult {
+    // The URN that was requested.
     urn: string;
+    // The output properties of the resource represented by `urn` as registered in the Pulumi
+    // engine.
     outputs: Record<string, any>;
 }
 
@@ -194,11 +185,12 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
         log.debug(`GetResource RPC prepared: id=${resolvedURN}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
-        const result = await invoke("pulumi:pulumi:readStackResource", {
+        const result: StackResourceResult = await invoke("pulumi:pulumi:readStackResource", {
             urn: resolvedURN,
         }, { async: true });
 
-        // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
+        // Now resolve everything: the URN, the ID (if the resource is a `CustomResource`), and the
+        // output properties.
         resop.resolveURN(resolvedURN);
         if (custom) {
             resop.resolveID!(result.outputs.id, result.outputs.id !== undefined);
