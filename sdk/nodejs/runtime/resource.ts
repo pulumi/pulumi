@@ -186,7 +186,6 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
     log.debug(`Getting resource: id=${Output.isInstance(urn) ? "Output<T>" : urn}, t=${t}, name=${name}`);
 
     const monitor = getMonitor();
-    console.log(`getResource: props=${JSON.stringify(props)}`);
     const resopAsync = prepareResource(label, res, custom, props, opts);
 
     const preallocError = new Error();
@@ -195,20 +194,16 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
         log.debug(`GetResource RPC prepared: id=${resolvedURN}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
-        console.log(`Resolved URN: ${resolvedURN}`);
         const result = await invoke("pulumi:pulumi:readStackResource", {
             urn: resolvedURN,
-        });
-        console.log(`Got stack resource outputs: ${JSON.stringify(result)}`);
+        }, { async: true });
 
         // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
         resop.resolveURN(resolvedURN);
         if (custom) {
             resop.resolveID!(result.outputs.id, result.outputs.id !== undefined);
         }
-        console.log("resolving outputs...");
-        console.log(resop.resolvers);
-        resolveProperties(res, resop.resolvers, t, name, props);
+        resolveProperties(res, resop.resolvers, t, name, result.outputs);
     }), label);
 }
 
@@ -358,8 +353,6 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         };
     }
 
-    console.log(`prepareResource: props=${JSON.stringify(props)}`);
-
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
@@ -418,8 +411,6 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
             aliases.push(aliasVal);
         }
     }
-
-    console.log(`prepareResource: serializedProps=${JSON.stringify(serializedProps)}`);
 
     return {
         resolveURN: resolveURN!,

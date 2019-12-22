@@ -789,22 +789,13 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}) {
-        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
-        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
-        // only as a container for other resources.  Another way to think about this is that a normal
-        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
-        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
-        // for a component resource.  The component is just used for organizational purposes and does
-        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
-        // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
+        super(type, name, /*custom:*/ false, args, opts);
         this.__data = this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */
     private async initializeAndRegisterOutputs(args: Inputs) {
         const data = await this.initialize(args);
-        this.registerOutputs();
         return data;
     }
 
