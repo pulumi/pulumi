@@ -35,10 +35,20 @@ interface RemoteMyComponentArgs {
 class MyComponent extends pulumi.ComponentResource {
     public myid!: pulumi.Output<string>;
     public output1!: pulumi.Output<number>;
-    constructor(name: string, args: RemoteMyComponentArgs) {
-        const p = remote.construct("./mycomponent", "MyComponent", name, args);
-        const urn = p.then(r => <string>r.urn);
-        super("t", name, { ...args, myid: undefined, output1: undefined }, { urn });
+    constructor(name: string, args: RemoteMyComponentArgs, opts: pulumi.ComponentResourceOptions = {}) {
+        // There are two cases:
+        // 1. A URN was provided - in this case we are just going to look up the existing resource
+        //    and populate this proxy from that URN.
+        // 2. A URN was not provided - in this case we are going to remotely construct the resource,
+        //    get the URN from the newly constructed resource, then look it up and populate this
+        //    proxy from that URN.
+        if (!opts.urn) {
+            // TODO: Serialize `opts` to the remote construct
+            const p = remote.construct("./mycomponent", "MyComponent", name, args /*,  opts */);
+            const urn = p.then(r => <string>r.urn);
+            opts = pulumi.mergeOptions(opts, { urn });
+        }
+        super("t", name, { ...args, myid: undefined, output1: undefined }, opts);
     }
 }
 
