@@ -38,7 +38,6 @@ export type OutputResolvers = Record<string, (value: any, isStable: boolean, isS
 export function transferProperties(onto: Resource, label: string, props: Inputs): OutputResolvers {
     const resolvers: OutputResolvers = {};
     for (const k of Object.keys(props)) {
-        console.log(`transferProperties: ${k}`);
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
             continue;
@@ -149,7 +148,6 @@ export function resolveProperties(
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
     for (const k of Object.keys(allProps)) {
-        console.log(`resolveroperties: ${k}`);
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
             continue;
@@ -159,7 +157,6 @@ export function resolveProperties(
         const resolve = resolvers[k];
 
         if (resolve === undefined) {
-            console.log(`resolveroperties: ${k} not in initial property-map`);
             // engine returned a property that was not in our initial property-map.  This can happen
             // for outputs that were registered through direct calls to 'registerOutputs'. We do
             // *not* want to do anything with these returned properties.  First, the component
@@ -182,8 +179,6 @@ export function resolveProperties(
         const isSecret = isRpcSecret(value);
         value = unwrapRpcSecret(value);
 
-
-        console.log(`resolveroperties: ${k} => ${value}`);
         try {
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
@@ -200,7 +195,6 @@ export function resolveProperties(
     // We will resolve all of these values as `undefined`, and will mark the value as known if we are not running a
     // preview.
     for (const k of Object.keys(resolvers)) {
-        console.log(`resolveroperties: resolved for property that wasn't returned ${k}`);
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
             resolve(undefined, !isDryRun(), false);
