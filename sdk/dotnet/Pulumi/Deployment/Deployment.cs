@@ -48,7 +48,6 @@ namespace Pulumi
         internal static IDeploymentInternal InternalInstance
             => (IDeploymentInternal)Instance;
 
-        private readonly Options _options;
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
@@ -93,10 +92,6 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            _options = new Options(
-                queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
-                monitor: monitor, engine: engine, tracing: tracing);
-
             Serilog.Log.Debug("Creating Deployment Engine.");
             this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
             Serilog.Log.Debug("Created Deployment Engine.");
@@ -113,7 +108,6 @@ namespace Pulumi
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
-        Options IDeploymentInternal.Options => _options;
         ILogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 

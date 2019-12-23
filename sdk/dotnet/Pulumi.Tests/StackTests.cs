@@ -1,12 +1,12 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Moq;
 using Pulumi.Serialization;
+using Pulumi.Testing;
 using Xunit;
-using Xunit.Sdk;
 
 namespace Pulumi.Tests
 {
@@ -30,7 +30,23 @@ namespace Pulumi.Tests
         [Fact]
         public async Task ValidStackInstantiationSucceeds()
         {
-            var (stack, outputs) = await Run<ValidStack>();
+            // Arrange
+            Output<IDictionary<string, object?>>? output = null;
+
+            var mock = new Mock<ITestContext>();
+            mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
+                .Callback((Resource _, Output<IDictionary<string, object?>> o) => output = o);
+
+            // Act
+            var result = await Deployment.TestAsync<ValidStack>(mock.Object);
+
+            // Assert
+            Assert.False(result.HasErrors, "Running a valid stack should yield no errors");
+            var stack = result.Resources.OfType<ValidStack>().FirstOrDefault();
+            Assert.NotNull(stack);
+
+            var outputData = await output!.DataTask;
+            var outputs = outputData.Value;
             Assert.Equal(2, outputs.Count);
             Assert.Same(stack.ExplicitName, outputs["foo"]);
             Assert.Same(stack.ImplicitName, outputs["ImplicitName"]);
@@ -45,17 +61,10 @@ namespace Pulumi.Tests
         [Fact]
         public async Task StackWithNullOutputsThrows()
         {
-            try
-            {
-                var (stack, outputs) = await Run<NullOutputStack>();
-            }
-            catch (RunException ex)
-            {
-                Assert.Contains("foo", ex.Message);
-                return;
-            }
-
-            throw new XunitException("Should not come here");
+            var result = await Deployment.TestAsync<NullOutputStack>();
+            Assert.True(result.HasErrors);
+            Assert.Single(result.LoggedErrors);
+            Assert.Contains("foo", result.LoggedErrors.First());
         }
 
         private class InvalidOutputTypeStack : Stack
@@ -72,42 +81,10 @@ namespace Pulumi.Tests
         [Fact]
         public async Task StackWithInvalidOutputTypeThrows()
         {
-            try
-            {
-                var (stack, outputs) = await Run<InvalidOutputTypeStack>();
-            }
-            catch (RunException ex)
-            {
-                Assert.Contains("foo", ex.Message);
-                return;
-            }
-
-            throw new XunitException("Should not come here");
-        }
-
-        private async Task<(T, IDictionary<string, object?>)> Run<T>() where T : Stack, new()
-        {
-            // Arrange
-            Output<IDictionary<string, object?>>? outputs = null;
-
-            var mock = new Mock<IDeploymentInternal>(MockBehavior.Strict);
-            mock.Setup(d => d.ProjectName).Returns("TestProject");
-            mock.Setup(d => d.StackName).Returns("TestStack");
-            mock.SetupSet(content => content.Stack = It.IsAny<Stack>());
-            mock.Setup(d => d.ReadOrRegisterResource(It.IsAny<Stack>(), It.IsAny<ResourceArgs>(), It.IsAny<ResourceOptions>()));
-            mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
-                .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
-
-            Deployment.Instance = mock.Object;
-
-            // Act
-            var stack = new T();
-            stack.RegisterPropertyOutputs();
-
-            // Assert
-            Assert.NotNull(outputs);
-            var values = await outputs!.DataTask;
-            return (stack, values.Value);
+            var result = await Deployment.TestAsync<InvalidOutputTypeStack>();
+            Assert.True(result.HasErrors);
+            Assert.Single(result.LoggedErrors);
+            Assert.Contains("foo", result.LoggedErrors.First());
         }
     }
 }

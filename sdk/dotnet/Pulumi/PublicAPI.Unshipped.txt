@@ -187,6 +187,16 @@ Pulumi.StackReferenceArgs.Name.set -> void
 Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
+Pulumi.Testing.ITestContext
+Pulumi.Testing.ITestContext.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options) -> System.Threading.Tasks.Task
+Pulumi.Testing.ITestContext.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options) -> System.Threading.Tasks.Task<T>
+Pulumi.Testing.ITestContext.IsDryRun.get -> bool
+Pulumi.Testing.ITestContext.ReadOrRegisterResource(Pulumi.Resource resource, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
+Pulumi.Testing.ITestContext.RegisterResourceOutputs(Pulumi.Resource resource, Pulumi.Output<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
+Pulumi.Testing.TestResult
+Pulumi.Testing.TestResult.HasErrors.get -> bool
+Pulumi.Testing.TestResult.LoggedErrors.get -> System.Collections.Immutable.ImmutableArray<string>
+Pulumi.Testing.TestResult.Resources.get -> System.Collections.Immutable.ImmutableArray<Pulumi.Resource>
 Pulumi.Union<T0, T1>
 Pulumi.Union<T0, T1>.AsT0.get -> T0
 Pulumi.Union<T0, T1>.AsT1.get -> T1
@@ -211,6 +221,7 @@ static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Task
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.ITestContext stub = null) -> System.Threading.Tasks.Task<Pulumi.Testing.TestResult>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
