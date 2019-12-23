@@ -10,6 +10,8 @@ CHANGELOG
   [#4030](https://github.com/pulumi/pulumi/pull/4030)
 - Ensure Python overlays work as part of our SDK generation
   [#4043](https://github.com/pulumi/pulumi/pull/4043)
+- Support for unit testing and mocking in the .NET SDK.
+  [#3696](https://github.com/pulumi/pulumi/pull/3696)
 
 ## 1.12.0 (2020-03-04)
 - Avoid Configuring providers which are not used during preview.

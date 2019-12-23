@@ -13,14 +13,14 @@ namespace Pulumi
         {
             private readonly object _logGate = new object();
             private readonly IDeploymentInternal _deployment;
-            private readonly Engine.EngineClient _engine;
+            private readonly IEngine _engine;
 
             // We serialize all logging tasks so that the engine doesn't hear about them out of order.
             // This is necessary for streaming logs to be maintained in the right order.
             private Task _lastLogTask = Task.CompletedTask;
             private int _errorCount;
 
-            public Logger(IDeploymentInternal deployment, Engine.EngineClient engine)
+            public Logger(IDeploymentInternal deployment, IEngine engine)
             {
                 _deployment = deployment;
                 _engine = engine;

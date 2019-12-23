@@ -41,7 +41,7 @@ namespace Pulumi
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
 
             // Now run the operation, serializing the invocation if necessary.
-            var response = await this.Monitor.ReadResourceAsync(request);
+            var response = await this.Monitor.ReadResourceAsync(resource, request);
 
             return (response.Urn, id, response.Properties);
         }
