@@ -9,6 +9,7 @@ namespace Pulumi
     public partial class Deployment
     {
         private Task<string>? _rootResource;
+        private object _rootResourceLock = new object();
 
         /// <summary>
         /// Returns a root resource URN that will automatically become the default parent of all
@@ -23,19 +24,16 @@ namespace Pulumi
             if (type == Stack._rootPulumiStackTypeName)
                 return null;
 
-            if (_rootResource == null)
-                throw new InvalidOperationException($"Calling {nameof(GetRootResourceAsync)} before the root resource was registered!");
+            lock (_rootResourceLock)
+            {
+                if (_rootResource == null)
+                {
+                    var stack = InternalInstance.Stack ?? throw new InvalidOperationException($"Calling {nameof(GetRootResourceAsync)} before the stack was registered!");
+                    _rootResource = SetRootResourceWorkerAsync(stack);
+                }
+            }
 
             return await _rootResource.ConfigureAwait(false);
-        }
-
-        Task IDeploymentInternal.SetRootResourceAsync(Stack stack)
-        {
-            if (_rootResource != null)
-                throw new InvalidOperationException("Tried to set the root resource more than once!");
-
-            _rootResource = SetRootResourceWorkerAsync(stack);
-            return _rootResource;
         }
 
         private async Task<string> SetRootResourceWorkerAsync(Stack stack)

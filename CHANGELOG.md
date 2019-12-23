@@ -18,6 +18,8 @@ CHANGELOG
 
 - Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
   [#3612](https://github.com/pulumi/pulumi/pull/3612)
+- Top-level Stack component in the .NET SDK.
+  [#3618](https://github.com/pulumi/pulumi/pull/3618)
 
 - Add the .NET Core 3.0 runtime to the `pulumi/pulumi` container. [#3616](https://github.com/pulumi/pulumi/pull/3616)
 
