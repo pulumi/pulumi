@@ -248,7 +248,12 @@ func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resour
 	state := p.plan.current[resource.URN(urn.StringValue())]
 
 	return resource.PropertyMap{
-		"urn":     resource.NewStringProperty(string(state.URN)),
+		// TODO: We use `deserializeUrns` on the result of this invoke, so we need to not include
+		// any URNs we don't want to deserialize.  Ideally we would either specify this
+		// deserialization more granularly or would cache deserialized objects so that it's okay to
+		// include things here.
+		//
+		// "urn":     resource.NewStringProperty(string(state.URN)),
 		"outputs": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }

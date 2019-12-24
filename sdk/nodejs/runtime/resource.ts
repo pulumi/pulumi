@@ -156,8 +156,6 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
 // The shape of data returned by the built-in invoke to `pulumi:pulumi:readStackResource`.
 interface StackResourceResult {
-    // The URN that was requested.
-    urn: string;
     // The output properties of the resource represented by `urn` as registered in the Pulumi
     // engine.
     outputs: Record<string, any>;
@@ -187,7 +185,7 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
 
         const result: StackResourceResult = await invoke("pulumi:pulumi:readStackResource", {
             urn: resolvedURN,
-        }, { async: true });
+        }, { async: true }, true /* deserialize URNs */);
 
         // Now resolve everything: the URN, the ID (if the resource is a `CustomResource`), and the
         // output properties.
@@ -520,12 +518,12 @@ async function gatherExplicitDependencies(
  * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
  */
 async function resolveOutputs(res: Resource, t: string, name: string,
-                              props: Inputs, outputs: any, resolvers: OutputResolvers): Promise<void> {
+                              props: Inputs, outputs: any, resolvers: OutputResolvers, deserializeUrns?: boolean): Promise<void> {
     // Produce a combined set of property states, starting with inputs and then applying
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs));
+        Object.assign(allProps, deserializeProperties(outputs, deserializeUrns));
     }
 
     const label = `resource:${name}[${t}]#...`;
@@ -539,7 +537,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
                 if (inputProp === undefined) {
                     continue;
                 }
-                allProps[key] = deserializeProperty(inputProp);
+                allProps[key] = deserializeProperty(inputProp, deserializeUrns);
             }
         }
     }
