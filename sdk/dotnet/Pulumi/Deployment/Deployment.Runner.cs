@@ -43,7 +43,10 @@ namespace Pulumi
             {
                 lock (_taskToDescription)
                 {
-                    _taskToDescription.Add(task, description);
+                    if (!_taskToDescription.ContainsKey(task))
+                    {
+                        _taskToDescription.Add(task, description);
+                    }
                 }
             }
 

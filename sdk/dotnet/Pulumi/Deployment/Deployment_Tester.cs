@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 using Pulumi.Testing;
@@ -61,16 +63,60 @@ namespace Pulumi
             {
                 _resources.Add(resource);
 
-                if (!(resource is Stack))
-                {
-                    var completionSources = OutputCompletionSource.InitializeOutputs(resource);
-                    foreach (var v in completionSources.Values)
-                    {
-                        v.SetValue(default);
-                    }
-                }
+                var completionSources = OutputCompletionSource.InitializeOutputs(resource);
+
+                _runner.RegisterTask(
+                    $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
+                    CompleteResourceAsync(resource, args, options, completionSources));
 
                 _context?.ReadOrRegisterResource(resource, args, options);
+            }
+
+            // TODO: This implementation is highly speculative: we need to come up with something more robust
+            private async Task CompleteResourceAsync(
+                Resource resource, ResourceArgs args, ResourceOptions options,
+                ImmutableDictionary<string, IOutputCompletionSource> completionSources)
+            {
+                // Get inputs
+                var inputsDict = await args.ToDictionaryAsync().ConfigureAwait(false);
+
+                try
+                {
+                    // Go through all our output fields and lookup a corresponding value in the response
+                    // input fields.
+                    foreach (var (fieldName, completionSource) in completionSources)
+                    {
+                        if (inputsDict.TryGetValue(fieldName, out var v))
+                        {
+                            var value = v as IInput;
+                            if (value != null)
+                            {
+                                var converted = await value.ToOutput().GetDataAsync().ConfigureAwait(false);
+                                completionSource.SetValue(converted);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    // Mark any unresolved output properties with this exception.  That way we don't
+                    // leave any outstanding tasks sitting around which might cause hangs.
+                    foreach (var source in completionSources.Values)
+                    {
+                        source.TrySetException(e);
+                    }
+
+                    throw;
+                }
+                finally
+                {
+                    // ensure that we've at least resolved all our completion sources.  That way we
+                    // don't leave any outstanding tasks sitting around which might cause hangs.
+                    foreach (var source in completionSources.Values)
+                    {
+                        source.TrySetDefaultResult(isKnown: false);
+                    }
+                }
             }
 
             public void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object?>> outputs)
