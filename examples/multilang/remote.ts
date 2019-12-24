@@ -1,6 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as vm from "vm";
 
+// This file would move into the core SDK.
+
 //tslint:disable
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
