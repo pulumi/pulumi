@@ -179,6 +179,19 @@ export function resolveProperties(
         const isSecret = isRpcSecret(value);
         value = unwrapRpcSecret(value);
 
+        // If this value is a URN, create a proxy wrapper around it.
+        if (typeof value === "string" && value.startsWith("urn:pulumi:")) {
+            const urnParts = value.split("::");
+            const qualifiedType = urnParts[2];
+            const type = qualifiedType.split("$").pop()!;
+            const proxyConstructor = proxyConstructors.get(type);
+            if (proxyConstructor) {
+                const urnName = urnParts[3];
+                value = new proxyConstructor(urnName, {}, { urn: value });
+            }
+            log.debug(`Saw valid URN ${value} during deserialization, but no proxy constructor is registered for type ${type}.`);
+        }
+
         try {
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
@@ -229,7 +242,7 @@ export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     // IMPORTANT:
-    // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
+    // IMPORTANT: Keep this in sync with serializePropertiesSync in invoke.ts
     // IMPORTANT:
 
     if (prop === undefined ||
@@ -309,13 +322,13 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
     }
 
     if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
+        // Resources aren't serializable; instead, we serialize them as references to the URN property.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: custom resource id`);
+            log.debug(`Serialize property [${ctx}]: custom resource urn`);
         }
 
         dependentResources.add(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
     }
 
     if (ComponentResource.isInstance(prop)) {
@@ -334,7 +347,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // and tracked in a reasonable manner, while not causing us to compute or embed information
         // about it that is not needed, and which can lead to deadlocks.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: component resource urnid`);
+            log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
         return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);

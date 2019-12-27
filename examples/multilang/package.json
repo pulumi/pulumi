@@ -5,5 +5,8 @@
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
+    },
+    "dependencies": {
+        "@pulumi/aws": "^1.17.0"
     }
 }
