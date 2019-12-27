@@ -28,6 +28,11 @@ setup(name='pulumi',
       url='https://github.com/pulumi/pulumi',
       license='Apache 2.0',
       packages=find_packages(exclude=("test*",)),
+      package_data={
+          'pulumi': [
+              'py.typed'
+          ]
+      },
       install_requires=[
           'protobuf>=3.6.0',
           'dill>=0.3.0',
