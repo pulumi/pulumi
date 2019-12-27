@@ -67,8 +67,8 @@ const providerproto = require("../proto/provider_pb.js");
  * All of these contain async values that would prevent `invoke from being able to operate
  * synchronously.
  */
-export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}, deserializeUrns?: boolean): Promise<any> {
-    return invokeAsync(tok, props, opts, deserializeUrns);
+export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
+    return invokeAsync(tok, props, opts);
 }
 
 export async function streamInvoke(
@@ -122,7 +122,7 @@ export async function streamInvoke(
     }
 }
 
-async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions, deserializeUrns?: boolean): Promise<any> {
+async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -159,7 +159,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions, dese
             })), label);
 
         // Finally propagate any other properties that were given to us as outputs.
-        return deserializeResponse(tok, resp, deserializeUrns);
+        return deserializeResponse(tok, resp);
     }
     finally {
         done();
@@ -204,7 +204,7 @@ function getProvider(tok: string, opts: InvokeOptions) {
            opts.parent ? opts.parent.getProvider(tok) : undefined;
 }
 
-function deserializeResponse(tok: string, resp: any, deserializeUrns?: boolean): any {
+function deserializeResponse(tok: string, resp: any): any {
     const failures: any = resp.getFailuresList();
     if (failures && failures.length) {
         let reasons = "";
@@ -222,5 +222,5 @@ function deserializeResponse(tok: string, resp: any, deserializeUrns?: boolean):
     const ret = resp.getReturn();
     return ret === undefined
         ? ret
-        : deserializeProperties(ret, deserializeUrns);
+        : deserializeProperties(ret);
 }

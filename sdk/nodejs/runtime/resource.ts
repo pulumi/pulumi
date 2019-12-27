@@ -517,12 +517,12 @@ async function gatherExplicitDependencies(
  * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
  */
 async function resolveOutputs(res: Resource, t: string, name: string,
-                              props: Inputs, outputs: any, resolvers: OutputResolvers, deserializeUrns?: boolean): Promise<void> {
+                              props: Inputs, outputs: any, resolvers: OutputResolvers): Promise<void> {
     // Produce a combined set of property states, starting with inputs and then applying
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs, deserializeUrns));
+        Object.assign(allProps, deserializeProperties(outputs));
     }
 
     const label = `resource:${name}[${t}]#...`;
@@ -536,7 +536,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
                 if (inputProp === undefined) {
                     continue;
                 }
-                allProps[key] = deserializeProperty(inputProp, deserializeUrns);
+                allProps[key] = deserializeProperty(inputProp);
             }
         }
     }
