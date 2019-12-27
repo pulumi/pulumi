@@ -122,13 +122,13 @@ export async function serializeProperties(label: string, props: Inputs) {
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */
-export function deserializeProperties(outputsStruct: any, deserializeUrns?: boolean): any {
+export function deserializeProperties(outputsStruct: any): any {
     const props: any = {};
     const outputs: any = outputsStruct.toJavaScript();
     for (const k of Object.keys(outputs)) {
         // We treat properties with undefined values as if they do not exist.
         if (outputs[k] !== undefined) {
-            props[k] = deserializeProperty(outputs[k], deserializeUrns);
+            props[k] = deserializeProperty(outputs[k]);
         }
     }
     return props;
@@ -405,30 +405,14 @@ function unwrapRpcSecret(obj: any): any {
 /**
  * deserializeProperty unpacks some special types, reversing the above process.
  */
-export function deserializeProperty(prop: any, deserializeUrns?: boolean): any {
+export function deserializeProperty(prop: any): any {
     if (prop === undefined) {
         throw new Error("unexpected undefined property value during deserialization");
     }
     else if (prop === unknownValue) {
         return isDryRun() ? unknown : undefined;
     }
-    else if (prop === null || typeof prop === "boolean" || typeof prop === "number") {
-        return prop;
-    }
-    else if (typeof prop === "string") {
-        if (deserializeUrns) {
-            if (prop.startsWith("urn:pulumi:")) {
-                const urnParts = prop.split("::");
-                const qualifiedType = urnParts[2];
-                const type = qualifiedType.split("$").pop()!;
-                const proxyConstructor = proxyConstructors.get(type);
-                if (proxyConstructor) {
-                    const name = urnParts[3];
-                    return new proxyConstructor(name, {}, { urn: prop });
-                }
-                log.debug(`Saw valid URN ${prop} during deserialization, but no proxy constructor is registered for type ${type}.`);
-            }
-        }
+    else if (prop === null || typeof prop === "boolean" || typeof prop === "number" || typeof prop === "string") {
         return prop;
     }
     else if (prop instanceof Array) {
@@ -438,7 +422,7 @@ export function deserializeProperty(prop: any, deserializeUrns?: boolean): any {
         let hadSecret = false;
         const elems: any[] = [];
         for (const e of prop) {
-            prop = deserializeProperty(e, deserializeUrns);
+            prop = deserializeProperty(e);
             hadSecret = hadSecret || isRpcSecret(prop);
             elems.push(unwrapRpcSecret(prop));
         }
@@ -474,7 +458,7 @@ export function deserializeProperty(prop: any, deserializeUrns?: boolean): any {
                     if (prop["assets"]) {
                         const assets: asset.AssetMap = {};
                         for (const name of Object.keys(prop["assets"])) {
-                            const a = deserializeProperty(prop["assets"][name], deserializeUrns);
+                            const a = deserializeProperty(prop["assets"][name]);
                             if (!(asset.Asset.isInstance(a)) && !(asset.Archive.isInstance(a))) {
                                 throw new Error(
                                     "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects");
@@ -495,7 +479,7 @@ export function deserializeProperty(prop: any, deserializeUrns?: boolean): any {
                 case specialSecretSig:
                     return {
                         [specialSigKey]: specialSecretSig,
-                        value: deserializeProperty(prop["value"], deserializeUrns),
+                        value: deserializeProperty(prop["value"]),
                     };
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
@@ -509,7 +493,7 @@ export function deserializeProperty(prop: any, deserializeUrns?: boolean): any {
         let hadSecrets = false;
 
         for (const k of Object.keys(prop)) {
-            const o = deserializeProperty(prop[k], deserializeUrns);
+            const o = deserializeProperty(prop[k]);
             hadSecrets = hadSecrets || isRpcSecret(o);
             obj[k] = unwrapRpcSecret(o);
         }
