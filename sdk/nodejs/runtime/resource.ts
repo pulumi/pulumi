@@ -162,7 +162,7 @@ interface StackResourceResult {
 }
 
 /**
- * Gets an existing custom resource's state from the engine.  Assumes that the resouce has already
+ * Gets an existing custom resource's state from the engine.  Assumes that the resource has already
  * been registered by some other code, and looks it up by URN.
  */
 export function getResource(res: Resource, t: string, name: string, custom: boolean, props: Inputs, opts: ResourceOptions): void {
@@ -177,7 +177,6 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
 
-    const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
         const resolvedURN = await serializeProperty(label, urn, new Set());
         log.debug(`GetResource RPC prepared: id=${resolvedURN}, t=${t}, name=${name}` +
@@ -185,7 +184,7 @@ export function getResource(res: Resource, t: string, name: string, custom: bool
 
         const result: StackResourceResult = await invoke("pulumi:pulumi:readStackResource", {
             urn: resolvedURN,
-        }, { async: true }, true /* deserialize URNs */);
+        }, { async: true });
 
         // Now resolve everything: the URN, the ID (if the resource is a `CustomResource`), and the
         // output properties.
