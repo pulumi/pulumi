@@ -156,6 +156,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
 // The shape of data returned by the built-in invoke to `pulumi:pulumi:readStackResource`.
 interface StackResourceResult {
+    urn: string;
     // The output properties of the resource represented by `urn` as registered in the Pulumi
     // engine.
     outputs: Record<string, any>;
