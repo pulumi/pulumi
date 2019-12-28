@@ -238,7 +238,7 @@ func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackRe
 // ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
 // httpstate backend.
 func (b *localBackend) ValidateStackName(stackName string) error {
-	if strings.Index(stackName, "/") != -1 {
+	if strings.Contains(stackName, "/") {
 		return errors.New("stack names may not contain slashes")
 	}
 
