@@ -519,7 +519,6 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 }
 
 func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	// Write prefix.
