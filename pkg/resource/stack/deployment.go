@@ -505,6 +505,17 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter) (resource.Pro
 						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil
+				case resource.ResourceSig:
+					urn, ok := objmap["urn"].(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed resource value: missing urn")
+					}
+					ev, err := DeserializePropertyValue(urn, dec)
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					return ev, nil
+
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

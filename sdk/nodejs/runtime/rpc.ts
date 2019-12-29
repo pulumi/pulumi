@@ -179,18 +179,22 @@ export function resolveProperties(
         const isSecret = isRpcSecret(value);
         value = unwrapRpcSecret(value);
 
-        // If this value is a URN, create a proxy wrapper around it.
-        if (typeof value === "string" && value.startsWith("urn:pulumi:")) {
-            const urnParts = value.split("::");
-            const qualifiedType = urnParts[2];
-            const type = qualifiedType.split("$").pop()!;
-            const proxyConstructor = proxyConstructors.get(type);
-            if (proxyConstructor) {
-                const urnName = urnParts[3];
-                value = new proxyConstructor(urnName, {}, { urn: value });
-            }
-            log.debug(`Saw valid URN ${value} during deserialization, but no proxy constructor is registered for type ${type}.`);
-        }
+        // TODO: This was replaced with first-class `Resource` reference in RPC results, which can
+        // always be deserialized without guessing about string values.  In case we find a problem
+        // with that, leaving this here for now.
+        //
+        // // If this value is a URN, create a proxy wrapper around it.
+        // if (typeof value === "string" && value.startsWith("urn:pulumi:")) {
+        //     const urnParts = value.split("::");
+        //     const qualifiedType = urnParts[2];
+        //     const type = qualifiedType.split("$").pop()!;
+        //     const proxyConstructor = proxyConstructors.get(type);
+        //     if (proxyConstructor) {
+        //         const urnName = urnParts[3];
+        //         value = new proxyConstructor(urnName, {}, { urn: value });
+        //     }
+        //     log.debug(`Saw valid URN ${value} during deserialization, but no proxy constructor is registered for type ${type}.`);
+        // }
 
         try {
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
@@ -235,6 +239,10 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
  */
 export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
+/**
+ * specialResourceSig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go.
+ */
+export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
@@ -328,7 +336,11 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
 
         dependentResources.add(prop);
-        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+        const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+        return {
+            [specialSigKey]: specialResourceSig,
+            urn: urn,
+        };
     }
 
     if (ComponentResource.isInstance(prop)) {
@@ -350,7 +362,11 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
-        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+        const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+        return {
+            [specialSigKey]: specialResourceSig,
+            urn: urn,
+        };
     }
 
     if (prop instanceof Array) {
@@ -481,6 +497,19 @@ export function deserializeProperty(prop: any): any {
                         [specialSigKey]: specialSecretSig,
                         value: deserializeProperty(prop["value"]),
                     };
+                case specialResourceSig:
+                    const urn = prop["urn"];
+                    // If this value is a URN, create a proxy wrapper around it.
+                    const urnParts = urn.split("::");
+                    const qualifiedType = urnParts[2];
+                    const type = qualifiedType.split("$").pop()!;
+                    const proxyConstructor = proxyConstructors.get(type);
+                    if (proxyConstructor) {
+                        const urnName = urnParts[3];
+                        return new proxyConstructor(urnName, {}, { urn });
+                    }
+                    log.debug(`Saw valid URN ${urn} during deserialization, but no proxy constructor is registered for type ${type}.`);
+                    return urn;
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }

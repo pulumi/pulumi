@@ -370,6 +370,10 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 			}
 		case resource.Secret:
 			return "[secret]"
+		case resource.Resource:
+			return resource.Resource{
+				Urn: filterPropertyValue(t.Urn),
+			}
 		case resource.Computed:
 			return resource.Computed{
 				Element: filterPropertyValue(t.Element),
