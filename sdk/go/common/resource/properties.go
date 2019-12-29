@@ -96,6 +96,10 @@ type Secret struct {
 	Element PropertyValue
 }
 
+type Resource struct {
+	Urn PropertyValue
+}
+
 type ReqError struct {
 	K PropertyKey
 }
@@ -189,6 +193,7 @@ func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v}
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
 func NewSecretProperty(v *Secret) PropertyValue        { return PropertyValue{v} }
+func NewResourceProperty(v Resource) PropertyValue     { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewComputedProperty(Computed{Element: v})
@@ -200,6 +205,10 @@ func MakeOutput(v PropertyValue) PropertyValue {
 
 func MakeSecret(v PropertyValue) PropertyValue {
 	return NewSecretProperty(&Secret{Element: v})
+}
+
+func MakeResource(v PropertyValue) PropertyValue {
+	return NewResourceProperty(Resource{Urn: v})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -255,6 +264,8 @@ func NewPropertyValueRepl(v interface{},
 		return NewOutputProperty(t)
 	case *Secret:
 		return NewSecretProperty(t)
+	case Resource:
+		return NewResourceProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -382,6 +393,9 @@ func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
 // SecretValue fetches the underlying secret value (panicking if it isn't a secret).
 func (v PropertyValue) SecretValue() *Secret { return v.V.(*Secret) }
 
+// ResourceValue fetches the underlying resource value (panicking if it isn't a resource).
+func (v PropertyValue) ResourceValue() Resource { return v.V.(Resource) }
+
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
@@ -447,6 +461,12 @@ func (v PropertyValue) IsSecret() bool {
 	return is
 }
 
+// IsResource returns true if the underlying value is a resource value.
+func (v PropertyValue) IsResource() bool {
+	_, is := v.V.(Resource)
+	return is
+}
+
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -471,6 +491,8 @@ func (v PropertyValue) TypeString() string {
 		return "output<" + v.OutputValue().Element.TypeString() + ">"
 	} else if v.IsSecret() {
 		return "secret<" + v.SecretValue().Element.TypeString() + ">"
+	} else if v.IsResource() {
+		return "resource"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -514,6 +536,8 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.OutputValue()
 	} else if v.IsSecret() {
 		return v.SecretValue()
+	} else if v.IsResource() {
+		return v.ResourceValue()
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
@@ -549,6 +573,9 @@ func HasSig(obj PropertyMap, match string) bool {
 
 // SecretSig is the unique secret signature.
 const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
+
+// ResourceSig is the unique resource signature.
+const ResourceSig = "5cf8f73096256a8f31e491e813e4eb8e"
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.
