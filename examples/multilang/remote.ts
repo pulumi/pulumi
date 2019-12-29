@@ -1,56 +1,49 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as vm from "vm";
+import * as cp from "child_process";
 
 // This file would move into the core SDK.
 
 //tslint:disable
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+const runtimeServiceProto = require("@pulumi/pulumi/proto/runtime_grpc_pb.js");
+const runtimeProto = require("@pulumi/pulumi/proto/runtime_pb.js");
+// TODO: Apparently grpc can't sxs - so we must pick up the version that matches what the service
+// above will use, which when linking will be it's local `node_modules` version.
+const grpc = require("@pulumi/pulumi/node_modules/grpc")
 
-// Simulates going through a full RPC call to another process: (1) serializing Inputs down to a
-// protobuf (2) passing into a separate VM (3) deserializing inside the VM (4) constructing the
-// resource inside the VM (5) serializing properties of the resource inside the VM (6)
-// asynchronously returning this result from the VM (7) deserializing the returned properties and
-// (8) returning these asynchronously to the caller.  The result is a flat JSON object representing
-// the resources properties, which can be used to populate `Ouput`-typed properties on a proxy
-// `Resource` object.
+function spawnServerVM() {
+    const subprocess = cp.fork("./vm");
+    // Ensure we can exit the current process without waiting on the VM server process to exit.
+    subprocess.disconnect(); // detach the IPC connection
+    subprocess.unref(); // do not track subprocess on our event loop
+}
+
+spawnServerVM()
+
 export async function construct(libraryPath: string, resource: string, name: string, args: any, opts?: any): Promise<any> {
+    // TODO: Replace this with a proper wait on the server having launched (or retry).
+    await new Promise(r => setTimeout(r, 1000));
     const serializedArgs = await pulumi.runtime.serializeProperties("construct-args", args);
     const argsStruct = gstruct.Struct.fromJavaScript(serializedArgs);
-
     const serializedOpts = await pulumi.runtime.serializeProperties("construct-opts", opts);
     const optsStruct = gstruct.Struct.fromJavaScript(serializedOpts);
+    const outsStruct = await new Promise<any>((resolve, reject) => {
+        const client = new runtimeServiceProto.RuntimeClient('0.0.0.0:50051', grpc.credentials.createInsecure());
+        const constructRequest = new runtimeProto.ConstructRequest();
+        constructRequest.setLibrarypath(libraryPath);
+        constructRequest.setResource(resource);
+        constructRequest.setName(name);
+        constructRequest.setArgs(argsStruct);
+        constructRequest.setOpts(optsStruct);
+        client.construct(constructRequest, (err: Error, resp: any) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(resp.getOuts());
+            }
+        });
+    });
 
-    let doneResolver: (value?: any) => void;
-    let doneRejecter: (reason?: any) => void;
-    const donePromise = new Promise<any>((resolve, reject) => { doneResolver = resolve; doneRejecter = reject})
-
-    const sandbox = { 
-        require: require, 
-        console: console,
-        _libraryPath: libraryPath, 
-        _argsStruct: argsStruct, 
-        _optsStruct: optsStruct,
-        _res: resource, 
-        _name: name,
-        _doneResolver: doneResolver!,
-        _doneRejecter: doneRejecter!,
-    };
-    const context = vm.createContext(sandbox);
-    vm.runInContext(`
-(function() {
-    var pulumi = require("@pulumi/pulumi");
-    var gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-    var library = require(_libraryPath)
-    var args = pulumi.runtime.deserializeProperties(_argsStruct);
-    var opts = pulumi.runtime.deserializeProperties(_optsStruct);
-    const res = new (library[_res])(_name, args, opts);
-    return pulumi.runtime.serializeProperties("inner-construct", res).then(resolved => {
-        return gstruct.Struct.fromJavaScript(resolved);
-    }).then(_doneResolver, _doneRejecter);
-})()
-`, context);
-
-    const res = await donePromise;
-    const outs = await pulumi.runtime.deserializeProperties(res);
+    const outs = await pulumi.runtime.deserializeProperties(outsStruct);
     return outs;
 }
