@@ -36,7 +36,6 @@ export interface MyComponentArgs {
     input1: pulumi.Input<number>;
 }
 
-
 export class MyComponent extends pulumi.ComponentResource {
     public myid!: pulumi.Output<string>;
     public output1!: pulumi.Output<number>;
@@ -51,7 +50,7 @@ export class MyComponent extends pulumi.ComponentResource {
         //    proxy from that URN.
         if (!opts.urn) {
             // TODO: Serialize `opts` to the remote construct
-            const p = remote.construct("./mycomponent", "MyComponent", name, args /*,  opts */);
+            const p = remote.construct("./mycomponent", "MyComponent", name, args, opts);
             const urn = p.then(r => <string>r.urn);
             opts = pulumi.mergeOptions(opts, { urn });
         }

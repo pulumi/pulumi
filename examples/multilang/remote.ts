@@ -13,9 +13,12 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // (8) returning these asynchronously to the caller.  The result is a flat JSON object representing
 // the resources properties, which can be used to populate `Ouput`-typed properties on a proxy
 // `Resource` object.
-export async function construct(libraryPath: string, resource: string, name: string, args: any): Promise<any> {
-    const resolved = await pulumi.runtime.serializeProperties("construct", args);
-    const outputsObj = gstruct.Struct.fromJavaScript(resolved);
+export async function construct(libraryPath: string, resource: string, name: string, args: any, opts?: any): Promise<any> {
+    const serializedArgs = await pulumi.runtime.serializeProperties("construct-args", args);
+    const argsStruct = gstruct.Struct.fromJavaScript(serializedArgs);
+
+    const serializedOpts = await pulumi.runtime.serializeProperties("construct-opts", opts);
+    const optsStruct = gstruct.Struct.fromJavaScript(serializedOpts);
 
     let doneResolver: (value?: any) => void;
     let doneRejecter: (reason?: any) => void;
@@ -25,7 +28,8 @@ export async function construct(libraryPath: string, resource: string, name: str
         require: require, 
         console: console,
         _libraryPath: libraryPath, 
-        _argsStruct: outputsObj, 
+        _argsStruct: argsStruct, 
+        _optsStruct: optsStruct,
         _res: resource, 
         _name: name,
         _doneResolver: doneResolver!,
@@ -38,9 +42,9 @@ export async function construct(libraryPath: string, resource: string, name: str
     var gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
     var library = require(_libraryPath)
     var args = pulumi.runtime.deserializeProperties(_argsStruct);
-    const res = new (library[_res])(_name, args);
+    var opts = pulumi.runtime.deserializeProperties(_optsStruct);
+    const res = new (library[_res])(_name, args, opts);
     return pulumi.runtime.serializeProperties("inner-construct", res).then(resolved => {
-        //console.log(resolved);
         return gstruct.Struct.fromJavaScript(resolved);
     }).then(_doneResolver, _doneRejecter);
 })()

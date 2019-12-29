@@ -9,8 +9,8 @@ pulumi.runtime.registerProxyConstructor("aws:ec2/securityGroup:SecurityGroup", a
 // This is code the user would write to use `mycomponent` from the guest language.
 
 const res = new mycomponent.MyComponent("n", {
-    input1: Promise.resolve(24),
-});
+    input1: Promise.resolve(42),
+}, { ignoreChanges: ["input1"] /*, providers: { "aws": awsProvider } */ });
 
 export const id2 = res.myid;
 export const output1 = res.output1;
