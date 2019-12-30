@@ -50,7 +50,7 @@ export class MyComponent extends pulumi.ComponentResource {
         //    proxy from that URN.
         if (!opts.urn) {
             // TODO: Serialize `opts` to the remote construct
-            const p = remote.construct("./mycomponent", "MyComponent", name, args, opts);
+            const p = remote.construct(require.resolve(".."), "MyComponent", name, args, opts);
             const urn = p.then(r => <string>r.urn);
             opts = pulumi.mergeOptions(opts, { urn });
         }
@@ -81,7 +81,7 @@ export class MyInnerComponent extends pulumi.ComponentResource {
         //    proxy from that URN.
         if (!opts.urn) {
             // TODO: Serialize `opts` to the remote construct
-            const p = remote.construct("./mycomponent", "MyInnerComponent", name, args /*,  opts */);
+            const p = remote.construct(require.resolve(".."), "MyInnerComponent", name, args /*,  opts */);
             const urn = p.then(r => <string>r.urn);
             opts = pulumi.mergeOptions(opts, { urn });
         }

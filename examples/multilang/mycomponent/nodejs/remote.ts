@@ -12,7 +12,7 @@ const runtimeProto = require("@pulumi/pulumi/proto/runtime_pb.js");
 const grpc = require("@pulumi/pulumi/node_modules/grpc")
 
 function spawnServerVM() {
-    const subprocess = cp.fork("./vm");
+    const subprocess = cp.fork(require.resolve("../server"));
     // Ensure we can exit the current process without waiting on the VM server process to exit.
     subprocess.disconnect(); // detach the IPC connection
     subprocess.unref(); // do not track subprocess on our event loop
