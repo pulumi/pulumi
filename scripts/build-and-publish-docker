@@ -52,7 +52,7 @@ docker run -e RUN_CONTAINER_TESTS=true \
 	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v -test.run TestPulumiDockerImage"
 
 echo "Running container entrypoint tests..."
-RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage
+RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage -test.v
 
 echo "Publishing containers..."
 for container in pulumi actions; do
