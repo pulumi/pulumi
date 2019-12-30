@@ -39,7 +39,7 @@ for container in pulumi actions; do
     docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" \
         -t "pulumi/${container}:${CLI_VERSION}" \
         -t "pulumi/${container}:latest" \
-        "${SCRIPT_DIR}/../dist/docker"
+        "${SCRIPT_DIR}/../dist/${container}"
 done
 
 echo "Running container runtime tests..."
@@ -50,6 +50,9 @@ docker run -e RUN_CONTAINER_TESTS=true \
 	--entrypoint /bin/bash \
 	pulumi/pulumi:latest \
 	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v -test.run TestPulumiDockerImage"
+
+echo "Running container entrypoint tests..."
+RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage
 
 echo "Publishing containers..."
 for container in pulumi actions; do
