@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -87,7 +86,7 @@ func newStackInitCmd() *cobra.Command {
 						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 				}
 
-				name, nameErr := promptForValue(false, "stack name", "dev", false, workspace.ValidateStackName, opts)
+				name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
 				if nameErr != nil {
 					return nameErr
 				}
@@ -98,7 +97,7 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			if err := workspace.ValidateStackName(stackName); err != nil {
+			if err := b.ValidateStackName(stackName); err != nil {
 				return err
 			}
 
