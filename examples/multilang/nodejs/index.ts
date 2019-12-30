@@ -1,6 +1,6 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import * as mycomponent from "./mycomponent/nodejs";
+import * as mycomponent from "../mycomponent/nodejs";
 
 // This should go inside `@pulumi/aws`.
 pulumi.runtime.registerProxyConstructor("aws:ec2/securityGroup:SecurityGroup", aws.ec2.SecurityGroup);

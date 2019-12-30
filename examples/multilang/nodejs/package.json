@@ -1,5 +1,5 @@
 {
-    "name": "multiland",
+    "name": "multilang",
     "devDependencies": {
         "@types/node": "^8.0.0"
     },
