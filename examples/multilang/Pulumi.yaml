@@ -1,0 +1,3 @@
+name: multilang-python
+runtime: python
+description: A small example that uses our multilang support.
