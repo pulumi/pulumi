@@ -15,10 +15,10 @@ namespace Pulumi.Tests
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> ExplicitName { get; }
+            public Output<string> ExplicitName { get; set; }
 
             [Output]
-            public Output<string> ImplicitName { get; }
+            public Output<string> ImplicitName { get; set; }
 
             public ValidStack()
             {
@@ -64,13 +64,13 @@ namespace Pulumi.Tests
             var result = await Deployment.TestAsync<NullOutputStack>();
             Assert.True(result.HasErrors);
             Assert.Single(result.LoggedErrors);
-            Assert.Contains("foo", result.LoggedErrors.First());
+            Assert.Contains("Foo", result.LoggedErrors.First());
         }
 
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]
-            public string Foo { get; }
+            public string Foo { get; set; }
 
             public InvalidOutputTypeStack()
             {
@@ -84,7 +84,7 @@ namespace Pulumi.Tests
             var result = await Deployment.TestAsync<InvalidOutputTypeStack>();
             Assert.True(result.HasErrors);
             Assert.Single(result.LoggedErrors);
-            Assert.Contains("foo", result.LoggedErrors.First());
+            Assert.Contains("Foo", result.LoggedErrors.First());
         }
     }
 }
