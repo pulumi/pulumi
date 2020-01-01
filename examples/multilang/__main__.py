@@ -15,4 +15,4 @@ import pulumi
 
 from mycomponent.python import MyComponent, MyComponentArgs
 
-MyComponent("n", MyComponentArgs(input1=42))
+MyComponent("n", input1=42)

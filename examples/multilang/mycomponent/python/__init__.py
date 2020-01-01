@@ -29,21 +29,23 @@ class MyComponent(ComponentResource):
     output1: Output[int]
     # innerComponent: MyInnerComponent
     # nodeSecurityGroup: SecurityGroup
-    def __init__(self, name: str, args: MyComponentArgs, opts: Optional[ResourceOptions] = None) -> None:
-        if opts is not None and opts.urn is not None:
+    def __init__(__self__, resource_name: str, opts: Optional[ResourceOptions]=None, input1=None) -> None:
+        __props__ = dict()
+        __props__["input1"] = input1
+        if opts is None or opts.urn is None:
             async def do_construct():
-                r = await construct("..", "MyComponent", name, args, opts)
+                r = await construct("..", "MyComponent", resource_name, __props__, opts)
                 return r["urn"]
             urn = asyncio.ensure_future(do_construct())
             opts = ResourceOptions.merge(opts, ResourceOptions(urn=urn))
         props = { 
-            "input1": args.input1,
+            "input1": input1,
             "myid": None,
             "output1": None,
             "innerComponent": None,
             "nodeSecurityGroup": None,
         }
-        super().__init__("my:mod:MyComponent", name, props, opts)
+        super().__init__("my:mod:MyComponent", resource_name, props, opts)
             
 
 

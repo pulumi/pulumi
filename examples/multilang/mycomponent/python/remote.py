@@ -12,20 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input
+from pulumi import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input, Inputs, Resource
 from pulumi.runtime.rpc import deserialize_properties, serialize_properties
 from typing import Callable, Any, Dict, List, Optional
+
+# def resource_options_to_dict(opts: ResourceOptions) -> Inputs:
+#     d = vars(opts)
+#     d.pop("merge", None)
+#     return d
 
 async def construct(
         libraryPath: str, 
         resource: str, 
         name: str, 
         args: Any, 
-        opts: Any) -> Any:
-    property_dependencies_resources: Dict[str, List['Resource']] = {}
+        opts: ResourceOptions) -> Any:
+    property_dependencies_resources: Dict[str, List[Resource]] = {}
     args_struct = await serialize_properties(args, property_dependencies_resources)
-    opts_struct = await serialize_properties(opts, property_dependencies_resources)
+    # TODO - support opts serialization
+    # opts_struct = await serialize_properties(resource_options_to_dict(opts), property_dependencies_resources)
     # TODO - actually implement
     outs = deserialize_properties(args_struct)
+    outs = { **outs, 'urn': 'a:b:c' }
     return outs
     
