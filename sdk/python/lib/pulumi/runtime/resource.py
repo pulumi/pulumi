@@ -356,7 +356,8 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn_exn(exn)
-            resolve_id(None, False, exn)
+            if custom:
+                resolve_id(None, False, exn)
             raise
 
         log.debug(f"resource read successful: ty={ty}, urn={resp['urn']}")
