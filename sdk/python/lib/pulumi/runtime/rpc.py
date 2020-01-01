@@ -44,6 +44,9 @@ _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
 _special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
 """special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
 
+_special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
+"""special_resource_sig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go"""
+
 _INT_OR_FLOAT = six.integer_types + (float,)
 
 def isLegalProtobufValue(value: Any) -> bool:
@@ -100,7 +103,11 @@ async def serialize_property(value: 'Input[Any]',
 
     if known_types.is_custom_resource(value):
         deps.append(value)
-        return await serialize_property(value.id, deps, input_transformer)
+        urn = await serialize_property(value.urn, deps, input_transformer)
+        return {
+            _special_sig_key: _special_resource_sig,
+            urn: urn,
+        }
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would
@@ -224,6 +231,17 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
                 _special_sig_key: _special_secret_sig,
                 "value": deserialize_property(props_struct["value"])
             }
+        if props_struct[_special_sig_key] == _special_resource_sig:
+            urn = props_struct["urn"]
+            urn_parts = urn.split("::")
+            qualified_type = urn_parts[2]
+            typ = qualified_type.split("$")[-1]
+            proxy_constructor = PROXY_CONSTRUCTORS.get(typ, None)
+            if proxy_constructor is not None:
+                urn_name = urn_parts[3]
+                return proxy_constructor(urn_name, {}, { 'urn': urn })
+            print(f"Saw valid URN {urn} during deserialization, but no proxy constructor is registered for type {typ}.")
+            return urn
 
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 
@@ -409,6 +427,10 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
 
+    await resolve_properties(res, resolvers, all_properties)
+
+async def resolve_properties(res: 'Resource', resolvers: Dict[str, Resolver], all_properties:Dict[str, Any]):
+
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
         if key in ["id", "urn"]:
@@ -472,3 +494,11 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, exn)
+
+PROXY_CONSTRUCTORS: Dict[str, Any] = dict()
+
+def register_proxy_constructor(typ: str, constructor):
+    existing = PROXY_CONSTRUCTORS.get(typ, None)
+    if existing is not None:
+        raise ValueError(f"Cannot re-register type {typ} as a proxy.  Previous registration was {existing}, new registration was {constructor}.")
+    PROXY_CONSTRUCTORS[typ] = constructor

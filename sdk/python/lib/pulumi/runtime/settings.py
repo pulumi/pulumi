@@ -30,7 +30,9 @@ if TYPE_CHECKING:
 
 class Settings:
     monitor: Optional[resource_pb2_grpc.ResourceMonitorStub]
+    monitor_addr: Optional[str]
     engine: Optional[engine_pb2_grpc.EngineStub]
+    engine_addr: Optional[str]
     project: Optional[str]
     stack: Optional[str]
     parallel: Optional[str]
@@ -57,6 +59,8 @@ class Settings:
         self.dry_run = dry_run
         self.test_mode_enabled = test_mode_enabled
         self.legacy_apply_enabled = legacy_apply_enabled
+        self.monitor_addr = monitor
+        self.engine_addr = engine
 
         if self.test_mode_enabled is None:
             self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"

@@ -260,7 +260,6 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
         resolve_urn(resp.urn)
         resolve_id(resolved_id, True, None)  # Read IDs are always known.
         await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, resolvers)
-        # await rpc.resolve_properties(res, resp["outputs"], resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
@@ -332,60 +331,8 @@ def get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inpu
             # dependency. TODO: This this actually true for "get"?
             resolved_urn = await rpc.serialize_property(urn, [])
             log.debug(f"get prepared: ty={ty}, name={name}, urn={urn}")
-
-
-            # const result: StackResourceResult = await invoke("pulumi:pulumi:readStackResource", {
-            #     urn: resolvedURN,
-            # }, { async: true });
-
-            # // Now resolve everything: the URN, the ID (if the resource is a `CustomResource`), and the
-            # // output properties.
-            # resop.resolveURN(resolvedURN);
-            # if (custom) {
-            #     resop.resolveID!(result.outputs.id, result.outputs.id !== undefined);
-            # }
-            # resolveProperties(res, resop.resolvers, t, name, result.outputs);
-
             resp = await invoke("pulumi:pulumi:readStackResource", { "urn": resolved_urn })
-            
-
-
-            # req = resource_pb2.ReadResourceRequest(
-            #     type=ty,
-            #     name=name,
-            #     id=resolved_id,
-            #     parent=resolver.parent_urn,
-            #     provider=resolver.provider_ref,
-            #     properties=resolver.serialized_props,
-            #     dependencies=resolver.dependencies,
-            #     version=opts.version or "",
-            #     acceptSecrets=True,
-            #     additionalSecretOutputs=additional_secret_outputs,
-            # )
-
-            # from ..resource import create_urn
-            # mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
-
-            # def do_rpc_call():
-            #     if monitor is None:
-            #         # If no monitor is available, we'll need to fake up a response, for testing.
-            #         return RegisterResponse(mock_urn, None, resolver.serialized_props)
-
-            #     # If there is a monitor available, make the true RPC request to the engine.
-            #     try:
-            #         return monitor.ReadResource(req)
-            #     except grpc.RpcError as exn:
-            #         # See the comment on invoke for the justification for disabling
-            #         # this warning
-            #         # pylint: disable=no-member
-            #         if exn.code() == grpc.StatusCode.UNAVAILABLE:
-            #             sys.exit(0)
-
-            #         details = exn.details()
-            #     raise Exception(details)
-
-            # resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
-
+      
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
@@ -394,11 +341,11 @@ def get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inpu
             resolve_id(None, False, exn)
             raise
 
-        log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
+        log.debug(f"resource read successful: ty={ty}, urn={resp['urn']}")
         resolve_urn(resp["urn"])
         if custom:
             resolve_id(resp["outputs"]["id"], True, None)  # Get IDs are always known.
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, resolvers)
+        await rpc.resolve_properties(res, resolvers, resp["outputs"])
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
 
