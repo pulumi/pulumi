@@ -14,21 +14,34 @@
 
 import asyncio
 from pulumi import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input
+from pulumi.runtime import register_proxy_constructor
 from typing import Callable, Any, Dict, List, Optional
+from pulumi_aws import ec2
 
 from .remote import construct
 
-class MyComponentArgs:
-    input1: Input[int]
-    def __init__(self,
-                 input1: Input[int]) -> None:
-        self.input1 = input1
+class MyInnerComponent(ComponentResource):
+    data: Output[str]
+    def __init__(__self__, resource_name: str, opts: Optional[ResourceOptions]=None, xxx=None) -> None:
+        __props__ = dict()
+        if opts is None or opts.urn is None:
+            async def do_construct():
+                r = await construct("..", "MyInnerComponent", resource_name, __props__, opts)
+                return r["urn"]
+            urn = asyncio.ensure_future(do_construct())
+            opts = ResourceOptions.merge(opts, ResourceOptions(urn=urn))
+        props = { 
+            "data": None,
+        }
+        super().__init__("my:mod:MyInnerComponent", resource_name, props, opts)
+
+register_proxy_constructor("my:mod:MyInnerComponent", lambda name, opts: MyInnerComponent(name, ResourceOptions(**opts)))
 
 class MyComponent(ComponentResource):
     myid: Output[str]
     output1: Output[int]
-    # innerComponent: MyInnerComponent
-    # nodeSecurityGroup: SecurityGroup
+    innerComponent: MyInnerComponent
+    nodeSecurityGroup: ec2.SecurityGroup
     def __init__(__self__, resource_name: str, opts: Optional[ResourceOptions]=None, input1=None) -> None:
         __props__ = dict()
         __props__["input1"] = input1
@@ -46,7 +59,6 @@ class MyComponent(ComponentResource):
             "nodeSecurityGroup": None,
         }
         super().__init__("my:mod:MyComponent", resource_name, props, opts)
-            
 
+register_proxy_constructor("my:mod:MyComponent", MyComponent)
 
-            

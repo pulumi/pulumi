@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pulumi
+from pulumi_aws import ec2
 
-from mycomponent.python import MyComponent, MyComponentArgs
+# pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup", ec2.SecurityGroup);
 
-MyComponent("n", input1=42)
+from mycomponent.python import MyComponent
+
+res = MyComponent("n", input1=42)
+
+pulumi.export("id2", res.myid)
+pulumi.export("output1", res.output1)
+pulumi.export("innerComponent", res.innerComponent.data)
+pulumi.export("nodeSecurityGroupId", res.nodeSecurityGroup)

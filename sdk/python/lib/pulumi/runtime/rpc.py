@@ -239,7 +239,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             proxy_constructor = PROXY_CONSTRUCTORS.get(typ, None)
             if proxy_constructor is not None:
                 urn_name = urn_parts[3]
-                return proxy_constructor(urn_name, {}, { 'urn': urn })
+                return proxy_constructor(urn_name, { 'urn': urn })
             print(f"Saw valid URN {urn} during deserialization, but no proxy constructor is registered for type {typ}.")
             return urn
 
