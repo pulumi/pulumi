@@ -1,0 +1,14 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+mypy = "*"
+
+[packages]
+pulumi = {editable = true,path = "./../../sdk/python/env/src"}
+pulumi-aws = "*"
+
+[requires]
+python_version = "3.7"

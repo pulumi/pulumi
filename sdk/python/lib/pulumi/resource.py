@@ -18,7 +18,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING
 import copy
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs, read_resource
+from .runtime.resource import register_resource, register_resource_outputs, read_resource, get_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -357,6 +357,11 @@ class ResourceOptions:
     An optional existing ID to load, rather than create.
     """
 
+    urn: Optional['Input[str]']
+    """
+    An optional existing URN to load, rather than create.
+    """
+
     import_: Optional[str]
     """
     When provided with a resource ID, import indicates that this resource's provider should import
@@ -378,6 +383,7 @@ class ResourceOptions:
                  aliases: Optional[List['Input[Union[str, Alias]]']] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
                  id: Optional['Input[str]'] = None,
+                 urn: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
                  transformations: Optional[List[ResourceTransformation]] = None) -> None:
@@ -423,6 +429,7 @@ class ResourceOptions:
         self.additional_secret_outputs = additional_secret_outputs
         self.custom_timeouts = custom_timeouts
         self.id = id
+        self.urn = urn
         self.import_ = import_
         self.transformations = transformations
 
@@ -494,6 +501,7 @@ class ResourceOptions:
         dest.version = dest.version if source.version is None else source.version
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
+        dest.urn = dest.urn if source.urn is None else source.urn
         dest.import_ = dest.import_ if source.import_ is None else source.import_
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
@@ -689,7 +697,12 @@ class Resource:
                 self._aliases.append(collapse_alias_to_urn(
                     alias, name, t, opts.parent))
 
-        if opts.id is not None:
+        if opts.urn is not None:
+            # Assume that the resource has already been registered by another piece of code, and
+            # populate this resource object with the state of that resource as retrieved from the
+            # engine.
+            get_resource(self, t, name, custom, props, opts)
+        elif opts.id is not None:
             # If this resource already exists, read its state rather than registering it anew.
             if not custom:
                 raise Exception(

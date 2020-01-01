@@ -19,3 +19,6 @@ coverage.cov
 
 # By default, we don't check in yarn.lock files
 **/yarn.lock
+
+# Turning on MyPy in VSCode creates this workspace local folder
+.mypy_cache

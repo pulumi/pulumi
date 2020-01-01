@@ -242,10 +242,17 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 
 func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	urn, ok := inputs["urn"]
-	contract.Assert(ok)
-	contract.Assert(urn.IsString())
+	if !ok {
+		return nil, fmt.Errorf("readStackResource missing required 'urn' argument")
+	}
+	if !urn.IsString() {
+		return nil, fmt.Errorf("readStackResource 'urn' argument expected string got %s", urn.TypeString())
+	}
 
 	state := p.plan.current[resource.URN(urn.StringValue())]
+	if state == nil {
+		return nil, fmt.Errorf("resource '%s' not yet registered in current stack state", urn.StringValue())
+	}
 
 	return resource.PropertyMap{
 		"urn":     resource.NewStringProperty(string(state.URN)),
