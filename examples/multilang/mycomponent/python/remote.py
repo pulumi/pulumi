@@ -70,4 +70,3 @@ async def construct(
     resp = runtime_stub.Construct(req)
     outs = deserialize_properties(resp.outs)
     return outs
-    

@@ -61,4 +61,3 @@ class MyComponent(ComponentResource):
         super().__init__("my:mod:MyComponent", resource_name, props, opts)
 
 register_proxy_constructor("my:mod:MyComponent", MyComponent)
-

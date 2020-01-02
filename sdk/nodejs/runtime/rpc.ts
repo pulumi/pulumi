@@ -179,23 +179,6 @@ export function resolveProperties(
         const isSecret = isRpcSecret(value);
         value = unwrapRpcSecret(value);
 
-        // TODO: This was replaced with first-class `Resource` reference in RPC results, which can
-        // always be deserialized without guessing about string values.  In case we find a problem
-        // with that, leaving this here for now.
-        //
-        // // If this value is a URN, create a proxy wrapper around it.
-        // if (typeof value === "string" && value.startsWith("urn:pulumi:")) {
-        //     const urnParts = value.split("::");
-        //     const qualifiedType = urnParts[2];
-        //     const type = qualifiedType.split("$").pop()!;
-        //     const proxyConstructor = proxyConstructors.get(type);
-        //     if (proxyConstructor) {
-        //         const urnName = urnParts[3];
-        //         value = new proxyConstructor(urnName, {}, { urn: value });
-        //     }
-        //     log.debug(`Saw valid URN ${value} during deserialization, but no proxy constructor is registered for type ${type}.`);
-        // }
-
         try {
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
