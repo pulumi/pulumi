@@ -27,7 +27,7 @@ import (
 
 // TestPulumiDockerImage simulates building and running Pulumi programs on the pulumi/pulumi Docker image.
 //
-// NOTE: this test is intended to be run inside the aforementioned container, unlike the actions test below.
+// NOTE: This test is intended to be run inside the aforementioned container, unlike the actions test below.
 func TestPulumiDockerImage(t *testing.T) {
 	const stackOwner = "moolumi"
 
@@ -71,6 +71,9 @@ func TestPulumiDockerImage(t *testing.T) {
 }
 
 // TestPulumiActionsImage simulates building and running Pulumi programs on the pulumi/actions image.
+//
+// The main codepath being tested is the entrypoint script of the container, which contains logic for
+// downloading dependencies, honoring various environment variables, etc.
 func TestPulumiActionsImage(t *testing.T) {
 	const pulumiContainerToTest = "pulumi/actions:latest"
 
