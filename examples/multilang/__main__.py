@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pulumi
+from pulumi import ResourceOptions
 from pulumi_aws import ec2
 
-# pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup", ec2.SecurityGroup);
+# TODO - this should go inside `pulumi_aws`.
+pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup", lambda name, opts: ec2.SecurityGroup(name, ResourceOptions(**opts)));
+
+######
+# This is code the user would write to use `mycomponenbt` from the guest language.
 
 from mycomponent.python import MyComponent
 
@@ -23,4 +28,4 @@ res = MyComponent("n", input1=42)
 pulumi.export("id2", res.myid)
 pulumi.export("output1", res.output1)
 pulumi.export("innerComponent", res.innerComponent.data)
-pulumi.export("nodeSecurityGroupId", res.nodeSecurityGroup)
+pulumi.export("nodeSecurityGroupId", res.nodeSecurityGroup.id)
