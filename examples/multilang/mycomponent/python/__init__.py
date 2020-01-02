@@ -13,38 +13,12 @@
 # limitations under the License.
 
 import asyncio
+import os
 from pulumi import ComponentResource, Output,  ResourceOptions, Input, Inputs
+from pulumi.remote import ProxyComponentResource
 from pulumi.runtime import register_proxy_constructor
 from typing import Callable, Any, Dict, List, Optional
 from pulumi_aws import ec2
-
-from .remote import construct
-
-class ProxyComponentResource(ComponentResource):
-    """
-    Abstract base class for proxies around component resources.
-
-    TODO: This should move into the core Python SDK.
-    """
-    def __init__(__self__,
-                 t: str,
-                 name: str,
-                 library_path: str,
-                 library_name: str,
-                 inputs: Inputs,
-                 outputs: Dict[str, None],
-                 opts: Optional[ResourceOptions]=None) -> None:
-        if opts is None or opts.urn is None:
-            async def do_construct():
-                r = await construct(library_path, library_name, name, inputs, opts)
-                return r["urn"]
-            urn = asyncio.ensure_future(do_construct())
-            opts = ResourceOptions.merge(opts, ResourceOptions(urn=urn))
-        props = {
-            **inputs,
-            **outputs,
-        }
-        super().__init__(t, name, props, opts)
 
 class MyInnerComponent(ProxyComponentResource):
     data: Output[str]
@@ -52,7 +26,7 @@ class MyInnerComponent(ProxyComponentResource):
         super().__init__(
             "my:mod:MyInnerComponent",
             resource_name,
-            "..",
+            os.path.abspath(os.path.join(os.path.dirname(__file__),"..")),
             "MyInnerComponent",
             {},
             {
@@ -71,7 +45,7 @@ class MyComponent(ProxyComponentResource):
         super().__init__(
             "my:mod:MyComponent",
             resource_name,
-            "..",
+            os.path.abspath(os.path.join(os.path.dirname(__file__),"..")),
             "MyComponent",
             {
                 "input1": input1
