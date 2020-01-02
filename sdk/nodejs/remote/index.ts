@@ -14,6 +14,7 @@
 
 import * as cp from "child_process";
 import * as grpc from "grpc";
+import * as pulumi from "../";
 import * as runtime from "../runtime";
 
 //tslint:disable
@@ -21,18 +22,49 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const runtimeServiceProto = require("../proto/runtime_grpc_pb.js");
 const runtimeProto = require("../proto/runtime_pb.js");
 
+/**
+ * ProxyComponentResource is the abstract base class for proxies around component resources.
+ *
+ * TODO: This should move into the core NodeJS SDK.
+ */
+export abstract class ProxyComponentResource extends pulumi.ComponentResource {
+    constructor(
+        t: string,
+        name: string,
+        libraryPath: string,
+        libraryName: string,
+        inputs: pulumi.Inputs,
+        outputs: Record<string, undefined>,
+        opts: pulumi.ComponentResourceOptions = {}) {
+            // There are two cases:
+            // 1. A URN was provided - in this case we are just going to look up the existing resource
+            //    and populate this proxy from that URN.
+            // 2. A URN was not provided - in this case we are going to remotely construct the resource,
+            //    get the URN from the newly constructed resource, then look it up and populate this
+            //    proxy from that URN.
+            if (!opts.urn) {
+                const p = getRemoteServer().construct(libraryPath, libraryName, name, inputs, opts);
+                const urn = p.then(r => <string>r.urn);
+                opts = pulumi.mergeOptions(opts, { urn });
+            }
+            const props = {
+                ...inputs,
+                ...outputs,
+            };
+            super(t, name, props, opts);
+        }
+}
+
 let remoteServer: RemoteServer | undefined;
-export function getRemoteServer(): RemoteServer {
+function getRemoteServer(): RemoteServer {
     if (!remoteServer) {
         remoteServer = new RemoteServer();
     }
     return remoteServer;
 }
 
-export class RemoteServer {
-    /* internal */
+class RemoteServer {
     private client: Promise<any>;
-    /* internal */
     constructor() {
         const subprocess = cp.fork(require.resolve("./server"));
         // Ensure we can exit the current process without waiting on the VM server process to exit.
