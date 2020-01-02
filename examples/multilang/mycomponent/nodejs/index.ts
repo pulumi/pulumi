@@ -2,7 +2,9 @@
 
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import * as remote from "./remote";
+import * as remote from "@pulumi/pulumi/remote";
+
+const remoteServer = remote.getRemoteServer();
 
 /**
  * ProxyComponentResource is the abstract base class for proxies around component resources.
@@ -25,7 +27,7 @@ abstract class ProxyComponentResource extends pulumi.ComponentResource {
             //    get the URN from the newly constructed resource, then look it up and populate this
             //    proxy from that URN.
             if (!opts.urn) {
-                const p = remote.construct(require.resolve(libraryPath), libraryName, name, inputs, opts);
+                const p = remoteServer.construct(require.resolve(libraryPath), libraryName, name, inputs, opts);
                 const urn = p.then(r => <string>r.urn);
                 opts = pulumi.mergeOptions(opts, { urn });
             }

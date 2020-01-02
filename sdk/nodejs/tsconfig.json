@@ -35,6 +35,9 @@
 
         "log/index.ts",
 
+        "remote/index.ts",
+        "remote/server/index.ts",
+
         "runtime/index.ts",
 
         "runtime/closure/codePaths.ts",
