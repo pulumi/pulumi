@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input, Inputs, Resource
-from pulumi.runtime.proto import runtime_pb2, runtime_pb2_grpc
-from pulumi.runtime.rpc import deserialize_properties, serialize_properties
-from pulumi.runtime.settings import SETTINGS
+from .. import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input, Inputs, Resource
+from ..runtime.proto import runtime_pb2, runtime_pb2_grpc
+from ..runtime.rpc import deserialize_properties, serialize_properties
+from ..runtime.settings import SETTINGS
 
+import asyncio
 import grpc
 import os
 from subprocess import Popen
@@ -24,8 +25,8 @@ import time
 from typing import Callable, Any, Dict, List, Optional
 
 def spawnServerVM():
-    server_path = os.path.join(os.path.dirname(__file__), '..', "server")
-    p = Popen(["node", server_path], env={
+    print("spawning server VM")
+    p = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], env={
         **os.environ,
         'PULUMI_NODEJS_PROJECT': SETTINGS.project,
         'PULUMI_NODEJS_STACK': SETTINGS.stack,
@@ -70,3 +71,27 @@ async def construct(
     resp = runtime_stub.Construct(req)
     outs = deserialize_properties(resp.outs)
     return outs
+
+class ProxyComponentResource(ComponentResource):
+    """
+    Abstract base class for proxies around component resources.
+    """
+    def __init__(__self__,
+                 t: str,
+                 name: str,
+                 library_path: str,
+                 library_name: str,
+                 inputs: Inputs,
+                 outputs: Dict[str, None],
+                 opts: Optional[ResourceOptions]=None) -> None:
+        if opts is None or opts.urn is None:
+            async def do_construct():
+                r = await construct(library_path, library_name, name, inputs, opts)
+                return r["urn"]
+            urn = asyncio.ensure_future(do_construct())
+            opts = ResourceOptions.merge(opts, ResourceOptions(urn=urn))
+        props = {
+            **inputs,
+            **outputs,
+        }
+        super().__init__(t, name, props, opts)
