@@ -40,8 +40,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-const defaultPolicyGroup = "default-policy-group"
-
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL   string
@@ -519,7 +517,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP POST to publish policy pack failed")
+		return errors.Wrapf(err, "Publish policy pack failed")
 	}
 
 	fmt.Printf("Published as version %d\n", resp.Version)
@@ -546,7 +544,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, resp.Version), nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP POST to signal completion of the publish operation failed")
+		return errors.Wrapf(err, "Request to signal completion of the publish operation failed")
 	}
 
 	return nil
@@ -563,7 +561,7 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyGro
 		err := pc.restCall(
 			ctx, "POST", applyPolicyPackPath(orgName, policyPackName, version), nil, req, nil)
 		if err != nil {
-			return errors.Wrapf(err, "HTTP POST to enable policy pack failed")
+			return errors.Wrapf(err, "Enable policy pack failed")
 		}
 		return nil
 	}
@@ -578,7 +576,7 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyGro
 
 	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP PATCH to enable policy pack failed")
+		return errors.Wrapf(err, "Enable policy pack failed")
 	}
 	return nil
 }
@@ -590,7 +588,7 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 
 	// If Policy Group was not specified, use the default Policy Group.
 	if policyGroup == "" {
-		policyGroup = defaultPolicyGroup
+		policyGroup = apitype.DefaultPolicyGroup
 	}
 
 	req := apitype.UpdatePolicyGroupRequest{
@@ -602,7 +600,7 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 
 	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP PATCH to disable policy pack failed")
+		return errors.Wrapf(err, "Request to disable policy pack failed")
 	}
 	return nil
 }
@@ -614,7 +612,7 @@ func (pc *Client) RemovePolicyPack(ctx context.Context, orgName string,
 	path := deletePolicyPackVersionPath(orgName, policyPackName, version)
 	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP DELETE to remove policy pack failed")
+		return errors.Wrapf(err, "Request to remove policy pack failed")
 	}
 	return nil
 }

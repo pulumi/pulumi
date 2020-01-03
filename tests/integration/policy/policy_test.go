@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
 
 package ints
 
@@ -35,9 +35,6 @@ func TestPolicy(t *testing.T) {
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 	e.RunCommand("pulumi", "policy", "publish", orgName)
-
-	// Defer the clean up of the Policy Packs.
-	// defer func() { e.DeletePolicyPack(i.StackOwner, policyPackName) }()
 
 	// Enable, Disable and then Delete the Policy Pack.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
