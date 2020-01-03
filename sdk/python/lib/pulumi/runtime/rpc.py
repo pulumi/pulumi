@@ -250,7 +250,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             proxy_constructor = PROXY_CONSTRUCTORS.get(typ, None)
             if proxy_constructor is not None:
                 urn_name = urn_parts[3]
-                return proxy_constructor(urn_name, { 'urn': urn })
+                return proxy_constructor(urn_name, {"urn": urn})
             print(f"Saw valid URN {urn} during deserialization, but no proxy constructor is registered for type {typ}.")
             return urn
 
@@ -441,9 +441,9 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
 
-    await resolve_properties(res, resolvers, all_properties)
+    await resolve_properties(resolvers, all_properties)
 
-async def resolve_properties(res: 'Resource', resolvers: Dict[str, Resolver], all_properties:Dict[str, Any]):
+async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any]):
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.

@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import os
+from subprocess import Popen
+import time
+from typing import Callable, Any, Dict, List, Optional
+import grpc
 from .. import ComponentResource, CustomResource, Output, InvokeOptions, ResourceOptions, log, Input, Inputs, Resource
 from ..runtime.proto import runtime_pb2, runtime_pb2_grpc
 from ..runtime.rpc import deserialize_properties, serialize_properties
 from ..runtime.settings import SETTINGS
 
-import asyncio
-import grpc
-import os
-from subprocess import Popen
-import time
-from typing import Callable, Any, Dict, List, Optional
-
 def spawnServer(library_path: str):
-    p = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, env={
+    Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, env={
         **os.environ,
         'PULUMI_NODEJS_PROJECT': SETTINGS.project,
         'PULUMI_NODEJS_STACK': SETTINGS.stack,
@@ -58,11 +57,11 @@ def get_server(library_path: str) -> runtime_pb2_grpc.RuntimeStub:
 #     return d
 
 async def construct(
-        libraryPath: str, 
-        resource: str, 
-        name: str, 
-        args: Any, 
-        opts: ResourceOptions) -> Any:
+        libraryPath: str,
+        resource: str,
+        name: str,
+        args: Any,
+        _opts: ResourceOptions) -> Any:
     property_dependencies_resources: Dict[str, List[Resource]] = {}
     args_struct = await serialize_properties(args, property_dependencies_resources)
     # TODO - support opts serialization
@@ -82,14 +81,14 @@ class ProxyComponentResource(ComponentResource):
     """
     Abstract base class for proxies around component resources.
     """
-    def __init__(__self__,
+    def __init__(self,
                  t: str,
                  name: str,
                  library_path: str,
                  library_name: str,
                  inputs: Inputs,
                  outputs: Dict[str, None],
-                 opts: Optional[ResourceOptions]=None) -> None:
+                 opts: Optional[ResourceOptions] = None) -> None:
         if opts is None or opts.urn is None:
             async def do_construct():
                 r = await construct(library_path, library_name, name, inputs, opts)

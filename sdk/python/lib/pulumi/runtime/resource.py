@@ -293,7 +293,6 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
             "Cannot get resource whose options are lacking a URN value")
 
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
-    monitor = settings.get_monitor()
 
     # Prepare the resource.
 
@@ -340,7 +339,7 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
     async def do_get():
         try:
             log.debug(f"preparing get: ty={ty}, name={name}, urn={urn}")
-            resolver = await prepare_resource(res, ty, custom, props, opts)
+            _ = await prepare_resource(res, ty, custom, props, opts)
 
             # Resolve the URN that we were given. Note that we are explicitly discarding the list of
             # dependencies returned to us from "serialize_property" (the second argument). This is
@@ -349,8 +348,8 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
             # dependency. TODO: This this actually true for "get"?
             resolved_urn = await rpc.serialize_property(urn, [])
             log.debug(f"get prepared: ty={ty}, name={name}, urn={urn}")
-            resp = await invoke("pulumi:pulumi:readStackResource", { "urn": resolved_urn })
-      
+            resp = await invoke("pulumi:pulumi:readStackResource", {"urn": resolved_urn})
+
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
@@ -364,7 +363,7 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
         resolve_urn(resp["urn"])
         if custom:
             resolve_id(resp["outputs"]["id"], True, None)  # Get IDs are always known.
-        await rpc.resolve_properties(res, resolvers, resp["outputs"])
+        await rpc.resolve_properties(resolvers, resp["outputs"])
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
 
