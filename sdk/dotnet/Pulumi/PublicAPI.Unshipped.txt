@@ -165,11 +165,13 @@ Pulumi.Serialization.InputAttribute
 Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.Serialization.OutputAttribute
 Pulumi.Serialization.OutputAttribute.Name.get -> string
-Pulumi.Serialization.OutputAttribute.OutputAttribute(string name) -> void
+Pulumi.Serialization.OutputAttribute.OutputAttribute(string name = null) -> void
 Pulumi.Serialization.OutputConstructorAttribute
 Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
 Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
+Pulumi.Stack
+Pulumi.Stack.Stack() -> void
 Pulumi.StackReference
 Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
 Pulumi.StackReference.GetValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
@@ -208,6 +210,7 @@ static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>

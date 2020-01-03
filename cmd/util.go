@@ -229,6 +229,8 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(
 	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+	ctx := commandContext()
+
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {
@@ -247,7 +249,7 @@ func chooseStack(
 
 	// List stacks as available options.
 	project := string(proj.Name)
-	summaries, err := b.ListStacks(commandContext(), backend.ListStacksFilter{Project: &project})
+	summaries, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
@@ -270,7 +272,7 @@ func chooseStack(
 
 	// If a stack is already selected, make that the default.
 	var current string
-	currStack, currErr := state.CurrentStack(commandContext(), b)
+	currStack, currErr := state.CurrentStack(ctx, b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		current = currStack.Ref().String()
@@ -321,9 +323,13 @@ func chooseStack(
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing selected stack")
 	}
-	stack, err := b.GetStack(commandContext(), stackRef)
+	// GetStack may return (nil, nil) if the stack isn't found.
+	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting selected stack")
+	}
+	if stack == nil {
+		return nil, errors.Errorf("no stack named '%s' found", stackRef)
 	}
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.

@@ -516,7 +516,7 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	}
 
 	for {
-		stackName, err := prompt(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
+		stackName, err := prompt(yes, "stack name", "dev", false, b.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
