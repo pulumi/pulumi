@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,35 +23,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPolicyApplyCmd() *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "apply <org-name>/<policy-pack-name> <version>",
-		Args:  cmdutil.ExactArgs(2),
-		Short: "Apply a Policy Pack to a Pulumi organization",
-		Long:  "Apply a Policy Pack to a Pulumi organization",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			//
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			//
+type policyEnableArgs struct {
+	policyGroup string
+}
 
-			policyPack, err := requirePolicyPack(args[0])
+func newPolicyEnableCmd() *cobra.Command {
+	args := policyEnableArgs{}
+
+	var cmd = &cobra.Command{
+		Use:   "enable <org-name>/<policy-pack-name> <version>",
+		Args:  cmdutil.ExactArgs(2),
+		Short: "Enable a Policy Pack for a Pulumi organization",
+		Long:  "Enable a Policy Pack for a Pulumi organization",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			policyPack, err := requirePolicyPack(cliArgs[0])
 			if err != nil {
 				return err
 			}
 
-			version, err := strconv.Atoi(args[1])
+			version, err := strconv.Atoi(cliArgs[1])
 			if err != nil {
 				return errors.Wrapf(err, "Could not parse version (should be an integer)")
 			}
 
-			//
-			// Attempt to publish the PolicyPack.
-			//
-
-			return policyPack.Apply(commandContext(), backend.ApplyOperation{
+			// Attempt to enable the PolicyPack.
+			return policyPack.Apply(commandContext(), args.policyGroup, backend.PolicyPackOperation{
 				Version: version, Scopes: cancellationScopes})
 		}),
 	}
+
+	cmd.PersistentFlags().StringVar(
+		&args.policyGroup, "policy-group", "",
+		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
 
 	return cmd
 }

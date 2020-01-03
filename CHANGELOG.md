@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
+
+- Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
+
 ## 1.8.1 (2019-12-20)
 
 - Fix a panic in `pulumi stack select`. [#3687](https://github.com/pulumi/pulumi/pull/3687)
@@ -33,6 +39,10 @@ CHANGELOG
   [#3663](https://github.com/pulumi/pulumi/pull/3663)
 
 - Fix bug in determining PRNumber and BuildURL for an Azure Pipelines CI environment. [#3677](https://github.com/pulumi/pulumi/pull/3677)
+
+- Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
+
+- Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
 
 ## 1.7.1 (2019-12-13)
 
