@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
 
 import * as aws from "@pulumi/aws";
 import * as policy from "@pulumi/policy";
@@ -20,7 +20,8 @@ if (!packName) {
                     if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
                         reportViolation(
                             "You cannot set public-read or public-read-write on an S3 bucket. " +
-                            "Read more about ACLs here: https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html");
+                            "Read more about ACLs here: " +
+                            "https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html");
                     }
                 }),
             },
