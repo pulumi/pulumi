@@ -24,9 +24,8 @@ from subprocess import Popen
 import time
 from typing import Callable, Any, Dict, List, Optional
 
-def spawnServerVM():
-    print("spawning server VM")
-    p = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], env={
+def spawnServer(library_path: str):
+    p = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, env={
         **os.environ,
         'PULUMI_NODEJS_PROJECT': SETTINGS.project,
         'PULUMI_NODEJS_STACK': SETTINGS.stack,
@@ -44,7 +43,14 @@ def spawnServerVM():
     stub = runtime_pb2_grpc.RuntimeStub(channel)
     return stub
 
-runtime_stub = spawnServerVM()
+stubs: Dict[str, runtime_pb2_grpc.RuntimeStub] = dict()
+
+def get_server(library_path: str) -> runtime_pb2_grpc.RuntimeStub:
+    stub = stubs.get(library_path, None)
+    if stub is None:
+        stub = spawnServer(library_path)
+        stubs[library_path] = stub
+    return stub
 
 # def resource_options_to_dict(opts: ResourceOptions) -> Inputs:
 #     d = vars(opts)
@@ -68,7 +74,7 @@ async def construct(
         args=args_struct,
         opts=opts_struct,
     )
-    resp = runtime_stub.Construct(req)
+    resp = get_server(libraryPath).Construct(req)
     outs = deserialize_properties(resp.outs)
     return outs
 
