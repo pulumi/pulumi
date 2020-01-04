@@ -108,7 +108,7 @@ async def serialize_property(value: 'Input[Any]',
         urn = await serialize_property(value.urn, deps, input_transformer)
         return {
             _special_sig_key: _special_resource_sig,
-            urn: urn,
+            "urn": urn,
         }
 
     if known_types.is_asset(value):
