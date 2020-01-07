@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,19 +19,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPolicyCmd() *cobra.Command {
+func newPolicyLsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "policy",
-		Short: "Manage resource policies",
+		Use:   "ls",
+		Short: "List policy resources",
 		Args:  cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPolicyDisableCmd())
-	cmd.AddCommand(newPolicyEnableCmd())
-	cmd.AddCommand(newPolicyLsCmd())
-	cmd.AddCommand(newPolicyNewCmd())
-	cmd.AddCommand(newPolicyPublishCmd())
-	cmd.AddCommand(newPolicyRmCmd())
+	cmd.AddCommand(newPolicyLsGroupsCmd())
+	cmd.AddCommand(newPolicyLsPacksCmd())
 
 	return cmd
 }
