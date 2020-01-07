@@ -90,6 +90,10 @@ if [ -e package.json ]; then
     if [ -f yarn.lock ] || [ ! -z $USE_YARN ]; then
         yarn install
     else
+        # Set npm auth token if one is provided.
+        if [ ! -z "$NPM_AUTH_TOKEN" ]; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" > ~/.npmrc
+        fi
         npm install
     fi
 fi

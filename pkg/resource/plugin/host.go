@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -53,7 +54,7 @@ type Host interface {
 	// because policy analyzers generally do not need to be "discovered" -- the engine is given a
 	// set of policies that are required to be run during an update, so they tend to be in a
 	// well-known place.
-	PolicyAnalyzer(name tokens.QName, path string) (Analyzer, error)
+	PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 
 	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
 	ListAnalyzers() []Analyzer
@@ -115,6 +116,14 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	}()
 
 	return host, nil
+}
+
+// PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
+type PolicyAnalyzerOptions struct {
+	Project string
+	Stack   string
+	Config  map[config.Key]string
+	DryRun  bool
 }
 
 type pluginLoadRequest struct {
@@ -209,7 +218,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	return plugin.(Analyzer), nil
 }
 
-func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string) (Analyzer, error) {
+func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
@@ -218,7 +227,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string) (Analyze
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path)
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {

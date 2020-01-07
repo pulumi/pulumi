@@ -19,7 +19,10 @@ import { Output } from "./output";
 import { getConfig } from "./runtime";
 
 function makeSecret<T>(value: T): Output<T> {
-    return new Output([], Promise.resolve(value), Promise.resolve(true), Promise.resolve(true));
+    return new Output(
+        [], Promise.resolve(value),
+        /*isKnown:*/ Promise.resolve(true), /*isSecret:*/ Promise.resolve(true),
+        Promise.resolve([]));
 }
 
 /**
@@ -325,7 +328,7 @@ export class Config {
 /**
  * StringConfigOptions may be used to constrain the set of legal values a string config value may contain.
  */
-interface StringConfigOptions<K extends string = string> {
+export interface StringConfigOptions<K extends string = string> {
     /**
      * The legal enum values. If it does not match, a ConfigEnumError is thrown.
      */
@@ -347,7 +350,7 @@ interface StringConfigOptions<K extends string = string> {
 /**
  * NumberConfigOptions may be used to constrain the set of legal values a number config value may contain.
  */
-interface NumberConfigOptions {
+export interface NumberConfigOptions {
     /**
      * The minimum number value, inclusive. If the number is less than this, a ConfigRangeError is thrown.
      */

@@ -16,8 +16,6 @@ namespace Pulumi
         ILogger Logger { get; }
         IRunner Runner { get; }
 
-        Task SetRootResourceAsync(Stack stack);
-
         void ReadOrRegisterResource(Resource resource, ResourceArgs args, ResourceOptions opts);
         void RegisterResourceOutputs(Resource resource, Output<IDictionary<string, object?>> outputs);
     }

@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, OutputInstance, all, concat, interpolate, output, unknown } from "../output";
+import { Output, all, concat, interpolate, output, unknown } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
@@ -67,8 +67,8 @@ describe("output", () => {
     it("propagates true isKnown bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set())));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, true);
@@ -80,8 +80,8 @@ describe("output", () => {
     it("propagates false isKnown bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set())));
 
         const isKnown = await output2.isKnown;
         assert.equal(isKnown, false);
@@ -93,8 +93,8 @@ describe("output", () => {
     it("can not await if isKnown is a rejected promise.", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error("foo")), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error("foo")), Promise.resolve(false), Promise.resolve(new Set())));
 
         try {
             const isKnown = await output2.isKnown;
@@ -114,8 +114,8 @@ describe("output", () => {
     it("propagates true isSecret bit from inner Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(true)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())));
 
         const isSecret = await output2.isSecret;
         assert.equal(isSecret, true);
@@ -127,8 +127,8 @@ describe("output", () => {
      it("retains true isSecret bit from outer Output", asyncTest(async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(true));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false)));
+        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
+        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set())));
 
         const isSecret = await output2.isSecret;
         assert.equal(isSecret, true);
@@ -138,8 +138,7 @@ describe("output", () => {
     }));
 
     describe("isKnown", () => {
-        function or<T>(output1: Output<T>, output2: Output<T>): Output<T>;
-        function or<T>(output1: any, output2: any): any {
+        function or<T>(output1: Output<T>, output2: Output<T>): Output<T> {
             const val1 = output1.promise();
             const val2 = output2.promise();
             return new Output<T>(
@@ -149,14 +148,16 @@ describe("output", () => {
                 Promise.all([val1, output1.isKnown, output2.isKnown])
                        .then(([val1, isKnown1, isKnown2]) => val1 ? isKnown1 : isKnown2),
                 Promise.all([val1, output1.isSecret, output2.isSecret])
-                       .then(([val1, isSecret1, isSecret2]) => val1 ? isSecret1 : isSecret2));
+                       .then(([val1, isSecret1, isSecret2]) => val1 ? isSecret1 : isSecret2),
+                Promise.all([output1.allResources!(), output2.allResources!()])
+                       .then(([r1, r2]) => new Set([...r1, ...r2])));
         }
 
         it("choose between known and known output, non-secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -173,8 +174,8 @@ describe("output", () => {
         it("choose between known and known output, secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -191,8 +192,8 @@ describe("output", () => {
         it("choose between known and unknown output, non-secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -209,8 +210,8 @@ describe("output", () => {
         it("choose between known and unknown output, secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -227,8 +228,8 @@ describe("output", () => {
         it("choose between unknown and known output, non-secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -245,8 +246,8 @@ describe("output", () => {
         it("choose between unknown and known output, secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(true));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -263,8 +264,8 @@ describe("output", () => {
         it("choose between unknown and unknown output, non-secret", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -281,8 +282,8 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret1", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -299,8 +300,8 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret2", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -317,8 +318,8 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret3", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true));
+            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
 
             const result = or(o1, o2);
 
@@ -335,9 +336,9 @@ describe("output", () => {
         it("is unknown if the value is or contains unknowns", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false));
-            const o2 = new Output(new Set(), Promise.resolve(["foo", unknown]), Promise.resolve(true), Promise.resolve(false));
-            const o3 = new Output(new Set(), Promise.resolve({"foo": "foo", unknown}), Promise.resolve(true), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o2 = new Output(new Set(), Promise.resolve(["foo", unknown]), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o3 = new Output(new Set(), Promise.resolve({"foo": "foo", unknown}), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
 
             assert.equal(await o1.isKnown, false);
             assert.equal(await o2.isKnown, false);
@@ -347,7 +348,7 @@ describe("output", () => {
         it("is unknown if the result after apply is unknown or contains unknowns", asyncTest(async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false));
+            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
             const r1 = o1.apply(v => unknown);
             const r2 = o1.apply(v => [v, unknown]);
             const r3 = o1.apply(v => <any>{v, unknown});

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -77,12 +78,15 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 			contract.IgnoreError(logFile.Close())
 		}()
 
+		sequence := 0
 		encoder := json.NewEncoder(logFile)
 		logEvent := func(e engine.Event) error {
 			apiEvent, err := ConvertEngineEvent(e)
 			if err != nil {
 				return err
 			}
+			apiEvent.Sequence, sequence = sequence, sequence+1
+			apiEvent.Timestamp = int(time.Now().Unix())
 			return encoder.Encode(apiEvent)
 		}
 

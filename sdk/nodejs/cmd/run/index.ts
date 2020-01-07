@@ -33,7 +33,7 @@ let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
     if (!programRunning) {
-        console.error(err.stack || err.message);
+        console.error(err.stack || err.message || ("" + err));
     }
 };
 

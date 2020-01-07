@@ -31,8 +31,8 @@ type PublishOperation struct {
 	Scopes     CancellationScopeSource
 }
 
-// ApplyOperation publishes a PolicyPack to the backend.
-type ApplyOperation struct {
+// PolicyPackOperation is used to make various operations against a Policy Pack.
+type PolicyPackOperation struct {
 	Version int
 	Scopes  CancellationScopeSource
 }
@@ -45,6 +45,15 @@ type PolicyPack interface {
 	Backend() Backend
 	// Publish the PolicyPack to the service.
 	Publish(ctx context.Context, op PublishOperation) result.Result
-	// Apply the PolicyPack to an organization.
-	Apply(ctx context.Context, op ApplyOperation) error
+	// Apply the PolicyPack to a Policy Group in an organization. If Policy Group is
+	// empty, it enables it for the default Policy Group.
+	Apply(ctx context.Context, policyGroup string, op PolicyPackOperation) error
+
+	// Disable the PolicyPack for a Policy Group in an organization. If Policy Group is
+	// empty, it disables it for the default Policy Group.
+	Disable(ctx context.Context, policyGroup string, op PolicyPackOperation) error
+
+	// Remove the PolicyPack from an organization. The Policy Pack must be removed from
+	// all Policy Groups before it can be removed.
+	Remove(ctx context.Context, op PolicyPackOperation) error
 }

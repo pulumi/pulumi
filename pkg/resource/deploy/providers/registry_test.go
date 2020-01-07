@@ -54,7 +54,8 @@ func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg s
 func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string) (plugin.Analyzer, error) {
+func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
+	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {

@@ -15,6 +15,23 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
+            public Task<int> RunAsync<TStack>() where TStack : Stack, new()
+            {
+                try
+                {
+                    var stack = new TStack();
+                    // Stack doesn't call RegisterOutputs, so we register them on its behalf.
+                    stack.RegisterPropertyOutputs();
+                    RegisterTask("User program code.", stack.Outputs.DataTask);
+                }
+                catch (Exception ex)
+                {
+                    return HandleExceptionAsync(ex);
+                }
+
+                return WhileRunningAsync();
+            }
+
             public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
             {
                 var stack = new Stack(func);

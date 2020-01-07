@@ -743,13 +743,21 @@ export abstract class ProviderResource extends CustomResource {
  * level abstraction. The component resource itself is a resource, but does not require custom CRUD
  * operations for provisioning.
  */
-export class ComponentResource extends Resource {
+export class ComponentResource<TData = any> extends Resource {
     /**
      * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    public readonly __pulumiComponentResource: boolean;
+    public readonly __pulumiComponentResource = true;
+
+    /** @internal */
+    // tslint:disable-next-line:variable-name
+    public readonly __data: Promise<TData>;
+
+    /** @internal */
+    // tslint:disable-next-line:variable-name
+    private __registered = false;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -768,11 +776,10 @@ export class ComponentResource extends Resource {
      *
      * @param t The type of the resource.
      * @param name The _unique_ name of the resource.
-     * @param unused [Deprecated].  Component resources do not communicate or store their properties
-     *               with the Pulumi engine.
+     * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(type: string, name: string, unused?: Inputs, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
@@ -782,28 +789,60 @@ export class ComponentResource extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
-        this.__pulumiComponentResource = true;
+        this.__data = this.initializeAndRegisterOutputs(args);
     }
 
-    // registerOutputs registers synthetic outputs that a component has initialized, usually by
-    // allocating other child sub-resources and propagating their resulting property values.
-    // ComponentResources should always call this at the end of their constructor to indicate that
-    // they are done creating child resources.  While not strictly necessary, this helps the
-    // experience by ensuring the UI transitions the ComponentResource to the 'complete' state as
-    // quickly as possible (instead of waiting until the entire application completes).
+    /** @internal */
+    private async initializeAndRegisterOutputs(args: Inputs) {
+        const data = await this.initialize(args);
+        this.registerOutputs();
+        return data;
+    }
+
+    /**
+     * Can be overridden by a subclass to asynchronously initialize data for this Component
+     * automatically when constructed.  The data will be available immediately for subclass
+     * constructors to use.  To access the data use `.getData`.
+     */
+    protected async initialize(args: Inputs): Promise<TData> {
+        return <TData>undefined!;
+    }
+
+    /**
+     * Retrieves the data produces by [initialize].  The data is immediately available in a
+     * derived class's constructor after the `super(...)` call to `ComponentResource`.
+     */
+    protected getData(): Promise<TData> {
+        return this.__data;
+    }
+
+    /**
+     * registerOutputs registers synthetic outputs that a component has initialized, usually by
+     * allocating other child sub-resources and propagating their resulting property values.
+     *
+     * ComponentResources can call this at the end of their constructor to indicate that they are
+     * done creating child resources.  This is not strictly necessary as this will automatically be
+     * called after the `initialize` method completes.
+     */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
+        if (this.__registered) {
+            return;
+        }
+
+        this.__registered = true;
         registerResourceOutputs(this, outputs || {});
     }
 }
 
 (<any>ComponentResource).doNotCapture = true;
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
+(<any>ComponentResource.prototype).initialize.doNotCapture = true;
+(<any>ComponentResource.prototype).initializeAndRegisterOutputs.doNotCapture = true;
 
 /** @internal */
 export const testingOptions = {
     isDryRun: false,
 };
-
 
 /**
  * [mergeOptions] takes two ResourceOptions values and produces a new ResourceOptions with the

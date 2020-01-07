@@ -188,7 +188,10 @@ export function run(argv: minimist.ParsedArgs,
 
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
-        const defaultMessage = err.stack || err.message;
+        //
+        // If both the stack and message are empty, then just stringify the err object itself. This
+        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
+        const defaultMessage = err.stack || err.message || ("" + err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {

@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
@@ -55,7 +56,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if stack != "" {
-				// A stack was given, ask the backend about it
+				// A stack was given, ask the backend about it.
 				stackRef, stackErr := b.ParseStackReference(stack)
 				if stackErr != nil {
 					return stackErr
@@ -76,6 +77,8 @@ func newStackSelectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			contract.Assert(stack != nil)
 			return state.SetCurrentStack(stack.Ref().String())
 
 		}),

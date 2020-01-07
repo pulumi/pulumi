@@ -404,14 +404,15 @@ func LoadTemplate(path string) (Template, error) {
 
 // CopyTemplateFilesDryRun does a dry run of copying a template to a destination directory,
 // to ensure it won't overwrite any files.
-func CopyTemplateFilesDryRun(sourceDir, destDir string) error {
+func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	var existing []string
-	if err := walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
-		if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
-			existing = append(existing, filepath.Base(dest))
-		}
-		return nil
-	}); err != nil {
+	if err := walkFiles(sourceDir, destDir, projectName,
+		func(info os.FileInfo, source string, dest string) error {
+			if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
+				existing = append(existing, filepath.Base(dest))
+			}
+			return nil
+		}); err != nil {
 		return err
 	}
 
@@ -425,35 +426,36 @@ func CopyTemplateFilesDryRun(sourceDir, destDir string) error {
 func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
 
-	return walkFiles(sourceDir, destDir, func(info os.FileInfo, source string, dest string) error {
-		if info.IsDir() {
-			// Create the destination directory.
-			return os.Mkdir(dest, 0700)
-		}
-
-		// Read the source file.
-		b, err := ioutil.ReadFile(source)
-		if err != nil {
-			return err
-		}
-
-		// Transform only if it isn't a binary file.
-		result := b
-		if !isBinary(b) {
-			transformed := transform(string(b), projectName, projectDescription)
-			result = []byte(transformed)
-		}
-
-		// Write to the destination file.
-		err = writeAllBytes(dest, result, force)
-		if err != nil {
-			// An existing file has shown up in between the dry run and the actual copy operation.
-			if os.IsExist(err) {
-				return newExistingFilesError([]string{filepath.Base(dest)})
+	return walkFiles(sourceDir, destDir, projectName,
+		func(info os.FileInfo, source string, dest string) error {
+			if info.IsDir() {
+				// Create the destination directory.
+				return os.Mkdir(dest, 0700)
 			}
-		}
-		return err
-	})
+
+			// Read the source file.
+			b, err := ioutil.ReadFile(source)
+			if err != nil {
+				return err
+			}
+
+			// Transform only if it isn't a binary file.
+			result := b
+			if !isBinary(b) {
+				transformed := transform(string(b), projectName, projectDescription)
+				result = []byte(transformed)
+			}
+
+			// Write to the destination file.
+			err = writeAllBytes(dest, result, force)
+			if err != nil {
+				// An existing file has shown up in between the dry run and the actual copy operation.
+				if os.IsExist(err) {
+					return newExistingFilesError([]string{filepath.Base(dest)})
+				}
+			}
+			return err
+		})
 }
 
 // LoadPolicyPackTemplate returns a Policy Pack template from a path.
@@ -502,13 +504,11 @@ func GetTemplateDir(templateKind TemplateKind) (string, error) {
 	return GetPulumiPath(TemplateDir)
 }
 
-// We are moving towards a world where these restrictions will be enforced by all our backends. When we get there,
-// we can consider removing this code in favor of exported functions in the backend package. For now, these are more
-// restrictive that what the backend enforces, but we want to "stop the bleeding" for new projects created via
-// `pulumi new`.
+// Naming rules are backend-specific. However, we provide baseline sanitization for project names
+// in this file. Though the backend may enforce stronger restrictions for a project name or description
+// further down the line.
 var (
-	stackOwnerRegexp          = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
-	stackNameAndProjectRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+	validProjectNameRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
 )
 
 // ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
@@ -518,7 +518,7 @@ func ValidateProjectName(s string) error {
 		return errors.New("A project name must be 100 characters or less")
 	}
 
-	if !stackNameAndProjectRegexp.MatchString(s) {
+	if !validProjectNameRegexp.MatchString(s) {
 		return errors.New("A project name may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 
@@ -532,51 +532,6 @@ func ValidateProjectDescription(s string) error {
 
 	if len(s) > maxTagValueLength {
 		return errors.New("A project description must be 256 characters or less")
-	}
-
-	return nil
-}
-
-// ValidateStackName ensures a -- potentially qualified -- stack name is valid, if it is not it
-// returns an error with a message suitable for display to an end user.
-func ValidateStackName(s string) error {
-	// First, see if the stack name is qualified or not. It may be of the form "owner/name", when
-	// you have access to multiple organizations.
-	parts := strings.Split(s, "/")
-	switch len(parts) {
-	case 1:
-		return validateStackName(parts[0])
-	case 2:
-		if err := validateStackOwner(parts[0]); err != nil {
-			return err
-		}
-		return validateStackName(parts[1])
-	default:
-		return errors.New("A stack name may not contain slashes")
-	}
-}
-
-// validateStackOwner checks if a stack owner name is valid. An "owner" is simply the namespace
-// a stack may exist within, which for the Pulumi Service is the user account or organization.
-func validateStackOwner(s string) error {
-	// The error message takes a different from here, since stack names are created via the CLI,
-	// Pulumi organizations are created on the Pulumi Service. And so
-	if !stackOwnerRegexp.MatchString(s) {
-		return errors.New("Invalid stack owner")
-	}
-
-	return nil
-}
-
-// validateStackName checks if a stack name is valid, returning a user-suitable error if needed. May
-// need to be paired with validateOwnerName when checking a qualified stack reference.
-func validateStackName(s string) error {
-	if len(s) > 100 {
-		return errors.New("A stack name must be 100 characters or less")
-	}
-
-	if !stackNameAndProjectRegexp.MatchString(s) {
-		return errors.New("A stack name may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 
 	return nil
@@ -643,7 +598,7 @@ func getValidProjectName(name string) string {
 
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
-func walkFiles(sourceDir string, destDir string,
+func walkFiles(sourceDir string, destDir string, projectName string,
 	actionFn func(info os.FileInfo, source string, dest string) error) error {
 
 	contract.Require(sourceDir != "", "sourceDir")
@@ -669,7 +624,7 @@ func walkFiles(sourceDir string, destDir string,
 				return err
 			}
 
-			if err := walkFiles(source, dest, actionFn); err != nil {
+			if err := walkFiles(source, dest, projectName, actionFn); err != nil {
 				return err
 			}
 		} else {
@@ -678,7 +633,10 @@ func walkFiles(sourceDir string, destDir string,
 				continue
 			}
 
-			if err := actionFn(info, source, dest); err != nil {
+			// The file name may contain a placeholder for project name: replace it with the actual value.
+			newDest := transform(dest, projectName, "")
+
+			if err := actionFn(info, source, newDest); err != nil {
 				return err
 			}
 		}

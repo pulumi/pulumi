@@ -14,6 +14,9 @@
 
 package apitype
 
+// DefaultPolicyGroup is the name of the default Policy Group for organizations.
+const DefaultPolicyGroup = "default-policy-group"
+
 // CreatePolicyPackRequest defines the request body for creating a new Policy
 // Pack for an organization. The request contains the metadata related to the
 // Policy Pack.
@@ -106,4 +109,28 @@ type ApplyPolicyPackRequest struct {
 type GetStackPolicyPacksResponse struct {
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
+}
+
+// UpdatePolicyGroupRequest modifies a Policy Group.
+type UpdatePolicyGroupRequest struct {
+	NewName *string `json:"newName,omitempty"`
+
+	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
+	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
+
+	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
+	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+}
+
+// PulumiStackReference contains the StackName and ProjectName of the stack.
+type PulumiStackReference struct {
+	Name           string `json:"name"`
+	RoutingProject string `json:"routingProject"`
+}
+
+// PolicyPackMetadata is the metadata of a Policy Pack.
+type PolicyPackMetadata struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Version     int    `json:"version"`
 }
