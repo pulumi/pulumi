@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Synchronously invoking an SDK data-source function is no longer supported.  All data-source
+  functions are always async and will always return a Promise.
+
 - Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
 
 - Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
@@ -32,7 +35,7 @@ CHANGELOG
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
   [#3675](https://github.com/pulumi/pulumi/pull/3675)
-  
+
 - `ComponentResource`s now have built-in support for asynchronously constructing their children. [#3676](https://github.com/pulumi/pulumi/pull/3676)
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
@@ -51,7 +54,7 @@ CHANGELOG
 
 ## 1.7.0 (2019-12-11)
 
-- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This 
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This
   allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
   operations at the top-level. [#3321](https://github.com/pulumi/pulumi/pull/3321)
 
