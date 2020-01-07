@@ -228,7 +228,7 @@ func TestStackTagValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "stack name may only contain alphanumeric, hyphens, underscores, and periods")
+		assert.Contains(t, stderr, "stack names may only contain alphanumeric, hyphens, underscores, or periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
@@ -501,6 +501,29 @@ func TestStackDependencyGraph(t *testing.T) {
 			}
 
 			assert.True(t, sawFirst && sawSecond)
+		},
+	})
+}
+
+// TestStackComponentDotNet tests the programming model of defining a stack as an explicit top-level component.
+func TestStackComponentDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_component", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["abc"])
+				assert.Equal(t, float64(42), stackRes.Outputs["Foo"])
+			}
 		},
 	})
 }
@@ -1149,8 +1172,8 @@ func TestPython3NotInstalled(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
 	expectedError := fmt.Sprintf(
-		"error: Failed to locate '%s' on your PATH. Have you installed Python 3.6 or greater?",
-		badPython)
+		"error: Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: path.Join("empty", "python"),
 		Dependencies: []string{

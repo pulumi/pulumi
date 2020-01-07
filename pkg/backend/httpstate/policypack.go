@@ -166,8 +166,16 @@ func (pack *cloudPolicyPack) Publish(
 	return nil
 }
 
-func (pack *cloudPolicyPack) Apply(ctx context.Context, op backend.ApplyOperation) error {
-	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
+func (pack *cloudPolicyPack) Apply(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
+	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), op.Version)
+}
+
+func (pack *cloudPolicyPack) Disable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
+	return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), op.Version)
+}
+
+func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOperation) error {
+	return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
 }
 
 const npmPackageDir = "package"

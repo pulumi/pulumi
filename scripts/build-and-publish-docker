@@ -5,6 +5,7 @@ set -o errexit
 set -o pipefail
 
 readonly SCRIPT_DIR="$( cd "$( dirname "${0}" )" && pwd )"
+readonly ROOT=${SCRIPT_DIR}/..
 
 if [ -z "${1:-}" ]; then
     >&2 echo "error: missing version to publish"
@@ -33,19 +34,28 @@ fi
 docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_PASSWORD}"
 
 echo "Building containers..."
-for container in [pulumi actions]; do
+for container in pulumi actions; do
     echo "- pulumi/${container}"
     docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" \
         -t "pulumi/${container}:${CLI_VERSION}" \
         -t "pulumi/${container}:latest" \
-        "${SCRIPT_DIR}/../dist/docker"
+        "${SCRIPT_DIR}/../dist/${container}"
 done
 
 echo "Running container runtime tests..."
-RUN_CONTAINER_TESTS=true go test tests/containers/...
+GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+docker run -e RUN_CONTAINER_TESTS=true \
+	-e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
+	--volume /tmp:/src \
+	--entrypoint /bin/bash \
+	pulumi/pulumi:latest \
+	-c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v -test.run TestPulumiDockerImage"
+
+echo "Running container entrypoint tests..."
+RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage -test.v
 
 echo "Publishing containers..."
-for container in [pulumi actions]; do
+for container in pulumi actions; do
     echo "- pulumi/${container}"
     docker push "pulumi/${container}:${CLI_VERSION}"
     docker push "pulumi/${container}:latest"

@@ -70,6 +70,12 @@ const (
 	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
 )
 
+// Name validation rules enforced by the Pulumi Service.
+var (
+	stackOwnerRegexp          = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
+	stackNameAndProjectRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+)
+
 // DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
 // variable.  If no override is found, and we are authenticated with a cloud, choose that.  Otherwise,
 // we will default to the https://api.pulumi.com/ endpoint.
@@ -465,49 +471,139 @@ func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
 
-func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
-	split := strings.Split(s, "/")
-	var owner string
-	var projectName string
-	var stackName string
+// qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
+// may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
+// Project. We infer the missing data and try to make things work as best we can in ParseStackReference.
+type qualifiedStackReference struct {
+	Owner   string
+	Project string
+	Name    string
+}
 
+// parseStackName parses the stack name into a potentially qualifiedStackReference. Any omitted
+// portions will be left as "". For example:
+//
+// "alpha"            - will just set the Name, but ignore Owner and Project.
+// "alpha/beta"       - will set the Owner and Name, but not Project.
+// "alpha/beta/gamma" - will set Owner, Name, and Project.
+func (b *cloudBackend) parseStackName(s string) (qualifiedStackReference, error) {
+	var q qualifiedStackReference
+
+	split := strings.Split(s, "/")
 	switch len(split) {
 	case 1:
-		stackName = split[0]
+		q.Name = split[0]
 	case 2:
-		owner = split[0]
-		stackName = split[1]
+		q.Owner = split[0]
+		q.Name = split[1]
 	case 3:
-		owner = split[0]
-		projectName = split[1]
-		stackName = split[2]
+		q.Owner = split[0]
+		q.Project = split[1]
+		q.Name = split[2]
 	default:
-		return nil, errors.Errorf("could not parse stack name '%s'", s)
+		return qualifiedStackReference{}, errors.Errorf("could not parse stack name '%s'", s)
 	}
 
-	if owner == "" {
+	return q, nil
+}
+
+func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
+	// Parse the input as a qualified stack name.
+	qualifiedName, err := b.parseStackName(s)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the provided stack name didn't include the Owner or Project, infer them from the
+	// local environment.
+	if qualifiedName.Owner == "" {
 		currentUser, userErr := b.CurrentUser()
 		if userErr != nil {
 			return nil, userErr
 		}
-		owner = currentUser
+		qualifiedName.Owner = currentUser
 	}
 
-	if projectName == "" {
+	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
 			return nil, projectErr
 		}
 
-		projectName = currentProject.Name.String()
+		qualifiedName.Project = currentProject.Name.String()
 	}
 
 	return cloudBackendReference{
-		owner:   owner,
-		project: projectName,
-		name:    tokens.QName(stackName),
+		owner:   qualifiedName.Owner,
+		project: qualifiedName.Project,
+		name:    tokens.QName(qualifiedName.Name),
 		b:       b,
 	}, nil
+}
+
+func (b *cloudBackend) ValidateStackName(s string) error {
+	qualifiedName, err := b.parseStackName(s)
+	if err != nil {
+		return err
+	}
+
+	// The Pulumi Service enforces specific naming restrictions for organizations,
+	// projects, and stacks. Though ignore any values that need to be inferred later.
+	if qualifiedName.Owner != "" {
+		if err := validateOwnerName(qualifiedName.Owner); err != nil {
+			return err
+		}
+	}
+
+	if qualifiedName.Project != "" {
+		if err := validateProjectName(qualifiedName.Project); err != nil {
+			return err
+		}
+	}
+
+	return validateStackName(qualifiedName.Name)
+}
+
+// validateOwnerName checks if a stack owner name is valid. An "owner" is simply the namespace
+// a stack may exist within, which for the Pulumi Service is the user account or organization.
+func validateOwnerName(s string) error {
+	if !stackOwnerRegexp.MatchString(s) {
+		return errors.New("invalid stack owner")
+	}
+	return nil
+}
+
+// validateStackName checks if a stack name is valid, returning a user-suitable error if needed.
+func validateStackName(s string) error {
+	if len(s) > 100 {
+		return errors.New("stack names must be less than 100 characters")
+	}
+	if !stackNameAndProjectRegexp.MatchString(s) {
+		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+	return nil
+}
+
+// validateProjectName checks if a project name is valid, returning a user-suitable error if needed.
+//
+// NOTE: Be careful when requiring a project name be valid. The Pulumi.yaml file may contain
+// an invalid project name like "r@bid^W0MBAT!!", but we try to err on the side of flexibility by
+// implicitly "cleaning" the project name before we send it to the Pulumi Service. So when we go
+// to make HTTP requests, we use a more palitable name like "r_bid_W0MBAT__".
+//
+// The projects canonical name will be the sanitized "r_bid_W0MBAT__" form, but we do not require the
+// Pulumi.yaml file be updated.
+//
+// So we should only call validateProject name when creating _new_ stacks or creating _new_ projects.
+// We should not require that project names be valid when reading what is in the current workspace.
+func validateProjectName(s string) error {
+	if len(s) > 100 {
+		return errors.New("project names must be less than 100 characters")
+	}
+	if !stackNameAndProjectRegexp.MatchString(s) {
+		return errors.New("project names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+	return nil
 }
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be

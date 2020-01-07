@@ -92,7 +92,9 @@ namespace Pulumi.Serialization
                 var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
 
                 setMethod.Invoke(resource, new[] { completionSource.Output });
-                result.Add(attr.Name, completionSource);
+
+                var outputName = attr.Name ?? prop.Name;
+                result.Add(outputName, completionSource);
             }
 
             Log.Debug("Fields to assign: " + JsonSerializer.Serialize(result.Keys), resource);

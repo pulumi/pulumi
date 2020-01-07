@@ -22,11 +22,59 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-// TestPulumiContainerImages simulates building and running Pulumi programs
-// on all of the supported container images.
-func TestPulumiContainerImages(t *testing.T) {
+// TestPulumiDockerImage simulates building and running Pulumi programs on the pulumi/pulumi Docker image.
+//
+// NOTE: This test is intended to be run inside the aforementioned container, unlike the actions test below.
+func TestPulumiDockerImage(t *testing.T) {
+	const stackOwner = "moolumi"
+
+	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
+		t.Skip("Skipping container runtime tests because RUN_CONTAINER_TESTS not set.")
+	}
+
+	// Confirm we have credentials.
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Fatal("PULUMI_ACCESS_TOKEN not found, aborting tests.")
+	}
+
+	base := integration.ProgramTestOptions{
+		Tracing:              "https://tracing.pulumi-engineering.com/collector/api/v1/spans",
+		ExpectRefreshChanges: true,
+		Quick:                true,
+		SkipRefresh:          true,
+		NoParallel:           true, // we mark tests as Parallel manually when instantiating
+	}
+
+	for _, template := range []string{"csharp", "python", "typescript"} {
+		t.Run(template, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer func() {
+				e.RunCommand("pulumi", "stack", "rm", "--force", "--yes")
+				e.DeleteEnvironment()
+			}()
+
+			stackName := fmt.Sprintf("%s/container-%s-%x", stackOwner, template, time.Now().UnixNano())
+			e.RunCommand("pulumi", "new", template, "-f", "-s", stackName)
+
+			example := base.With(integration.ProgramTestOptions{
+				Dir: e.RootPath,
+			})
+
+			integration.ProgramTest(t, &example)
+		})
+	}
+}
+
+// TestPulumiActionsImage simulates building and running Pulumi programs on the pulumi/actions image.
+//
+// The main codepath being tested is the entrypoint script of the container, which contains logic for
+// downloading dependencies, honoring various environment variables, etc.
+func TestPulumiActionsImage(t *testing.T) {
 	const pulumiContainerToTest = "pulumi/actions:latest"
 
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {

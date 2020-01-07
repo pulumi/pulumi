@@ -11,9 +11,9 @@ namespace Pulumi.Serialization
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class OutputAttribute : Attribute 
     {
-        public string Name { get; }
+        public string? Name { get; }
 
-        public OutputAttribute(string name)
+        public OutputAttribute(string? name = null)
         {
             Name = name;
         }
