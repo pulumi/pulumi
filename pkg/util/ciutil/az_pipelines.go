@@ -17,6 +17,7 @@ package ciutil
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // azurePipelinesCI represents the Azure Pipelines CI/CD system
@@ -36,6 +37,7 @@ func (az azurePipelinesCI) DetectVars() Vars {
 	v.CommitMessage = os.Getenv("BUILD_SOURCEVERSIONMESSAGE")
 
 	orgURI := os.Getenv("SYSTEM_TEAMFOUNDATIONCOLLECTIONURI")
+	orgURI = strings.TrimSuffix(orgURI, "/")
 	projectName := os.Getenv("SYSTEM_TEAMPROJECT")
 	v.BuildURL = fmt.Sprintf("%v/%v/_build/results?buildId=%v", orgURI, projectName, v.BuildID)
 
