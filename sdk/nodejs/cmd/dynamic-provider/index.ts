@@ -21,7 +21,7 @@ import * as runtime from "../../runtime";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
-const grpc = require("grpc");
+const grpc = require("@grpc/grpc-js");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
