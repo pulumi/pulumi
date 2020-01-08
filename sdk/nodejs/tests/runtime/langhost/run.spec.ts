@@ -19,11 +19,12 @@ import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
 
+import * as grpc from "@grpc/grpc-js";
+
 const enginerpc = require("../../../proto/engine_grpc_pb.js");
 const engineproto = require("../../../proto/engine_pb.js");
 const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const grpc = require("@grpc/grpc-js");
 const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
@@ -1154,7 +1155,7 @@ describe("rpc", () => {
                 let rootResource: string | undefined;
                 let regCnt = 0;
                 let logCnt = 0;
-                const monitor = createMockEngine(opts,
+                const monitor = await createMockEngineAsync(opts,
                     // Invoke callback
                     (call: any, callback: any) => {
                         const resp = new providerproto.InvokeResponse();
@@ -1336,7 +1337,7 @@ describe("rpc", () => {
                     langHost.proc.on("close", () => { resolve(); });
                 });
                 await new Promise<void>((resolve, reject) => {
-                    monitor.server.tryShutdown((err: Error) => {
+                    monitor.server.tryShutdown((err: Error | undefined) => {
                         if (err) {
                             reject(err);
                         }
@@ -1435,7 +1436,7 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
 
 // Despite the name, the "engine" RPC endpoint is only a logging endpoint. createMockEngine fires up a fake
 // logging server so tests can assert that certain things get logged.
-function createMockEngine(
+async function createMockEngineAsync(
     opts: RunCase,
     invokeCallback: (call: any, request: any) => any,
     readResourceCallback: (call: any, request: any) => any,
@@ -1444,7 +1445,7 @@ function createMockEngine(
     logCallback: (call: any, request: any) => any,
     getRootResourceCallback: (call: any, request: any) => any,
     setRootResourceCallback: (call: any, request: any) => any,
-    supportsFeatureCallback: (call: any, request: any) => any): { server: any, addr: string } {
+    supportsFeatureCallback: (call: any, request: any) => any) {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
@@ -1456,7 +1457,7 @@ function createMockEngine(
         registerResourceOutputs: registerResourceOutputsCallback,
     });
 
-    let engineImpl: Object = {
+    let engineImpl: grpc.UntypedServiceImplementation = {
         log: logCallback,
     };
 
@@ -1469,7 +1470,7 @@ function createMockEngine(
     }
 
     server.addService(enginerpc.EngineService, engineImpl);
-    const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
+    const port = await server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), undefined!);
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };
 }
