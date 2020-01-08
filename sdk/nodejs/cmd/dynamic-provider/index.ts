@@ -15,13 +15,14 @@
 import * as minimist from "minimist";
 import * as path from "path";
 
+import * as grpc from "@grpc/grpc-js";
+
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
 import * as runtime from "../../runtime";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
-const grpc = require("@grpc/grpc-js");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -308,7 +309,7 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
     };
 }
 
-export function main(args: string[]): void {
+export async function main(args: string[]) {
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
     if (args.length === 0) {
@@ -335,8 +336,15 @@ export function main(args: string[]): void {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
     });
-    const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
-
+    const port: number = await new Promise<number>((resolve, reject) => {
+        server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(p);
+            }
+        });
+    });
     server.start();
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
