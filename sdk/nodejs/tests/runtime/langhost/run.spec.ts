@@ -1332,20 +1332,12 @@ describe("rpc", () => {
                 }
 
                 // Finally, tear down everything so each test case starts anew.
+
                 await new Promise<void>((resolve, reject) => {
                     langHost.proc.kill();
                     langHost.proc.on("close", () => { resolve(); });
                 });
-                await new Promise<void>((resolve, reject) => {
-                    monitor.server.tryShutdown((err: Error | undefined) => {
-                        if (err) {
-                            reject(err);
-                        }
-                        else {
-                            resolve();
-                        }
-                    });
-                });
+                monitor.server.forceShutdown();
             }
         }));
     }
@@ -1470,6 +1462,7 @@ async function createMockEngineAsync(
     }
 
     server.addService(enginerpc.EngineService, engineImpl);
+
     const port = await new Promise<number>((resolve, reject) => {
         server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
@@ -1481,6 +1474,7 @@ async function createMockEngineAsync(
     });
 
     server.start();
+
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 

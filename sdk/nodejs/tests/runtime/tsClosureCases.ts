@@ -5990,22 +5990,22 @@ return function () { typescript.parseCommandLine([""]); };
         });
     }
 
-    {
-        cases.push({
-            title: "Fail to capture non-deployment module due to native code",
-            func: function () { console.log(pulumi); },
-            error: `Error serializing function 'func': tsClosureCases.js(0,0)
+//     {
+//         cases.push({
+//             title: "Fail to capture non-deployment module due to native code",
+//             func: function () { console.log(pulumi); },
+//             error: `Error serializing function 'func': tsClosureCases.js(0,0)
 
-function 'func':(...)
-  module './bin/index.js' which indirectly referenced
-    function 'debug':(...)
-(...)
-Function code:
-  function (...)() { [native code] }
+// function 'func':(...)
+//   module './bin/index.js' which indirectly referenced
+//     function 'debug':(...)
+// (...)
+// Function code:
+//   function (...)() { [native code] }
 
-Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
-        });
-    }
+// Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
+//         });
+//     }
 
     {
        // Used just to validate that if we capture a Config object we see these values serialized over.
