@@ -10,9 +10,9 @@
     },
     "dependencies": {
         "@pulumi/query": "^0.3.0",
+        "@grpc/grpc-js": "^0.6.15",
         "deasync": "^0.1.15",
         "google-protobuf": "^3.5.0",
-        "grpc": "1.24.2",
         "minimist": "^1.2.0",
         "normalize-package-data": "^2.4.0",
         "protobufjs": "^6.8.6",
@@ -34,13 +34,12 @@
         "@types/semver": "^5.5.0",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
-        "node-gyp": "^3.6.2",
         "tslint": "^5.11.0"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": ">=8.0.0"
+        "node": "^8.13.0 || >=10.10.0"
     }
 }
