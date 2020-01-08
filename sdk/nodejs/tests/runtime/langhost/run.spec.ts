@@ -1470,7 +1470,16 @@ async function createMockEngineAsync(
     }
 
     server.addService(enginerpc.EngineService, engineImpl);
-    const port = await server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), undefined!);
+    const port = await new Promise<number>((resolve, reject) => {
+        server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(p);
+            }
+        });
+    });
+
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };
 }
