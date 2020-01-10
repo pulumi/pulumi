@@ -4,8 +4,10 @@ package examples
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -323,6 +325,49 @@ func TestAccNodeCompatTests(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+func TestPythonMultilang(t *testing.T) {
+	t.Skip("multilang tests not yet working...")
+	dir := path.Join(getCwd(t), "multilang")
+	test := getPythonBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: dir,
+			Config: map[string]string{
+				"aws:region": "us-west-2",
+			},
+			PrePulumiCommand: func(verb string) (func(err error) error, error) {
+				if verb == "preview" || verb == "update" {
+					yarnBin, err := exec.LookPath("yarn")
+					if err != nil {
+						return nil, err
+					}
+					fmt.Printf("yarn: %s\n", yarnBin)
+					fmt.Printf("dir: %s\n", path.Join(dir, "mycomponent"))
+					cmd := exec.Command(yarnBin, "install")
+					cmd.Dir = path.Join(dir, "mycomponent")
+					stdouterr, err := cmd.CombinedOutput()
+					if err != nil {
+						return nil, err
+					}
+					fmt.Printf("%s\n", stdouterr)
+
+					cmd = exec.Command(yarnBin, "link", "@pulumi/pulumi")
+					cmd.Dir = path.Join(dir, "mycomponent")
+					stdouterr, err = cmd.CombinedOutput()
+					fmt.Printf("%s\n", stdouterr)
+					if err != nil {
+						return nil, err
+					}
+				}
+				return nil, nil
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				fmt.Printf("%v\n", stackInfo.Outputs)
+			},
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
 func getCwd(t *testing.T) string {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -334,6 +379,14 @@ func getCwd(t *testing.T) string {
 func getBaseOptions() integration.ProgramTestOptions {
 	return integration.ProgramTestOptions{
 		Dependencies: []string{"@pulumi/pulumi"},
+	}
+}
+
+func getPythonBaseOptions() integration.ProgramTestOptions {
+	return integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "sdk", "python", "env", "src"),
+		},
 	}
 }
 
