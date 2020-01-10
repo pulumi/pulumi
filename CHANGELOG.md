@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
+
 - Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
 
 - Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
