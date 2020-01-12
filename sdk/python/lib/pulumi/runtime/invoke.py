@@ -16,13 +16,13 @@ import sys
 from typing import Any, Awaitable
 import grpc
 
+from .. import log
 from ..output import Inputs
 from ..invoke import InvokeOptions
-from .. import log
-from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
+from .sync_await import _sync_await
 
 # This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
 # exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
@@ -38,73 +38,6 @@ from .rpc_manager import RPC_MANAGER
 if not sys.platform.startswith('win32'):
     from google.protobuf.pyext._message import SetAllowOversizeProtos  # pylint: disable-msg=E0611
     SetAllowOversizeProtos(True)
-
-# If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
-# implementation in order to support synchronous invokes.
-if sys.version_info[0] == 3 and sys.version_info[1] < 7:
-    asyncio.Task = asyncio.tasks._PyTask
-    asyncio.tasks.Task = asyncio.tasks._PyTask
-
-    def enter_task(loop, task):
-        task.__class__._current_tasks[loop] = task
-
-    def leave_task(loop, task):
-        task.__class__._current_tasks.pop(loop)
-
-    _enter_task = enter_task
-    _leave_task = leave_task
-else:
-    _enter_task = asyncio.tasks._enter_task # type: ignore
-    _leave_task = asyncio.tasks._leave_task # type: ignore
-
-
-def _sync_await(awaitable: Awaitable[Any]) -> Any:
-    """
-    _sync_await waits for the given future to complete by effectively yielding the current task and pumping the event
-    loop.
-    """
-
-    # Fetch the current event loop and ensure a future.
-    loop = asyncio.get_event_loop()
-    fut = asyncio.ensure_future(awaitable)
-
-    # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
-    # amount of bookkeeping logic around loop startup and shutdown.
-    if not loop.is_running():
-        return loop.run_until_complete(fut)
-
-    # If we are executing inside a task, pretend we've returned from its current callback--effectively yielding to
-    # the event loop--by calling _leave_task.
-    task = asyncio.Task.current_task(loop)
-    if task is not None:
-        _leave_task(loop, task)
-
-    # Pump the event loop until the future is complete. This is the kernel of BaseEventLoop.run_forever, and may not
-    # work with alternative event loop implementations.
-    #
-    # In order to make this reentrant with respect to _run_once, we keep track of the number of event handles on the
-    # ready list and ensure that there are exactly that many handles on the list once we are finished.
-    #
-    # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
-    # _run_once kernel with which we need to cooperate.
-    ntodo = len(loop._ready) # type: ignore
-    while not fut.done() and not fut.cancelled():
-        loop._run_once() # type: ignore
-        if loop._stopping: # type: ignore
-            break
-    # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
-    # cancelled handles onto the list.
-    while len(loop._ready) < ntodo: # type: ignore
-        handle = asyncio.Handle(lambda: None, [], loop)
-        handle._cancelled = True
-        loop._ready.append(handle) # type: ignore
-
-    # If we were executing inside a task, restore its context and continue on.
-    if task is not None:
-        _enter_task(loop, task)
-
-    # Return the result of the future.
-    return fut.result()
 
 class InvokeResult:
     """
