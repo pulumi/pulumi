@@ -188,7 +188,8 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        return callback(grpcResponseFromError(e));
+        const response = grpcResponseFromError(e);
+        return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
 }
 
@@ -239,7 +240,8 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        return callback(grpcResponseFromError(e));
+        const response = grpcResponseFromError(e);
+        return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
 }
 
@@ -275,7 +277,7 @@ function resultIncludingProvider(result: any, props: any): any {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}): any {
+function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
