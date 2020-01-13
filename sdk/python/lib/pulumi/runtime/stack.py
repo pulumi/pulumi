@@ -30,7 +30,7 @@ from ..output import Output
 
 async def run_pulumi_func(func: Callable):
     try:
-       func() 
+        func()
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
@@ -77,7 +77,7 @@ async def run_in_stack(func: Callable):
     will end up as output properties on the resulting stack component in the checkpoint file.  This
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
-    run_pulumi_func(lambda: Stack(func))
+    await run_pulumi_func(lambda: Stack(func))
 
 @known_types.stack
 class Stack(ComponentResource):

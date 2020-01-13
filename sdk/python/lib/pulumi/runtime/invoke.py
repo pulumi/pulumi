@@ -22,6 +22,7 @@ from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
+from .settings import get_monitor
 from .sync_await import _sync_await
 
 # This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization

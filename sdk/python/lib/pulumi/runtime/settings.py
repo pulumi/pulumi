@@ -21,10 +21,7 @@ import sys
 from typing import Optional, Awaitable, Union, Any, TYPE_CHECKING
 
 import grpc
-from google.protobuf import empty_pb2
-from . import rpc
-#from .sync_await import _sync_await
-from ..runtime.proto import engine_pb2_grpc, provider_pb2, resource_pb2, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
 
 if TYPE_CHECKING:
@@ -161,7 +158,7 @@ def _set_stack(v: Optional[str]):
     SETTINGS.stack = v
 
 
-def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, MockMonitor]]:
+def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]:
     """
     Returns the current resource monitoring service client for RPC communications.
     """
@@ -171,7 +168,7 @@ def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, MockM
     return monitor
 
 
-def get_engine() -> Optional[engine_pb2_grpc.EngineStub]:
+def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     """
     Returns the current engine service client for RPC communications.
     """

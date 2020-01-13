@@ -15,7 +15,8 @@
 """
 Mocks for testing.
 """
-import asyncio, logging
+import asyncio
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Awaitable, Tuple, Union, Any, TYPE_CHECKING
 
