@@ -26,6 +26,9 @@ type StackSummary struct {
 	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
 	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
+	// CurentUpdate provides information about the current stack update in-progress as applicable.
+	CurrentUpdate *UpdateStatus `json:"currentUpdate,omitempty"`
+
 	// ResourceCount is the number of resources associated with this stack, as applicable.
 	ResourceCount *int `json:"resourceCount,omitempty"`
 }
