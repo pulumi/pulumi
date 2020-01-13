@@ -27,7 +27,7 @@ type StackSummary struct {
 	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
 	// CurentUpdate provides information about the current stack update in-progress as applicable.
-	CurrentUpdate *UpdateStatus `json:"currentUpdate,omitempty"`
+	CurrentUpdate *CurrentUpdateStatus `json:"currentUpdate,omitempty"`
 
 	// ResourceCount is the number of resources associated with this stack, as applicable.
 	ResourceCount *int `json:"resourceCount,omitempty"`
@@ -54,6 +54,11 @@ type CreateStackResponse struct{}
 type EncryptValueRequest struct {
 	// The value to encrypt.
 	Plaintext []byte `json:"plaintext"`
+}
+
+type CurrentUpdateStatus struct {
+	CurrentUpdateStarted int64 `json:"currentUpdateStarted,omitempty"`
+	CurrentUpdateAuthor string `json:"currentUpdateAuthor,omitempty"`
 }
 
 // EncryptValueResponse defines the response body for an encrypted value.
