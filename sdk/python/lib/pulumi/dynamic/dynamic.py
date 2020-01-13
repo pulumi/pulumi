@@ -175,7 +175,7 @@ class ResourceProvider:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
-        "transacational").
+        "transactional").
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 

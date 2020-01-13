@@ -46,7 +46,7 @@ service ResourceProvider {
     // Diff checks what impacts a hypothetical update will have on the resource's properties.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
     // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
     rpc Create(CreateRequest) returns (CreateResponse) {}
     // Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
     // identify the resource; this is typically just the resource ID, but may also include some properties.

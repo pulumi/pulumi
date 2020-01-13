@@ -131,7 +131,7 @@ export interface ResourceProvider {
 
     /**
      * Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-     * If this call fails, the resource must not have been created (i.e., it is "transacational").
+     * If this call fails, the resource must not have been created (i.e., it is "transactional").
      *
      * @param inputs The properties to set during creation.
      */
