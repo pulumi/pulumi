@@ -26,6 +26,7 @@ import (
 )
 
 func newPolicyLsGroupsCmd() *cobra.Command {
+	var jsonOut bool
 	var cmd = &cobra.Command{
 		Use:   "groups [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -63,9 +64,15 @@ func newPolicyLsGroupsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if jsonOut {
+				return formatPolicyGroupsJSON(policyGroups)
+			}
 			return formatPolicyGroupsConsole(policyGroups)
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
 }
 
@@ -102,4 +109,27 @@ func formatPolicyGroupsConsole(policyGroups apitype.ListPolicyGroupsResponse) er
 		Rows:    rows,
 	})
 	return nil
+}
+
+// policyGroupsJSON is the shape of the --json output of this command. When --json is passed, we print an array
+// of policyGroupsJSON objects.  While we can add fields to this structure in the future, we should not change
+// existing fields.
+type policyGroupsJSON struct {
+	Name           string `json:"name"`
+	Default        bool   `json:"default"`
+	NumPolicyPacks int    `json:"numPolicyPacks"`
+	NumStacks      int    `json:"numStacks"`
+}
+
+func formatPolicyGroupsJSON(policyGroups apitype.ListPolicyGroupsResponse) error {
+	output := make([]policyGroupsJSON, len(policyGroups.PolicyGroups))
+	for i, group := range policyGroups.PolicyGroups {
+		output[i] = policyGroupsJSON{
+			Name:           group.Name,
+			Default:        group.IsOrgDefault,
+			NumPolicyPacks: group.NumEnabledPolicyPacks,
+			NumStacks:      group.NumStacks,
+		}
+	}
+	return printJSON(output)
 }

@@ -27,6 +27,8 @@ import (
 )
 
 func newPolicyLsPacksCmd() *cobra.Command {
+	var jsonOut bool
+
 	var cmd = &cobra.Command{
 		Use:   "packs [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -64,9 +66,15 @@ func newPolicyLsPacksCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if jsonOut {
+				return formatPolicyPacksJSON(policyPacks)
+			}
 			return formatPolicyPacksConsole(policyPacks)
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
 }
 
@@ -92,4 +100,23 @@ func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error
 		Rows:    rows,
 	})
 	return nil
+}
+
+// policyPacksJSON is the shape of the --json output of this command. When --json is passed, we print an array
+// of policyPacksJSON objects.  While we can add fields to this structure in the future, we should not change
+// existing fields.
+type policyPacksJSON struct {
+	Name     string `json:"name"`
+	Versions []int  `json:"versions"`
+}
+
+func formatPolicyPacksJSON(policyPacks apitype.ListPolicyPacksResponse) error {
+	output := make([]policyPacksJSON, len(policyPacks.PolicyPacks))
+	for i, pack := range policyPacks.PolicyPacks {
+		output[i] = policyPacksJSON{
+			Name:     pack.Name,
+			Versions: pack.Versions,
+		}
+	}
+	return printJSON(output)
 }
