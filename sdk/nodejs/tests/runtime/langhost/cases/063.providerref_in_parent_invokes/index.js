@@ -29,11 +29,7 @@ let pulumi = require("../../../../../");
         urn: "some-urn",
     };
 
-<<<<<<< HEAD
     let result1 = await pulumi.runtime.invoke("test:index:echo", args, { parent });
-=======
-    let result1 = pulumi.runtime.invoke("test:index:echo", args, { parent, async: false });
->>>>>>> asyncDefault
     for (const key in args) {
         assert.deepEqual(result1[key], args[key]);
     }
@@ -42,12 +38,4 @@ let pulumi = require("../../../../../");
     result2.then((v) => {
         assert.deepEqual(v, args);
     });
-<<<<<<< HEAD
-=======
-
-    let result3 = pulumi.runtime.invoke("test:index:echo", args, { parent });
-    result3.then((v) => {
-        assert.deepEqual(v, args);
-    });
->>>>>>> asyncDefault
 })();
