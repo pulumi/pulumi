@@ -16,11 +16,12 @@ package cmd
 
 import (
 	"context"
-	"fmt"
+	"strconv"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +31,7 @@ func newPolicyLsGroupsCmd() *cobra.Command {
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cliArgs []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			interactive := cmdutil.Interactive()
 			opts := backend.UpdateOptions{}
@@ -42,7 +43,7 @@ func newPolicyLsGroupsCmd() *cobra.Command {
 
 			b, err := currentBackend(opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Get organization.
@@ -52,19 +53,53 @@ func newPolicyLsGroupsCmd() *cobra.Command {
 			} else {
 				orgName, err = b.CurrentUser()
 				if err != nil {
-					result.FromError(err)
+					return err
 				}
 			}
 
 			// List the Policy Packs for the organization.
 			ctx := context.Background()
-			policyPacks, err := b.ListPolicyGroups(ctx, orgName)
+			policyGroups, err := b.ListPolicyGroups(ctx, orgName)
 			if err != nil {
-				result.FromError(err)
+				return err
 			}
-			fmt.Println(policyPacks)
-			return nil
+			return formatPolicyGroupsConsole(policyGroups)
 		}),
 	}
 	return cmd
+}
+
+func formatPolicyGroupsConsole(policyGroups apitype.ListPolicyGroupsResponse) error {
+	// Header string and formatting options to align columns.
+	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
+
+	rows := []cmdutil.TableRow{}
+
+	for _, group := range policyGroups.PolicyGroups {
+		// Name column
+		name := group.Name
+
+		// Default column
+		var defaultGroup string
+		if group.IsOrgDefault {
+			defaultGroup = "Y"
+		} else {
+			defaultGroup = "N"
+		}
+
+		// Number of enabled Policy Packs column
+		numPolicyPacks := strconv.Itoa(group.NumEnabledPolicyPacks)
+
+		// Number of stacks colum
+		numStacks := strconv.Itoa(group.NumStacks)
+
+		// Render the columns.
+		columns := []string{name, defaultGroup, numPolicyPacks, numStacks}
+		rows = append(rows, cmdutil.TableRow{Columns: columns})
+	}
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: headers,
+		Rows:    rows,
+	})
+	return nil
 }

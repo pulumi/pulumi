@@ -17,10 +17,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +32,7 @@ func newPolicyLsPacksCmd() *cobra.Command {
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Packs for a Pulumi organization",
 		Long:  "List all Policy Packs for a Pulumi organization",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cliArgs []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			interactive := cmdutil.Interactive()
 			opts := backend.UpdateOptions{}
@@ -42,7 +44,7 @@ func newPolicyLsPacksCmd() *cobra.Command {
 
 			b, err := currentBackend(opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Get organization.
@@ -52,7 +54,7 @@ func newPolicyLsPacksCmd() *cobra.Command {
 			} else {
 				orgName, err = b.CurrentUser()
 				if err != nil {
-					result.FromError(err)
+					return err
 				}
 			}
 
@@ -60,11 +62,34 @@ func newPolicyLsPacksCmd() *cobra.Command {
 			ctx := context.Background()
 			policyPacks, err := b.ListPolicyPacks(ctx, orgName)
 			if err != nil {
-				result.FromError(err)
+				return err
 			}
-			fmt.Println(policyPacks)
-			return nil
+			return formatPolicyPacksConsole(policyPacks)
 		}),
 	}
 	return cmd
+}
+
+func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error {
+	// Header string and formatting options to align columns.
+	headers := []string{"NAME", "VERSIONS"}
+
+	rows := []cmdutil.TableRow{}
+
+	for _, packs := range policyPacks.PolicyPacks {
+		// Name column
+		name := packs.Name
+
+		// Versions column
+		versions := strings.Trim(strings.Replace(fmt.Sprint(packs.Versions), " ", ", ", -1), "[]")
+
+		// Render the columns.
+		columns := []string{name, versions}
+		rows = append(rows, cmdutil.TableRow{Columns: columns})
+	}
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: headers,
+		Rows:    rows,
+	})
+	return nil
 }
