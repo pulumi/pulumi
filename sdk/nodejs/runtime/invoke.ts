@@ -68,11 +68,11 @@ const providerproto = require("../proto/provider_pb.js");
  * synchronously.
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    if (opts.async) {
-        // User specifically requested async invoking.  Respect that.
+    if (opts.async !== false) {
         return invokeAsync(tok, props, opts);
     }
 
+    // User specifically requested sync invoking.  Respect that.
     const config = new Config("pulumi");
     const noSyncCalls = config.getBoolean("noSyncCalls");
     if (noSyncCalls) {
