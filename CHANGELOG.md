@@ -5,6 +5,8 @@ CHANGELOG
 
 - Synchronously invoking an SDK data-source function is no longer supported.  All data-source
   functions are always async and will always return a Promise.
+  
+- @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
 
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 
