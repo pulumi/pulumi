@@ -15,6 +15,7 @@
 import { all, Input, Output, output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
 import * as invoke from "./runtime/invoke";
+import { promiseResult } from "./utils";
 
 /**
  * Manages a reference to a Pulumi stack. The referenced stack's outputs are available via the
@@ -36,6 +37,15 @@ export class StackReference extends CustomResource {
      */
     public readonly secretOutputNames!: Output<string[]>;
 
+    // Values we stash to support the getOutputSync and requireOutputSync calls without
+    // having to go through the async values above.
+
+    private readonly stackReferenceName: Input<string>;
+    private syncOutputsSupported: boolean | undefined;
+    private syncName: string | undefined;
+    private syncOutputs: Record<string, any> | undefined;
+    private syncSecretOutputNames: string[] | undefined;
+
     /**
      * Create a StackReference resource with the given unique name, arguments, and options.
      *
@@ -55,6 +65,8 @@ export class StackReference extends CustomResource {
             outputs: undefined,
             secretOutputNames: undefined,
         }, { ...opts, id: stackReferenceName });
+
+        this.stackReferenceName = stackReferenceName;
     }
 
     /**
@@ -102,10 +114,10 @@ export class StackReference extends CustomResource {
      *
      * @param name The name of the stack output to fetch.
      */
-    public async getOutputValue(name: string): Promise<any> {
-        const [out, isSecret] = await this.readOutputValue("getOutputValue", name, false /*required*/);
+    public getOutputSync(name: string): any {
+        const [out, isSecret] = this.readOutputSync("getOutputSync", name, false /*required*/);
         if (isSecret) {
-            throw new Error("Cannot call 'getOutputValue' if the referenced stack output is a secret. Use 'getOutput' instead.");
+            throw new Error("Cannot call 'getOutputSync' if the referenced stack output is a secret. Use 'getOutput' instead.");
         }
         return out;
     }
@@ -118,17 +130,79 @@ export class StackReference extends CustomResource {
      *
      * @param name The name of the stack output to fetch.
      */
-    public async requireOutputValue(name: string): Promise<any> {
-        const [out, isSecret] = await this.readOutputValue("requireOutputSync", name, true /*required*/);
+    public requireOutputSync(name: string): any {
+        const [out, isSecret] = this.readOutputSync("requireOutputSync", name, true /*required*/);
         if (isSecret) {
-            throw new Error("Cannot call 'requireOutputValue' if the referenced stack output is a secret. Use 'requireOutput' instead.");
+            throw new Error("Cannot call 'requireOutputSync' if the referenced stack output is a secret. Use 'requireOutput' instead.");
         }
         return out;
     }
 
-    private async readOutputValue(callerName: string, outputName: string, required: boolean): Promise<[any, boolean]> {
+    private readOutputSync(callerName: string, outputName: string, required: boolean): [any, boolean] {
+        const [stackName, outputs, secretNames, supported] = this.readOutputsSync("requireOutputSync");
+
+        // If the synchronous readStackOutputs call is supported by the engine, use its results.
+        if (supported) {
+            if (required && !outputs.hasOwnProperty(outputName)) {
+                throw new Error(`Required output '${outputName}' does not exist on stack '${stackName}'.`);
+            }
+
+            return [outputs[outputName], secretNames.includes(outputName)];
+        }
+
+        // Otherwise, fall back to promiseResult.
+        console.log(`StackReference.${callerName} may cause your program to hang. Please update to the latest version of the Pulumi CLI.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
         const out = required ? this.requireOutput(outputName) : this.getOutput(outputName);
-        return Promise.all([out.promise(), out.isSecret]);
+        return [promiseResult(out.promise()), promiseResult(out.isSecret)];
+    }
+
+    private readOutputsSync(callerName: string): [string, Record<string, any>, string[], boolean] {
+        // See if we already attempted to read in the outputs synchronously. If so, just use those values.
+        if (this.syncOutputs) {
+            return [this.syncName!, this.syncOutputs, this.syncSecretOutputNames!, this.syncOutputsSupported!];
+        }
+
+        // We need to pass along our StackReference name to the engine so it knows what results to
+        // return.  However, because we're doing this synchronously, we can only do this safely if
+        // the stack-reference name is synchronously known (i.e. it's a string and not a
+        // Promise/Output). If it is only asynchronously known, then warn the user and make an unsafe
+        // call to the deasync lib to get the name.
+        let stackName: string;
+        if (this.stackReferenceName instanceof Promise) {
+            // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+            // node, and that may prevent our normal logging calls from making it back to the user.
+            console.log(
+                `Call made to StackReference.${callerName} with a StackReference with a Promise name. This is now deprecated and may cause the program to hang.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
+            stackName = promiseResult(this.stackReferenceName);
+        }
+        else if (Output.isInstance(this.stackReferenceName)) {
+            console.log(
+                `Call made to StackReference.${callerName} with a StackReference with an Output name. This is now deprecated and may cause the program to hang.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#stackreference-sync`);
+
+            stackName = promiseResult(this.stackReferenceName.promise());
+        }
+        else {
+            stackName = this.stackReferenceName;
+        }
+
+        try {
+            const res = invoke.invokeSync<ReadStackOutputsResult>(
+                "pulumi:pulumi:readStackOutputs", { name: stackName });
+            this.syncName = stackName;
+            this.syncOutputs = res.outputs;
+            this.syncSecretOutputNames = res.secretOutputNames;
+            this.syncOutputsSupported = true;
+        } catch {
+            this.syncOutputs = {};
+            this.syncOutputsSupported = false;
+        }
+
+        return [this.syncName!, this.syncOutputs, this.syncSecretOutputNames!, this.syncOutputsSupported];
     }
 }
 

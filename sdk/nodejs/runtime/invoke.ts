@@ -68,7 +68,38 @@ const providerproto = require("../proto/provider_pb.js");
  * synchronously.
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts);
+    if (opts.async) {
+        // User specifically requested async invoking.  Respect that.
+        return invokeAsync(tok, props, opts);
+    }
+
+    const config = new Config("pulumi");
+    const noSyncCalls = config.getBoolean("noSyncCalls");
+    if (noSyncCalls) {
+        // User globally disabled sync invokes.
+        return invokeAsync(tok, props, opts);
+    }
+
+    const syncResult = invokeSync(tok, props, opts);
+
+    // Wrap the synchronous value in a Promise view as well so that consumers can treat it
+    // either as the real value or something they can use as a Promise.
+    return createLiftedPromise(syncResult);
+}
+
+/**
+ * Invokes the provided token *synchronously* no matter what.
+ * @internal
+ */
+export function invokeSync<T>(tok: string, props: Inputs, opts: InvokeOptions = {}): T {
+    const syncInvokes = tryGetSyncInvokes();
+    if (!syncInvokes) {
+        // We weren't launched from a pulumi CLI that supports sync-invokes.  Let the user know they
+        // should update and fall back to synchronously blocking on the async invoke.
+        return invokeFallbackToAsync<T>(tok, props, opts);
+    }
+
+    return invokeSyncWorker<T>(tok, props, opts, syncInvokes);
 }
 
 export async function streamInvoke(
@@ -122,6 +153,10 @@ export async function streamInvoke(
     }
 }
 
+export function invokeFallbackToAsync<T>(tok: string, props: Inputs, opts: InvokeOptions): T {
+    return utils.promiseResult(invokeAsync(tok, props, opts));
+}
+
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
@@ -166,6 +201,58 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     }
 }
 
+function invokeSyncWorker<T>(tok: string, props: any, opts: InvokeOptions, syncInvokes: SyncInvokes): T {
+    const label = `Invoking function: tok=${tok} synchronously`;
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    const serialized = serializePropertiesSync(props);
+    log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
+
+    const providerRef = getProviderRefSync();
+    const req = createInvokeRequest(tok, serialized, providerRef, opts);
+
+    // Encode the request.
+    const reqBytes = Buffer.from(req.serializeBinary());
+
+    // Write the request length.
+    const reqLen = Buffer.alloc(4);
+    reqLen.writeUInt32BE(reqBytes.length, /*offset:*/ 0);
+    fs.writeSync(syncInvokes.requests, reqLen);
+    fs.writeSync(syncInvokes.requests, reqBytes);
+
+    // Read the response.
+    const respLenBytes = Buffer.alloc(4);
+    fs.readSync(syncInvokes.responses, respLenBytes, /*offset:*/ 0, /*length:*/ 4, /*position:*/ null);
+    const respLen = respLenBytes.readUInt32BE(/*offset:*/ 0);
+    const respBytes = Buffer.alloc(respLen);
+    fs.readSync(syncInvokes.responses, respBytes, /*offset:*/ 0, /*length:*/ respLen, /*position:*/ null);
+
+    // Decode the response.
+    const resp = providerproto.InvokeResponse.deserializeBinary(new Uint8Array(respBytes));
+    const resultValue = deserializeResponse(tok, resp);
+
+    return resultValue;
+
+    function getProviderRefSync() {
+        const provider = getProvider(tok, opts);
+
+        if (provider === undefined) {
+            return undefined;
+        }
+
+        if (provider.__registrationId === undefined) {
+            // Have to do an explicit console.log here as the call to utils.promiseResult may hang
+            // node, and that may prevent our normal logging calls from making it back to the user.
+            console.log(
+`Synchronous call made to "${tok}" with an unregistered provider. This is now deprecated and may cause the program to hang.
+For more details see: https://www.pulumi.com/docs/troubleshooting/#synchronous-call`);
+            utils.promiseResult(ProviderResource.register(provider));
+        }
+
+        return provider.__registrationId;
+    }
+}
+
 // StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
 // with facilities to gracefully cancel and clean up the stream.
 export class StreamInvokeResponse<T> implements AsyncIterable<T> {
@@ -182,6 +269,16 @@ export class StreamInvokeResponse<T> implements AsyncIterable<T> {
     [Symbol.asyncIterator]() {
         return this.source[Symbol.asyncIterator]();
     }
+}
+
+// Expose the properties of the actual result of invoke directly on the promise itself. Note this
+// doesn't actually involve any asynchrony.  The promise will be created synchronously and the
+// values copied to it can be used immediately.  We simply make a Promise so that any consumers that
+// do a `.then()` on it continue to work even though we've switched from being async to sync.
+function createLiftedPromise(value: any): Promise<any> {
+    const promise = Promise.resolve(value);
+    Object.assign(promise, value);
+    return promise;
 }
 
 function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions) {
@@ -202,6 +299,57 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
 function getProvider(tok: string, opts: InvokeOptions) {
     return opts.provider ? opts.provider :
            opts.parent ? opts.parent.getProvider(tok) : undefined;
+}
+
+function serializePropertiesSync(prop: any): any {
+    if (prop === undefined ||
+        prop === null ||
+        typeof prop === "boolean" ||
+        typeof prop === "number" ||
+        typeof prop === "string") {
+
+        return prop;
+    }
+
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+        throw new Error("Assets and Archives cannot be passed in as arguments to a data source call.");
+    }
+
+    if (prop instanceof Promise) {
+        throw new Error("Promises cannot be passed in as arguments to a data source call.");
+    }
+
+    if (Output.isInstance(prop)) {
+        throw new Error("Outputs cannot be passed in as arguments to a data source call.");
+    }
+
+    if (Resource.isInstance(prop)) {
+        throw new Error("Resources cannot be passed in as arguments to a data source call.");
+    }
+
+    if (prop instanceof Array) {
+        const result: any[] = [];
+        for (let i = 0; i < prop.length; i++) {
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = serializePropertiesSync(prop[i]);
+            result.push(elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
+    return serializeAllKeys(prop, {});
+
+    function serializeAllKeys(innerProp: any, obj: any) {
+        for (const k of Object.keys(innerProp)) {
+            // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
+            const v = serializePropertiesSync(innerProp[k]);
+            if (v !== undefined) {
+                obj[k] = v;
+            }
+        }
+
+        return obj;
+    }
 }
 
 function deserializeResponse(tok: string, resp: any): any {
