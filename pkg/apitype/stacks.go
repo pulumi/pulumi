@@ -23,11 +23,11 @@ type StackSummary struct {
 	// StackName is the name of the stack.
 	StackName string `json:"stackName"`
 
-	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
+	// LastUpdate is a Unix timestamp of the start time of the stack's last update, as applicable.
 	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
-	// CurentUpdate provides information about the current stack update in-progress as applicable.
-	CurrentUpdate *CurrentUpdateStatus `json:"currentUpdate,omitempty"`
+	// CurrentOperation provides information about any stack operation in-progress as applicable.
+	CurrentOperation *OperationStatus `json:"currentOperation,omitempty"`
 
 	// ResourceCount is the number of resources associated with this stack, as applicable.
 	ResourceCount *int `json:"resourceCount,omitempty"`
@@ -54,11 +54,6 @@ type CreateStackResponse struct{}
 type EncryptValueRequest struct {
 	// The value to encrypt.
 	Plaintext []byte `json:"plaintext"`
-}
-
-type CurrentUpdateStatus struct {
-	CurrentUpdateStarted int64 `json:"currentUpdateStarted,omitempty"`
-	CurrentUpdateAuthor string `json:"currentUpdateAuthor,omitempty"`
 }
 
 // EncryptValueResponse defines the response body for an encrypted value.
@@ -88,4 +83,11 @@ type ImportStackRequest UntypedDeployment
 // ImportStackResponse defines the response body for importing a Stack.
 type ImportStackResponse struct {
 	UpdateID string `json:"updateId"`
+}
+
+// OperationStatus describes the state of an operation being performed on a Pulumi stack.
+type OperationStatus struct {
+	Kind UpdateKind `json:"kind"`
+	Author string `json:"author"`
+	Started int64 `json:"started"`
 }
