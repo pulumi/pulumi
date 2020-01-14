@@ -39,6 +39,6 @@
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": "^8.13.0 || >=10.10.0"
+        "node": ">=8.13.0 || >=10.10.0"
     }
 }
