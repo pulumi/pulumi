@@ -3,7 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+<<<<<<< HEAD
 - @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
+=======
+- All data-source invocations are now asynchronous (Promise-returning) by default.
+>>>>>>> asyncDefault
 
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 
