@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- All data-source invocations are now asynchronous (Promise-returning) by default.
+
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 
 - Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
@@ -34,7 +36,7 @@ CHANGELOG
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
   [#3675](https://github.com/pulumi/pulumi/pull/3675)
-  
+
 - `ComponentResource`s now have built-in support for asynchronously constructing their children. [#3676](https://github.com/pulumi/pulumi/pull/3676)
 
 - `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
@@ -53,7 +55,7 @@ CHANGELOG
 
 ## 1.7.0 (2019-12-11)
 
-- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This 
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This
   allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
   operations at the top-level. [#3321](https://github.com/pulumi/pulumi/pull/3321)
 
