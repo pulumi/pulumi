@@ -33,6 +33,27 @@ const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 
+// We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
+// code.
+const uncaughtErrors = new Set<Error>();
+const uncaughtHandler = (err: Error) => {
+    if (!uncaughtErrors.has(err)) {
+        uncaughtErrors.add(err);
+        console.error(err.stack || err.message || ("" + err));
+    }
+};
+
+process.on("uncaughtException", uncaughtHandler);
+// @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
+// suppress the TS strictness here.
+process.on("unhandledRejection", uncaughtHandler);
+process.on("exit", (code: number) => {
+    // If there were any uncaught errors at all, we always want to exit with an error code.
+    if (code === 0 && uncaughtErrors.size > 0) {
+        process.exitCode = 1;
+    }
+});
+
 function getProvider(props: any): dynamic.ResourceProvider {
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
     return requireFromString(props[providerKey]).handler();
