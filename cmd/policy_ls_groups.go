@@ -19,7 +19,6 @@ import (
 	"strconv"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -34,15 +33,7 @@ func newPolicyLsGroupsCmd() *cobra.Command {
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
-			interactive := cmdutil.Interactive()
-			opts := backend.UpdateOptions{}
-			opts.Display = display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-				Type:          display.DisplayQuery,
-			}
-
-			b, err := currentBackend(opts.Display)
+			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
 			}
