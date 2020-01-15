@@ -26,7 +26,7 @@ from . import known_types, settings
 from .. import log
 
 if TYPE_CHECKING:
-    from ..output import Inputs, Input
+    from ..output import Inputs, Input, Output
     from ..resource import Resource, CustomResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
@@ -155,20 +155,22 @@ async def serialize_property(value: 'Input[Any]',
         #
         # The returned future can then be awaited to yield a value, which we'll continue
         # serializing.
-        future_return = await asyncio.ensure_future(value)
+        awaitable = cast('Any', value)
+        future_return = await asyncio.ensure_future(awaitable)
         return await serialize_property(future_return, deps, input_transformer)
 
     if known_types.is_output(value):
-        value_resources = await value.resources()
+        output = cast('Output', value)
+        value_resources = await output.resources()
         deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await value._is_known
-        is_secret = await value._is_secret
-        value = await serialize_property(value.future(), deps, input_transformer)
+        is_known = await output._is_known
+        is_secret = await output._is_secret
+        value = await serialize_property(output.future(), deps, input_transformer)
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():
@@ -272,7 +274,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
-        values = [deserialize_property(v, keep_unknowns) for v in value]
+        values = [deserialize_property(v, keep_unknowns) for v in value.values]
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -324,9 +326,9 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             # these properties are handled specially elsewhere.
             continue
 
-        resolve_value = asyncio.Future()
-        resolve_is_known = asyncio.Future()
-        resolve_is_secret = asyncio.Future()
+        resolve_value: 'asyncio.Future' = asyncio.Future()
+        resolve_is_known: 'asyncio.Future' = asyncio.Future()
+        resolve_is_secret: 'asyncio.Future' = asyncio.Future()
 
         def do_resolve(value_fut: asyncio.Future,
                        known_fut: asyncio.Future,
