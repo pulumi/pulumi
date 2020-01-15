@@ -13,6 +13,9 @@
 # limitations under the License.
 from typing import Optional
 
+if TYPE_CHECKING:
+    from .resource import Resource, ProviderResource
+
 class InvokeOptions:
     """
     InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.

@@ -15,7 +15,7 @@
 The known_types module contains state for keeping track of types that
 are known to be special in the Pulumi type system.
 
-Python strictly disallows circular references between imported packages.
+Python strictly disallows circular references between imported packages.    
 Because the Pulumi top-level module depends on the `pulumi.runtime` submodule,
 it is not allowed for `pulumi.runtime` to reach back to the `pulumi` top-level
 to reference types that are defined there.
@@ -38,7 +38,7 @@ _custom_resource_type: Optional[type] = None
 _asset_resource_type: Optional[type] = None
 """The type of Asset. Filled-in as the Pulumi package is initializing."""
 
-_file_asset_resource_type: Optional[type] = None
+_file_asset_resource_type: Optional[type] = None 
 """The type of FileAsset. Filled-in as the Pulumi package is initializing."""
 
 _string_asset_resource_type: Optional[type] = None
@@ -182,56 +182,56 @@ def new_file_asset(*args: Any) -> Any:
     """
     Instantiates a new FileAsset, passing the given arguments to the constructor.
     """
-    return _file_asset_resource_type(*args)
+    return _file_asset_resource_type(*args) # type: ignore
 
 
 def new_string_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
-    return _string_asset_resource_type(*args)
+    return _string_asset_resource_type(*args) # type: ignore
 
 
 def new_remote_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
-    return _remote_asset_resource_type(*args)
+    return _remote_asset_resource_type(*args) # type: ignore
 
 
 def new_asset_archive(*args: Any) -> Any:
     """
     Instantiates a new AssetArchive, passing the given arguments to the constructor.
     """
-    return _asset_archive_resource_type(*args)
+    return _asset_archive_resource_type(*args) # type: ignore
 
 
 def new_file_archive(*args: Any) -> Any:
     """
     Instantiates a new FileArchive, passing the given arguments to the constructor.
     """
-    return _file_archive_resource_type(*args)
+    return _file_archive_resource_type(*args) # type: ignore
 
 
 def new_remote_archive(*args: Any) -> Any:
     """
     Instantiates a new StringArchive, passing the given arguments to the constructor.
     """
-    return _remote_archive_resource_type(*args)
+    return _remote_archive_resource_type(*args) # type: ignore
 
 
 def new_output(*args: Any) -> Any:
     """
     Instantiates a new Output, passing the given arguments to the constructor.
     """
-    return _output_type(*args)
+    return _output_type(*args) # type: ignore
 
 
 def new_unknown(*args: Any) -> Any:
     """
     Instantiates a new Unknown, passing the given arguments to the constructor.
     """
-    return _unknown_type(*args)
+    return _unknown_type(*args) # type: ignore
 
 
 def is_asset(obj: Any) -> bool:
