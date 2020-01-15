@@ -97,20 +97,20 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 	return path.Join(append([]string{prefix}, components...)...)
 }
 
-// listPolicyGroupsPath returns the API path to for the given organization with the given
-// components joined with path separators and appended to the organization root.
+// listPolicyGroupsPath returns the path for an API call to the Pulumi service to list the Policy Groups
+// in a Pulumi organization.
 func listPolicyGroupsPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policygroups", orgName)
 }
 
-// listPolicyPacksPath returns the API path to for the given organization with the given
-// components joined with path separators and appended to the organization root.
+// listPolicyPacksPath returns the path for an API call to the Pulumi service to list the Policy Packs
+// in a Pulumi organization.
 func listPolicyPacksPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
 
-// publishPolicyPackPath returns the API path to for the given organization with the given
-// components joined with path separators and appended to the organization root.
+// publishPolicyPackPath returns the path for an API call to the Pulumi service to publish a new Policy Pack
+// in a Pulumi organization.
 func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }

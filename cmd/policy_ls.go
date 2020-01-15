@@ -15,19 +15,99 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
 func newPolicyLsCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List policy resources",
-		Args:  cmdutil.NoArgs,
+	var jsonOut bool
+
+	var cmd = &cobra.Command{
+		Use:   "ls [org-name]",
+		Args:  cmdutil.MaximumNArgs(1),
+		Short: "List all Policy Packs for a Pulumi organization",
+		Long:  "List all Policy Packs for a Pulumi organization",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			// Get backend.
+			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+			if err != nil {
+				return err
+			}
+
+			// Get organization.
+			var orgName string
+			if len(cliArgs) > 0 {
+				orgName = cliArgs[0]
+			} else {
+				orgName, err = b.CurrentUser()
+				if err != nil {
+					return err
+				}
+			}
+
+			// List the Policy Packs for the organization.
+			ctx := context.Background()
+			policyPacks, err := b.ListPolicyPacks(ctx, orgName)
+			if err != nil {
+				return err
+			}
+
+			if jsonOut {
+				return formatPolicyPacksJSON(policyPacks)
+			}
+			return formatPolicyPacksConsole(policyPacks)
+		}),
 	}
-
-	cmd.AddCommand(newPolicyLsGroupsCmd())
-	cmd.AddCommand(newPolicyLsPacksCmd())
-
+	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
+}
+
+func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error {
+	// Header string and formatting options to align columns.
+	headers := []string{"NAME", "VERSIONS"}
+
+	rows := []cmdutil.TableRow{}
+
+	for _, packs := range policyPacks.PolicyPacks {
+		// Name column
+		name := packs.Name
+
+		// Versions column
+		versions := strings.Trim(strings.Replace(fmt.Sprint(packs.Versions), " ", ", ", -1), "[]")
+
+		// Render the columns.
+		columns := []string{name, versions}
+		rows = append(rows, cmdutil.TableRow{Columns: columns})
+	}
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: headers,
+		Rows:    rows,
+	})
+	return nil
+}
+
+// policyPacksJSON is the shape of the --json output of this command. When --json is passed, we print an array
+// of policyPacksJSON objects.  While we can add fields to this structure in the future, we should not change
+// existing fields.
+type policyPacksJSON struct {
+	Name     string `json:"name"`
+	Versions []int  `json:"versions"`
+}
+
+func formatPolicyPacksJSON(policyPacks apitype.ListPolicyPacksResponse) error {
+	output := make([]policyPacksJSON, len(policyPacks.PolicyPacks))
+	for i, pack := range policyPacks.PolicyPacks {
+		output[i] = policyPacksJSON{
+			Name:     pack.Name,
+			Versions: pack.Versions,
+		}
+	}
+	return printJSON(output)
 }

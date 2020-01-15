@@ -24,10 +24,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPolicyLsGroupsCmd() *cobra.Command {
+func newPolicyGroupsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "groups",
+		Short: "Manage policy groups",
+		Args:  cmdutil.NoArgs,
+	}
+
+	cmd.AddCommand(newPolicyGroupsLsCmd())
+	return cmd
+}
+
+func newPolicyGroupsLsCmd() *cobra.Command {
 	var jsonOut bool
 	var cmd = &cobra.Command{
-		Use:   "groups [org-name]",
+		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
