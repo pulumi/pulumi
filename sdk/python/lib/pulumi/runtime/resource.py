@@ -15,7 +15,7 @@ import asyncio
 import sys
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING, cast
 from google.protobuf import struct_pb2
 import grpc
 
@@ -28,7 +28,7 @@ from ..metadata import get_project, get_stack
 from ..output import Output
 
 if TYPE_CHECKING:
-    from .. import Resource, ResourceOptions
+    from .. import Resource, ResourceOptions, CustomResource
     from ..output import Inputs
 
 
@@ -57,12 +57,12 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
-    property_dependencies: Dict[str, List[str]]
+    property_dependencies: Dict[str, List[Optional[str]]]
     """
     A map from property name to the URNs of the resources the property depends on.
     """
 
-    aliases: List[str]
+    aliases: List[Optional[str]]
     """
     A list of aliases applied to this resource.
     """
@@ -88,7 +88,7 @@ async def prepare_resource(res: 'Resource',
     serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, res.translate_input_property)
 
     # Wait for our parent to resolve
-    parent_urn = ""
+    parent_urn: Optional[str] = ""
     if opts is not None and opts.parent is not None:
         parent_urn = await opts.parent.urn.future()
     # TODO(sean) is it necessary to check the type here?
@@ -100,7 +100,7 @@ async def prepare_resource(res: 'Resource',
 
     # Construct the provider reference, if we were given a provider to use.
     provider_ref = None
-    if custom and opts.provider is not None:
+    if custom and opts is not None and opts.provider is not None:
         provider = opts.provider
 
         # If we were given a provider, wait for it to resolve and construct a provider reference from it.
@@ -110,7 +110,7 @@ async def prepare_resource(res: 'Resource',
         provider_ref = f"{provider_urn}::{provider_id}"
 
     dependencies = set(explicit_urn_dependencies)
-    property_dependencies: Dict[str, List[str]] = {}
+    property_dependencies: Dict[str, List[Optional[str]]] = {}
     for key, deps in property_dependencies_resources.items():
         urns = set()
         for dep in deps:
@@ -123,7 +123,7 @@ async def prepare_resource(res: 'Resource',
     # former has been processed in the Resource constructor prior to calling
     # `register_resource` - both adding new inherited aliases and simplifying aliases down
     # to URNs.
-    aliases = []
+    aliases: List[Optional[str]] = []
     for alias in res._aliases:
         alias_val = await Output.from_input(alias).future()
         if not alias_val in aliases:
@@ -132,7 +132,7 @@ async def prepare_resource(res: 'Resource',
     log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
-        serialized_props,
+        cast(Dict[str, Any], serialized_props),
         dependencies,
         provider_ref,
         property_dependencies,
@@ -142,7 +142,7 @@ async def prepare_resource(res: 'Resource',
 # pylint: disable=too-many-locals,too-many-statements
 
 
-def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Optional['ResourceOptions']):
+def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions'):
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
@@ -155,9 +155,9 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
     log.debug(f"preparing read resource for RPC")
-    urn_future = asyncio.Future()
-    urn_known = asyncio.Future()
-    urn_secret = asyncio.Future()
+    urn_future: asyncio.Future = asyncio.Future()
+    urn_known: asyncio.Future = asyncio.Future()
+    urn_secret: asyncio.Future = asyncio.Future()
     urn_known.set_result(True)
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
@@ -170,9 +170,11 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: Op
     #
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
-    resolve_value = asyncio.Future()
-    resolve_perform_apply = asyncio.Future()
-    resolve_secret = asyncio.Future()
+    res = cast(CustomResource, res)
+
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_perform_apply: asyncio.Future = asyncio.Future()
+    resolve_secret: asyncio.Future = asyncio.Future()
     res.id = known_types.new_output(
         {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
@@ -281,9 +283,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
     log.debug(f"preparing resource for RPC")
-    urn_future = asyncio.Future()
-    urn_known = asyncio.Future()
-    urn_secret = asyncio.Future()
+    urn_future: asyncio.Future = asyncio.Future()
+    urn_known: asyncio.Future = asyncio.Future()
+    urn_secret: asyncio.Future = asyncio.Future()
     urn_known.set_result(True)
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
@@ -292,11 +294,12 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     # If a custom resource, make room for the ID property.
     resolve_id: Optional[Callable[[
-        Any, str, Optional[Exception]], None]] = None
+        Any, bool, Optional[Exception]], None]] = None
     if custom:
-        resolve_value = asyncio.Future()
-        resolve_perform_apply = asyncio.Future()
-        resolve_secret = asyncio.Future()
+        res = cast(CustomResource, res)
+        resolve_value: asyncio.Future = asyncio.Future()
+        resolve_perform_apply: asyncio.Future = asyncio.Future()
+        resolve_secret: asyncio.Future = asyncio.Future()
         res.id = known_types.new_output(
             {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
@@ -409,7 +412,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         "register resource", do_register)())
 
 
-def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Awaitable[Inputs], Output[Inputs]]'):
+def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[Inputs]]'):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         serialized_props = await rpc.serialize_properties(outputs, {})

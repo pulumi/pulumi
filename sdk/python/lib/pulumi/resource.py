@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
-from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING
+from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
 
 import copy
 
@@ -568,7 +568,7 @@ class Resource:
     A collection of transformations to apply as part of resource registration.
     """
 
-    _aliases: 'Input[str]'
+    _aliases: 'List[Input[str]]'
     """
     A list of aliases applied to this resource.
     """
@@ -683,7 +683,7 @@ class Resource:
         # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
         # do not know the default `name` and `type` to apply until we are inside the resource
         # constructor.
-        self._aliases = []
+        self._aliases: List[Input[str]] = []
         if opts.aliases is not None:
             for alias in opts.aliases:
                 self._aliases.append(collapse_alias_to_urn(
