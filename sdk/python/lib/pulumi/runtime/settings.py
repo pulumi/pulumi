@@ -117,7 +117,7 @@ def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
 
 
-def get_project() -> Optional[str]:
+def get_project() -> str:
     """
     Returns the current project name.
     """
@@ -135,7 +135,7 @@ def _set_project(v: Optional[str]):
     SETTINGS.project = v
 
 
-def get_stack() -> Optional[str]:
+def get_stack() -> str:
     """
     Returns the current stack name.
     """
