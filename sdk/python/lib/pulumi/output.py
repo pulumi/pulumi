@@ -107,10 +107,10 @@ class Output(Generic[T]):
     def resources(self) -> Awaitable[Set['Resource']]:
         return self._resources
 
-    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[T]:
+    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T]]:
         # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
         # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
-        async def get_value() -> T:
+        async def get_value() -> Optional[T]:
             val = await self._future
             return None if not with_unknowns and contains_unknowns(val) else val
         return asyncio.ensure_future(get_value())
