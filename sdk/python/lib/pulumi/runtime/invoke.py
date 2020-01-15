@@ -39,8 +39,8 @@ if sys.version_info[0] == 3 and sys.version_info[1] < 7:
     _enter_task = enter_task
     _leave_task = leave_task
 else:
-    _enter_task = asyncio.tasks._enter_task
-    _leave_task = asyncio.tasks._leave_task
+    _enter_task = asyncio.tasks._enter_task # type: ignore
+    _leave_task = asyncio.tasks._leave_task # type: ignore
 
 
 def _sync_await(awaitable: Awaitable[Any]) -> Any:
@@ -72,17 +72,17 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     #
     # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
     # _run_once kernel with which we need to cooperate.
-    ntodo = len(loop._ready)
+    ntodo = len(loop._ready) # type: ignore
     while not fut.done() and not fut.cancelled():
-        loop._run_once()
-        if loop._stopping:
+        loop._run_once() # type: ignore
+        if loop._stopping: # type: ignore
             break
     # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
     # cancelled handles onto the list.
-    while len(loop._ready) < ntodo:
-        handle = asyncio.Handle(None, None, loop)
+    while len(loop._ready) < ntodo: # type: ignore
+        handle = asyncio.Handle(lambda: None, [], loop)
         handle._cancelled = True
-        loop._ready.append(handle)
+        loop._ready.append(handle) # type: ignore
 
     # If we were executing inside a task, restore its context and continue on.
     if task is not None:
