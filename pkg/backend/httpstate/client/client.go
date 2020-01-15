@@ -497,7 +497,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, nil
 }
 
-// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If its successful, it returns
+// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it's successful, it returns
 // the version that was published.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (int, error) {
