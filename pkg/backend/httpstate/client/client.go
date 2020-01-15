@@ -588,15 +588,9 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyGroup string,
 	policyPackName string, version int) error {
 
+	// If a Policy Group was not specified, we use the default Policy Group.
 	if policyGroup == "" {
-		req := apitype.ApplyPolicyPackRequest{Name: policyPackName, Version: version}
-
-		err := pc.restCall(
-			ctx, "POST", applyPolicyPackPath(orgName, policyPackName, version), nil, req, nil)
-		if err != nil {
-			return errors.Wrapf(err, "Enable policy pack failed")
-		}
-		return nil
+		policyGroup = apitype.DefaultPolicyGroup
 	}
 
 	// If a Policy Group was specified, enable it for the specific group only.
