@@ -49,9 +49,9 @@ func TestDetectVars(t *testing.T) {
 			"PULUMI_CI_BUILD_ID": buildID,
 		},
 		GitLab: {
-			"TRAVIS":    "",
-			"GITLAB_CI": "true",
-			"CI_JOB_ID": buildID,
+			"TRAVIS":          "",
+			"GITLAB_CI":       "true",
+			"CI_PIPELINE_IID": buildID,
 		},
 		Travis: {
 			"TRAVIS":        "true",
