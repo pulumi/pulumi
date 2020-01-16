@@ -13,6 +13,8 @@ CHANGELOG
 
 - Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
 
+- Update GitLab CI detection code for setting an update's `BuildID` and `PRNumber` metadata properties. [#3763](https://github.com/pulumi/pulumi/pull/3763)
+
 ## 1.8.1 (2019-12-20)
 
 - Fix a panic in `pulumi stack select`. [#3687](https://github.com/pulumi/pulumi/pull/3687)
