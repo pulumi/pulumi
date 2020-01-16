@@ -170,7 +170,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
     #
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
-    res = cast(CustomResource, res) # pylint: disable=used-before-assignment
+    res = cast('CustomResource', res)
 
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_perform_apply: asyncio.Future = asyncio.Future()
@@ -296,7 +296,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     resolve_id: Optional[Callable[[
         Any, bool, Optional[Exception]], None]] = None
     if custom:
-        res = cast(CustomResource, res)
+        res = cast('CustomResource', res)
         resolve_value: asyncio.Future = asyncio.Future()
         resolve_perform_apply: asyncio.Future = asyncio.Future()
         resolve_secret: asyncio.Future = asyncio.Future()
