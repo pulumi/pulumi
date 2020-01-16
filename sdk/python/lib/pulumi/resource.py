@@ -873,7 +873,8 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
-    stack = cast(Stack, get_root_resource()) # pylint: disable=used-before-assignment
+    stack = cast('Stack', get_root_resource())
+
     if stack is not None:
         stack.output(name, value)
 
@@ -907,6 +908,7 @@ def create_urn(
             project = get_project()
 
         parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
+
     all_args = [parent_prefix, type_, name]
-    return Output.all(all_args).apply(
-        lambda arr: arr[0] + arr[1] + "::" + arr[2])
+    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2]) # type: ignore
