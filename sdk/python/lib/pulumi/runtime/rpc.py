@@ -274,7 +274,8 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
-        values = [deserialize_property(v, keep_unknowns) for v in value.values]
+        # values has no __iter__ defined but this works.
+        values = [deserialize_property(v, keep_unknowns) for v in value] # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
