@@ -141,9 +141,9 @@ class Output(Generic[T]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        result_resources: asyncio.Future = asyncio.Future()
-        result_is_known: asyncio.Future = asyncio.Future()
-        result_is_secret: asyncio.Future = asyncio.Future()
+        result_resources: asyncio.Future[Set['Resource']] = asyncio.Future()
+        result_is_known: asyncio.Future[bool] = asyncio.Future()
+        result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
@@ -265,8 +265,8 @@ class Output(Generic[T]):
             return output
 
         # If it's not an output, list, or dict, it must be known and not secret
-        is_known_fut: asyncio.Future = asyncio.Future()
-        is_secret_fut: asyncio.Future = asyncio.Future()
+        is_known_fut: asyncio.Future[bool] = asyncio.Future()
+        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
         is_known_fut.set_result(True)
         is_secret_fut.set_result(False)
 
@@ -295,7 +295,7 @@ class Output(Generic[T]):
         """
 
         o = Output.from_input(val)
-        is_secret: asyncio.Future = asyncio.Future()
+        is_secret: asyncio.Future[bool] = asyncio.Future()
         is_secret.set_result(True)
         return Output(o._resources, o._future, o._is_known, is_secret)
 

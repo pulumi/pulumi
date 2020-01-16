@@ -155,9 +155,9 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
     log.debug(f"preparing read resource for RPC")
-    urn_future: asyncio.Future = asyncio.Future()
-    urn_known: asyncio.Future = asyncio.Future()
-    urn_secret: asyncio.Future = asyncio.Future()
+    urn_future: asyncio.Future[Output[str]] = asyncio.Future()
+    urn_known: asyncio.Future[bool] = asyncio.Future()
+    urn_secret: asyncio.Future[bool] = asyncio.Future()
     urn_known.set_result(True)
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
@@ -173,8 +173,8 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
     res = cast('CustomResource', res)
 
     resolve_value: asyncio.Future = asyncio.Future()
-    resolve_perform_apply: asyncio.Future = asyncio.Future()
-    resolve_secret: asyncio.Future = asyncio.Future()
+    resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
+    resolve_secret: asyncio.Future[bool] = asyncio.Future()
     res.id = known_types.new_output(
         {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
@@ -283,9 +283,9 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
     log.debug(f"preparing resource for RPC")
-    urn_future: asyncio.Future = asyncio.Future()
-    urn_known: asyncio.Future = asyncio.Future()
-    urn_secret: asyncio.Future = asyncio.Future()
+    urn_future: asyncio.Future[Output[str]] = asyncio.Future()
+    urn_known: asyncio.Future[bool] = asyncio.Future()
+    urn_secret: asyncio.Future[bool] = asyncio.Future()
     urn_known.set_result(True)
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
@@ -298,8 +298,8 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     if custom:
         res = cast('CustomResource', res)
         resolve_value: asyncio.Future = asyncio.Future()
-        resolve_perform_apply: asyncio.Future = asyncio.Future()
-        resolve_secret: asyncio.Future = asyncio.Future()
+        resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
+        resolve_secret: asyncio.Future[bool] = asyncio.Future()
         res.id = known_types.new_output(
             {res}, resolve_value, resolve_perform_apply, resolve_secret)
 

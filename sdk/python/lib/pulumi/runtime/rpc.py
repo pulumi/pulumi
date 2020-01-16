@@ -331,9 +331,9 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         resolve_is_known: 'asyncio.Future' = asyncio.Future()
         resolve_is_secret: 'asyncio.Future' = asyncio.Future()
 
-        def do_resolve(value_fut: asyncio.Future,
-                       known_fut: asyncio.Future,
-                       secret_fut: asyncio.Future,
+        def do_resolve(value_fut: 'asyncio.Future',
+                       known_fut: 'asyncio.Future[bool]',
+                       secret_fut: 'asyncio.Future[bool]',
                        value: Any,
                        is_known: bool,
                        is_secret: bool,
