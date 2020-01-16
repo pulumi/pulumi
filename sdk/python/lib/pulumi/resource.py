@@ -202,7 +202,8 @@ def collapse_alias_to_urn(
 
         return create_urn(name, type_, parent, project, stack)
 
-    return Output.from_input(alias).apply(collapse_alias_to_urn_worker) # type: ignore
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
+    return inputAlias.apply(collapse_alias_to_urn_worker)
 
 class ResourceTransformationArgs:
     """
