@@ -497,9 +497,10 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, nil
 }
 
-// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service.
+// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it's successful, it returns
+// the version that was published.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) error {
+	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (int, error) {
 
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -517,7 +518,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return errors.Wrapf(err, "Publish policy pack failed")
+		return 0, errors.Wrapf(err, "Publish policy pack failed")
 	}
 
 	fmt.Printf("Published as version %d\n", resp.Version)
@@ -529,12 +530,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	//
@@ -544,10 +545,10 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, resp.Version), nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Request to signal completion of the publish operation failed")
+		return 0, errors.Wrapf(err, "Request to signal completion of the publish operation failed")
 	}
 
-	return nil
+	return resp.Version, nil
 }
 
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
