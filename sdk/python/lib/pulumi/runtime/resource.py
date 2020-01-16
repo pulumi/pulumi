@@ -142,7 +142,7 @@ async def prepare_resource(res: 'Resource',
 # pylint: disable=too-many-locals,too-many-statements
 
 
-def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions'):
+def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions'):
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
@@ -170,7 +170,6 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
     #
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
-    res = cast('CustomResource', res)
 
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
