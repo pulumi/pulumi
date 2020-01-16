@@ -232,7 +232,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else v[key], True) # type: ignore
+        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key], True)
 
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
@@ -260,8 +260,8 @@ class Output(Generic[T]):
 
         if isinstance(val, list):
             list_items: List[Union[Any, Awaitable[Any], Output[Any]]] = [Output.from_input(v) for v in val]
-            # type checker doesn't like returning a list
-            output: Output[T] = cast(Output[T], Output.all(list_items))
+            # invariant: http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+            output: Output[T] = cast(Output[T], Output.all(*list(list_items))) # type: ignore
             return output
 
         # If it's not an output, list, or dict, it must be known and not secret
@@ -273,7 +273,7 @@ class Output(Generic[T]):
         # Is it awaitable? If so, schedule it for execution and use the resulting future
         # as the value future for a new output.
         if isawaitable(val):
-            val_fut = cast(asyncio.Future[T], val)
+            val_fut = cast(asyncio.Future, val)
             promise_output = Output(set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut)
             return promise_output.apply(Output.from_input, True)
 
@@ -338,9 +338,9 @@ class Output(Generic[T]):
         async def gather_futures(outputs):
             value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
             return await asyncio.gather(*value_futures)
-
+        from_input = cast(Callable[[List[Union[T, Awaitable[T], Output[T]]]], Output[T]], Output.from_input)
         # First, map all inputs to outputs using `from_input`.
-        all_outputs = list(map(Output.from_input, *args))
+        all_outputs = list(map(from_input, args))
 
         # Aggregate the list of futures into a future of lists.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
@@ -367,7 +367,8 @@ class Output(Generic[T]):
         """
 
         transformed_items: List[Union[Any, Awaitable[Any], Output[Any]]] = [Output.from_input(v) for v in args]
-        return Output.all(transformed_items).apply("".join)
+        # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+        return Output.all(*transformed_items).apply("".join) # type: ignore
 
 
 @known_types.unknown
