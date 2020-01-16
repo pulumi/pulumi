@@ -648,7 +648,7 @@ func (mod *modContext) getTypeImports(t schema.Type, imports map[string]stringSe
 			if path.Base(mp) == "." {
 				mp = path.Dir(mp)
 			}
-			modPath = mp
+			modPath = filepath.ToSlash(mp)
 		}
 		if imports[modPath] == nil {
 			imports[modPath] = stringSet{}
@@ -784,7 +784,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
+	relRoot := path.Dir(filepath.ToSlash(rel))
 	if nested {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
@@ -910,7 +910,7 @@ func (mod *modContext) gen(fs fs) error {
 	if readme != "" && readme[len(readme)-1] != '\n' {
 		readme += "\n"
 	}
-	fs.add(filepath.Join(mod.mod, "README.md"), []byte(readme))
+	fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
 
 	// Utilities, config
 	switch mod.mod {
@@ -918,7 +918,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(filepath.Join(mod.mod, "utilities.ts"), buffer.Bytes())
+		fs.add(path.Join(mod.mod, "utilities.ts"), buffer.Bytes())
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
@@ -960,8 +960,8 @@ func (mod *modContext) gen(fs fs) error {
 	// Nested types
 	if len(mod.types) > 0 {
 		input, output := mod.genTypes()
-		fs.add(filepath.Join(mod.mod, "input.ts"), []byte(input))
-		fs.add(filepath.Join(mod.mod, "output.ts"), []byte(output))
+		fs.add(path.Join(mod.mod, "input.ts"), []byte(input))
+		fs.add(path.Join(mod.mod, "output.ts"), []byte(output))
 	}
 
 	// Index
