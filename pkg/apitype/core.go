@@ -361,20 +361,20 @@ const (
 
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
-	OrgName          string                  `json:"orgName"`
-	ProjectName      string                  `json:"projectName"`
-	StackName        tokens.QName            `json:"stackName"`
+	OrgName     string       `json:"orgName"`
+	ProjectName string       `json:"projectName"`
+	StackName   tokens.QName `json:"stackName"`
 	// CurrentOperation provides information about any stack operation in-progress as applicable.
 	CurrentOperation *OperationStatus        `json:"currentOperation,omitempty"`
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
-	Version          int                     `json:"version"`
+	Version int `json:"version"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
 type OperationStatus struct {
-	Kind    string     `json:"kind"`
-	Author  string     `json:"author"`
-	Started int64      `json:"started"`
+	Kind    string `json:"kind"`
+	Author  string `json:"author"`
+	Started int64  `json:"started"`
 }

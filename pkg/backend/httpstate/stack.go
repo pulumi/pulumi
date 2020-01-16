@@ -33,12 +33,12 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string                      // the URL to the cloud containing this stack.
-	OrgName() string                       // the organization that owns this stack.
-	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
+	CloudURL() string            // the URL to the cloud containing this stack.
+	OrgName() string             // the organization that owns this stack.
+	ConsoleURL() (string, error) // the URL to view the stack's information on Pulumi.com
 	// CurrentOperation returns any operation currently being performed on the stack if applicable
 	// otherwise returns `nil` if no update is in progress.
-	CurrentOperation() (*apitype.OperationStatus)
+	CurrentOperation() *apitype.OperationStatus
 	Tags() map[apitype.StackTagName]string // the stack's tags.
 	StackIdentifier() client.StackIdentifier
 }
@@ -98,20 +98,20 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			name:    apistack.StackName,
 			b:       b,
 		},
-		cloudURL: b.CloudURL(),
-		orgName:  apistack.OrgName,
+		cloudURL:         b.CloudURL(),
+		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,
-		snapshot: nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
-		tags:     apistack.Tags,
-		b:        b,
+		snapshot:         nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		tags:             apistack.Tags,
+		b:                b,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference                  { return s.ref }
-func (s *cloudStack) Backend() backend.Backend                     { return s.b }
-func (s *cloudStack) CloudURL() string                             { return s.cloudURL }
-func (s *cloudStack) OrgName() string                              { return s.orgName }
-func (s *cloudStack) CurrentOperation() (*apitype.OperationStatus) {return s.currentOperation}
-func (s *cloudStack) Tags() map[apitype.StackTagName]string        { return s.tags }
+func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Backend() backend.Backend                   { return s.b }
+func (s *cloudStack) CloudURL() string                           { return s.cloudURL }
+func (s *cloudStack) OrgName() string                            { return s.orgName }
+func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
+func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 
