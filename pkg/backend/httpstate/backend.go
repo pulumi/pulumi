@@ -466,6 +466,14 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
 }
 
+func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+	return b.client.ListPolicyGroups(ctx, orgName)
+}
+
+func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+	return b.client.ListPolicyPacks(ctx, orgName)
+}
+
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true

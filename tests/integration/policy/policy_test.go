@@ -3,6 +3,7 @@
 package ints
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -36,8 +37,36 @@ func TestPolicy(t *testing.T) {
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 	e.RunCommand("pulumi", "policy", "publish", orgName)
 
+	// Check the policy ls commands.
+	packsOutput, _ := e.RunCommand("pulumi", "policy", "ls", "--json")
+	var packs []policyPacksJSON
+	assertJSON(e, packsOutput, &packs)
+
+	groupsOutput, _ := e.RunCommand("pulumi", "policy", "group", "ls", "--json")
+	var groups []policyGroupsJSON
+	assertJSON(e, groupsOutput, &groups)
+
 	// Enable, Disable and then Delete the Policy Pack.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
 	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
+}
+
+type policyPacksJSON struct {
+	Name     string `json:"name"`
+	Versions []int  `json:"versions"`
+}
+
+type policyGroupsJSON struct {
+	Name           string `json:"name"`
+	Default        bool   `json:"default"`
+	NumPolicyPacks int    `json:"numPolicyPacks"`
+	NumStacks      int    `json:"numStacks"`
+}
+
+func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
+	err := json.Unmarshal([]byte(out), &respObj)
+	if err != nil {
+		e.Errorf("unable to unmarshal %v", out)
+	}
 }

@@ -134,3 +134,30 @@ type PolicyPackMetadata struct {
 	DisplayName string `json:"displayName"`
 	Version     int    `json:"version"`
 }
+
+// ListPolicyPacksResponse is the response to list an organization's
+// Policy Packs.
+type ListPolicyPacksResponse struct {
+	PolicyPacks []PolicyPackWithVersions `json:"policyPacks"`
+}
+
+// PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
+type PolicyPackWithVersions struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Versions    []int  `json:"versions"`
+}
+
+// ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
+type ListPolicyGroupsResponse struct {
+	PolicyGroups []PolicyGroupSummary `json:"policyGroups"`
+}
+
+// PolicyGroupSummary details the name, applicable stacks and the applied Policy
+// Packs for an organization's Policy Group.
+type PolicyGroupSummary struct {
+	Name                  string `json:"name"`
+	IsOrgDefault          bool   `json:"isOrgDefault"`
+	NumStacks             int    `json:"numStacks"`
+	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
+}

@@ -11,6 +11,8 @@ CHANGELOG
 
 - Add Permalink to output when publishing a Policy Pack.
 
+- Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
+
 ## 1.8.1 (2019-12-20)
 
 - Fix a panic in `pulumi stack select`. [#3687](https://github.com/pulumi/pulumi/pull/3687)
