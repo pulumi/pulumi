@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
+  another library.
+
 - @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
 
 - All data-source invocations are now asynchronous (Promise-returning) by default.
