@@ -21,18 +21,13 @@ let pulumi = require("../../../../../");
         urn: "some-urn",
     };
 
-    let result1 = pulumi.runtime.invoke("test:index:echo", args, { provider, async: false });
+    let result1 = await pulumi.runtime.invoke("test:index:echo", args, { provider });
     for (const key in args) {
         assert.deepEqual(result1[key], args[key]);
     }
 
     let result2 = pulumi.runtime.invoke("test:index:echo", args, { provider, async: false });
     result2.then((v) => {
-        assert.deepEqual(v, args);
-    });
-
-    let result3 = pulumi.runtime.invoke("test:index:echo", args, { provider });
-    result3.then((v) => {
         assert.deepEqual(v, args);
     });
 })();

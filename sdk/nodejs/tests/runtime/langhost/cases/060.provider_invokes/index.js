@@ -20,7 +20,7 @@ let args = {
     urn: "some-urn",
 };
 
-let result3 = pulumi.runtime.invoke("test:index:echo", args, { provider, async: true });
-result3.then((v) => {
-    assert.deepEqual(v, args);
+let result2 = pulumi.runtime.invoke("test:index:echo", args, { provider });
+result2.then((v) => {
+	assert.deepEqual(v, args);
 });
