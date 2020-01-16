@@ -42,7 +42,7 @@ class ResourceResolverOperations(NamedTuple):
     This resource's parent URN.
     """
 
-    serialized_props: Dict[str, Any]
+    serialized_props: struct_pb2.Struct
     """
     This resource's input properties, serialized into protobuf structures.
     """
@@ -132,7 +132,7 @@ async def prepare_resource(res: 'Resource',
     log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
-        cast(Dict[str, Any], serialized_props),
+        serialized_props,
         dependencies,
         provider_ref,
         property_dependencies,
