@@ -33,7 +33,7 @@ func (gl gitlabCI) DetectVars() Vars {
 	v.SHA = os.Getenv("CI_COMMIT_SHA")
 	v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 	v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
-	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
+	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_IID")
 
 	return v
 }
