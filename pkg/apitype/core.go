@@ -365,7 +365,7 @@ type Stack struct {
 	ProjectName      string                  `json:"projectName"`
 	StackName        tokens.QName            `json:"stackName"`
 	// CurrentOperation provides information about any stack operation in-progress as applicable.
-	CurrentOperation OperationStatus        `json:"currentOperation,omitempty"`
+	CurrentOperation *OperationStatus        `json:"currentOperation,omitempty"`
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 

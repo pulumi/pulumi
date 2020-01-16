@@ -38,7 +38,7 @@ type Stack interface {
 	ConsoleURL() (string, error)           // the URL to view the stack's information on Pulumi.com
 	// CurrentOperation returns any operation currently being performed on the stack if applicable
 	// otherwise returns `nil` if no update is in progress.
-	CurrentOperation() (apitype.OperationStatus)
+	CurrentOperation() (*apitype.OperationStatus)
 	Tags() map[apitype.StackTagName]string // the stack's tags.
 	StackIdentifier() client.StackIdentifier
 }
@@ -80,7 +80,7 @@ type cloudStack struct {
 	// orgName is the organization that owns this stack.
 	orgName string
 	// currentOperation contains kind, author, and start time of current operation.
-	currentOperation apitype.OperationStatus
+	currentOperation *apitype.OperationStatus
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
 	// b is a pointer to the backend that this stack belongs to.
@@ -106,12 +106,12 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		b:        b,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference           { return s.ref }
-func (s *cloudStack) Backend() backend.Backend              { return s.b }
-func (s *cloudStack) CloudURL() string                      { return s.cloudURL }
-func (s *cloudStack) OrgName() string                       { return s.orgName }
-func (s *cloudStack) CurrentOperation() apitype.OperationStatus {return s.currentOperation}
-func (s *cloudStack) Tags() map[apitype.StackTagName]string { return s.tags }
+func (s *cloudStack) Ref() backend.StackReference                  { return s.ref }
+func (s *cloudStack) Backend() backend.Backend                     { return s.b }
+func (s *cloudStack) CloudURL() string                             { return s.cloudURL }
+func (s *cloudStack) OrgName() string                              { return s.orgName }
+func (s *cloudStack) CurrentOperation() (*apitype.OperationStatus) {return s.currentOperation}
+func (s *cloudStack) Tags() map[apitype.StackTagName]string        { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 
