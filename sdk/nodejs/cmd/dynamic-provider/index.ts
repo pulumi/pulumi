@@ -15,13 +15,14 @@
 import * as minimist from "minimist";
 import * as path from "path";
 
+import * as grpc from "@grpc/grpc-js";
+
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
 import * as runtime from "../../runtime";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
-const grpc = require("grpc");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -31,6 +32,27 @@ const plugproto = require("../../proto/plugin_pb.js");
 const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
+
+// We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
+// code.
+const uncaughtErrors = new Set<Error>();
+const uncaughtHandler = (err: Error) => {
+    if (!uncaughtErrors.has(err)) {
+        uncaughtErrors.add(err);
+        console.error(err.stack || err.message || ("" + err));
+    }
+};
+
+process.on("uncaughtException", uncaughtHandler);
+// @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
+// suppress the TS strictness here.
+process.on("unhandledRejection", uncaughtHandler);
+process.on("exit", (code: number) => {
+    // If there were any uncaught errors at all, we always want to exit with an error code.
+    if (code === 0 && uncaughtErrors.size > 0) {
+        process.exitCode = 1;
+    }
+});
 
 function getProvider(props: any): dynamic.ResourceProvider {
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
@@ -187,7 +209,8 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        return callback(grpcResponseFromError(e));
+        const response = grpcResponseFromError(e);
+        return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
 }
 
@@ -238,7 +261,8 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        return callback(grpcResponseFromError(e));
+        const response = grpcResponseFromError(e);
+        return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
 }
 
@@ -274,7 +298,7 @@ function resultIncludingProvider(result: any, props: any): any {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}): any {
+function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
@@ -308,7 +332,7 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
     };
 }
 
-export function main(args: string[]): void {
+export async function main(args: string[]) {
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
     if (args.length === 0) {
@@ -335,8 +359,15 @@ export function main(args: string[]): void {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
     });
-    const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
-
+    const port: number = await new Promise<number>((resolve, reject) => {
+        server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(p);
+            }
+        });
+    });
     server.start();
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.

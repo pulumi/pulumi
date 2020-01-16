@@ -55,6 +55,7 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     protoc --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin status.proto && \
     protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/local/bin/grpc_tools_node_protoc_plugin $JS_HACK_PROTOS && \
     sed -i "s/^var global = .*;/var proto = { pulumirpc: {} }, global = proto;/" "$TEMP_DIR"/*.js && \
+    sed -i "s/^var grpc = require(.*);/var grpc = require('\''@grpc\/grpc-js'\'');/" "$TEMP_DIR"/*.js && \
     cp "$TEMP_DIR"/*.js "$JS_PULUMIRPC"'
 
 function on_exit() {
