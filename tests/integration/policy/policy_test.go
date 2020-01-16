@@ -42,7 +42,7 @@ func TestPolicy(t *testing.T) {
 	var packs []policyPacksJSON
 	assertJSON(e, packsOutput, &packs)
 
-	groupsOutput, _ := e.RunCommand("pulumi", "policy", "groups", "ls", "--json")
+	groupsOutput, _ := e.RunCommand("pulumi", "policy", "group", "ls", "--json")
 	var groups []policyGroupsJSON
 	assertJSON(e, groupsOutput, &groups)
 

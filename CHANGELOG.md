@@ -11,7 +11,7 @@ CHANGELOG
 
 - Add Permalink to output when publishing a Policy Pack.
 
-- Add `pulumi policy ls packs` and `pulumi policy ls groups` to list Policy related resources.
+- Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
 
 ## 1.8.1 (2019-12-20)
 

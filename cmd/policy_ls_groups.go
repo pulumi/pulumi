@@ -24,18 +24,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPolicyGroupsCmd() *cobra.Command {
+func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "groups",
+		Use:   "group",
 		Short: "Manage policy groups",
 		Args:  cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPolicyGroupsLsCmd())
+	cmd.AddCommand(newPolicyGroupLsCmd())
 	return cmd
 }
 
-func newPolicyGroupsLsCmd() *cobra.Command {
+func newPolicyGroupLsCmd() *cobra.Command {
 	var jsonOut bool
 	var cmd = &cobra.Command{
 		Use:   "ls [org-name]",

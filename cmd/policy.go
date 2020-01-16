@@ -28,7 +28,7 @@ func newPolicyCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyDisableCmd())
 	cmd.AddCommand(newPolicyEnableCmd())
-	cmd.AddCommand(newPolicyGroupsCmd())
+	cmd.AddCommand(newPolicyGroupCmd())
 	cmd.AddCommand(newPolicyLsCmd())
 	cmd.AddCommand(newPolicyNewCmd())
 	cmd.AddCommand(newPolicyPublishCmd())
