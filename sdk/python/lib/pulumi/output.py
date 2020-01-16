@@ -255,7 +255,7 @@ class Output(Generic[T]):
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
             dict_items = [[k, Output.from_input(v)] for k, v in val.items()]
             # type checker doesn't like returing a Dict in the apply callback
-            fn = cast(Callable[[List[Any]], T], lambda props: {k: v for k, v in props})
+            fn = cast(Callable[[List[Any]], T], lambda props: {k: v for k, v in props}) # pylint: disable=unnecessary-comprehension
             return Output.all(*dict_items).apply(fn, True)
 
         if isinstance(val, list):

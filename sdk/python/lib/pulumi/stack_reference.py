@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from asyncio import ensure_future
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Callable
 from copy import deepcopy
 
 from .output import Output, Input
@@ -67,7 +67,7 @@ class StackReference(CustomResource):
 
         :param Input[str] name: The name of the stack output to fetch.
         """
-        value = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1].get(l[0]))
+        value: Output[Any] = Output.all([Output.from_input(name), self.outputs]).apply(lambda l: l[1].get(l[0])) # type: ignore
         is_secret = ensure_future(self.__is_secret_name(name))
 
         return Output(value.resources(), value.future(), value.is_known(), is_secret)
@@ -80,7 +80,7 @@ class StackReference(CustomResource):
         :param Input[str] name: The name of the stack output to fetch.
         """
 
-        value = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1][l[0]])
+        value = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1][l[0]]) # type: ignore
         is_secret = ensure_future(self.__is_secret_name(name))
 
         return Output(value.resources(), value.future(), value.is_known(), is_secret)

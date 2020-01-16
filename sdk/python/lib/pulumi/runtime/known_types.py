@@ -15,7 +15,7 @@
 The known_types module contains state for keeping track of types that
 are known to be special in the Pulumi type system.
 
-Python strictly disallows circular references between imported packages.    
+Python strictly disallows circular references between imported packages.
 Because the Pulumi top-level module depends on the `pulumi.runtime` submodule,
 it is not allowed for `pulumi.runtime` to reach back to the `pulumi` top-level
 to reference types that are defined there.
@@ -38,7 +38,7 @@ _custom_resource_type: Optional[type] = None
 _asset_resource_type: Optional[type] = None
 """The type of Asset. Filled-in as the Pulumi package is initializing."""
 
-_file_asset_resource_type: Optional[type] = None 
+_file_asset_resource_type: Optional[type] = None
 """The type of FileAsset. Filled-in as the Pulumi package is initializing."""
 
 _string_asset_resource_type: Optional[type] = None

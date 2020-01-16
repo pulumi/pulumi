@@ -27,20 +27,21 @@ from .output import Output
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
+    from .runtime.stack import Stack
 
 
 class CustomTimeouts:
-    create: str
+    create: Optional[str]
     """
     create is the optional create timout represented as a string e.g. 5m, 40s, 1d.
     """
 
-    update: str
+    update: Optional[str]
     """
     update is the optional update timout represented as a string e.g. 5m, 40s, 1d.
     """
 
-    delete: str
+    delete: Optional[str]
     """
     delete is the optional delete timout represented as a string e.g. 5m, 40s, 1d.
     """
@@ -159,12 +160,13 @@ class Alias:
     The previous project of the resource. If not provided, defaults to `pulumi.getProject()`.
     """
 
+    #ignoring ... types as this value is used as a sentinal marker
     def __init__(self,
-                 name: Optional[str] = ...,
-                 type_: Optional[str] = ...,
-                 parent: Optional[Union['Resource', 'Input[str]']] = ...,
-                 stack: Optional['Input[str]'] = ...,
-                 project: Optional['Input[str]'] = ...) -> None:
+                 name: Optional[str] = ..., # type: ignore
+                 type_: Optional[str] = ..., # type: ignore
+                 parent: Optional[Union['Resource', 'Input[str]']] = ..., # type: ignore
+                 stack: Optional['Input[str]'] = ..., # type: ignore
+                 project: Optional['Input[str]'] = ...) -> None: # type: ignore
 
         self.name = name
         self.type_ = type_
@@ -186,11 +188,11 @@ def collapse_alias_to_urn(
         if isinstance(inner, str):
             return Output.from_input(inner)
 
-        name = inner.name if inner.name is not ... else defaultName
-        type_ = inner.type_ if inner.type_ is not ... else defaultType
-        parent = inner.parent if inner.parent is not ... else defaultParent
-        project = inner.project if inner.project is not ... else get_project()
-        stack = inner.stack if inner.stack is not ... else get_stack()
+        name = inner.name if inner.name is not ... else defaultName # type: ignore
+        type_ = inner.type_ if inner.type_ is not ... else defaultType # type: ignore
+        parent = inner.parent if inner.parent is not ... else defaultParent # type: ignore
+        project: str = inner.project if inner.project is not ... else get_project() # type: ignore
+        stack: str = inner.stack if inner.stack is not ... else get_stack() # type: ignore
 
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
@@ -200,7 +202,7 @@ def collapse_alias_to_urn(
 
         return create_urn(name, type_, parent, project, stack)
 
-    return Output.from_input(alias).apply(collapse_alias_to_urn_worker)
+    return Output.from_input(alias).apply(collapse_alias_to_urn_worker) # type: ignore
 
 class ResourceTransformationArgs:
     """
@@ -310,8 +312,7 @@ class ResourceOptions:
     the parent's provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Union[Mapping[str, 'ProviderResource'],
-                     List['ProviderResource']]
+    providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
     """
@@ -408,8 +409,9 @@ class ResourceOptions:
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
-        self.merge = self._merge_instance
-        self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__
+        # https://github.com/python/mypy/issues/2427
+        self.merge = self._merge_instance # type: ignore
+        self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__ # type: ignore
 
         self.parent = parent
         self.depends_on = depends_on
@@ -517,18 +519,22 @@ def _expand_providers(options: 'ResourceOptions'):
 
 def _collapse_providers(opts: 'ResourceOptions'):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
-    providers: List['ProviderResource'] = opts.providers
+    providers: Union[Mapping[str, ProviderResource], List[ProviderResource], None] = opts.providers
     if providers is not None:
         provider_length = len(providers)
         if provider_length == 0:
             opts.providers = None
-        elif provider_length == 1:
+        elif isinstance(providers, list) and provider_length == 1:
             opts.provider = providers[0]
             opts.providers = None
         else:
             opts.providers = {}
-            for prov in providers:
-                opts.providers[prov.package] = prov
+            if isinstance(providers, list):
+                for prov in providers:
+                    opts.providers[prov.package] = prov
+            elif isinstance(providers, dict):
+                for key, prov in providers:
+                    opts.providers[key] = prov
 
 
 def _merge_lists(dest, source):
@@ -654,8 +660,9 @@ class Resource:
 
             opts.aliases = opts.aliases.copy()
             for parent_alias in opts.parent._aliases:
-                opts.aliases.append(inherited_child_alias(
-                    name, opts.parent._name, parent_alias, t))
+                child_alias = inherited_child_alias(
+                    name, opts.parent._name, parent_alias, t)
+                opts.aliases.append(cast(Output[Union[str, Alias]], child_alias))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -683,7 +690,7 @@ class Resource:
         # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
         # do not know the default `name` and `type` to apply until we are inside the resource
         # constructor.
-        self._aliases: List[Input[str]] = []
+        self._aliases: List[Input[str]] = [] # pylint: disable=used-before-assignment
         if opts.aliases is not None:
             for alias in opts.aliases:
                 self._aliases.append(collapse_alias_to_urn(
@@ -698,7 +705,7 @@ class Resource:
         else:
             register_resource(self, t, name, custom, props, opts)
 
-    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]) -> Mapping[str, 'ProviderResource']:
+    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
             return self._convert_providers(None, [provider])
 
@@ -865,7 +872,7 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
-    stack = get_root_resource()
+    stack = cast(Stack, get_root_resource()) # pylint: disable=used-before-assignment
     if stack is not None:
         stack.output(name, value)
 
@@ -881,7 +888,7 @@ def create_urn(
     parent, optional project and optional stack.
     """
 
-    parent_prefix = None
+    parent_prefix: Optional[Output[str]] = None
     if parent is not None:
         parent_urn = None
         if isinstance(parent, Resource):
@@ -898,7 +905,7 @@ def create_urn(
         if project is None:
             project = get_project()
 
-        parent_prefix = "urn:pulumi:" + stack + "::" + project + "::"
-
-    return Output.all(parent_prefix, type_, name).apply(
+        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
+    all_args = [parent_prefix, type_, name]
+    return Output.all(all_args).apply(
         lambda arr: arr[0] + arr[1] + "::" + arr[2])

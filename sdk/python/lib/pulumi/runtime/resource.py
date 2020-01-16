@@ -170,7 +170,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
     #
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
-    res = cast(CustomResource, res)
+    res = cast(CustomResource, res) # pylint: disable=used-before-assignment
 
     resolve_value: asyncio.Future = asyncio.Future()
     resolve_perform_apply: asyncio.Future = asyncio.Future()
@@ -226,7 +226,7 @@ def read_resource(res: 'Resource', ty: str, name: str, props: 'Inputs', opts: 'R
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            from ..resource import create_urn
+            from ..resource import create_urn # pylint: disable=import-outside-toplevel
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -366,7 +366,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 supportsPartialValues=True,
             )
 
-            from ..resource import create_urn
+            from ..resource import create_urn # pylint: disable=import-outside-toplevel
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
