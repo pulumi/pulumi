@@ -410,7 +410,7 @@ class ResourceOptions:
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
-        # https://github.com/python/mypy/issues/2427
+        # TODO[python/mypy#2427]: mypy disallows method assignment
         self.merge = self._merge_instance # type: ignore
         self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__ # type: ignore
 

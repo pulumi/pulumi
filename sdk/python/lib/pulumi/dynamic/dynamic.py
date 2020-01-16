@@ -202,7 +202,8 @@ class ResourceProvider:
     def __init__(self) -> None:
         pass
 
-#https://github.com/python/mypy/issues/1102
+# TODO[python/mypy#1102]: mypy doesn't currently support multiline comments
+# multiple errors related to the type assignment we're doing in this method eg 'Picker = _Pickler'
 @no_type_check
 def serialize_provider(provider: ResourceProvider) -> str:
         # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
