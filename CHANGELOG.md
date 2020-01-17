@@ -2,6 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
 
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 
