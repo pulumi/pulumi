@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .runtime.stack import Stack
 
 
+
 class CustomTimeouts:
     create: Optional[str]
     """
@@ -874,10 +875,11 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
-    stack = cast('Stack', get_root_resource())
-
-    if stack is not None:
-        stack.output(name, value)
+    res = cast('Stack', get_root_resource())
+    if known_types.is_stack(res):
+        res.output(name, value)
+    else:
+        raise Exception("Failed to export output. Root resource is not an instance of 'Stack'")
 
 
 def create_urn(
