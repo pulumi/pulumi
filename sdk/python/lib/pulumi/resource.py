@@ -161,7 +161,9 @@ class Alias:
     The previous project of the resource. If not provided, defaults to `pulumi.getProject()`.
     """
 
-    #ignoring ... types as this value is used as a sentinal marker
+    # Ignoring type errors associated with the ellipsis constant being assigned to a string value.
+    # We use it as a internal sentinal value, and don't need to expose this in the user facing type system.
+    # https://docs.python.org/3/library/constants.html#Ellipsis
     def __init__(self,
                  name: Optional[str] = ..., # type: ignore
                  type_: Optional[str] = ..., # type: ignore

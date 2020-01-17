@@ -366,7 +366,7 @@ class Output(Generic[T]):
         :rtype: Output[str]
         """
 
-        transformed_items: List[Union[Any, Awaitable[Any], Output[Any]]] = [Output.from_input(v) for v in args]
+        transformed_items: List[Input[Any]] = [Output.from_input(v) for v in args]
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
         return Output.all(*transformed_items).apply("".join) # type: ignore
 
