@@ -18,7 +18,7 @@ out of RPC calls.
 import asyncio
 import functools
 import inspect
-from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING
+from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING, cast
 
 from google.protobuf import struct_pb2
 import six
@@ -26,8 +26,9 @@ from . import known_types, settings
 from .. import log
 
 if TYPE_CHECKING:
-    from ..output import Inputs, Input
-    from ..resource import Resource
+    from ..output import Inputs, Input, Output
+    from ..resource import Resource, CustomResource
+    from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -63,7 +64,7 @@ async def serialize_properties(inputs: 'Inputs',
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():
-        deps = []
+        deps: List['Resource'] = []
         result = await serialize_property(v, deps, input_transformer)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -99,8 +100,9 @@ async def serialize_property(value: 'Input[Any]',
         return UNKNOWN
 
     if known_types.is_custom_resource(value):
-        deps.append(value)
-        return await serialize_property(value.id, deps, input_transformer)
+        resource = cast('CustomResource', value)
+        deps.append(resource)
+        return await serialize_property(resource.id, deps, input_transformer)
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would
@@ -111,11 +113,14 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps, input_transformer)
+            file_asset = cast('FileAsset', value)
+            obj["path"] = await serialize_property(file_asset.path, deps, input_transformer)
         elif hasattr(value, "text"):
-            obj["text"] = await serialize_property(value.text, deps, input_transformer)
+            str_asset = cast('StringAsset', value)
+            obj["text"] = await serialize_property(str_asset.text, deps, input_transformer)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps, input_transformer)
+            remote_asset = cast('RemoteAsset', value)
+            obj["uri"] = await serialize_property(remote_asset.uri, deps, input_transformer)
         else:
             raise AssertionError(f"unknown asset type: {value}")
 
@@ -130,11 +135,14 @@ async def serialize_property(value: 'Input[Any]',
         }
 
         if hasattr(value, "assets"):
-            obj["assets"] = await serialize_property(value.assets, deps, input_transformer)
+            asset_archive = cast('AssetArchive', value)
+            obj["assets"] = await serialize_property(asset_archive.assets, deps, input_transformer)
         elif hasattr(value, "path"):
-            obj["path"] = await serialize_property(value.path, deps, input_transformer)
+            file_archive = cast('FileArchive', value)
+            obj["path"] = await serialize_property(file_archive.path, deps, input_transformer)
         elif hasattr(value, "uri"):
-            obj["uri"] = await serialize_property(value.uri, deps, input_transformer)
+            remote_archive = cast('RemoteArchive', value)
+            obj["uri"] = await serialize_property(remote_archive.uri, deps, input_transformer)
         else:
             raise AssertionError(f"unknown archive type: {value}")
 
@@ -147,20 +155,22 @@ async def serialize_property(value: 'Input[Any]',
         #
         # The returned future can then be awaited to yield a value, which we'll continue
         # serializing.
-        future_return = await asyncio.ensure_future(value)
+        awaitable = cast('Any', value)
+        future_return = await asyncio.ensure_future(awaitable)
         return await serialize_property(future_return, deps, input_transformer)
 
     if known_types.is_output(value):
-        value_resources = await value.resources()
+        output = cast('Output', value)
+        value_resources = await output.resources()
         deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await value._is_known
-        is_secret = await value._is_secret
-        value = await serialize_property(value.future(), deps, input_transformer)
+        is_known = await output._is_known
+        is_secret = await output._is_secret
+        value = await serialize_property(output.future(), deps, input_transformer)
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():
@@ -264,7 +274,8 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
-        values = [deserialize_property(v, keep_unknowns) for v in value]
+        # values has no __iter__ defined but this works.
+        values = [deserialize_property(v, keep_unknowns) for v in value] # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -316,13 +327,13 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
             # these properties are handled specially elsewhere.
             continue
 
-        resolve_value = asyncio.Future()
-        resolve_is_known = asyncio.Future()
-        resolve_is_secret = asyncio.Future()
+        resolve_value: 'asyncio.Future' = asyncio.Future()
+        resolve_is_known: 'asyncio.Future' = asyncio.Future()
+        resolve_is_secret: 'asyncio.Future' = asyncio.Future()
 
-        def do_resolve(value_fut: asyncio.Future,
-                       known_fut: asyncio.Future,
-                       secret_fut: asyncio.Future,
+        def do_resolve(value_fut: 'asyncio.Future',
+                       known_fut: 'asyncio.Future[bool]',
+                       secret_fut: 'asyncio.Future[bool]',
                        value: Any,
                        is_known: bool,
                        is_secret: bool,
