@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add information about in-flight operations to `pulumi stack`.
+
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 
 - Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
