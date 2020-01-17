@@ -77,7 +77,7 @@ type cloudStack struct {
 	cloudURL string
 	// orgName is the organization that owns this stack.
 	orgName string
-	// currentOperation contains kind, author, and start time of current operation.
+	// currentOperation contains information about any current operation being performed on the stack, as applicable.
 	currentOperation *apitype.OperationStatus
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
