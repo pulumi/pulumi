@@ -374,7 +374,7 @@ type Stack struct {
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
 type OperationStatus struct {
-	Kind    string `json:"kind"`
-	Author  string `json:"author"`
-	Started int64  `json:"started"`
+	Kind    UpdateKind `json:"kind"`
+	Author  string     `json:"author"`
+	Started int64      `json:"started"`
 }
