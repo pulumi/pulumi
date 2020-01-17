@@ -28,6 +28,7 @@ type travisCI struct {
 func (t travisCI) DetectVars() Vars {
 	v := Vars{Name: Travis}
 	v.BuildID = os.Getenv("TRAVIS_JOB_ID")
+	v.BuildNumber = os.Getenv("TRAVIS_JOB_NUMBER")
 	v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
 	v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
 	v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")

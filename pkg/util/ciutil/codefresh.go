@@ -24,6 +24,7 @@ type codefreshCI struct {
 }
 
 // DetectVars detects the env vars for a Codefresh CI system.
+// See: https://codefresh.io/docs/docs/codefresh-yaml/variables/
 func (c codefreshCI) DetectVars() Vars {
 	v := Vars{Name: c.Name}
 	v.BuildID = os.Getenv("CF_BUILD_ID")

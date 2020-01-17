@@ -67,7 +67,13 @@ type Vars struct {
 	// Name is a required friendly name of the CI system.
 	Name SystemName
 	// BuildID is an optional unique identifier for the current build/job.
+	// In some CI systems the build ID is a system-wide unique internal ID
+	// and the `BuildNumber` is the repo/project-specific unique ID.
 	BuildID string
+	// BuildNumber is the unique identifier of a build within a project/repository.
+	// This is only set for CI systems that expose both the internal ID, as well as
+	// a project/repo-specific ID.
+	BuildNumber string
 	// BuildType is an optional friendly type name of the build/job type.
 	BuildType string
 	// BuildURL is an optional URL for this build/job's webpage.
