@@ -602,6 +602,7 @@ func addCIMetadataToEnvironment(env map[string]string) {
 	}
 	env[backend.CISystem] = string(vars.Name)
 	addIfSet(backend.CIBuildID, vars.BuildID)
+	addIfSet(backend.CIBuildNumer, vars.BuildNumber)
 	addIfSet(backend.CIBuildType, vars.BuildType)
 	addIfSet(backend.CIBuildURL, vars.BuildURL)
 	addIfSet(backend.CIPRHeadSHA, vars.SHA)
