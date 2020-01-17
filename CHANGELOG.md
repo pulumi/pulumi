@@ -13,7 +13,7 @@ CHANGELOG
 
 - Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
 
-- Update GitLab CI detection code for setting an update's `BuildID` and `PRNumber` metadata properties. [#3763](https://github.com/pulumi/pulumi/pull/3763)
+- Add `BuildNumber` to CI vars and backend metadata property bag for CI systems that have separate ID and a user-friendly number.
 
 ## 1.8.1 (2019-12-20)
 
