@@ -171,7 +171,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
 
-    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_value: asyncio.Future[Any] = asyncio.Future()
     resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
     resolve_secret: asyncio.Future[bool] = asyncio.Future()
     res.id = known_types.new_output(
@@ -296,7 +296,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
         Any, bool, Optional[Exception]], None]] = None
     if custom:
         res = cast('CustomResource', res)
-        resolve_value: asyncio.Future = asyncio.Future()
+        resolve_value: asyncio.Future[Any] = asyncio.Future()
         resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
         resolve_secret: asyncio.Future[bool] = asyncio.Future()
         res.id = known_types.new_output(

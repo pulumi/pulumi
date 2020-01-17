@@ -278,7 +278,7 @@ class Output(Generic[T]):
             return promise_output.apply(Output.from_input, True)
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
-        value_fut: asyncio.Future = asyncio.Future()
+        value_fut: asyncio.Future[Any] = asyncio.Future()
         value_fut.set_result(val)
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
