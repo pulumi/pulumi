@@ -523,7 +523,7 @@ def _expand_providers(options: 'ResourceOptions'):
 
 def _collapse_providers(opts: 'ResourceOptions'):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
-    providers: Union[Mapping[str, ProviderResource], List[ProviderResource], None] = opts.providers
+    providers: Optional[Union[Mapping[str, ProviderResource], List[ProviderResource]]] = opts.providers
     if providers is not None:
         provider_length = len(providers)
         if provider_length == 0:
@@ -705,8 +705,7 @@ class Resource:
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            res = cast('CustomResource', self)
-            read_resource(res, t, name, props, opts)
+            read_resource(cast('CustomResource', self), t, name, props, opts)
         else:
             register_resource(self, t, name, custom, props, opts)
 
