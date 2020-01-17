@@ -211,7 +211,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 							// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
 							time.Sleep(time.Millisecond * 10)
 							continue // keep retrying
-						case codes.Unimplemented, codes.ResourceExhausted, codes.Internal:
+						default:
 							// Since we sent "" as the method above, this is the expected response.  Ready to go.
 							break outer
 						}
