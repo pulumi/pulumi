@@ -16,6 +16,8 @@ CHANGELOG
 
 - Add `BuildNumber` to CI vars and backend metadata property bag for CI systems that have separate ID and a user-friendly number. [#3766](https://github.com/pulumi/pulumi/pull/3766)
 
+- Breaking changes for the Go SDK. Complete details are in [#3506](https://github.com/pulumi/pulumi/pull/3506).
+
 ## 1.8.1 (2019-12-20)
 
 - Fix a panic in `pulumi stack select`. [#3687](https://github.com/pulumi/pulumi/pull/3687)

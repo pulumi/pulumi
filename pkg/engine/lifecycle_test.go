@@ -5138,6 +5138,30 @@ func TestPreviewInputPropagation(t *testing.T) {
 	assert.Nil(t, res)
 }
 
+type testResource struct {
+	pulumi.CustomResourceState
+
+	Foo pulumi.StringOutput `pulumi:"foo"`
+}
+
+type testResourceArgs struct {
+	Foo  string `pulumi:"foo"`
+	Bar  string `pulumi:"bar"`
+	Baz  string `pulumi:"baz"`
+	Bang string `pulumi:"bang"`
+}
+
+type testResourceInputs struct {
+	Foo  pulumi.StringInput
+	Bar  pulumi.StringInput
+	Baz  pulumi.StringInput
+	Bang pulumi.StringInput
+}
+
+func (*testResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testResourceArgs)(nil))
+}
+
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -5166,14 +5190,18 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-			res, err := ctx.RegisterResource("pkgA:m:typA", "resA", true, map[string]interface{}{
-				"foo": "bar",
-			})
+			var resA testResource
+			err := ctx.RegisterResource("pkgA:m:typA", "resA", &testResourceInputs{
+				Foo: pulumi.String("bar"),
+			}, &resA)
 			assert.NoError(t, err)
 
-			_, err = ctx.RegisterResource("pkgA:m:typA", "resB", true, map[string]interface{}{
-				"baz": res.State["foo"],
-			})
+			var resB testResource
+			err = ctx.RegisterResource("pkgA:m:typA", "resB", &testResourceInputs{
+				Baz: resA.Foo.ApplyT(func(v string) string {
+					return v + "bar"
+				}).(pulumi.StringOutput),
+			}, &resB)
 			assert.NoError(t, err)
 
 			return nil
@@ -5227,10 +5255,8 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 			assert.NoError(t, err)
 
 			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-				opts := pulumi.ResourceOpt{
-					IgnoreChanges: ignoreChanges,
-				}
-				_, err := ctx.RegisterResource("pkgA:m:typA", "resA", true, nil, opts)
+				var res pulumi.CustomResourceState
+				err := ctx.RegisterResource("pkgA:m:typA", "resA", nil, &res, pulumi.IgnoreChanges(ignoreChanges))
 				assert.NoError(t, err)
 
 				return nil
@@ -5276,9 +5302,9 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
 					ignoreChanges []string) (plugin.DiffResult, error) {
-					if !olds["A"].DeepEquals(news["A"]) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
@@ -5287,8 +5313,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				DiffF: func(urn resource.URN, id resource.ID,
 					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
-					if !olds["A"].DeepEquals(news["A"]) {
-						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
@@ -5296,9 +5322,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		}),
 	}
 
-	inputsA := map[string]interface{}{"A": "foo"}
-
-	optsA := pulumi.ResourceOpt{}
+	inputsA := &testResourceInputs{Foo: pulumi.String("foo")}
 
 	dbrValue, dbrA := true, (*bool)(nil)
 	getDbr := func() bool {
@@ -5321,13 +5345,13 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		assert.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-			provider, err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", true,
-				map[string]interface{}{})
+			var provider pulumi.ProviderResourceState
+			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, &provider)
 			assert.NoError(t, err)
-			optsA.Provider = provider
-			optsA.DeleteBeforeReplace = getDbr()
-			fmt.Println(getDbr())
-			_, err = ctx.RegisterResource("pkgA:m:typA", "resA", true, inputsA, optsA)
+
+			var res pulumi.CustomResourceState
+			err = ctx.RegisterResource("pkgA:m:typA", "resA", inputsA, &res,
+				pulumi.Provider(provider), pulumi.DeleteBeforeReplace(getDbr()))
 			assert.NoError(t, err)
 
 			return nil
@@ -5340,7 +5364,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Should create before replace
-	inputsA["A"] = "bar"
+	inputsA.Foo = pulumi.String("bar")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -5364,7 +5388,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A.
 	// replacement should be delete-before-replace.
-	dbrA, inputsA["A"] = &dbrValue, "baz"
+	dbrA, inputsA.Foo = &dbrValue, pulumi.String("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -5414,8 +5438,8 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 			assert.NoError(t, err)
 
 			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-				opts := pulumi.ResourceOpt{}
-				_, err := ctx.ReadResource("pkgA:m:typA", "resA", "someId", map[string]interface{}{}, opts)
+				var res pulumi.CustomResourceState
+				err := ctx.ReadResource("pkgA:m:typA", "resA", pulumi.ID("someId"), nil, &res)
 				assert.NoError(t, err)
 
 				return nil
@@ -5454,6 +5478,11 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 // and Invoke all respect the provider hierarchy
 // most specific providers are used first 1. resource.provider, 2. resource.providers, 3. resource.parent.providers
 func TestProviderInheritanceGolangLifecycle(t *testing.T) {
+	type invokeArgs struct {
+		Bang string `pulumi:"bang"`
+		Bar  string `pulumi:"bar"`
+	}
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
@@ -5507,109 +5536,100 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			// register a couple of providers, pass in some props that we can use to indentify it during invoke
-			providerA, err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "prov1", true,
-				map[string]interface{}{
-					"foo": "1",
-				})
+			var providerA pulumi.ProviderResourceState
+			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "prov1",
+				&testResourceInputs{
+					Foo: pulumi.String("1"),
+				}, &providerA)
 			assert.NoError(t, err)
-			providerB, err := ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov2", true,
-				map[string]interface{}{
-					"bar": "2",
-				})
+			var providerB pulumi.ProviderResourceState
+			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov2",
+				&testResourceInputs{
+					Bar:  pulumi.String("2"),
+					Bang: pulumi.String(""),
+				}, &providerB)
 			assert.NoError(t, err)
-			providerBOverride, err := ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov3", true,
-				map[string]interface{}{
-					"bang": "3",
-				})
+			var providerBOverride pulumi.ProviderResourceState
+			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov3",
+				&testResourceInputs{
+					Bar:  pulumi.String(""),
+					Bang: pulumi.String("3"),
+				}, &providerBOverride)
 			assert.NoError(t, err)
-			componentProviders := make(map[string]pulumi.ProviderResource)
-			componentProviders["pkgA"] = providerA
-			componentProviders["pkgB"] = providerB
-			// create a component resource that uses provider map
-			componentResource, err := ctx.RegisterResource("pkgA:m:typA", "resA", true,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Providers: componentProviders,
-				})
+			parentProviders := make(map[string]pulumi.ProviderResource)
+			parentProviders["pkgA"] = providerA
+			parentProviders["pkgB"] = providerB
+			// create a parent resource that uses provider map
+			var parentResource pulumi.CustomResourceState
+			err = ctx.RegisterResource("pkgA:m:typA", "resA", nil, &parentResource, pulumi.ProviderMap(parentProviders))
 			assert.NoError(t, err)
-			// component uses specified provider from map
-			componentResultProvider := componentResource.GetProvider("pkgA:m:typA")
-			assert.Same(t, providerA, componentResultProvider)
+			// parent uses specified provider from map
+			parentResultProvider := parentResource.GetProvider("pkgA:m:typA")
+			assert.Equal(t, providerA, parentResultProvider)
 
 			// create a child resource
-			childResource, err := ctx.RegisterResource("pkgB:m:typB", "resBChild", true,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Parent: componentResource,
-				})
+			var childResource pulumi.CustomResourceState
+			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider := childResource.GetProvider("pkgB:m:typB")
-			assert.Same(t, providerB, childResultProvider)
+			assert.Equal(t, providerB, childResultProvider)
 
 			// create a child with a provider specified
-			childWithOverride, err := ctx.RegisterResource("pkgB:m:typB", "resBChildOverride", true,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Parent:   componentResource,
-					Provider: providerBOverride,
-				})
+			var childWithOverride pulumi.CustomResourceState
+			err = ctx.RegisterResource("pkgB:m:typB", "resBChildOverride", nil, &childWithOverride,
+				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider := childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Same(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, providerBOverride, childWithOverrideProvider)
 
 			// pass in a fake ID
 			testID := pulumi.ID("testID")
 
-			// read a component resource that uses provider map
-			componentResource, err = ctx.ReadResource("pkgA:m:typA", "readResA", testID,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Providers: componentProviders,
-				})
+			// read a resource that uses provider map
+			err = ctx.ReadResource("pkgA:m:typA", "readResA", testID, nil, &parentResource, pulumi.ProviderMap(parentProviders))
 			assert.NoError(t, err)
-			// component uses specified provider from map
-			componentResultProvider = componentResource.GetProvider("pkgA:m:typA")
-			assert.Same(t, providerA, componentResultProvider)
+			// parent uses specified provider from map
+			parentResultProvider = parentResource.GetProvider("pkgA:m:typA")
+			assert.Equal(t, providerA, parentResultProvider)
 
 			// read a child resource
-			childResource, err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Parent: componentResource,
-				})
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider = childResource.GetProvider("pkgB:m:typB")
-			assert.Same(t, providerB, childResultProvider)
+			assert.Equal(t, providerB, childResultProvider)
 
 			// read a child with a provider specified
-			childWithOverride, err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID,
-				map[string]interface{}{}, pulumi.ResourceOpt{
-					Parent:   componentResource,
-					Provider: providerBOverride,
-				})
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &childWithOverride,
+				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider = childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Same(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, providerBOverride, childWithOverrideProvider)
 
 			// invoke with specific provider
-			_, err = ctx.Invoke("pkgB:do:something", map[string]interface{}{
-				"bang": "3",
-			}, pulumi.InvokeOpt{Provider: providerBOverride})
+			var invokeResult struct{}
+			err = ctx.Invoke("pkgB:do:something", invokeArgs{
+				Bang: "3",
+			}, &invokeResult, pulumi.Provider(providerBOverride))
 			assert.NoError(t, err)
 
 			// invoke with parent
-			_, err = ctx.Invoke("pkgB:do:something", map[string]interface{}{
-				"bar": "2",
-			}, pulumi.InvokeOpt{Parent: componentResource})
+			err = ctx.Invoke("pkgB:do:something", invokeArgs{
+				Bar: "2",
+			}, &invokeResult, pulumi.Parent(parentResource))
 			assert.NoError(t, err)
 
 			// invoke with parent and provider
-			_, err = ctx.Invoke("pkgB:do:something", map[string]interface{}{
-				"bang": "3",
-			}, pulumi.InvokeOpt{Parent: componentResource, Provider: providerBOverride})
+			err = ctx.Invoke("pkgB:do:something", invokeArgs{
+				Bang: "3",
+			}, &invokeResult, pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
 			assert.NoError(t, err)
 
 			return nil
