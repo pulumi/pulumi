@@ -131,7 +131,7 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
-// args and result must be pointers to struct values fields are appropriately tagged and typed for use with Pulumi.
+// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) error {
 	if tok == "" {
 		return errors.New("invoke token must not be empty")
