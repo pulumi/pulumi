@@ -38,14 +38,6 @@ import (
 
 type stringSet map[string]struct{}
 
-func newStringSet(s ...string) stringSet {
-	ss := stringSet{}
-	for _, s := range s {
-		ss.add(s)
-	}
-	return ss
-}
-
 func (ss stringSet) add(s string) {
 	ss[s] = struct{}{}
 }
@@ -731,9 +723,9 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes ma
 			fmt.Fprintf(w, "import {")
 			for i, name := range names {
 				if i > 0 {
-					fmt.Fprintf(w, ", ")
+					fmt.Fprint(w, ", ")
 				}
-				fmt.Fprintf(w, name)
+				fmt.Fprint(w, name)
 			}
 			fmt.Fprintf(w, "} from \"%v\";\n", module)
 		}
@@ -1012,9 +1004,9 @@ func (mod *modContext) genIndex(exports []string) string {
 		fmt.Fprintf(w, "export {")
 		for i, mod := range children {
 			if i > 0 {
-				fmt.Fprintf(w, ", ")
+				fmt.Fprint(w, ", ")
 			}
-			fmt.Fprintf(w, mod)
+			fmt.Fprint(w, mod)
 		}
 		fmt.Fprintf(w, "};\n")
 	}
@@ -1165,7 +1157,7 @@ type nodePackageInfo struct {
 	PackageName        string            `json:"packageName,omitempty"`        // Custom name for the NPM package.
 	PackageDescription string            `json:"packageDescription,omitempty"` // Description for the NPM package.
 	Dependencies       map[string]string `json:"dependencies,omitempty"`       // NPM dependencies to add to package.json.
-	DevDependencies    map[string]string `json:"devDependencies,ommitempty"`   // NPM dev-dependencies to add to package.json.
+	DevDependencies    map[string]string `json:"devDependencies,omitempty"`    // NPM dev-dependencies to add to package.json.
 	PeerDependencies   map[string]string `json:"peerDependencies,omitempty"`   // NPM peer-dependencies to add to package.json.
 	TypeScriptVersion  string            `json:"typescriptVersion,omitempty"`  // A specific version of TypeScript to include in package.json.
 }

@@ -83,19 +83,19 @@ func IsPrimitiveType(t Type) bool {
 
 var (
 	// BoolType represents the set of boolean values.
-	BoolType Type = primitiveType(boolType)
+	BoolType Type = boolType
 	// IntType represents the set of 32-bit integer values.
-	IntType Type = primitiveType(intType)
+	IntType Type = intType
 	// NumberType represents the set of IEEE754 double-precision values.
-	NumberType Type = primitiveType(numberType)
+	NumberType Type = numberType
 	// StringType represents the set of UTF-8 string values.
-	StringType Type = primitiveType(stringType)
+	StringType Type = stringType
 	// ArchiveType represents the set of Pulumi Archive values.
-	ArchiveType Type = primitiveType(archiveType)
+	ArchiveType Type = archiveType
 	// AssetType represents the set of Pulumi Asset values.
-	AssetType Type = primitiveType(assetType)
+	AssetType Type = assetType
 	// AnyType represents the complete set of values.
-	AnyType Type = primitiveType(anyType)
+	AnyType Type = anyType
 )
 
 // MapType represents maps from strings to particular element types.
@@ -358,7 +358,7 @@ type AliasSpec struct {
 	// Project is the project portion of the alias, if any.
 	Project *string `json:"project,omitempty"`
 	// Type is the type portion of the alias, if any.
-	Type *string `json:"type,omitempt"`
+	Type *string `json:"type,omitempty"`
 }
 
 // ResourceSpec is the serializable form of a resource description.
@@ -367,7 +367,7 @@ type ResourceSpec struct {
 
 	// InputProperties is a map from property name to PropertySpec that describes the resource's input properties.
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
-	// Defauls is a map from property name to DefaultSpec that describes the default values for this resource's input
+	// Defaults is a map from property name to DefaultSpec that describes the default values for this resource's input
 	// properties.
 	Defaults map[string]DefaultSpec `json:"defaults,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
@@ -688,7 +688,9 @@ func bindDefaultValue(spec DefaultSpec, typ Type) (*DefaultValue, error) {
 	}, nil
 }
 
-func (t *types) bindProperties(properties map[string]PropertySpec, required []string, defaults map[string]DefaultSpec) ([]*Property, error) {
+func (t *types) bindProperties(properties map[string]PropertySpec, required []string,
+	defaults map[string]DefaultSpec) ([]*Property, error) {
+
 	// Bind property types and default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property

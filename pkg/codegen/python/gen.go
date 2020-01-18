@@ -40,14 +40,6 @@ import (
 
 type stringSet map[string]struct{}
 
-func newStringSet(s ...string) stringSet {
-	ss := stringSet{}
-	for _, s := range s {
-		ss.add(s)
-	}
-	return ss
-}
-
 func (ss stringSet) add(s string) {
 	ss[s] = struct{}{}
 }
@@ -63,22 +55,6 @@ func title(s string) string {
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-func camel(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
-	for i, r := range runes {
-		if unicode.IsLower(r) {
-			res = append(res, runes[i:]...)
-			break
-		}
-		res = append(res, unicode.ToLower(r))
-	}
-	return string(res)
 }
 
 type modContext struct {
@@ -727,9 +703,9 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 		fmt.Fprintf(w, "      keywords='")
 		for i, kw := range pkg.Keywords {
 			if i > 0 {
-				fmt.Fprintf(w, " ")
+				fmt.Fprint(w, " ")
 			}
-			fmt.Fprintf(w, kw)
+			fmt.Fprint(w, kw)
 		}
 		fmt.Fprintf(w, "',\n")
 	}

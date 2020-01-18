@@ -39,14 +39,6 @@ import (
 
 type stringSet map[string]struct{}
 
-func newStringSet(s ...string) stringSet {
-	ss := stringSet{}
-	for _, s := range s {
-		ss.add(s)
-	}
-	return ss
-}
-
 func (ss stringSet) add(s string) {
 	ss[s] = struct{}{}
 }
@@ -69,22 +61,6 @@ func title(s string) string {
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-func camel(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
-	for i, r := range runes {
-		if unicode.IsLower(r) {
-			res = append(res, runes[i:]...)
-			break
-		}
-		res = append(res, unicode.ToLower(r))
-	}
-	return string(res)
 }
 
 func csharpIdentifier(s string) string {
@@ -1112,7 +1088,9 @@ func (mod *modContext) gen(fs fs) error {
 
 			fmt.Fprintf(buffer, "namespace %s.Inputs\n", mod.namespaceName)
 			fmt.Fprintf(buffer, "{\n")
-			mod.genType(buffer, t, "Inputs", true, false, 1)
+			if err := mod.genType(buffer, t, "Inputs", true, false, 1); err != nil {
+				return err
+			}
 			fmt.Fprintf(buffer, "}\n")
 
 			addFile(path.Join("Inputs", tokenToName(t.Token)+"Args.cs"), buffer.String())
@@ -1123,7 +1101,9 @@ func (mod *modContext) gen(fs fs) error {
 
 			fmt.Fprintf(buffer, "namespace %s.Inputs\n", mod.namespaceName)
 			fmt.Fprintf(buffer, "{\n")
-			mod.genType(buffer, t, "Inputs", true, true, 1)
+			if err := mod.genType(buffer, t, "Inputs", true, true, 1); err != nil {
+				return err
+			}
 			fmt.Fprintf(buffer, "}\n")
 
 			addFile(path.Join("Inputs", tokenToName(t.Token)+"GetArgs.cs"), buffer.String())
@@ -1134,7 +1114,9 @@ func (mod *modContext) gen(fs fs) error {
 
 			fmt.Fprintf(buffer, "namespace %s.Outputs\n", mod.namespaceName)
 			fmt.Fprintf(buffer, "{\n")
-			mod.genType(buffer, t, "Outputs", false, false, 1)
+			if err := mod.genType(buffer, t, "Outputs", false, false, 1); err != nil {
+				return err
+			}
 			fmt.Fprintf(buffer, "}\n")
 
 			suffix := ""
@@ -1381,6 +1363,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	genPackageMetadata(pkg, assemblyName, info.PackageReferences, files)
+	if err := genPackageMetadata(pkg, assemblyName, info.PackageReferences, files); err != nil {
+		return nil, err
+	}
 	return files, nil
 }
