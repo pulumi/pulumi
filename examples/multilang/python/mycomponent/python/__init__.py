@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import os
-from pulumi import ComponentResource, Output,  ResourceOptions, Input, Inputs
+from pulumi import Output, ResourceOptions, Input
 from pulumi.remote import ProxyComponentResource
 from pulumi.runtime import register_proxy_constructor
-from typing import Callable, Any, Dict, List, Optional
+from typing import Optional
 from pulumi_aws import ec2
 
 class MyInnerComponent(ProxyComponentResource):

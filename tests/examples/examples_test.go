@@ -325,40 +325,33 @@ func TestAccNodeCompatTests(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+func TestNodeJSMultilang(t *testing.T) {
+	dir := path.Join(getCwd(t), "multilang", "nodejs")
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: dir,
+			Config: map[string]string{
+				"aws:region": "us-west-2",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, "foo", stackInfo.Outputs["id2"])
+				assert.Equal(t, "mydata", stackInfo.Outputs["innerComponent"])
+				assert.Equal(t, "sg-", stackInfo.Outputs["nodeSecurityGroupId"].(string)[0:3])
+				assert.Equal(t, 42.0, stackInfo.Outputs["output1"])
+			},
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
 func TestPythonMultilang(t *testing.T) {
-	t.Skip("multilang tests not yet working...")
+	t.Skip("Python package installation for multilang not yet supported by test framework")
 	dir := path.Join(getCwd(t), "multilang")
 	test := getPythonBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: dir,
 			Config: map[string]string{
 				"aws:region": "us-west-2",
-			},
-			PrePulumiCommand: func(verb string) (func(err error) error, error) {
-				if verb == "preview" || verb == "update" {
-					yarnBin, err := exec.LookPath("yarn")
-					if err != nil {
-						return nil, err
-					}
-					fmt.Printf("yarn: %s\n", yarnBin)
-					fmt.Printf("dir: %s\n", path.Join(dir, "mycomponent"))
-					cmd := exec.Command(yarnBin, "install")
-					cmd.Dir = path.Join(dir, "mycomponent")
-					stdouterr, err := cmd.CombinedOutput()
-					if err != nil {
-						return nil, err
-					}
-					fmt.Printf("%s\n", stdouterr)
-
-					cmd = exec.Command(yarnBin, "link", "@pulumi/pulumi")
-					cmd.Dir = path.Join(dir, "mycomponent")
-					stdouterr, err = cmd.CombinedOutput()
-					fmt.Printf("%s\n", stdouterr)
-					if err != nil {
-						return nil, err
-					}
-				}
-				return nil, nil
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				fmt.Printf("%v\n", stackInfo.Outputs)
