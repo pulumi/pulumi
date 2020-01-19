@@ -24,8 +24,10 @@ const server = new grpc.Server();
 server.addService(runtimeServiceProto.RuntimeService, {
     construct: construct,
 });
-server.bind("0.0.0.0:50051", grpc.ServerCredentials.createInsecure());
+
+const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
 server.start();
+process.stdout.write(`${port}\n`);
 
 function construct(call: any, callback: (err: any, resp?: any) => void) {
     const library = require(call.request.getLibrarypath())

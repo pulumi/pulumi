@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as cp from "child_process";
+import * as child_process from "child_process";
 import * as grpc from "grpc";
+import * as readline from "readline";
 import * as pulumi from "../";
 import * as runtime from "../runtime";
 
@@ -36,23 +37,23 @@ export abstract class ProxyComponentResource extends pulumi.ComponentResource {
         inputs: pulumi.Inputs,
         outputs: Record<string, undefined>,
         opts: pulumi.ComponentResourceOptions = {}) {
-            // There are two cases:
-            // 1. A URN was provided - in this case we are just going to look up the existing resource
-            //    and populate this proxy from that URN.
-            // 2. A URN was not provided - in this case we are going to remotely construct the resource,
-            //    get the URN from the newly constructed resource, then look it up and populate this
-            //    proxy from that URN.
-            if (!opts.urn) {
-                const p = getRemoteServer().construct(libraryPath, libraryName, name, inputs, opts);
-                const urn = p.then(r => <string>r.urn);
-                opts = pulumi.mergeOptions(opts, { urn });
-            }
-            const props = {
-                ...inputs,
-                ...outputs,
-            };
-            super(t, name, props, opts);
+        // There are two cases:
+        // 1. A URN was provided - in this case we are just going to look up the existing resource
+        //    and populate this proxy from that URN.
+        // 2. A URN was not provided - in this case we are going to remotely construct the resource,
+        //    get the URN from the newly constructed resource, then look it up and populate this
+        //    proxy from that URN.
+        if (!opts.urn) {
+            const p = getRemoteServer().construct(libraryPath, libraryName, name, inputs, opts);
+            const urn = p.then(r => <string>r.urn);
+            opts = pulumi.mergeOptions(opts, { urn });
         }
+        const props = {
+            ...inputs,
+            ...outputs,
+        };
+        super(t, name, props, opts);
+    }
 }
 
 let remoteServer: RemoteServer | undefined;
@@ -66,21 +67,33 @@ function getRemoteServer(): RemoteServer {
 class RemoteServer {
     private client: Promise<any>;
     constructor() {
-        const subprocess = cp.fork(require.resolve("./server"));
+        // Spawn a Node.js process to run a remote server.
+        const subprocess = child_process.spawn(process.execPath, [require.resolve("./server")], {
+            // Listen to stdout, ignore stdin and stderr.
+            stdio: ["ignore", "pipe", "ignore"],
+        });
         // Ensure we can exit the current process without waiting on the VM server process to exit.
-        subprocess.disconnect(); // detach the IPC connection
         subprocess.unref(); // do not track subprocess on our event loop
-        this.client = new Promise(r => setTimeout(r, 1000)).then(() => {
-            return new runtimeServiceProto.RuntimeClient(
-                '0.0.0.0:50051',
-                grpc.credentials.createInsecure()
-            );
+        const reader = readline.createInterface(subprocess.stdout!);
+        this.client = new Promise((resolve, reject) => {
+            reader.once('line', port => {
+                try {
+                    // Tear down our piped stdout stream to that we do not hold the event loop open.
+                    subprocess.stdout?.destroy();
+                    // Connect to the process' gRPC server on the provided port.
+                    const client = new runtimeServiceProto.RuntimeClient(
+                        `0.0.0.0:${port}`,
+                        grpc.credentials.createInsecure()
+                    );
+                    resolve(client);
+                } catch (err) {
+                    reject(err);
+                }
+            });
         });
     }
 
     public async construct(libraryPath: string, resource: string, name: string, args: any, opts?: any): Promise<any> {
-        // TODO: Replace this with a proper wait on the server having launched (or retry).
-        await new Promise(r => setTimeout(r, 1000));
         const serializedArgs = await runtime.serializeProperties("construct-args", args);
         const argsStruct = gstruct.Struct.fromJavaScript(serializedArgs);
         const serializedOpts = await runtime.serializeProperties("construct-opts", opts);

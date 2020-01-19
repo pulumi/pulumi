@@ -14,7 +14,7 @@
 
 import asyncio
 import os
-from subprocess import Popen
+from subprocess import Popen, PIPE
 import time
 from typing import Callable, Any, Dict, List, Optional
 import grpc
@@ -24,7 +24,7 @@ from ..runtime.rpc import deserialize_properties, serialize_properties
 from ..runtime.settings import SETTINGS
 
 def spawnServer(library_path: str):
-    Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, env={
+    proc = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, stdout=PIPE, env={
         **os.environ,
         'PULUMI_NODEJS_PROJECT': SETTINGS.project,
         'PULUMI_NODEJS_STACK': SETTINGS.stack,
@@ -37,8 +37,9 @@ def spawnServer(library_path: str):
         'PULUMI_NODEJS_SYNC': "false",
         'PULUMI_NODEJS_PARALLEL': "true",
     })
-    time.sleep(1) # wait for server to initialize in spawned Node process
-    channel = grpc.insecure_channel('0.0.0.0:50051')
+    port = proc.stdout.readline().decode()[:-1]
+    proc.stdout.close()
+    channel = grpc.insecure_channel(f'0.0.0.0:{port}')
     stub = runtime_pb2_grpc.RuntimeStub(channel)
     return stub
 
