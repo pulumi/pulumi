@@ -487,12 +487,11 @@ export function deserializeProperty(prop: any): any {
                     const qualifiedType = urnParts[2];
                     const type = qualifiedType.split("$").pop()!;
                     const proxyConstructor = proxyConstructors.get(type);
-                    if (proxyConstructor) {
-                        const urnName = urnParts[3];
-                        return new proxyConstructor(urnName, {}, { urn });
+                    if (!proxyConstructor) {
+                        throw new Error(`Unable to deserialize resource URN ${urn}, no proxy constructor is registered for type ${type}.`);
                     }
-                    log.debug(`Saw valid URN ${urn} during deserialization, but no proxy constructor is registered for type ${type}.`);
-                    return urn;
+                    const urnName = urnParts[3];
+                    return new proxyConstructor(urnName, {}, { urn });
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -519,7 +518,6 @@ export function deserializeProperty(prop: any): any {
         return obj;
     }
 }
-
 
 type ProxyConstructor = {
     new(name: string, args: any, opts: { urn: string }): Resource;
