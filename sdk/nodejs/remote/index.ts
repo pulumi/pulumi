@@ -65,7 +65,7 @@ function getRemoteServer(): RemoteServer {
 }
 
 class RemoteServer {
-    private client: Promise<any>;
+    private readonly client: Promise<any>;
     constructor() {
         // Spawn a Node.js process to run a remote server.
         const subprocess = child_process.spawn(process.execPath, [require.resolve("./server")], {

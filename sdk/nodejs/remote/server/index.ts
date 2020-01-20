@@ -33,12 +33,16 @@ function construct(call: any, callback: (err: any, resp?: any) => void) {
     const library = require(call.request.getLibrarypath())
     const props = runtime.deserializeProperties(call.request.getArgs());
     const opts = runtime.deserializeProperties(call.request.getOpts());
-    const res = new (library[call.request.getResource()])(call.request.getName(), props, opts);
+    const resource = call.request.getResource();
+    const name = call.request.getName();
+    const ctor = library[resource];
+    
+    const res = new ctor(name, props, opts);
+
     runtime.serializeProperties("inner-construct", res).then(resolved => {
-        return gstruct.Struct.fromJavaScript(resolved);
-    }).then(outStruct => {
+        const outStruct = gstruct.Struct.fromJavaScript(resolved);
         const reply = new runtimeProto.ConstructResponse();
         reply.setOuts(outStruct);
-        callback(null, reply)
-    }, err => callback(err));
+        callback(null, reply);
+    }).catch(err => callback(err));
 }

@@ -219,6 +219,9 @@ export abstract class Resource {
         if (!name) {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
+        if (opts.id && opts.urn) {
+            throw new ResourceError(`Resource options specified mututally exlusive 'id' and 'urn' options`, opts.parent);
+        }
 
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
         // options assigned to this resource.
@@ -463,11 +466,11 @@ export interface ResourceOptions {
     // that mergeOptions works properly for it.
 
     /**
-     * An optional existing ID to load, rather than create.
+     * An optional existing ID to load, rather than create. At most one of `id` and `urn` can be set.
      */
     id?: Input<ID>;
     /**
-     * An optional existing URN to load, rather than create.
+     * An optional existing URN to load, rather than create. At most one of `urn` and `id` can be set.
      */
     urn?: Input<URN>;
     /**

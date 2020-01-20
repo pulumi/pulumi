@@ -150,8 +150,16 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+// readStackOutputs returns the full set of stack outputs from a target stack.
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
+
+// readStackResourceOutputs returns the resource outputs for every resource in a taraget stack.  If
+// targeting the current stack, it returns results from the initial checkpoint, not the live
+// registered resource state.
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+
+// readStackResource returns the live registered resource outputs for the target resource from the
+// current stack.
 const readStackResource = "pulumi:pulumi:readStackResource"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
@@ -252,21 +260,22 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 }
 
 func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
-	urn, ok := inputs["urn"]
+	urnProp, ok := inputs["urn"]
 	if !ok {
 		return nil, fmt.Errorf("readStackResource missing required 'urn' argument")
 	}
-	if !urn.IsString() {
-		return nil, fmt.Errorf("readStackResource 'urn' argument expected string got %s", urn.TypeString())
+	if !urnProp.IsString() {
+		return nil, fmt.Errorf("readStackResource 'urn' argument expected string got %v", urnProp)
 	}
+	urn := resource.URN(urnProp.StringValue())
 
-	state := p.plan.current[resource.URN(urn.StringValue())]
+	state := p.plan.current[urn]
 	if state == nil {
-		return nil, fmt.Errorf("resource '%s' not yet registered in current stack state", urn.StringValue())
+		return nil, fmt.Errorf("resource '%s' not yet registered in current stack state", urn)
 	}
+	contract.Assert(state.URN == urn)
 
 	return resource.PropertyMap{
-		"urn":     resource.NewStringProperty(string(state.URN)),
 		"outputs": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }
