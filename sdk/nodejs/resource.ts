@@ -174,6 +174,12 @@ export abstract class Resource {
     // tslint:disable-next-line:variable-name
     private readonly __name?: string;
 
+    /* @internal Whether or not this resources contruction registered a resource with the Pulumi
+     * engine.  If false, it is not safe to `registerResourceOutputs` on this resource.
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __wasRegistered?: boolean;
+
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      * @internal
@@ -321,6 +327,7 @@ export abstract class Resource {
             // populate this resource object with the state of that resource as retrieved from the
             // engine.
             getResource(this, t, name, custom, props, opts);
+            this.__wasRegistered = false;
         } else if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
@@ -328,12 +335,14 @@ export abstract class Resource {
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
             readResource(this, t, name, props, opts);
+            this.__wasRegistered = false;
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
             registerResource(this, t, name, custom, props, opts);
+            this.__wasRegistered = true;
         }
     }
 }
@@ -769,7 +778,7 @@ export class ComponentResource<TData = any> extends Resource {
 
     /** @internal */
     // tslint:disable-next-line:variable-name
-    private __registered = false;
+    private __registeredOutputs = false;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -799,6 +808,15 @@ export class ComponentResource<TData = any> extends Resource {
     /** @internal */
     private async initializeAndRegisterOutputs(args: Inputs) {
         const data = await this.initialize(args);
+        if (this.__wasRegistered) {
+            // If the resource construction was registered with the engine (that is, unless `urn` or
+            // `id` opts were passed), we will automatically "finalize" the resource registration by
+            // calling `registerOutputs`.  If the user already called this in the constructor, their
+            // outputs will win (due to the `await` above causing a delay of a turn on the event
+            // loop) and this will be a no-op.  If they did not, we will invoke this on the next
+            // turn after the (potentially overriden) `initialize` returns.
+            this.registerOutputs();
+        }
         return data;
     }
 
@@ -828,11 +846,11 @@ export class ComponentResource<TData = any> extends Resource {
      * called after the `initialize` method completes.
      */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
-        if (this.__registered) {
+        if (this.__registeredOutputs) {
             return;
         }
 
-        this.__registered = true;
+        this.__registeredOutputs = true;
         registerResourceOutputs(this, outputs || {});
     }
 }
