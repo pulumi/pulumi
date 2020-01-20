@@ -7,7 +7,7 @@ verify_ssl = true
 mypy = "*"
 
 [packages]
-pulumi = {editable = true,path = "./../../sdk/python/env/src"}
+pulumi = {editable = true,path = "./../../../sdk/python/env/src"}
 pulumi-aws = "*"
 
 [requires]

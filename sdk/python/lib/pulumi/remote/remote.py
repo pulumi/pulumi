@@ -24,14 +24,16 @@ from ..runtime.rpc import deserialize_properties, serialize_properties
 from ..runtime.settings import SETTINGS
 
 def spawnServer(library_path: str):
+    def setting_to_string(setting: Optional[str]) -> str:
+        return "" if setting is None else setting
     proc = Popen(["node", "-e", "require('@pulumi/pulumi/remote/server')"], cwd=library_path, stdout=PIPE, env={
         **os.environ,
-        'PULUMI_NODEJS_PROJECT': SETTINGS.project,
-        'PULUMI_NODEJS_STACK': SETTINGS.stack,
+        'PULUMI_NODEJS_PROJECT': setting_to_string(SETTINGS.project),
+        'PULUMI_NODEJS_STACK': setting_to_string(SETTINGS.stack),
         'PULUMI_NODEJS_DRY_RUN': "true" if SETTINGS.dry_run else "false",
         'PULUMI_NODEJS_QUERY_MODE': "false",
-        'PULUMI_NODEJS_MONITOR': SETTINGS.monitor_addr,
-        'PULUMI_NODEJS_ENGINE': SETTINGS.engine_addr,
+        'PULUMI_NODEJS_MONITOR': setting_to_string(SETTINGS.monitor_addr),
+        'PULUMI_NODEJS_ENGINE': setting_to_string(SETTINGS.engine_addr),
         'PULUMI_TEST_MODE': "true" if SETTINGS.test_mode_enabled else "false",
         'PULUMI_ENABLE_LEGACY_APPLY': "false",
         'PULUMI_NODEJS_SYNC': "false",

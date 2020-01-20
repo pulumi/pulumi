@@ -300,9 +300,9 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
     log.debug(f"preparing resource for RPC")
-    urn_future = asyncio.Future()
-    urn_known = asyncio.Future()
-    urn_secret = asyncio.Future()
+    urn_future: asyncio.Future[Any] = asyncio.Future()
+    urn_known: asyncio.Future[bool] = asyncio.Future()
+    urn_secret: asyncio.Future[bool] = asyncio.Future()
     urn_known.set_result(True)
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
@@ -313,9 +313,10 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
     resolve_id: Optional[Callable[[
         Any, bool, Optional[Exception]], None]] = None
     if custom:
-        resolve_value = asyncio.Future()
-        resolve_perform_apply = asyncio.Future()
-        resolve_secret = asyncio.Future()
+        res = cast('CustomResource', res)
+        resolve_value: asyncio.Future[Any] = asyncio.Future()
+        resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
+        resolve_secret: asyncio.Future[Any] = asyncio.Future()
         res.id = known_types.new_output(
             {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
@@ -359,8 +360,8 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
                 resolve_id(None, False, exn)
             raise
 
-        log.debug(f"resource read successful: ty={ty}, urn={resp['urn']}")
-        resolve_urn(resp["urn"])
+        log.debug(f"resource get successful: ty={ty}, urn={urn}")
+        resolve_urn(urn)
         if custom:
             resolve_id(resp["outputs"]["id"], True, None)  # Get IDs are always known.
         await rpc.resolve_properties(resolvers, resp["outputs"])
