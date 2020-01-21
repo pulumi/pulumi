@@ -22,7 +22,8 @@ import (
 )
 
 func TestDetectVars(t *testing.T) {
-	buildID := "123"
+	buildNumber := "123"
+	buildID := "87638724"
 	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
 		// we set the TRAVIS env var to an empty string for all test cases
@@ -31,31 +32,33 @@ func TestDetectVars(t *testing.T) {
 		AzurePipelines: {
 			"TRAVIS":        "",
 			"TF_BUILD":      "true",
-			"BUILD_BUILDID": buildID,
+			"BUILD_BUILDID": buildNumber,
 		},
 		CircleCI: {
 			"TRAVIS":           "",
 			"CIRCLECI":         "true",
-			"CIRCLE_BUILD_NUM": buildID,
+			"CIRCLE_BUILD_NUM": buildNumber,
 		},
 		Codefresh: {
 			"TRAVIS":       "",
 			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
-			"CF_BUILD_ID":  buildID,
+			"CF_BUILD_ID":  buildNumber,
 		},
 		GenericCI: {
 			"TRAVIS":             "",
 			"PULUMI_CI_SYSTEM":   "generic-ci-system",
-			"PULUMI_CI_BUILD_ID": buildID,
+			"PULUMI_CI_BUILD_ID": buildNumber,
 		},
 		GitLab: {
-			"TRAVIS":    "",
-			"GITLAB_CI": "true",
-			"CI_JOB_ID": buildID,
+			"TRAVIS":          "",
+			"GITLAB_CI":       "true",
+			"CI_PIPELINE_ID":  buildID,
+			"CI_PIPELINE_IID": buildNumber,
 		},
 		Travis: {
-			"TRAVIS":        "true",
-			"TRAVIS_JOB_ID": buildID,
+			"TRAVIS":            "true",
+			"TRAVIS_JOB_ID":     buildID,
+			"TRAVIS_JOB_NUMBER": buildNumber,
 		},
 	}
 
@@ -72,9 +75,20 @@ func TestDetectVars(t *testing.T) {
 				os.Setenv(envVar, envVars[envVar])
 			}
 			vars := DetectVars()
-			assert.Equal(t,
-				buildID, vars.BuildID,
-				"%v did not set the expected build ID %v in the Vars struct.", system, buildID)
+			// For CI systems where the build number and the ID are the same,
+			// only the BuildID is set and is considered to be the build "number".
+			if vars.BuildNumber == "" {
+				assert.Equal(t,
+					buildNumber, vars.BuildID,
+					"%v did not set the expected build ID %v in the Vars struct.", system, buildNumber)
+			} else {
+				assert.Equal(t,
+					buildID, vars.BuildID,
+					"%v did not set the expected build ID %v in the Vars struct.", system, buildNumber)
+				assert.Equal(t,
+					buildNumber, vars.BuildNumber,
+					"%v did not set the expected build number %v in the Vars struct.", system, buildNumber)
+			}
 
 			// Restore any modified env vars back to their original value
 			// if we previously saved it. Otherwise, just unset it.

@@ -4,6 +4,7 @@
 **/bin
 **/.vscode/
 **/.vs/
+**/.ionide/
 coverage.cov
 *.coverprofile
 

@@ -1,0 +1,436 @@
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// nolint: lll, unconvert
+package pulumi
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestOutputApply(t *testing.T) {
+	// Test that resolved outputs lead to applies being run.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+		var ranApp bool
+		app := out.ApplyT(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		v, known, err := await(app)
+		assert.True(t, ranApp)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, v, 43)
+	}
+	// Test that resolved, but unknown outputs, skip the running of applies.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, false) }()
+		var ranApp bool
+		app := out.ApplyT(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		_, known, err := await(app)
+		assert.False(t, ranApp)
+		assert.Nil(t, err)
+		assert.False(t, known)
+	}
+	// Test that rejected outputs do not run the apply, and instead flow the error.
+	{
+		out := newIntOutput()
+		go func() { out.reject(errors.New("boom")) }()
+		var ranApp bool
+		app := out.ApplyT(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		v, _, err := await(app)
+		assert.False(t, ranApp)
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
+	}
+	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+		var ranApp bool
+		app := out.ApplyT(func(v int) (interface{}, error) {
+			other, resolveOther, _ := NewOutput()
+			go func() { resolveOther(v + 1) }()
+			ranApp = true
+			return other, nil
+		})
+		v, known, err := await(app)
+		assert.True(t, ranApp)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, v, 43)
+
+		app = out.ApplyT(func(v int) (interface{}, error) {
+			other, resolveOther, _ := NewOutput()
+			go func() { resolveOther(v + 2) }()
+			ranApp = true
+			return other, nil
+		})
+		v, known, err = await(app)
+		assert.True(t, ranApp)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, v, 44)
+	}
+	// Test that an an apply that reject an output returns the rejection of that output, not the output itself.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+		var ranApp bool
+		app := out.ApplyT(func(v int) (interface{}, error) {
+			other, _, rejectOther := NewOutput()
+			go func() { rejectOther(errors.New("boom")) }()
+			ranApp = true
+			return other, nil
+		})
+		v, _, err := await(app)
+		assert.True(t, ranApp)
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
+
+		app = out.ApplyT(func(v int) (interface{}, error) {
+			other, _, rejectOther := NewOutput()
+			go func() { rejectOther(errors.New("boom")) }()
+			ranApp = true
+			return other, nil
+		})
+		v, _, err = await(app)
+		assert.True(t, ranApp)
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
+	}
+	// Test builtin applies.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+
+{{range .Builtins}}
+		t.Run("Apply{{.Name}}", func(t *testing.T) {
+			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			_, known, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			_, known, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+{{end}}
+	}
+	// Test that applies return appropriate concrete implementations of Output based on the callback type
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+
+{{range .Builtins}}
+		t.Run("ApplyT::{{.Name}}Output", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
+			assert.True(t, ok)
+		})
+{{end}}
+	}
+	// Test some chained applies.
+	{
+		type myStructType struct {
+			foo int
+			bar string
+		}
+
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+
+		out2 := StringOutput{newOutputState(reflect.TypeOf(""))}
+		go func() { out2.resolve("hello", true) }()
+
+		res := out.
+			ApplyT(func(v int) myStructType {
+				return myStructType{foo: v, bar: "qux,zed"}
+			}).
+			ApplyT(func(v interface{}) (string, error) {
+				bar := v.(myStructType).bar
+				if bar != "qux,zed" {
+					return "", errors.New("unexpected value")
+				}
+				return bar, nil
+			}).
+			ApplyT(func (v string) ([]string, error) {
+				strs := strings.Split(v, ",")
+				if len(strs) != 2 {
+					return nil, errors.New("unexpected value")
+				}
+				return []string{strs[0], strs[1]}, nil
+			})
+
+		res2 := out.
+			ApplyT(func(v int) myStructType {
+				return myStructType{foo: v, bar: "foo,bar"}
+			}).
+			ApplyT(func(v interface{}) (string, error) {
+				bar := v.(myStructType).bar
+				if bar != "foo,bar" {
+					return "", errors.New("unexpected value")
+				}
+				return bar, nil
+			}).
+			ApplyT(func (v string) ([]string, error) {
+				strs := strings.Split(v, ",")
+				if len(strs) != 2 {
+					return nil, errors.New("unexpected value")
+				}
+				return []string{strs[0], strs[1]}, nil
+			})
+
+		res3 := All(res, res2).ApplyT(func (v []interface{}) string {
+			res, res2 := v[0].([]string), v[1].([]string)
+			return strings.Join(append(res2, res...), ",")
+		})
+
+		res4 := All(out, out2).ApplyT(func(v []interface{}) *myStructType {
+			return &myStructType{
+				foo: v[0].(int),
+				bar: v[1].(string),
+			}
+		})
+
+		res5 := All(res3, res4).Apply(func (v interface{}) (interface{}, error) {
+			vs := v.([]interface{})
+			res3 := vs[0].(string)
+			res4 := vs[1].(*myStructType)
+			return fmt.Sprintf("%v;%v;%v", res3, res4.foo, res4.bar), nil
+		})
+
+		_, ok := res.(StringArrayOutput)
+		assert.True(t, ok)
+
+		v, known, err := await(res)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, []string{"qux", "zed"}, v)
+
+		_, ok = res2.(StringArrayOutput)
+		assert.True(t, ok)
+
+		v, known, err = await(res2)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, []string{"foo", "bar"}, v)
+
+		_, ok = res3.(StringOutput)
+		assert.True(t, ok)
+
+		v, known, err = await(res3)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, "foo,bar,qux,zed", v)
+
+		_, ok = res4.(AnyOutput)
+		assert.True(t, ok)
+
+		v, known, err = await(res4)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
+
+		v, known, err = await(res5)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
+	}
+}
+
+// Test that ToOutput works with all builtin input types
+{{range .Builtins}}
+func TestToOutput{{.Name}}(t *testing.T) {
+	out := ToOutput({{.Example}})
+	_, ok := out.({{.Name}}Input)
+	assert.True(t, ok)
+
+	_, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.({{.Name}}Input)
+	assert.True(t, ok)
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+{{end}}
+
+// Test that type-specific ToOutput methods work with all builtin input and output types
+{{range .Builtins}}
+func TestTo{{.Name}}Output(t *testing.T) {
+	in := {{.Name}}Input({{.Example}})
+
+	out := in.To{{.Name}}Output()
+
+	_, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.To{{.Name}}Output()
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.To{{.Name}}OutputWithContext(context.Background())
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.To{{.Name}}OutputWithContext(context.Background())
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+{{end}}
+
+// Test type-specific ToOutput methods for builtins that implement other builtin input types.
+func TestBuiltinConversions(t *testing.T) {
+	archiveIn := NewFileArchive("foo.zip")
+	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
+	archiveV, known, err := await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, archiveIn, archiveV)
+
+	archiveOut := archiveIn.ToArchiveOutput()
+	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
+	archiveV, known, err = await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, archiveIn, archiveV)
+
+	assetIn := NewFileAsset("foo.zip")
+	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
+	assetV, known, err := await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, assetIn, assetV)
+
+	assetOut := assetIn.ToAssetOutput()
+	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
+	assetV, known, err = await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, assetIn, assetV)
+
+	idIn := ID("foo")
+	stringOut := idIn.ToStringOutput()
+	stringV, known, err := await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(idIn), stringV)
+
+	idOut := idIn.ToIDOutput()
+	stringOut = idOut.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(idIn), stringV)
+
+	urnIn := URN("foo")
+	stringOut = urnIn.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(urnIn), stringV)
+
+	urnOut := urnIn.ToURNOutput()
+	stringOut = urnOut.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(urnIn), stringV)
+}
+
+// Test pointer types.
+{{range .Builtins}}
+{{if .DefineElem}}
+func Test{{.Name}}Elem(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.Elem())
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, *(av.(*{{.ElemElementType}})), iv)
+}
+{{end}}
+{{end}}
+
+
+// Test array indexers.
+{{range .Builtins}}
+{{if .DefineIndex}}
+func Test{{.Name}}Index(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
+}
+{{end}}
+{{end}}
+
+// Test map indexers.
+{{range .Builtins}}
+{{if .DefineMapIndex}}
+func Test{{.Name}}Index(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
+}
+{{end}}
+{{end}}

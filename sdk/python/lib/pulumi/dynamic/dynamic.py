@@ -15,7 +15,7 @@
 import asyncio
 import base64
 import pickle
-from typing import Any, Optional, List, TYPE_CHECKING
+from typing import Any, Optional, List, TYPE_CHECKING, no_type_check, cast
 
 import dill
 from .. import CustomResource, ResourceOptions
@@ -202,6 +202,9 @@ class ResourceProvider:
     def __init__(self) -> None:
         pass
 
+# TODO[python/mypy#1102]: mypy doesn't currently support multiline comments
+# multiple errors related to the type assignment we're doing in this method eg 'Picker = _Pickler'
+@no_type_check
 def serialize_provider(provider: ResourceProvider) -> str:
         # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
     # ensure we get a deterministic result.  Without this we would see changes to our serialized
@@ -247,6 +250,7 @@ class Resource(CustomResource):
         if PROVIDER_KEY in props:
             raise  Exception("A dynamic resource must not define the __provider key")
 
+        props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)
 
         super(Resource, self).__init__("pulumi-python:dynamic:Resource", name, props, opts)

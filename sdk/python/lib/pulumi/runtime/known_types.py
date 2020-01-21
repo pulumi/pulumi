@@ -59,6 +59,9 @@ _file_archive_resource_type: Optional[type] = None
 _remote_archive_resource_type: Optional[type] = None
 """The type of RemoteArchive. Filled-in as the Pulumi package is initializing."""
 
+_stack_resource_type: Optional[type] = None
+"""The type of Stack. Filled-in as the Pulumi package is initializing."""
+
 _output_type: Optional[type] = None
 """The type of Output. Filled-in as the Pulumi package is initializing."""
 
@@ -163,6 +166,16 @@ def custom_resource(class_obj: type) -> type:
     _custom_resource_type = class_obj
     return class_obj
 
+def stack(class_obj: type) -> type:
+    """
+    Decorator to annotate the Stack class. Registers the decorated class
+    as the Stack known type.
+    """
+    assert isinstance(class_obj, type), "class_obj is not a Class"
+    global _stack_resource_type
+    _stack_resource_type = class_obj
+    return class_obj
+
 
 def output(class_obj: type) -> type:
     assert isinstance(class_obj, type), "class_obj is not a Class"
@@ -182,56 +195,56 @@ def new_file_asset(*args: Any) -> Any:
     """
     Instantiates a new FileAsset, passing the given arguments to the constructor.
     """
-    return _file_asset_resource_type(*args)
+    return _file_asset_resource_type(*args) # type: ignore
 
 
 def new_string_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
-    return _string_asset_resource_type(*args)
+    return _string_asset_resource_type(*args) # type: ignore
 
 
 def new_remote_asset(*args: Any) -> Any:
     """
     Instantiates a new StringAsset, passing the given arguments to the constructor.
     """
-    return _remote_asset_resource_type(*args)
+    return _remote_asset_resource_type(*args) # type: ignore
 
 
 def new_asset_archive(*args: Any) -> Any:
     """
     Instantiates a new AssetArchive, passing the given arguments to the constructor.
     """
-    return _asset_archive_resource_type(*args)
+    return _asset_archive_resource_type(*args) # type: ignore
 
 
 def new_file_archive(*args: Any) -> Any:
     """
     Instantiates a new FileArchive, passing the given arguments to the constructor.
     """
-    return _file_archive_resource_type(*args)
+    return _file_archive_resource_type(*args) # type: ignore
 
 
 def new_remote_archive(*args: Any) -> Any:
     """
     Instantiates a new StringArchive, passing the given arguments to the constructor.
     """
-    return _remote_archive_resource_type(*args)
+    return _remote_archive_resource_type(*args) # type: ignore
 
 
 def new_output(*args: Any) -> Any:
     """
     Instantiates a new Output, passing the given arguments to the constructor.
     """
-    return _output_type(*args)
+    return _output_type(*args) # type: ignore
 
 
 def new_unknown(*args: Any) -> Any:
     """
     Instantiates a new Unknown, passing the given arguments to the constructor.
     """
-    return _unknown_type(*args)
+    return _unknown_type(*args) # type: ignore
 
 
 def is_asset(obj: Any) -> bool:
@@ -254,6 +267,11 @@ def is_custom_resource(obj: Any) -> bool:
     """
     return _custom_resource_type is not None and isinstance(obj, _custom_resource_type)
 
+def is_stack(obj: Any) -> bool:
+    """
+    Returns true if the given type is an Output, false otherwise.
+    """
+    return _stack_resource_type is not None and isinstance(obj, _stack_resource_type)
 
 def is_output(obj: Any) -> bool:
     """

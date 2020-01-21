@@ -158,10 +158,12 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	err = pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	version, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
 		return result.FromError(err)
 	}
+
+	fmt.Printf("\nPermalink: %s/policypacks/%s/%d\n", pack.Backend().URL(), pack.ref.Name(), version)
 
 	return nil
 }

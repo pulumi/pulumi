@@ -23,7 +23,7 @@ type StackSummary struct {
 	// StackName is the name of the stack.
 	StackName string `json:"stackName"`
 
-	// LastUpdate is a Unix timestamp of the stack's last update, as applicable.
+	// LastUpdate is a Unix timestamp of the start time of the stack's last update, as applicable.
 	LastUpdate *int64 `json:"lastUpdate,omitempty"`
 
 	// ResourceCount is the number of resources associated with this stack, as applicable.

@@ -97,8 +97,20 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 	return path.Join(append([]string{prefix}, components...)...)
 }
 
-// publishPolicyPackPath returns the API path to for the given organization with the given
-// components joined with path separators and appended to the organization root.
+// listPolicyGroupsPath returns the path for an API call to the Pulumi service to list the Policy Groups
+// in a Pulumi organization.
+func listPolicyGroupsPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policygroups", orgName)
+}
+
+// listPolicyPacksPath returns the path for an API call to the Pulumi service to list the Policy Packs
+// in a Pulumi organization.
+func listPolicyPacksPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
+}
+
+// publishPolicyPackPath returns the path for an API call to the Pulumi service to publish a new Policy Pack
+// in a Pulumi organization.
 func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
@@ -497,9 +509,30 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, nil
 }
 
-// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service.
+// ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
+func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+	var resp apitype.ListPolicyGroupsResponse
+	err := pc.restCall(ctx, "GET", listPolicyGroupsPath(orgName), nil, nil, &resp)
+	if err != nil {
+		return resp, errors.Wrapf(err, "List Policy Groups failed")
+	}
+	return resp, nil
+}
+
+// ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
+func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+	var resp apitype.ListPolicyPacksResponse
+	err := pc.restCall(ctx, "GET", listPolicyPacksPath(orgName), nil, nil, &resp)
+	if err != nil {
+		return resp, errors.Wrapf(err, "List Policy Packs failed")
+	}
+	return resp, nil
+}
+
+// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it's successful, it returns
+// the version that was published.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) error {
+	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (int, error) {
 
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -517,7 +550,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return errors.Wrapf(err, "Publish policy pack failed")
+		return 0, errors.Wrapf(err, "Publish policy pack failed")
 	}
 
 	fmt.Printf("Published as version %d\n", resp.Version)
@@ -529,12 +562,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	//
@@ -544,10 +577,10 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, resp.Version), nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Request to signal completion of the publish operation failed")
+		return 0, errors.Wrapf(err, "Request to signal completion of the publish operation failed")
 	}
 
-	return nil
+	return resp.Version, nil
 }
 
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
