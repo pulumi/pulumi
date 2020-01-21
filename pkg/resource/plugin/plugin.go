@@ -197,19 +197,29 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 		if s == connectivity.Ready {
 			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
 			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
-
+		outer:
 			for {
 				err = grpc.Invoke(timeout, "", nil, nil, conn)
-				if err != nil {
+				if err == nil {
+					break // successful connect
+				} else {
 					// We have an error; see if it's a known status and, if so, react appropriately.
 					status, ok := status.FromError(err)
-					if ok && status.Code() == codes.Unavailable {
-						// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
-						time.Sleep(time.Millisecond * 10)
-						continue // keep retrying
+					if ok {
+						switch status.Code() {
+						case codes.Unavailable:
+							// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
+							time.Sleep(time.Millisecond * 10)
+							continue // keep retrying
+						default:
+							// Since we sent "" as the method above, this is the expected response.  Ready to go.
+							break outer
+						}
 					}
+
+					// Unexpected error; get outta dodge.
+					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
 				}
-				break
 			}
 			break
 		}
