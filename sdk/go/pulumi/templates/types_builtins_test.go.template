@@ -16,6 +16,7 @@
 package pulumi
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -124,6 +125,25 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ranApp)
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
+	}
+	// Test builtin applies.
+	{
+		out := newIntOutput()
+		go func() { out.resolve(42, true) }()
+
+{{range .Builtins}}
+		t.Run("Apply{{.Name}}", func(t *testing.T) {
+			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			_, known, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			_, known, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+{{end}}
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
 	{
@@ -265,4 +285,152 @@ func TestToOutput{{.Name}}(t *testing.T) {
 	assert.True(t, known)
 	assert.NoError(t, err)
 }
+{{end}}
+
+// Test that type-specific ToOutput methods work with all builtin input and output types
+{{range .Builtins}}
+func TestTo{{.Name}}Output(t *testing.T) {
+	in := {{.Name}}Input({{.Example}})
+
+	out := in.To{{.Name}}Output()
+
+	_, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.To{{.Name}}Output()
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.To{{.Name}}OutputWithContext(context.Background())
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.To{{.Name}}OutputWithContext(context.Background())
+
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+{{end}}
+
+// Test type-specific ToOutput methods for builtins that implement other builtin input types.
+func TestBuiltinConversions(t *testing.T) {
+	archiveIn := NewFileArchive("foo.zip")
+	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
+	archiveV, known, err := await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, archiveIn, archiveV)
+
+	archiveOut := archiveIn.ToArchiveOutput()
+	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
+	archiveV, known, err = await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, archiveIn, archiveV)
+
+	assetIn := NewFileAsset("foo.zip")
+	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
+	assetV, known, err := await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, assetIn, assetV)
+
+	assetOut := assetIn.ToAssetOutput()
+	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
+	assetV, known, err = await(assetOrArchiveOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, assetIn, assetV)
+
+	idIn := ID("foo")
+	stringOut := idIn.ToStringOutput()
+	stringV, known, err := await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(idIn), stringV)
+
+	idOut := idIn.ToIDOutput()
+	stringOut = idOut.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(idIn), stringV)
+
+	urnIn := URN("foo")
+	stringOut = urnIn.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(urnIn), stringV)
+
+	urnOut := urnIn.ToURNOutput()
+	stringOut = urnOut.ToStringOutput()
+	stringV, known, err = await(stringOut)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, string(urnIn), stringV)
+}
+
+// Test pointer types.
+{{range .Builtins}}
+{{if .DefineElem}}
+func Test{{.Name}}Elem(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.Elem())
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, *(av.(*{{.ElemElementType}})), iv)
+}
+{{end}}
+{{end}}
+
+
+// Test array indexers.
+{{range .Builtins}}
+{{if .DefineIndex}}
+func Test{{.Name}}Index(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
+}
+{{end}}
+{{end}}
+
+// Test map indexers.
+{{range .Builtins}}
+{{if .DefineMapIndex}}
+func Test{{.Name}}Index(t *testing.T) {
+	out := ({{.Example}}).To{{.Name}}Output()
+
+	av, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
+}
+{{end}}
 {{end}}
