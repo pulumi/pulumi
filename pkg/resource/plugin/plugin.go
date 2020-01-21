@@ -218,7 +218,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 					}
 
 					// Unexpected error; get outta dodge.
-					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive.", prefix, bin)
+					return nil, errors.Wrapf(err, "%v plugin (%v) did not come alive.", prefix, bin)
 				}
 			}
 			break
