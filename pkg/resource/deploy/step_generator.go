@@ -1030,13 +1030,15 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 
 	contract.Require(prov != nil, "prov != nil")
 
-	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
-	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
+	// Grab the diff from the provider.
 	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
-	if diff.Changes == plugin.DiffUnknown {
+	// At this point we know that there were changes to the Pulumi inputs, so if the provider returns
+	// an "unknown" diff result, pretend it returned "diffs exist". Even if the provider returns "none",
+	// we still want to compare inputs, e.g. to account for changes in secretness.
+	if diff.Changes == plugin.DiffUnknown || diff.Changes == plugin.DiffNone {
 		if oldInputs.DeepEquals(newInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
