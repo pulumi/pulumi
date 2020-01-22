@@ -94,9 +94,9 @@ class RemoteServer {
     }
 
     public async construct(libraryPath: string, resource: string, name: string, args: any, opts?: any): Promise<any> {
-        const serializedArgs = await runtime.serializeProperties("construct-args", args);
+        const serializedArgs = await runtime.serializeProperties("construct-args", args, { keepResources: true });
         const argsStruct = gstruct.Struct.fromJavaScript(serializedArgs);
-        const serializedOpts = await runtime.serializeProperties("construct-opts", opts);
+        const serializedOpts = await runtime.serializeProperties("construct-opts", opts, { keepResources: true });
         const optsStruct = gstruct.Struct.fromJavaScript(serializedOpts);
         const client = await this.client;
         const constructRequest = new runtimeProto.ConstructRequest();

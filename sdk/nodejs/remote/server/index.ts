@@ -36,10 +36,10 @@ function construct(call: any, callback: (err: any, resp?: any) => void) {
     const resource = call.request.getResource();
     const name = call.request.getName();
     const ctor = library[resource];
-    
+
     const res = new ctor(name, props, opts);
 
-    runtime.serializeProperties("inner-construct", res).then(resolved => {
+    runtime.serializeProperties("inner-construct", res, { keepResources: true }).then(resolved => {
         const outStruct = gstruct.Struct.fromJavaScript(resolved);
         const reply = new runtimeProto.ConstructResponse();
         reply.setOuts(outStruct);
