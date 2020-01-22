@@ -107,10 +107,10 @@ class Output(Generic[T]):
     def resources(self) -> Awaitable[Set['Resource']]:
         return self._resources
 
-    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[T]:
+    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T]]:
         # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
         # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
-        async def get_value() -> T:
+        async def get_value() -> Optional[T]:
             val = await self._future
             return None if not with_unknowns and contains_unknowns(val) else val
         return asyncio.ensure_future(get_value())
@@ -141,9 +141,9 @@ class Output(Generic[T]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        result_resources: asyncio.Future = asyncio.Future()
-        result_is_known: asyncio.Future = asyncio.Future()
-        result_is_secret: asyncio.Future = asyncio.Future()
+        result_resources: asyncio.Future[Set['Resource']] = asyncio.Future()
+        result_is_known: asyncio.Future[bool] = asyncio.Future()
+        result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
@@ -171,7 +171,7 @@ class Output(Generic[T]):
                     # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
                     # that expect to see unknowns during preview in outputs that are not known will always do so.
                     if not is_known and run_with_unknowns and not contains_unknowns(value):
-                        value = UNKNOWN
+                        value = cast(T, UNKNOWN)
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
@@ -213,7 +213,7 @@ class Output(Generic[T]):
         run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
 
-    def __getattr__(self, item: str) -> 'Output[Any]':
+    def __getattr__(self, item: str) -> 'Output[Any]': # type: ignore
         """
         Syntax sugar for retrieving attributes off of outputs.
 
@@ -232,7 +232,7 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else v[key], True)
+        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key], True)
 
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
@@ -253,27 +253,32 @@ class Output(Generic[T]):
         if isinstance(val, dict):
             # Since Output.all works on lists early, serialize this dictionary into a list of lists first.
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
-            transformed_items = [[k, Output.from_input(v)] for k, v in val.items()]
-            return Output.all(*transformed_items).apply(lambda props: {k: v for k, v in props}, True)
+            dict_items = [[k, Output.from_input(v)] for k, v in val.items()]
+            # type checker doesn't like returing a Dict in the apply callback
+            fn = cast(Callable[[List[Any]], T], lambda props: {k: v for k, v in props}) # pylint: disable=unnecessary-comprehension
+            return Output.all(*dict_items).apply(fn, True)
 
         if isinstance(val, list):
-            transformed_items = [Output.from_input(v) for v in val]
-            return Output.all(*transformed_items)
+            list_items: List[Union[Any, Awaitable[Any], Output[Any]]] = [Output.from_input(v) for v in val]
+            # invariant: http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+            output: Output[T] = cast(Output[T], Output.all(*list(list_items))) # type: ignore
+            return output
 
         # If it's not an output, list, or dict, it must be known and not secret
-        is_known_fut = asyncio.Future()
-        is_secret_fut = asyncio.Future()
+        is_known_fut: asyncio.Future[bool] = asyncio.Future()
+        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
         is_known_fut.set_result(True)
         is_secret_fut.set_result(False)
 
         # Is it awaitable? If so, schedule it for execution and use the resulting future
         # as the value future for a new output.
         if isawaitable(val):
-            promise_output = Output(set(), asyncio.ensure_future(val), is_known_fut, is_secret_fut)
+            val_fut = cast(asyncio.Future, val)
+            promise_output = Output(set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut)
             return promise_output.apply(Output.from_input, True)
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
-        value_fut = asyncio.Future()
+        value_fut: asyncio.Future[Any] = asyncio.Future()
         value_fut.set_result(val)
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
@@ -290,7 +295,7 @@ class Output(Generic[T]):
         """
 
         o = Output.from_input(val)
-        is_secret = asyncio.Future()
+        is_secret: asyncio.Future[bool] = asyncio.Future()
         is_secret.set_result(True)
         return Output(o._resources, o._future, o._is_known, is_secret)
 
@@ -333,9 +338,9 @@ class Output(Generic[T]):
         async def gather_futures(outputs):
             value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
             return await asyncio.gather(*value_futures)
-
+        from_input = cast(Callable[[List[Union[T, Awaitable[T], Output[T]]]], Output[T]], Output.from_input)
         # First, map all inputs to outputs using `from_input`.
-        all_outputs = list(map(Output.from_input, args))
+        all_outputs = list(map(from_input, args))
 
         # Aggregate the list of futures into a future of lists.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
@@ -361,8 +366,9 @@ class Output(Generic[T]):
         :rtype: Output[str]
         """
 
-        transformed_items = [Output.from_input(v) for v in args]
-        return Output.all(*transformed_items).apply("".join)
+        transformed_items: List[Input[Any]] = [Output.from_input(v) for v in args]
+        # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+        return Output.all(*transformed_items).apply("".join) # type: ignore
 
 
 @known_types.unknown

@@ -364,9 +364,17 @@ type Stack struct {
 	OrgName     string       `json:"orgName"`
 	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
-
-	ActiveUpdate string                  `json:"activeUpdate"`
-	Tags         map[StackTagName]string `json:"tags,omitempty"`
+	// CurrentOperation provides information about a stack operation in-progress, as applicable.
+	CurrentOperation *OperationStatus        `json:"currentOperation,omitempty"`
+	ActiveUpdate     string                  `json:"activeUpdate"`
+	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
 	Version int `json:"version"`
+}
+
+// OperationStatus describes the state of an operation being performed on a Pulumi stack.
+type OperationStatus struct {
+	Kind    UpdateKind `json:"kind"`
+	Author  string     `json:"author"`
+	Started int64      `json:"started"`
 }

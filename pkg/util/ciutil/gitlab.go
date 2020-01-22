@@ -27,13 +27,14 @@ type gitlabCI struct {
 // See https://docs.gitlab.com/ee/ci/variables/.
 func (gl gitlabCI) DetectVars() Vars {
 	v := Vars{Name: gl.Name}
-	v.BuildID = os.Getenv("CI_JOB_ID")
+	v.BuildID = os.Getenv("CI_PIPELINE_ID")
+	v.BuildNumber = os.Getenv("CI_PIPELINE_IID")
 	v.BuildType = os.Getenv("CI_PIPELINE_SOURCE")
 	v.BuildURL = os.Getenv("CI_JOB_URL")
 	v.SHA = os.Getenv("CI_COMMIT_SHA")
 	v.BranchName = os.Getenv("CI_COMMIT_REF_NAME")
 	v.CommitMessage = os.Getenv("CI_COMMIT_MESSAGE")
-	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_ID")
+	v.PRNumber = os.Getenv("CI_MERGE_REQUEST_IID")
 
 	return v
 }

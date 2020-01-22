@@ -84,6 +84,14 @@ func (be *MockBackend) URL() string {
 	panic("not implemented")
 }
 
+func (be *MockBackend) ListPolicyGroups(context.Context, string) (apitype.ListPolicyGroupsResponse, error) {
+	panic("not implemented")
+}
+
+func (be *MockBackend) ListPolicyPacks(context.Context, string) (apitype.ListPolicyPacksResponse, error) {
+	panic("not implemented")
+}
+
 func (be *MockBackend) GetPolicyPack(
 	ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error) {
 

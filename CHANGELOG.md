@@ -2,6 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
 
 - Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
   another library.
@@ -15,6 +16,14 @@ CHANGELOG
 - Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
 
 - Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
+
+- Add Permalink to output when publishing a Policy Pack.
+
+- Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
+
+- Add `BuildNumber` to CI vars and backend metadata property bag for CI systems that have separate ID and a user-friendly number. [#3766](https://github.com/pulumi/pulumi/pull/3766)
+
+- Breaking changes for the Go SDK. Complete details are in [#3506](https://github.com/pulumi/pulumi/pull/3506).
 
 ## 1.8.1 (2019-12-20)
 

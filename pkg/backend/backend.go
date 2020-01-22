@@ -120,6 +120,12 @@ type Backend interface {
 	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
+	// ListPolicyGroups returns all Policy Groups for an organization in this backend or an error if it cannot be found.
+	ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error)
+
+	// ListPolicyPacks returns all Policy Packs for an organization in this backend, or an error if it cannot be found.
+	ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error)
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
