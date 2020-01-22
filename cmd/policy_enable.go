@@ -53,11 +53,12 @@ func newPolicyEnableCmd() *cobra.Command {
 
 			// Parse version if it's specified.
 			var version *int
-			if len(cliArgs) == 2 {
-				*version, err = strconv.Atoi(cliArgs[1])
+			if len(cliArgs) > 1 {
+				v, err := strconv.Atoi(cliArgs[1])
 				if err != nil {
 					return errors.Wrapf(err, "Could not parse version (should be an integer)")
 				}
+				version = &v
 			}
 
 			// Attempt to enable the Policy Pack.
