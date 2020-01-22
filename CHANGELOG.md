@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 1.9.0 (2020-01-22)
 - Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
 
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
