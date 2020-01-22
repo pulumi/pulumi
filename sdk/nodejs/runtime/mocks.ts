@@ -92,5 +92,5 @@ export class MockMonitor {
 }
 
 export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean) {
-    setMockOptions(new MockMonitor(mocks), project || "project", stack || "stack", preview);
+    setMockOptions(new MockMonitor(mocks), project, stack, preview);
 }

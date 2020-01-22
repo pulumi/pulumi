@@ -56,10 +56,10 @@ export interface Options {
 let options = loadOptions();
 
 
-export function setMockOptions(mockMonitor: any, project: string, stack: string, preview: boolean | undefined) {
+export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean) {
     options = {
-        project: "project",
-        stack: "stack",
+        project: project || options.project || "project",
+        stack: stack || options.stack || "stack",
         dryRun: preview,
         queryMode: options.queryMode,
         parallel: options.parallel,
