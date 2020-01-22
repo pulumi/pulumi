@@ -115,13 +115,6 @@ func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
 
-// applyPolicyPackPath returns the path for an API call to the Pulumi service to apply a PolicyPack
-// to a Pulumi organization.
-func applyPolicyPackPath(orgName, policyPackName string, version int) string {
-	return fmt.Sprintf(
-		"/api/orgs/%s/policypacks/%s/versions/%d/apply", orgName, policyPackName, version)
-}
-
 // updatePolicyGroupPath returns the path for an API call to the Pulumi service to update a PolicyGroup
 // for a Pulumi organization.
 func updatePolicyGroupPath(orgName, policyGroup string) string {

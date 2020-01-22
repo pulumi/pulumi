@@ -53,7 +53,8 @@ func newPolicyDisableCmd() *cobra.Command {
 
 	cmd.PersistentFlags().IntVar(
 		&args.version, "version", 0,
-		"The version of the Policy Pack that will be disabled; if not specified, any enabled version of the Policy Pack will be disabled")
+		"The version of the Policy Pack that will be disabled; "+
+			"if not specified, any enabled version of the Policy Pack will be disabled")
 
 	return cmd
 }
