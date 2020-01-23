@@ -153,6 +153,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             fullStackName,
@@ -201,6 +202,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		name:              uniqueProjectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -256,6 +258,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		name:              projectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -309,6 +312,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       false,
+		yes:               true,
 		name:              projectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -368,6 +372,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       false,
+		yes:               true,
 		name:              "not#valid",
 		prompt:            promptForValue,
 		secretsProvider:   "default",

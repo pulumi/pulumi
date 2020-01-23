@@ -31,6 +31,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 
 	var args = newPolicyArgs{
 		interactive:       false,
+		yes:               true,
 		templateNameOrURL: "aws-typescript",
 	}
 
