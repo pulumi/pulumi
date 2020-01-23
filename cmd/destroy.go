@@ -63,8 +63,8 @@ func newDestroyCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
-			if !interactive {
-				yes = true // auto-approve changes, since we cannot prompt.
+			if !interactive && !yes {
+				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)

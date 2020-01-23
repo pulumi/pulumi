@@ -83,8 +83,8 @@ func newPolicyNewCmd() *cobra.Command {
 }
 
 func runNewPolicyPack(args newPolicyArgs) error {
-	if !args.interactive {
-		args.yes = true // auto-approve changes, since we cannot prompt.
+	if !args.interactive && !args.yes {
+		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 
 	// Prepare options.
