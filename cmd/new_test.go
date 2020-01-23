@@ -104,6 +104,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             orgStackName,
