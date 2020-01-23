@@ -165,9 +165,9 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		case schema.StringType:
 			typ = "string"
 		case schema.ArchiveType:
-			return "Archive"
+			return "pulumi.Archive"
 		case schema.AssetType:
-			return "AssetOrArchive"
+			return "pulumi.AssetOrArchive"
 		case schema.AnyType:
 			return "interface{}"
 		}
