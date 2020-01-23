@@ -227,6 +227,10 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[s
 	actions := newPlanActions(planResult.Options)
 	if res := planResult.Walk(ctx, actions, true); res != nil {
 		if res.IsBail() {
+			// Even if we had to bail, we emit an event with a summary of operation
+			// counts. This is so we can display the Policy Packs ran with the Plan.
+			changes := ResourceChanges(actions.Ops)
+			planResult.Options.Events.previewSummaryEvent(changes, policies)
 			return nil, res
 		}
 

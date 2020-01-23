@@ -6,6 +6,8 @@ CHANGELOG
 - Fix a buggy assertion in the Go SDK.
   [#3794](https://github.com/pulumi/pulumi/pull/3794)
 
+- Fix rendering of Policy Packs to ensure they are always displayed.
+
 ## 1.9.0 (2020-01-22)
 - Publish python types for PEP 561
   [#3704](https://github.com/pulumi/pulumi/pull/3704)
