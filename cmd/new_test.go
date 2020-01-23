@@ -37,6 +37,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
@@ -48,6 +49,26 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 	assert.Equal(t, stackName, loadStackName(t))
 	removeStack(t, stackName)
+}
+
+func TestFailInInteractiveWithoutYes(t *testing.T) {
+	skipIfShort(t)
+
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	var args = newArgs{
+		interactive:       false,
+		yes:               false,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.Error(t, err)
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
