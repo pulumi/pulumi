@@ -263,7 +263,7 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 		case schema.ArchiveType:
 			return "pulumi.ArchiveOutput"
 		case schema.AssetType:
-			return "pulumi.AsseOrArchivetOutput"
+			return "pulumi.AssetOrArchiveOutput"
 		case schema.AnyType:
 			return "pulumi.AnyOutput"
 		}
