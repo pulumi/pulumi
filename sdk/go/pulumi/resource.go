@@ -14,7 +14,10 @@
 
 package pulumi
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type (
 	// ID is a unique identifier assigned by a resource provider to a resource.
@@ -26,6 +29,7 @@ type (
 var resourceStateType = reflect.TypeOf(ResourceState{})
 var customResourceStateType = reflect.TypeOf(CustomResourceState{})
 var providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
+var stackReferenceStateType = reflect.TypeOf(StackReferenceState{})
 
 // ResourceState is the base
 type ResourceState struct {
@@ -70,6 +74,22 @@ func (s ProviderResourceState) getPackage() string {
 	return s.pkg
 }
 
+type StackReferenceState struct {
+	CustomResourceState
+
+	name    StringOutput
+	outputs MapOutput
+}
+
+func (s StackReferenceState) GetOutput(name StringInput) StringOutput {
+	return All(name.ToStringOutput(), s.outputs).
+		ApplyT(func(args []interface{}) (string, error) {
+			n := args[0].(string)
+			outs := args[1].(map[string]string)
+			return outs[n], nil
+		}).(StringOutput)
+}
+
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
@@ -107,6 +127,59 @@ type ProviderResource interface {
 	CustomResource
 
 	getPackage() string
+}
+
+// Manages a reference to a Pulumi stack. The referenced stack's outputs are available via its "outputs" property or
+// the "output" method.
+type StackReference interface {
+	CustomResource
+
+	GetOutput(name StringInput) StringOutput
+}
+
+type StackReferenceArgs struct {
+	Name StringInput
+}
+
+type stackReferenceInputs struct {
+	name    StringInput
+	outputs MapOutput
+}
+
+func (*stackReferenceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*stackReferenceInputs)(nil))
+}
+
+// NewStackReference creates a new stack reference that makes available outputs from the specified stack
+func NewStackReference(ctx Context, name string, args *StackReferenceArgs, opts ...ResourceOption) StackReference {
+	var stack StringInput
+	if args != nil {
+		stack = args.Name
+	}
+	if stack == nil {
+		stack = String(name)
+	}
+	var o MapOutput
+
+	var stackRef StackReferenceState = StackReferenceState{
+		name:    stack.ToStringOutput(),
+		outputs: o,
+	}
+
+	t := "pulumi:pulumi:StackReference"
+	id := stack.ToStringOutput().ApplyT(func(s string) (ID, error) { return ID(s), nil }).(IDOutput)
+
+	props := &stackReferenceInputs{
+		name:    stack,
+		outputs: o,
+	}
+	err := ctx.ReadResource(t, name, id, props /*todo*/, &stackRef, opts...)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return &stackRef
 }
 
 type CustomTimeouts struct {

@@ -500,6 +500,7 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 	var rs *ResourceState
 	var crs *CustomResourceState
 	var prs *ProviderResourceState
+	var srs *StackReferenceState
 
 	switch r := resourceV.(type) {
 	case *ResourceState:
@@ -508,6 +509,8 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 		crs = r
 	case *ProviderResourceState:
 		prs = r
+	case *StackReferenceState:
+		srs = r
 	}
 
 	state := &resourceState{outputs: map[string]Output{}}
@@ -525,6 +528,8 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 			crs = fieldV.Addr().Interface().(*CustomResourceState)
 		case field.Anonymous && field.Type == providerResourceStateType:
 			prs = fieldV.Addr().Interface().(*ProviderResourceState)
+		case field.Anonymous && field.Type == stackReferenceStateType:
+			srs = fieldV.Addr().Interface().(*StackReferenceState)
 		case field.Type.Implements(outputType):
 			tag := typ.Field(i).Tag.Get("pulumi")
 			if tag == "" {
@@ -540,6 +545,11 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 	if prs != nil {
 		crs = &prs.CustomResourceState
 		prs.pkg = t[len("pulumi:providers:"):]
+	}
+
+	if srs != nil {
+		crs = &srs.CustomResourceState
+
 	}
 
 	if crs != nil {
