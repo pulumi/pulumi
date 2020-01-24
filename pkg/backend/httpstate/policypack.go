@@ -168,16 +168,25 @@ func (pack *cloudPolicyPack) Publish(
 	return nil
 }
 
-func (pack *cloudPolicyPack) Apply(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
-	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), op.Version)
+func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
+	if op.Version == nil {
+		return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), 0 /* version */)
+	}
+	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.Version)
 }
 
 func (pack *cloudPolicyPack) Disable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
-	return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), op.Version)
+	if op.Version == nil {
+		return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), 0 /* version */)
+	}
+	return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.Version)
 }
 
 func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOperation) error {
-	return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
+	if op.Version == nil {
+		return errors.New("remove requires the version be specified")
+	}
+	return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), *op.Version)
 }
 
 const npmPackageDir = "package"

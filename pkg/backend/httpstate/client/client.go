@@ -115,13 +115,6 @@ func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
 
-// applyPolicyPackPath returns the path for an API call to the Pulumi service to apply a PolicyPack
-// to a Pulumi organization.
-func applyPolicyPackPath(orgName, policyPackName string, version int) string {
-	return fmt.Sprintf(
-		"/api/orgs/%s/policypacks/%s/versions/%d/apply", orgName, policyPackName, version)
-}
-
 // updatePolicyGroupPath returns the path for an API call to the Pulumi service to update a PolicyGroup
 // for a Pulumi organization.
 func updatePolicyGroupPath(orgName, policyGroup string) string {
@@ -588,15 +581,9 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyGroup string,
 	policyPackName string, version int) error {
 
+	// If a Policy Group was not specified, we use the default Policy Group.
 	if policyGroup == "" {
-		req := apitype.ApplyPolicyPackRequest{Name: policyPackName, Version: version}
-
-		err := pc.restCall(
-			ctx, "POST", applyPolicyPackPath(orgName, policyPackName, version), nil, req, nil)
-		if err != nil {
-			return errors.Wrapf(err, "Enable policy pack failed")
-		}
-		return nil
+		policyGroup = apitype.DefaultPolicyGroup
 	}
 
 	// If a Policy Group was specified, enable it for the specific group only.

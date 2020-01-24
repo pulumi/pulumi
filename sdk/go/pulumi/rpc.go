@@ -216,7 +216,8 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 			return e, append(deps, d...), nil
 		}
 
-		contract.Assertf(valueType.AssignableTo(destType), "%v: cannot assign %v to %v", v, valueType, destType)
+		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
+			"%v: cannot assign %v to %v", v, valueType, destType)
 
 		if destType.Kind() == reflect.Interface {
 			destType = valueType
