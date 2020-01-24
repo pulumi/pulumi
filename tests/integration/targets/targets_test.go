@@ -5,6 +5,7 @@ package ints
 import (
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -42,7 +43,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 		t.Fatalf("error copying index.ts file: %v", err)
 	}
 
-	e.RunCommand("pulumi", "up", "--target", urn, "--non-interactive", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "up", "--target", strings.TrimSpace(urn), "--non-interactive", "--skip-preview", "--yes")
 	e.RunCommand("pulumi refresh")
 
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
