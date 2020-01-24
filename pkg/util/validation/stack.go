@@ -28,7 +28,7 @@ func validateStackName(s string) error {
 	if stackNameRE.MatchString(s) {
 		return nil
 	}
-	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
+	return errors.New("stack names may only contain alphanumeric, hyphens, underscores, or periods")
 }
 
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
@@ -38,7 +38,7 @@ func validateStackTagName(s string) error {
 	if tagNameRE.MatchString(s) {
 		return nil
 	}
-	return errors.New("a stack tag name may only contain alphanumerics, hyphens, underscores, periods, or colons")
+	return errors.New("stack tag names may only contain alphanumerics, hyphens, underscores, periods, or colons")
 }
 
 // ValidateStackTags validates the tag names and values.
@@ -48,13 +48,13 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 
 	for t, v := range tags {
 		if len(t) > maxTagName {
-			return errors.Errorf("stack tag name %q is too long (max length %d characters)", t, maxTagName)
+			return errors.Errorf("the stack tag name is too long (max length %d characters)", maxTagName)
 		}
 		if err := validateStackTagName(t); err != nil {
-			return errors.Wrapf(err, "invalid stack tag name")
+			return err
 		}
 		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag value %q is too long (max length %d characters)", v, maxTagValue)
+			return errors.Errorf("the stack tag value is too long (max length %d characters)", maxTagValue)
 		}
 	}
 
@@ -66,10 +66,10 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
 	const maxStackName = 100 // Derived from the regex in validateStackName.
 	if len(stack) > maxStackName {
-		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
+		return errors.Errorf("the stack name is too long (max length %d characters)", maxStackName)
 	}
 	if err := validateStackName(stack); err != nil {
-		return errors.Wrapf(err, "invalid stack name")
+		return err
 	}
 
 	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
