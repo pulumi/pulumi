@@ -985,7 +985,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	// Destroy and remove the stack.
 	fprintf(pt.opts.Stdout, "Destroying stack\n")
-	destroy := []string{"destroy", "--non-interactive", "--skip-preview"}
+	destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
@@ -1042,7 +1042,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	if !pt.opts.SkipRefresh {
 		// Perform a refresh and ensure it doesn't yield changes.
-		refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
+		refresh := []string{"refresh", "--non-interactive", "--yes", "--skip-preview"}
 		if pt.opts.GetDebugUpdates() {
 			refresh = append(refresh, "-d")
 		}
@@ -1076,8 +1076,8 @@ func (pt *programTester) exportImport(dir string) error {
 func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
-	preview := []string{"preview", "--non-interactive"}
-	update := []string{"up", "--non-interactive", "--skip-preview", "--event-log", pt.eventLog}
+	preview := []string{"preview", "--non-interactive", "--yes"}
+	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.eventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -1125,7 +1125,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 
 func (pt *programTester) query(dir string, name string, shouldFail bool) error {
 
-	query := []string{"query", "--non-interactive"}
+	query := []string{"query", "--non-interactive", "--yes"}
 	if pt.opts.GetDebugUpdates() {
 		query = append(query, "-d")
 	}
