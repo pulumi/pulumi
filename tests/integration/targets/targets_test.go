@@ -33,7 +33,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-	_, urn := e.RunCommand("pulumi", "stack", "output", "urn")
+	urn, _ := e.RunCommand("pulumi", "stack", "output", "urn")
 
 	if err := fsutil.CopyFile(
 		path.Join(e.RootPath, "untargeted_create", "index.ts"),
