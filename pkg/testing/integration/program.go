@@ -1076,7 +1076,7 @@ func (pt *programTester) exportImport(dir string) error {
 func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
-	preview := []string{"preview", "--non-interactive", "--yes"}
+	preview := []string{"preview", "--non-interactive"}
 	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.eventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
@@ -1125,7 +1125,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 
 func (pt *programTester) query(dir string, name string, shouldFail bool) error {
 
-	query := []string{"query", "--non-interactive", "--yes"}
+	query := []string{"query", "--non-interactive"}
 	if pt.opts.GetDebugUpdates() {
 		query = append(query, "-d")
 	}
