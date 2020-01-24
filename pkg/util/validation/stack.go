@@ -31,20 +31,30 @@ func validateStackName(s string) error {
 	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
 }
 
+// validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
+// This should match the stack naming rules enforced by the Pulumi Service.
+func validateStackTagName(s string) error {
+	tagNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
+	if tagNameRE.MatchString(s) {
+		return nil
+	}
+	return errors.New("a stack tag name may only contain alphanumerics, hyphens, underscores, or periods")
+}
+
 // ValidateStackTags validates the tag names and values.
 func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 	const maxTagName = 40
 	const maxTagValue = 256
 
 	for t, v := range tags {
-		if len(t) == 0 {
-			return errors.Errorf("invalid stack tag %q", t)
-		}
 		if len(t) > maxTagName {
-			return errors.Errorf("stack tag %q is too long (max length %d characters)", t, maxTagName)
+			return errors.Errorf("stack tag name %q is too long (max length %d characters)", t, maxTagName)
+		}
+		if err := validateStackTagName(t); err != nil {
+			return errors.Wrapf(err, "invalid stack tag name")
 		}
 		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
+			return errors.Errorf("stack tag value %q is too long (max length %d characters)", v, maxTagValue)
 		}
 	}
 
