@@ -67,7 +67,7 @@ class StackReference(CustomResource):
 
         :param Input[str] name: The name of the stack output to fetch.
         """
-        value: Output[Any] = Output.all([Output.from_input(name), self.outputs]).apply(lambda l: l[1].get(l[0])) # type: ignore
+        value: Output[Any] = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1].get(l[0])) # type: ignore
         is_secret = ensure_future(self.__is_secret_name(name))
 
         return Output(value.resources(), value.future(), value.is_known(), is_secret)
