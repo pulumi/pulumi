@@ -97,12 +97,6 @@ type GetPolicyPackResponse struct {
 	Applied     bool     `json:"applied"`
 }
 
-// ApplyPolicyPackRequest is the request to apply a Policy Pack to an organization.
-type ApplyPolicyPackRequest struct {
-	Name    string `json:"name"`
-	Version int    `json:"version"`
-}
-
 // GetStackPolicyPacksResponse is the response to getting the applicable Policy Packs
 // for a particular stack. This allows the CLI to download the packs prior to
 // starting an update.

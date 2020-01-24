@@ -44,7 +44,7 @@ func newPolicyRmCmd() *cobra.Command {
 
 			// Attempt to remove the Policy Pack.
 			return policyPack.Remove(commandContext(), backend.PolicyPackOperation{
-				Version: version, Scopes: cancellationScopes})
+				Version: &version, Scopes: cancellationScopes})
 		}),
 	}
 
