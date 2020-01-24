@@ -931,6 +931,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.names.add("Get" + resourceName(r))
 		}
 
+		for _, p := range r.InputProperties {
+			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
+				getPkg(obj.Token).details(obj).ptrElement = true
+			}
+		}
 		for _, p := range r.Properties {
 			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
 				getPkg(obj.Token).details(obj).ptrElement = true
