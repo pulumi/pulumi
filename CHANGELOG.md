@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Fix a stack reference regression in the Python SDK.
+  [#3798](https://github.com/pulumi/pulumi/pull/3798)
 
 - Fix a buggy assertion in the Go SDK.
   [#3794](https://github.com/pulumi/pulumi/pull/3794)
