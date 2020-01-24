@@ -74,6 +74,8 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		assert.NoError(t, os.Chdir(tempdir))
 
 		var args = newPolicyArgs{
+			interactive:       false,
+			yes:               true,
 			templateNameOrURL: nonExistantTemplate,
 		}
 

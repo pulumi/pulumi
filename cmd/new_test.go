@@ -421,6 +421,8 @@ func TestInvalidTemplateName(t *testing.T) {
 		assert.NoError(t, os.Chdir(tempdir))
 
 		var args = newArgs{
+			interactive:       false,
+			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: "",
 		}
@@ -441,6 +443,8 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		var args = newArgs{
+			interactive:       false,
+			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: template,
 		}
