@@ -9,7 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
-
 	"github.com/pulumi/pulumi/pkg/resource"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
