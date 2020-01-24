@@ -4,7 +4,7 @@ CHANGELOG
 ## HEAD (Unreleased)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
-  another process) will not default to assuming that `--yes` was passed in.  `--yes` is now
+  another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
    * `pulumi destroy`
    * `pulumi new`
