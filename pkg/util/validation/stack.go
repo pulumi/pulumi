@@ -38,7 +38,7 @@ func validateStackTagName(s string) error {
 	if tagNameRE.MatchString(s) {
 		return nil
 	}
-	return errors.New("a stack tag name may only contain alphanumerics, hyphens, underscores, or periods")
+	return errors.New("a stack tag name may only contain alphanumerics, hyphens, underscores, periods, or colons")
 }
 
 // ValidateStackTags validates the tag names and values.
