@@ -142,7 +142,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 	out := &bytes.Buffer{}
 
-	// If it is a Preview & it failed, we just render the Policy Packs ran. This because rendering the summary for a preview that failed may be
+	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary for a failed preview may be
 	// surprising/misleading, as it does not describe the totality of the proposed changes (as the preview may have aborted when the error occurred).
 	if event.IsPreview && wroteDiagnosticHeader {
 		renderPolicyPacks(out, event.PolicyPacks, opts)
