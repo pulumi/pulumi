@@ -137,13 +137,16 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, wroteDiagnosticHeader bool, opts Options) string {
+func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload,
+	wroteDiagnosticHeader bool, opts Options) string {
+
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
 
-	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary for a failed preview may be
-	// surprising/misleading, as it does not describe the totality of the proposed changes (as the preview may have aborted when the error occurred).
+	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary
+	// for a failed preview may be surprising/misleading, as it does not describe the totality of the proposed changes
+	// (as the preview may have aborted when the error occurred).
 	if event.IsPreview && wroteDiagnosticHeader {
 		renderPolicyPacks(out, event.PolicyPacks, opts)
 		return out.String()
