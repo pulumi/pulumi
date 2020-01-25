@@ -219,7 +219,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
 		stackFile := path.Join(e.RootPath, "stack.json")
@@ -264,7 +264,7 @@ func TestStackCommands(t *testing.T) {
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 	})
 }
@@ -308,7 +308,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
@@ -324,7 +324,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi destroy.
 		before = time.Now().UnixNano()
-		e.RunCommand("pulumi", "destroy", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.

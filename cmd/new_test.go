@@ -37,6 +37,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
@@ -48,6 +49,26 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 	assert.Equal(t, stackName, loadStackName(t))
 	removeStack(t, stackName)
+}
+
+func TestFailInInteractiveWithoutYes(t *testing.T) {
+	skipIfShort(t)
+
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+
+	var args = newArgs{
+		interactive:       false,
+		yes:               false,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(args)
+	assert.Error(t, err)
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
@@ -83,6 +104,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             orgStackName,
@@ -131,6 +153,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             fullStackName,
@@ -179,6 +202,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		name:              uniqueProjectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -234,6 +258,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 
 	var args = newArgs{
 		interactive:       false,
+		yes:               true,
 		name:              projectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -287,6 +312,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       false,
+		yes:               true,
 		name:              projectName,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -346,6 +372,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	var args = newArgs{
 		generateOnly:      true,
 		interactive:       false,
+		yes:               true,
 		name:              "not#valid",
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -394,6 +421,8 @@ func TestInvalidTemplateName(t *testing.T) {
 		assert.NoError(t, os.Chdir(tempdir))
 
 		var args = newArgs{
+			interactive:       false,
+			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: "",
 		}
@@ -414,6 +443,8 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		var args = newArgs{
+			interactive:       false,
+			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: template,
 		}

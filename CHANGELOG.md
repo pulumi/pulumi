@@ -1,7 +1,18 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## HEAD (Unreleased)
+
+- CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
+  another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
+  explicitly required to proceed in non-interactive scenarios. This affects:
+   * `pulumi destroy`
+   * `pulumi new`
+   * `pulumi refresh`
+   * `pulumi up`
+
+- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
+
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
 
