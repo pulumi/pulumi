@@ -20,8 +20,8 @@ import { Asset } from "./asset";
  */
 export abstract class Archive {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiArchive: boolean = true;

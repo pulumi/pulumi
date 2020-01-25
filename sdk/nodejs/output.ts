@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as log from "./log";
 import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
@@ -26,46 +25,45 @@ import * as utils from "./utils";
  */
 class OutputImpl<T> implements OutputInstance<T> {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiOutput: boolean = true;
 
     /**
-     * @internal
-     * Wheter or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
+     * Whether or not this 'Output' wraps a secret value. Values which are marked as secret are stored in an
      * encrypted format when they are persisted as part of a state file. When`true` this "taints" any
      * additional resources created from it via an [all] or [apply], such that they are also treated as
      * secrets.
+     * @internal
      */
     public readonly isSecret: Promise<boolean>;
 
     /**
-     * @internal
      * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
      * an Output value may not be known (because it would have to actually be computed by doing an
      * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
      * may not expect an undefined value.  So, instead, we just transition to another Output
      * value that itself knows it should not perform .apply calls.
+     * @internal
      */
     public readonly isKnown: Promise<boolean>;
 
     /**
-     * @internal
      * Method that actually produces the concrete value of this output, as well as the total
      * deployment-time set of resources this output depends on. If the value of the output is not
      * known (i.e. isKnown resolves to false), this promise should resolve to undefined unless the
      * `withUnknowns` flag is passed, in which case it will resolve to `unknown`.
      *
      * Only callable on the outside.
+     * @internal
      */
     public readonly promise: (withUnknowns?: boolean) => Promise<T>;
 
     /**
-     * @internal
      * The list of resources that this output value depends on.
      *
      * Only callable on the outside.
@@ -73,11 +71,11 @@ class OutputImpl<T> implements OutputInstance<T> {
      * This only returns the set of dependent resources that were known at Output construction time.
      * It represents the `@pulumi/pulumi` api prior to the addition of 'async resource'
      * dependencies.  Code inside @pulumi/pulumi should use `.allResources` instead.
+     * @internal
      */
     public readonly resources: () => Set<Resource>;
 
     /**
-     * @internal
      * The entire list of resources that this output depends on.
      *
      * This includes both the dependent resources that were known when the Output was explicitly
@@ -89,6 +87,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * Note: it is fine to use this property if it is guaranteed that it is on an output produced by
      * this SDK (and not another sxs version).
+     * @internal
      */
     // Marked as optional for sxs scenarios.
     public readonly allResources?: () => Promise<Set<Resource>>;
@@ -106,8 +105,9 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * This will return an Output with the inner computed value and all resources still tracked. See
      * https://pulumi.io/help/outputs for more details
+     * @internal
      */
-    /** @internal */ public toString: () => string;
+    public toString: () => string;
 
     /**
      * [toJSON] on an [Output<T>] is not supported.  This is because the value an [Output] points
@@ -122,8 +122,9 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * This will return an Output with the inner computed value and all resources still tracked.
      * See https://pulumi.io/help/outputs for more details
+     * @internal
      */
-    /** @internal */ public toJSON: () => any;
+    public toJSON: () => any;
 
     // Statics
 
@@ -579,11 +580,11 @@ function getResourcesAndDetails<T>(allOutputs: Output<Unwrap<T>>[]): [Set<Resour
  * if other properties of the containing object are unknown.
  */
 class Unknown {
-     /**
-     * @internal
+    /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
      * This is internal instead of being truly private, to support mixins and our serialization model.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiUnknown: boolean = true;
@@ -598,8 +599,8 @@ class Unknown {
 }
 
 /**
- * @internal
  * unknown is the singleton unknown value.
+ * @internal
  */
 export const unknown = new Unknown();
 
