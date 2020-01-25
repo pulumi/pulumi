@@ -80,6 +80,15 @@ func (in {{$builtin.InputType}}) To{{$t.Name}}OutputWithContext(ctx context.Cont
 }
 {{end}}
 {{end}}
+{{if .ImplementsPtrType}}
+func (in {{.InputType}}) To{{.Name}}PtrOutput() {{.Name}}PtrOutput {
+	return in.To{{.Name}}PtrOutputWithContext(context.Background())
+}
+
+func (in {{.InputType}}) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput {
+	return in.To{{.Name}}OutputWithContext(ctx).To{{.Name}}PtrOutputWithContext(ctx)
+}
+{{end}}
 {{end}}
 // {{.Name}}Output is an Output that returns {{.ElementType}} values.
 type {{.Name}}Output struct { *OutputState }
@@ -106,6 +115,17 @@ func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Cont
 	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{$builtin.ElementType}}) {{$t.ElementType}} {
 		return ({{$t.ElementType}})(v)
 	}).({{$t.Name}}Output)
+}
+{{end}}
+{{if .ImplementsPtrType}}
+func (o {{.Name}}Output) To{{.Name}}PtrOutput() {{.Name}}PtrOutput {
+	return o.To{{.Name}}PtrOutputWithContext(context.Background())
+}
+
+func (o {{.Name}}Output) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput {
+	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{.ElementType}}) *{{.ElementType}} {
+		return &v
+	}).({{.Name}}PtrOutput)
 }
 {{end}}
 {{end}}
