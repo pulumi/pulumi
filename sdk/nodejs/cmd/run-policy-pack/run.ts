@@ -137,6 +137,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
+/** @internal */
 export interface RunOpts {
     // TODO: Explicitly pass `main` in here instead of just argv.
 
@@ -147,6 +148,7 @@ export interface RunOpts {
     typeScript: boolean;
 }
 
+/** @internal */
 export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | Promise<void> {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = opts.argv["pwd"];

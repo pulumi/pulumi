@@ -19,7 +19,6 @@
 //
 // As a side-effect of importing this file, we must enable the --allow-natives-syntax V8 flag. This
 // is because we are using V8 intrinsics in order to implement this module.
-import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
@@ -41,11 +40,13 @@ const versionSpecificV8Module =  v8Hooks.isNodeAtLeastV11 ? v8_v11andHigher : v8
  * @param freeVariable The name of the free variable to inspect
  * @param throwOnFailure If true, throws if the free variable can't be found.
  * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
+ * @internal
  */
 export const lookupCapturedVariableValueAsync = versionSpecificV8Module.lookupCapturedVariableValueAsync;
 
 /**
  * Given a function, returns the file, line and column number in the file where this function was
  * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
+ * @internal
  */
 export const getFunctionLocationAsync = versionSpecificV8Module.getFunctionLocationAsync;

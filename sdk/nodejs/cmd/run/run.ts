@@ -130,6 +130,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
+/** @internal */
 export function run(argv: minimist.ParsedArgs,
                     programStarted: () => void,
                     reportLoggedError: (err: Error) => void) {

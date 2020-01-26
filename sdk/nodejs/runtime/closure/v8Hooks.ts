@@ -24,6 +24,7 @@ import * as semver from "semver";
 
 // On node11 and above, create an 'inspector session' that can be used to keep track of what is
 // happening through a supported API.  Pre-11 we can just call into % intrinsics for the same data.
+/** @internal */
 export const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
 const session = isNodeAtLeastV11
@@ -56,6 +57,7 @@ async function createInspectorSessionAsync(): Promise<import("inspector").Sessio
 /**
  * Returns the inspector session that can be used to query the state of this running Node instance.
  * Must only be called on Node11 and above. On Node10 and below, this will throw.
+ * @internal
  */
 export async function getSessionAsync() {
     if (!isNodeAtLeastV11) {
@@ -68,6 +70,7 @@ export async function getSessionAsync() {
 /**
  * Returns a promise that can be used to determine when the v8hooks have been injected properly and
  * code that depends on them can continue executing.
+ * @internal
  */
 export async function isInitializedAsync() {
     await session;
@@ -75,6 +78,7 @@ export async function isInitializedAsync() {
 
 /**
  * Maps from a script-id to the local file url it corresponds to.
+ * @internal
  */
 export function getScriptUrl(id: import("inspector").Runtime.ScriptId) {
     return scriptIdToUrlMap.get(id);

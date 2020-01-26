@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { util } from "protobufjs";
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource, unknownValue } from "./runtime";
@@ -74,21 +73,20 @@ function inheritedChildAlias(childName: string, parentName: string, parentAlias:
  */
 export abstract class Resource {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiResource: boolean = true;
 
     /**
-     * @internal
      * The optional parent of this resource.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __parentResource: Resource | undefined;
 
     /**
-     * @internal
      * The child resources of this resource.  We use these (only from a ComponentResource) to allow
      * code to dependOn a ComponentResource and have that effectively mean that it is depending on
      * all the CustomResource children of that component.
@@ -124,6 +122,8 @@ export abstract class Resource {
      * However, this would be pretty nonsensical as there is zero need for a custom resource to ever
      * need to reference the urn of a component resource.  So it's acceptable if that sort of
      * pattern failed in practice.
+     *
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public __childResources: Set<Resource> | undefined;
@@ -135,48 +135,48 @@ export abstract class Resource {
     public readonly urn!: Output<URN>;
 
     /**
-     * @internal
      * When set to true, protect ensures this resource cannot be deleted.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     private readonly __protect: boolean;
 
     /**
-     * @internal
      * A collection of transformations to apply as part of resource registration.
      *
      * Note: This is marked optional only because older versions of this library may not have had
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     __transformations?: ResourceTransformation[];
 
     /**
-     * @internal
      * A list of aliases applied to this resource.
      *
      * Note: This is marked optional only because older versions of this library may not have had
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     readonly __aliases?: Input<URN>[];
 
     /**
-     * @internal
      * The name assigned to the resource at construction.
      *
      * Note: This is marked optional only because older versions of this library may not have had
      * this property, and marking optional forces consumers of the property to defensively handle
      * cases where they are passed "old" resources.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     private readonly __name?: string;
 
     /**
-     * @internal
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
@@ -639,16 +639,16 @@ export interface ComponentResourceOptions extends ResourceOptions {
  */
 export abstract class CustomResource extends Resource {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiCustomResource: boolean;
 
     /**
-     * @internal
      * Private field containing the type ID for this object. Useful for implementing `isInstance` on
      * classes that inherit from `CustomResource`.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiType: string;
@@ -745,8 +745,8 @@ export abstract class ProviderResource extends CustomResource {
  */
 export class ComponentResource<TData = any> extends Resource {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiComponentResource = true;

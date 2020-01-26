@@ -308,6 +308,7 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
     };
 }
 
+/** @internal */
 export function main(args: string[]): void {
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
