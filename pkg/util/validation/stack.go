@@ -21,8 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 )
 
-var tagNameRE = regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
-
 // validateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
 func validateStackName(s string) error {
@@ -44,6 +42,8 @@ func validateStackTagName(s string) error {
 	if len(s) > maxTagName {
 		return errors.Errorf("the stack tag name is too long (max length %d characters)", maxTagName)
 	}
+
+	var tagNameRE = regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
 	if tagNameRE.MatchString(s) {
 		return nil
 	}
