@@ -10,24 +10,49 @@ import (
 )
 
 func TestValidateStackTag(t *testing.T) {
-	t.Run("valid tag", func(t *testing.T) {
-		tags := map[apitype.StackTagName]string{
-			"tag-name": "tag-value",
+	t.Run("valid tags", func(t *testing.T) {
+		names := []string{
+			"tag-name",
+			"-",
+			"..",
+			"foo:bar:baz",
+			"__underscores__",
+			"AaBb123",
 		}
 
-		err := ValidateStackTags(tags)
-		assert.NoError(t, err)
+		for _, name := range names {
+			t.Run(name, func(t *testing.T) {
+				tags := map[apitype.StackTagName]string{
+					name: "tag-value",
+				}
+
+				err := ValidateStackTags(tags)
+				assert.NoError(t, err)
+			})
+		}
 	})
 
-	t.Run("invalid stack tag name", func(t *testing.T) {
-		tags := map[apitype.StackTagName]string{
-			"hello!": "tag-value",
+	t.Run("invalid stack tag names", func(t *testing.T) {
+		var names = []string{
+			"tag!",
+			"something with spaces",
+			"escape\nsequences\there",
+			"😄",
+			"foo***bar",
 		}
 
-		err := ValidateStackTags(tags)
-		assert.Error(t, err)
-		msg := "stack tag names may only contain alphanumerics, hyphens, underscores, periods, or colons"
-		assert.Equal(t, err.Error(), msg)
+		for _, name := range names {
+			t.Run(name, func(t *testing.T) {
+				tags := map[apitype.StackTagName]string{
+					name: "tag-value",
+				}
+
+				err := ValidateStackTags(tags)
+				assert.Error(t, err)
+				msg := "stack tag names may only contain alphanumerics, hyphens, underscores, periods, or colons"
+				assert.Equal(t, err.Error(), msg)
+			})
+		}
 	})
 
 	t.Run("too long tag name", func(t *testing.T) {
