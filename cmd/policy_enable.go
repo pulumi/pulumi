@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const latestKeyword = "latest"
+
 type policyEnableArgs struct {
 	policyGroup string
 }
@@ -45,7 +47,7 @@ func newPolicyEnableCmd() *cobra.Command {
 
 			// Parse version if it's specified.
 			var version *int
-			if cliArgs[1] != "latest" {
+			if cliArgs[1] != latestKeyword {
 				v, err := strconv.Atoi(cliArgs[1])
 				if err != nil {
 					return errors.Wrapf(err, "Could not parse version (should be an integer)")
