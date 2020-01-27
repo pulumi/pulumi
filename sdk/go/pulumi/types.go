@@ -754,7 +754,7 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
 		var result interface{}
-		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result))
+		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
 		out.fulfill(result, known, err)
 	}()
 	return out.(AnyOutput)

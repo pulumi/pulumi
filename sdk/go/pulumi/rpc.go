@@ -99,8 +99,6 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", tag)
 		}
 
-		pmap[resource.PropertyKey(tag)] = v
-
 		// Record all dependencies accumulated from reading this property.
 		var deps []URN
 		pdepset := map[URN]bool{}
@@ -121,6 +119,10 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		if len(deps) > 0 {
 			pdeps[tag] = deps
 		}
+
+		if !v.IsNull() || len(deps) > 0 {
+			pmap[resource.PropertyKey(tag)] = v
+		}
 	}
 
 	return pmap, pdeps, depURNs, nil
@@ -135,11 +137,6 @@ const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, error) {
 	for {
-		// If v is nil, just return that.
-		if v == nil {
-			return resource.PropertyValue{}, nil, nil
-		}
-
 		valueType := reflect.TypeOf(v)
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
@@ -178,6 +175,11 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 
 				v, deps = ov, output.dependencies()
 			}
+		}
+
+		// If v is nil, just return that.
+		if v == nil {
+			return resource.PropertyValue{}, nil, nil
 		}
 
 		// Look for some well known types.
@@ -220,6 +222,10 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 			"%v: cannot assign %v to %v", v, valueType, destType)
 
 		if destType.Kind() == reflect.Interface {
+			// This happens in the case of Any.
+			if valueType.Kind() == reflect.Interface {
+				valueType = reflect.TypeOf(v)
+			}
 			destType = valueType
 		}
 
