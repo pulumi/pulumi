@@ -1,15 +1,13 @@
 version: 1.0.{build}
-image: Visual Studio 2017
+image: Visual Studio 2019
 configuration: Release
 platform: x64
 clone_folder: '%USERPROFILE%\go\src\github.com\pulumi\pulumi'
 branches:
     only:
         - master
-        - /release\/.*/
         - /v\d*\.\d*\.\d*/
-init:
-- ps: Install-Product node 8.10 x64
+skip_tags: true
 environment:
   PULUMI_API: https://api.pulumi-staging.io
   PULUMI_ACCESS_TOKEN:
@@ -18,6 +16,13 @@ environment:
     secure: eB7Gfl1GHhz60tH2EEASI7IFsWHDd5SV+kponXwaCSo=
   AWS_SECRET_ACCESS_KEY:
     secure: T19RJk7Uv3trAChRRDB82OAUDI8k2q9PaSetU7yDFu4aC+MshdwAhTTN/TaPkwl/
+  AWS_REGION: us-west-2
+  ARM_LOCATION: "West US 2"
+  ARM_ENVIRONMENT: public
+  matrix:
+    - nodejs_version: "10.15.3"
+init:
+  - ps: Install-Product node $env:nodejs_version x64
 install:
 - rmdir C:\go /s /q
 - appveyor DownloadFile https://dl.google.com/go/go1.13.4.windows-amd64.zip
@@ -27,6 +32,8 @@ install:
 
     set PATH=C:\go\bin;%PATH%;%GOPATH%\bin
 
+    set PATH=%PATH%;%USERPROFILE%\.yarn\bin
+
     set PulumiRoot=C:\Pulumi
 
     set PATH=%PulumiRoot%\bin;%PATH%
@@ -34,9 +41,29 @@ install:
     go version
 
     git clone https://github.com/pulumi/scripts.git "%USERPROFILE%\go\src\github.com\pulumi\scripts"
+
+    set PATH=%PATH%;C:\Python37-x64\Scripts
+
+    pip3 install pyenv-win --target %USERPROFILE%/.pyenv
+
+    set PYENV=%USERPROFILE%\.pyenv\pyenv-win
+
+    set PATH=%PATH%;%PYENV%\bin;%PYENV%\shims
+
+    pip3 install pipenv
+    
+    set PULUMI_LOCAL_NUGET=C:\Pulumi\nuget
+    
+    set PULUMI_TEST_OWNER=moolumi
 - ps: >-
     New-Item -Type Directory "$env:USERPROFILE\go\bin"
 build_script:
 - cmd: >-
-    if defined APPVEYOR_PULL_REQUEST_NUMBER ( msbuild /t:AppVeyorPullRequest /v:Detailed build.proj ) else ( msbuild /t:AppVeyorPush /v:Detailed build.proj )
+    set GO111MODULE=on
+
+    go mod tidy
+
+    go mod vendor
+
+    dotnet msbuild /t:CIBuild /v:Detailed build.proj
 test: off
