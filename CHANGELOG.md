@@ -19,6 +19,10 @@ CHANGELOG
   optional inputs than manually converting to pointer types.
   [#3806](https://github.com/pulumi/pulumi/pull/3806)
 
+- Add ability to specify all versions when removing a Policy Pack.
+
+- Breaking change to Policy command: Change enable command to use `pulumi policy enable <org-name>/<policy-pack-name> latest` instead of a `--latest` flag.
+
 ## 1.9.0 (2020-01-22)
 - Publish python types for PEP 561
   [#3704](https://github.com/pulumi/pulumi/pull/3704)
