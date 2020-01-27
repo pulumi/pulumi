@@ -88,12 +88,12 @@ function requireTestModeEnabled(): void {
     }
 }
 
-/* @internal Used only for testing purposes */
+/** @internal Used only for testing purposes. */
 export function _setQueryMode(val: boolean) {
     (options as any).queryMode = val;
 }
 
- /**
+/**
  * Returns true if query mode is enabled.
  */
 export function isQueryMode(): boolean {
