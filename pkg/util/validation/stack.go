@@ -36,6 +36,14 @@ func validateStackName(s string) error {
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
 func validateStackTagName(s string) error {
+	const maxTagName = 40
+
+	if len(s) == 0 {
+		return errors.Errorf("invalid stack tag %q", s)
+	}
+	if len(s) > maxTagName {
+		return errors.Errorf("the stack tag name is too long (max length %d characters)", maxTagName)
+	}
 	if tagNameRE.MatchString(s) {
 		return nil
 	}
@@ -44,16 +52,9 @@ func validateStackTagName(s string) error {
 
 // ValidateStackTags validates the tag names and values.
 func ValidateStackTags(tags map[apitype.StackTagName]string) error {
-	const maxTagName = 40
 	const maxTagValue = 256
 
 	for t, v := range tags {
-		if len(t) == 0 {
-			return errors.Errorf("invalid stack tag %q", t)
-		}
-		if len(t) > maxTagName {
-			return errors.Errorf("the stack tag name is too long (max length %d characters)", maxTagName)
-		}
 		if err := validateStackTagName(t); err != nil {
 			return err
 		}
