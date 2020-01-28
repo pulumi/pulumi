@@ -35,12 +35,14 @@ func (StackReferenceArgs) ElementType() reflect.Type {
 func NewStackReference(ctx *Context, name string, args *StackReferenceArgs,
 	opts ...ResourceOption) (*StackReference, error) {
 
-	stack := StringInput(String(name))
-	if args != nil {
-		stack = args.Name
+	if args == nil {
+		args = &StackReferenceArgs{}
+	}
+	if args.Name == nil {
+		args.Name = StringInput(String(name))
 	}
 
-	id := stack.ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
+	id := args.Name.ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
 
 	var ref StackReference
 	if err := ctx.ReadResource("pulumi:pulumi:StackReference", name, id, args, &ref, opts...); err != nil {
