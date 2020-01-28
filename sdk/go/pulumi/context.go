@@ -244,7 +244,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //     err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 //
 func (ctx *Context) ReadResource(
-	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
+	t, name string, id StringInput, props Input, resource CustomResource, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -291,7 +291,8 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, err := id.ToIDOutput().awaitID(context.TODO())
+		typedID := id.ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
+		idToRead, known, err := typedID.awaitID(context.TODO())
 		if !known || err != nil {
 			return
 		}
@@ -500,7 +501,6 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 	var rs *ResourceState
 	var crs *CustomResourceState
 	var prs *ProviderResourceState
-	var srs *StackReferenceState
 
 	switch r := resourceV.(type) {
 	case *ResourceState:
@@ -509,8 +509,6 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 		crs = r
 	case *ProviderResourceState:
 		prs = r
-	case *StackReferenceState:
-		srs = r
 	}
 
 	state := &resourceState{outputs: map[string]Output{}}
@@ -528,8 +526,6 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 			crs = fieldV.Addr().Interface().(*CustomResourceState)
 		case field.Anonymous && field.Type == providerResourceStateType:
 			prs = fieldV.Addr().Interface().(*ProviderResourceState)
-		case field.Anonymous && field.Type == stackReferenceStateType:
-			srs = fieldV.Addr().Interface().(*StackReferenceState)
 		case field.Type.Implements(outputType):
 			tag := typ.Field(i).Tag.Get("pulumi")
 			if tag == "" {
@@ -545,12 +541,6 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 	if prs != nil {
 		crs = &prs.CustomResourceState
 		prs.pkg = t[len("pulumi:providers:"):]
-	}
-
-	if srs != nil {
-		state.outputs["name"] = srs.name
-		state.outputs["outputs"] = srs.outputs
-		crs = &srs.CustomResourceState
 	}
 
 	if crs != nil {

@@ -15,12 +15,7 @@
 package pulumi
 
 import (
-	"fmt"
-	"os"
 	"reflect"
-
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type (
@@ -33,7 +28,6 @@ type (
 var resourceStateType = reflect.TypeOf(ResourceState{})
 var customResourceStateType = reflect.TypeOf(CustomResourceState{})
 var providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
-var stackReferenceStateType = reflect.TypeOf(StackReferenceState{})
 
 // ResourceState is the base
 type ResourceState struct {
@@ -78,22 +72,6 @@ func (s ProviderResourceState) getPackage() string {
 	return s.pkg
 }
 
-type StackReferenceState struct {
-	CustomResourceState
-
-	name    StringOutput `pulumi:"name"`
-	outputs MapOutput    `pulumi:"outputs"`
-}
-
-func (s StackReferenceState) GetOutput(name StringInput) StringOutput {
-	return All(name.ToStringOutput(), s.outputs).
-		ApplyT(func(args []interface{}) (string, error) {
-			n := args[0].(string)
-			outs := args[1].(map[string]interface{})
-			return outs[n].(string), nil
-		}).(StringOutput)
-}
-
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
@@ -131,105 +109,6 @@ type ProviderResource interface {
 	CustomResource
 
 	getPackage() string
-}
-
-// StackReference manages a reference to a Pulumi stack. The referenced stack's outputs are available via its
-// "GetOutput" method.
-type StackReference interface {
-	CustomResource
-
-	GetOutput(name StringInput) StringOutput
-}
-
-// StackReferenceArgs is the input to NewStackReference that allows specifying a stack name
-// Name is in the form "Org/Program/Stack"
-type StackReferenceArgs struct {
-	Name StringInput
-}
-
-type stackReferenceProps struct {
-	Name    string                 `pulumi:"name"`
-	Outputs map[string]interface{} `pulumi:"outputs"`
-}
-
-func (s stackReferenceProps) GetOutput(name StringInput) StringOutput {
-	return All(name.ToStringOutput(), s.Outputs).
-		ApplyT(func(args []interface{}) (string, error) {
-			n := args[0].(string)
-			outs := args[1].(map[string]string)
-			return outs[n], nil
-		}).(StringOutput)
-}
-
-var stackReferencePropsType = reflect.TypeOf((*stackReferenceProps)(nil)).Elem()
-
-type stackReferencePropsInputValue struct {
-	Name    StringInput `pulumi:"name"`
-	Outputs MapInput    `pulumi:"outputs"`
-}
-
-func (stackReferencePropsInputValue) ElementType() reflect.Type {
-	return stackReferencePropsType
-}
-
-func (v stackReferencePropsInputValue) ToStackReferencePropsOutput() stackReferencePropsOutput {
-	return ToOutput(v).(stackReferencePropsOutput)
-}
-
-func (v stackReferencePropsInputValue) ToStackReferencePropsOutputWithContext(
-	ctx context.Context) stackReferencePropsOutput {
-	return ToOutputWithContext(ctx, v).(stackReferencePropsOutput)
-}
-
-type stackReferencePropsOutput struct{ *OutputState }
-
-func (stackReferencePropsOutput) ElementType() reflect.Type {
-	return stackReferencePropsType
-}
-
-func (o stackReferencePropsOutput) ToStackReferencePropsOutput() stackReferencePropsOutput {
-	return o
-}
-
-func (o stackReferencePropsOutput) ToStackReferencePropsOutputWithContext(
-	ctx context.Context) stackReferencePropsOutput {
-	return o
-}
-
-// NewStackReference creates a stack reference that makes available outputs from the specified stack
-func NewStackReference(
-	ctx Context, name string, args *StackReferenceArgs, opts ...ResourceOption) (StackReference, error) {
-	var stack StringInput
-	if args != nil {
-		stack = args.Name
-	}
-	if stack == nil {
-		stack = StringInput(String(name))
-	}
-	var oo MapOutput = MapOutput{newOutputState(reflect.TypeOf(map[string]interface{}{}))}
-	var oi MapInput
-
-	var stackRef StackReferenceState = StackReferenceState{
-		name:    stack.ToStringOutput(),
-		outputs: oo,
-	}
-
-	t := "pulumi:pulumi:StackReference"
-	id := stack.ToStringOutput().ApplyT(func(s string) (ID, error) { return ID(s), nil }).(IDOutput)
-
-	props := stackReferencePropsInputValue{
-		Name:    stack,
-		Outputs: oi,
-	}
-
-	err := ctx.ReadResource(t, name, id, &props, &stackRef, opts...)
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return nil, errors.Wrap(err, "error reading stack reference")
-	}
-
-	return &stackRef, nil
 }
 
 type CustomTimeouts struct {
