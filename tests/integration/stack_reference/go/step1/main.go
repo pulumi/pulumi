@@ -13,6 +13,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+
 		cfg := config.New(ctx, ctx.Project())
 
 		org := cfg.Require("org")
@@ -24,13 +25,26 @@ func main() {
 		}
 
 		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val")))
-		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
-			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
-				return nil, errors.Errorf("Invalid result")
-			}
-			return v, nil
-		})
 
-		return nil
+		errChan := make(chan error, 0)
+		results := make(chan []string, 0)
+
+		go func() {
+			_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+				if len(v) != 2 || v[0] != "a" || v[1] != "b" {
+					errChan <- errors.Errorf("Invalid result")
+					return nil, errors.Errorf("Invalid result")
+				}
+				results <- v
+				return v, nil
+			})
+		}()
+
+		select {
+		case err = <-errChan:
+			return err
+		case _ = <-results:
+			return nil
+		}
 	})
 }
