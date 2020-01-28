@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
