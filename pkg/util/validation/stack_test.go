@@ -62,7 +62,7 @@ func TestValidateStackTag(t *testing.T) {
 
 		err := ValidateStackTags(tags)
 		assert.Error(t, err)
-		msg := fmt.Sprintf("the stack tag name is too long (max length %d characters)", 40)
+		msg := fmt.Sprintf("stack tag %q is too long (max length %d characters)", strings.Repeat("v", 41), 40)
 		assert.Equal(t, err.Error(), msg)
 	})
 
@@ -73,7 +73,7 @@ func TestValidateStackTag(t *testing.T) {
 
 		err := ValidateStackTags(tags)
 		assert.Error(t, err)
-		msg := fmt.Sprintf("the stack tag value is too long (max length %d characters)", 256)
+		msg := fmt.Sprintf("stack tag %q value is too long (max length %d characters)", "tag-name", 256)
 		assert.Equal(t, err.Error(), msg)
 	})
 }
