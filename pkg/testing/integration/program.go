@@ -356,6 +356,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.ExpectRefreshChanges {
 		opts.ExpectRefreshChanges = overrides.ExpectRefreshChanges
 	}
+	if overrides.RetryFailedSteps {
+		opts.RetryFailedSteps = overrides.RetryFailedSteps
+	}
 	if overrides.SkipRefresh {
 		opts.SkipRefresh = overrides.SkipRefresh
 	}
