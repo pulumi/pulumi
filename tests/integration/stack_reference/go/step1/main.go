@@ -29,16 +29,14 @@ func main() {
 		errChan := make(chan error, 0)
 		results := make(chan []string, 0)
 
-		go func() {
-			_ = val.ApplyStringArray(func(v []string) ([]string, error) {
-				if len(v) != 2 || v[0] != "a" || v[1] != "b" {
-					errChan <- errors.Errorf("Invalid result")
-					return nil, errors.Errorf("Invalid result")
-				}
-				results <- v
-				return v, nil
-			})
-		}()
+		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
+				errChan <- errors.Errorf("Invalid result")
+				return nil, errors.Errorf("Invalid result")
+			}
+			results <- v
+			return v, nil
+		})
 
 		select {
 		case err = <-errChan:
