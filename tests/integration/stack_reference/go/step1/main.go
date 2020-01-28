@@ -23,12 +23,13 @@ func main() {
 			return errors.Wrap(err, "Error reading stack reference.")
 		}
 
-		val := stackRef.GetOutput(pulumi.String("val"))
-		if len(val) != 2 || val[0] != pulumi.String("a") || val[1] != pulumi.String("b") {
-			return errors.Errorf("Invalid result")
-		}
-		ctx.Export("val",
-			pulumi.StringArray([]pulumi.StringInput{pulumi.String("a"), pulumi.String("b")}))
+		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val")))
+		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
+				return nil, errors.Errorf("Invalid result")
+			}
+			return v, nil
+		})
 
 		return nil
 	})
