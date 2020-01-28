@@ -53,6 +53,7 @@ interface V8ScopeDetails {
     readonly scopeObject: Record<string, any>;
 }
 
+/** @internal */
 export async function getFunctionLocationAsync(func: Function) {
     const script = getScript(func);
     const { line, column } = getLineColumn();
@@ -113,6 +114,7 @@ function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: num
     return <any>undefined;
 }
 
+/** @internal */
 export async function lookupCapturedVariableValueAsync(
     func: Function, freeVariable: string, throwOnFailure: boolean): Promise<any> {
 

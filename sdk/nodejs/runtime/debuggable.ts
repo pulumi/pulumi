@@ -36,6 +36,7 @@ function promiseDebugString(p: Promise<any>): string {
 
 /**
  * debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
+ * @internal
  */
 export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
     // Whack some stack onto the promise.  Leave them non-enumerable to avoid awkward rendering.
@@ -98,6 +99,7 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
 
 /**
  * errorString produces a string from an error, conditionally including additional diagnostics.
+ * @internal
  */
 export function errorString(err: Error): string {
     if (err.stack) {

@@ -3,7 +3,6 @@
 package ints
 
 import (
-	"path"
 	"path/filepath"
 	"testing"
 
@@ -22,15 +21,15 @@ var dirs = []string{
 // pointing to the old URN to ensure the resource is preserved across the update.
 func TestNodejsAliases(t *testing.T) {
 	for _, dir := range dirs {
-		d := path.Join("nodejs", dir)
+		d := filepath.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          path.Join(d, "step1"),
+				Dir:          filepath.Join(d, "step1"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
 				EditDirs: []integration.EditDir{
 					{
-						Dir:             path.Join(d, "step2"),
+						Dir:             filepath.Join(d, "step2"),
 						Additive:        true,
 						ExpectNoChanges: true,
 					},
@@ -42,17 +41,17 @@ func TestNodejsAliases(t *testing.T) {
 
 func TestPythonAliases(t *testing.T) {
 	for _, dir := range dirs {
-		d := path.Join("python", dir)
+		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir: path.Join(d, "step1"),
+				Dir: filepath.Join(d, "step1"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
 				Quick: true,
 				EditDirs: []integration.EditDir{
 					{
-						Dir:             path.Join(d, "step2"),
+						Dir:             filepath.Join(d, "step2"),
 						Additive:        true,
 						ExpectNoChanges: true,
 					},
@@ -64,15 +63,15 @@ func TestPythonAliases(t *testing.T) {
 
 func TestDotNetAliases(t *testing.T) {
 	for _, dir := range dirs {
-		d := path.Join("dotnet", dir)
+		d := filepath.Join("dotnet", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          path.Join(d, "step1"),
+				Dir:          filepath.Join(d, "step1"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
 				EditDirs: []integration.EditDir{
 					{
-						Dir:             path.Join(d, "step2"),
+						Dir:             filepath.Join(d, "step2"),
 						Additive:        true,
 						ExpectNoChanges: true,
 					},

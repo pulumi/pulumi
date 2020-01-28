@@ -225,7 +225,14 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[s
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(planResult.Options)
-	if res := planResult.Walk(ctx, actions, true); res != nil {
+	res := planResult.Walk(ctx, actions, true)
+
+	// Emit an event with a summary of operation counts.
+	changes := ResourceChanges(actions.Ops)
+	planResult.Options.Events.previewSummaryEvent(changes, policies)
+
+	if res != nil {
+
 		if res.IsBail() {
 			return nil, res
 		}
@@ -233,9 +240,6 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[s
 		return nil, result.Error("an error occurred while advancing the preview")
 	}
 
-	// Emit an event with a summary of operation counts.
-	changes := ResourceChanges(actions.Ops)
-	planResult.Options.Events.previewSummaryEvent(changes, policies)
 	return changes, nil
 }
 

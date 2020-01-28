@@ -29,6 +29,8 @@ const (
 	PreviewUpdate UpdateKind = "preview"
 	// RefreshUpdate is an update that came from a refresh operation.
 	RefreshUpdate UpdateKind = "refresh"
+	// RenameUpdate is an update that changes the stack name or project name of a Pulumi program.
+	RenameUpdate UpdateKind = "rename"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
 	// ImportUpdate is an update that entails importing a raw checkpoint file.

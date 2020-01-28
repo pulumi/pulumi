@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -609,7 +608,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	return &programTester{
 		t:            t,
 		opts:         opts,
-		eventLog:     path.Join(os.TempDir(), string(stackName)+"-events.json"),
+		eventLog:     filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries: maxStepTries,
 	}
 }
@@ -906,7 +905,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
 	if pt.opts.RelativeWorkDir != "" {
-		dir = path.Join(dir, pt.opts.RelativeWorkDir)
+		dir = filepath.Join(dir, pt.opts.RelativeWorkDir)
 	}
 
 	// Set the default target Pulumi API if not overridden in options.
@@ -1280,7 +1279,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 	if err != nil {
 		return err
 	}
-	fileName := path.Join(tempDir, "stack.json")
+	fileName := filepath.Join(tempDir, "stack.json")
 
 	// Invoke `pulumi stack export`
 	if err = pt.runPulumiCommand("pulumi-export",
@@ -1599,7 +1598,7 @@ func (pt *programTester) installPipPackageDeps(cwd string) error {
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
 		// operating inside of a random folder in /tmp.
-		if !path.IsAbs(dep) {
+		if !filepath.IsAbs(dep) {
 			dep, err = filepath.Abs(dep)
 			if err != nil {
 				return err

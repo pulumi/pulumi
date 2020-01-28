@@ -754,7 +754,7 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
 		var result interface{}
-		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result))
+		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
 		out.fulfill(result, known, err)
 	}()
 	return out.(AnyOutput)
@@ -766,12 +766,44 @@ func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
 
+func (in ID) ToStringPtrOutput() StringPtrOutput {
+	return in.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (in ID) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+func (o IDOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, error) {
 	id, known, err := o.await(ctx)
 	if !known || err != nil {
 		return "", known, err
 	}
 	return ID(convert(id, stringType).(string)), true, nil
+}
+
+func (in URN) ToStringPtrOutput() StringPtrOutput {
+	return in.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (in URN) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+func (o URNOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, error) {
