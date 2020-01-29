@@ -115,14 +115,7 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Outpu
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
 Pulumi.OutputExtensions
-Pulumi.OutputResolvedArgs<T>
-Pulumi.OutputResolvedArgs<T>.IsKnown.get -> bool
-Pulumi.OutputResolvedArgs<T>.IsSecret.get -> bool
-Pulumi.OutputResolvedArgs<T>.Value.get -> T
-Pulumi.OutputWatcher<T>
-Pulumi.OutputWatcher<T>.OutputWatcher(Pulumi.Output<T> output) -> void
-Pulumi.OutputWatcher<T>.GetDependenciesAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableHashSet<Pulumi.Resource>>
-Pulumi.OutputWatcher<T>.Resolved -> System.EventHandler<Pulumi.OutputResolvedArgs<T>>
+Pulumi.OutputWatcher
 Pulumi.ProviderResource
 Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.RemoteArchive
@@ -294,6 +287,8 @@ static Pulumi.OutputExtensions.IsT0<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, 
 static Pulumi.OutputExtensions.IsT1<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<bool>
 static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<int>
 static Pulumi.OutputExtensions.Value<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<object>
+static Pulumi.OutputWatcher.GetDependenciesAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableHashSet<Pulumi.Resource>>
+static Pulumi.OutputWatcher.GetIsKnownAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<bool>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static Pulumi.Union<T0, T1>.FromT0(T0 input) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.FromT1(T1 input) -> Pulumi.Union<T0, T1>

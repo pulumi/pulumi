@@ -1,6 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation
 
-using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
@@ -10,59 +9,25 @@ namespace Pulumi
     /// Allows extracting some internal insights about an instance of
     /// <see cref="Output{T}"/>. 
     /// </summary>
-    public sealed class OutputWatcher<T>
+    public static class OutputWatcher
     {
-        private readonly Output<T> _output;
-
-        public OutputWatcher(Output<T> output)
+        /// <summary>
+        /// Retrieve the Is Known status of the given output.
+        /// Note: generally, this should never be used in combination with await for
+        /// a program control flow to avoid deadlock situations.
+        /// </summary>
+        /// <param name="output">The <see cref="Output{T}"/> to evaluate.</param>
+        public static async Task<bool> GetIsKnownAsync<T>(Output<T> output)
         {
-            _output = output;
-            _output.DataTask.ContinueWith(t =>
-            {
-                var data = t.Result;
-                var args = new OutputResolvedArgs<T>(data.Value, data.IsKnown, data.IsSecret);
-                Resolved?.Invoke(this, args);
-            });
+            var data = await output.DataTask.ConfigureAwait(false);
+            return data.IsKnown;
         }
 
         /// <summary>
-        /// Retrieve a set of resources that the output depends on.
+        /// Retrieve a set of resources that the given output depends on.
         /// </summary>
-        /// <returns></returns>
-        public Task<ImmutableHashSet<Resource>> GetDependenciesAsync()
-            => (_output as IOutput).GetResourcesAsync();
-
-        /// <summary>
-        /// Fires when the output value is resolved.
-        /// </summary>
-        public event EventHandler<OutputResolvedArgs<T>>? Resolved;
-    }
-
-    /// <summary>
-    /// Arguments for <see cref="OutputWatcher{T}.Resolved"/> events handler.
-    /// </summary>
-    public sealed class OutputResolvedArgs<T> : EventArgs
-    {
-        internal OutputResolvedArgs(T value, bool isKnown, bool isSecret)
-        {
-            Value = value;
-            IsKnown = isKnown;
-            IsSecret = isSecret;
-        }
-
-        /// <summary>
-        /// Output value, if known.
-        /// </summary>
-        public T Value { get; }
-
-        /// <summary>
-        /// Whether the output value is known.
-        /// </summary>
-        public bool IsKnown { get; }
-
-        /// <summary>
-        /// Whether the output value is a secret.
-        /// </summary>
-        public bool IsSecret { get; }
+        /// <param name="output">The <see cref="Output{T}"/> to get dependencies of.</param>
+        public static Task<ImmutableHashSet<Resource>> GetDependenciesAsync<T>(Output<T> output)
+            => (output as IOutput).GetResourcesAsync();
     }
 }
