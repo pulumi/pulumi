@@ -115,6 +115,14 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Outpu
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
 Pulumi.OutputExtensions
+Pulumi.OutputResolvedArgs<T>
+Pulumi.OutputResolvedArgs<T>.IsKnown.get -> bool
+Pulumi.OutputResolvedArgs<T>.IsSecret.get -> bool
+Pulumi.OutputResolvedArgs<T>.Value.get -> T
+Pulumi.OutputWatcher<T>
+Pulumi.OutputWatcher<T>.OutputWatcher(Pulumi.Output<T> output) -> void
+Pulumi.OutputWatcher<T>.GetDependenciesAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableHashSet<Pulumi.Resource>>
+Pulumi.OutputWatcher<T>.Resolved -> System.EventHandler<Pulumi.OutputResolvedArgs<T>>
 Pulumi.ProviderResource
 Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
 Pulumi.RemoteArchive
