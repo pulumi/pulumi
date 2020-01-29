@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -23,7 +23,7 @@ import (
 func TestAccMinimal(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "minimal"),
+			Dir: filepath.Join(getCwd(t), "minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
@@ -43,7 +43,7 @@ func TestAccMinimal(t *testing.T) {
 func TestAccMinimal_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "minimal"),
+			Dir: filepath.Join(getCwd(t), "minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
@@ -64,7 +64,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 func TestAccDynamicProviderSimple(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
 			Config: map[string]string{
 				"simple:config:w": "1",
 				"simple:config:x": "1",
@@ -78,7 +78,7 @@ func TestAccDynamicProviderSimple(t *testing.T) {
 func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/simple"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
 			Config: map[string]string{
 				"simple:config:w": "1",
 				"simple:config:x": "1",
@@ -93,7 +93,7 @@ func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 func TestAccDynamicProviderClassWithComments(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -102,7 +102,7 @@ func TestAccDynamicProviderClassWithComments(t *testing.T) {
 func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir:      path.Join(getCwd(t), "dynamic-provider/class-with-comments"),
+			Dir:      filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
 			CloudURL: "file://~",
 		})
 
@@ -112,7 +112,7 @@ func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
@@ -129,7 +129,7 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
@@ -147,7 +147,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -156,7 +156,7 @@ func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir:      path.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
+			Dir:      filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
 			CloudURL: "file://~",
 		})
 
@@ -166,7 +166,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -175,7 +175,7 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir:      path.Join(getCwd(t), "dynamic-provider/derived-inputs"),
+			Dir:      filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
 			CloudURL: "file://~",
 		})
 
@@ -186,7 +186,7 @@ func TestAccFormattable(t *testing.T) {
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "formattable"),
+			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
@@ -203,7 +203,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "formattable"),
+			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
@@ -220,7 +220,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 func TestAccSecrets(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "secrets"),
+			Dir: filepath.Join(getCwd(t), "secrets"),
 			Config: map[string]string{
 				"message": "plaintext message",
 			},
@@ -310,7 +310,7 @@ func TestAccNodeCompatTests(t *testing.T) {
 	skipIfNotNode610(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: path.Join(getCwd(t), "compat/v0.10.0/minimal"),
+			Dir: filepath.Join(getCwd(t), "compat/v0.10.0/minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
