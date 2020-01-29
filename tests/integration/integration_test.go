@@ -464,6 +464,9 @@ func TestStackParenting(t *testing.T) {
 }
 
 func TestStackBadParenting(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
 		Dependencies:  []string{"@pulumi/pulumi"},
