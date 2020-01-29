@@ -16,7 +16,9 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,14 +45,44 @@ type RequiredPolicy interface {
 	Install(ctx context.Context) (string, error)
 }
 
+// LocalPolicyPack represents a set of local Policy Packs to apply during an update.
+type LocalPolicyPack struct {
+	// Name provides the user-specified name of the Policy Pack.
+	Name string
+	// Path of the local Policy Pack.
+	Path string
+}
+
+// ConvertPathsToLocalPolicyPacks is a helper function for converting the list of local Policy
+// Pack paths to list of LocalPolicyPack.
+func ConvertPathsToLocalPolicyPacks(localPaths []string) []LocalPolicyPack {
+	r := make([]LocalPolicyPack, len(localPaths))
+	for i, p := range localPaths {
+		r[i] = LocalPolicyPack{
+			Path: p,
+		}
+	}
+	return r
+}
+
+// ConvertLocalPolicyPacksToPaths is a helper function for converting the list of LocalPolicyPacks
+// to a list of paths.
+func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string {
+	r := make([]string, len(localPolicyPack))
+	for i, p := range localPolicyPack {
+		r[i] = p.Name
+	}
+	return r
+}
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
 // nolint: structcheck
 type UpdateOptions struct {
-	// LocalPolicyPackPaths contains an optional set of paths to policy packs to run as part of this deployment.
-	LocalPolicyPackPaths []string
+	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
+	LocalPolicyPacks []LocalPolicyPack
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
 	RequiredPolicies []RequiredPolicy
@@ -186,7 +218,7 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPackPaths []string,
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPackPaths []LocalPolicyPack,
 	opts *plugin.PolicyAnalyzerOptions) error {
 
 	// Install and load required policy packs.
@@ -203,20 +235,26 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 	}
 
 	// Load local policy packs.
-	for _, path := range localPolicyPackPaths {
-		abs, err := filepath.Abs(path)
+	for i, pack := range localPolicyPackPaths {
+		abs, err := filepath.Abs(pack.Path)
 		if err != nil {
 			return err
 		}
 
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), path, opts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, opts)
 		if err != nil {
 			return err
 		} else if analyzer == nil {
-			return errors.Errorf("analyzer could not be loaded from path %q", path)
+			return errors.Errorf("analyzer could not be loaded from path %q", pack.Path)
 		}
-	}
 
+		// Update the Policy Pack names now that we have them.
+		analyzerInfo, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return err
+		}
+		localPolicyPackPaths[i].Name = analyzerInfo.Name
+	}
 	return nil
 }
 
@@ -257,7 +295,7 @@ func newUpdateSource(
 		Config:  config,
 		DryRun:  dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies, opts.LocalPolicyPackPaths,
+	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}
@@ -282,8 +320,10 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	for _, p := range opts.RequiredPolicies {
 		policies[p.Name()] = p.Version()
 	}
-	for _, path := range opts.LocalPolicyPackPaths {
-		policies[path] = "(local)"
+	for _, pack := range opts.LocalPolicyPacks {
+		path := shortenPolicyPackPath(pack.Path)
+		packName := fmt.Sprintf("%s (%s)", pack.Name, path)
+		policies[packName] = "(local)"
 	}
 
 	var resourceChanges ResourceChanges
@@ -321,6 +361,21 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		}
 	}
 	return resourceChanges, res
+}
+
+func shortenPolicyPackPath(path string) string {
+	path = filepath.Clean(path)
+	if len(path) > 75 {
+		// Do some shortening.
+		dirs := strings.Split(path, "/")
+		if len(dirs) > 4 {
+			back := dirs[len(dirs)-2:]
+			dirs = append(dirs[:2], "...")
+			dirs = append(dirs, back...)
+		}
+		path = strings.Join(dirs, "/")
+	}
+	return path
 }
 
 // updateActions pretty-prints the plan application process as it goes.

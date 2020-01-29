@@ -135,7 +135,7 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					LocalPolicyPackPaths: policyPackPaths,
+					LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
 					Parallel:             parallel,
 					Debug:                debug,
 					Refresh:              refresh,

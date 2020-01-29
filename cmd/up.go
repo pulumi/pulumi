@@ -120,14 +120,14 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPackPaths: policyPackPaths,
-			Parallel:             parallel,
-			Debug:                debug,
-			Refresh:              refresh,
-			ReplaceTargets:       replaceURNs,
-			UseLegacyDiff:        useLegacyDiff(),
-			UpdateTargets:        targetURNs,
-			TargetDependents:     targetDependents,
+			LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refresh,
+			ReplaceTargets:   replaceURNs,
+			UseLegacyDiff:    useLegacyDiff(),
+			UpdateTargets:    targetURNs,
+			TargetDependents: targetDependents,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -281,10 +281,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPackPaths: policyPackPaths,
-			Parallel:             parallel,
-			Debug:                debug,
-			Refresh:              refresh,
+			LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refresh,
 		}
 
 		// TODO for the URL case:
