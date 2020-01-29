@@ -26,8 +26,8 @@ func main() {
 
 		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val")))
 
-		errChan := make(chan error, 0)
-		results := make(chan []string, 0)
+		errChan := make(chan error)
+		results := make(chan []string)
 
 		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
@@ -41,7 +41,7 @@ func main() {
 		select {
 		case err = <-errChan:
 			return err
-		case _ = <-results:
+		case <-results:
 			return nil
 		}
 	})
