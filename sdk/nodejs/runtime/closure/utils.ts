@@ -15,10 +15,13 @@
 import * as ts from "typescript";
 
 const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
+
+/** @internal */
 export function isLegalMemberName(n: string) {
     return legalNameRegex.test(n);
 }
 
+/** @internal */
 export function isLegalFunctionName(n: string) {
     if (!isLegalMemberName(n)) {
         return false;

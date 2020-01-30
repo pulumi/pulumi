@@ -23,9 +23,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const allKeyword = "all"
+
 func newPolicyRmCmd() *cobra.Command {
+
 	var cmd = &cobra.Command{
-		Use:   "rm <org-name>/<policy-pack-name> <version>",
+		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
@@ -37,14 +40,18 @@ func newPolicyRmCmd() *cobra.Command {
 				return err
 			}
 
-			version, err := strconv.Atoi(cliArgs[1])
-			if err != nil {
-				return errors.Wrapf(err, "Could not parse version (should be an integer)")
+			var version *int
+			if cliArgs[1] != allKeyword {
+				v, err := strconv.Atoi(cliArgs[1])
+				if err != nil {
+					return errors.Wrapf(err, "Could not parse version (should be an integer)")
+				}
+				version = &v
 			}
 
 			// Attempt to remove the Policy Pack.
 			return policyPack.Remove(commandContext(), backend.PolicyPackOperation{
-				Version: &version, Scopes: cancellationScopes})
+				Version: version, Scopes: cancellationScopes})
 		}),
 	}
 

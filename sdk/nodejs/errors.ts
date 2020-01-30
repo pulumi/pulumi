@@ -23,8 +23,8 @@ import * as utils from "./utils";
  */
 export class RunError extends Error {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumiRunError: boolean = true;
@@ -50,8 +50,8 @@ export class RunError extends Error {
  */
 export class ResourceError extends Error {
     /**
-     * @internal
      * A private field to help with RTTI that works in SxS scenarios.
+     * @internal
      */
     // tslint:disable-next-line:variable-name
     public readonly __pulumResourceError: boolean = true;

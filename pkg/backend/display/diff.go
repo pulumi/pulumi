@@ -98,7 +98,7 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), opts)
+		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), false /* wroteDiagnosticHeader */, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 
@@ -137,10 +137,20 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload, opts Options) string {
+func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload,
+	wroteDiagnosticHeader bool, opts Options) string {
+
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
+
+	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary
+	// for a failed preview may be surprising/misleading, as it does not describe the totality of the proposed changes
+	// (as the preview may have aborted when the error occurred).
+	if event.IsPreview && wroteDiagnosticHeader {
+		renderPolicyPacks(out, event.PolicyPacks, opts)
+		return out.String()
+	}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 
@@ -183,29 +193,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 	}
 
 	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
-	if len(event.PolicyPacks) > 0 {
-		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sPolicy Packs run:%s\n",
-			colors.SpecHeadline, colors.Reset)))
-
-		// Calculate column width for the `name` column
-		const nameColHeader = "Name"
-		maxNameLen := len(nameColHeader)
-		for pp := range event.PolicyPacks {
-			if l := len(pp); l > maxNameLen {
-				maxNameLen = l
-			}
-		}
-
-		// Print the column headers and the policy packs.
-		fprintIgnoreError(out, opts.Color.Colorize(
-			fmt.Sprintf("    %s%s%s\n",
-				columnHeader(nameColHeader), messagePadding(nameColHeader, maxNameLen, 2),
-				columnHeader("Version"))))
-		for pp, ver := range event.PolicyPacks {
-			fprintIgnoreError(out, opts.Color.Colorize(
-				fmt.Sprintf("    %s%s%s\n", pp, messagePadding(pp, maxNameLen, 2), ver)))
-		}
-	}
+	renderPolicyPacks(out, event.PolicyPacks, opts)
 
 	summaryPieces := []string{}
 	if changeKindCount >= 2 {
@@ -245,6 +233,33 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 	}
 
 	return out.String()
+}
+
+func renderPolicyPacks(out io.Writer, policyPacks map[string]string, opts Options) {
+	if len(policyPacks) == 0 {
+		return
+	}
+	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sPolicy Packs run:%s\n",
+		colors.SpecHeadline, colors.Reset)))
+
+	// Calculate column width for the `name` column
+	const nameColHeader = "Name"
+	maxNameLen := len(nameColHeader)
+	for pp := range policyPacks {
+		if l := len(pp); l > maxNameLen {
+			maxNameLen = l
+		}
+	}
+
+	// Print the column headers and the policy packs.
+	fprintIgnoreError(out, opts.Color.Colorize(
+		fmt.Sprintf("    %s%s%s\n",
+			columnHeader(nameColHeader), messagePadding(nameColHeader, maxNameLen, 2),
+			columnHeader("Version"))))
+	for pp, ver := range policyPacks {
+		fprintIgnoreError(out, opts.Color.Colorize(
+			fmt.Sprintf("    %s%s%s\n", pp, messagePadding(pp, maxNameLen, 2), ver)))
+	}
 }
 
 func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {

@@ -751,7 +751,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			display.writeBlankLine()
 		}
 
-		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, display.opts)
+		msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 		display.writeSimpleMessage(msg)
 	}
 }

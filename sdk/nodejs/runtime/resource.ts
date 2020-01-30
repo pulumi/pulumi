@@ -42,7 +42,6 @@ import {
     serializeProperty,
     serializeResourceProperties,
     transferProperties,
-    unknownValue,
 } from "./rpc";
 import {
     excessiveDebugOutput,

@@ -14,10 +14,12 @@
 
 import * as assert from "assert";
 
+/** @internal */
 export type MochaFunc = (err: Error) => void;
 
 // A helper function for wrapping some of the boilerplate goo necessary to interface between Mocha's asynchronous
 // testing and our TypeScript async tests.
+/** @internal */
 export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void {
     return (done: (err: any) => void) => {
         const go = async () => {
@@ -37,6 +39,7 @@ export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void 
 }
 
 // A helper function for asynchronous tests that throw.
+/** @internal */
 export async function assertAsyncThrows(test: () => Promise<void>): Promise<string> {
     try {
         await test();

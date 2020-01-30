@@ -184,9 +184,9 @@ func (pack *cloudPolicyPack) Disable(ctx context.Context, policyGroup string, op
 
 func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOperation) error {
 	if op.Version == nil {
-		return errors.New("remove requires the version be specified")
+		return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name))
 	}
-	return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), *op.Version)
+	return pack.cl.RemovePolicyPackByVersion(ctx, pack.ref.orgName, string(pack.ref.name), *op.Version)
 }
 
 const npmPackageDir = "package"

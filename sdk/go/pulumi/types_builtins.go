@@ -1224,6 +1224,14 @@ func (in Bool) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
 	return ToOutputWithContext(ctx, in).(BoolOutput)
 }
 
+func (in Bool) ToBoolPtrOutput() BoolPtrOutput {
+	return in.ToBoolPtrOutputWithContext(context.Background())
+}
+
+func (in Bool) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
+	return in.ToBoolOutputWithContext(ctx).ToBoolPtrOutputWithContext(ctx)
+}
+
 // BoolOutput is an Output that returns bool values.
 type BoolOutput struct{ *OutputState }
 
@@ -1238,6 +1246,16 @@ func (o BoolOutput) ToBoolOutput() BoolOutput {
 
 func (o BoolOutput) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
 	return o
+}
+
+func (o BoolOutput) ToBoolPtrOutput() BoolPtrOutput {
+	return o.ToBoolPtrOutputWithContext(context.Background())
+}
+
+func (o BoolOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v bool) *bool {
+		return &v
+	}).(BoolPtrOutput)
 }
 
 var boolPtrType = reflect.TypeOf((**bool)(nil)).Elem()
@@ -1414,6 +1432,14 @@ func (in Float32) ToFloat32OutputWithContext(ctx context.Context) Float32Output 
 	return ToOutputWithContext(ctx, in).(Float32Output)
 }
 
+func (in Float32) ToFloat32PtrOutput() Float32PtrOutput {
+	return in.ToFloat32PtrOutputWithContext(context.Background())
+}
+
+func (in Float32) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
+	return in.ToFloat32OutputWithContext(ctx).ToFloat32PtrOutputWithContext(ctx)
+}
+
 // Float32Output is an Output that returns float32 values.
 type Float32Output struct{ *OutputState }
 
@@ -1428,6 +1454,16 @@ func (o Float32Output) ToFloat32Output() Float32Output {
 
 func (o Float32Output) ToFloat32OutputWithContext(ctx context.Context) Float32Output {
 	return o
+}
+
+func (o Float32Output) ToFloat32PtrOutput() Float32PtrOutput {
+	return o.ToFloat32PtrOutputWithContext(context.Background())
+}
+
+func (o Float32Output) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v float32) *float32 {
+		return &v
+	}).(Float32PtrOutput)
 }
 
 var float32PtrType = reflect.TypeOf((**float32)(nil)).Elem()
@@ -1604,6 +1640,14 @@ func (in Float64) ToFloat64OutputWithContext(ctx context.Context) Float64Output 
 	return ToOutputWithContext(ctx, in).(Float64Output)
 }
 
+func (in Float64) ToFloat64PtrOutput() Float64PtrOutput {
+	return in.ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (in Float64) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
+	return in.ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+}
+
 // Float64Output is an Output that returns float64 values.
 type Float64Output struct{ *OutputState }
 
@@ -1618,6 +1662,16 @@ func (o Float64Output) ToFloat64Output() Float64Output {
 
 func (o Float64Output) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
 	return o
+}
+
+func (o Float64Output) ToFloat64PtrOutput() Float64PtrOutput {
+	return o.ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (o Float64Output) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v float64) *float64 {
+		return &v
+	}).(Float64PtrOutput)
 }
 
 var float64PtrType = reflect.TypeOf((**float64)(nil)).Elem()
@@ -1799,6 +1853,14 @@ func (in ID) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return in.ToIDOutputWithContext(ctx).ToStringOutputWithContext(ctx)
 }
 
+func (in ID) ToIDPtrOutput() IDPtrOutput {
+	return in.ToIDPtrOutputWithContext(context.Background())
+}
+
+func (in ID) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
+	return in.ToIDOutputWithContext(ctx).ToIDPtrOutputWithContext(ctx)
+}
+
 // IDOutput is an Output that returns ID values.
 type IDOutput struct{ *OutputState }
 
@@ -1823,6 +1885,16 @@ func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
+}
+
+func (o IDOutput) ToIDPtrOutput() IDPtrOutput {
+	return o.ToIDPtrOutputWithContext(context.Background())
+}
+
+func (o IDOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) *ID {
+		return &v
+	}).(IDPtrOutput)
 }
 
 var iDPtrType = reflect.TypeOf((**ID)(nil)).Elem()
@@ -2095,6 +2167,14 @@ func (in Int) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	return ToOutputWithContext(ctx, in).(IntOutput)
 }
 
+func (in Int) ToIntPtrOutput() IntPtrOutput {
+	return in.ToIntPtrOutputWithContext(context.Background())
+}
+
+func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
+	return in.ToIntOutputWithContext(ctx).ToIntPtrOutputWithContext(ctx)
+}
+
 // IntOutput is an Output that returns int values.
 type IntOutput struct{ *OutputState }
 
@@ -2109,6 +2189,16 @@ func (o IntOutput) ToIntOutput() IntOutput {
 
 func (o IntOutput) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	return o
+}
+
+func (o IntOutput) ToIntPtrOutput() IntPtrOutput {
+	return o.ToIntPtrOutputWithContext(context.Background())
+}
+
+func (o IntOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v int) *int {
+		return &v
+	}).(IntPtrOutput)
 }
 
 var intPtrType = reflect.TypeOf((**int)(nil)).Elem()
@@ -2285,6 +2375,14 @@ func (in Int16) ToInt16OutputWithContext(ctx context.Context) Int16Output {
 	return ToOutputWithContext(ctx, in).(Int16Output)
 }
 
+func (in Int16) ToInt16PtrOutput() Int16PtrOutput {
+	return in.ToInt16PtrOutputWithContext(context.Background())
+}
+
+func (in Int16) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
+	return in.ToInt16OutputWithContext(ctx).ToInt16PtrOutputWithContext(ctx)
+}
+
 // Int16Output is an Output that returns int16 values.
 type Int16Output struct{ *OutputState }
 
@@ -2299,6 +2397,16 @@ func (o Int16Output) ToInt16Output() Int16Output {
 
 func (o Int16Output) ToInt16OutputWithContext(ctx context.Context) Int16Output {
 	return o
+}
+
+func (o Int16Output) ToInt16PtrOutput() Int16PtrOutput {
+	return o.ToInt16PtrOutputWithContext(context.Background())
+}
+
+func (o Int16Output) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v int16) *int16 {
+		return &v
+	}).(Int16PtrOutput)
 }
 
 var int16PtrType = reflect.TypeOf((**int16)(nil)).Elem()
@@ -2475,6 +2583,14 @@ func (in Int32) ToInt32OutputWithContext(ctx context.Context) Int32Output {
 	return ToOutputWithContext(ctx, in).(Int32Output)
 }
 
+func (in Int32) ToInt32PtrOutput() Int32PtrOutput {
+	return in.ToInt32PtrOutputWithContext(context.Background())
+}
+
+func (in Int32) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
+	return in.ToInt32OutputWithContext(ctx).ToInt32PtrOutputWithContext(ctx)
+}
+
 // Int32Output is an Output that returns int32 values.
 type Int32Output struct{ *OutputState }
 
@@ -2489,6 +2605,16 @@ func (o Int32Output) ToInt32Output() Int32Output {
 
 func (o Int32Output) ToInt32OutputWithContext(ctx context.Context) Int32Output {
 	return o
+}
+
+func (o Int32Output) ToInt32PtrOutput() Int32PtrOutput {
+	return o.ToInt32PtrOutputWithContext(context.Background())
+}
+
+func (o Int32Output) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v int32) *int32 {
+		return &v
+	}).(Int32PtrOutput)
 }
 
 var int32PtrType = reflect.TypeOf((**int32)(nil)).Elem()
@@ -2665,6 +2791,14 @@ func (in Int64) ToInt64OutputWithContext(ctx context.Context) Int64Output {
 	return ToOutputWithContext(ctx, in).(Int64Output)
 }
 
+func (in Int64) ToInt64PtrOutput() Int64PtrOutput {
+	return in.ToInt64PtrOutputWithContext(context.Background())
+}
+
+func (in Int64) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
+	return in.ToInt64OutputWithContext(ctx).ToInt64PtrOutputWithContext(ctx)
+}
+
 // Int64Output is an Output that returns int64 values.
 type Int64Output struct{ *OutputState }
 
@@ -2679,6 +2813,16 @@ func (o Int64Output) ToInt64Output() Int64Output {
 
 func (o Int64Output) ToInt64OutputWithContext(ctx context.Context) Int64Output {
 	return o
+}
+
+func (o Int64Output) ToInt64PtrOutput() Int64PtrOutput {
+	return o.ToInt64PtrOutputWithContext(context.Background())
+}
+
+func (o Int64Output) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v int64) *int64 {
+		return &v
+	}).(Int64PtrOutput)
 }
 
 var int64PtrType = reflect.TypeOf((**int64)(nil)).Elem()
@@ -2855,6 +2999,14 @@ func (in Int8) ToInt8OutputWithContext(ctx context.Context) Int8Output {
 	return ToOutputWithContext(ctx, in).(Int8Output)
 }
 
+func (in Int8) ToInt8PtrOutput() Int8PtrOutput {
+	return in.ToInt8PtrOutputWithContext(context.Background())
+}
+
+func (in Int8) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
+	return in.ToInt8OutputWithContext(ctx).ToInt8PtrOutputWithContext(ctx)
+}
+
 // Int8Output is an Output that returns int8 values.
 type Int8Output struct{ *OutputState }
 
@@ -2869,6 +3021,16 @@ func (o Int8Output) ToInt8Output() Int8Output {
 
 func (o Int8Output) ToInt8OutputWithContext(ctx context.Context) Int8Output {
 	return o
+}
+
+func (o Int8Output) ToInt8PtrOutput() Int8PtrOutput {
+	return o.ToInt8PtrOutputWithContext(context.Background())
+}
+
+func (o Int8Output) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v int8) *int8 {
+		return &v
+	}).(Int8PtrOutput)
 }
 
 var int8PtrType = reflect.TypeOf((**int8)(nil)).Elem()
@@ -3045,6 +3207,14 @@ func (in String) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return ToOutputWithContext(ctx, in).(StringOutput)
 }
 
+func (in String) ToStringPtrOutput() StringPtrOutput {
+	return in.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (in String) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
 // StringOutput is an Output that returns string values.
 type StringOutput struct{ *OutputState }
 
@@ -3059,6 +3229,16 @@ func (o StringOutput) ToStringOutput() StringOutput {
 
 func (o StringOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o
+}
+
+func (o StringOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o StringOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v string) *string {
+		return &v
+	}).(StringPtrOutput)
 }
 
 var stringPtrType = reflect.TypeOf((**string)(nil)).Elem()
@@ -3240,6 +3420,14 @@ func (in URN) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return in.ToURNOutputWithContext(ctx).ToStringOutputWithContext(ctx)
 }
 
+func (in URN) ToURNPtrOutput() URNPtrOutput {
+	return in.ToURNPtrOutputWithContext(context.Background())
+}
+
+func (in URN) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
+	return in.ToURNOutputWithContext(ctx).ToURNPtrOutputWithContext(ctx)
+}
+
 // URNOutput is an Output that returns URN values.
 type URNOutput struct{ *OutputState }
 
@@ -3264,6 +3452,16 @@ func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
 		return (string)(v)
 	}).(StringOutput)
+}
+
+func (o URNOutput) ToURNPtrOutput() URNPtrOutput {
+	return o.ToURNPtrOutputWithContext(context.Background())
+}
+
+func (o URNOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) *URN {
+		return &v
+	}).(URNPtrOutput)
 }
 
 var uRNPtrType = reflect.TypeOf((**URN)(nil)).Elem()
@@ -3440,6 +3638,14 @@ func (in Uint) ToUintOutputWithContext(ctx context.Context) UintOutput {
 	return ToOutputWithContext(ctx, in).(UintOutput)
 }
 
+func (in Uint) ToUintPtrOutput() UintPtrOutput {
+	return in.ToUintPtrOutputWithContext(context.Background())
+}
+
+func (in Uint) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
+	return in.ToUintOutputWithContext(ctx).ToUintPtrOutputWithContext(ctx)
+}
+
 // UintOutput is an Output that returns uint values.
 type UintOutput struct{ *OutputState }
 
@@ -3454,6 +3660,16 @@ func (o UintOutput) ToUintOutput() UintOutput {
 
 func (o UintOutput) ToUintOutputWithContext(ctx context.Context) UintOutput {
 	return o
+}
+
+func (o UintOutput) ToUintPtrOutput() UintPtrOutput {
+	return o.ToUintPtrOutputWithContext(context.Background())
+}
+
+func (o UintOutput) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint) *uint {
+		return &v
+	}).(UintPtrOutput)
 }
 
 var uintPtrType = reflect.TypeOf((**uint)(nil)).Elem()
@@ -3630,6 +3846,14 @@ func (in Uint16) ToUint16OutputWithContext(ctx context.Context) Uint16Output {
 	return ToOutputWithContext(ctx, in).(Uint16Output)
 }
 
+func (in Uint16) ToUint16PtrOutput() Uint16PtrOutput {
+	return in.ToUint16PtrOutputWithContext(context.Background())
+}
+
+func (in Uint16) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
+	return in.ToUint16OutputWithContext(ctx).ToUint16PtrOutputWithContext(ctx)
+}
+
 // Uint16Output is an Output that returns uint16 values.
 type Uint16Output struct{ *OutputState }
 
@@ -3644,6 +3868,16 @@ func (o Uint16Output) ToUint16Output() Uint16Output {
 
 func (o Uint16Output) ToUint16OutputWithContext(ctx context.Context) Uint16Output {
 	return o
+}
+
+func (o Uint16Output) ToUint16PtrOutput() Uint16PtrOutput {
+	return o.ToUint16PtrOutputWithContext(context.Background())
+}
+
+func (o Uint16Output) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint16) *uint16 {
+		return &v
+	}).(Uint16PtrOutput)
 }
 
 var uint16PtrType = reflect.TypeOf((**uint16)(nil)).Elem()
@@ -3820,6 +4054,14 @@ func (in Uint32) ToUint32OutputWithContext(ctx context.Context) Uint32Output {
 	return ToOutputWithContext(ctx, in).(Uint32Output)
 }
 
+func (in Uint32) ToUint32PtrOutput() Uint32PtrOutput {
+	return in.ToUint32PtrOutputWithContext(context.Background())
+}
+
+func (in Uint32) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
+	return in.ToUint32OutputWithContext(ctx).ToUint32PtrOutputWithContext(ctx)
+}
+
 // Uint32Output is an Output that returns uint32 values.
 type Uint32Output struct{ *OutputState }
 
@@ -3834,6 +4076,16 @@ func (o Uint32Output) ToUint32Output() Uint32Output {
 
 func (o Uint32Output) ToUint32OutputWithContext(ctx context.Context) Uint32Output {
 	return o
+}
+
+func (o Uint32Output) ToUint32PtrOutput() Uint32PtrOutput {
+	return o.ToUint32PtrOutputWithContext(context.Background())
+}
+
+func (o Uint32Output) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint32) *uint32 {
+		return &v
+	}).(Uint32PtrOutput)
 }
 
 var uint32PtrType = reflect.TypeOf((**uint32)(nil)).Elem()
@@ -4010,6 +4262,14 @@ func (in Uint64) ToUint64OutputWithContext(ctx context.Context) Uint64Output {
 	return ToOutputWithContext(ctx, in).(Uint64Output)
 }
 
+func (in Uint64) ToUint64PtrOutput() Uint64PtrOutput {
+	return in.ToUint64PtrOutputWithContext(context.Background())
+}
+
+func (in Uint64) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
+	return in.ToUint64OutputWithContext(ctx).ToUint64PtrOutputWithContext(ctx)
+}
+
 // Uint64Output is an Output that returns uint64 values.
 type Uint64Output struct{ *OutputState }
 
@@ -4024,6 +4284,16 @@ func (o Uint64Output) ToUint64Output() Uint64Output {
 
 func (o Uint64Output) ToUint64OutputWithContext(ctx context.Context) Uint64Output {
 	return o
+}
+
+func (o Uint64Output) ToUint64PtrOutput() Uint64PtrOutput {
+	return o.ToUint64PtrOutputWithContext(context.Background())
+}
+
+func (o Uint64Output) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint64) *uint64 {
+		return &v
+	}).(Uint64PtrOutput)
 }
 
 var uint64PtrType = reflect.TypeOf((**uint64)(nil)).Elem()
@@ -4200,6 +4470,14 @@ func (in Uint8) ToUint8OutputWithContext(ctx context.Context) Uint8Output {
 	return ToOutputWithContext(ctx, in).(Uint8Output)
 }
 
+func (in Uint8) ToUint8PtrOutput() Uint8PtrOutput {
+	return in.ToUint8PtrOutputWithContext(context.Background())
+}
+
+func (in Uint8) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
+	return in.ToUint8OutputWithContext(ctx).ToUint8PtrOutputWithContext(ctx)
+}
+
 // Uint8Output is an Output that returns uint8 values.
 type Uint8Output struct{ *OutputState }
 
@@ -4214,6 +4492,16 @@ func (o Uint8Output) ToUint8Output() Uint8Output {
 
 func (o Uint8Output) ToUint8OutputWithContext(ctx context.Context) Uint8Output {
 	return o
+}
+
+func (o Uint8Output) ToUint8PtrOutput() Uint8PtrOutput {
+	return o.ToUint8PtrOutputWithContext(context.Background())
+}
+
+func (o Uint8Output) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint8) *uint8 {
+		return &v
+	}).(Uint8PtrOutput)
 }
 
 var uint8PtrType = reflect.TypeOf((**uint8)(nil)).Elem()
