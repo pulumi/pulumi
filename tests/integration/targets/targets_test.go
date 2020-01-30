@@ -44,7 +44,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	}
 
 	e.RunCommand("pulumi", "up", "--target", strings.TrimSpace(urn), "--non-interactive", "--skip-preview", "--yes")
-	e.RunCommand("pulumi", "refresh")
+	e.RunCommand("pulumi", "refresh", "--non-interactive", "--yes")
 
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
