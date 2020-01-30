@@ -16,6 +16,10 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         NPM_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|feature-|g')
     fi
 
+    if [[ "${TRAVIS_BRANCH:-}" == feature-* ]]; then
+        NPM_TAG=$(echo "${TRAVIS_BRANCH}")
+    fi
+
     PKG_NAME=$(jq -r .name < "${ROOT}/sdk/nodejs/bin/package.json")
     PKG_VERSION=$(jq -r .version < "${ROOT}/sdk/nodejs/bin/package.json")
 

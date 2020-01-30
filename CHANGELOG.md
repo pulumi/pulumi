@@ -6,6 +6,7 @@ CHANGELOG
 - Add information about an in-flight operation to the stack command output, if applicable.
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
+<<<<<<< HEAD
 - Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
@@ -17,6 +18,10 @@ CHANGELOG
    * `pulumi up`
 
 =======
+=======
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
+>>>>>>> master
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
