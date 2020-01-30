@@ -436,7 +436,7 @@ func (pc *Client) CreateUpdate(
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{
-			LocalPolicyPackPaths: opts.LocalPolicyPackPaths,
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
