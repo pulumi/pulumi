@@ -137,6 +137,8 @@ type resourceOptions struct {
 	CustomTimeouts *CustomTimeouts
 	// Ignore changes to any of the specified properties.
 	IgnoreChanges []string
+	// Aliases is an optional list of identifiers used to find and use existing resources.
+	Aliases []Alias
 }
 
 type invokeOptions struct {
@@ -264,5 +266,12 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = o
+	})
+}
+
+// Aliases applies a list of identifiers to find and use existing resources.
+func Aliases(o []Alias) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Aliases = o
 	})
 }
