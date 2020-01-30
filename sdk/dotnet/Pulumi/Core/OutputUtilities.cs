@@ -3,13 +3,13 @@
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
-namespace Pulumi
+namespace Pulumi.Utilities
 {
     /// <summary>
     /// Allows extracting some internal insights about an instance of
     /// <see cref="Output{T}"/>. 
     /// </summary>
-    public static class OutputWatcher
+    public static class OutputUtilities
     {
         /// <summary>
         /// Retrieve the Is Known status of the given output.
@@ -28,6 +28,6 @@ namespace Pulumi
         /// </summary>
         /// <param name="output">The <see cref="Output{T}"/> to get dependencies of.</param>
         public static Task<ImmutableHashSet<Resource>> GetDependenciesAsync<T>(Output<T> output)
-            => (output as IOutput).GetResourcesAsync();
+            => ((IOutput)output).GetResourcesAsync();
     }
 }
