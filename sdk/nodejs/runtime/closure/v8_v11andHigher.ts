@@ -18,6 +18,7 @@ import * as inspector from "inspector";
 import * as util from "util";
 import * as v8Hooks from "./v8Hooks";
 
+/** @internal */
 export async function getFunctionLocationAsync(func: Function) {
     // First, find the runtime's internal id for this function.
     const functionId = await getRuntimeIdForFunctionAsync(func);
@@ -42,6 +43,7 @@ export async function getFunctionLocationAsync(func: Function) {
     return { file, line, column };
 }
 
+/** @internal */
 export async function lookupCapturedVariableValueAsync(
     func: Function, freeVariable: string, throwOnFailure: boolean): Promise<any> {
 

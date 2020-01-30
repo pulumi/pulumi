@@ -3,6 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
+
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
@@ -11,8 +16,8 @@ CHANGELOG
    * `pulumi refresh`
    * `pulumi up`
 
-- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
-
+=======
+## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
 
@@ -26,6 +31,21 @@ CHANGELOG
 - Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
 - Fix a buggy assertion in the Go SDK.
   [#3794](https://github.com/pulumi/pulumi/pull/3794)
+
+- Add `--latest` flag to `pulumi policy enable`.
+
+- Breaking change for Policy which removes requirement for version when running `pulumi policy disable`. Add `--version` flag if user wants to specify version of Policy Pack to disable.
+
+- Fix rendering of Policy Packs to ensure they are always displayed.
+
+- Primitive input types in the Go SDK (e.g. Int, String, etc.) now implement the corresponding Ptr type e.g. IntPtr,
+  StringPtr, etc.). This is consistent with the output of the Go code generator and is much more ergonomic for
+  optional inputs than manually converting to pointer types.
+  [#3806](https://github.com/pulumi/pulumi/pull/3806)
+
+- Add ability to specify all versions when removing a Policy Pack.
+
+- Breaking change to Policy command: Change enable command to use `pulumi policy enable <org-name>/<policy-pack-name> latest` instead of a `--latest` flag.
 
 ## 1.9.0 (2020-01-22)
 - Publish python types for PEP 561
@@ -45,10 +65,6 @@ CHANGELOG
 - Add `BuildNumber` to CI vars and backend metadata property bag for CI systems that have separate ID and a user-friendly number. [#3766](https://github.com/pulumi/pulumi/pull/3766)
 
 - Breaking changes for the Go SDK. Complete details are in [#3506](https://github.com/pulumi/pulumi/pull/3506).
-
-- Add `--latest` flag to `pulumi policy enable`.
-
-- Breaking change for Policy which removes requirement for version when running `pulumi policy disable`. Add `--version` flag if user wants to specify version of Policy Pack to disable.
 
 ## 1.8.1 (2019-12-20)
 

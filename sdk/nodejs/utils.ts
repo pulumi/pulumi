@@ -22,8 +22,9 @@ import { InvokeOptions } from "./invoke";
  * that synthesize properties dynamically (like Output).  Checking that the property has the 'true'
  * value isn't strictly necessary, but works to make sure that the impls are following a common
  * pattern.
+ *
+ * @internal
  */
-/** @internal */
 export function isInstance<T>(obj: any, name: keyof T): obj is T {
     return hasTrueBooleanMember(obj, name);
 }

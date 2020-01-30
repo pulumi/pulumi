@@ -122,8 +122,14 @@ func updatePolicyGroupPath(orgName, policyGroup string) string {
 		"/api/orgs/%s/policygroups/%s", orgName, policyGroup)
 }
 
+// deletePolicyPackPath returns the path for an API call to the Pulumi service to delete
+// all versions of a Policy Pack from a Pulumi organization.
+func deletePolicyPackPath(orgName, policyPackName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policypacks/%s", orgName, policyPackName)
+}
+
 // deletePolicyPackVersionPath returns the path for an API call to the Pulumi service to delete
-// a Policy Pack from a Pulumi organization.
+// a version of a Policy Pack from a Pulumi organization.
 func deletePolicyPackVersionPath(orgName, policyPackName string, version int) string {
 	return fmt.Sprintf(
 		"/api/orgs/%s/policypacks/%s/versions/%d", orgName, policyPackName, version)
@@ -625,8 +631,19 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 	return nil
 }
 
-// RemovePolicyPack removes a `PolicyPack` from the Pulumi organization.
-func (pc *Client) RemovePolicyPack(ctx context.Context, orgName string,
+// RemovePolicyPack removes all versions of a `PolicyPack` from the Pulumi organization.
+func (pc *Client) RemovePolicyPack(ctx context.Context, orgName string, policyPackName string) error {
+	path := deletePolicyPackPath(orgName, policyPackName)
+	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Request to remove policy pack failed")
+	}
+	return nil
+}
+
+// RemovePolicyPackByVersion removes a specific version of a `PolicyPack` from
+// the Pulumi organization.
+func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	policyPackName string, version int) error {
 
 	path := deletePolicyPackVersionPath(orgName, policyPackName, version)

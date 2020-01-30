@@ -33,6 +33,7 @@ const closeValue: CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 // the user can call `complete` at any time. `AsyncIteratable` would normally know when an element
 // is the last, but in this case it can't. Or, another way to look at it is, the last element is
 // guaranteed to be `undefined`.
+/** @internal */
 export class PushableAsyncIterable<T> implements AsyncIterable<T | undefined> {
     private bufferedData: T[] = [];
     private nextQueue: ((payload: T | CloseValue) => void)[] = [];

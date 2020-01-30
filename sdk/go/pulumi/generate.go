@@ -53,6 +53,15 @@ func (b builtin) DefineInputMethods() bool {
 	return b.Type != "AssetOrArchive"
 }
 
+func (b builtin) ImplementsPtrType() bool {
+	switch b.Type {
+	case "bool", "float32", "float64", "ID", "int", "int16", "int32", "int64", "int8", "string", "URN", "uint",
+		"uint16", "uint32", "uint64", "uint8":
+		return true
+	}
+	return false
+}
+
 func (b builtin) DefineElem() bool {
 	return b.DefinePtrType()
 }

@@ -24,6 +24,7 @@ import { rewriteSuperReferences } from "./rewriteSuper";
 import * as utils from "./utils";
 import * as v8 from "./v8";
 
+/** @internal */
 export interface ObjectInfo {
     // information about the prototype of this object/function.  If this is an object, we only store
     // this if the object's prototype is not Object.prototype.  If this is a function, we only store
@@ -37,6 +38,7 @@ export interface ObjectInfo {
 
 // Information about a javascript function.  Note that this derives from ObjectInfo as all functions
 // are objects in JS, and thus can have their own proto and properties.
+/** @internal */
 export interface FunctionInfo extends ObjectInfo {
     // a serialization of the function's source code as text.
     code: string;
@@ -60,6 +62,7 @@ export interface FunctionInfo extends ObjectInfo {
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
 // simple.
+/** @internal */
 export interface PropertyInfo {
     // If the property has a value we should directly provide when calling .defineProperty
     hasValue: boolean;
@@ -77,6 +80,7 @@ export interface PropertyInfo {
 
 // Information about a property.  Specifically the actual entry containing the data about it and
 // then an optional PropertyInfo in the case that this isn't just a common property.
+/** @internal */
 export interface PropertyInfoAndValue {
     info?: PropertyInfo;
     entry: Entry;
@@ -84,12 +88,14 @@ export interface PropertyInfoAndValue {
 
 // A mapping between the name of a property (symbolic or string) to information about the
 // value for that property.
+/** @internal */
 export interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {
 }
 
 /**
  * Entry is the environment slot for a named lexically captured variable.
  */
+/** @internal */
 export interface Entry {
     // a value which can be safely json serialized.
     json?: any;
@@ -215,6 +221,8 @@ class SerializedOutput<T> {
  * amenable to persistence as simple JSON.  Like toString, it includes the full text of the
  * function's source code, suitable for execution. Unlike toString, it actually includes information
  * about the captured environment.
+ *
+ * @internal
  */
 export async function createFunctionInfoAsync(
     func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {

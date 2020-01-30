@@ -198,6 +198,12 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		}
 	}
 
+	// And now any properties that failed verification.
+	failures = nil
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	annotateSecrets(inputs, news)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))

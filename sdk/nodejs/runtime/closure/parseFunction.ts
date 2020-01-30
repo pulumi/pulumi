@@ -14,9 +14,9 @@
 
 import * as ts from "typescript";
 import * as log from "../../log";
-import * as closure from "./createClosure";
 import * as utils from "./utils";
 
+/** @internal */
 export interface ParsedFunctionCode {
     // The serialized code for the function, usable as an expression. Valid for all functions forms
     // (functions, lambdas, methods, etc.).
@@ -36,6 +36,7 @@ export interface ParsedFunctionCode {
     isArrowFunction: boolean;
 }
 
+/** @internal */
 export interface ParsedFunction extends ParsedFunctionCode {
     // The set of variables the function attempts to capture.
     capturedVariables: CapturedVariables;
@@ -46,6 +47,7 @@ export interface ParsedFunction extends ParsedFunctionCode {
 
 // Information about a captured property.  Both the name and whether or not the property was
 // invoked.
+/** @internal */
 export interface CapturedPropertyInfo {
     name: string;
     invoked: boolean;
@@ -54,6 +56,7 @@ export interface CapturedPropertyInfo {
 // Information about a chain of captured properties.  i.e. if you have "foo.bar.baz.quux()", we'll
 // say that 'foo' was captured, but that "[bar, baz, quux]" was accessed off of it.  We'll also note
 // that 'quux' was invoked.
+/** @internal */
 export interface CapturedPropertyChain {
     infos: CapturedPropertyInfo[];
 }
@@ -66,12 +69,14 @@ export interface CapturedPropertyChain {
 //
 // Note: if we want to capture everything, we just use an empty array for 'CapturedPropertyChain[]'.
 // Otherwise, we'll use the chains to determine what portions of the object to serialize.
+/** @internal */
 export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 
 // The set of variables the function attempts to capture.  There is a required set an an optional
 // set. The optional set will not block closure-serialization if we cannot find them, while the
 // required set will.  For each variable that is captured we also specify the list of properties of
 // that variable we need to serialize.  An empty-list means 'serialize all properties'.
+/** @internal */
 export interface CapturedVariables {
     required: CapturedVariableMap;
     optional: CapturedVariableMap;
@@ -94,6 +99,7 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
 // are represented.  If these change, this will likely break us.
+/** @internal */
 export function parseFunction(funcString: string): [string, ParsedFunction] {
     const [error, functionCode] = parseFunctionCode(funcString);
     if (error) {
