@@ -120,7 +120,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refresh,
@@ -281,7 +281,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refresh,

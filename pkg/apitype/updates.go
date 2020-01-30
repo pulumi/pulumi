@@ -70,12 +70,6 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
-// LocalPolicyPack contains information about the locally specified Policy Packs ran with
-// an update.
-type LocalPolicyPack struct {
-	Path string `json:"path"`
-}
-
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as

@@ -53,9 +53,10 @@ type LocalPolicyPack struct {
 	Path string
 }
 
-// ConvertPathsToLocalPolicyPacks is a helper function for converting the list of local Policy
-// Pack paths to list of LocalPolicyPack.
-func ConvertPathsToLocalPolicyPacks(localPaths []string) []LocalPolicyPack {
+// MakeLocalPolicyPacks is a helper function for converting the list of local Policy
+// Pack paths to list of LocalPolicyPack. The name of the Local Policy Pack is not set
+// since we must load up the Policy Pack plugin to determine its name.
+func MakeLocalPolicyPacks(localPaths []string) []LocalPolicyPack {
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
 		r[i] = LocalPolicyPack{
@@ -218,7 +219,7 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPackPaths []LocalPolicyPack,
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPacks []LocalPolicyPack,
 	opts *plugin.PolicyAnalyzerOptions) error {
 
 	// Install and load required policy packs.
@@ -235,7 +236,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 	}
 
 	// Load local policy packs.
-	for i, pack := range localPolicyPackPaths {
+	for i, pack := range localPolicyPacks {
 		abs, err := filepath.Abs(pack.Path)
 		if err != nil {
 			return err
@@ -248,12 +249,12 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return errors.Errorf("analyzer could not be loaded from path %q", pack.Path)
 		}
 
-		// Update the Policy Pack names now that we have them.
+		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
 		analyzerInfo, err := analyzer.GetAnalyzerInfo()
 		if err != nil {
 			return err
 		}
-		localPolicyPackPaths[i].Name = analyzerInfo.Name
+		localPolicyPacks[i].Name = analyzerInfo.Name
 	}
 	return nil
 }
@@ -321,7 +322,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		policies[p.Name()] = p.Version()
 	}
 	for _, pack := range opts.LocalPolicyPacks {
-		path := shortenPolicyPackPath(pack.Path)
+		path := abbreviateFilePath(pack.Path)
 		packName := fmt.Sprintf("%s (%s)", pack.Name, path)
 		policies[packName] = "(local)"
 	}
@@ -363,17 +364,28 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	return resourceChanges, res
 }
 
-func shortenPolicyPackPath(path string) string {
+// abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
+// If the path is long, it will keep the first two and last two directories and then replace the
+// middle directories with `...`.
+func abbreviateFilePath(path string) string {
 	path = filepath.Clean(path)
 	if len(path) > 75 {
 		// Do some shortening.
-		dirs := strings.Split(path, "/")
+		separator := "/"
+		dirs := strings.Split(path, separator)
+
+		// If we get no splits, we will try to use the backslashes in support of a Windows path.
+		if len(dirs) == 1 {
+			separator = `\`
+			dirs = strings.Split(path, separator)
+		}
+
 		if len(dirs) > 4 {
 			back := dirs[len(dirs)-2:]
 			dirs = append(dirs[:2], "...")
 			dirs = append(dirs, back...)
 		}
-		path = strings.Join(dirs, "/")
+		path = strings.Join(dirs, separator)
 	}
 	return path
 }

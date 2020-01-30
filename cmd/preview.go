@@ -135,14 +135,14 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					LocalPolicyPacks: engine.ConvertPathsToLocalPolicyPacks(policyPackPaths),
-					Parallel:             parallel,
-					Debug:                debug,
-					Refresh:              refresh,
-					ReplaceTargets:       replaceURNs,
-					UseLegacyDiff:        useLegacyDiff(),
-					UpdateTargets:        targetURNs,
-					TargetDependents:     targetDependents,
+					LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+					Parallel:         parallel,
+					Debug:            debug,
+					Refresh:          refresh,
+					ReplaceTargets:   replaceURNs,
+					UseLegacyDiff:    useLegacyDiff(),
+					UpdateTargets:    targetURNs,
+					TargetDependents: targetDependents,
 				},
 				Display: displayOpts,
 			}

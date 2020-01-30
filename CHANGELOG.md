@@ -5,7 +5,7 @@ CHANGELOG
 - Add information about an in-flight operation to the stack command output, if applicable.
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
-- Update SummaryEvent to use the actual name plus path for Local Policy Packs
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
 
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.

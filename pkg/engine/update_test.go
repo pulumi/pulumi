@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestShortenPolicyPackPath(t *testing.T) {
+func TestAbbreviateFilePath(t *testing.T) {
 	tests := []struct {
 		path     string
 		expected string
@@ -20,21 +20,29 @@ func TestShortenPolicyPackPath(t *testing.T) {
 			expected: "../test-policy",
 		},
 		{
-			path:     "/Users/username/averylongpath/one/two/three/four/five/six/seven/eight/nine/ten/eleven/twelve/test-policy",
+			path: `/Users/username/averylongpath/one/two/three/four/` +
+				`five/six/seven/eight/nine/ten/eleven/twelve/test-policy`,
 			expected: "/Users/.../twelve/test-policy",
 		},
 		{
-			path:     "nonrootdir/username/averylongpath/one/two/three/four/five/six/seven/eight/nine/ten/eleven/twelve/test-policy",
+			path: `nonrootdir/username/averylongpath/one/two/three/four/` +
+				`five/six/seven/eight/nine/ten/eleven/twelve/test-policy`,
 			expected: "nonrootdir/username/.../twelve/test-policy",
 		},
 		{
-			path:     "C:Documents and Settings/username/My Documents/averylongpath/one/two/three/four/five/six/seven/eight/test-policy",
-			expected: "C:Documents and Settings/username/.../eight/test-policy",
+			path: `C:/Documents and Settings/username/My Documents/averylongpath/` +
+				`one/two/three/four/five/six/seven/eight/test-policy`,
+			expected: "C:/Documents and Settings/.../eight/test-policy",
+		},
+		{
+			path: `C:\Documents and Settings\username\My Documents\averylongpath\` +
+				`one\two\three\four\five\six\seven\eight\test-policy`,
+			expected: `C:\Documents and Settings\...\eight\test-policy`,
 		},
 	}
 
 	for _, tt := range tests {
-		actual := shortenPolicyPackPath(tt.path)
+		actual := abbreviateFilePath(tt.path)
 		assert.Equal(t, tt.expected, actual)
 	}
 }
