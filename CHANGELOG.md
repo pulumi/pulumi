@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+=======
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
