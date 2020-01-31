@@ -38,7 +38,7 @@ func newStackSelectCmd() *cobra.Command {
 			"without needing to type the stack name each time.\n" +
 			"\n" +
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
-			"If provided stack name is not found you may pass the -create flag to create and select it",
+			"If provided stack name is not found you may pass the --create flag to create and select it",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -71,8 +71,8 @@ func newStackSelectCmd() *cobra.Command {
 				} else if s != nil {
 					return state.SetCurrentStack(stackRef.String())
 				}
-				//if create flag was passed and stack was not found, create it and select it
-				if create == true && stack != "" {
+				// If create flag was passed and stack was not found, create it and select it.
+				if create && stack != "" {
 					s, err := stackInit(b, stack, false, secretsProvider)
 					if err != nil {
 						return err
@@ -97,8 +97,11 @@ func newStackSelectCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to select")
-	cmd.PersistentFlags().BoolVar(
-		&create, "create", false,
+	cmd.PersistentFlags().BoolVarP(
+		&create, "create", "c", false,
 		"If selected stack does not exist, create it")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "default",
+		"Use with --create flag, "+possibleSecretsProviderChoices)
 	return cmd
 }
