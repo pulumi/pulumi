@@ -32,6 +32,10 @@ type ResourceState struct {
 	urn URNOutput `pulumi:"urn"`
 
 	providers map[string]ProviderResource
+
+	aliases []Alias
+
+	name string
 }
 
 func (s ResourceState) URN() URNOutput {
@@ -44,6 +48,14 @@ func (s ResourceState) GetProvider(token string) ProviderResource {
 
 func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
+}
+
+func (s ResourceState) getAliases() []Alias {
+	return s.aliases
+}
+
+func (s ResourceState) getName() string {
+	return s.name
 }
 
 func (ResourceState) isResource() {}
@@ -77,6 +89,12 @@ type Resource interface {
 
 	// getProviders returns the provider map for this resource.
 	getProviders() map[string]ProviderResource
+
+	// getAliases returns the list of aliases for this resource
+	getAliases() []Alias
+
+	// getName returns the name of the resource
+	getName() string
 
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
