@@ -14,8 +14,6 @@ type FooComponent struct {
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		fooComponent := &FooComponent{}
-		ctx.RegisterComponentResource("foo:component", "foo", fooComponent)
-
-		return nil
+		return ctx.RegisterComponentResource("foo:component", "foo", fooComponent)
 	})
 }

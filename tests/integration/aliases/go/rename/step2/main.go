@@ -18,8 +18,6 @@ func main() {
 			Name: pulumi.String("foo"),
 		}
 		opts := pulumi.Aliases([]pulumi.Alias{*alias})
-		ctx.RegisterComponentResource("foo:component", "newfoo", fooComponent, opts)
-
-		return nil
+		return ctx.RegisterComponentResource("foo:component", "newfoo", fooComponent, opts)
 	})
 }
