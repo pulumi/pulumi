@@ -278,6 +278,7 @@ func (ctx *Context) ReadResource(
 
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(t,
+		name,
 		resource,
 		mergeProviders(t, options.Parent, options.Provider, options.Providers),
 		options.Aliases)
@@ -392,9 +393,12 @@ func (ctx *Context) RegisterResource(
 
 	// Create resolvers for the resource's outputs.
 	res := makeResourceState(t,
+		name,
 		resource,
 		mergeProviders(t, options.Parent, options.Provider, options.Providers),
 		options.Aliases)
+
+	res.name = name
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -498,6 +502,7 @@ func getPackage(t string) string {
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func makeResourceState(t string,
+	name string,
 	resourceV Resource,
 	providers map[string]ProviderResource,
 	aliases []Alias) *resourceState {
@@ -567,6 +572,7 @@ func makeResourceState(t string,
 	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
 	state.outputs["urn"] = rs.urn
 	state.aliases = aliases
+	state.name = name
 
 	return state
 }
