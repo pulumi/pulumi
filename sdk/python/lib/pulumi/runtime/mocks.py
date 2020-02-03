@@ -50,7 +50,7 @@ class Mocks(ABC):
 
     @abstractmethod
     def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[str, dict]:
-        return ["", {}]
+        return ("", {})
 
 
 class MockMonitor:

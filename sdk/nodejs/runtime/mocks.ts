@@ -20,8 +20,8 @@ const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 export interface Mocks {
-    call(token: string, args: any, provider?: string): any;
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string, state: any };
+    call(token: string, args: any, provider?: string): Record<string, any>;
+    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string, state: Record<string, any> };
 }
 
 export class MockMonitor {
@@ -42,7 +42,7 @@ export class MockMonitor {
 
     public async invoke(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
-            const result = this.mocks.call(req.getToken(), deserializeProperties(req.getArgs()), req.getProvider());
+            const result = this.mocks.call(req.getTok(), deserializeProperties(req.getArgs()), req.getProvider());
             const response = new provproto.InvokeResponse();
             response.setReturn(structproto.Struct.fromJavaScript(await serializeProperties("", result)));
             callback(null, response);

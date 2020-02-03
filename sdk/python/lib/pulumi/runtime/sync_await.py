@@ -81,4 +81,3 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # Return the result of the future.
     return fut.result()
-
