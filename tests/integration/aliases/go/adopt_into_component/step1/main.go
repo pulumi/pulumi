@@ -27,48 +27,83 @@ type FooComponent4 struct {
 	pulumi.ResourceState
 }
 
-func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooResource {
+func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooResource, error) {
 	fooRes := &FooResource{}
-	ctx.RegisterComponentResource("my:module:FooResource", name, fooRes, opts...)
-	return fooRes
+	err := ctx.RegisterComponentResource("my:module:FooResource", name, fooRes, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooRes, nil
 }
 
-func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent {
+func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent, error) {
 	fooComp := &FooComponent{}
-	ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent2(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent2 {
+func NewFooComponent2(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent2, error) {
 	fooComp := &FooComponent2{}
-	ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, opts...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent3(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent3 {
+func NewFooComponent3(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent3, error) {
 	fooComp := &FooComponent3{}
-	ctx.RegisterComponentResource("my:module:FooComponent3", name, fooComp, opts...)
-	NewFooComponent2(ctx, name+"-child", opts...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent3", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	_, err = NewFooComponent2(ctx, name+"-child", opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent4 {
+func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent4, error) {
 	fooComp := &FooComponent4{}
-	ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, opts...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_ = NewFooResource(ctx, "res2")
-		comp2 := NewFooComponent(ctx, "comp2")
-		_ = NewFooComponent2(ctx, "unparented")
-		_ = NewFooComponent3(ctx, "parentedbystack")
+		_, err := NewFooResource(ctx, "res2")
+		if err != nil {
+			return err
+		}
+		comp2, err := NewFooComponent(ctx, "comp2")
+		if err != nil {
+			return err
+		}
+		_, err = NewFooComponent2(ctx, "unparented")
+		if err != nil {
+			return err
+		}
+		_, err = NewFooComponent3(ctx, "parentedbystack")
+		if err != nil {
+			return err
+		}
 		pbcOpt := pulumi.Parent(comp2)
-		_ = NewFooComponent3(ctx, "parentedbycomponent", pbcOpt)
+		_, err = NewFooComponent3(ctx, "parentedbycomponent", pbcOpt)
+		if err != nil {
+			return err
+		}
 		dupeOpt := pulumi.Parent(comp2)
-		_ = NewFooComponent4(ctx, "duplicateAliases", dupeOpt)
-
+		_, err = NewFooComponent4(ctx, "duplicateAliases", dupeOpt)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

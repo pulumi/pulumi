@@ -27,46 +27,72 @@ type FooComponent4 struct {
 	pulumi.ResourceState
 }
 
-func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooResource {
+func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooResource, error) {
 	fooRes := &FooResource{}
-	ctx.RegisterComponentResource("my:module:FooResource", name, fooRes, opts...)
-	return fooRes
+	err := ctx.RegisterComponentResource("my:module:FooResource", name, fooRes, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooRes, nil
 }
 
-func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent {
+func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent, error) {
 	fooComp := &FooComponent{}
-	ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
+	err := ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
 	var nilInput pulumi.StringInput
-	aliasURN := pulumi.CreateURN(pulumi.StringInput(pulumi.String("res2")), pulumi.StringInput(pulumi.String("my:module:FooResource")), nilInput, pulumi.StringInput(pulumi.String(ctx.Project())), pulumi.StringInput(pulumi.String(ctx.Stack())))
+	aliasURN := pulumi.CreateURN(
+		pulumi.StringInput(pulumi.String("res2")),
+		pulumi.StringInput(pulumi.String("my:module:FooResource")),
+		nilInput,
+		pulumi.StringInput(pulumi.String(ctx.Project())),
+		pulumi.StringInput(pulumi.String(ctx.Stack())))
 	alias := &pulumi.Alias{
 		URN: aliasURN,
 	}
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})
 	parentOpt := pulumi.Parent(fooComp)
-	NewFooResource(ctx, name+"-child", aliasOpt, parentOpt)
-	return fooComp
+	_, err = NewFooResource(ctx, name+"-child", aliasOpt, parentOpt)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent2(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent2 {
+func NewFooComponent2(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent2, error) {
 	fooComp := &FooComponent2{}
-	ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, opts...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent3(ctx *pulumi.Context, name string, childAliasParent pulumi.Resource, opts ...pulumi.ResourceOption) *FooComponent3 {
+func NewFooComponent3(ctx *pulumi.Context,
+	name string,
+	childAliasParent pulumi.Resource,
+	opts ...pulumi.ResourceOption) (*FooComponent3, error) {
 	fooComp := &FooComponent3{}
-	ctx.RegisterComponentResource("my:module:FooComponent3", name, fooComp, opts...)
+	err := ctx.RegisterComponentResource("my:module:FooComponent3", name, fooComp, opts...)
+	if err != nil {
+		return nil, err
+	}
 
 	alias := &pulumi.Alias{
 		Parent: childAliasParent,
 	}
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})
 	parentOpt := pulumi.Parent(fooComp)
-	NewFooComponent2(ctx, name+"-child", aliasOpt, parentOpt)
-	return fooComp
+	_, err = NewFooComponent2(ctx, name+"-child", aliasOpt, parentOpt)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
-func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent4 {
+func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent4, error) {
 	fooComp := &FooComponent4{}
 	alias := &pulumi.Alias{
 		Parent: nil,
@@ -74,25 +100,42 @@ func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceO
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias, *alias})
 	o := []pulumi.ResourceOption{aliasOpt}
 	o = append(o, opts...)
-	ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, o...)
-	return fooComp
+	err := ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, o...)
+	if err != nil {
+		return nil, err
+	}
+	return fooComp, nil
 }
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		comp2 := NewFooComponent(ctx, "comp2")
+		comp2, err := NewFooComponent(ctx, "comp2")
+		if err != nil {
+			return err
+		}
 		alias := &pulumi.Alias{
 			Parent: nil,
 		}
 		aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})
 		parentOpt := pulumi.Parent(comp2)
-		_ = NewFooComponent2(ctx, "unparented", aliasOpt, parentOpt)
-		_ = NewFooComponent3(ctx, "parentedbystack", nil)
+		_, err = NewFooComponent2(ctx, "unparented", aliasOpt, parentOpt)
+		if err != nil {
+			return err
+		}
+		_, err = NewFooComponent3(ctx, "parentedbystack", nil)
+		if err != nil {
+			return err
+		}
 		pbcOpt := pulumi.Parent(comp2)
-		_ = NewFooComponent3(ctx, "parentedbycomponent", comp2, pbcOpt)
+		_, err = NewFooComponent3(ctx, "parentedbycomponent", comp2, pbcOpt)
+		if err != nil {
+			return err
+		}
 		dupeOpt := pulumi.Parent(comp2)
-		_ = NewFooComponent4(ctx, "duplicateAliases", dupeOpt)
-
+		_, err = NewFooComponent4(ctx, "duplicateAliases", dupeOpt)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
