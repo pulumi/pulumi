@@ -81,16 +81,18 @@ func (a *Alias) collapseToURN(defaultName string,
 		stack = String(defaultStack)
 	}
 
-	a.URN = createURN(n, t, parent, project, stack)
+	a.URN = CreateURN(n, t, parent, project, stack)
 
 	return nil
 }
 
-func createURN(name StringInput, t StringInput, parent StringInput, project StringInput, stack StringInput) URNOutput {
+// CreateURN computes a URN from the combination of a resource name, resource type, optional parent,
+// optional project and optional stack.
+func CreateURN(name StringInput, t StringInput, parent StringInput, project StringInput, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {
 		parentPrefix = parent.ToStringOutput().ApplyString(func(p string) string {
-			return ""
+			return p[0:strings.LastIndex(p, "::")] + "$"
 		})
 	} else {
 		parentPrefix = All(stack, project).ApplyString(func(a []interface{}) string {
@@ -99,13 +101,14 @@ func createURN(name StringInput, t StringInput, parent StringInput, project Stri
 
 	}
 
-	return All(parentPrefix, t, name).ApplyString(func(a []interface{}) string {
-		return a[0].(string) + a[1].(string) + "::" + a[2].(string)
-	}).ApplyURN(func(u string) URN {
-		return URN(u)
+	return All(parentPrefix, t, name).ApplyURN(func(a []interface{}) URN {
+		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string))
 	})
 }
 
+// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
+// This may involve changing the name of the resource in cases where the resource has a named derived from the name of
+// the parent, and the parent name changed.
 func inheritedChildAlias(childName string,
 	parentName string,
 	childType string,
@@ -125,5 +128,5 @@ func inheritedChildAlias(childName string,
 	}
 	toStrIn := func(s string) StringInput { return StringInput(String(s)) }
 
-	return createURN(aliasName, toStrIn(childType), parent.URN.ToURNOutput(), toStrIn(project), toStrIn(stack)), nil
+	return CreateURN(aliasName, toStrIn(childType), parent.URN.ToURNOutput(), toStrIn(project), toStrIn(stack)), nil
 }

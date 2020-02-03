@@ -300,7 +300,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, res.providers, options, res)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
 		if err != nil {
 			return
 		}
@@ -410,7 +410,7 @@ func (ctx *Context) RegisterResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, res.providers, options, res)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
 		if err != nil {
 			return
 		}
@@ -639,7 +639,9 @@ type resourceInputs struct {
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props Input, t string,
-	providers map[string]ProviderResource, opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+	opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+
+	providers := resource.providers
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
