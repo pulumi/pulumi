@@ -334,17 +334,17 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
     }
 
     // Note: if the func returned a Output, we unwrap that to get the inner value returned by
-    // that Output.  Note that we *are* capturing the Resources of this inner Output and lifting
+    // that Output. Note that we *are* capturing the Resources of this inner Output and lifting
     // them up to the outer Output as well.
 
-    // Note: we intentionally await all the promises of the transformed value.  This way we
-    // properly propagate any rejections of any of them through ourselves as well.
+    // Note: we intentionally await all the promises of the inner output. This way we properly
+    // propagate any rejections of any of these promises through the outer output as well.
     const innerValue = await value.promise(/*withUnknowns*/ true);
     const innerIsKnown = await value.isKnown;
     const innerIsSecret = await (value.isSecret || Promise.resolve(false));
 
     // If we're working with a new-style output, grab all its resources and merge into ours.
-    // otherwise, if this is an old-style output, just grab the resources it was known to have
+    // Otherwise, if this is an old-style output, just grab the resources it was known to have
     // at construction time.
     const innerResources = await getAllResources(value);
     const totalResources = utils.union(allResources, innerResources);
@@ -398,28 +398,23 @@ export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
     return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
 }
 
-interface ValueInfo {
-    value: any;
-    isOutput?: boolean;
-}
-
-function outputRec(val: any): ValueInfo {
+function outputRec(val: any): any {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
         // preview).
-        return { value: val };
+        return val;
     }
     else if (Resource.isInstance(val)) {
         // Don't unwrap Resources, there are existing codepaths that return Resources through
         // Outputs and we want to preserve them as is when flattening.
-        return { value: val };
+        return val;
     }
     else if (isUnknown(val)) {
-        return { value: val };
+        return val;
     }
     else if (val instanceof Promise) {
-        return { value: createSimpleOutput(val.then(v => output(v))), isOutput: true };
+        return createSimpleOutput(val.then(v => outputRec(v)));
     }
     else if (Output.isInstance(val)) {
         // We create a new output here from the raw pieces of the original output in order to
@@ -435,10 +430,7 @@ function outputRec(val: any): ValueInfo {
         const allResources = getAllResources(val);
         const newOutput = new Output<any>(
             val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
-        return {
-            value: <any>(<any>newOutput).apply(output, /*runWithUnknowns*/ true),
-            isOutput: true,
-         };
+        return (<any>newOutput).apply(outputRec, /*runWithUnknowns*/ true);
     }
     else if (val instanceof Array) {
         const allValues = [];
@@ -446,42 +438,39 @@ function outputRec(val: any): ValueInfo {
         for (const v of val) {
             const ev = outputRec(v);
 
-            allValues.push(ev.value);
-            if (ev.isOutput) {
+            allValues.push(ev);
+            if (Output.isInstance(ev)) {
                 hasOutputs = true;
             }
         }
 
         if (!hasOutputs) {
-            return { value: allValues };
+            return allValues;
         }
 
         const promisedArray = Promise.all(allValues.map(v => getAwaitableValue(v)));
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allValues);
-        return {
-            value: (new Output<any>(syncResources, promisedArray, isKnown, isSecret, allResources)),
-            isOutput: true,
-        };
+        return new Output<any>(syncResources, promisedArray, isKnown, isSecret, allResources);
     }
     else {
         const promisedValues: { key: string; value: any }[] = [];
         let hasOutputs = false;
         Object.keys(val).forEach(k => {
             const ev = outputRec(val[k]);
-            promisedValues.push({key: k, value: ev.value });
 
-            if (ev.isOutput) {
+            promisedValues.push({key: k, value: ev });
+            if (Output.isInstance(ev)) {
                 hasOutputs = true;
             }
         });
 
         if (!hasOutputs) {
-            return { value: promisedValues.reduce((o, kvp) => { o[kvp.key] = kvp.value; return o; }, <any>{}) };
+            return promisedValues.reduce((o, kvp) => { o[kvp.key] = kvp.value; return o; }, <any>{});
         }
 
         const promisedObject = getPromisedObject(promisedValues);
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(promisedValues.map(kvp => kvp.value));
-        return { value: new Output<any>(syncResources, promisedObject, isKnown, isSecret, allResources), isOutput: true };
+        return new Output<any>(syncResources, promisedObject, isKnown, isSecret, allResources);
     }
 }
 
@@ -506,15 +495,11 @@ export function output<T>(val: Input<T>): Output<Unwrap<T>>;
 export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const ov = outputRec(val);
-    if (!ov.isOutput) {
-        return createSimpleOutput(ov.value);
+    if (!Output.isInstance(ov)) {
+        return createSimpleOutput(ov);
     }
 
-    // ov.value must already be an output.
-    if (!Output.isInstance(ov.value)) {
-        throw new Error(`expected an Output; got a ${typeof ov.value}`);
-    }
-    return <any>ov.value;
+    return <any>ov;
 }
 
 /**
