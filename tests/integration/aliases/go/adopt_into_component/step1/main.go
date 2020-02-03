@@ -52,9 +52,9 @@ func NewFooComponent3(ctx *pulumi.Context, name string, opt pulumi.ResourceOptio
 	return fooComp
 }
 
-func NewFooComponent4(ctx *pulumi.Context, name string, opt pulumi.ResourceOption) *FooComponent2 {
-	fooComp := &FooComponent2{}
-	ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, opt)
+func NewFooComponent4(ctx *pulumi.Context, name string, opt pulumi.ResourceOption) *FooComponent4 {
+	fooComp := &FooComponent4{}
+	ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, opt)
 	return fooComp
 }
 

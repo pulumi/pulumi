@@ -66,15 +66,15 @@ func NewFooComponent3(ctx *pulumi.Context, name string, childAliasParent pulumi.
 	return fooComp
 }
 
-func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent2 {
-	fooComp := &FooComponent2{}
+func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) *FooComponent4 {
+	fooComp := &FooComponent4{}
 	alias := &pulumi.Alias{
 		Parent: nil,
 	}
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias, *alias})
 	o := []pulumi.ResourceOption{aliasOpt}
 	o = append(o, opts...)
-	ctx.RegisterComponentResource("my:module:FooComponent2", name, fooComp, o...)
+	ctx.RegisterComponentResource("my:module:FooComponent4", name, fooComp, o...)
 	return fooComp
 }
 
