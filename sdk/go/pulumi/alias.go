@@ -86,8 +86,7 @@ func (a *Alias) collapseToURN(defaultName string,
 	return nil
 }
 
-// CreateURN computes a URN from the combination of a resource name, resource type, optional parent,
-// optional project and optional stack.
+// CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
 func CreateURN(name StringInput, t StringInput, parent StringInput, project StringInput, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {

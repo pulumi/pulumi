@@ -37,7 +37,7 @@ func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOp
 	fooComp := &FooComponent{}
 	ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
 	var nilInput pulumi.StringInput
-	aliasURN := pulumi.CreateURN(pulumi.StringInput(pulumi.String("res2")), pulumi.StringInput(pulumi.String("my:module:FooResource")), nilInput, nilInput, nilInput)
+	aliasURN := pulumi.CreateURN(pulumi.StringInput(pulumi.String("res2")), pulumi.StringInput(pulumi.String("my:module:FooResource")), nilInput, pulumi.StringInput(pulumi.String(ctx.Project())), pulumi.StringInput(pulumi.String(ctx.Stack())))
 	alias := &pulumi.Alias{
 		URN: aliasURN,
 	}
@@ -80,7 +80,7 @@ func NewFooComponent4(ctx *pulumi.Context, name string, opts ...pulumi.ResourceO
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		comp2 := NewFooComponent(ctx, "comp2", nil)
+		comp2 := NewFooComponent(ctx, "comp2")
 		alias := &pulumi.Alias{
 			Parent: nil,
 		}
