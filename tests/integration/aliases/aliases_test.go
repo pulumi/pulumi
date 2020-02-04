@@ -82,14 +82,7 @@ func TestDotNetAliases(t *testing.T) {
 }
 
 func TestGoAliases(t *testing.T) {
-	// TODO replace with := range dirs once all passing
-	for _, dir := range []string{
-		"rename",
-		"adopt_into_component",
-		"rename_component_and_child",
-		// "retype_component",
-		"rename_component",
-	} {
+	for _, dir := range dirs {
 		d := filepath.Join("go", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
