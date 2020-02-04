@@ -27,7 +27,7 @@ func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpt
 // Scenario #3 - rename a component (and all it's children)
 func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent, error) {
 	fooComp := &FooComponent{}
-	err := ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
+	err := ctx.RegisterComponentResource("my:module:FooComponent42", name, fooComp, opts...)
 	if err != nil {
 		return nil, err
 	}

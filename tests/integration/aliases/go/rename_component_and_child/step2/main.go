@@ -26,7 +26,7 @@ func NewFooResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpt
 // Scenario #5 - composing #1 and #3 and making both changes at the same time
 func NewFooComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*FooComponent, error) {
 	fooComp := &FooComponent{}
-	err := ctx.RegisterComponentResource("my:module:FooComponent", name, fooComp, opts...)
+	err := ctx.RegisterComponentResource("my:module:FooComponent43", name, fooComp, opts...)
 	if err != nil {
 		return nil, err
 	}
