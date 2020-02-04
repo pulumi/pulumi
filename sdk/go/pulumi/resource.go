@@ -14,9 +14,7 @@
 
 package pulumi
 
-import (
-	"reflect"
-)
+import "reflect"
 
 type (
 	// ID is a unique identifier assigned by a resource provider to a resource.

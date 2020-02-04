@@ -244,7 +244,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //     err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 //
 func (ctx *Context) ReadResource(
-	t, name string, id StringInput, props Input, resource CustomResource, opts ...ResourceOption) error {
+	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -291,8 +291,7 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		typedID := id.ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
-		idToRead, known, err := typedID.awaitID(context.TODO())
+		idToRead, known, err := id.ToIDOutput().awaitID(context.TODO())
 		if !known || err != nil {
 			return
 		}

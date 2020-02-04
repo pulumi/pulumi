@@ -2,14 +2,17 @@ package pulumi
 
 import "reflect"
 
+// StackReference manages a reference to a Pulumi stack.
 type StackReference struct {
 	CustomResourceState
 
-	Name    StringOutput `pulumi:"name"`
-	Outputs MapOutput    `pulumi:"outputs"`
+	// Name is in the form "Org/Program/Stack"
+	Name StringOutput `pulumi:"name"`
+	// Outputs resolves with exports from the named stack
+	Outputs MapOutput `pulumi:"outputs"`
 }
 
-func (s StackReference) GetOutput(name StringInput) AnyOutput {
+func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 	return All(name, s.Outputs).
 		ApplyT(func(args []interface{}) interface{} {
 			n, outs := args[0].(string), args[1].(map[string]interface{})
@@ -22,8 +25,8 @@ type stackReferenceArgs struct {
 }
 
 // StackReferenceArgs is the input to NewStackReference that allows specifying a stack name
-// Name is in the form "Org/Program/Stack"
 type StackReferenceArgs struct {
+	// Name is in the form "Org/Program/Stack"
 	Name StringInput
 }
 
