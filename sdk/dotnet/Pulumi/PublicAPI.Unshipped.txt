@@ -201,6 +201,7 @@ Pulumi.Union<T0, T1>.TryPickT0(out T0 value, out T1 remainder) -> bool
 Pulumi.Union<T0, T1>.TryPickT1(out T1 value, out T0 remainder) -> bool
 Pulumi.Union<T0, T1>.Value.get -> object
 Pulumi.Urn
+Pulumi.Utilities.OutputUtilities
 override Pulumi.Union<T0, T1>.Equals(object obj) -> bool
 override Pulumi.Union<T0, T1>.GetHashCode() -> int
 override Pulumi.Union<T0, T1>.ToString() -> string
@@ -286,6 +287,8 @@ static Pulumi.OutputExtensions.IsT0<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, 
 static Pulumi.OutputExtensions.IsT1<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<bool>
 static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<int>
 static Pulumi.OutputExtensions.Value<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<object>
+static Pulumi.Utilities.OutputUtilities.GetDependenciesAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableHashSet<Pulumi.Resource>>
+static Pulumi.Utilities.OutputUtilities.GetIsKnownAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<bool>
 static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
 static Pulumi.Union<T0, T1>.FromT0(T0 input) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.FromT1(T1 input) -> Pulumi.Union<T0, T1>
