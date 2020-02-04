@@ -88,7 +88,7 @@ func TestGoAliases(t *testing.T) {
 		"adopt_into_component",
 		// "rename_component_and_child",
 		// "retype_component",
-		// "rename_component",
+		"rename_component",
 	} {
 		d := filepath.Join("go", dir)
 		t.Run(d, func(t *testing.T) {
