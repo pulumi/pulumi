@@ -122,8 +122,8 @@ func inheritedChildAlias(childName string,
 	if strings.HasPrefix(childName, parentName) {
 		aliasName = parent.URN.ToURNOutput().ApplyString(func(u URN) string {
 			uStr := string(u)
-			parentName := uStr[strings.LastIndex(uStr, "::")+2:]
-			return parentName + childName[len(parentName):]
+			parentPrefix := uStr[strings.LastIndex(uStr, "::")+2:]
+			return parentPrefix + childName[len(parentName):]
 		})
 	}
 	toStrIn := func(s string) StringInput { return StringInput(String(s)) }
