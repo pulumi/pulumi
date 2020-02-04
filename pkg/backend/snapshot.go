@@ -233,7 +233,9 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both 
 	// lists being empty ourselves.
 	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
-		return !reflect.DeepEqual(old.Dependencies, new.Dependencies)
+		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+			return true
+		}
 	}
 
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
