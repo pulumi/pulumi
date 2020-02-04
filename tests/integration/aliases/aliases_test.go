@@ -86,7 +86,7 @@ func TestGoAliases(t *testing.T) {
 	for _, dir := range []string{
 		"rename",
 		"adopt_into_component",
-		// "rename_component_and_child",
+		"rename_component_and_child",
 		// "retype_component",
 		"rename_component",
 	} {
