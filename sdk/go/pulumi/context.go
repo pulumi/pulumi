@@ -17,7 +17,6 @@
 package pulumi
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -705,12 +704,8 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	sort.Strings(deps)
 
 	// resolve aliases and implicit parent aliases, resolving all to URNs
-	fmt.Printf("about to process aliases for resource: %v\n", resource.name)
 	var aliases []string
 	if opts.Parent != nil {
-		fmt.Printf("we have a parent specified: %v\n", opts.Parent.getName())
-		fmt.Printf("we have a parent specified. Aliases: %v\n", opts.Parent.getAliases())
-
 		pAliases := opts.Parent.getAliases()
 		for i := range pAliases {
 			alias := &pAliases[i]
@@ -721,21 +716,12 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 			resource.aliases = append(resource.aliases, Alias{URN: childAlias})
 		}
 	}
-	fmt.Printf("collapsing aliases for resource: : %v\n", resource.name)
-
 	for i := range resource.aliases {
 		alias := &resource.aliases[i]
-		fmt.Printf("collapsing alias!\n")
-		fmt.Printf("alias URN: %v\n", alias.URN)
-
 		err = alias.collapseToURN(resource.name, t, opts.Parent, ctx.Project(), ctx.Stack())
-		fmt.Printf("alias URN: %v\n", alias.URN)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "error collapsing alias to URN")
 		}
-		fmt.Printf("alias URN: %v\n", alias.URN)
-
 		urnOut := alias.URN.ToURNOutput()
 		urn, _, err := urnOut.awaitURN(context.Background())
 		if err != nil {
