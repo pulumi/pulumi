@@ -113,15 +113,16 @@ func inheritedChildAlias(childName string,
 	childType string,
 	project string,
 	stack string,
-	parent Alias) (URNOutput, error) {
+	parent *Alias) (URNOutput, error) {
 	if !parent.isCollapsed() {
 		return URNInput(URN("")).ToURNOutput(), errors.New("Alias must be collapsed to create inherited alias")
 	}
 
 	aliasName := StringInput(String(childName))
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parent.URN.ToURNOutput().ApplyString(func(u string) string {
-			parentName := u[strings.LastIndex(u, "::")+2:]
+		aliasName = parent.URN.ToURNOutput().ApplyString(func(u URN) string {
+			uStr := string(u)
+			parentName := uStr[strings.LastIndex(uStr, "::")+2:]
 			return parentName + childName[len(parentName):]
 		})
 	}
