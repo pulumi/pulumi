@@ -37,6 +37,9 @@ type CreatePolicyPackRequest struct {
 	// The Policies outline the specific Policies in the package, and are derived
 	// from the package by the CLI.
 	Policies []Policy `json:"policies"`
+
+	// The Configuration schema that the Policy Pack accepts.
+	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
@@ -64,6 +67,10 @@ type RequiredPolicy struct {
 
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
+
+	// The configuration to use with the Policy Pack. This is to be validated with
+	// the JSON schema that is the Policy Pack's config schema.
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -120,8 +127,9 @@ type UpdatePolicyGroupRequest struct {
 	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
 	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
 
-	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
-	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+	AddPolicyPack          *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
+	RemovePolicyPack       *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+	UpdatePolicyPackConfig *PolicyPackMetadata `json:"updatePolicyPackConfig,omitempty"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
@@ -136,6 +144,9 @@ type PolicyPackMetadata struct {
 	DisplayName string `json:"displayName"`
 	Version     int    `json:"version"`
 	VersionTag  string `json:"versionTag"`
+
+	// The configuration to use with the Policy Pack.
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -164,4 +175,11 @@ type PolicyGroupSummary struct {
 	IsOrgDefault          bool   `json:"isOrgDefault"`
 	NumStacks             int    `json:"numStacks"`
 	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
+}
+
+// GetPolicyPackConfigSchemaResponse is the response that includes the JSON configuration
+// schema of a particular Policy Pack.
+type GetPolicyPackConfigSchemaResponse struct {
+	// The Configuration schema that the Policy Pack accepts.
+	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
 }
