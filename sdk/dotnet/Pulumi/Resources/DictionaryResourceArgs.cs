@@ -15,18 +15,18 @@ namespace Pulumi
     /// The input dictionary may only contain objects that are serializable by
     /// Pulumi, i.e only the following types are allowed:
     /// <list type="bullet">
-    /// <item><description>Primitive types: string, double, int, bool
-    /// </description></item>
+    /// <item><description>Primitive types: <see cref="string"/>, <see cref="double"/>,
+    /// <see cref="int"/>, <see cref="bool"/></description></item>
     /// <item><description><see cref="Asset"/>, <see cref="Archive"/>, or
     /// <see cref="AssetArchive"/></description></item>
     /// <item><description><see cref="System.Text.Json.JsonElement"/>
     /// </description></item>
     /// <item><description>Generic collections of the above:
     /// <see cref="ImmutableArray{T}"/>, <see cref="ImmutableDictionary{TKey,TValue}"/>
-    /// with string keys, <see cref="Union{T0,T1}"/></description></item>
+    /// with <see cref="string"/> keys, <see cref="Union{T0,T1}"/></description></item>
     /// </list>
     /// </summary>
-    public class DictionaryResourceArgs : ResourceArgs
+    public sealed class DictionaryResourceArgs : ResourceArgs
     {
         private readonly ImmutableDictionary<string, object?> _dictionary;
         
@@ -41,9 +41,11 @@ namespace Pulumi
             // Run a basic validation of types of values in the dictionary
             var seenTypes = new HashSet<Type>();
             foreach (var value in dictionary.Values)
+            {
                 if (value != null)
                     Converter.CheckTargetType(nameof(dictionary), value.GetType(), seenTypes);
-            
+            }
+
             _dictionary = dictionary;
         }
 
