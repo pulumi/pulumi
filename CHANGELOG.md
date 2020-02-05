@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
@@ -73,7 +79,7 @@ CHANGELOG
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
   [#3675](https://github.com/pulumi/pulumi/pull/3675)
-  
+
 - `ComponentResource`s now have built-in support for asynchronously constructing their children.
   [#3676](https://github.com/pulumi/pulumi/pull/3676)
 
@@ -95,7 +101,7 @@ CHANGELOG
 
 ## 1.7.0 (2019-12-11)
 
-- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This 
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This
   allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
   operations at the top-level.
   [#3321](https://github.com/pulumi/pulumi/pull/3321)
@@ -191,7 +197,7 @@ CHANGELOG
 - Improve startup time performance by 0.5-1s by checking for a newer CLI release in parallel.
   [#3441](https://github.com/pulumi/pulumi/pull/3441)
 
-- Add an experimental `pulumi watch` command. 
+- Add an experimental `pulumi watch` command.
   [#3391](https://github.com/pulumi/pulumi/pull/3391)
 
 ## 1.4.1 (2019-11-01)
@@ -1513,3 +1519,4 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
+
