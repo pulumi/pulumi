@@ -34,7 +34,12 @@ func (t travisCI) DetectVars() Vars {
 	v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 	v.BranchName = os.Getenv("TRAVIS_BRANCH")
 	v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-	v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
+	// Travis sets the value of TRAVIS_PULL_REQUEST to false if the build
+	// is not a PR build.
+	// See: https://docs.travis-ci.com/user/environment-variables/#convenience-variables
+	if prNumber := os.Getenv("TRAVIS_PULL_REQUEST"); prNumber != "false" {
+		v.PRNumber = prNprNumber
+	}
 
 	return v
 }
