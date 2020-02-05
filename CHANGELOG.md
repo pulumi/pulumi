@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Avoid writing checkpoints to backend storage in common case where no changes are being made.
+  [#3860](https://github.com/pulumi/pulumi/pull/3860)
+
 - Add information about an in-flight operation to the stack command output, if applicable.
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 

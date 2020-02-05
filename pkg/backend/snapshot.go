@@ -230,7 +230,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	}
 	sortDeps(old.Dependencies)
 	sortDeps(new.Dependencies)
-	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both 
+	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
 	// lists being empty ourselves.
 	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
 		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
@@ -240,7 +240,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint.
-	
+
 	return false
 }
 
