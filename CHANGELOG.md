@@ -5,6 +5,9 @@ CHANGELOG
 - Improve CPU utilization in the Python SDK when waiting for resource operations.
   [#3892](https://github.com/pulumi/pulumi/pull/3892)
 
+- Expose resource options, parent, dependencies, and provider config to policies.
+  [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)

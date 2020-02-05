@@ -142,11 +142,18 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
+	provider, err := convertProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       string(name),
 		Properties: mprops,
+		Options:    convertResourceOptions(r.Options),
+		Provider:   provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -165,7 +172,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -175,11 +182,37 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
 
+		provider, err := convertProvider(resource.Provider)
+		if err != nil {
+			return nil, err
+		}
+
+		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
+		for pk, pd := range resource.PropertyDependencies {
+			// Skip properties that have no dependencies.
+			if len(pd) == 0 {
+				continue
+			}
+
+			pdeps := []string{}
+			for _, d := range pd {
+				pdeps = append(pdeps, string(d))
+			}
+			propertyDeps[string(pk)] = &pulumirpc.AnalyzerPropertyDependencies{
+				Urns: pdeps,
+			}
+		}
+
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:        string(resource.URN),
-			Type:       string(resource.Type),
-			Name:       string(resource.Name),
-			Properties: props,
+			Urn:                  string(resource.URN),
+			Type:                 string(resource.Type),
+			Name:                 string(resource.Name),
+			Properties:           props,
+			Options:              convertResourceOptions(resource.Options),
+			Provider:             provider,
+			Parent:               string(resource.Parent),
+			Dependencies:         convertURNs(resource.Dependencies),
+			PropertyDependencies: propertyDeps,
 		}
 	}
 
@@ -275,6 +308,59 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+func convertResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
+	secs := make([]string, len(opts.AdditionalSecretOutputs))
+	for idx := range opts.AdditionalSecretOutputs {
+		secs[idx] = string(opts.AdditionalSecretOutputs[idx])
+	}
+
+	var deleteBeforeReplace bool
+	if opts.DeleteBeforeReplace != nil {
+		deleteBeforeReplace = *opts.DeleteBeforeReplace
+	}
+
+	result := &pulumirpc.AnalyzerResourceOptions{
+		Protect:                    opts.Protect,
+		IgnoreChanges:              opts.IgnoreChanges,
+		DeleteBeforeReplace:        deleteBeforeReplace,
+		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
+		AdditionalSecretOutputs:    secs,
+		Aliases:                    convertURNs(opts.Aliases),
+		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
+			Create: opts.CustomTimeouts.Create,
+			Update: opts.CustomTimeouts.Update,
+			Delete: opts.CustomTimeouts.Delete,
+		},
+	}
+	return result
+}
+
+func convertProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerProviderResource, error) {
+	if provider == nil {
+		return nil, nil
+	}
+
+	props, err := MarshalProperties(provider.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling properties")
+	}
+
+	return &pulumirpc.AnalyzerProviderResource{
+		Urn:        string(provider.URN),
+		Type:       string(provider.Type),
+		Name:       string(provider.Name),
+		Properties: props,
+	}, nil
+}
+
+func convertURNs(urns []resource.URN) []string {
+	result := make([]string, len(urns))
+	for idx := range urns {
+		result[idx] = string(urns[idx])
+	}
+	return result
 }
 
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
