@@ -315,11 +315,8 @@ type TypeSpec struct {
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
 
-// DefaultSpec is the serializable form of a default value for a property.
+// DefaultSpec is the serializable form of extra information about the default value for a property.
 type DefaultSpec struct {
-	// Value is the static default value, if any. The type of the value must be assignable to the type of the property
-	// with which the default is associated.
-	Value interface{} `json:"value,omitempty"`
 	// Environment specifies a set of environment variables to probe for a default value.
 	Environment []string `json:"environment,omitempty"`
 	// Language specifies additional language-specific data about the default value.
@@ -332,6 +329,11 @@ type PropertySpec struct {
 
 	// Description is the description of the property, if any.
 	Description string `json:"description,omitempty"`
+	// Default is the default value for the property, if any. The type of the value must be assignable to the type of
+	// the property.
+	Default interface{} `json:"default,omitempty"`
+	// DefautSpec contains additional information aboout the property's default value, if any.
+	DefaultInfo *DefaultSpec `json:"defaultInfo,omitempty"`
 	// Language specifies additional language-specific data about the property.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
@@ -367,9 +369,6 @@ type ResourceSpec struct {
 
 	// InputProperties is a map from property name to PropertySpec that describes the resource's input properties.
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
-	// Defaults is a map from property name to DefaultSpec that describes the default values for this resource's input
-	// properties.
-	Defaults map[string]DefaultSpec `json:"defaults,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
 	RequiredInputs []string `json:"requiredInputs,omitempty"`
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
@@ -403,9 +402,6 @@ type ConfigSpec struct {
 	Variables map[string]PropertySpec `json:"variables,omitempty"`
 	// Required is a list of the names of the package's required configuration variables.
 	Required []string `json:"defaults,omitempty"`
-	// Defaults is a map from variable name to DefaultSpec that describes the default values for the package's
-	// configuration variables.
-	Defaults map[string]DefaultSpec `json:"required,omitempty"`
 }
 
 // MetadataSpec contains information for the importer about this package.
@@ -651,8 +647,11 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 	}
 }
 
-func bindDefaultValue(spec DefaultSpec, typ Type) (*DefaultValue, error) {
-	value := spec.Value
+func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, error) {
+	if value == nil && spec == nil {
+		return nil, nil
+	}
+
 	if value != nil {
 		switch typ {
 		case BoolType:
@@ -681,16 +680,14 @@ func bindDefaultValue(spec DefaultSpec, typ Type) (*DefaultValue, error) {
 		}
 	}
 
-	return &DefaultValue{
-		Value:       value,
-		Environment: spec.Environment,
-		Language:    spec.Language,
-	}, nil
+	dv := &DefaultValue{Value: value}
+	if spec != nil {
+		dv.Environment, dv.Language = spec.Environment, spec.Language
+	}
+	return dv, nil
 }
 
-func (t *types) bindProperties(properties map[string]PropertySpec, required []string,
-	defaults map[string]DefaultSpec) ([]*Property, error) {
-
+func (t *types) bindProperties(properties map[string]PropertySpec, required []string) ([]*Property, error) {
 	// Bind property types and default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property
@@ -700,11 +697,17 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 			return nil, errors.Wrapf(err, "error binding type for property %s", name)
 		}
 
+		dv, err := bindDefaultValue(spec.Default, spec.DefaultInfo, typ)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error binding default value for property %s", name)
+		}
+
 		p := &Property{
-			Name:     name,
-			Comment:  spec.Description,
-			Type:     typ,
-			Language: spec.Language,
+			Name:         name,
+			Comment:      spec.Description,
+			Type:         typ,
+			DefaultValue: dv,
+			Language:     spec.Language,
 		}
 
 		propertyMap[name], result = p, append(result, p)
@@ -719,19 +722,6 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		p.IsRequired = true
 	}
 
-	// Compute default values.
-	for name, spec := range defaults {
-		p, ok := propertyMap[name]
-		if !ok {
-			return nil, errors.Errorf("unknown required property %s", name)
-		}
-		dv, err := bindDefaultValue(spec, p.Type)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error binding default value for property %s", name)
-		}
-		p.DefaultValue = dv
-	}
-
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
@@ -740,7 +730,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 }
 
 func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
-	properties, err := t.bindProperties(spec.Properties, spec.Required, nil)
+	properties, err := t.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, err
 	}
@@ -776,7 +766,7 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 
 	// Process properties.
 	for token, spec := range objects {
-		properties, err := typs.bindProperties(spec.Properties, spec.Required, nil)
+		properties, err := typs.bindProperties(spec.Properties, spec.Required)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to bind type %s", token)
 		}
@@ -787,16 +777,16 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
-	return types.bindProperties(spec.Variables, spec.Required, spec.Defaults)
+	return types.bindProperties(spec.Variables, spec.Required)
 }
 
 func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
-	properties, err := types.bindProperties(spec.Properties, spec.Required, nil)
+	properties, err := types.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, spec.Defaults)
+	inputProperties, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
