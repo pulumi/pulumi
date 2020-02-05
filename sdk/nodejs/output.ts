@@ -325,17 +325,12 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
 
 async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown: boolean, isSecret: boolean) {
     if (!Output.isInstance(value)) {
-        return {
-            allResources: allResources,
-            value: value,
-            isKnown: isKnown,
-            isSecret: isSecret,
-        };
+        // 'value' itself wasn't an output, no need to transform any of the data we got.
+        return { allResources, value, isKnown, isSecret };
     }
 
-    // Note: if the func returned a Output, we unwrap that to get the inner value returned by
-    // that Output. Note that we *are* capturing the Resources of this inner Output and lifting
-    // them up to the outer Output as well.
+    // 'value' was an Output.  So we unwrap that to get the inner value/isKnown/isSecret/resources
+    // returned by that Output and merge with the state passed in to get the state of the final Output.
 
     // Note: we intentionally await all the promises of the inner output. This way we properly
     // propagate any rejections of any of these promises through the outer output as well.
@@ -428,6 +423,10 @@ function outputRec(val: any): any {
         return val;
     }
     else if (val instanceof Promise) {
+        // Recurse into the value the Promise points to.  This may end up producing a
+        // Promise<Output>. Wrap this in another Output as the final result.  This Output's
+        // construction will be able to merge the inner Output's data with its own.  See
+        // liftInnerOutput for more details.
         return createSimpleOutput(val.then(v => outputRec(v)));
     }
     else if (Output.isInstance(val)) {
@@ -518,7 +517,7 @@ export function output<T>(val: Input<T>): Output<Unwrap<T>>;
 export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const ov = outputRec(val);
-    return Output.isInstance(ov) ? ov : createSimpleOutput(ov);
+    return Output.isInstance<Unwrap<T>>(ov) ? ov : createSimpleOutput(ov);
 }
 
 /**
@@ -571,6 +570,15 @@ export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | unde
 export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
 export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
+    // Our recursive `output` helper already does exactly what `all` needs to do in terms of the
+    // implementation. Why have both `output` and `all` then?  Currently, to the best of our
+    // abilities, we haven't been able to make a single signature for both that can unify tuples and
+    // arrays for TypeScript.  So `all` is much better when dealing with a tuple of heterogenous
+    // values, while `output` is good for everything else.
+    //
+    // Specifically ``all` can take an `[Output<string>, Output<number>]` and produce an
+    // `Output<[string, number]>` However, `output` for that same type will produce an
+    // `Output<(string|number)[]>` which is definitely suboptimal.
     return output(val);
 }
 
