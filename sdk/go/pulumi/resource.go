@@ -33,7 +33,7 @@ type ResourceState struct {
 
 	providers map[string]ProviderResource
 
-	aliases []Alias
+	aliases []URNOutput
 
 	name string
 }
@@ -50,7 +50,7 @@ func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
 }
 
-func (s ResourceState) getAliases() []Alias {
+func (s ResourceState) getAliases() []URNOutput {
 	return s.aliases
 }
 
@@ -91,7 +91,7 @@ type Resource interface {
 	getProviders() map[string]ProviderResource
 
 	// getAliases returns the list of aliases for this resource
-	getAliases() []Alias
+	getAliases() []URNOutput
 
 	// getName returns the name of the resource
 	getName() string

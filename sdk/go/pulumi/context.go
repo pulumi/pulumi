@@ -271,17 +271,22 @@ func (ctx *Context) ReadResource(
 		options.Parent = ctx.stack
 	}
 
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	if err != nil {
+		return err
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
+	// Merge providers.
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t,
-		name,
-		resource,
-		mergeProviders(t, options.Parent, options.Provider, options.Providers),
-		options.Aliases)
+	res := makeResourceState(t, name, resource, providers, aliasURNs)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -386,19 +391,22 @@ func (ctx *Context) RegisterResource(
 		options.Parent = ctx.stack
 	}
 
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	if err != nil {
+		return err
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
-	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t,
-		name,
-		resource,
-		mergeProviders(t, options.Parent, options.Provider, options.Providers),
-		options.Aliases)
+	// Merge providers.
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
-	res.name = name
+	// Create resolvers for the resource's outputs.
+	res := makeResourceState(t, name, resource, providers, aliasURNs)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -460,7 +468,7 @@ func (ctx *Context) RegisterComponentResource(
 type resourceState struct {
 	outputs   map[string]Output
 	providers map[string]ProviderResource
-	aliases   []Alias
+	aliases   []URNOutput
 	name      string
 }
 
@@ -499,13 +507,33 @@ func getPackage(t string) string {
 	return components[0]
 }
 
+// collapseAliases collapses a list of Aliases into alist of URNs.
+func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
+	project, stack := ctx.Project(), ctx.Stack()
+
+	var aliasURNs []URNOutput
+	if parent != nil {
+		for _, alias := range parent.getAliases() {
+			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, alias)
+			aliasURNs = append(aliasURNs, urn)
+		}
+	}
+
+	for i, alias := range aliases {
+		urn, err := alias.collapseToURN(name, t, parent, project, stack)
+		if err != nil {
+			return nil, errors.Wrap(err, "error collapsing alias to URN")
+		}
+		aliasURNs[i] = urn
+	}
+
+	return aliasURNs, nil
+}
+
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func makeResourceState(t string,
-	name string,
-	resourceV Resource,
-	providers map[string]ProviderResource,
-	aliases []Alias) *resourceState {
+func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
+	aliases []URNOutput) *resourceState {
 
 	resource := reflect.ValueOf(resourceV)
 
@@ -571,9 +599,9 @@ func makeResourceState(t string,
 	rs.providers = providers
 	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
 	state.outputs["urn"] = rs.urn
-	state.aliases = aliases
 	state.name = name
 	rs.name = name
+	state.aliases = aliases
 	rs.aliases = aliases
 
 	return state
@@ -703,31 +731,14 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	}
 	sort.Strings(deps)
 
-	// resolve aliases and implicit parent aliases, resolving all to URNs
-	var aliases []string
-	if opts.Parent != nil {
-		pAliases := opts.Parent.getAliases()
-		for i := range pAliases {
-			alias := &pAliases[i]
-			childAlias, err := inheritedChildAlias(resource.name, opts.Parent.getName(), t, ctx.Project(), ctx.Stack(), alias)
-			if err != nil {
-				return nil, errors.New("Could not convert parent alias to child alias")
-			}
-			resource.aliases = append(resource.aliases, Alias{URN: childAlias})
-		}
-	}
-	for i := range resource.aliases {
-		alias := &resource.aliases[i]
-		err = alias.collapseToURN(resource.name, t, opts.Parent, ctx.Project(), ctx.Stack())
+	// Await alias URNs
+	aliases := make([]string, len(resource.aliases))
+	for i, alias := range resource.aliases {
+		urn, _, err := alias.awaitURN(context.Background())
 		if err != nil {
-			return nil, errors.Wrap(err, "error collapsing alias to URN")
+			return nil, errors.Wrap(err, "error waiting for alias URN to resolve")
 		}
-		urnOut := alias.URN.ToURNOutput()
-		urn, _, err := urnOut.awaitURN(context.Background())
-		if err != nil {
-			return nil, errors.Wrap(err, "error waiting for alias URN resolution")
-		}
-		aliases = append(aliases, string(urn))
+		aliases[i] = string(urn)
 	}
 
 	return &resourceInputs{
