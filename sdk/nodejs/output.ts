@@ -135,7 +135,7 @@ class OutputImpl<T> implements OutputInstance<T> {
     public static create<T>(val: Input<T>): Output<Unwrap<T>>;
     public static create<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
     public static create<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
-        return output<T>(<any>val);
+        return output(val);
     }
 
     /**
@@ -398,6 +398,20 @@ export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
     return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
 }
 
+// Helper function for `output`.  This function trivially recurses through an object, copyin it,
+// while also lifting any inner Outputs (with all their respective state) to a top-level Output at
+// the end.  If there are no inner outputs, this will not affect the data (except by producing a new
+// copy of it).
+//
+// Importantly:
+//
+//  1. Resources encountered while recursing are not touched.  This helps ensure they stay Resources
+//     (with an appropriate prototype chain).
+//  2. Primitive values (string, number, etc.) are returned as is.
+//  3. Arrays and Record are recursed into.  An Array<...> that contains any Outputs wil become an
+//     Output<Array<Unwrapped>>.  A Record<string, ...> that contains any Output values will be an
+//     Output<Record<string, Unwrap<...>>.  In both cases of recursion, the outer Output's
+//     known/secret/resources will be computed from the nested Outputs.
 function outputRec(val: any): any {
     if (val === null || typeof val !== "object") {
         // strings, numbers, booleans, functions, symbols, undefineds, nulls are all returned as
@@ -428,9 +442,9 @@ function outputRec(val: any): any {
         // 2. That the `isSecret` property is available.
         // 3. That the `.allResources` is available.
         const allResources = getAllResources(val);
-        const newOutput = new Output<any>(
+        const newOutput = new OutputImpl(
             val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
-        return (<any>newOutput).apply(outputRec, /*runWithUnknowns*/ true);
+        return newOutput.apply(outputRec, /*runWithUnknowns*/ true);
     }
     else if (val instanceof Array) {
         const allValues = [];
@@ -444,33 +458,42 @@ function outputRec(val: any): any {
             }
         }
 
+        // If we didn't encounter any nested Outputs, we don't need to do anything.  We can just
+        // return this value as is.
         if (!hasOutputs) {
+            // Note: we intentionally return 'allValues' here and not 'val'.  This ensures we get a
+            // copy.  This has been behavior we've had since the beginning and there may be subtle
+            // logic out there that depends on this that we would not want ot break.
             return allValues;
         }
 
+        // Otherwise, combine the data from all the outputs/non-outputs to one final output.
         const promisedArray = Promise.all(allValues.map(v => getAwaitableValue(v)));
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allValues);
-        return new Output<any>(syncResources, promisedArray, isKnown, isSecret, allResources);
+        return new Output(syncResources, promisedArray, isKnown, isSecret, allResources);
     }
     else {
         const promisedValues: { key: string; value: any }[] = [];
         let hasOutputs = false;
-        Object.keys(val).forEach(k => {
+        for (const k of Object.keys(val)) {
             const ev = outputRec(val[k]);
 
-            promisedValues.push({key: k, value: ev });
+            promisedValues.push({ key: k, value: ev });
             if (Output.isInstance(ev)) {
                 hasOutputs = true;
             }
-        });
+        }
 
         if (!hasOutputs) {
+            // Note: we intentionally return a new value here and not 'val'.  This ensures we get a
+            // copy.  This has been behavior we've had since the beginning and there may be subtle
+            // logic out there that depends on this that we would not want ot break.
             return promisedValues.reduce((o, kvp) => { o[kvp.key] = kvp.value; return o; }, <any>{});
         }
 
         const promisedObject = getPromisedObject(promisedValues);
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(promisedValues.map(kvp => kvp.value));
-        return new Output<any>(syncResources, promisedObject, isKnown, isSecret, allResources);
+        return new Output(syncResources, promisedObject, isKnown, isSecret, allResources);
     }
 }
 
@@ -495,11 +518,7 @@ export function output<T>(val: Input<T>): Output<Unwrap<T>>;
 export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const ov = outputRec(val);
-    if (!Output.isInstance(ov)) {
-        return createSimpleOutput(ov);
-    }
-
-    return <any>ov;
+    return Output.isInstance(ov) ? ov : createSimpleOutput(ov);
 }
 
 /**
