@@ -23,7 +23,8 @@ import (
 // Alias is a partial description of prior named used for a resource. It can be processed in the
 // context of a resource creation to determine what the full aliased URN would be.
 type Alias struct {
-	// The URN that uniquely identifies a resource
+	// Optional URN that uniquely identifies a resource. If specified, it takes preference and
+	// other members of the struct are ignored.
 	URN URNInput
 	// The previous name of the resource.  If not provided, the current name of the resource is used.
 	Name StringInput
@@ -87,7 +88,7 @@ func (a *Alias) collapseToURN(defaultName string,
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
-func CreateURN(name StringInput, t StringInput, parent StringInput, project StringInput, stack StringInput) URNOutput {
+func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {
 		parentPrefix = parent.ToStringOutput().ApplyString(func(p string) string {
