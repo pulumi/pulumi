@@ -393,7 +393,7 @@ export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
     return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
 }
 
-// Helper function for `output`.  This function trivially recurses through an object, copyin it,
+// Helper function for `output`.  This function trivially recurses through an object, copying it,
 // while also lifting any inner Outputs (with all their respective state) to a top-level Output at
 // the end.  If there are no inner outputs, this will not affect the data (except by producing a new
 // copy of it).
