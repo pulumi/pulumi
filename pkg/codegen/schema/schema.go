@@ -194,6 +194,8 @@ type Property struct {
 	DefaultValue *DefaultValue
 	// IsRequired is true if the property must always be populated.
 	IsRequired bool
+	// DeprecationMessage indicates whether or not the property is deprecated.
+	DeprecationMessage string
 	// Language specifies additional language-specific data about the property.
 	Language map[string]json.RawMessage
 }
@@ -334,6 +336,8 @@ type PropertySpec struct {
 	Default interface{} `json:"default,omitempty"`
 	// DefautSpec contains additional information aboout the property's default value, if any.
 	DefaultInfo *DefaultSpec `json:"defaultInfo,omitempty"`
+	// DeprecationMessage indicates whether or not the property is deprecated.
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the property.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
@@ -703,11 +707,12 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		}
 
 		p := &Property{
-			Name:         name,
-			Comment:      spec.Description,
-			Type:         typ,
-			DefaultValue: dv,
-			Language:     spec.Language,
+			Name:               name,
+			Comment:            spec.Description,
+			Type:               typ,
+			DefaultValue:       dv,
+			DeprecationMessage: spec.DeprecationMessage,
+			Language:           spec.Language,
 		}
 
 		propertyMap[name], result = p, append(result, p)
