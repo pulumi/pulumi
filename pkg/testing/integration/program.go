@@ -1565,7 +1565,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
+	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", "3.7"}, cwd); err != nil {
 		return err
 	}
 
