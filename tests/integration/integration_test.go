@@ -1245,9 +1245,6 @@ func TestProviderSecretConfig(t *testing.T) {
 
 // Tests dynamic provider in Python.
 func TestDynamicPython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
