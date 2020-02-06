@@ -40,17 +40,11 @@ type Alias struct {
 	Project StringInput
 }
 
-func (a *Alias) isCollapsed() bool {
-	return a.URN != nil
-}
+func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
+	defaultProject, defaultStack string) (URNOutput, error) {
 
-func (a *Alias) collapseToURN(defaultName string,
-	defaultType string,
-	defaultParent Resource,
-	defaultProject string,
-	defaultStack string) error {
 	if a.URN != nil {
-		return nil
+		return a.URN.ToURNOutput(), nil
 	}
 
 	n := a.Name
@@ -61,10 +55,10 @@ func (a *Alias) collapseToURN(defaultName string,
 	if t == nil {
 		t = String(defaultType)
 	}
-	var parent StringInput
 
+	var parent StringInput
 	if a.Parent != nil && a.ParentURN != nil {
-		return errors.New("alias can specify either Parent or ParentURN but not both")
+		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
 	}
 	if a.Parent != nil {
 		parent = a.Parent.URN()
@@ -82,9 +76,7 @@ func (a *Alias) collapseToURN(defaultName string,
 		stack = String(defaultStack)
 	}
 
-	a.URN = CreateURN(n, t, parent, project, stack)
-
-	return nil
+	return CreateURN(n, t, parent, project, stack), nil
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
@@ -109,25 +101,13 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
 // This may involve changing the name of the resource in cases where the resource has a named derived from the name of
 // the parent, and the parent name changed.
-func inheritedChildAlias(childName string,
-	parentName string,
-	childType string,
-	project string,
-	stack string,
-	parent *Alias) (URNOutput, error) {
-	if !parent.isCollapsed() {
-		return URNInput(URN("")).ToURNOutput(), errors.New("Alias must be collapsed to create inherited alias")
-	}
-
+func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
 	aliasName := StringInput(String(childName))
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parent.URN.ToURNOutput().ApplyString(func(u URN) string {
-			uStr := string(u)
-			parentPrefix := uStr[strings.LastIndex(uStr, "::")+2:]
-			return parentPrefix + childName[len(parentName):]
+		aliasName = parentURN.ApplyString(func(urn URN) string {
+			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
+			return string(parentPrefix) + childName[len(parentName):]
 		})
 	}
-	toStrIn := func(s string) StringInput { return StringInput(String(s)) }
-
-	return CreateURN(aliasName, toStrIn(childType), parent.URN.ToURNOutput(), toStrIn(project), toStrIn(stack)), nil
+	return CreateURN(aliasName, String(childType), parentURN, String(project), String(stack))
 }
