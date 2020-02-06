@@ -15,6 +15,17 @@ namespace Pulumi
         {
             private readonly IDeploymentInternal _deployment;
 
+            /// <summary>
+            /// The list of tasks that we have fired off.  We issue tasks in a Fire-and-Forget
+            /// manner to be able to expose a Synchronous <see cref="Resource"/> model for users.
+            /// i.e. a user just synchronously creates a resource, and we asynchronously kick off
+            /// the work to populate it.  This works well, however we have to make sure the console
+            /// app doesn't exit because it thinks there is no work to do.
+            /// 
+            /// To ensure that doesn't happen, we have the main entrypoint of the app just
+            /// continuously, asynchronously loop, waiting for these tasks in this list to complete,
+            /// and only exiting once the list becomes empty.
+            /// </summary>
             private readonly LinkedList<(Task task, string description)> _inFlightTasks = new LinkedList<(Task, string description)>();
 
             public Runner(IDeploymentInternal deployment)
