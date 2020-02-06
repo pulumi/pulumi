@@ -61,6 +61,11 @@ namespace Pulumi
 
                 lock (_inFlightTasks)
                 {
+                    // We may get several of the same tasks with different descriptions.  That can
+                    // happen when the runtime reuses cached tasks that it knows are value-identical
+                    // (for example Task.CompletedTask).  In that case, we just store all the
+                    // descriptions. We'll print them all out as done once this task actually
+                    // finishes.
                     if (!_inFlightTasks.TryGetValue(task, out var descriptions))
                     {
                         descriptions = new List<string>();
