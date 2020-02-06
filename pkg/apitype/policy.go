@@ -38,7 +38,7 @@ type CreatePolicyPackRequest struct {
 	// from the package by the CLI.
 	Policies []Policy `json:"policies"`
 
-	// The Configuration schema that the Policy Pack accepts.
+	// The JSON schema for the Policy Pack's configuration.
 	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
 }
 
@@ -68,8 +68,8 @@ type RequiredPolicy struct {
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
 
-	// The configuration to use with the Policy Pack. This is to be validated with
-	// the JSON schema that is the Policy Pack's config schema.
+	// The configuration that is to be passed to the Policy Pack. This must be valid
+	// in accordance with the JSON schema for the Policy Pack's configuration.
 	Config map[string]interface{} `json:"config,omitempty"`
 }
 
@@ -145,7 +145,7 @@ type PolicyPackMetadata struct {
 	Version     int    `json:"version"`
 	VersionTag  string `json:"versionTag"`
 
-	// The configuration to use with the Policy Pack.
+	// The configuration that is to be passed to the Policy Pack.
 	Config map[string]interface{} `json:"config,omitempty"`
 }
 
@@ -177,9 +177,9 @@ type PolicyGroupSummary struct {
 	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
 }
 
-// GetPolicyPackConfigSchemaResponse is the response that includes the JSON configuration
-// schema of a particular Policy Pack.
+// GetPolicyPackConfigSchemaResponse is the response that includes the JSON
+// of a particular Policy Pack's configuration.
 type GetPolicyPackConfigSchemaResponse struct {
-	// The Configuration schema that the Policy Pack accepts.
+	// The JSON schema for the Policy Pack's configuration.
 	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
 }
