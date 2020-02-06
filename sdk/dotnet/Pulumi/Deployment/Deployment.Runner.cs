@@ -93,7 +93,7 @@ namespace Pulumi
 
                     // Now, wait for one of them to finish.
                     var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                    var description = "";
+                    string description;
                     lock (_inFlightTasks)
                     {
                         // once finished, remove it from the set of tasks that are running.
