@@ -16,17 +16,17 @@ namespace Pulumi
             private readonly IDeploymentInternal _deployment;
 
             /// <summary>
-            /// The list of tasks that we have fired off.  We issue tasks in a Fire-and-Forget
-            /// manner to be able to expose a Synchronous <see cref="Resource"/> model for users.
-            /// i.e. a user just synchronously creates a resource, and we asynchronously kick off
-            /// the work to populate it.  This works well, however we have to make sure the console
-            /// app doesn't exit because it thinks there is no work to do.
-            /// 
+            /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
+            /// to be able to expose a Synchronous <see cref="Resource"/> model for users. i.e. a
+            /// user just synchronously creates a resource, and we asynchronously kick off the work
+            /// to populate it.  This works well, however we have to make sure the console app
+            /// doesn't exit because it thinks there is no work to do.
+            /// <para/>
             /// To ensure that doesn't happen, we have the main entrypoint of the app just
-            /// continuously, asynchronously loop, waiting for these tasks in this list to complete,
-            /// and only exiting once the list becomes empty.
+            /// continuously, asynchronously loop, waiting for these tasks to complete, and only
+            /// exiting once the set becomes empty.
             /// </summary>
-            private readonly LinkedList<(Task task, string description)> _inFlightTasks = new LinkedList<(Task, string description)>();
+            private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
 
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
@@ -61,7 +61,13 @@ namespace Pulumi
 
                 lock (_inFlightTasks)
                 {
-                    _inFlightTasks.AddLast((task, description));
+                    if (!_inFlightTasks.TryGetValue(task, out var descriptions))
+                    {
+                        descriptions = new List<string>();
+                        _inFlightTasks.Add(task, descriptions);
+                    }
+
+                    descriptions.Add(description);
                 }
             }
 
@@ -87,22 +93,22 @@ namespace Pulumi
                             break;
                         }
 
-                        // grab all the tasks we currently have running.
-                        tasks.AddRange(_inFlightTasks.Select(t => t.task));
+                        // Grab all the tasks we currently have running.
+                        tasks.AddRange(_inFlightTasks.Keys);
                     }
 
                     // Now, wait for one of them to finish.
                     var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                    string description;
+                    List<string> descriptions;
                     lock (_inFlightTasks)
                     {
-                        // once finished, remove it from the set of tasks that are running.
-                        var node = FindNode(_inFlightTasks, task);
-                        description = node.Value.description;
-                        _inFlightTasks.Remove(node);
+                        // Once finished, remove it from the set of tasks that are running.
+                        descriptions = _inFlightTasks[task];
+                        _inFlightTasks.Remove(task);
                     }
 
-                    Serilog.Log.Information($"Completed task: {description}");
+                    foreach (var description in descriptions)
+                        Serilog.Log.Information($"Completed task: {description}");
 
                     try
                     {
@@ -120,18 +126,6 @@ namespace Pulumi
                 // there were no more tasks we were waiting on.  Quit out, reporting if we had any
                 // errors or not.
                 return _deployment.Logger.LoggedErrors ? 1 : 0;
-            }
-
-            private static LinkedListNode<(Task task, string description)> FindNode(LinkedList<(Task task, string description)> inFlightTasks, Task task)
-            {
-                Debug.Assert(System.Threading.Monitor.IsEntered(inFlightTasks));
-                for (var current = inFlightTasks.First; current != null; current = current.Next)
-                {
-                    if (current.Value.task == task)
-                        return current;
-                }
-
-                throw new InvalidOperationException("Could not find completed task in task list.");
             }
 
             private async Task<int> HandleExceptionAsync(Exception exception)
