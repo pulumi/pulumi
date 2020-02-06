@@ -2,6 +2,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -11,6 +14,8 @@ namespace Pulumi
         private class Runner : IRunner
         {
             private readonly IDeploymentInternal _deployment;
+
+            private readonly LinkedList<(Task task, string description)> _inFlightTasks = new LinkedList<(Task, string description)>();
 
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
@@ -41,9 +46,11 @@ namespace Pulumi
 
             public void RegisterTask(string description, Task task)
             {
-                lock (_taskToDescription)
+                Serilog.Log.Information($"Registering task: {description}");
+
+                lock (_inFlightTasks)
                 {
-                    _taskToDescription.Add(task, description);
+                    _inFlightTasks.AddLast((task, description));
                 }
             }
 
@@ -54,8 +61,6 @@ namespace Pulumi
             // 32 was picked so as to be very unlikely to collide with any other error codes.
             private const int _processExitedAfterLoggingUserActionableMessage = 32;
 
-            private readonly Dictionary<Task, string> _taskToDescription = new Dictionary<Task, string>();
-
             private async Task<int> WhileRunningAsync()
             {
                 var tasks = new List<Task>();
@@ -64,26 +69,29 @@ namespace Pulumi
                 while (true)
                 {
                     tasks.Clear();
-                    lock (_taskToDescription)
+                    lock (_inFlightTasks)
                     {
-                        if (_taskToDescription.Count == 0)
+                        if (_inFlightTasks.Count == 0)
                         {
                             break;
                         }
 
                         // grab all the tasks we currently have running.
-                        tasks.AddRange(_taskToDescription.Keys);
+                        tasks.AddRange(_inFlightTasks.Select(t => t.task));
                     }
 
                     // Now, wait for one of them to finish.
                     var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                    string description;
-                    lock (_taskToDescription)
+                    var description = "";
+                    lock (_inFlightTasks)
                     {
                         // once finished, remove it from the set of tasks that are running.
-                        description = _taskToDescription[task];
-                        _taskToDescription.Remove(task);
+                        var node = FindNode(_inFlightTasks, task);
+                        description = node.Value.description;
+                        _inFlightTasks.Remove(node);
                     }
+
+                    Serilog.Log.Information($"Completed task: {description}");
 
                     try
                     {
@@ -101,6 +109,18 @@ namespace Pulumi
                 // there were no more tasks we were waiting on.  Quit out, reporting if we had any
                 // errors or not.
                 return _deployment.Logger.LoggedErrors ? 1 : 0;
+            }
+
+            private static LinkedListNode<(Task task, string description)> FindNode(LinkedList<(Task task, string description)> inFlightTasks, Task task)
+            {
+                Debug.Assert(System.Threading.Monitor.IsEntered(inFlightTasks));
+                for (var current = inFlightTasks.First; current != null; current = current.Next)
+                {
+                    if (current.Value.task == task)
+                        return current;
+                }
+
+                throw new InvalidOperationException("Could not find completed task in task list.");
             }
 
             private async Task<int> HandleExceptionAsync(Exception exception)
