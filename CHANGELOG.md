@@ -16,6 +16,8 @@ CHANGELOG
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
 - Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+- Add support for aliases in the Go SDK
+  [3853](https://github.com/pulumi/pulumi/pull/3853)
 
 - Fix Python Dynamic Providers on Windows. [#3855](https://github.com/pulumi/pulumi/pull/3855)
 
