@@ -653,7 +653,12 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		// environment.
 
 		// Create the virtual environment.
-		commands = append(commands, "virtualenv -p python3 venv")
+		switch runtime.GOOS {
+		case "windows":
+			commands = append(commands, "python -m venv venv")
+		default:
+			commands = append(commands, "python3 -m venv venv")
+		}
 
 		// Activate the virtual environment. Only active in the user's current shell, so we can't
 		// just run it for the user here.
