@@ -38,7 +38,7 @@ func (t travisCI) DetectVars() Vars {
 	// is not a PR build.
 	// See: https://docs.travis-ci.com/user/environment-variables/#convenience-variables
 	if prNumber := os.Getenv("TRAVIS_PULL_REQUEST"); prNumber != "false" {
-		v.PRNumber = prNprNumber
+		v.PRNumber = prNumber
 	}
 
 	return v
