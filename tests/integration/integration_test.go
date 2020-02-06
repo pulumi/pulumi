@@ -1180,6 +1180,31 @@ func TestStackReferenceDotnet(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Tests that stack references work in Go.
+func TestStackReferenceGo(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:   filepath.Join("stack_reference", "go"),
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {

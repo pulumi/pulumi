@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
 ## 1.10.0 (2020-02-05)
 - Avoid writing checkpoints to backend storage in common case where no changes are being made.
   [#3860](https://github.com/pulumi/pulumi/pull/3860)
