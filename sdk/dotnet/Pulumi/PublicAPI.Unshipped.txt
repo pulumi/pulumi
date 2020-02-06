@@ -68,6 +68,8 @@ Pulumi.CustomTimeouts.Delete.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Delete.set -> void
 Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Update.set -> void
+Pulumi.DictionaryResourceArgs
+Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
 Pulumi.FileArchive
 Pulumi.FileArchive.FileArchive(string path) -> void

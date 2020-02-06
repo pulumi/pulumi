@@ -225,15 +225,23 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	}
 
 	// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
-	//
-	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
-	// checkpoint.
 	sortDeps := func(deps []resource.URN) {
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 	}
 	sortDeps(old.Dependencies)
 	sortDeps(new.Dependencies)
-	return !reflect.DeepEqual(old.Dependencies, new.Dependencies)
+	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
+	// lists being empty ourselves.
+	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
+		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+			return true
+		}
+	}
+
+	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
+	// checkpoint.
+
+	return false
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
