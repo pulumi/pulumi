@@ -15,6 +15,7 @@ import asyncio
 import sys
 from typing import Any, Awaitable
 import grpc
+from google.protobuf.pyext._message import SetAllowOversizeProtos # pylint: disable-msg=E0611
 
 from ..output import Inputs
 from ..invoke import InvokeOptions
@@ -23,7 +24,6 @@ from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
-from google.protobuf.pyext._message import SetAllowOversizeProtos
 
 # This increases the recursion limit to avoid exceptions on large gRPC payloads.
 SetAllowOversizeProtos(True)
