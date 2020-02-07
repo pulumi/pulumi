@@ -142,7 +142,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
-	provider, err := convertProvider(r.Provider)
+	provider, err := marshalProvider(r.Provider)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		Type:       string(t),
 		Name:       string(name),
 		Properties: mprops,
-		Options:    convertResourceOptions(r.Options),
+		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
 	})
 	if err != nil {
@@ -182,7 +182,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
 
-		provider, err := convertProvider(resource.Provider)
+		provider, err := marshalProvider(resource.Provider)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +208,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 			Type:                 string(resource.Type),
 			Name:                 string(resource.Name),
 			Properties:           props,
-			Options:              convertResourceOptions(resource.Options),
+			Options:              marshalResourceOptions(resource.Options),
 			Provider:             provider,
 			Parent:               string(resource.Parent),
 			Dependencies:         convertURNs(resource.Dependencies),
@@ -310,7 +310,7 @@ func (a *analyzer) Close() error {
 	return a.plug.Close()
 }
 
-func convertResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
+func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
 	secs := make([]string, len(opts.AdditionalSecretOutputs))
 	for idx := range opts.AdditionalSecretOutputs {
 		secs[idx] = string(opts.AdditionalSecretOutputs[idx])
@@ -337,7 +337,7 @@ func convertResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 	return result
 }
 
-func convertProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerProviderResource, error) {
+func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerProviderResource, error) {
 	if provider == nil {
 		return nil, nil
 	}

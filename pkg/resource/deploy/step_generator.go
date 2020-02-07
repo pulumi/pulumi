@@ -332,10 +332,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
-		providerResource, res := sg.getProviderResource(new.URN, new.Provider)
-		if res != nil {
-			return nil, res
-		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
 		if providerResource != nil {
 			r.Provider = &plugin.AnalyzerProviderResource{
 				URN:        providerResource.URN,
@@ -1154,17 +1151,18 @@ func (sg *stepGenerator) loadResourceProvider(
 	return p, nil
 }
 
-func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) (*resource.State, result.Result) {
+func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) *resource.State {
 	if provider == "" {
-		return nil, nil
+		return nil
 	}
 
+	// All callers of this method are on paths that have previously validated that the provider
+	// reference can be parsed correctly and has a provider resource in the map.
 	ref, err := providers.ParseReference(provider)
-	if err != nil {
-		sg.plan.Diag().Errorf(diag.GetBadProviderError(urn), provider, urn, err)
-		return nil, result.Bail()
-	}
-	return sg.providers[ref.URN()], nil
+	contract.AssertNoErrorf(err, "failed to parse provider reference")
+	result := sg.providers[ref.URN()]
+	contract.Assertf(result != nil, "provider missing from step generator providers map")
+	return result
 }
 
 type dependentReplace struct {
@@ -1302,10 +1300,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			Dependencies:         v.Dependencies,
 			PropertyDependencies: v.PropertyDependencies,
 		}
-		providerResource, res := sg.getProviderResource(v.URN, v.Provider)
-		if res != nil {
-			return res
-		}
+		providerResource := sg.getProviderResource(v.URN, v.Provider)
 		if providerResource != nil {
 			resource.Provider = &plugin.AnalyzerProviderResource{
 				URN:        providerResource.URN,
