@@ -178,10 +178,19 @@ type ProgramTestOptions struct {
 	RetryFailedSteps bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
+	// SkipRefresh indicates that the preview step should be skipped entirely.
+	SkipPreview bool
+	// SkipUpdate indicates that the preview step should be skipped entirely.
+	SkipUpdate bool
+	// SkipExportImport skips testing that exporting and importing the stack works properly.
+	SkipExportImport bool
+	// SkipEmptyPreviewUpdate skips a no-change preview/update that is performed that validates
+	// that no changes happen.
+	SkipEmptyPreviewUpdate bool
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
 	SkipStackRemoval bool
-	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
+	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
@@ -362,6 +371,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.SkipRefresh {
 		opts.SkipRefresh = overrides.SkipRefresh
+	}
+	if overrides.SkipPreview {
+		opts.SkipPreview = overrides.SkipPreview
+	}
+	if overrides.SkipUpdate {
+		opts.SkipUpdate = overrides.SkipUpdate
 	}
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
@@ -608,6 +623,11 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	maxStepTries := 1
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
+	}
+	if opts.Quick {
+		opts.SkipPreview = true
+		opts.SkipExportImport = true
+		opts.SkipEmptyPreviewUpdate = true
 	}
 	return &programTester{
 		t:            t,
@@ -1018,14 +1038,15 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
-	if !pt.opts.Quick {
-
+	if !pt.opts.SkipExportImport {
 		fprintf(pt.opts.Stdout, "Roundtripping checkpoint via stack export and stack import\n")
 
 		if err := pt.exportImport(dir); err != nil {
 			return err
 		}
+	}
 
+	if !pt.opts.SkipEmptyPreviewUpdate {
 		msg := ""
 		if !pt.opts.AllowEmptyUpdateChanges {
 			msg = "(no changes expected)"
@@ -1099,7 +1120,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	}
 
 	// If not in quick mode, run an explicit preview.
-	if !pt.opts.Quick {
+	if !pt.opts.SkipPreview {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir, shouldFail); err != nil {
 			if shouldFail {
 				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
@@ -1110,12 +1131,14 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	}
 
 	// Now run an update.
-	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir, shouldFail); err != nil {
-		if shouldFail {
-			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
-			return nil
+	if !pt.opts.SkipUpdate {
+		if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir, shouldFail); err != nil {
+			if shouldFail {
+				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+				return nil
+			}
+			return err
 		}
-		return err
 	}
 
 	// If we expected a failure, but none occurred, return an error.
