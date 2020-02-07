@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Improve CPU utilization in the Python SDK when waiting for resource operations.
+  [#3892](https://github.com/pulumi/pulumi/pull/3892)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)
@@ -19,7 +23,8 @@ CHANGELOG
 - Add support for aliases in the Go SDK
   [3853](https://github.com/pulumi/pulumi/pull/3853)
 
-- Fix Python Dynamic Providers on Windows. [#3855](https://github.com/pulumi/pulumi/pull/3855)
+- Fix Python Dynamic Providers on Windows.
+  [#3855](https://github.com/pulumi/pulumi/pull/3855)
 
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
