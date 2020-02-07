@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
 - Avoid duplicated messages in preview/update progress display.
   [#3890](https://github.com/pulumi/pulumi/pull/3890)
 
