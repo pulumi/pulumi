@@ -14,6 +14,8 @@
 
 package apitype
 
+import "encoding/json"
+
 // DefaultPolicyGroup is the name of the default Policy Group for organizations.
 const DefaultPolicyGroup = "default-policy-group"
 
@@ -39,7 +41,7 @@ type CreatePolicyPackRequest struct {
 	Policies []Policy `json:"policies"`
 
 	// The JSON schema for the Policy Pack's configuration.
-	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
+	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
@@ -70,7 +72,7 @@ type RequiredPolicy struct {
 
 	// The configuration that is to be passed to the Policy Pack. This must be valid
 	// in accordance with the JSON schema for the Policy Pack's configuration.
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config *json.RawMessage `json:"config,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -146,7 +148,7 @@ type PolicyPackMetadata struct {
 	VersionTag  string `json:"versionTag"`
 
 	// The configuration that is to be passed to the Policy Pack.
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config *json.RawMessage `json:"config,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -181,5 +183,5 @@ type PolicyGroupSummary struct {
 // of a particular Policy Pack's configuration.
 type GetPolicyPackConfigSchemaResponse struct {
 	// The JSON schema for the Policy Pack's configuration.
-	ConfigSchema map[string]interface{} `json:"configSchema,omitempty"`
+	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
 }
