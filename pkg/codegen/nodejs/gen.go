@@ -177,6 +177,14 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	return typ
 }
 
+func isStringType(t schema.Type) bool {
+	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
+		t = tt.UnderlyingType
+	}
+
+	return t == schema.StringType
+}
+
 func sanitizeComment(str string) string {
 	return strings.Replace(str, "*/", "*&#47;", -1)
 }
@@ -472,7 +480,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		// provider properties must be marshaled as JSON strings.
-		if r.IsProvider && prop.Type != schema.StringType {
+		if r.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)\n", arg)
 		}
 
