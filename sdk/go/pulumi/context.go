@@ -300,7 +300,7 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, err := id.ToIDOutput().awaitID(context.TODO())
+		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
 		if !known || err != nil {
 			return
 		}
@@ -652,7 +652,8 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 		if err = unmarshalOutput(v, dest); err != nil {
 			output.reject(err)
 		} else {
-			output.resolve(dest.Interface(), known)
+			// TODO(evanboyle) what to do here?
+			output.resolve(dest.Interface(), false, known)
 		}
 	}
 }
@@ -734,7 +735,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	// Await alias URNs
 	aliases := make([]string, len(resource.aliases))
 	for i, alias := range resource.aliases {
-		urn, _, err := alias.awaitURN(context.Background())
+		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, errors.Wrap(err, "error waiting for alias URN to resolve")
 		}
@@ -774,7 +775,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 
 	var importID ID
 	if opts.Import != nil {
-		id, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
+		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
 		if err != nil {
 			return "", nil, false, "", false, "", nil, err
 		}
@@ -783,7 +784,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 
 	var parentURN URN
 	if opts.Parent != nil {
-		urn, _, err := opts.Parent.URN().awaitURN(context.TODO())
+		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
 			return "", nil, false, "", false, "", nil, err
 		}
@@ -794,7 +795,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	if opts.DependsOn != nil {
 		depURNs = make([]URN, len(opts.DependsOn))
 		for i, r := range opts.DependsOn {
-			urn, _, err := r.URN().awaitURN(context.TODO())
+			urn, _, _, err := r.URN().awaitURN(context.TODO())
 			if err != nil {
 				return "", nil, false, "", false, "", nil, err
 			}
@@ -821,11 +822,11 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
-	urn, _, err := provider.URN().awaitURN(context.TODO())
+	urn, _, _, err := provider.URN().awaitURN(context.TODO())
 	if err != nil {
 		return "", err
 	}
-	id, known, err := provider.ID().awaitID(context.TODO())
+	id, known, _, err := provider.ID().awaitID(context.TODO())
 	if err != nil {
 		return "", err
 	}
@@ -899,7 +900,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			ctx.endRPC(err)
 		}()
 
-		urn, _, err := resource.URN().awaitURN(context.TODO())
+		urn, _, _, err := resource.URN().awaitURN(context.TODO())
 		if err != nil {
 			return
 		}

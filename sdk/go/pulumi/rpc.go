@@ -103,7 +103,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		var deps []URN
 		pdepset := map[URN]bool{}
 		for _, dep := range resourceDeps {
-			depURN, _, err := dep.URN().awaitURN(context.TODO())
+			depURN, _, _, err := dep.URN().awaitURN(context.TODO())
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -136,6 +136,20 @@ const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, error) {
+	val, deps, secret, err := marshalInputAndDetermineSecret(v, destType, await)
+	if err != nil {
+		return val, deps, err
+	}
+
+	if secret {
+		return resource.MakeSecret(val), deps, nil
+	}
+
+	return val, deps, nil
+}
+
+// marshalInputAndDetermineSecret marshals an input value with information about secret status
+func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, bool, error) {
 	for {
 		valueType := reflect.TypeOf(v)
 
@@ -152,25 +166,25 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {
 					err := errors.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
-					return resource.PropertyValue{}, nil, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 			}
 
 			// If the input is an Output, await its value. The returned value is fully resolved.
 			if output, ok := input.(Output); ok {
 				if !await {
-					return resource.PropertyValue{}, nil, errors.Errorf(cannotAwaitFmt, output)
+					return resource.PropertyValue{}, nil, false, errors.Errorf(cannotAwaitFmt, output)
 				}
 
 				// Await the output.
-				ov, known, err := output.await(context.TODO())
+				ov, known, secret, err := output.await(context.TODO())
 				if err != nil {
-					return resource.PropertyValue{}, nil, err
+					return resource.PropertyValue{}, nil, secret, err
 				}
 
 				// If the value is unknown, return the appropriate sentinel.
 				if !known {
-					return resource.MakeComputed(resource.NewStringProperty("")), output.dependencies(), nil
+					return resource.MakeComputed(resource.NewStringProperty("")), output.dependencies(), secret, nil
 				}
 
 				v, deps = ov, output.dependencies()
@@ -179,7 +193,7 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 
 		// If v is nil, just return that.
 		if v == nil {
-			return resource.PropertyValue{}, nil, nil
+			return resource.PropertyValue{}, nil, false, nil
 		}
 
 		// Look for some well known types.
@@ -189,7 +203,7 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
-			}), deps, nil
+			}), deps, false, nil
 		case *archive:
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
@@ -197,7 +211,7 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				for k, a := range as {
 					aa, _, err := marshalInput(a, anyType, await)
 					if err != nil {
-						return resource.PropertyValue{}, nil, err
+						return resource.PropertyValue{}, nil, false, err
 					}
 					assets[k] = aa.V
 				}
@@ -206,16 +220,16 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),
-			}), deps, nil
+			}), deps, false, nil
 		case CustomResource:
 			deps = append(deps, v)
 
 			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
 			e, d, err := marshalInput(v.ID(), idType, await)
 			if err != nil {
-				return resource.PropertyValue{}, nil, err
+				return resource.PropertyValue{}, nil, false, err
 			}
-			return e, append(deps, d...), nil
+			return e, append(deps, d...), false, nil
 		}
 
 		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
@@ -232,25 +246,25 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 		rv := reflect.ValueOf(v)
 		switch rv.Type().Kind() {
 		case reflect.Bool:
-			return resource.NewBoolProperty(rv.Bool()), deps, nil
+			return resource.NewBoolProperty(rv.Bool()), deps, false, nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return resource.NewNumberProperty(float64(rv.Int())), deps, nil
+			return resource.NewNumberProperty(float64(rv.Int())), deps, false, nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return resource.NewNumberProperty(float64(rv.Uint())), deps, nil
+			return resource.NewNumberProperty(float64(rv.Uint())), deps, false, nil
 		case reflect.Float32, reflect.Float64:
-			return resource.NewNumberProperty(rv.Float()), deps, nil
+			return resource.NewNumberProperty(rv.Float()), deps, false, nil
 		case reflect.Ptr, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, nil
+				return resource.PropertyValue{}, deps, false, nil
 			}
 			v, destType = rv.Elem().Interface(), destType.Elem()
 			continue
 		case reflect.String:
-			return resource.NewStringProperty(rv.String()), deps, nil
+			return resource.NewStringProperty(rv.String()), deps, false, nil
 		case reflect.Array, reflect.Slice:
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, nil
+				return resource.PropertyValue{}, deps, false, nil
 			}
 
 			destElem := destType.Elem()
@@ -261,22 +275,22 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				elem := rv.Index(i)
 				e, d, err := marshalInput(elem.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 				if !e.IsNull() {
 					arr = append(arr, e)
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewArrayProperty(arr), deps, nil
+			return resource.NewArrayProperty(arr), deps, false, nil
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
-				return resource.PropertyValue{}, nil,
+				return resource.PropertyValue{}, nil, false,
 					errors.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
 			}
 
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, nil
+				return resource.PropertyValue{}, deps, false, nil
 			}
 
 			destElem := destType.Elem()
@@ -287,14 +301,14 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				value := rv.MapIndex(key)
 				mv, d, err := marshalInput(value.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 				if !mv.IsNull() {
 					obj[resource.PropertyKey(key.String())] = mv
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewObjectProperty(obj), deps, false, nil
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
@@ -308,7 +322,7 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 
 				fv, d, err := marshalInput(rv.Field(i).Interface(), destField.Type, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 
 				if !fv.IsNull() {
@@ -316,9 +330,9 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewObjectProperty(obj), deps, false, nil
 		}
-		return resource.PropertyValue{}, nil, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
+		return resource.PropertyValue{}, nil, false, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
 }
 
