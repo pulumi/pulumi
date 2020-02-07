@@ -178,13 +178,13 @@ type ProgramTestOptions struct {
 	RetryFailedSteps bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
-	// SkipRefresh indicates that the preview step should be skipped entirely.
+	// SkipPreview indicates that the preview step should be skipped entirely.
 	SkipPreview bool
-	// SkipUpdate indicates that the preview step should be skipped entirely.
+	// SkipUpdate indicates that the update step should be skipped entirely.
 	SkipUpdate bool
 	// SkipExportImport skips testing that exporting and importing the stack works properly.
 	SkipExportImport bool
-	// SkipEmptyPreviewUpdate skips a no-change preview/update that is performed that validates
+	// SkipEmptyPreviewUpdate skips the no-change preview/update that is performed that validates
 	// that no changes happen.
 	SkipEmptyPreviewUpdate bool
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
