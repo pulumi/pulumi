@@ -378,6 +378,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.SkipUpdate {
 		opts.SkipUpdate = overrides.SkipUpdate
 	}
+	if overrides.SkipExportImport {
+		opts.SkipExportImport = overrides.SkipExportImport
+	}
+	if overrides.SkipEmptyPreviewUpdate {
+		opts.SkipEmptyPreviewUpdate = overrides.SkipEmptyPreviewUpdate
+	}
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
