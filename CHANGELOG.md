@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
 - Improve CPU utilization in the Python SDK when waiting for resource operations.
   [#3892](https://github.com/pulumi/pulumi/pull/3892)
 
