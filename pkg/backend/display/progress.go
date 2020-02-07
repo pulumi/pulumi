@@ -860,7 +860,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// If we are in a terminal, then we may have already rendered progress events, and so we
 			// cannot write a "simple message" at this point (doing so would reset the progress
 			// display). As a result, we don't really have any place to render the configuration
-			// associated witht prelude event (in case `ShowConfig` is true), so we skip it.  If we
+			// associated with prelude event (in case `ShowConfig` is true), so we skip it.  If we
 			// aren't in a terminal, we go ahead and render a simple message in between the progress
 			// events.
 			payload := event.Payload.(engine.PreludeEventPayload)
