@@ -14,7 +14,7 @@
 import asyncio
 import sys
 import traceback
-from typing import Callable, Awaitable, Tuple, Any, Optional
+from typing import Callable, Awaitable, Tuple, Any, Optional, List
 from .. import log
 
 
@@ -26,9 +26,9 @@ class RPCManager:
     outstanding RPCs.
     """
 
-    count: int
+    rpcs: List[Awaitable]
     """
-    The number of active RPCs.
+    The active RPCs.
     """
 
     unhandled_exception: Optional[Exception]
@@ -42,7 +42,7 @@ class RPCManager:
     """
 
     def __init__(self):
-        self.count = 0
+        self.rpcs = []
         self.unhandled_exception = None
         self.exception_traceback = None
 
@@ -60,11 +60,11 @@ class RPCManager:
         """
         async def rpc_wrapper(*args, **kwargs):
             log.debug(f"beginning rpc {name}")
-            self.count += 1
-            log.debug(f"recorded new RPC, {self.count} RPCs outstanding")
 
+            rpc = asyncio.ensure_future(rpc_function(*args, **kwargs))
+            self.rpcs.append(rpc)
             try:
-                result = await rpc_function(*args, **kwargs)
+                result = await rpc
                 exception = None
             except Exception as exn:
                 log.debug(f"RPC failed with exception:")
@@ -74,9 +74,6 @@ class RPCManager:
                     self.exception_traceback = sys.exc_info()[2]
                 result = None
                 exception = exn
-
-            self.count -= 1
-            log.debug(f"recorded RPC completion, {self.count} RPCs outstanding")
 
             return result, exception
 
