@@ -855,16 +855,20 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
-
-		if !display.isTerminal {
-			// If we are in a terminal, then we may have already rendered progress events, and so we
-			// cannot write a "simple message" at this point (doing so would reset the progress
-			// display). As a result, we don't really have any place to render the configuration
-			// associated with prelude event (in case `ShowConfig` is true), so we skip it.  If we
-			// aren't in a terminal, we go ahead and render a simple message in between the progress
-			// events.
-			payload := event.Payload.(engine.PreludeEventPayload)
-			display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
+		payload := event.Payload.(engine.PreludeEventPayload)
+		preludeEventString := renderPreludeEvent(payload, display.opts)
+		if display.isTerminal {
+			display.processNormalEvent(engine.Event{
+				Type: engine.DiagEvent,
+				Payload: engine.DiagEventPayload{
+					Ephemeral: false,
+					Severity:  diag.Info,
+					Color:     cmdutil.GetGlobalColorization(),
+					Message:   preludeEventString,
+				},
+			})
+		} else {
+			display.writeSimpleMessage(preludeEventString)
 		}
 		return
 	case engine.SummaryEvent:
