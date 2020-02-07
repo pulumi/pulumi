@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)
