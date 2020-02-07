@@ -77,7 +77,7 @@ type SummaryEvent struct {
 	// PolicyPacks run during update. Maps PolicyPackName -> version.
 	// Note: When this field was initially added, we forgot to add the JSON tag
 	// and are now locked into to using PascalCase for this field to maintain backwards
-	// compatability.
+	// compatibility.
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 }
 
