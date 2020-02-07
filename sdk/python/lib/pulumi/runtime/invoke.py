@@ -23,6 +23,10 @@ from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
+from google.protobuf.pyext._message import SetAllowOversizeProtos
+
+# This increases the recursion limit to avoid exceptions on large gRPC payloads.
+SetAllowOversizeProtos(True)
 
 # If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
 # implementation in order to support synchronous invokes.
