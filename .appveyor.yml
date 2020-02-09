@@ -64,5 +64,5 @@ build_script:
 
     go mod vendor
 
-    if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj ) else ( dotnet msbuild /t:CIBuild /v:Detailed build.proj )
+    if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj )
 test: off
