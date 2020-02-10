@@ -51,16 +51,29 @@ type LocalPolicyPack struct {
 	Name string
 	// Path of the local Policy Pack.
 	Path string
+	// Path of the local Policy Pack's JSON config file.
+	Config string
 }
 
 // MakeLocalPolicyPacks is a helper function for converting the list of local Policy
 // Pack paths to list of LocalPolicyPack. The name of the Local Policy Pack is not set
 // since we must load up the Policy Pack plugin to determine its name.
-func MakeLocalPolicyPacks(localPaths []string) []LocalPolicyPack {
+func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPolicyPack {
+	// If we have any configPaths, we should have already validated that the length of
+	// the localPaths and configPaths are the same.
+	if len(configPaths) > 0 {
+		contract.Assertf(len(localPaths) == len(configPaths), "len(localPaths) != len(configPaths)")
+	}
+
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
+		var config string
+		if len(configPaths) > 0 {
+			config = configPaths[i]
+		}
 		r[i] = LocalPolicyPack{
-			Path: p,
+			Path:   p,
+			Config: config,
 		}
 	}
 	return r

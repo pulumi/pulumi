@@ -38,6 +38,7 @@ func newWatchCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
+	var policyPackConfigPaths []string
 	var parallel int
 	var refresh bool
 	var showConfig bool
@@ -76,6 +77,10 @@ func newWatchCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
+			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
+				return result.FromError(err)
+			}
+
 			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
@@ -107,7 +112,7 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 				Parallel:         parallel,
 				Debug:            debug,
 				Refresh:          refresh,
@@ -162,6 +167,9 @@ func newWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
 		"[PREVIEW] Run one or more policy packs as part of each update")
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackConfigPaths, "policy-pack-config", []string{},
+		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
