@@ -33,20 +33,10 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-type stringSet map[string]struct{}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
 
 type typeDetails struct {
 	outputType   bool
@@ -229,12 +219,12 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			unionT = "InputUnion"
 		}
 
-		elementTypeSet := stringSet{}
+		elementTypeSet := codegen.StringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
 			et := mod.typeString(e, qualifier, input, state, false, false, false)
-			if !elementTypeSet.has(et) {
-				elementTypeSet.add(et)
+			if !elementTypeSet.Has(et) {
+				elementTypeSet.Add(et)
 				elementTypes = append(elementTypes, et)
 			}
 		}

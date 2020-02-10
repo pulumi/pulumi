@@ -34,20 +34,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-type stringSet map[string]struct{}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
 
 func title(s string) string {
 	if s == "" {
@@ -419,7 +409,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = dict()\n\n")
 	fmt.Fprintf(w, "")
 
-	ins := stringSet{}
+	ins := codegen.StringSet{}
 	for _, prop := range res.InputProperties {
 		pname := PyName(prop.Name)
 
@@ -453,13 +443,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 		fmt.Fprintf(w, "            __props__['%s'] = %s\n", pname, arg)
 
-		ins.add(prop.Name)
+		ins.Add(prop.Name)
 	}
 
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.has(prop.Name) {
+		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
 		}
 	}
