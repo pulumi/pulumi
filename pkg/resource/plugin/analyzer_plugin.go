@@ -18,10 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -259,21 +262,36 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		return AnalyzerInfo{}, rpcError
 	}
 
-	policies := []apitype.Policy{}
+	policies := []AnalyzerPolicyInfo{}
 	for _, p := range resp.GetPolicies() {
 		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
 		if err != nil {
 			return AnalyzerInfo{}, err
 		}
 
-		policies = append(policies, apitype.Policy{
+		schema := convertConfigSchema(p.GetConfigSchema())
+
+		// Inject `enforcementLevel` into the schema.
+		if schema != nil {
+			contract.Assertf(schema.Properties != nil, "schema.Properties != nil")
+			schema.Properties["enforcementLevel"] = JSONSchema{
+				"type": "string",
+				"enum": []string{"advisory", "mandatory", "disabled"},
+			}
+		}
+
+		policies = append(policies, AnalyzerPolicyInfo{
 			Name:             p.GetName(),
 			DisplayName:      p.GetDisplayName(),
 			Description:      p.GetDescription(),
 			EnforcementLevel: enforcementLevel,
 			Message:          p.GetMessage(),
+			ConfigSchema:     schema,
 		})
 	}
+	sort.Slice(policies, func(i, j int) bool {
+		return policies[i].Name < policies[j].Name
+	})
 
 	return AnalyzerInfo{
 		Name:        resp.GetName(),
@@ -361,6 +379,41 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	}, nil
 }
 
+func unmarshalMap(s *structpb.Struct) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	result := make(map[string]interface{})
+	for k, v := range s.Fields {
+		result[k] = unmarshalMapValue(v)
+	}
+	return result
+}
+
+func unmarshalMapValue(v *structpb.Value) interface{} {
+	switch val := v.Kind.(type) {
+	case *structpb.Value_NullValue:
+		return nil
+	case *structpb.Value_BoolValue:
+		return val.BoolValue
+	case *structpb.Value_NumberValue:
+		return val.NumberValue
+	case *structpb.Value_StringValue:
+		return val.StringValue
+	case *structpb.Value_ListValue:
+		arr := make([]interface{}, len(val.ListValue.Values))
+		for i, e := range val.ListValue.Values {
+			arr[i] = unmarshalMapValue(e)
+		}
+		return arr
+	case *structpb.Value_StructValue:
+		return unmarshalMap(val.StructValue)
+	}
+
+	contract.Failf("Unrecognized kind: %v (type=%v)", v.Kind, reflect.TypeOf(v.Kind))
+	return nil
+}
+
 func convertURNs(urns []resource.URN) []string {
 	result := make([]string, len(urns))
 	for idx := range urns {
@@ -378,6 +431,23 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 
 	default:
 		return "", fmt.Errorf("Invalid enforcement level %d", el)
+	}
+}
+
+func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyConfigSchema {
+	if schema == nil {
+		return nil
+	}
+
+	props := make(map[string]JSONSchema)
+	for k, v := range unmarshalMap(schema.GetProperties()) {
+		s := v.(map[string]interface{})
+		props[k] = JSONSchema(s)
+	}
+
+	return &AnalyzerPolicyConfigSchema{
+		Properties: props,
+		Required:   schema.GetRequired(),
 	}
 }
 

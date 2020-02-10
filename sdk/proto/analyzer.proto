@@ -126,11 +126,18 @@ message AnalyzerInfo {
     string version = 4;               // Version of the Policy Pack.
 }
 
-// PolicyInfo provides metadata about an individual Policy within a Policy Pack.
+// PolicyInfo provides metadata about a policy within a Policy Pack.
 message PolicyInfo {
-	string name = 1;                       // Name of the policy.
-	string displayName = 2;                // Pretty name for the policy.
-	string description = 3;                // Description of policy rule. e.g., "encryption enabled."
-	string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
+    string name = 1;                       // Name of the policy.
+    string displayName = 2;                // Pretty name for the policy.
+    string description = 3;                // Description of policy rule. e.g., "encryption enabled."
+    string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
+    EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
+    PolicyConfigSchema configSchema = 6;   // Config schema for the policy.
+}
+
+// PolicyConfigSchema provides the schema for a policy's configuration.
+message PolicyConfigSchema {
+    google.protobuf.Struct properties = 1; // JSON schema for each property.
+    repeated string required = 2;          // Required properties.
 }

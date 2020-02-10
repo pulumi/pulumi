@@ -552,11 +552,22 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
+	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	for _, policy := range analyzerInfo.Policies {
+		policies = append(policies, apitype.Policy{
+			Name:             policy.Name,
+			DisplayName:      policy.DisplayName,
+			Description:      policy.Description,
+			EnforcementLevel: policy.EnforcementLevel,
+			Message:          policy.Message,
+		})
+	}
+
 	req := apitype.CreatePolicyPackRequest{
 		Name:        analyzerInfo.Name,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
-		Policies:    analyzerInfo.Policies,
+		Policies:    policies,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
