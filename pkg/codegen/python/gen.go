@@ -448,7 +448,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		//
 		// Note the use of the `json` package here - we must import it at the top of the file so
 		// that we can use it.
-		if res.IsProvider && prop.Type != schema.StringType {
+		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
 		}
 		fmt.Fprintf(w, "            __props__['%s'] = %s\n", pname, arg)
@@ -721,6 +721,13 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 		fmt.Fprintf(w, "      license='%s',\n", pkg.License)
 	}
 	fmt.Fprintf(w, "      packages=find_packages(),\n")
+
+	// Publish type metadata: PEP 561
+	fmt.Fprintf(w, "      package_data={\n")
+	fmt.Fprintf(w, "          '%s': [\n", pyPack(pkg.Name))
+	fmt.Fprintf(w, "              'py.typed'\n")
+	fmt.Fprintf(w, "          ]\n")
+	fmt.Fprintf(w, "      },\n")
 
 	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure
 	// that it specifies an acceptable version range.
@@ -1037,10 +1044,15 @@ func nestedStructure(typ schema.Type) []*nestedVariable {
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
 // check is not exhaustive, but it should be good enough to catch 80% of the cases early on.
 func pyType(typ schema.Type) string {
-	switch typ.(type) {
+	switch typ := typ.(type) {
 	case *schema.ArrayType:
 		return "list"
-	case *schema.MapType, *schema.ObjectType, *schema.TokenType, *schema.UnionType:
+	case *schema.MapType, *schema.ObjectType, *schema.UnionType:
+		return "dict"
+	case *schema.TokenType:
+		if typ.UnderlyingType != nil {
+			return pyType(typ.UnderlyingType)
+		}
 		return "dict"
 	default:
 		switch typ {
@@ -1058,6 +1070,14 @@ func pyType(typ schema.Type) string {
 			return "dict"
 		}
 	}
+}
+
+func isStringType(t schema.Type) bool {
+	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
+		t = tt.UnderlyingType
+	}
+
+	return t == schema.StringType
 }
 
 // pyPack returns the suggested package name for the given string.

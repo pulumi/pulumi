@@ -263,6 +263,18 @@
   <Target Name="Build"
           DependsOnTargets="BuildDotNetSDK;BuildGoSDK;BuildNodeJSSDK;BuildPythonSDK;InstallPulumiPlugin">
   </Target>
+  
+  <!-- Release Build
+  This is used to create the dependencies required for shipping the binary to the end user.
+  In the old scripts `BuildNodeJSSDK` was called `BuildNodeSdk` and included tasks for
+  * TypeScriptCompileNodeSdk (now called NodeJSBuild)
+  * GoCompileNodeSdk (now called NodeJSBuild)
+  * BinPlaceNodeSdk (included as part of NodeJSBuild)
+  The old task `BuildGoCmds` has now been renamed to `InstallPulumiPlugin`
+  -->
+  <Target Name="ReleaseBuild"
+          DependsOnTargets="BuildNodeJSSDK;InstallPulumiPlugin">
+  </Target>
 
   <!-- Tests -->
   <Target Name="Tests">
@@ -284,6 +296,13 @@
     <Error Text="integration tests (.\tests\integration) failed"
            Condition="$(IntegrationTestExitCode) != 0"/>
   </Target>
+
+  <Target Name="Publish">
+    <Exec Command="&quot;$(RepoRootDirectory)\scripts\publish.cmd" />
+  </Target>
+  
+  <Target Name="ReleaseProcess"
+          DependsOnTargets="ReleaseBuild;Publish" />
 
   <Target Name="CIBuild"
           DependsOnTargets="Build;Tests" />

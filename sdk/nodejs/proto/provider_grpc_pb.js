@@ -303,7 +303,7 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseDeserialize: deserialize_pulumirpc_DiffResponse,
   },
   // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-  // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+  // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
   create: {
     path: '/pulumirpc.ResourceProvider/Create',
     requestStream: false,

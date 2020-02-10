@@ -261,7 +261,7 @@ type testResource struct {
 
 func TestResourceState(t *testing.T) {
 	var theResource testResource
-	state := makeResourceState("", &theResource, nil)
+	state := makeResourceState("", "", &theResource, nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),

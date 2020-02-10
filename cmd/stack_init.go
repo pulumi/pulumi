@@ -24,6 +24,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
+const (
+	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
+		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
+)
+
 func newStackInitCmd() *cobra.Command {
 	var secretsProvider string
 	var stackName string
@@ -114,7 +119,6 @@ func newStackInitCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
+		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
 	return cmd
 }
