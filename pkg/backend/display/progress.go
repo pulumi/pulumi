@@ -676,20 +676,22 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Render several "sections" of output based on available data as applicable.
 	display.writeBlankLine()
-	display.printDiagnostics()
-	display.printPolicyViolations()
+	wroteDiagnosticHeader := display.printDiagnostics()
+	wrotePolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
-	display.printSummary()
+	// If no policies violated, print policy packs applied.
+	if !wrotePolicyViolations {
+		display.printSummary(wroteDiagnosticHeader)
+	}
+	
 }
-
-var wroteDiagnosticHeader bool
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
 // resource. If no diagnostics were emitted, prints nothing.
-func (display *ProgressDisplay) printDiagnostics() {
+func (display *ProgressDisplay) printDiagnostics() bool {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
-	wroteDiagnosticHeader = false
+	wroteDiagnosticHeader := false
 	for _, row := range display.eventUrnToResourceRow {
 		// The header for the diagnogistics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
 		wroteResourceHeader := false
@@ -751,11 +753,13 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 
 	}
+	return wroteDiagnosticHeader
 }
 
-// printPolicyViolations prints a new "Policy Violoation:" section with all of the violations
+// printPolicyViolations prints a new "Policy Violation:" section with all of the violations
 // grouped by policy pack. If no policy violations were encountered, prints nothing.
-func (display *ProgressDisplay) printPolicyViolations() {
+func (display *ProgressDisplay) printPolicyViolations() bool {
+	wrotePolicyViolations := false
 	// Loop through every resource and gather up all policy violations encountered.
 	var policyEvents []engine.PolicyViolationEventPayload
 	for _, row := range display.eventUrnToResourceRow {
@@ -766,61 +770,53 @@ func (display *ProgressDisplay) printPolicyViolations() {
 		policyEvents = append(policyEvents, policyInfo.PolicyPayloads...)
 	}
 	if len(policyEvents) == 0 {
-		return
+		return wrotePolicyViolations
 	}
-
+	wrotePolicyViolations = true
 	// Sort policy events by: policy pack name, policy pack version, enforcement level,
 	// policy name, and finally the URN of the resource.
 	sort.SliceStable(policyEvents, func(i, j int) bool {
 		eventI, eventJ := policyEvents[i], policyEvents[j]
-		if packNameCmp := strings.Compare(eventI.PolicyPackName, eventJ.PolicyPackName); packNameCmp != 0 {
+		if packNameCmp := strings.Compare(
+			eventI.PolicyPackName,
+			eventJ.PolicyPackName); packNameCmp != 0 {
 			return packNameCmp < 0
 		}
-		if packVerCmp := strings.Compare(eventI.PolicyPackVersion, eventJ.PolicyPackVersion); packVerCmp != 0 {
+		if packVerCmp := strings.Compare(
+			eventI.PolicyPackVersion,
+			eventJ.PolicyPackVersion); packVerCmp != 0 {
 			return packVerCmp < 0
 		}
-		eventIEnforcement := string(eventI.EnforcementLevel)
-		eventJEnforcement := string(eventJ.EnforcementLevel)
-		if enfLevelCmp := strings.Compare(eventIEnforcement, eventJEnforcement); enfLevelCmp != 0 {
+		if enfLevelCmp := strings.Compare(
+			string(eventI.EnforcementLevel),
+			string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
 			return enfLevelCmp < 0
 		}
-		if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
+		if policyNameCmp := strings.Compare(
+			eventI.PolicyName,
+			eventJ.PolicyName); policyNameCmp != 0 {
 			return policyNameCmp < 0
 		}
-		eventIURN := string(eventI.ResourceURN)
-		eventJURN := string(eventJ.ResourceURN)
-		urnCmp := strings.Compare(eventIURN, eventJURN)
+		urnCmp := strings.Compare(
+			string(eventI.ResourceURN),
+			string(eventJ.ResourceURN))
 		return urnCmp < 0
 	})
 
 	// Print every policy violation, printing a new header when necessary.
-	header := display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset)
-	display.writeSimpleMessage(header)
+	display.writeSimpleMessage(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
 
-	var currentPack string
-	var currentPackVersion string
 	for _, policyEvent := range policyEvents {
-		// Print header the first time we encounter a violation in a given policy pack.
-		if policyEvent.PolicyPackVersion != currentPack || policyEvent.PolicyPackVersion != currentPackVersion {
-			currentPack = policyEvent.PolicyPackVersion
-			currentPackVersion = policyEvent.PolicyPackVersion
-
-			formatStr := fmt.Sprintf(
-				"  %sPolicy Pack %s (v%s)%s", colors.SpecSubHeadline, currentPackVersion, currentPackVersion, colors.Reset)
-			packHeader := display.opts.Color.Colorize(formatStr)
-
-			display.writeBlankLine()
-			display.writeSimpleMessage(packHeader)
-		}
-
 		// Print the individual policy event.
 		c := colors.SpecImportant
 		if policyEvent.EnforcementLevel == apitype.Mandatory {
 			c = colors.SpecError
 		}
 
-		policyNameLine := fmt.Sprintf("    %s[%s]%s %s (%s)",
-			c, policyEvent.EnforcementLevel, colors.Reset,
+		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
+			c, policyEvent.EnforcementLevel,
+			policyEvent.PolicyPackName,
+			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
 			policyEvent.ResourceURN.Name())
 		display.writeSimpleMessage(policyNameLine)
@@ -829,9 +825,8 @@ func (display *ProgressDisplay) printPolicyViolations() {
 		message := strings.ReplaceAll(policyEvent.Message, "\n", "\n    ")
 		messageLine := fmt.Sprintf("    %s", message)
 		display.writeSimpleMessage(messageLine)
-
-		display.writeBlankLine()
 	}
+	return wrotePolicyViolations
 }
 
 // printOutputs prints the Stack's outputs for the display in a new section, if appropriate.
@@ -857,7 +852,7 @@ func (display *ProgressDisplay) printOutputs() {
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
-func (display *ProgressDisplay) printSummary() {
+func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
 	if display.summaryEventPayload == nil {
 		return
@@ -972,7 +967,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
 		return
 	case engine.SummaryEvent:
-		// keep track of the summar event so that we can display it after all other
+		// keep track of the summary event so that we can display it after all other
 		// resource-related events we receive.
 		payload := event.Payload.(engine.SummaryEventPayload)
 		display.summaryEventPayload = &payload
