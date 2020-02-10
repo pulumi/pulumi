@@ -113,14 +113,17 @@ namespace Pulumi.Serialization
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
-            if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
+            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null
+#pragma warning disable 618
+                && targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>() == null)
+#pragma warning restore 618
                 return (null, new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}"));
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
                 return (null, new InvalidOperationException(
-                    $"Expected target type {targetType.FullName} to have [{nameof(OutputConstructorAttribute)}] constructor when deserializing {context}"));
+                    $"Expected target type {targetType.FullName} to have [{nameof(Pulumi.OutputConstructorAttribute)}] constructor when deserializing {context}"));
 
             var (dictionary, tempException) = TryEnsureType<ImmutableDictionary<string, object>>(context, val);
             if (tempException != null)
@@ -365,21 +368,24 @@ $@"{context} contains invalid type {targetType.FullName}:
                 }
             }
 
-            var propertyTypeAttribute = targetType.GetCustomAttribute<OutputTypeAttribute>();
+            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>()
+#pragma warning disable 618
+                                        ?? targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>();
+#pragma warning restore 618
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [{nameof(OutputTypeAttribute)}].");
+    a class explicitly marked with the [{nameof(Pulumi.OutputTypeAttribute)}].");
             }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(OutputConstructorAttribute)}].");
+$@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(Pulumi.OutputConstructorAttribute)}].");
             }
 
             foreach (var param in constructor.GetParameters())
@@ -390,6 +396,9 @@ $@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contai
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
+                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null
+#pragma warning disable 618
+                     || c.GetCustomAttributes<Pulumi.Serialization.OutputConstructorAttribute>() != null);
+#pragma warning restore 618
     }
 }

@@ -79,9 +79,12 @@ namespace Pulumi
         internal void RegisterPropertyOutputs()
         {
             var outputs = (from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                           let attr = property.GetCustomAttribute<OutputAttribute>()
-                           where attr != null
-                           let name = attr.Name ?? property.Name
+                           let attr1 = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+#pragma warning disable 618
+                           let attr2 = property.GetCustomAttribute<Pulumi.Serialization.OutputAttribute>()
+#pragma warning restore 618
+                           where attr1 != null || attr2 != null
+                           let name = attr1?.Name ?? attr2?.Name ?? property.Name
                            select new KeyValuePair<string, object?>(name, property.GetValue(this))).ToList();
 
             // Check that none of the values are null: catch unassigned outputs

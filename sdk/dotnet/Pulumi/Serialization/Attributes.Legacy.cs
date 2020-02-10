@@ -3,12 +3,13 @@
 using System;
 using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi
+namespace Pulumi.Serialization
 {
     /// <summary>
     /// Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
+    [Obsolete("Use Pulumi.OutputAttribute instead")]
     public sealed class OutputAttribute : Attribute 
     {
         public string? Name { get; }
@@ -39,6 +40,7 @@ namespace Pulumi
     /// </code>
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    [Obsolete("Use Pulumi.InputAttribute instead")]
     public sealed class InputAttribute : Attribute
     {
         internal string Name { get; }
@@ -59,6 +61,7 @@ namespace Pulumi
     /// <see cref="OutputConstructorAttribute"/> attribute.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
+    [Obsolete("Use Pulumi.OutputTypeAttribute instead")]
     public sealed class OutputTypeAttribute : Attribute
     {
     }
@@ -71,6 +74,7 @@ namespace Pulumi
     /// cref="Struct.Fields"/> returned by the engine.
     /// </summary>
     [AttributeUsage(AttributeTargets.Constructor)]
+    [Obsolete("Use Pulumi.OutputConstructorAttribute instead")]
     public sealed class OutputConstructorAttribute : Attribute
     {
     }
