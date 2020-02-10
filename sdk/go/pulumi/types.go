@@ -399,6 +399,17 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	return result
 }
 
+func SecretT(input interface{}) Output {
+	return SecretTWithContext(context.Background(), input)
+}
+
+func SecretTWithContext(ctx context.Context, input interface{}) Output {
+	o := ToOutputWithContext(ctx, input)
+	// not sure if this is totally right, the input value may resolve and clobber the secret state
+	o.getState().secret = true
+	return o
+}
+
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
 // array will contain the resolved value of the corresponding output. The output will be rejected if any of the inputs
 // is rejected.
@@ -795,11 +806,11 @@ func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOut
 }
 
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, bool, error) {
-	id, known, secret, err := o.await(ctx)
+	id, known, _, err := o.await(ctx)
 	if !known || err != nil {
-		return "", known, secret, err
+		return "", known, false, err
 	}
-	return ID(convert(id, stringType).(string)), true, secret, nil
+	return ID(convert(id, stringType).(string)), true, false, nil
 }
 
 func (in URN) ToStringPtrOutput() StringPtrOutput {
@@ -819,11 +830,11 @@ func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOu
 }
 
 func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
-	id, known, secret, err := o.await(ctx)
+	id, known, _, err := o.await(ctx)
 	if !known || err != nil {
-		return "", known, secret, err
+		return "", known, false, err
 	}
-	return URN(convert(id, stringType).(string)), true, secret, nil
+	return URN(convert(id, stringType).(string)), true, false, nil
 }
 
 func convert(v interface{}, to reflect.Type) interface{} {

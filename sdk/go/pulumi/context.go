@@ -313,13 +313,14 @@ func (ctx *Context) ReadResource(
 
 		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
-			Type:       t,
-			Name:       name,
-			Parent:     inputs.parent,
-			Properties: inputs.rpcProps,
-			Provider:   inputs.provider,
-			Id:         string(idToRead),
-			Aliases:    inputs.aliases,
+			Type:          t,
+			Name:          name,
+			Parent:        inputs.parent,
+			Properties:    inputs.rpcProps,
+			Provider:      inputs.provider,
+			Id:            string(idToRead),
+			Aliases:       inputs.aliases,
+			AcceptSecrets: true,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -443,6 +444,7 @@ func (ctx *Context) RegisterResource(
 			CustomTimeouts:       inputs.customTimeouts,
 			IgnoreChanges:        inputs.ignoreChanges,
 			Aliases:              inputs.aliases,
+			AcceptSecrets:        true,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
