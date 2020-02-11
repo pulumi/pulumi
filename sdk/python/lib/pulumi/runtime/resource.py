@@ -343,6 +343,11 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
+            # translate the CustomTimeouts object to a dict so that protobuf can serialize properly
+            custom_timeouts = None
+            if opts.custom_timeouts is not None:
+                custom_timeouts = vars(opts.custom_timeouts)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -360,7 +365,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
-                customTimeouts=opts.custom_timeouts,
+                customTimeouts=custom_timeouts,
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
             )
