@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2020, Pulumi Corporation.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,4 @@
 # limitations under the License.
 import pulumi
 
-config = pulumi.Config();
-org = config.require('org');
-slug = f"{org}/{pulumi.get_project()}/{pulumi.get_stack()}"
-a = pulumi.StackReference(slug)
+pulumi.export('val', ["a", "b"])

@@ -1146,6 +1146,49 @@ func TestStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+func TestMultiStackReferencePython(t *testing.T) {
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	// build a stack with an export
+	e := ptesting.NewEnvironment(t)
+
+	exporterStackName := filepath.Base(e.RootPath)
+
+	e.ImportDirectory(filepath.Join("stack_reference_multi", "python", "exporter"))
+	e.RunCommand("pulumi", "stack", "init", fmt.Sprintf("%s/%s", os.Getenv("PULUMI_TEST_OWNER"), exporterStackName))
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	defer func() {
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
+		e.DeleteEnvironment()
+	}()
+
+	opts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
+			"exporter_stack_name": exporterStackName,
+		},
 	}
 	integration.ProgramTest(t, opts)
 }
