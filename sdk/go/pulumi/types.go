@@ -136,7 +136,7 @@ func (o *OutputState) resolveValue(value reflect.Value, known, secret bool) {
 }
 
 func (o *OutputState) reject(err error) {
-	o.fulfill(nil, true, o.secret, err)
+	o.fulfill(nil, true, false, err)
 }
 
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, error) {
@@ -658,7 +658,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 			}
 
 			known = known && kknown && vknown
-			secret = secret || ksecret && vsecret
+			secret = secret || ksecret || vsecret
 		}
 	default:
 		if isInput {
@@ -806,11 +806,11 @@ func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOut
 }
 
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, bool, error) {
-	id, known, _, err := o.await(ctx)
+	id, known, secret, err := o.await(ctx)
 	if !known || err != nil {
 		return "", known, false, err
 	}
-	return ID(convert(id, stringType).(string)), true, false, nil
+	return ID(convert(id, stringType).(string)), true, secret, nil
 }
 
 func (in URN) ToStringPtrOutput() StringPtrOutput {
@@ -830,11 +830,11 @@ func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOu
 }
 
 func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
-	id, known, _, err := o.await(ctx)
+	id, known, secret, err := o.await(ctx)
 	if !known || err != nil {
-		return "", known, false, err
+		return "", known, secret, err
 	}
-	return URN(convert(id, stringType).(string)), true, false, nil
+	return URN(convert(id, stringType).(string)), true, secret, nil
 }
 
 func convert(v interface{}, to reflect.Type) interface{} {
