@@ -2,10 +2,6 @@ import pulumi
 
 config = pulumi.Config()
 
-def cb(future):
-    oldVal = future.result()
-    print(oldVal)
-
 exporterStackName = config.require('exporter_stack_name')
 org = config.require('org')
 a = pulumi.StackReference(f'{org}/exporter/{exporterStackName}')
