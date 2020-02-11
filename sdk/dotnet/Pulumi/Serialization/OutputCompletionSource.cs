@@ -63,12 +63,15 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr = property.GetCustomAttribute<OutputAttribute>()
-                        where attr != null
-                        select (property, attr);
+                        let attr1 = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+#pragma warning disable 618
+                        let attr2 = property.GetCustomAttribute<Pulumi.Serialization.OutputAttribute>()
+#pragma warning restore 618
+                        where attr1 != null || attr2 != null
+                        select (property, attrName: attr1?.Name ?? attr2?.Name);
 
             var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
-            foreach (var (prop, attr) in query.ToList())
+            foreach (var (prop, attrName) in query.ToList())
             {
                 var propType = prop.PropertyType;
                 var propFullName = $"[Output] {resource.GetType().FullName}.{prop.Name}";
@@ -93,7 +96,7 @@ namespace Pulumi.Serialization
 
                 setMethod.Invoke(resource, new[] { completionSource.Output });
 
-                var outputName = attr.Name ?? prop.Name;
+                var outputName = attrName ?? prop.Name;
                 result.Add(outputName, completionSource);
             }
 

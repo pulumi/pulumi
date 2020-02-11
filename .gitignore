@@ -8,7 +8,7 @@
 coverage.cov
 *.coverprofile
 
-/.idea/
+**/.idea/
 *.iml
 
 # VSCode creates this binary when running tests in the debugger
