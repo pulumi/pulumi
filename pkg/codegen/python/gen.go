@@ -196,7 +196,7 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		name := PyName(tokenToName(r.Token))
 		if r.IsProvider {
-			name = "Provider"
+			name = "provider"
 		}
 		addFile(name+".py", res)
 	}
