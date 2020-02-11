@@ -6,7 +6,9 @@ using Google.Protobuf.WellKnownTypes;
 namespace Pulumi
 {
     /// <summary>
-    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
+    /// Attribute used by a mark <see cref="Resource"/> output properties. Use this attribute
+    /// in your Pulumi programs to mark outputs of <see cref="ComponentResource"/> and
+    /// <see cref="Stack"/> resources.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class OutputAttribute : Attribute 
@@ -20,8 +22,8 @@ namespace Pulumi
     }
 
     /// <summary>
-    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource input fields and
-    /// properties.
+    /// Attribute used by a Pulumi Cloud Provider Package to mark <see cref="Resource"/> input
+    /// fields and properties.
     /// <para/>
     /// Note: for simple inputs (i.e. <see cref="Input{T}"/> this should just be placed on the
     /// property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
