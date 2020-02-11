@@ -1,0 +1,3 @@
+name: stack_reference_go
+description: A simple go program that has a stack reference.
+runtime: go

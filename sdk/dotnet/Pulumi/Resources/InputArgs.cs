@@ -45,7 +45,7 @@ namespace Pulumi
                 new InputInfo(t.attr, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
         }
 
-        internal async Task<ImmutableDictionary<string, object?>> ToDictionaryAsync()
+        internal virtual async Task<ImmutableDictionary<string, object?>> ToDictionaryAsync()
         {
             var builder = ImmutableDictionary.CreateBuilder<string, object?>();
             foreach (var info in _inputInfos)

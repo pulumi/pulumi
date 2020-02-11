@@ -1,13 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
-
-- Add information about an in-flight operation to the stack command output, if applicable.
-  [#3822](https://github.com/pulumi/pulumi/pull/3822)
-
-<<<<<<< HEAD
-- Publish python types for PEP 561 [#3704](https://github.com/pulumi/pulumi/pull/3704)
+## 2.0.0 (Unreleased)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
@@ -17,15 +11,6 @@ CHANGELOG
    * `pulumi refresh`
    * `pulumi up`
 
-=======
-=======
-- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
-
->>>>>>> master
-## 1.9.1 (2020-01-27)
-- Fix a stack reference regression in the Python SDK.
-  [#3798](https://github.com/pulumi/pulumi/pull/3798)
-
 - Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
   another library.
 
@@ -33,7 +18,45 @@ CHANGELOG
 
 - All data-source invocations are now asynchronous (Promise-returning) by default.
 
-- Lock dep ts-node to v8.5.4 [#3733](https://github.com/pulumi/pulumi/pull/3733)
+## HEAD (Unreleased)
+
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
+- Improve CPU utilization in the Python SDK when waiting for resource operations.
+  [#3892](https://github.com/pulumi/pulumi/pull/3892)
+
+- Expose resource options, parent, dependencies, and provider config to policies.
+  [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
+## 1.10.1 (2020-02-06)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
+- Fix the Windows release process.
+  [#3875](https://github.com/pulumi/pulumi/pull/3875)
+
+## 1.10.0 (2020-02-05)
+- Avoid writing checkpoints to backend storage in common case where no changes are being made.
+  [#3860](https://github.com/pulumi/pulumi/pull/3860)
+
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+- Add support for aliases in the Go SDK
+  [3853](https://github.com/pulumi/pulumi/pull/3853)
+
+- Fix Python Dynamic Providers on Windows.
+  [#3855](https://github.com/pulumi/pulumi/pull/3855)
+
+## 1.9.1 (2020-01-27)
+- Fix a stack reference regression in the Python SDK.
+  [#3798](https://github.com/pulumi/pulumi/pull/3798)
+
 - Fix a buggy assertion in the Go SDK.
   [#3794](https://github.com/pulumi/pulumi/pull/3794)
 
