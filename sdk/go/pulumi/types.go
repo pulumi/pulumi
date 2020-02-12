@@ -404,9 +404,7 @@ func SecretT(input interface{}) Output {
 }
 
 func SecretTWithContext(ctx context.Context, input interface{}) Output {
-	o := ToOutputWithContext(ctx, input)
-	// not sure if this is totally right, the input value may resolve and clobber the secret state
-	o.getState().secret = true
+	o := toMaybeSecretOutputWithContext(ctx, input, true)
 	return o
 }
 
@@ -677,6 +675,10 @@ func ToOutput(v interface{}) Output {
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
+	return toMaybeSecretOutputWithContext(ctx, v, false)
+}
+
+func toMaybeSecretOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) Output {
 	resolvedType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resolvedType = input.ElementType()
@@ -692,6 +694,7 @@ func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 		element := reflect.New(resolvedType).Elem()
 
 		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), element)
+		secret = secret || forceSecret
 		if err != nil || !known {
 			result.fulfill(nil, known, secret, err)
 			return

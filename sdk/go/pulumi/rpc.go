@@ -155,6 +155,7 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		var deps []Resource
+		secret := false
 		if input, ok := v.(Input); ok {
 			valueType = input.ElementType()
 
@@ -177,7 +178,8 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				}
 
 				// Await the output.
-				ov, known, secret, err := output.await(context.TODO())
+				ov, known, outputSecret, err := output.await(context.TODO())
+				secret = secret || outputSecret
 				if err != nil {
 					return resource.PropertyValue{}, nil, secret, err
 				}
@@ -193,7 +195,7 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 
 		// If v is nil, just return that.
 		if v == nil {
-			return resource.PropertyValue{}, nil, false, nil
+			return resource.PropertyValue{}, nil, secret, nil
 		}
 
 		// Look for some well known types.
@@ -203,7 +205,7 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
-			}), deps, false, nil
+			}), deps, secret, nil
 		case *archive:
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
@@ -211,7 +213,7 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				for k, a := range as {
 					aa, _, err := marshalInput(a, anyType, await)
 					if err != nil {
-						return resource.PropertyValue{}, nil, false, err
+						return resource.PropertyValue{}, nil, secret, err
 					}
 					assets[k] = aa.V
 				}
@@ -220,16 +222,16 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),
-			}), deps, false, nil
+			}), deps, secret, nil
 		case CustomResource:
 			deps = append(deps, v)
 
 			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
 			e, d, err := marshalInput(v.ID(), idType, await)
 			if err != nil {
-				return resource.PropertyValue{}, nil, false, err
+				return resource.PropertyValue{}, nil, secret, err
 			}
-			return e, append(deps, d...), false, nil
+			return e, append(deps, d...), secret, nil
 		}
 
 		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
@@ -246,25 +248,25 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 		rv := reflect.ValueOf(v)
 		switch rv.Type().Kind() {
 		case reflect.Bool:
-			return resource.NewBoolProperty(rv.Bool()), deps, false, nil
+			return resource.NewBoolProperty(rv.Bool()), deps, secret, nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return resource.NewNumberProperty(float64(rv.Int())), deps, false, nil
+			return resource.NewNumberProperty(float64(rv.Int())), deps, secret, nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return resource.NewNumberProperty(float64(rv.Uint())), deps, false, nil
+			return resource.NewNumberProperty(float64(rv.Uint())), deps, secret, nil
 		case reflect.Float32, reflect.Float64:
-			return resource.NewNumberProperty(rv.Float()), deps, false, nil
+			return resource.NewNumberProperty(rv.Float()), deps, secret, nil
 		case reflect.Ptr, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, false, nil
+				return resource.PropertyValue{}, deps, secret, nil
 			}
 			v, destType = rv.Elem().Interface(), destType.Elem()
 			continue
 		case reflect.String:
-			return resource.NewStringProperty(rv.String()), deps, false, nil
+			return resource.NewStringProperty(rv.String()), deps, secret, nil
 		case reflect.Array, reflect.Slice:
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, false, nil
+				return resource.PropertyValue{}, deps, secret, nil
 			}
 
 			destElem := destType.Elem()
@@ -275,22 +277,22 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				elem := rv.Index(i)
 				e, d, err := marshalInput(elem.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, false, err
+					return resource.PropertyValue{}, nil, secret, err
 				}
 				if !e.IsNull() {
 					arr = append(arr, e)
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewArrayProperty(arr), deps, false, nil
+			return resource.NewArrayProperty(arr), deps, secret, nil
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
-				return resource.PropertyValue{}, nil, false,
+				return resource.PropertyValue{}, nil, secret,
 					errors.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
 			}
 
 			if rv.IsNil() {
-				return resource.PropertyValue{}, deps, false, nil
+				return resource.PropertyValue{}, deps, secret, nil
 			}
 
 			destElem := destType.Elem()
@@ -301,14 +303,14 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				value := rv.MapIndex(key)
 				mv, d, err := marshalInput(value.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, false, err
+					return resource.PropertyValue{}, nil, secret, err
 				}
 				if !mv.IsNull() {
 					obj[resource.PropertyKey(key.String())] = mv
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, false, nil
+			return resource.NewObjectProperty(obj), deps, secret, nil
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
@@ -322,7 +324,7 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 
 				fv, d, err := marshalInput(rv.Field(i).Interface(), destField.Type, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, false, err
+					return resource.PropertyValue{}, nil, secret, err
 				}
 
 				if !fv.IsNull() {
@@ -330,9 +332,9 @@ func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await 
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, false, nil
+			return resource.NewObjectProperty(obj), deps, secret, nil
 		}
-		return resource.PropertyValue{}, nil, false, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
+		return resource.PropertyValue{}, nil, secret, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
 }
 
@@ -341,6 +343,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, error) {
 	case v.IsComputed() || v.IsOutput():
 		return nil, nil
 	case v.IsSecret():
+		// TODO(evanboyle)
 		return nil, errors.New("this version of the Pulumi SDK does not support first-class secrets")
 	case v.IsArray():
 		arr := v.ArrayValue()
@@ -440,6 +443,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) error {
 		dest.Set(reflect.ValueOf(archive))
 		return nil
 	case v.IsSecret():
+		// TODO(evanboyle)
 		return errors.New("this version of the Pulumi SDK does not support first-class secrets")
 	}
 

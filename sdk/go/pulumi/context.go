@@ -172,7 +172,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		plugin.MarshalOptions{KeepUnknowns: false})
+		plugin.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
 	if err != nil {
 		return errors.Wrap(err, "marshaling arguments")
 	}
@@ -704,7 +704,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	keepUnknowns := ctx.DryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepUnknowns: keepUnknowns})
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling properties")
 	}
@@ -922,7 +922,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		keepUnknowns := ctx.DryRun()
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
-			plugin.MarshalOptions{KeepUnknowns: keepUnknowns})
+			plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 		if err != nil {
 			return
 		}
