@@ -39,9 +39,6 @@ type CreatePolicyPackRequest struct {
 	// The Policies outline the specific Policies in the package, and are derived
 	// from the package by the CLI.
 	Policies []Policy `json:"policies"`
-
-	// The JSON schema for the Policy Pack's configuration.
-	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
@@ -70,9 +67,10 @@ type RequiredPolicy struct {
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
 
-	// The configuration that is to be passed to the Policy Pack. This must be valid
-	// in accordance with the JSON schema for the Policy Pack's configuration.
-	Config *json.RawMessage `json:"config,omitempty"`
+	// The configuration that is to be passed to the Policy Pack. This is map a of policies
+	// mapped to their configuration. Each individual configuration must comply with the
+	// JSON schema for the each Policy within the Policy Pack.
+	Config map[string]*json.RawMessage `json:"config,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -89,6 +87,9 @@ type Policy struct {
 	// Message is the message that will be displayed to end users when they violate
 	// this policy.
 	Message string `json:"message"`
+
+	// The JSON schema for the Policy's configuration.
+	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
 }
 
 // EnforcementLevel indicates how a policy should be enforced
@@ -147,8 +148,9 @@ type PolicyPackMetadata struct {
 	Version     int    `json:"version"`
 	VersionTag  string `json:"versionTag"`
 
-	// The configuration that is to be passed to the Policy Pack.
-	Config *json.RawMessage `json:"config,omitempty"`
+	// The configuration that is to be passed to the Policy Pack. This
+	// map ties Policies with their configuration.
+	Config map[string]*json.RawMessage `json:"config,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -180,8 +182,8 @@ type PolicyGroupSummary struct {
 }
 
 // GetPolicyPackConfigSchemaResponse is the response that includes the JSON
-// of a particular Policy Pack's configuration.
+// schemas of Policies within a particular Policy Pack.
 type GetPolicyPackConfigSchemaResponse struct {
-	// The JSON schema for the Policy Pack's configuration.
-	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
+	// The JSON schema for each Policy's configuration.
+	ConfigSchema map[string]*json.RawMessage `json:"configSchema,omitempty"`
 }
