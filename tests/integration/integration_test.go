@@ -1182,7 +1182,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
 		Config: map[string]string{
