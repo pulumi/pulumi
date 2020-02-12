@@ -85,11 +85,6 @@ type DiagInfo struct {
 	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
 }
 
-// PolicyInfo bundles policy information for a single resource.
-type PolicyInfo struct {
-	PolicyPayloads []engine.PolicyViolationEventPayload
-}
-
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
 type ProgressDisplay struct {
 	opts           Options
@@ -175,6 +170,8 @@ var (
 	// simple regex to take our names like "aws:function:Function" and convert to
 	// "aws:Function"
 	typeNameRegex = regexp.MustCompile("^(.*):(.*)/(.*):(.*)$")
+	// policyPayloads is a collection of policy violation events for a single resource.
+	policyPayloads []engine.PolicyViolationEventPayload
 )
 
 func simplifyTypeName(typ tokens.Type) string {
@@ -683,7 +680,6 @@ func (display *ProgressDisplay) processEndSteps() {
 	if !wrotePolicyViolations {
 		display.printSummary(wroteDiagnosticHeader)
 	}
-	
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
@@ -764,10 +760,10 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 	var policyEvents []engine.PolicyViolationEventPayload
 	for _, row := range display.eventUrnToResourceRow {
 		policyInfo := row.PolicyInfo()
-		if policyInfo == nil || len(policyInfo.PolicyPayloads) == 0 {
+		if len(policyInfo) == 0 {
 			continue
 		}
-		policyEvents = append(policyEvents, policyInfo.PolicyPayloads...)
+		policyEvents = append(policyEvents, policyInfo...)
 	}
 	if len(policyEvents) == 0 {
 		return wrotePolicyViolations
@@ -944,7 +940,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyInfo:           &PolicyInfo{},
+		policyInfo:           policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
@@ -1111,7 +1107,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyInfo:           &PolicyInfo{},
+		policyInfo:           policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
 		hideRowIfUnnecessary: false,
 	}

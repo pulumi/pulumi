@@ -57,7 +57,7 @@ type ResourceRow interface {
 	SetFailed()
 
 	DiagInfo() *DiagInfo
-	PolicyInfo() *PolicyInfo
+	PolicyInfo() []engine.PolicyViolationEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
@@ -125,7 +125,7 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo   *DiagInfo
-	policyInfo *PolicyInfo
+	policyInfo []engine.PolicyViolationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -218,7 +218,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 }
 
 // PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
-func (data *resourceRowData) PolicyInfo() *PolicyInfo {
+func (data *resourceRowData) PolicyInfo() []engine.PolicyViolationEventPayload {
 	return data.policyInfo
 }
 
@@ -226,7 +226,7 @@ func (data *resourceRowData) PolicyInfo() *PolicyInfo {
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	contract.Assert(event.Type == engine.PolicyViolationEvent)
 	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
-	data.policyInfo.PolicyPayloads = append(data.policyInfo.PolicyPayloads, pePayload)
+	data.policyInfo = append(data.policyInfo, pePayload)
 }
 
 type column int
