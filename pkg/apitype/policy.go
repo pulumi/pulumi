@@ -89,7 +89,16 @@ type Policy struct {
 	Message string `json:"message"`
 
 	// The JSON schema for the Policy's configuration.
-	ConfigSchema *json.RawMessage `json:"configSchema,omitempty"`
+	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
+}
+
+// PolicyConfigSchema defines the JSON schema of a particular Policies'
+// configuration.
+type PolicyConfigSchema struct {
+    // Config property name to JSON Schema map.
+    Properties: map[string]*json.RawMessage `json:"properties,omitempty"`
+    // Required config properties.
+    Required:   []string                   `json:"required,omitempty"`
 }
 
 // EnforcementLevel indicates how a policy should be enforced
@@ -185,5 +194,5 @@ type PolicyGroupSummary struct {
 // schemas of Policies within a particular Policy Pack.
 type GetPolicyPackConfigSchemaResponse struct {
 	// The JSON schema for each Policy's configuration.
-	ConfigSchema map[string]*json.RawMessage `json:"configSchema,omitempty"`
+	ConfigSchema map[string]*PolicyConfigSchema `json:"configSchema,omitempty"`
 }
