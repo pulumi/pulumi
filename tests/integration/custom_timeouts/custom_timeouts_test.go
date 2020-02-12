@@ -13,8 +13,21 @@ func TestCustomTimeouts(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:         true,
-		DebugLogLevel: 9,
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+			{
+				Dir:      "step3",
+				Additive: true,
+			},
+		},
 	}
 	integration.ProgramTest(t, opts)
 }

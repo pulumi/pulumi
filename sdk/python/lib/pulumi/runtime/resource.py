@@ -346,7 +346,13 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             # translate the CustomTimeouts object to a dict so that protobuf can serialize properly
             custom_timeouts = None
             if opts.custom_timeouts is not None:
-                custom_timeouts = vars(opts.custom_timeouts)
+                custom_timeouts = resource_pb2.RegisterResourceRequest.CustomTimeouts()
+                if opts.custom_timeouts.create is not None:
+                    custom_timeouts.create = opts.custom_timeouts.create
+                if opts.custom_timeouts.update is not None:
+                    custom_timeouts.update = opts.custom_timeouts.update
+                if opts.custom_timeouts.delete is not None:
+                    custom_timeouts.delete = opts.custom_timeouts.delete
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
