@@ -30,6 +30,10 @@ type CreatePolicyPackRequest struct {
 	// A pretty name for the Policy Pack that is supplied by the package.
 	DisplayName string `json:"displayName"`
 
+	// VersionTag is the semantic version of the Policy Pack. One a version is published, it
+	// cannot never be republished. Older clients will not have a version tag.
+	VersionTag string `json:"versionTag,omitempty"`
+
 	// The Policies outline the specific Policies in the package, and are derived
 	// from the package by the CLI.
 	Policies []Policy `json:"policies"`
@@ -51,6 +55,9 @@ type RequiredPolicy struct {
 
 	// The version of the required Policy Pack.
 	Version int `json:"version"`
+
+	// The version tag of the required Policy Pack.
+	VersionTag string `json:"versionTag"`
 
 	// The pretty name of the required Policy Pack.
 	DisplayName string `json:"displayName"`
@@ -93,6 +100,7 @@ type GetPolicyPackResponse struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"displayName"`
 	Version     int      `json:"version"`
+	VersionTag  string   `json:"versionTag"`
 	Policies    []Policy `json:"policies"`
 	Applied     bool     `json:"applied"`
 }
@@ -127,6 +135,7 @@ type PolicyPackMetadata struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
 	Version     int    `json:"version"`
+	VersionTag  string `json:"versionTag"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -137,9 +146,10 @@ type ListPolicyPacksResponse struct {
 
 // PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
 type PolicyPackWithVersions struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Versions    []int  `json:"versions"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Versions    []int    `json:"versions"`
+	VersionTags []string `json:"versionTags"`
 }
 
 // ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
