@@ -89,6 +89,23 @@ export class StackReference extends CustomResource {
     }
 
     /**
+     * Fetches the value promptly of the named stack output. May return undefined if the value is
+     * not known for some reason.
+     *
+     * This operation is not supported (and will throw) if the named stack output is a secret.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public async getOutputValue(name: string): Promise<any> {
+        const o = this.getOutput(name);
+        const isSecret = await o.isSecret;
+        if (isSecret) {
+            throw new Error("Cannot call 'getOutputValue' if the referenced stack output is a secret. Use 'getOutput' instead.");
+        }
+        return await o.promise();
+    }
+
+    /**
      * Fetches the value of the named stack output, or throws an error if the output was not found.
      *
      * @param name The name of the stack output to fetch.
@@ -104,6 +121,23 @@ export class StackReference extends CustomResource {
             value.resources(), value.promise(),
             value.isKnown, isSecretOutputName(this, output(name)),
             value.allResources!());
+    }
+
+    /**
+     * Fetches the value promptly of the named stack output. Throws an error if the stack output is
+     * not found.
+     *
+     * This operation is not supported (and will throw) if the named stack output is a secret.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public async requireOutputValue(name: string): Promise<any> {
+        const o = this.requireOutput(name);
+        const isSecret = await o.isSecret;
+        if (isSecret) {
+            throw new Error("Cannot call 'requireOutputValue' if the referenced stack output is a secret. Use 'requireOutput' instead.");
+        }
+        return o.promise();
     }
 
     /**
