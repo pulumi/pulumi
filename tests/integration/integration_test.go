@@ -1166,31 +1166,36 @@ func TestMultiStackReferencePython(t *testing.T) {
 	}
 
 	// build a stack with an export
-	e := ptesting.NewEnvironment(t)
+	exporterOpts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		NoParallel:       true,
+		SkipStackRemoval: true, // do this at the end after the importer finishes
+	}
+	pt := integration.ProgramTest(t, exporterOpts)
 
-	exporterStackName := filepath.Base(e.RootPath)
+	exporterStackName := exporterOpts.GetStackName().String()
 
-	e.ImportDirectory(filepath.Join("stack_reference_multi", "python", "exporter"))
-	e.RunCommand("pulumi", "stack", "init", fmt.Sprintf("%s/%s", os.Getenv("PULUMI_TEST_OWNER"), exporterStackName))
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-
-	defer func() {
-		e.RunCommand("pulumi", "stack", "rm", "--yes")
-		e.DeleteEnvironment()
-	}()
-
-	opts := &integration.ProgramTestOptions{
+	importerOpts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
 		Config: map[string]string{
 			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
 			"exporter_stack_name": exporterStackName,
 		},
+		NoParallel: true,
 	}
-	integration.ProgramTest(t, opts)
+	integration.ProgramTest(t, importerOpts)
+	pt.TestLifeCycleDestroy()
 }
 
 // Tests that stack references work in .NET.

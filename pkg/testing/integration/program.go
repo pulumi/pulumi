@@ -543,11 +543,11 @@ func GetLogs(
 //   (+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
-func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+func ProgramTest(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	// If we're just listing tests, simply print this test's directory.
 	if listDirs {
 		fmt.Printf("%s\n", opts.Dir)
-		return
+		return nil
 	}
 
 	// If we have a matcher, ensure that this test matches its pattern.
@@ -599,6 +599,8 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := newProgramTester(t, opts)
 	err := pt.testLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
+
+	return pt
 }
 
 // fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
@@ -611,8 +613,8 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 	contract.IgnoreError(err)
 }
 
-// programTester contains state associated with running a single test pass.
-type programTester struct {
+// ProgramTester contains state associated with running a single test pass.
+type ProgramTester struct {
 	t            *testing.T          // the Go tester for this run.
 	opts         *ProgramTestOptions // options that control this test run.
 	bin          string              // the `pulumi` binary we are using.
@@ -622,9 +624,10 @@ type programTester struct {
 	dotNetBin    string              // the `dotnet` binary we are using.
 	eventLog     string              // The path to the event log for this test.
 	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
+	projdir      string              // the project directory we use for this run
 }
 
-func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
+func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	stackName := opts.GetStackName()
 	maxStepTries := 1
 	if opts.RetryFailedSteps {
@@ -635,7 +638,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 		opts.SkipExportImport = true
 		opts.SkipEmptyPreviewUpdate = true
 	}
-	return &programTester{
+	return &ProgramTester{
 		t:            t,
 		opts:         opts,
 		eventLog:     filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
@@ -643,28 +646,28 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	}
 }
 
-func (pt *programTester) getBin() (string, error) {
+func (pt *ProgramTester) getBin() (string, error) {
 	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }
 
-func (pt *programTester) getYarnBin() (string, error) {
+func (pt *ProgramTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
 }
 
-func (pt *programTester) getGoBin() (string, error) {
+func (pt *ProgramTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
 }
 
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
-func (pt *programTester) getPipenvBin() (string, error) {
+func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
 }
 
-func (pt *programTester) getDotNetBin() (string, error) {
+func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
-func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
 	bin, err := pt.getBin()
 	if err != nil {
 		return nil, err
@@ -680,7 +683,7 @@ func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
 	return cmd, nil
 }
 
-func (pt *programTester) yarnCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	bin, err := pt.getYarnBin()
 	if err != nil {
 		return nil, err
@@ -690,7 +693,7 @@ func (pt *programTester) yarnCmd(args []string) ([]string, error) {
 	return withOptionalYarnFlags(result), nil
 }
 
-func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 	bin, err := pt.getPipenvBin()
 	if err != nil {
 		return nil, err
@@ -700,11 +703,11 @@ func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
 	return append(cmd, args...), nil
 }
 
-func (pt *programTester) runCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runCommand(name string, args []string, wd string) error {
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
 
-func (pt *programTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
+func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
 	cmd, err := pt.pulumiCmd(args)
 	if err != nil {
 		return err
@@ -769,7 +772,7 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string,
 	return err
 }
 
-func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
 	cmd, err := pt.yarnCmd(args)
 	if err != nil {
 		return err
@@ -796,7 +799,7 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 	return err
 }
 
-func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string) error {
 	// Pipenv uses setuptools to install and uninstall packages. Setuptools has an installation mode called "develop"
 	// that we use to install the package being tested, since it is 1) lightweight and 2) not doing so has its own set
 	// of annoying problems.
@@ -820,7 +823,7 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
 	// problem of multiple processes stomping on the same files in the source tree. Note that pipenvMutex is a file
 	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
-	// processes. (Furthermore, each test gets an instance of programTester and thus the mutex, so we'd need to be
+	// processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd need to be
 	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {
 		if err := pipenvMutex.Lock(); err != nil {
@@ -846,11 +849,12 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	return pt.runCommand(name, cmd, wd)
 }
 
-func (pt *programTester) testLifeCycleInitAndDestroy() error {
+func (pt *ProgramTester) testLifeCycleInitAndDestroy() error {
 	tmpdir, projdir, err := pt.copyTestToTemporaryDirectory()
 	if err != nil {
 		return errors.Wrap(err, "copying test to temp dir")
 	}
+	pt.projdir = projdir
 
 	testFinished := false
 	defer func() {
@@ -883,7 +887,7 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		if projdir != "" {
-			destroyErr := pt.testLifeCycleDestroy(projdir)
+			destroyErr := pt.TestLifeCycleDestroy()
 			assert.NoError(pt.t, destroyErr)
 		}
 	}()
@@ -908,7 +912,7 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 	return nil
 }
 
-func upgradeProjectDeps(projectDir string, pt *programTester) error {
+func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 	projInfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
 		return errors.Wrap(err, "getting project info")
@@ -930,7 +934,7 @@ func upgradeProjectDeps(projectDir string, pt *programTester) error {
 	return nil
 }
 
-func (pt *programTester) testLifeCycleInitialize(dir string) error {
+func (pt *ProgramTester) testLifeCycleInitialize(dir string) error {
 	stackName := pt.opts.GetStackName()
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
@@ -1011,14 +1015,14 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	return nil
 }
 
-func (pt *programTester) testLifeCycleDestroy(dir string) error {
+func (pt *ProgramTester) TestLifeCycleDestroy() error {
 	// Destroy and remove the stack.
 	fprintf(pt.opts.Stdout, "Destroying stack\n")
 	destroy := []string{"destroy", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
-	if err := pt.runPulumiCommand("pulumi-destroy", destroy, dir, false); err != nil {
+	if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 		return err
 	}
 
@@ -1028,12 +1032,12 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	}
 
 	if !pt.opts.SkipStackRemoval {
-		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir, false)
+		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
 	}
 	return nil
 }
 
-func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
+func (pt *ProgramTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
 	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
@@ -1088,7 +1092,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) exportImport(dir string) error {
+func (pt *ProgramTester) exportImport(dir string) error {
 	exportCmd := []string{"stack", "export", "--file", "stack.json"}
 	importCmd := []string{"stack", "import", "--file", "stack.json"}
 
@@ -1103,7 +1107,7 @@ func (pt *programTester) exportImport(dir string) error {
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
+func (pt *ProgramTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
@@ -1155,7 +1159,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	return nil
 }
 
-func (pt *programTester) query(dir string, name string, shouldFail bool) error {
+func (pt *ProgramTester) query(dir string, name string, shouldFail bool) error {
 
 	query := []string{"query", "--non-interactive"}
 	if pt.opts.GetDebugUpdates() {
@@ -1182,7 +1186,7 @@ func (pt *programTester) query(dir string, name string, shouldFail bool) error {
 	return nil
 }
 
-func (pt *programTester) testEdits(dir string) error {
+func (pt *ProgramTester) testEdits(dir string) error {
 	for i, edit := range pt.opts.EditDirs {
 		var err error
 		if err = pt.testEdit(dir, i, edit); err != nil {
@@ -1192,7 +1196,7 @@ func (pt *programTester) testEdits(dir string) error {
 	return nil
 }
 
-func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
+func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 	fprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	if edit.Additive {
@@ -1298,7 +1302,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
 }
 
-func (pt *programTester) performExtraRuntimeValidation(
+func (pt *ProgramTester) performExtraRuntimeValidation(
 	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
 
 	if extraRuntimeValidation == nil {
@@ -1384,7 +1388,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 }
 
 // copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) {
+func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) {
 	// Get the source dir and project info.
 	sourceDir := pt.opts.Dir
 	projinfo, err := pt.getProjinfo(sourceDir)
@@ -1450,7 +1454,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	return tmpdir, projdir, nil
 }
 
-func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
+func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
 	// Load up the package so we know things like what language the project is.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
@@ -1461,7 +1465,7 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 }
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
@@ -1478,7 +1482,7 @@ func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 }
 
 // prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *programTester) prepareProjectDir(projectDir string) error {
+func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 	projinfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
 		return err
@@ -1487,7 +1491,7 @@ func (pt *programTester) prepareProjectDir(projectDir string) error {
 }
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
-func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	if err := pulumi_testing.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
@@ -1586,7 +1590,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
-func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -1623,7 +1627,7 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
+func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
 			return err
@@ -1633,7 +1637,7 @@ func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
 	return nil
 }
 
-func (pt *programTester) installPipPackageDeps(cwd string) error {
+func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	var err error
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
@@ -1655,7 +1659,7 @@ func (pt *programTester) installPipPackageDeps(cwd string) error {
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
-func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
 	goBin, err := pt.getGoBin()
 	if err != nil {
@@ -1688,7 +1692,7 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
-func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	dotNetBin, err := pt.getDotNetBin()
 	if err != nil {
 		return errors.Wrap(err, "locating `dotnet` binary")
