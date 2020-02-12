@@ -95,10 +95,10 @@ type Policy struct {
 // PolicyConfigSchema defines the JSON schema of a particular Policies'
 // configuration.
 type PolicyConfigSchema struct {
-    // Config property name to JSON Schema map.
-    Properties: map[string]*json.RawMessage `json:"properties,omitempty"`
-    // Required config properties.
-    Required:   []string                   `json:"required,omitempty"`
+	// Config property name to JSON Schema map.
+	Properties map[string]*json.RawMessage `json:"properties,omitempty"`
+	// Required config properties.
+	Required []string `json:"required,omitempty"`
 }
 
 // EnforcementLevel indicates how a policy should be enforced
