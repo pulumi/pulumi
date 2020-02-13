@@ -67,7 +67,9 @@ func newStackExportCmd() *cobra.Command {
 				be := s.Backend()
 				specificExpBE, ok := be.(backend.SpecificDeploymentExporter)
 				if !ok {
-					return errors.Errorf("the current backend (%s) does not provide the ability to export previous deployments", be.Name())
+					return errors.Errorf(
+						"the current backend (%s) does not provide the ability to export previous deployments",
+						be.Name())
 				}
 
 				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, version)
