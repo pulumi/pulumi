@@ -1166,7 +1166,7 @@ func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
 }
 
-func (b *cloudBackend) ExportSpecificDeployment(
+func (b *cloudBackend) ExportDeploymentForVersion(
 	ctx context.Context, stack backend.Stack, version string) (*apitype.UntypedDeployment, error) {
 	// The Pulumi Console defines versions as a positive integer. Parse the provided version string and
 	// ensure it is valid.
