@@ -17,6 +17,9 @@ CHANGELOG
 - Move .NET SDK attributes to the root namespace.
   [#3902](https://github.com/pulumi/pulumi/pull/3902)
 
+- Support exporting older stack versions.
+  [#3906](https://github.com/pulumi/pulumi/pull/3906)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)
