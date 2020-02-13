@@ -268,6 +268,22 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return err
 		}
 		localPolicyPacks[i].Name = analyzerInfo.Name
+
+		// If a config file was specified, load it, and pass it to the analyzer.
+		if pack.Config != "" {
+			configFromFile, err := plugin.LoadPolicyPackConfigFromFile(pack.Config)
+			if err != nil {
+				return err
+			}
+			config, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
+			if err != nil {
+				return errors.Wrapf(err, "reconciling configuration for analyzer %q at %q",
+					analyzerInfo.Name, pack.Path)
+			}
+			if err = analyzer.Configure(config); err != nil {
+				return errors.Wrapf(err, "configuring analyzer %q at %q", analyzerInfo.Name, pack.Path)
+			}
+		}
 	}
 	return nil
 }

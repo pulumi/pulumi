@@ -54,6 +54,7 @@ require (
 	github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0
 	gocloud.dev v0.18.0
 	gocloud.dev/secrets/hashivault v0.18.0
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
