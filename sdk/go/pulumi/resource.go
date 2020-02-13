@@ -32,6 +32,10 @@ type ResourceState struct {
 	urn URNOutput `pulumi:"urn"`
 
 	providers map[string]ProviderResource
+
+	aliases []URNOutput
+
+	name string
 }
 
 func (s ResourceState) URN() URNOutput {
@@ -44,6 +48,14 @@ func (s ResourceState) GetProvider(token string) ProviderResource {
 
 func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
+}
+
+func (s ResourceState) getAliases() []URNOutput {
+	return s.aliases
+}
+
+func (s ResourceState) getName() string {
+	return s.name
 }
 
 func (ResourceState) isResource() {}
@@ -77,6 +89,12 @@ type Resource interface {
 
 	// getProviders returns the provider map for this resource.
 	getProviders() map[string]ProviderResource
+
+	// getAliases returns the list of aliases for this resource
+	getAliases() []URNOutput
+
+	// getName returns the name of the resource
+	getName() string
 
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
@@ -137,6 +155,8 @@ type resourceOptions struct {
 	CustomTimeouts *CustomTimeouts
 	// Ignore changes to any of the specified properties.
 	IgnoreChanges []string
+	// Aliases is an optional list of identifiers used to find and use existing resources.
+	Aliases []Alias
 }
 
 type invokeOptions struct {
@@ -264,5 +284,12 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = o
+	})
+}
+
+// Aliases applies a list of identifiers to find and use existing resources.
+func Aliases(o []Alias) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Aliases = o
 	})
 }

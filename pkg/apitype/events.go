@@ -75,7 +75,10 @@ type SummaryEvent struct {
 	// which is not exported in this package.
 	ResourceChanges map[string]int `json:"resourceChanges"`
 	// PolicyPacks run during update. Maps PolicyPackName -> version.
-	PolicyPacks map[string]string
+	// Note: When this field was initially added, we forgot to add the JSON tag
+	// and are now locked into to using PascalCase for this field to maintain backwards
+	// compatibility.
+	PolicyPacks map[string]string `json:"PolicyPacks"`
 }
 
 // DiffKind describes the kind of a particular property diff.

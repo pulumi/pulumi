@@ -145,7 +145,7 @@ class ResourceProviderServicer(object):
 
   def Create(self, request, context):
     """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-    must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+    must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')

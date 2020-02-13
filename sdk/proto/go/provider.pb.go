@@ -57,7 +57,7 @@ func (x PropertyDiff_Kind) String() string {
 	return proto.EnumName(PropertyDiff_Kind_name, int32(x))
 }
 func (PropertyDiff_Kind) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{9, 0}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{9, 0}
 }
 
 type DiffResponse_DiffChanges int32
@@ -83,7 +83,7 @@ func (x DiffResponse_DiffChanges) String() string {
 	return proto.EnumName(DiffResponse_DiffChanges_name, int32(x))
 }
 func (DiffResponse_DiffChanges) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{10, 0}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{10, 0}
 }
 
 type ConfigureRequest struct {
@@ -99,7 +99,7 @@ func (m *ConfigureRequest) Reset()         { *m = ConfigureRequest{} }
 func (m *ConfigureRequest) String() string { return proto.CompactTextString(m) }
 func (*ConfigureRequest) ProtoMessage()    {}
 func (*ConfigureRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{0}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{0}
 }
 func (m *ConfigureRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigureRequest.Unmarshal(m, b)
@@ -151,7 +151,7 @@ func (m *ConfigureResponse) Reset()         { *m = ConfigureResponse{} }
 func (m *ConfigureResponse) String() string { return proto.CompactTextString(m) }
 func (*ConfigureResponse) ProtoMessage()    {}
 func (*ConfigureResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{1}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{1}
 }
 func (m *ConfigureResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigureResponse.Unmarshal(m, b)
@@ -190,7 +190,7 @@ func (m *ConfigureErrorMissingKeys) Reset()         { *m = ConfigureErrorMissing
 func (m *ConfigureErrorMissingKeys) String() string { return proto.CompactTextString(m) }
 func (*ConfigureErrorMissingKeys) ProtoMessage()    {}
 func (*ConfigureErrorMissingKeys) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{2}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{2}
 }
 func (m *ConfigureErrorMissingKeys) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigureErrorMissingKeys.Unmarshal(m, b)
@@ -229,7 +229,7 @@ func (m *ConfigureErrorMissingKeys_MissingKey) Reset()         { *m = ConfigureE
 func (m *ConfigureErrorMissingKeys_MissingKey) String() string { return proto.CompactTextString(m) }
 func (*ConfigureErrorMissingKeys_MissingKey) ProtoMessage()    {}
 func (*ConfigureErrorMissingKeys_MissingKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{2, 0}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{2, 0}
 }
 func (m *ConfigureErrorMissingKeys_MissingKey) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ConfigureErrorMissingKeys_MissingKey.Unmarshal(m, b)
@@ -277,7 +277,7 @@ func (m *InvokeRequest) Reset()         { *m = InvokeRequest{} }
 func (m *InvokeRequest) String() string { return proto.CompactTextString(m) }
 func (*InvokeRequest) ProtoMessage()    {}
 func (*InvokeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{3}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{3}
 }
 func (m *InvokeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InvokeRequest.Unmarshal(m, b)
@@ -337,7 +337,7 @@ func (m *InvokeResponse) Reset()         { *m = InvokeResponse{} }
 func (m *InvokeResponse) String() string { return proto.CompactTextString(m) }
 func (*InvokeResponse) ProtoMessage()    {}
 func (*InvokeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{4}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{4}
 }
 func (m *InvokeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InvokeResponse.Unmarshal(m, b)
@@ -384,7 +384,7 @@ func (m *CheckRequest) Reset()         { *m = CheckRequest{} }
 func (m *CheckRequest) String() string { return proto.CompactTextString(m) }
 func (*CheckRequest) ProtoMessage()    {}
 func (*CheckRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{5}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{5}
 }
 func (m *CheckRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CheckRequest.Unmarshal(m, b)
@@ -437,7 +437,7 @@ func (m *CheckResponse) Reset()         { *m = CheckResponse{} }
 func (m *CheckResponse) String() string { return proto.CompactTextString(m) }
 func (*CheckResponse) ProtoMessage()    {}
 func (*CheckResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{6}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{6}
 }
 func (m *CheckResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CheckResponse.Unmarshal(m, b)
@@ -483,7 +483,7 @@ func (m *CheckFailure) Reset()         { *m = CheckFailure{} }
 func (m *CheckFailure) String() string { return proto.CompactTextString(m) }
 func (*CheckFailure) ProtoMessage()    {}
 func (*CheckFailure) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{7}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{7}
 }
 func (m *CheckFailure) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CheckFailure.Unmarshal(m, b)
@@ -532,7 +532,7 @@ func (m *DiffRequest) Reset()         { *m = DiffRequest{} }
 func (m *DiffRequest) String() string { return proto.CompactTextString(m) }
 func (*DiffRequest) ProtoMessage()    {}
 func (*DiffRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{8}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{8}
 }
 func (m *DiffRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiffRequest.Unmarshal(m, b)
@@ -599,7 +599,7 @@ func (m *PropertyDiff) Reset()         { *m = PropertyDiff{} }
 func (m *PropertyDiff) String() string { return proto.CompactTextString(m) }
 func (*PropertyDiff) ProtoMessage()    {}
 func (*PropertyDiff) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{9}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{9}
 }
 func (m *PropertyDiff) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyDiff.Unmarshal(m, b)
@@ -680,7 +680,7 @@ func (m *DiffResponse) Reset()         { *m = DiffResponse{} }
 func (m *DiffResponse) String() string { return proto.CompactTextString(m) }
 func (*DiffResponse) ProtoMessage()    {}
 func (*DiffResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{10}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{10}
 }
 func (m *DiffResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiffResponse.Unmarshal(m, b)
@@ -762,7 +762,7 @@ func (m *CreateRequest) Reset()         { *m = CreateRequest{} }
 func (m *CreateRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()    {}
 func (*CreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{11}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{11}
 }
 func (m *CreateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateRequest.Unmarshal(m, b)
@@ -815,7 +815,7 @@ func (m *CreateResponse) Reset()         { *m = CreateResponse{} }
 func (m *CreateResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()    {}
 func (*CreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{12}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{12}
 }
 func (m *CreateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateResponse.Unmarshal(m, b)
@@ -863,7 +863,7 @@ func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
 func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadRequest) ProtoMessage()    {}
 func (*ReadRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{13}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{13}
 }
 func (m *ReadRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReadRequest.Unmarshal(m, b)
@@ -924,7 +924,7 @@ func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
 func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()    {}
 func (*ReadResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{14}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{14}
 }
 func (m *ReadResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReadResponse.Unmarshal(m, b)
@@ -981,7 +981,7 @@ func (m *UpdateRequest) Reset()         { *m = UpdateRequest{} }
 func (m *UpdateRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateRequest) ProtoMessage()    {}
 func (*UpdateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{15}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{15}
 }
 func (m *UpdateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateRequest.Unmarshal(m, b)
@@ -1054,7 +1054,7 @@ func (m *UpdateResponse) Reset()         { *m = UpdateResponse{} }
 func (m *UpdateResponse) String() string { return proto.CompactTextString(m) }
 func (*UpdateResponse) ProtoMessage()    {}
 func (*UpdateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{16}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{16}
 }
 func (m *UpdateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateResponse.Unmarshal(m, b)
@@ -1095,7 +1095,7 @@ func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
 func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()    {}
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{17}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{17}
 }
 func (m *DeleteRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteRequest.Unmarshal(m, b)
@@ -1159,7 +1159,7 @@ func (m *ErrorResourceInitFailed) Reset()         { *m = ErrorResourceInitFailed
 func (m *ErrorResourceInitFailed) String() string { return proto.CompactTextString(m) }
 func (*ErrorResourceInitFailed) ProtoMessage()    {}
 func (*ErrorResourceInitFailed) Descriptor() ([]byte, []int) {
-	return fileDescriptor_provider_766486f54fa2871e, []int{18}
+	return fileDescriptor_provider_857e379df15f5bcf, []int{18}
 }
 func (m *ErrorResourceInitFailed) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ErrorResourceInitFailed.Unmarshal(m, b)
@@ -1265,7 +1265,7 @@ type ResourceProviderClient interface {
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-	// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+	// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.
@@ -1451,7 +1451,7 @@ type ResourceProviderServer interface {
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-	// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+	// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 	Create(context.Context, *CreateRequest) (*CreateResponse, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.
@@ -1770,9 +1770,9 @@ var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 	Metadata: "provider.proto",
 }
 
-func init() { proto.RegisterFile("provider.proto", fileDescriptor_provider_766486f54fa2871e) }
+func init() { proto.RegisterFile("provider.proto", fileDescriptor_provider_857e379df15f5bcf) }
 
-var fileDescriptor_provider_766486f54fa2871e = []byte{
+var fileDescriptor_provider_857e379df15f5bcf = []byte{
 	// 1221 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x57, 0xcd, 0x72, 0x1b, 0xc5,
 	0x13, 0xd7, 0x6a, 0x65, 0xd9, 0x6a, 0x7d, 0x44, 0x99, 0xff, 0x9f, 0x58, 0x51, 0x7c, 0x50, 0x2d,

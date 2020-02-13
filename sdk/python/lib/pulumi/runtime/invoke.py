@@ -15,6 +15,7 @@ import asyncio
 import sys
 from typing import Any, Awaitable
 import grpc
+from google.protobuf.pyext._message import SetAllowOversizeProtos  # pylint: disable-msg=E0611
 
 from ..output import Inputs
 from ..invoke import InvokeOptions
@@ -23,6 +24,14 @@ from .settings import get_monitor
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
+
+# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
+# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
+# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs. If this setting ends up
+# causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s provider.
+#
+# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
+SetAllowOversizeProtos(True)
 
 # If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
 # implementation in order to support synchronous invokes.
