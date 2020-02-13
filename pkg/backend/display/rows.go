@@ -22,13 +22,11 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Row interface {
@@ -58,6 +56,8 @@ type ResourceRow interface {
 	SetFailed()
 
 	DiagInfo() *DiagInfo
+	PolicyPayloads() []engine.PolicyViolationEventPayload
+
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
 }
@@ -106,7 +106,7 @@ func (data *headerRowData) ColorizedSuffix() string {
 	return ""
 }
 
-// Implementation of a row used for all the resource rows in the grid.
+// resourceRowData is the implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
 	displayOrderIndex int
 
@@ -123,7 +123,8 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
-	diagInfo *DiagInfo
+	diagInfo       *DiagInfo
+	policyPayloads []engine.PolicyViolationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -215,31 +216,15 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	}
 }
 
+// PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
+func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
+	return data.policyPayloads
+}
+
+// RecordPolicyViolationEvent records a policy event with the resourceRowData.
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-
-	//
-	// NOTE: The display code only understands DiagEvents. We convert the policy violation events
-	// accordingly so they can be displayed.
-	//
-
 	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
-
-	payload := engine.DiagEventPayload{
-		URN:     pePayload.ResourceURN,
-		Prefix:  pePayload.Prefix,
-		Message: pePayload.Message,
-		Color:   pePayload.Color}
-
-	switch pePayload.EnforcementLevel {
-	case apitype.Mandatory:
-		payload.Severity = diag.Error
-	case apitype.Advisory:
-		payload.Severity = diag.Warning
-	default:
-		contract.Failf("Unknown enforcement level %q", pePayload.EnforcementLevel)
-	}
-
-	data.recordDiagEventPayload(payload)
+	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
 type column int
