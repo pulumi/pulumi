@@ -1175,10 +1175,14 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
-		NoParallel:       true,
-		SkipStackRemoval: true, // do this at the end after the importer finishes
+		NoParallel:           true,
+		SkipLifeCycleDestroy: true, // do this at the end after the importer finishes
 	}
-	pt := integration.ProgramTest(t, exporterOpts)
+	exporterPt := integration.ProgramTest(t, exporterOpts)
+	defer func() {
+		destroyErr := exporterPt.TestLifeCycleDestroy()
+		assert.NoError(t, destroyErr)
+	}()
 
 	exporterStackName := exporterOpts.GetStackName().String()
 
@@ -1195,7 +1199,6 @@ func TestMultiStackReferencePython(t *testing.T) {
 		NoParallel: true,
 	}
 	integration.ProgramTest(t, importerOpts)
-	pt.TestLifeCycleDestroy()
 }
 
 // Tests that stack references work in .NET.
