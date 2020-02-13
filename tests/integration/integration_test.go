@@ -1178,10 +1178,20 @@ func TestMultiStackReferencePython(t *testing.T) {
 		NoParallel:           true,
 		SkipLifeCycleDestroy: true, // do this at the end after the importer finishes
 	}
-	exporterPt := integration.ProgramTest(t, exporterOpts)
+
+	// we're going to manually initialize and then defer the deletion of this stack
+	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
+	err := exporterPt.TestLifeCyclePrepare()
+	assert.NoError(t, err)
+	err = exporterPt.TestLifeCycleInitialize()
+	assert.NoError(t, err)
+	err = exporterPt.TestPreviewUpdateAndEdits()
+	assert.NoError(t, err)
+
 	defer func() {
 		destroyErr := exporterPt.TestLifeCycleDestroy()
 		assert.NoError(t, destroyErr)
+		exporterPt.TestCleanUp(true)
 	}()
 
 	exporterStackName := exporterOpts.GetStackName().String()
