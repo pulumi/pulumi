@@ -22,19 +22,22 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"unicode"
 )
 
 type builtin struct {
-	Name        string
-	Type        string
-	inputType   string
-	implements  []string
-	Implements  []*builtin
-	elementType string
-	Example     string
+	Name           string
+	Type           string
+	inputType      string
+	implements     []string
+	Implements     []*builtin
+	elementType    string
+	Example        string
+	GenerateConfig bool
+	DefaultConfig  string
 }
 
 func (b builtin) DefineInputType() bool {
@@ -116,23 +119,23 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Archive", Type: "Archive", inputType: "*archive", implements: []string{"AssetOrArchive"}, Example: "NewFileArchive(\"foo.zip\")"},
 	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{"AssetOrArchive"}, Example: "NewFileAsset(\"foo.txt\")"},
 	{Name: "AssetOrArchive", Type: "AssetOrArchive", Example: "NewFileArchive(\"foo.zip\")"},
-	{Name: "Bool", Type: "bool", Example: "Bool(true)"},
-	{Name: "Float32", Type: "float32", Example: "Float32(1.3)"},
-	{Name: "Float64", Type: "float64", Example: "Float64(999.9)"},
+	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false"},
+	{Name: "Float32", Type: "float32", Example: "Float32(1.3)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0"},
 	{Name: "ID", Type: "ID", inputType: "ID", implements: []string{"String"}, Example: "ID(\"foo\")"},
 	{Name: "Input", Type: "interface{}", Example: "String(\"any\")"},
-	{Name: "Int", Type: "int", Example: "Int(42)"},
-	{Name: "Int16", Type: "int16", Example: "Int16(33)"},
-	{Name: "Int32", Type: "int32", Example: "Int32(24)"},
-	{Name: "Int64", Type: "int64", Example: "Int64(15)"},
-	{Name: "Int8", Type: "int8", Example: "Int8(6)"},
+	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Int16", Type: "int16", Example: "Int16(33)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Int32", Type: "int32", Example: "Int32(24)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Int64", Type: "int64", Example: "Int64(15)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Int8", Type: "int8", Example: "Int8(6)", GenerateConfig: true, DefaultConfig: "0"},
 	{Name: "String", Type: "string", Example: "String(\"foo\")"},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")"},
-	{Name: "Uint", Type: "uint", Example: "Uint(42)"},
-	{Name: "Uint16", Type: "uint16", Example: "Uint16(33)"},
-	{Name: "Uint32", Type: "uint32", Example: "Uint32(24)"},
-	{Name: "Uint64", Type: "uint64", Example: "Uint64(15)"},
-	{Name: "Uint8", Type: "uint8", Example: "Uint8(6)"},
+	{Name: "Uint", Type: "uint", Example: "Uint(42)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Uint16", Type: "uint16", Example: "Uint16(33)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Uint32", Type: "uint32", Example: "Uint32(24)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Uint64", Type: "uint64", Example: "Uint64(15)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Uint8", Type: "uint8", Example: "Uint8(6)", GenerateConfig: true, DefaultConfig: "0"},
 })
 
 func unexported(s string) string {
@@ -199,17 +202,36 @@ func main() {
 		"Builtins": builtins,
 	}
 	for _, t := range templates.Templates() {
-		filename := strings.TrimRight(t.Name(), ".template")
-		f, err := os.Create(filename)
+		// template with Name = "foo-bar.go.template" will be written to ./foo/bar.go
+		// "bar.go.template" ./bar.go
+		// "fizz-buzz-bar.go.template" ./fizz/buzz/bar.go
+
+		pwd, err := os.Getwd()
 		if err != nil {
-			log.Fatalf("failed to create %v: %v", filename, err)
+			log.Fatalf("code generation failed: %v", err.Error())
+		}
+
+		parts := strings.Split(t.Name(), "-")
+		filename := strings.TrimRight(parts[len(parts)-1], ".template")
+		parts[len(parts)-1] = filename
+
+		var paths []string
+		paths = append(paths, pwd)
+		for _, p := range parts {
+			paths = append(paths, p)
+		}
+
+		fullname := filepath.Join(paths...)
+		f, err := os.Create(fullname)
+		if err != nil {
+			log.Fatalf("failed to create %v: %v", fullname, err)
 		}
 		if err := t.Execute(f, data); err != nil {
 			log.Fatalf("failed to execute %v: %v", t.Name(), err)
 		}
 		f.Close()
 
-		gofmt := exec.Command("gofmt", "-s", "-w", filename)
+		gofmt := exec.Command("gofmt", "-s", "-w", fullname)
 		stderr, err := gofmt.StderrPipe()
 		if err != nil {
 			log.Fatalf("failed to pipe stderr from gofmt: %v", err)
@@ -218,7 +240,7 @@ func main() {
 			io.Copy(os.Stderr, stderr)
 		}()
 		if err := gofmt.Run(); err != nil {
-			log.Fatalf("failed to gofmt %v: %v", filename, err)
+			log.Fatalf("failed to gofmt %v: %v", fullname, err)
 		}
 	}
 }

@@ -28,6 +28,17 @@ func Get(ctx *pulumi.Context, key string) string {
 	return v
 }
 
+// GetObject attempts to load an optional configuration value by its key into the specified output variable.
+func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
+	if v, ok := ctx.GetConfig(key); ok {
+		if err := json.Unmarshal([]byte(v), output); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // GetBool loads an optional configuration value by its key, as a bool, or returns false if it doesn't exist.
 func GetBool(ctx *pulumi.Context, key string) bool {
 	if v, ok := ctx.GetConfig(key); ok {
@@ -36,7 +47,7 @@ func GetBool(ctx *pulumi.Context, key string) bool {
 	return false
 }
 
-// GetFloat32 loads an optional configuration value by its key, as a float32, or returns 0.0 if it doesn't exist.
+// GetFloat32 loads an optional configuration value by its key, as a float32, or returns 0 if it doesn't exist.
 func GetFloat32(ctx *pulumi.Context, key string) float32 {
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.ToFloat32(v)
@@ -44,7 +55,7 @@ func GetFloat32(ctx *pulumi.Context, key string) float32 {
 	return 0
 }
 
-// GetFloat64 loads an optional configuration value by its key, as a float64, or returns 0.0 if it doesn't exist.
+// GetFloat64 loads an optional configuration value by its key, as a float64, or returns 0 if it doesn't exist.
 func GetFloat64(ctx *pulumi.Context, key string) float64 {
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.ToFloat64(v)
@@ -56,14 +67,6 @@ func GetFloat64(ctx *pulumi.Context, key string) float64 {
 func GetInt(ctx *pulumi.Context, key string) int {
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.ToInt(v)
-	}
-	return 0
-}
-
-// GetInt8 loads an optional configuration value by its key, as a int8, or returns 0 if it doesn't exist.
-func GetInt8(ctx *pulumi.Context, key string) int8 {
-	if v, ok := ctx.GetConfig(key); ok {
-		return cast.ToInt8(v)
 	}
 	return 0
 }
@@ -92,29 +95,18 @@ func GetInt64(ctx *pulumi.Context, key string) int64 {
 	return 0
 }
 
-// GetObject attempts to load an optional configuration value by its key into the specified output variable.
-func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
+// GetInt8 loads an optional configuration value by its key, as a int8, or returns 0 if it doesn't exist.
+func GetInt8(ctx *pulumi.Context, key string) int8 {
 	if v, ok := ctx.GetConfig(key); ok {
-		if err := json.Unmarshal([]byte(v), output); err != nil {
-			return err
-		}
+		return cast.ToInt8(v)
 	}
-
-	return nil
+	return 0
 }
 
 // GetUint loads an optional configuration value by its key, as a uint, or returns 0 if it doesn't exist.
 func GetUint(ctx *pulumi.Context, key string) uint {
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.ToUint(v)
-	}
-	return 0
-}
-
-// GetUint8 loads an optional configuration value by its key, as a uint8, or returns 0 if it doesn't exist.
-func GetUint8(ctx *pulumi.Context, key string) uint8 {
-	if v, ok := ctx.GetConfig(key); ok {
-		return cast.ToUint8(v)
 	}
 	return 0
 }
@@ -139,6 +131,14 @@ func GetUint32(ctx *pulumi.Context, key string) uint32 {
 func GetUint64(ctx *pulumi.Context, key string) uint64 {
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.ToUint64(v)
+	}
+	return 0
+}
+
+// GetUint8 loads an optional configuration value by its key, as a uint8, or returns 0 if it doesn't exist.
+func GetUint8(ctx *pulumi.Context, key string) uint8 {
+	if v, ok := ctx.GetConfig(key); ok {
+		return cast.ToUint8(v)
 	}
 	return 0
 }
