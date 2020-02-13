@@ -755,20 +755,18 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 // printPolicyViolations prints a new "Policy Violation:" section with all of the violations
 // grouped by policy pack. If no policy violations were encountered, prints nothing.
 func (display *ProgressDisplay) printPolicyViolations() bool {
-	wrotePolicyViolations := false
 	// Loop through every resource and gather up all policy violations encountered.
 	var policyEvents []engine.PolicyViolationEventPayload
 	for _, row := range display.eventUrnToResourceRow {
-		policyInfo := row.PolicyInfo()
-		if len(policyInfo) == 0 {
+		policyPayloads := row.PolicyPayloads()
+		if len(policyPayloads) == 0 {
 			continue
 		}
-		policyEvents = append(policyEvents, policyInfo...)
+		policyEvents = append(policyEvents, policyPayloads...)
 	}
 	if len(policyEvents) == 0 {
-		return wrotePolicyViolations
+		return false
 	}
-	wrotePolicyViolations = true
 	// Sort policy events by: policy pack name, policy pack version, enforcement level,
 	// policy name, and finally the URN of the resource.
 	sort.SliceStable(policyEvents, func(i, j int) bool {
@@ -822,7 +820,7 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 		messageLine := fmt.Sprintf("    %s", message)
 		display.writeSimpleMessage(messageLine)
 	}
-	return wrotePolicyViolations
+	return true
 }
 
 // printOutputs prints the Stack's outputs for the display in a new section, if appropriate.
@@ -940,7 +938,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyInfo:           policyPayloads,
+		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
@@ -1107,7 +1105,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyInfo:           policyPayloads,
+		policyPayloads:       policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
 		hideRowIfUnnecessary: false,
 	}

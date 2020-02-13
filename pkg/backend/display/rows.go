@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Row interface {
@@ -57,7 +56,7 @@ type ResourceRow interface {
 	SetFailed()
 
 	DiagInfo() *DiagInfo
-	PolicyInfo() []engine.PolicyViolationEventPayload
+	PolicyPayloads() []engine.PolicyViolationEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
@@ -124,8 +123,8 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
-	diagInfo   *DiagInfo
-	policyInfo []engine.PolicyViolationEventPayload
+	diagInfo       *DiagInfo
+	policyPayloads []engine.PolicyViolationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -218,15 +217,14 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 }
 
 // PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
-func (data *resourceRowData) PolicyInfo() []engine.PolicyViolationEventPayload {
-	return data.policyInfo
+func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
+	return data.policyPayloads
 }
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	contract.Assert(event.Type == engine.PolicyViolationEvent)
 	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
-	data.policyInfo = append(data.policyInfo, pePayload)
+	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
 type column int
