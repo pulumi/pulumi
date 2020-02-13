@@ -380,6 +380,7 @@ func TestResourceState(t *testing.T) {
 	}, res)
 }
 
+// TODO(evanboyle) rename, also add cases for bubbling up nested secretness.
 func TestUnmarshalUnsupportedSecret(t *testing.T) {
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
