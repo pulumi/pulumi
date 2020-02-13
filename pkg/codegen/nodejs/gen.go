@@ -200,11 +200,15 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	}
 	fmt.Fprintf(w, "%s/**\n", indent)
 	for _, l := range lines {
-		fmt.Fprintf(w, "%s * %s\n", indent, l)
+		if l == "" {
+			fmt.Fprintf(w, "%s *\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s * %s\n", indent, l)
+		}
 	}
 	if deprecationMessage != "" {
 		if len(lines) > 0 {
-			fmt.Fprintf(w, "%s * \n", indent)
+			fmt.Fprintf(w, "%s *\n", indent)
 		}
 		fmt.Fprintf(w, "%s * @deprecated %s\n", indent, deprecationMessage)
 	}
@@ -322,7 +326,7 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 		fmt.Fprintf(w, "%s", part)
 	}
 
-	fmt.Fprintf(w, "}")
+	fmt.Fprintf(w, " }")
 }
 
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
