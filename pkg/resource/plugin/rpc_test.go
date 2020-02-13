@@ -226,6 +226,7 @@ func TestAssetReject(t *testing.T) {
 func TestUnsupportedSecret(t *testing.T) {
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
+		"value":         "foo",
 	}))
 	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
 	assert.Nil(t, err)
