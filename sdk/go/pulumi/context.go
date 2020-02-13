@@ -212,8 +212,16 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return err
 	}
 
-	if err = unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem()); err != nil {
+	// fail if there are secrets returned from the invoke
+	// TODO(evanboyle)
+	// is this a security hole? Should we panic here instead? Is that even enough, should we delete resultV
+	// to make sure the secret isn't leaked?
+	secret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
+	if err != nil {
 		return err
+	}
+	if secret {
+		return errors.Errorf("Unexpected secret result returned to invoke call.")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return nil
@@ -656,7 +664,9 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 		// Allocate storage for the unmarshalled output.
 		dest := reflect.New(output.ElementType()).Elem()
-		if err = unmarshalOutput(v, dest); err != nil {
+		usecret, err := unmarshalOutput(v, dest)
+		secret = secret || usecret
+		if err != nil {
 			output.reject(err)
 		} else {
 			output.resolve(dest.Interface(), known, secret)

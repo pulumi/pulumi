@@ -70,7 +70,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
-	out2.fulfill(nil, false, nil)
+	out2.fulfill(nil, false, false, nil)
 	inputs := testInputs{
 		S:           String("a string"),
 		A:           Bool(true),
@@ -105,7 +105,8 @@ func TestMarshalRoundtrip(t *testing.T) {
 		assert.Equal(t, 0, len(deps))
 
 		// Now just unmarshal and ensure the resulting map matches.
-		resV, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		assert.False(t, secret)
 		if !assert.Nil(t, err) {
 			if !assert.NotNil(t, resV) {
 				res := resV.(map[string]interface{})
@@ -347,8 +348,9 @@ func TestResourceState(t *testing.T) {
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
 
-	res, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+	res, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
 	assert.Nil(t, err)
+	assert.False(t, secret)
 	assert.Equal(t, map[string]interface{}{
 		"urn":     "foo",
 		"id":      "bar",
@@ -381,10 +383,12 @@ func TestResourceState(t *testing.T) {
 func TestUnmarshalUnsupportedSecret(t *testing.T) {
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
-	_, err := unmarshalPropertyValue(secret)
-	assert.Error(t, err)
+	_, isSecret, err := unmarshalPropertyValue(secret)
+	assert.Nil(t, err)
+	assert.True(t, isSecret)
 
 	var sv string
-	err = unmarshalOutput(secret, reflect.ValueOf(&sv).Elem())
-	assert.Error(t, err)
+	isSecret, err = unmarshalOutput(secret, reflect.ValueOf(&sv).Elem())
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", sv)
 }
