@@ -636,6 +636,7 @@ type ProgramTester struct {
 	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
 	tmpdir       string              // the temporary directory we use for our test environment
 	projdir      string              // the project directory we use for this run
+	TestFinished bool                // whether or not the test if finished
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -869,7 +870,8 @@ func (pt *ProgramTester) TestLifeCyclePrepare() error {
 }
 
 // TestCleanUp cleans up the temporary directory that a test used
-func (pt *ProgramTester) TestCleanUp(testFinished bool) {
+func (pt *ProgramTester) TestCleanUp() {
+	testFinished := pt.TestFinished
 	if pt.tmpdir != "" {
 		if !testFinished || pt.t.Failed() {
 			// Test aborted or failed. Maybe copy to "failed tests" directory.
@@ -898,8 +900,8 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "copying test to temp dir")
 	}
 
-	testFinished := false
-	defer pt.TestCleanUp(testFinished)
+	pt.TestFinished = false
+	defer pt.TestCleanUp()
 
 	err = pt.TestLifeCycleInitialize()
 	if err != nil {
@@ -927,7 +929,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		}
 	}
 
-	testFinished = true
+	pt.TestFinished = true
 	return nil
 }
 

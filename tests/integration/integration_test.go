@@ -1181,6 +1181,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// we're going to manually initialize and then defer the deletion of this stack
 	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
+	exporterPt.TestFinished = false
 	err := exporterPt.TestLifeCyclePrepare()
 	assert.NoError(t, err)
 	err = exporterPt.TestLifeCycleInitialize()
@@ -1191,7 +1192,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 	defer func() {
 		destroyErr := exporterPt.TestLifeCycleDestroy()
 		assert.NoError(t, destroyErr)
-		exporterPt.TestCleanUp(true)
+		exporterPt.TestFinished = true
+		exporterPt.TestCleanUp()
 	}()
 
 	exporterStackName := exporterOpts.GetStackName().String()
