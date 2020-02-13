@@ -704,7 +704,8 @@ func (b *localBackend) CurrentUser() (string, error) {
 func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
-	// Read the stack directory.
+	// Read the stack directory. We expect this to return the root directory
+	// where all the other stacks are located.
 	path := b.stackPath("")
 
 	files, err := listBucket(b.bucket, path)

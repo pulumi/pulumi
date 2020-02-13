@@ -40,6 +40,9 @@ func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
 }
 
 func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
+	// optsCopy := *opts
+	// optsCopy.Prefix = filepath.ToSlash(opts.Prefix)
+	// return b.bucket.List(&optsCopy)
 	return b.bucket.List(opts)
 }
 
@@ -83,7 +86,7 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 	return files, nil
 }
 
-// objectName returns the filename of a ListObject (an object from a bucket)
+// objectName returns the filename of a ListObject (an object from a bucket).
 func objectName(obj *blob.ListObject) string {
 	_, filename := path.Split(obj.Key)
 	return filename
