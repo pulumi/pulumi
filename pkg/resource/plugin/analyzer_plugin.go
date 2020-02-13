@@ -329,6 +329,42 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
+func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
+	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	logging.V(7).Infof("%s executing", label)
+
+	c := make(map[string]*pulumirpc.PolicyConfig)
+
+	for k, v := range policyConfig {
+		var el pulumirpc.EnforcementLevel
+		if v.EnforcementLevel != "" {
+			el = marshalEnforcementLevel(v.EnforcementLevel)
+		}
+		c[k] = &pulumirpc.PolicyConfig{
+			EnforcementLevel: el,
+			Properties:       marshalMap(v.Properties),
+		}
+	}
+
+	_, err := a.client.Configure(a.ctx.Request(), &pulumirpc.ConfigureAnalyzerRequest{
+		PolicyConfig: c,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		// Handle the case where the policy pack doesn't implement a recent enough
+		// AnalyzerService to support the Configure method. Ignore the error as it
+		// just means the analyzer isn't capable of being configured in this way.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.Configure(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil
+		}
+
+		logging.V(7).Infof("%s.Configure(...) failed: err=%v", a.label(), rpcError)
+		return rpcError
+	}
+	return nil
+}
+
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
@@ -377,6 +413,80 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		Name:       string(provider.Name),
 		Properties: props,
 	}, nil
+}
+
+func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementLevel {
+	switch el {
+	case apitype.Advisory:
+		return pulumirpc.EnforcementLevel_ADVISORY
+	case apitype.Mandatory:
+		return pulumirpc.EnforcementLevel_MANDATORY
+	}
+	contract.Failf("Unrecognized enforcement level %s", el)
+	return 0
+}
+
+func marshalMap(m map[string]interface{}) *structpb.Struct {
+	fields := make(map[string]*structpb.Value)
+	for k, v := range m {
+		val := marshalMapValue(v)
+		if val != nil {
+			fields[k] = val
+		}
+	}
+	return &structpb.Struct{
+		Fields: fields,
+	}
+}
+
+func marshalMapValue(v interface{}) *structpb.Value {
+	if v == nil {
+		return &structpb.Value{
+			Kind: &structpb.Value_NullValue{
+				NullValue: structpb.NullValue_NULL_VALUE,
+			},
+		}
+	}
+
+	switch val := v.(type) {
+	case bool:
+		return &structpb.Value{
+			Kind: &structpb.Value_BoolValue{
+				BoolValue: val,
+			},
+		}
+	case float64:
+		return &structpb.Value{
+			Kind: &structpb.Value_NumberValue{
+				NumberValue: val,
+			},
+		}
+	case string:
+		return &structpb.Value{
+			Kind: &structpb.Value_StringValue{
+				StringValue: val,
+			},
+		}
+	case []interface{}:
+		arr := make([]*structpb.Value, len(val))
+		for i, e := range val {
+			arr[i] = marshalMapValue(e)
+		}
+		return &structpb.Value{
+			Kind: &structpb.Value_ListValue{
+				ListValue: &structpb.ListValue{Values: arr},
+			},
+		}
+	case map[string]interface{}:
+		return &structpb.Value{
+			Kind: &structpb.Value_StructValue{
+				StructValue: marshalMap(val),
+			},
+		}
+	}
+
+	contract.Failf("Unrecognized value: %v (type=%v)", v, reflect.TypeOf(v))
+	return nil
 }
 
 func unmarshalMap(s *structpb.Struct) map[string]interface{} {

@@ -41,6 +41,8 @@ type Analyzer interface {
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+	// Configure configures the analyzer, passing configuration properties for each policy.
+	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 }
 
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.
@@ -129,4 +131,12 @@ type AnalyzerPolicyConfigSchema struct {
 
 	// Required config properties
 	Required []string
+}
+
+// AnalyzerPolicyConfig is the configuration for a policy.
+type AnalyzerPolicyConfig struct {
+	// Configured enforcement level for the policy.
+	EnforcementLevel apitype.EnforcementLevel
+	// Configured properties of the policy.
+	Properties map[string]interface{}
 }

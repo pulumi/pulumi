@@ -36,6 +36,8 @@ service Analyzer {
     rpc GetAnalyzerInfo(google.protobuf.Empty) returns (AnalyzerInfo) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+    // Configure configures the analyzer, passing configuration properties for each policy.
+    rpc Configure(ConfigureAnalyzerRequest) returns (google.protobuf.Empty) {}
 }
 
 message AnalyzeRequest {
@@ -140,4 +142,15 @@ message PolicyInfo {
 message PolicyConfigSchema {
     google.protobuf.Struct properties = 1; // JSON schema for each property.
     repeated string required = 2;          // Required properties.
+}
+
+// PolicyConfig provides configuration for a policy.
+message PolicyConfig {
+    EnforcementLevel enforcementLevel = 1; // Enforcement level of the policy.
+    google.protobuf.Struct properties = 2; // Configuration properties of the policy.
+}
+
+// ConfigureAnalyzerRequest provides configuration information to the analyzer.
+message ConfigureAnalyzerRequest {
+    map<string, PolicyConfig> policyConfig = 1; // Map of policy name to config.
 }

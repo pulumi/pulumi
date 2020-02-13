@@ -77,6 +77,17 @@ function deserialize_pulumirpc_AnalyzerInfo(buffer_arg) {
   return analyzer_pb.AnalyzerInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConfigureAnalyzerRequest(arg) {
+  if (!(arg instanceof analyzer_pb.ConfigureAnalyzerRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConfigureAnalyzerRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConfigureAnalyzerRequest(buffer_arg) {
+  return analyzer_pb.ConfigureAnalyzerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -144,6 +155,18 @@ getPluginInfo: {
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
     responseDeserialize: deserialize_pulumirpc_PluginInfo,
+  },
+  // Configure configures the analyzer, passing configuration properties for each policy.
+configure: {
+    path: '/pulumirpc.Analyzer/Configure',
+    requestStream: false,
+    responseStream: false,
+    requestType: analyzer_pb.ConfigureAnalyzerRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_ConfigureAnalyzerRequest,
+    requestDeserialize: deserialize_pulumirpc_ConfigureAnalyzerRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 
