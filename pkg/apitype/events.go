@@ -47,12 +47,13 @@ type DiagnosticEvent struct {
 
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
-	ResourceURN       string `json:"resourceUrn,omitempty"`
-	Message           string `json:"message"`
-	Color             string `json:"color"`
-	PolicyName        string `json:"policyName"`
-	PolicyPackName    string `json:"policyPackName"`
-	PolicyPackVersion string `json:"policyPackVersion"`
+	ResourceURN          string `json:"resourceUrn,omitempty"`
+	Message              string `json:"message"`
+	Color                string `json:"color"`
+	PolicyName           string `json:"policyName"`
+	PolicyPackName       string `json:"policyPackName"`
+	PolicyPackVersion    string `json:"policyPackVersion"`
+	PolicyPackVersionTag string `json:"policyPackVersionTag"`
 
 	// EnforcementLevel is one of "warning" or "mandatory".
 	EnforcementLevel string `json:"enforcementLevel"`
@@ -77,7 +78,8 @@ type SummaryEvent struct {
 	// PolicyPacks run during update. Maps PolicyPackName -> version.
 	// Note: When this field was initially added, we forgot to add the JSON tag
 	// and are now locked into to using PascalCase for this field to maintain backwards
-	// compatibility.
+	// compatibility. For older clients this will map to the version, while for newer ones
+	// it will be the version tag prepended with "v".
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 }
 

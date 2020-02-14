@@ -149,7 +149,9 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), projectName, stackName)
+	// the project name and the project name in the stack name must match
+	uniqueProjectName := filepath.Base(tempdir)
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
 
 	var args = newArgs{
 		interactive:       false,
@@ -163,7 +165,8 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	err := runNew(args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, fullStackName, loadStackName(t))
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, stackName)
 }
 
 func TestCreatingProjectWithDefaultName(t *testing.T) {
