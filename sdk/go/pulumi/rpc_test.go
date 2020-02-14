@@ -380,8 +380,8 @@ func TestResourceState(t *testing.T) {
 	}, res)
 }
 
-// TODO(evanboyle) rename, also add cases for bubbling up nested secretness.
-func TestUnmarshalUnsupportedSecret(t *testing.T) {
+// TODO(evanboyle) add cases for bubbling up nested secretness.
+func TestUnmarshalSecret(t *testing.T) {
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
 	_, isSecret, err := unmarshalPropertyValue(secret)
@@ -392,4 +392,5 @@ func TestUnmarshalUnsupportedSecret(t *testing.T) {
 	isSecret, err = unmarshalOutput(secret, reflect.ValueOf(&sv).Elem())
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", sv)
+	assert.True(t, isSecret)
 }

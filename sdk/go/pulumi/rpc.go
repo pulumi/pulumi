@@ -149,7 +149,9 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 }
 
 // marshalInputAndDetermineSecret marshals an input value with information about secret status
-func marshalInputAndDetermineSecret(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, bool, error) {
+func marshalInputAndDetermineSecret(v interface{},
+	destType reflect.Type,
+	await bool) (resource.PropertyValue, []Resource, bool, error) {
 	for {
 		valueType := reflect.TypeOf(v)
 
