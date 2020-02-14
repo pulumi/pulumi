@@ -45,17 +45,23 @@ func (c *Config) Get(key string) string {
 	return Get(c.ctx, c.fullKey(key))
 }
 
+// GetObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) GetObject(key string, output interface{}) error {
+	return GetObject(c.ctx, c.fullKey(key), output)
+}
+
 // GetBool loads an optional bool configuration value by its key, or returns false if it doesn't exist.
 func (c *Config) GetBool(key string) bool {
 	return GetBool(c.ctx, c.fullKey(key))
 }
 
-// GetFloat32 loads an optional float32 configuration value by its key, or returns 0.0 if it doesn't exist.
+// GetFloat32 loads an optional float32 configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetFloat32(key string) float32 {
 	return GetFloat32(c.ctx, c.fullKey(key))
 }
 
-// GetFloat64 loads an optional float64 configuration value by its key, or returns 0.0 if it doesn't exist.
+// GetFloat64 loads an optional float64 configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetFloat64(key string) float64 {
 	return GetFloat64(c.ctx, c.fullKey(key))
 }
@@ -63,11 +69,6 @@ func (c *Config) GetFloat64(key string) float64 {
 // GetInt loads an optional int configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetInt(key string) int {
 	return GetInt(c.ctx, c.fullKey(key))
-}
-
-// GetInt8 loads an optional int8 configuration value by its key, or returns 0 if it doesn't exist.
-func (c *Config) GetInt8(key string) int8 {
-	return GetInt8(c.ctx, c.fullKey(key))
 }
 
 // GetInt16 loads an optional int16 configuration value by its key, or returns 0 if it doesn't exist.
@@ -85,20 +86,14 @@ func (c *Config) GetInt64(key string) int64 {
 	return GetInt64(c.ctx, c.fullKey(key))
 }
 
-// GetObject loads an optional configuration value into the specified output by its key,
-// or returns an error if unable to do so.
-func (c *Config) GetObject(key string, output interface{}) error {
-	return GetObject(c.ctx, c.fullKey(key), output)
+// GetInt8 loads an optional int8 configuration value by its key, or returns 0 if it doesn't exist.
+func (c *Config) GetInt8(key string) int8 {
+	return GetInt8(c.ctx, c.fullKey(key))
 }
 
 // GetUint loads an optional uint configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetUint(key string) uint {
 	return GetUint(c.ctx, c.fullKey(key))
-}
-
-// GetUint8 loads an optional uint8 configuration value by its key, or returns 0 if it doesn't exist.
-func (c *Config) GetUint8(key string) uint8 {
-	return GetUint8(c.ctx, c.fullKey(key))
 }
 
 // GetUint16 loads an optional uint16 configuration value by its key, or returns 0 if it doesn't exist.
@@ -116,9 +111,20 @@ func (c *Config) GetUint64(key string) uint64 {
 	return GetUint64(c.ctx, c.fullKey(key))
 }
 
+// GetUint8 loads an optional uint8 configuration value by its key, or returns 0 if it doesn't exist.
+func (c *Config) GetUint8(key string) uint8 {
+	return GetUint8(c.ctx, c.fullKey(key))
+}
+
 // Require loads a configuration value by its key, or panics if it doesn't exist.
 func (c *Config) Require(key string) string {
 	return Require(c.ctx, c.fullKey(key))
+}
+
+// RequireObject loads a required configuration value into the specified output by its key,
+// or panics if unable to do so.
+func (c *Config) RequireObject(key string, output interface{}) {
+	RequireObject(c.ctx, c.fullKey(key), output)
 }
 
 // RequireBool loads a bool configuration value by its key, or panics if it doesn't exist.
@@ -141,11 +147,6 @@ func (c *Config) RequireInt(key string) int {
 	return RequireInt(c.ctx, c.fullKey(key))
 }
 
-// RequireInt8 loads a int8 configuration value by its key, or panics if it doesn't exist.
-func (c *Config) RequireInt8(key string) int8 {
-	return RequireInt8(c.ctx, c.fullKey(key))
-}
-
 // RequireInt16 loads a int16 configuration value by its key, or panics if it doesn't exist.
 func (c *Config) RequireInt16(key string) int16 {
 	return RequireInt16(c.ctx, c.fullKey(key))
@@ -161,20 +162,14 @@ func (c *Config) RequireInt64(key string) int64 {
 	return RequireInt64(c.ctx, c.fullKey(key))
 }
 
-// RequireObject loads a required configuration value into the specified output by its key,
-// or panics if unable to do so.
-func (c *Config) RequireObject(key string, output interface{}) {
-	RequireObject(c.ctx, c.fullKey(key), output)
+// RequireInt8 loads a int8 configuration value by its key, or panics if it doesn't exist.
+func (c *Config) RequireInt8(key string) int8 {
+	return RequireInt8(c.ctx, c.fullKey(key))
 }
 
 // RequireUint loads a uint configuration value by its key, or panics if it doesn't exist.
 func (c *Config) RequireUint(key string) uint {
 	return RequireUint(c.ctx, c.fullKey(key))
-}
-
-// RequireUint8 loads a uint8 configuration value by its key, or panics if it doesn't exist.
-func (c *Config) RequireUint8(key string) uint8 {
-	return RequireUint8(c.ctx, c.fullKey(key))
 }
 
 // RequireUint16 loads a uint16 configuration value by its key, or panics if it doesn't exist.
@@ -192,9 +187,20 @@ func (c *Config) RequireUint64(key string) uint64 {
 	return RequireUint64(c.ctx, c.fullKey(key))
 }
 
+// RequireUint8 loads a uint8 configuration value by its key, or panics if it doesn't exist.
+func (c *Config) RequireUint8(key string) uint8 {
+	return RequireUint8(c.ctx, c.fullKey(key))
+}
+
 // Try loads a configuration value by its key, returning a non-nil error if it doesn't exist.
 func (c *Config) Try(key string) (string, error) {
 	return Try(c.ctx, c.fullKey(key))
+}
+
+// TryObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) TryObject(key string, output interface{}) error {
+	return TryObject(c.ctx, c.fullKey(key), output)
 }
 
 // TryBool loads an optional bool configuration value by its key, or returns an error if it doesn't exist.
@@ -217,11 +223,6 @@ func (c *Config) TryInt(key string) (int, error) {
 	return TryInt(c.ctx, c.fullKey(key))
 }
 
-// TryInt8 loads an optional int8 configuration value by its key, or returns an error if it doesn't exist.
-func (c *Config) TryInt8(key string) (int8, error) {
-	return TryInt8(c.ctx, c.fullKey(key))
-}
-
 // TryInt16 loads an optional int16 configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryInt16(key string) (int16, error) {
 	return TryInt16(c.ctx, c.fullKey(key))
@@ -237,20 +238,14 @@ func (c *Config) TryInt64(key string) (int64, error) {
 	return TryInt64(c.ctx, c.fullKey(key))
 }
 
-// TryObject loads an optional configuration value into the specified output by its key,
-// or returns an error if unable to do so.
-func (c *Config) TryObject(key string, output interface{}) error {
-	return TryObject(c.ctx, c.fullKey(key), output)
+// TryInt8 loads an optional int8 configuration value by its key, or returns an error if it doesn't exist.
+func (c *Config) TryInt8(key string) (int8, error) {
+	return TryInt8(c.ctx, c.fullKey(key))
 }
 
 // TryUint loads an optional uint configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryUint(key string) (uint, error) {
 	return TryUint(c.ctx, c.fullKey(key))
-}
-
-// TryUint8 loads an optional uint8 configuration value by its key, or returns an error if it doesn't exist.
-func (c *Config) TryUint8(key string) (uint8, error) {
-	return TryUint8(c.ctx, c.fullKey(key))
 }
 
 // TryUint16 loads an optional uint16 configuration value by its key, or returns an error if it doesn't exist.
@@ -266,4 +261,9 @@ func (c *Config) TryUint32(key string) (uint32, error) {
 // TryUint64 loads an optional uint64 configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryUint64(key string) (uint64, error) {
 	return TryUint64(c.ctx, c.fullKey(key))
+}
+
+// TryUint8 loads an optional uint8 configuration value by its key, or returns an error if it doesn't exist.
+func (c *Config) TryUint8(key string) (uint8, error) {
+	return TryUint8(c.ctx, c.fullKey(key))
 }
