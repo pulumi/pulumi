@@ -1,0 +1,58 @@
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package config
+
+import (
+	"encoding/json"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/cast"
+
+	"github.com/pulumi/pulumi/sdk/go/pulumi"
+)
+
+// Try loads a configuration value by its key, returning a non-nil error if it doesn't exist.
+func Try(ctx *pulumi.Context, key string) (string, error) {
+	v, ok := ctx.GetConfig(key)
+	if !ok {
+		return "",
+			errors.Errorf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+	}
+	return v, nil
+}
+
+// TryObject loads an optional configuration value by its key into the output variable,
+// or returns an error if unable to do so.
+func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
+	v, err := Try(ctx, key)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(v), output)
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// Try{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns an error if it doesn't exist.
+func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
+	v, err := Try(ctx, key)
+	if err != nil {
+		return {{.DefaultConfig}}, err
+	}
+	return cast.To{{.Name}}(v), nil
+}
+
+{{end}}
+{{end}}
