@@ -99,7 +99,17 @@ type PolicyConfigSchema struct {
 	Properties map[string]*json.RawMessage `json:"properties,omitempty"`
 	// Required config properties.
 	Required []string `json:"required,omitempty"`
+
+	Type JSONSchemaType `json:"type"`
 }
+
+// JSONSchemaType in an enum of allowed data types for a schema.
+type JSONSchemaType string
+
+const (
+	// Object is a dictionary.
+	Object JSONSchemaType = "object"
+)
 
 // EnforcementLevel indicates how a policy should be enforced
 type EnforcementLevel string
