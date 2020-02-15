@@ -1178,8 +1178,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
-		NoParallel:           true,
-		SkipLifeCycleDestroy: true, // do this at the end after the importer finishes
+		NoParallel: true,
 	}
 
 	// we're going to manually initialize and then defer the deletion of this stack
@@ -1189,8 +1188,6 @@ func TestMultiStackReferencePython(t *testing.T) {
 	assert.NoError(t, err)
 	err = exporterPt.TestLifeCycleInitialize()
 	assert.NoError(t, err)
-	err = exporterPt.TestPreviewUpdateAndEdits()
-	assert.NoError(t, err)
 
 	defer func() {
 		destroyErr := exporterPt.TestLifeCycleDestroy()
@@ -1198,6 +1195,9 @@ func TestMultiStackReferencePython(t *testing.T) {
 		exporterPt.TestFinished = true
 		exporterPt.TestCleanUp()
 	}()
+
+	err = exporterPt.TestPreviewUpdateAndEdits()
+	assert.NoError(t, err)
 
 	exporterStackName := exporterOpts.GetStackName().String()
 

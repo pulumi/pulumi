@@ -190,9 +190,6 @@ type ProgramTestOptions struct {
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
 	SkipStackRemoval bool
-	// SkipLifeCycleDestroy indicates we'll skip destroying the resources and stack
-	// Tests that indicate this must manually clean by invoking TestLifecycleDestroy
-	SkipLifeCycleDestroy bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
