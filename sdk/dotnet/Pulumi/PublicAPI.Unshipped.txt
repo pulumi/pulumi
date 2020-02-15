@@ -84,6 +84,8 @@ Pulumi.IDeployment.StackName.get -> string
 Pulumi.Input<T>
 Pulumi.InputArgs
 Pulumi.InputArgs.InputArgs() -> void
+Pulumi.InputAttribute
+Pulumi.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.InputExtensions
 Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
@@ -116,6 +118,13 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+Pulumi.OutputAttribute
+Pulumi.OutputAttribute.Name.get -> string
+Pulumi.OutputAttribute.OutputAttribute(string name = null) -> void
+Pulumi.OutputConstructorAttribute
+Pulumi.OutputConstructorAttribute.OutputConstructorAttribute() -> void
+Pulumi.OutputTypeAttribute
+Pulumi.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.OutputExtensions
 Pulumi.ProviderResource
 Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
