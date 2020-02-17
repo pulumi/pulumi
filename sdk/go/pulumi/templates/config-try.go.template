@@ -56,3 +56,37 @@ func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
 
 {{end}}
 {{end}}
+
+// TrySecret loads a configuration value by its key, returning a non-nil error if it doesn't exist.
+func TrySecret(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+	v, err := Try(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return pulumi.SecretT(pulumi.String(v)), nil
+}
+
+// TrySecretObject loads a configuration value by its key into the output variable,
+// or returns an error if unable to do so.
+func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
+	err := TryObject(ctx, key, output)
+	if err != nil {
+		return nil, err
+	}
+
+	return pulumi.SecretT(output), nil
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// TrySecret{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns an error if it doesn't exist.
+func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+	v, err := Try{{.Name}}(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return pulumi.SecretT(pulumi.{{.Name}}(v)), nil
+}
+
+{{end}}
+{{end}}
