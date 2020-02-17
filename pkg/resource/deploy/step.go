@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/result"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called
@@ -42,7 +44,7 @@ type Step interface {
 	//
 	// The returned StepCompleteFunc, if not nil, must be called after committing the results of this step into
 	// the state of the deployment.
-	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
+	Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
@@ -120,7 +122,7 @@ func (s *SameStep) New() *resource.State { return s.new }
 func (s *SameStep) Res() *resource.State { return s.new }
 func (s *SameStep) Logical() bool        { return true }
 
-func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *SameStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	// Retain the ID, and outputs:
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
@@ -207,7 +209,7 @@ func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
-func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *CreateStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
@@ -324,7 +326,7 @@ func (s *DeleteStep) New() *resource.State { return nil }
 func (s *DeleteStep) Res() *resource.State { return s.old }
 func (s *DeleteStep) Logical() bool        { return !s.replacing }
 
-func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *DeleteStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
 	if s.old.Protect {
 		return resource.StatusOK, nil,
@@ -375,7 +377,7 @@ func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool        { return false }
 
-func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RemovePendingReplaceStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
 }
 
@@ -432,7 +434,7 @@ func (s *UpdateStep) Logical() bool                                { return true
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *UpdateStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID, even in previews and refreshes.
 	s.new.ID = s.old.ID
 
@@ -526,7 +528,7 @@ func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.d
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
 
-func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReplaceStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assert(!s.pendingDelete || s.old.Delete)
 	return resource.StatusOK, func() {}, nil
@@ -604,7 +606,7 @@ func (s *ReadStep) New() *resource.State { return s.new }
 func (s *ReadStep) Res() *resource.State { return s.new }
 func (s *ReadStep) Logical() bool        { return !s.replacing }
 
-func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReadStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
 	id := s.new.ID
 
@@ -620,7 +622,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, err
 		}
 
-		result, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
+		read, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -635,13 +637,46 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		}
 
 		// If there is no such resource, return an error indicating as such.
-		if result.Outputs == nil {
+		if read.Outputs == nil {
 			return resource.StatusOK, nil, errors.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = result.Outputs
 
-		if result.ID != "" {
-			s.new.ID = result.ID
+		// Store the properties read back.
+		s.new.Outputs = read.Outputs
+		if read.ID != "" {
+			s.new.ID = read.ID
+		}
+
+		if opts.PolicyOnReads {
+			// If analysis is turned on for reads, send the resource state off to
+			// any Analyzers before considering the read operation successful.
+			analyzers := s.plan.ctx.Host.ListAnalyzers()
+			for _, analyzer := range analyzers {
+				r := plugin.AnalyzerResource{
+					URN:        s.new.URN,
+					Type:       s.new.Type,
+					Name:       s.new.URN.Name(),
+					Properties: s.new.Outputs,
+				}
+				diagnostics, err := analyzer.Analyze(r)
+				if err != nil {
+					return resource.StatusOK, nil, result.FromError(err).Error()
+				}
+				var invalid bool
+				for _, d := range diagnostics {
+					if d.EnforcementLevel == apitype.Mandatory {
+						if !preview {
+							invalid = true
+						}
+					}
+					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+					opts.Events.OnPolicyViolation(s.new.URN, d)
+				}
+				if invalid {
+					return resource.StatusOK, nil,
+						errors.Errorf("policy violation found on resource '%s' -- stopping", id)
+				}
+			}
 		}
 	}
 
@@ -703,7 +738,7 @@ func (s *RefreshStep) ResultOp() StepOp {
 	return OpUpdate
 }
 
-func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RefreshStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	var complete func()
 	if s.done != nil {
 		complete = func() { close(s.done) }
@@ -836,7 +871,7 @@ func (s *ImportStep) Logical() bool                                { return !s.r
 func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ImportStep) Apply(preview bool, opts Options) (resource.Status, StepCompleteFunc, error) {
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
 	// Read the current state of the resource to import. If the provider does not hand us back any inputs for the

@@ -55,6 +55,7 @@ func newUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
+	var policyOnReads bool
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -128,6 +129,7 @@ func newUpCmd() *cobra.Command {
 			UseLegacyDiff:    useLegacyDiff(),
 			UpdateTargets:    targetURNs,
 			TargetDependents: targetDependents,
+			PolicyOnReads:    policyOnReads,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -414,6 +416,9 @@ func newUpCmd() *cobra.Command {
 		cmd.PersistentFlags().StringSliceVar(
 			&policyPackPaths, "policy-pack", []string{},
 			"Run one or more policy packs as part of this update")
+		cmd.PersistentFlags().BoolVar(
+			&policyOnReads, "policy-on-reads", false,
+			"Validate read operations with any active policies")
 	}
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,

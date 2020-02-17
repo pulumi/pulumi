@@ -58,6 +58,7 @@ type Options struct {
 	TargetDependents  bool           // true if we're allowing things to proceed, even with unspecified targets
 	TrustDependencies bool           // whether or not to trust the resource dependency graph.
 	UseLegacyDiff     bool           // whether or not to use legacy diffing behavior.
+	PolicyOnReads     bool           // verify read operations against any active policies.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

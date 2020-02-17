@@ -268,7 +268,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	}
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
-	status, stepComplete, err := step.Apply(se.preview)
+	status, stepComplete, err := step.Apply(se.preview, se.opts)
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
