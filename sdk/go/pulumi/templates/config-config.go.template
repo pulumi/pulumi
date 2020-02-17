@@ -120,3 +120,25 @@ func (c *Config) TrySecret{{.Name}}(key string) (pulumi.Output, error) {
 
 {{end}}
 {{end}}
+// GetSecret loads an optional configuration value by its key 
+// or "" if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecret(key string) pulumi.Output {
+	return GetSecret(c.ctx, c.fullKey(key))
+}
+
+// GetSecretObject loads an optional configuration value into the specified output by its key,
+// returning it wrapped in a secret Output or an error if unable to do so.
+func (c *Config) GetSecretObject(key string, output interface{}) (pulumi.Output, error) {
+	return GetSecretObject(c.ctx, c.fullKey(key), output)
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// GetSecret{{.Name}} loads an optional {{.Type}} configuration value by its key 
+// or {{.DefaultConfig}} if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecret{{.Name}}(key string) pulumi.Output {
+	return pulumi.SecretT(Get{{.Name}}(c.ctx, c.fullKey(key)))
+}
+
+{{end}}
+{{end}}

@@ -355,3 +355,93 @@ func (c *Config) TrySecretUint64(key string) (pulumi.Output, error) {
 func (c *Config) TrySecretUint8(key string) (pulumi.Output, error) {
 	return TrySecretUint8(c.ctx, c.fullKey(key))
 }
+
+// GetSecret loads an optional configuration value by its key
+// or "" if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecret(key string) pulumi.Output {
+	return GetSecret(c.ctx, c.fullKey(key))
+}
+
+// GetSecretObject loads an optional configuration value into the specified output by its key,
+// returning it wrapped in a secret Output or an error if unable to do so.
+func (c *Config) GetSecretObject(key string, output interface{}) (pulumi.Output, error) {
+	return GetSecretObject(c.ctx, c.fullKey(key), output)
+}
+
+// GetSecretBool loads an optional bool configuration value by its key
+// or false if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretBool(key string) pulumi.Output {
+	return pulumi.SecretT(GetBool(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretFloat32 loads an optional float32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretFloat32(key string) pulumi.Output {
+	return pulumi.SecretT(GetFloat32(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretFloat64 loads an optional float64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretFloat64(key string) pulumi.Output {
+	return pulumi.SecretT(GetFloat64(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretInt loads an optional int configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt(key string) pulumi.Output {
+	return pulumi.SecretT(GetInt(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretInt16 loads an optional int16 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt16(key string) pulumi.Output {
+	return pulumi.SecretT(GetInt16(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretInt32 loads an optional int32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt32(key string) pulumi.Output {
+	return pulumi.SecretT(GetInt32(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretInt64 loads an optional int64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt64(key string) pulumi.Output {
+	return pulumi.SecretT(GetInt64(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretInt8 loads an optional int8 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt8(key string) pulumi.Output {
+	return pulumi.SecretT(GetInt8(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretUint loads an optional uint configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint(key string) pulumi.Output {
+	return pulumi.SecretT(GetUint(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretUint16 loads an optional uint16 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint16(key string) pulumi.Output {
+	return pulumi.SecretT(GetUint16(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretUint32 loads an optional uint32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint32(key string) pulumi.Output {
+	return pulumi.SecretT(GetUint32(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretUint64 loads an optional uint64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint64(key string) pulumi.Output {
+	return pulumi.SecretT(GetUint64(c.ctx, c.fullKey(key)))
+}
+
+// GetSecretUint8 loads an optional uint8 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint8(key string) pulumi.Output {
+	return pulumi.SecretT(GetUint8(c.ctx, c.fullKey(key)))
+}
