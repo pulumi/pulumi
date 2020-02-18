@@ -180,7 +180,8 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 	return pulumi.SecretT(output), nil
 }
 
-// TrySecretBool loads an optional configuration value by its key, as a bool, or returns an error if it doesn't exist.
+// TrySecretBool loads an optional configuration value by its key, as a bool,
+// or returns an error if it doesn't exist.
 func TrySecretBool(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryBool(ctx, key)
 	if err != nil {
@@ -189,7 +190,8 @@ func TrySecretBool(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Bool(v)), nil
 }
 
-// TrySecretFloat32 loads an optional configuration value by its key, as a float32, or returns an error if it doesn't exist.
+// TrySecretFloat32 loads an optional configuration value by its key, as a float32,
+// or returns an error if it doesn't exist.
 func TrySecretFloat32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryFloat32(ctx, key)
 	if err != nil {
@@ -198,7 +200,8 @@ func TrySecretFloat32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Float32(v)), nil
 }
 
-// TrySecretFloat64 loads an optional configuration value by its key, as a float64, or returns an error if it doesn't exist.
+// TrySecretFloat64 loads an optional configuration value by its key, as a float64,
+// or returns an error if it doesn't exist.
 func TrySecretFloat64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryFloat64(ctx, key)
 	if err != nil {
@@ -207,7 +210,8 @@ func TrySecretFloat64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Float64(v)), nil
 }
 
-// TrySecretInt loads an optional configuration value by its key, as a int, or returns an error if it doesn't exist.
+// TrySecretInt loads an optional configuration value by its key, as a int,
+// or returns an error if it doesn't exist.
 func TrySecretInt(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryInt(ctx, key)
 	if err != nil {
@@ -216,7 +220,8 @@ func TrySecretInt(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Int(v)), nil
 }
 
-// TrySecretInt16 loads an optional configuration value by its key, as a int16, or returns an error if it doesn't exist.
+// TrySecretInt16 loads an optional configuration value by its key, as a int16,
+// or returns an error if it doesn't exist.
 func TrySecretInt16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryInt16(ctx, key)
 	if err != nil {
@@ -225,7 +230,8 @@ func TrySecretInt16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Int16(v)), nil
 }
 
-// TrySecretInt32 loads an optional configuration value by its key, as a int32, or returns an error if it doesn't exist.
+// TrySecretInt32 loads an optional configuration value by its key, as a int32,
+// or returns an error if it doesn't exist.
 func TrySecretInt32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryInt32(ctx, key)
 	if err != nil {
@@ -234,7 +240,8 @@ func TrySecretInt32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Int32(v)), nil
 }
 
-// TrySecretInt64 loads an optional configuration value by its key, as a int64, or returns an error if it doesn't exist.
+// TrySecretInt64 loads an optional configuration value by its key, as a int64,
+// or returns an error if it doesn't exist.
 func TrySecretInt64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryInt64(ctx, key)
 	if err != nil {
@@ -243,7 +250,8 @@ func TrySecretInt64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Int64(v)), nil
 }
 
-// TrySecretInt8 loads an optional configuration value by its key, as a int8, or returns an error if it doesn't exist.
+// TrySecretInt8 loads an optional configuration value by its key, as a int8,
+// or returns an error if it doesn't exist.
 func TrySecretInt8(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryInt8(ctx, key)
 	if err != nil {
@@ -252,7 +260,8 @@ func TrySecretInt8(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Int8(v)), nil
 }
 
-// TrySecretUint loads an optional configuration value by its key, as a uint, or returns an error if it doesn't exist.
+// TrySecretUint loads an optional configuration value by its key, as a uint,
+// or returns an error if it doesn't exist.
 func TrySecretUint(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryUint(ctx, key)
 	if err != nil {
@@ -261,7 +270,8 @@ func TrySecretUint(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Uint(v)), nil
 }
 
-// TrySecretUint16 loads an optional configuration value by its key, as a uint16, or returns an error if it doesn't exist.
+// TrySecretUint16 loads an optional configuration value by its key, as a uint16,
+// or returns an error if it doesn't exist.
 func TrySecretUint16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryUint16(ctx, key)
 	if err != nil {
@@ -270,7 +280,8 @@ func TrySecretUint16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Uint16(v)), nil
 }
 
-// TrySecretUint32 loads an optional configuration value by its key, as a uint32, or returns an error if it doesn't exist.
+// TrySecretUint32 loads an optional configuration value by its key, as a uint32,
+// or returns an error if it doesn't exist.
 func TrySecretUint32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryUint32(ctx, key)
 	if err != nil {
@@ -279,7 +290,8 @@ func TrySecretUint32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Uint32(v)), nil
 }
 
-// TrySecretUint64 loads an optional configuration value by its key, as a uint64, or returns an error if it doesn't exist.
+// TrySecretUint64 loads an optional configuration value by its key, as a uint64,
+// or returns an error if it doesn't exist.
 func TrySecretUint64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryUint64(ctx, key)
 	if err != nil {
@@ -288,7 +300,8 @@ func TrySecretUint64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	return pulumi.SecretT(pulumi.Uint64(v)), nil
 }
 
-// TrySecretUint8 loads an optional configuration value by its key, as a uint8, or returns an error if it doesn't exist.
+// TrySecretUint8 loads an optional configuration value by its key, as a uint8,
+// or returns an error if it doesn't exist.
 func TrySecretUint8(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := TryUint8(ctx, key)
 	if err != nil {

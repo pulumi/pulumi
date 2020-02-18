@@ -79,7 +79,8 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 
 {{range .Builtins}}
 {{if .GenerateConfig}}
-// TrySecret{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns an error if it doesn't exist.
+// TrySecret{{.Name}} loads an optional configuration value by its key, as a {{.Type}},
+// or returns an error if it doesn't exist.
 func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	v, err := Try{{.Name}}(ctx, key)
 	if err != nil {

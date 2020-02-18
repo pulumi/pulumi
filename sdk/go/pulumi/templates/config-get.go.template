@@ -57,7 +57,7 @@ func GetSecret(ctx *pulumi.Context, key string) pulumi.Output {
 	return pulumi.SecretT(pulumi.String(v))
 }
 
-// GetSecretObject attempts to load an optional configuration value by its key into the specified output variable .
+// GetSecretObject attempts to load an optional configuration value by its key into the specified output variable.
 func GetSecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
 	if err := GetObject(ctx, key, output); err != nil {
 		return nil, err
@@ -68,7 +68,8 @@ func GetSecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 
 {{range .Builtins}}
 {{if .GenerateConfig}}
-// GetSecret{{.Name}} loads an optional {{.Type}} configuration value by its key, or false if it does not exist, into a secret Output.
+// GetSecret{{.Name}} loads an optional {{.Type}} configuration value by its key,
+// or false if it does not exist, into a secret Output.
 func GetSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.Output {
 	return pulumi.SecretT(Get{{.Name}}(ctx, key))
 }
