@@ -709,7 +709,7 @@ func (b *cloudBackend) CreateStack(
 			// A 409 error response is returned when per-stack organizations are over their limit,
 			// so we need to look at the message to differentiate.
 			if strings.Contains(errResp.Message, "already exists") {
-				return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
+				return nil, &backend.StackAlreadyExistsError{StackName: stackID.String()}
 			}
 			if strings.Contains(errResp.Message, "you are using") {
 				return nil, &backend.OverStackLimitError{Message: errResp.Message}
