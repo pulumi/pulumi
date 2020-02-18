@@ -776,11 +776,22 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			eventJ.PolicyPackName); packNameCmp != 0 {
 			return packNameCmp < 0
 		}
-		if packVerCmp := strings.Compare(
-			eventI.PolicyPackVersion,
-			eventJ.PolicyPackVersion); packVerCmp != 0 {
-			return packVerCmp < 0
+		if eventI.PolicyPackVersionTag != "" && eventJ.PolicyPackVersionTag != "" {
+			if packVerCmp := strings.Compare(
+				eventI.PolicyPackVersionTag,
+				eventJ.PolicyPackVersionTag); packVerCmp != 0 {
+				return packVerCmp < 0
+			}
+		} else {
+			// If it is using an older version of pulumi/policy, then we fall back to using the
+			// version.
+			if packVerCmp := strings.Compare(
+				eventI.PolicyPackVersion,
+				eventJ.PolicyPackVersion); packVerCmp != 0 {
+				return packVerCmp < 0
+			}
 		}
+
 		if enfLevelCmp := strings.Compare(
 			string(eventI.EnforcementLevel),
 			string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
@@ -807,10 +818,15 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			c = colors.SpecError
 		}
 
+		version := policyEvent.PolicyPackVersionTag
+		if version == "" {
+			version = policyEvent.PolicyPackVersion
+		}
+
 		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
 			c, policyEvent.EnforcementLevel,
 			policyEvent.PolicyPackName,
-			policyEvent.PolicyPackVersion, colors.Reset,
+			version, colors.Reset,
 			policyEvent.PolicyName,
 			policyEvent.ResourceURN.Name())
 		display.writeSimpleMessage(policyNameLine)

@@ -82,19 +82,21 @@ type AnalyzerProviderResource struct {
 // AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason
 // for the failure.
 type AnalyzeDiagnostic struct {
-	PolicyName        string
-	PolicyPackName    string
-	PolicyPackVersion string
-	Description       string
-	Message           string
-	Tags              []string
-	EnforcementLevel  apitype.EnforcementLevel
-	URN               resource.URN
+	PolicyName           string
+	PolicyPackName       string
+	PolicyPackVersion    string
+	Description          string
+	Message              string
+	Tags                 []string
+	EnforcementLevel     apitype.EnforcementLevel
+	URN                  resource.URN
+	PolicyPackVersionTag string
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
 	Name        string
 	DisplayName string
+	VersionTag  string
 	Policies    []apitype.Policy
 }
