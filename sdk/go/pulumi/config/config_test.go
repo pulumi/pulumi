@@ -221,13 +221,13 @@ func TestSecretConfig(t *testing.T) {
 	testStruct5 := TestStruct{}
 	testStruct6 := TestStruct{}
 
-	s4, err := cfg.TrySecretObject("obj", &testStruct4)
+	s1, err = cfg.TrySecretObject("obj", &testStruct4)
 	assert.Nil(t, err)
-	s5 := cfg.RequireSecretObject("obj", &testStruct5)
-	s6, err := cfg.GetSecretObject("obj", &testStruct6)
+	s2 = cfg.RequireSecretObject("obj", &testStruct5)
+	s3, err = cfg.GetSecretObject("obj", &testStruct6)
 	assert.Nil(t, err)
 
-	pulumi.All(s4, s5, s6).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
 		for _, val := range v {
 			ts := val.(*TestStruct)
 			if reflect.DeepEqual(expectedTestStruct, *ts) {
@@ -250,4 +250,65 @@ func TestSecretConfig(t *testing.T) {
 		}
 	}
 
+	s1, err = cfg.TrySecretBool("bbb")
+	s2 = cfg.RequireSecretBool("bbb")
+	s3 = cfg.GetSecretBool("bbb")
+	assert.Nil(t, err)
+
+	errChan = make(chan error)
+	resultBool := make(chan bool)
+
+	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+		for _, val := range v {
+			if val == true {
+				resultBool <- val.(bool)
+			} else {
+				errChan <- errors.Errorf("Invalid result: %v", val)
+
+			}
+		}
+		return v, nil
+	})
+
+	for i := 0; i < 3; i++ {
+		select {
+		case err = <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultBool:
+			assert.Equal(t, true, r)
+			break
+		}
+	}
+
+	s1, err = cfg.TrySecretInt("intint")
+	s2 = cfg.RequireSecretInt("intint")
+	s3 = cfg.GetSecretInt("intint")
+	assert.Nil(t, err)
+
+	errChan = make(chan error)
+	resultInt := make(chan int)
+
+	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+		for _, val := range v {
+			if val == 42 {
+				resultInt <- val.(int)
+			} else {
+				errChan <- errors.Errorf("Invalid result: %v", val)
+
+			}
+		}
+		return v, nil
+	})
+
+	for i := 0; i < 3; i++ {
+		select {
+		case err = <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultInt:
+			assert.Equal(t, 42, r)
+			break
+		}
+	}
 }
