@@ -100,6 +100,7 @@ type PolicyConfigSchema struct {
 	// Required config properties.
 	Required []string `json:"required,omitempty"`
 
+	// Type defines the data type allowed for the schema.
 	Type JSONSchemaType `json:"type"`
 }
 
