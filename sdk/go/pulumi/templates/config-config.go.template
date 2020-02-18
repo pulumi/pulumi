@@ -142,3 +142,26 @@ func (c *Config) GetSecret{{.Name}}(key string) pulumi.Output {
 
 {{end}}
 {{end}}
+// RequireSecret loads a configuration value by its key
+// and returns it wrapped in a secret output, or panics if it doesn't exist.
+func (c *Config) RequireSecret(key string) pulumi.Output {
+	return pulumi.SecretT(Require(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretObject loads a required configuration value into the specified output by its key
+// and returns it wrapped in a secret Output, or panics if unable to do so.
+func (c *Config) RequireSecretObject(key string, output interface{}) pulumi.Output {
+	RequireObject(c.ctx, c.fullKey(key), output)
+	return pulumi.SecretT(output)
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// RequireSecret{{.Name}} loads a {{.Type}} configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecret{{.Name}}(key string) pulumi.Output {
+	return pulumi.SecretT(Require{{.Name}}(c.ctx, c.fullKey(key)))
+}
+
+{{end}}
+{{end}}

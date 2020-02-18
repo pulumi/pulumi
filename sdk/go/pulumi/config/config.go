@@ -445,3 +445,94 @@ func (c *Config) GetSecretUint64(key string) pulumi.Output {
 func (c *Config) GetSecretUint8(key string) pulumi.Output {
 	return pulumi.SecretT(GetUint8(c.ctx, c.fullKey(key)))
 }
+
+// RequireSecret loads a configuration value by its key
+// and returns it wrapped in a secret output, or panics if it doesn't exist.
+func (c *Config) RequireSecret(key string) pulumi.Output {
+	return pulumi.SecretT(Require(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretObject loads a required configuration value into the specified output by its key
+// and returns it wrapped in a secret Output, or panics if unable to do so.
+func (c *Config) RequireSecretObject(key string, output interface{}) pulumi.Output {
+	RequireObject(c.ctx, c.fullKey(key), output)
+	return pulumi.SecretT(output)
+}
+
+// RequireSecretBool loads a bool configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretBool(key string) pulumi.Output {
+	return pulumi.SecretT(RequireBool(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretFloat32 loads a float32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretFloat32(key string) pulumi.Output {
+	return pulumi.SecretT(RequireFloat32(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretFloat64 loads a float64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretFloat64(key string) pulumi.Output {
+	return pulumi.SecretT(RequireFloat64(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretInt loads a int configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt(key string) pulumi.Output {
+	return pulumi.SecretT(RequireInt(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretInt16 loads a int16 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt16(key string) pulumi.Output {
+	return pulumi.SecretT(RequireInt16(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretInt32 loads a int32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt32(key string) pulumi.Output {
+	return pulumi.SecretT(RequireInt32(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretInt64 loads a int64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt64(key string) pulumi.Output {
+	return pulumi.SecretT(RequireInt64(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretInt8 loads a int8 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt8(key string) pulumi.Output {
+	return pulumi.SecretT(RequireInt8(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretUint loads a uint configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint(key string) pulumi.Output {
+	return pulumi.SecretT(RequireUint(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretUint16 loads a uint16 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint16(key string) pulumi.Output {
+	return pulumi.SecretT(RequireUint16(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretUint32 loads a uint32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint32(key string) pulumi.Output {
+	return pulumi.SecretT(RequireUint32(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretUint64 loads a uint64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint64(key string) pulumi.Output {
+	return pulumi.SecretT(RequireUint64(c.ctx, c.fullKey(key)))
+}
+
+// RequireSecretUint8 loads a uint8 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint8(key string) pulumi.Output {
+	return pulumi.SecretT(RequireUint8(c.ctx, c.fullKey(key)))
+}
