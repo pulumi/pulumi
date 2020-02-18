@@ -16,8 +16,10 @@ package config
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
@@ -148,4 +150,104 @@ func TestConfig(t *testing.T) {
 	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
 	assert.NotNil(t, err)
+}
+
+func TestSecretConfig(t *testing.T) {
+	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		Config: map[string]string{
+			"testpkg:sss":    "a string value",
+			"testpkg:bbb":    "true",
+			"testpkg:intint": "42",
+			"testpkg:fpfpfp": "99.963",
+			"testpkg:obj": `
+				{
+					"foo": {
+						"a": "1",
+						"b": "2"
+					},
+					"bar": "abc"
+				}
+			`,
+			"testpkg:malobj": "not_a_struct",
+		},
+	})
+	assert.Nil(t, err)
+
+	cfg := New(ctx, "testpkg")
+
+	fooMap := make(map[string]string)
+	fooMap["a"] = "1"
+	fooMap["b"] = "2"
+	expectedTestStruct := TestStruct{
+		Foo: fooMap,
+		Bar: "abc",
+	}
+
+	s1, err := cfg.TrySecret("sss")
+	s2 := cfg.RequireSecret("sss")
+	s3 := cfg.GetSecret("sss")
+	assert.Nil(t, err)
+
+	errChan := make(chan error)
+	result := make(chan string)
+
+	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+		for _, val := range v {
+			if val == "a string value" {
+				result <- val.(string)
+			} else {
+				errChan <- errors.Errorf("Invalid result: %v", val)
+
+			}
+		}
+		return v, nil
+	})
+
+	for i := 0; i < 3; i++ {
+		select {
+		case err = <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-result:
+			assert.Equal(t, "a string value", r)
+			break
+		}
+	}
+
+	errChan = make(chan error)
+	objResult := make(chan TestStruct)
+
+	testStruct4 := TestStruct{}
+	testStruct5 := TestStruct{}
+	testStruct6 := TestStruct{}
+
+	s4, err := cfg.TrySecretObject("obj", &testStruct4)
+	assert.Nil(t, err)
+	s5 := cfg.RequireSecretObject("obj", &testStruct5)
+	s6, err := cfg.GetSecretObject("obj", &testStruct6)
+	assert.Nil(t, err)
+
+	pulumi.All(s4, s5, s6).ApplyT(func(v []interface{}) ([]interface{}, error) {
+		for _, val := range v {
+			ts := val.(*TestStruct)
+			if reflect.DeepEqual(expectedTestStruct, *ts) {
+				objResult <- *ts
+			} else {
+				errChan <- errors.Errorf("Invalid result: %v", val)
+			}
+		}
+		return v, nil
+	})
+
+	for i := 0; i < 3; i++ {
+		select {
+		case err = <-errChan:
+			assert.Nil(t, err)
+			break
+		case o := <-objResult:
+			assert.Equal(t, expectedTestStruct, o)
+			break
+		}
+	}
+
 }
