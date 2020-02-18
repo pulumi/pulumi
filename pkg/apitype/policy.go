@@ -69,7 +69,7 @@ type RequiredPolicy struct {
 
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the
-	// JSON schema for the each Policy within the Policy Pack.
+	// JSON schema for each Policy within the Policy Pack.
 	Config map[string]*json.RawMessage `json:"config,omitempty"`
 }
 
@@ -92,7 +92,7 @@ type Policy struct {
 	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
 }
 
-// PolicyConfigSchema defines the JSON schema of a particular Policies'
+// PolicyConfigSchema defines the JSON schema of a particular Policy's
 // configuration.
 type PolicyConfigSchema struct {
 	// Config property name to JSON Schema map.
@@ -204,5 +204,5 @@ type PolicyGroupSummary struct {
 // schemas of Policies within a particular Policy Pack.
 type GetPolicyPackConfigSchemaResponse struct {
 	// The JSON schema for each Policy's configuration.
-	ConfigSchema map[string]*PolicyConfigSchema `json:"configSchema,omitempty"`
+	ConfigSchema map[string]PolicyConfigSchema `json:"configSchema,omitempty"`
 }
