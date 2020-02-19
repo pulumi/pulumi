@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
 - Avoid duplicated messages in preview/update progress display.
   [#3890](https://github.com/pulumi/pulumi/pull/3890)
 
@@ -10,6 +13,15 @@ CHANGELOG
 
 - Expose resource options, parent, dependencies, and provider config to policies.
   [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
+- Move .NET SDK attributes to the root namespace.
+  [#3902](https://github.com/pulumi/pulumi/pull/3902)
+
+- Support exporting older stack versions.
+  [#3906](https://github.com/pulumi/pulumi/pull/3906)
+
+- Disable interactive progress display when no terminal size is available.
+  [#3936](https://github.com/pulumi/pulumi/pull/3936)
 
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.

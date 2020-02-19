@@ -181,7 +181,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
-		assert.Equal(t, "Updating (main-abs):\n", stdout)
+		assert.Equal(t, "Updating (main-abs):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -197,7 +197,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
-		assert.Equal(t, "Updating (main-parent):\n", stdout)
+		assert.Equal(t, "Updating (main-parent):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -1146,8 +1146,74 @@ func TestStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
 	}
 	integration.ProgramTest(t, opts)
+}
+
+func TestMultiStackReferencePython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	// build a stack with an export
+	exporterOpts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		NoParallel: true,
+	}
+
+	// we're going to manually initialize and then defer the deletion of this stack
+	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
+	exporterPt.TestFinished = false
+	err := exporterPt.TestLifeCyclePrepare()
+	assert.NoError(t, err)
+	err = exporterPt.TestLifeCycleInitialize()
+	assert.NoError(t, err)
+
+	defer func() {
+		destroyErr := exporterPt.TestLifeCycleDestroy()
+		assert.NoError(t, destroyErr)
+		exporterPt.TestFinished = true
+		exporterPt.TestCleanUp()
+	}()
+
+	err = exporterPt.TestPreviewUpdateAndEdits()
+	assert.NoError(t, err)
+
+	exporterStackName := exporterOpts.GetStackName().String()
+
+	importerOpts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
+			"exporter_stack_name": exporterStackName,
+		},
+		NoParallel: true,
+	}
+	integration.ProgramTest(t, importerOpts)
 }
 
 // Tests that stack references work in .NET.
