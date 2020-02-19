@@ -348,3 +348,47 @@ func TestSecrets(t *testing.T) {
 	}
 
 }
+
+// Test that secretness is properly bubbled up with all/apply.
+func TestSecretApply(t *testing.T) {
+	s1 := SecretT(String("foo"))
+	// assert that secret is immediately secret
+	assert.True(t, s1.IsSecret())
+	s2 := StringInput(String("bar"))
+
+	errChan := make(chan error)
+	resultChan := make(chan string)
+	secretChan := make(chan bool)
+
+	s := All(s1, s2).ApplyT(func(v interface{}) (string, error) {
+		val := v.([]interface{})
+		return val[0].(string) + val[1].(string), nil
+	})
+	s.ApplyT(func(v interface{}) (string, error) {
+		// assert secretness after the output resolves
+		secretChan <- s.IsSecret()
+		val := v.(string)
+		if val == "foobar" {
+			// validate the value
+			resultChan <- val
+		} else {
+			errChan <- errors.Errorf("Invalid result: %v", val)
+		}
+		return val, nil
+	})
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultChan:
+			assert.Equal(t, "foobar", r)
+			break
+		case isSecret := <-secretChan:
+			assert.True(t, isSecret)
+			break
+		}
+	}
+
+}
