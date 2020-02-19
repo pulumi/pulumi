@@ -272,10 +272,15 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	}
 
 	terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
-	contract.IgnoreError(err)
-	display.isTerminal = opts.IsInteractive
-	display.terminalWidth = terminalWidth
-	display.terminalHeight = terminalHeight
+	if err == nil {
+		// If the terminal has a size, use it.
+		display.isTerminal = opts.IsInteractive
+		display.terminalWidth = terminalWidth
+		display.terminalHeight = terminalHeight
+	} else {
+		// Else assume we are not displaying in a terminal.
+		display.isTerminal = false
+	}
 
 	go func() {
 		display.processEvents(ticker, events)
