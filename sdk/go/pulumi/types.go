@@ -44,7 +44,6 @@ type Output interface {
 	fulfill(value interface{}, known bool, secret bool, err error)
 	resolve(value interface{}, known bool, secret bool)
 	reject(err error)
-	// TODO(evanboyle): await should probably be secret aware in some way?
 	await(ctx context.Context) (interface{}, bool, bool, error)
 }
 
@@ -144,7 +143,6 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, error
 	for {
 		if o == nil {
 			// If the state is nil, treat its value as resolved and unknown.
-			// TODO(evanboyle): what to do here?
 			return nil, false, false, nil
 		}
 
@@ -216,8 +214,6 @@ func newOutput(typ reflect.Type, deps ...Resource) Output {
 	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
 	return output.Interface().(Output)
 }
-
-// TODO(evanboyle): not sure what to do here? Should this be two methods, NewOutput & NewSecret?
 
 // NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
 // function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
@@ -520,7 +516,6 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, error) {
 	contract.Assert(v.IsValid())
 
-	// TODO(evanboyle) not sure if this is right
 	if !resolved.CanSet() {
 		return true, false, nil
 	}
@@ -531,7 +526,6 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 	if v.CanInterface() && valueType.Implements(inputType) {
 		input, isNonNil := v.Interface().(Input)
 		if !isNonNil {
-			// TODO(evanboyle) not sure if this is right
 			// A nil input is already fully-resolved.
 			return true, false, nil
 		}
@@ -574,7 +568,6 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 		// Check for types that are already fully-resolved.
 		if v, ok := getResolvedValue(input); ok {
 			resolved.Set(v)
-			// TODO(evanboyle) not sure if this is right
 			return true, false, nil
 		}
 

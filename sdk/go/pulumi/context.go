@@ -213,9 +213,6 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	// fail if there are secrets returned from the invoke
-	// TODO(evanboyle)
-	// is this a security hole? Should we panic here instead? Is that even enough, should we delete resultV
-	// to make sure the secret isn't leaked?
 	secret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
 	if err != nil {
 		return err
