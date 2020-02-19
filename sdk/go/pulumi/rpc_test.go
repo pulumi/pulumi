@@ -100,33 +100,35 @@ func TestMarshalRoundtrip(t *testing.T) {
 	resolved, pdeps, deps, err := marshalInputs(inputs)
 	assert.Nil(t, err)
 
-	if !assert.Nil(t, err) {
-		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(pdeps))
+	if assert.Nil(t, err) {
+		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
 		assert.Equal(t, 0, len(deps))
+		assert.Equal(t, 0, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
 		assert.False(t, secret)
-		if !assert.Nil(t, err) {
-			if !assert.NotNil(t, resV) {
+		if assert.Nil(t, err) {
+			if assert.NotNil(t, resV) {
 				res := resV.(map[string]interface{})
 				assert.Equal(t, "a string", res["s"])
 				assert.Equal(t, true, res["a"])
-				assert.Equal(t, 42, res["b"])
+				assert.Equal(t, 42.0, res["b"])
 				assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
 				assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
 				assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
 				ar := res["dAssetArchive"].(Archive).Assets()
 				assert.Equal(t, 2, len(ar))
 				assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
-				assert.Equal(t, "bar.zip", ar["subrchive"].(Archive).Path())
+				assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
 				assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
 				assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
 				assert.Equal(t, "outputty", res["e"])
 				aa := res["fArray"].([]interface{})
 				assert.Equal(t, 4, len(aa))
-				assert.Equal(t, 0, aa[0])
-				assert.Equal(t, 1.3, aa[1])
+				assert.Equal(t, 0.0, aa[0])
+				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
+				assert.Greater(t, 1.3-aa[1].(float64), 0.0)
 				assert.Equal(t, "x", aa[2])
 				assert.Equal(t, false, aa[3])
 				am := res["fMap"].(map[string]interface{})
@@ -134,9 +136,9 @@ func TestMarshalRoundtrip(t *testing.T) {
 				assert.Equal(t, "y", am["x"])
 				assert.Equal(t, 999.9, am["y"])
 				assert.Equal(t, false, am["z"])
-				assert.Equal(t, rpcTokenUnknownValue, res["g"])
+				assert.Equal(t, nil, res["g"])
 				assert.Equal(t, "foo", res["h"])
-				assert.Equal(t, rpcTokenUnknownValue, res["i"])
+				assert.Equal(t, nil, res["i"])
 			}
 		}
 	}
@@ -380,7 +382,6 @@ func TestResourceState(t *testing.T) {
 	}, res)
 }
 
-// TODO(evanboyle) add cases for bubbling up nested secretness.
 func TestUnmarshalSecret(t *testing.T) {
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
@@ -393,4 +394,85 @@ func TestUnmarshalSecret(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", sv)
 	assert.True(t, isSecret)
+}
+
+// TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from
+// its on-the-wire gRPC format succeeds including a nested secret property.
+func TestMarshalRoundtripNestedSecret(t *testing.T) {
+	// Create interesting inputs.
+	out, resolve, _ := NewOutput()
+	resolve("outputty")
+	out2 := newOutputState(reflect.TypeOf(""))
+	out2.fulfill(nil, false, true, nil)
+	inputs := testInputs{
+		S:           String("a string"),
+		A:           Bool(true),
+		B:           Int(42),
+		StringAsset: NewStringAsset("put a lime in the coconut"),
+		FileAsset:   NewFileAsset("foo.txt"),
+		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
+		AssetArchive: NewAssetArchive(map[string]interface{}{
+			"subAsset":   NewFileAsset("bar.txt"),
+			"subArchive": NewFileArchive("bar.zip"),
+		}),
+		FileArchive:   NewFileArchive("foo.zip"),
+		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		E:             out,
+		Array:         Array{Int(0), Float32(1.3), String("x"), Bool(false)},
+		Map: Map{
+			"x": String("y"),
+			"y": Float64(999.9),
+			"z": Bool(false),
+		},
+		G: StringOutput{out2},
+		H: URN("foo"),
+		I: StringOutput{},
+	}
+
+	// Marshal those inputs.
+	resolved, pdeps, deps, err := marshalInputs(inputs)
+	assert.Nil(t, err)
+
+	if assert.Nil(t, err) {
+		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
+		assert.Equal(t, 0, len(deps))
+		assert.Equal(t, 0, len(pdeps))
+
+		// Now just unmarshal and ensure the resulting map matches.
+		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		assert.True(t, secret)
+		if assert.Nil(t, err) {
+			if assert.NotNil(t, resV) {
+				res := resV.(map[string]interface{})
+				assert.Equal(t, "a string", res["s"])
+				assert.Equal(t, true, res["a"])
+				assert.Equal(t, 42.0, res["b"])
+				assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
+				assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
+				assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
+				ar := res["dAssetArchive"].(Archive).Assets()
+				assert.Equal(t, 2, len(ar))
+				assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
+				assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
+				assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
+				assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
+				assert.Equal(t, "outputty", res["e"])
+				aa := res["fArray"].([]interface{})
+				assert.Equal(t, 4, len(aa))
+				assert.Equal(t, 0.0, aa[0])
+				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
+				assert.Greater(t, 1.3-aa[1].(float64), 0.0)
+				assert.Equal(t, "x", aa[2])
+				assert.Equal(t, false, aa[3])
+				am := res["fMap"].(map[string]interface{})
+				assert.Equal(t, 3, len(am))
+				assert.Equal(t, "y", am["x"])
+				assert.Equal(t, 999.9, am["y"])
+				assert.Equal(t, false, am["z"])
+				assert.Equal(t, nil, res["g"])
+				assert.Equal(t, "foo", res["h"])
+				assert.Equal(t, nil, res["i"])
+			}
+		}
+	}
 }
