@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Add support for secrets in the Go SDK.
+  [3938](https://github.com/pulumi/pulumi/pull/3938)
+
 - Allow oversize protocol buffers for Python SDK.
   [#3895](https://github.com/pulumi/pulumi/pull/3895)
 
