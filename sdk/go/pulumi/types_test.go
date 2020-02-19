@@ -309,3 +309,42 @@ func TestToOutputInputAny(t *testing.T) {
 		A: map[string]interface{}{"world": true},
 	}, v)
 }
+
+// Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
+func TestSecrets(t *testing.T) {
+	s := SecretT(String("foo"))
+	// assert that secret is immediately secret
+	assert.True(t, s.IsSecret())
+
+	errChan := make(chan error)
+	resultChan := make(chan string)
+	secretChan := make(chan bool)
+
+	s.ApplyT(func(v interface{}) (string, error) {
+		// assert secretness after the output resolves
+		secretChan <- s.IsSecret()
+		val := v.(string)
+		if val == "foo" {
+			// validate the value
+			resultChan <- val
+		} else {
+			errChan <- errors.Errorf("Invalid result: %v", val)
+		}
+		return val, nil
+	})
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultChan:
+			assert.Equal(t, "foo", r)
+			break
+		case isSecret := <-secretChan:
+			assert.True(t, isSecret)
+			break
+		}
+	}
+
+}

@@ -35,6 +35,7 @@ type Output interface {
 	ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput
 	ApplyT(applier interface{}) Output
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
+	IsSecret() bool
 
 	getState() *OutputState
 	dependencies() []Resource
@@ -399,12 +400,25 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	return result
 }
 
+// IsSecret returns a bool representing the secretness of the Output
+func (o *OutputState) IsSecret() bool {
+	return o.getState().secret
+}
+
+// SecretT wraps the input in an Output marked as secret. The result remains an output
+// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
+// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
 func SecretT(input interface{}) Output {
 	return SecretTWithContext(context.Background(), input)
 }
 
+// SecretTWithContext wraps the input in an Output marked as secret. The result remains an output
+// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
+// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
 func SecretTWithContext(ctx context.Context, input interface{}) Output {
 	o := toMaybeSecretOutputWithContext(ctx, input, true)
+	// set immediate secretness ahead of resolution/fufillment
+	o.getState().secret = true
 	return o
 }
 
