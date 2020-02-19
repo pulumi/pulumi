@@ -918,10 +918,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			ctx.endRPC(err)
 		}()
 
-		// URN is coming back as nil here
 		urn, _, _, err := resource.URN().awaitURN(context.TODO())
-		logging.V(9).Infof("URN: --------------------------------------------------\n")
-		logging.V(9).Infof("URN: %v\n", urn)
 		if err != nil {
 			return
 		}
