@@ -14,6 +14,8 @@
 
 package apitype
 
+import "encoding/json"
+
 // DefaultPolicyGroup is the name of the default Policy Group for organizations.
 const DefaultPolicyGroup = "default-policy-group"
 
@@ -64,6 +66,11 @@ type RequiredPolicy struct {
 
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
+
+	// The configuration that is to be passed to the Policy Pack. This is map a of policies
+	// mapped to their configuration. Each individual configuration must comply with the
+	// JSON schema for each Policy within the Policy Pack.
+	Config map[string]*json.RawMessage `json:"config,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -80,7 +87,30 @@ type Policy struct {
 	// Message is the message that will be displayed to end users when they violate
 	// this policy.
 	Message string `json:"message"`
+
+	// The JSON schema for the Policy's configuration.
+	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
 }
+
+// PolicyConfigSchema defines the JSON schema of a particular Policy's
+// configuration.
+type PolicyConfigSchema struct {
+	// Config property name to JSON Schema map.
+	Properties map[string]*json.RawMessage `json:"properties,omitempty"`
+	// Required config properties.
+	Required []string `json:"required,omitempty"`
+
+	// Type defines the data type allowed for the schema.
+	Type JSONSchemaType `json:"type"`
+}
+
+// JSONSchemaType in an enum of allowed data types for a schema.
+type JSONSchemaType string
+
+const (
+	// Object is a dictionary.
+	Object JSONSchemaType = "object"
+)
 
 // EnforcementLevel indicates how a policy should be enforced
 type EnforcementLevel string
@@ -120,8 +150,9 @@ type UpdatePolicyGroupRequest struct {
 	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
 	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
 
-	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
-	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+	AddPolicyPack          *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
+	RemovePolicyPack       *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+	UpdatePolicyPackConfig *PolicyPackMetadata `json:"updatePolicyPackConfig,omitempty"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
@@ -136,6 +167,10 @@ type PolicyPackMetadata struct {
 	DisplayName string `json:"displayName"`
 	Version     int    `json:"version"`
 	VersionTag  string `json:"versionTag"`
+
+	// The configuration that is to be passed to the Policy Pack. This
+	// map ties Policies with their configuration.
+	Config map[string]*json.RawMessage `json:"config,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -164,4 +199,11 @@ type PolicyGroupSummary struct {
 	IsOrgDefault          bool   `json:"isOrgDefault"`
 	NumStacks             int    `json:"numStacks"`
 	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
+}
+
+// GetPolicyPackConfigSchemaResponse is the response that includes the JSON
+// schemas of Policies within a particular Policy Pack.
+type GetPolicyPackConfigSchemaResponse struct {
+	// The JSON schema for each Policy's configuration.
+	ConfigSchema map[string]PolicyConfigSchema `json:"configSchema,omitempty"`
 }
