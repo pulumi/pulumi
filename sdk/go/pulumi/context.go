@@ -399,6 +399,28 @@ func (ctx *Context) RegisterResource(
 		options.Parent = ctx.stack
 	}
 
+	// Before anything else, if there are transformations registered, give them a chance to run to modify the
+	// user-provided properties and options assigned to this resource.
+	transformations := append(resource.getTransformations(), options.Parent.getTransformations()...)
+	for _, transformation := range transformations {
+		args := &ResourceTransformationArgs{
+			Resource: resource,
+			Type:     t,
+			Name:     name,
+			Props:    props,
+			Opts:     options,
+		}
+
+		res := transformation(args)
+		if res != nil {
+			if res.Opts.Parent != options.Parent {
+				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
+			}
+			props = res.Props
+			options = res.Opts
+		}
+	}
+
 	// Collapse aliases to URNs.
 	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {

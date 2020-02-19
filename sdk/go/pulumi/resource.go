@@ -36,6 +36,8 @@ type ResourceState struct {
 	aliases []URNOutput
 
 	name string
+
+	transformations []ResourceTransformation
 }
 
 func (s ResourceState) URN() URNOutput {
@@ -56,6 +58,10 @@ func (s ResourceState) getAliases() []URNOutput {
 
 func (s ResourceState) getName() string {
 	return s.name
+}
+
+func (s ResourceState) getTransformations() []ResourceTransformation {
+	return s.transformations
 }
 
 func (ResourceState) isResource() {}
@@ -98,6 +104,9 @@ type Resource interface {
 
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
+
+	// getTransformations return the transformations for the resource.
+	getTransformations() []ResourceTransformation
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
@@ -159,6 +168,10 @@ type resourceOptions struct {
 	Aliases []Alias
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
+	// Transformations is an optional list of transformations to apply to this resource during construction.
+	// The transformations are applied in order, and are applied prior to transformation and to parents
+	// walking from the resource up to the stack.
+	Transformations []ResourceTransformation
 }
 
 type invokeOptions struct {
@@ -296,9 +309,16 @@ func Aliases(o []Alias) ResourceOption {
 	})
 }
 
+<<<<<<< HEAD
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
 func AdditionalSecretOutputs(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.AdditionalSecretOutputs = o
+=======
+// Transformations is an optional list of transformations to be applied to the resource.
+func Transformations(o []ResourceTransformation) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Transformations = o
+>>>>>>> 345a3690... started transformations for go sdk
 	})
 }
