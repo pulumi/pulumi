@@ -321,14 +321,15 @@ func (ctx *Context) ReadResource(
 
 		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
-			Type:          t,
-			Name:          name,
-			Parent:        inputs.parent,
-			Properties:    inputs.rpcProps,
-			Provider:      inputs.provider,
-			Id:            string(idToRead),
-			Aliases:       inputs.aliases,
-			AcceptSecrets: true,
+			Type:                    t,
+			Name:                    name,
+			Parent:                  inputs.parent,
+			Properties:              inputs.rpcProps,
+			Provider:                inputs.provider,
+			Id:                      string(idToRead),
+			Aliases:                 inputs.aliases,
+			AcceptSecrets:           true,
+			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -438,21 +439,22 @@ func (ctx *Context) RegisterResource(
 
 		logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
-			Type:                 t,
-			Name:                 name,
-			Parent:               inputs.parent,
-			Object:               inputs.rpcProps,
-			Custom:               custom,
-			Protect:              inputs.protect,
-			Dependencies:         inputs.deps,
-			Provider:             inputs.provider,
-			PropertyDependencies: inputs.rpcPropertyDeps,
-			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
-			ImportId:             inputs.importID,
-			CustomTimeouts:       inputs.customTimeouts,
-			IgnoreChanges:        inputs.ignoreChanges,
-			Aliases:              inputs.aliases,
-			AcceptSecrets:        true,
+			Type:                    t,
+			Name:                    name,
+			Parent:                  inputs.parent,
+			Object:                  inputs.rpcProps,
+			Custom:                  custom,
+			Protect:                 inputs.protect,
+			Dependencies:            inputs.deps,
+			Provider:                inputs.provider,
+			PropertyDependencies:    inputs.rpcPropertyDeps,
+			DeleteBeforeReplace:     inputs.deleteBeforeReplace,
+			ImportId:                inputs.importID,
+			CustomTimeouts:          inputs.customTimeouts,
+			IgnoreChanges:           inputs.ignoreChanges,
+			Aliases:                 inputs.aliases,
+			AcceptSecrets:           true,
+			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -676,18 +678,19 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 // resourceInputs reflects all of the inputs necessary to perform core resource RPC operations.
 type resourceInputs struct {
-	parent              string
-	deps                []string
-	protect             bool
-	provider            string
-	resolvedProps       resource.PropertyMap
-	rpcProps            *structpb.Struct
-	rpcPropertyDeps     map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
-	deleteBeforeReplace bool
-	importID            string
-	customTimeouts      *pulumirpc.RegisterResourceRequest_CustomTimeouts
-	ignoreChanges       []string
-	aliases             []string
+	parent                  string
+	deps                    []string
+	protect                 bool
+	provider                string
+	resolvedProps           resource.PropertyMap
+	rpcProps                *structpb.Struct
+	rpcPropertyDeps         map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
+	deleteBeforeReplace     bool
+	importID                string
+	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
+	ignoreChanges           []string
+	aliases                 []string
+	additionalSecretOutputs []string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -699,7 +702,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
 	parent, optDeps, protect, provider, deleteBeforeReplace,
-		importID, ignoreChanges, err := ctx.getOpts(t, providers, opts)
+		importID, ignoreChanges, additionalSecretOutputs, err := ctx.getOpts(t, providers, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -759,18 +762,19 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	}
 
 	return &resourceInputs{
-		parent:              string(parent),
-		deps:                deps,
-		protect:             protect,
-		provider:            provider,
-		resolvedProps:       resolvedProps,
-		rpcProps:            rpcProps,
-		rpcPropertyDeps:     rpcPropertyDeps,
-		deleteBeforeReplace: deleteBeforeReplace,
-		importID:            string(importID),
-		customTimeouts:      getTimeouts(opts.CustomTimeouts),
-		ignoreChanges:       ignoreChanges,
-		aliases:             aliases,
+		parent:                  string(parent),
+		deps:                    deps,
+		protect:                 protect,
+		provider:                provider,
+		resolvedProps:           resolvedProps,
+		rpcProps:                rpcProps,
+		rpcPropertyDeps:         rpcPropertyDeps,
+		deleteBeforeReplace:     deleteBeforeReplace,
+		importID:                string(importID),
+		customTimeouts:          getTimeouts(opts.CustomTimeouts),
+		ignoreChanges:           ignoreChanges,
+		aliases:                 aliases,
+		additionalSecretOutputs: additionalSecretOutputs,
 	}, nil
 }
 
@@ -787,13 +791,13 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
 func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts *resourceOptions) (
-	URN, []URN, bool, string, bool, ID, []string, error) {
+	URN, []URN, bool, string, bool, ID, []string, []string, error) {
 
 	var importID ID
 	if opts.Import != nil {
 		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		importID = id
 	}
@@ -802,7 +806,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	if opts.Parent != nil {
 		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		parentURN = urn
 	}
@@ -813,7 +817,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 		for i, r := range opts.DependsOn {
 			urn, _, _, err := r.URN().awaitURN(context.TODO())
 			if err != nil {
-				return "", nil, false, "", false, "", nil, err
+				return "", nil, false, "", false, "", nil, nil, err
 			}
 			depURNs[i] = urn
 		}
@@ -829,12 +833,13 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	if provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		providerRef = pr
 	}
 
-	return parentURN, depURNs, opts.Protect, providerRef, opts.DeleteBeforeReplace, importID, opts.IgnoreChanges, nil
+	return parentURN, depURNs, opts.Protect, providerRef, opts.DeleteBeforeReplace,
+		importID, opts.IgnoreChanges, opts.AdditionalSecretOutputs, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {

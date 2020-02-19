@@ -157,6 +157,8 @@ type resourceOptions struct {
 	IgnoreChanges []string
 	// Aliases is an optional list of identifiers used to find and use existing resources.
 	Aliases []Alias
+	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
+	AdditionalSecretOutputs []string
 }
 
 type invokeOptions struct {
@@ -291,5 +293,12 @@ func IgnoreChanges(o []string) ResourceOption {
 func Aliases(o []Alias) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = o
+	})
+}
+
+// AdditionalSecretOutputs specifies a list of output properties to mark as secret.
+func AdditionalSecretOutputs(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.AdditionalSecretOutputs = o
 	})
 }
