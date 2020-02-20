@@ -401,7 +401,10 @@ func (ctx *Context) RegisterResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	transformations := append(resource.getTransformations(), options.Parent.getTransformations()...)
+	transformations := options.Transformations
+	if options.Parent != nil {
+		transformations = append(transformations, options.Parent.getTransformations()...)
+	}
 	for _, transformation := range transformations {
 		args := &ResourceTransformationArgs{
 			Resource: resource,
@@ -413,7 +416,7 @@ func (ctx *Context) RegisterResource(
 
 		res := transformation(args)
 		if res != nil {
-			if res.Opts.Parent != options.Parent {
+			if res.Opts.Parent.URN() != options.Parent.URN() {
 				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
 			props = res.Props
