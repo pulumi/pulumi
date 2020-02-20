@@ -1451,24 +1451,20 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
 	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
 	var tmpdir, projdir string
-	if projinfo.Proj.Runtime.Name() == "go" {
-		projdir = projinfo.Root
-	} else {
-		stackName := string(pt.opts.GetStackName())
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
-		if tempErr != nil {
-			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
-		}
-
-		// Copy the source project.
-		if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
-			return "", "", copyErr
-		}
-
-		// Set tmpdir so that the caller will clean up afterwards.
-		tmpdir = targetDir
-		projdir = targetDir
+	stackName := string(pt.opts.GetStackName())
+	targetDir, tempErr := ioutil.TempDir(filepath.Join("tests", "src"), stackName+"-")
+	if tempErr != nil {
+		return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 	}
+
+	// Copy the source project.
+	if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
+		return "", "", copyErr
+	}
+
+	// Set tmpdir so that the caller will clean up afterwards.
+	tmpdir = targetDir
+	projdir = targetDir
 	projinfo.Root = projdir
 
 	err = pt.prepareProject(projinfo)
