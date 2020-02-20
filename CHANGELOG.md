@@ -23,6 +23,9 @@ CHANGELOG
 - Disable interactive progress display when no terminal size is available.
   [#3936](https://github.com/pulumi/pulumi/pull/3936)
 
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)
