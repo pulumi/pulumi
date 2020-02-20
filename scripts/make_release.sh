@@ -56,6 +56,7 @@ run_go_build "${ROOT}/sdk/go/pulumi-language-go"
 cp "${ROOT}/sdk/nodejs/dist/pulumi-resource-pulumi-nodejs" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/python/dist/pulumi-resource-pulumi-python" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/nodejs/dist/pulumi-analyzer-policy" "${PUBDIR}/bin/"
+cp "${ROOT}/sdk/python/dist/pulumi-analyzer-policy-python" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/python/cmd/pulumi-language-python-exec" "${PUBDIR}/bin/"
 
 # Copy packages

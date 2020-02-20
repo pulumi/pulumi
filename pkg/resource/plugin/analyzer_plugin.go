@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -78,11 +79,23 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-const policyAnalyzerName = "policy"
-
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+
+	proj, err := workspace.LoadPolicyPack(filepath.Join(policyPackPath, "PulumiPolicy.yaml"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
+	}
+
+	var policyAnalyzerName string
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		policyAnalyzerName = "policy"
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		policyAnalyzerName = "policy-python"
+	} else {
+		return nil, fmt.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	_, pluginPath, err := workspace.GetPluginPath(
@@ -97,7 +110,7 @@ func NewPolicyAnalyzer(
 	}
 
 	// Create the environment variables from the options.
-	env, err := constructEnv(opts)
+	env, err := constructEnv(opts, proj.Runtime.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -600,13 +613,20 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 // constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
 // is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
 // how config is passed to each language runtime plugin.
-func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
+func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error) {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
 		if v != "" {
 			env = append(env, k+"="+v)
 		}
+	}
+
+	langSpecificVar := func(k string) string {
+		if runtime == "nodejs" {
+			return strings.Replace(k, "PULUMI_", "PULUMI_NODEJS_", 1)
+		}
+		return k
 	}
 
 	config, err := constructConfig(opts)
@@ -616,9 +636,9 @@ func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
 	maybeAppendEnv("PULUMI_CONFIG", config)
 
 	if opts != nil {
-		maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
-		maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		maybeAppendEnv(langSpecificVar("PULUMI_PROJECT"), opts.Project)
+		maybeAppendEnv(langSpecificVar("PULUMI_STACK"), opts.Stack)
+		maybeAppendEnv(langSpecificVar("PULUMI_DRY_RUN"), fmt.Sprintf("%v", opts.DryRun))
 	}
 
 	return env, nil
