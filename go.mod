@@ -56,10 +56,11 @@ require (
 	gocloud.dev v0.18.0
 	gocloud.dev/secrets/hashivault v0.18.0
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
-	golang.org/x/net v0.0.0-20190619014844-b5b0513f8c1b
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190620070143-6f217b454f45
+	golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5 // indirect
 	google.golang.org/api v0.6.0
 	google.golang.org/genproto v0.0.0-20190620144150-6af8c5fc6601
 	google.golang.org/grpc v1.21.1
