@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
   [#3895](https://github.com/pulumi/pulumi/pull/3895)
 
