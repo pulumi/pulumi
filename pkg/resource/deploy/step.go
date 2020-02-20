@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -892,8 +893,33 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
 	if diff.Changes != plugin.DiffNone {
-		const message = "inputs to import do not match the existing resource"
-
+		// Build an error message that says which keys have changed. First, pluck out the unique ones
+		// since nested structures may have multiple diffs in the array, and ensure a stable sort ordering.
+		var uniqueKeys []string
+		seenKeys := make(map[string]bool)
+		for _, key := range diff.ChangedKeys {
+			sk := string(key)
+			if !seenKeys[sk] {
+				uniqueKeys = append(uniqueKeys, sk)
+				seenKeys[sk] = true
+			}
+		}
+		sort.Strings(uniqueKeys)
+		var keys string
+		var message string
+		for i, key := range uniqueKeys {
+			if i > 0 {
+				keys += ", "
+			}
+			keys += "'" + key + "'"
+		}
+		if len(uniqueKeys) == 1 {
+			message = fmt.Sprintf(
+				"imported resource %s's property %s does not match the existing value", s.new.ID, keys)
+		} else {
+			message = fmt.Sprintf(
+				"imported resource %s's properties %s do not match the existing values", s.new.ID, keys)
+		}
 		if preview {
 			s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
 		} else {
