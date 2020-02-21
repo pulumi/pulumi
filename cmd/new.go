@@ -672,6 +672,13 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 
 		// Install dependencies within the virtualenv
 		commands = append(commands, "pip3 install -r requirements.txt")
+	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
+		// If we're generating a Go project, we (currently) will be placing a `Gopkg.toml`, and the
+		// user will need to `dep ensure` before running an update.  So we will recommend this to
+		// them explicitly.
+		//
+		// TODO[pulumi/pulumi#3817] When we move to Go modules, we will want to update this.
+		commands = append(commands, "dep ensure")
 	}
 
 	// If we didn't create a stack, show that as a command to run before `pulumi up`.

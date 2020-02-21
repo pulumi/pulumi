@@ -7,7 +7,6 @@ branches:
     only:
         - master
         - /v\d*\.\d*\.\d*/
-skip_tags: true
 environment:
   PULUMI_API: https://api.pulumi-staging.io
   PULUMI_ACCESS_TOKEN:
@@ -65,5 +64,5 @@ build_script:
 
     go mod vendor
 
-    dotnet msbuild /t:CIBuild /v:Detailed build.proj
+    if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj ) else ( dotnet msbuild /t:CIBuild /v:Detailed build.proj )
 test: off

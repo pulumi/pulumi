@@ -1,6 +1,38 @@
 CHANGELOG
 =========
 
+## 1.11.0 (2020-02-19)
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
+- Improve CPU utilization in the Python SDK when waiting for resource operations.
+  [#3892](https://github.com/pulumi/pulumi/pull/3892)
+
+- Expose resource options, parent, dependencies, and provider config to policies.
+  [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
+- Move .NET SDK attributes to the root namespace.
+  [#3902](https://github.com/pulumi/pulumi/pull/3902)
+
+- Support exporting older stack versions.
+  [#3906](https://github.com/pulumi/pulumi/pull/3906)
+
+- Disable interactive progress display when no terminal size is available.
+  [#3936](https://github.com/pulumi/pulumi/pull/3936)
+
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
+
+## 1.10.1 (2020-02-06)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
+- Fix the Windows release process.
+  [#3875](https://github.com/pulumi/pulumi/pull/3875)
+
 ## 1.10.0 (2020-02-05)
 - Avoid writing checkpoints to backend storage in common case where no changes are being made.
   [#3860](https://github.com/pulumi/pulumi/pull/3860)
@@ -9,6 +41,11 @@ CHANGELOG
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
 - Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+- Add support for aliases in the Go SDK
+  [3853](https://github.com/pulumi/pulumi/pull/3853)
+
+- Fix Python Dynamic Providers on Windows.
+  [#3855](https://github.com/pulumi/pulumi/pull/3855)
 
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -131,26 +132,6 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
-	// Ensure that all config values are strings or unknowns.
-	var failures []CheckFailure
-	for k, v := range news {
-		// The configure method has to accept strings, so we go through and strip off all the secret markers before
-		// doing our checks (this mimics stripping code we have in Configure itself).
-		for v.IsSecret() {
-			v = v.SecretValue().Element
-		}
-
-		if !v.IsString() && !v.IsComputed() {
-			failures = append(failures, CheckFailure{
-				Property: k,
-				Reason:   "provider property values must be strings",
-			})
-		}
-	}
-	if len(failures) != 0 {
-		return nil, failures, nil
-	}
-
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:        fmt.Sprintf("%s.olds", label),
 		KeepUnknowns: allowUnknowns,
@@ -199,7 +180,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	}
 
 	// And now any properties that failed verification.
-	failures = nil
+	var failures []CheckFailure
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -372,6 +353,42 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
+func removeSecrets(v resource.PropertyValue) interface{} {
+	switch {
+	case v.IsNull():
+		return nil
+	case v.IsBool():
+		return v.BoolValue()
+	case v.IsNumber():
+		return v.NumberValue()
+	case v.IsString():
+		return v.StringValue()
+	case v.IsArray():
+		arr := []interface{}{}
+		for _, v := range v.ArrayValue() {
+			arr = append(arr, removeSecrets(v))
+		}
+		return arr
+	case v.IsAsset():
+		return v.AssetValue()
+	case v.IsArchive():
+		return v.ArchiveValue()
+	case v.IsComputed():
+		return v.Input()
+	case v.IsOutput():
+		return v.OutputValue()
+	case v.IsSecret():
+		return removeSecrets(v.SecretValue().Element)
+	default:
+		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
+		obj := map[string]interface{}{}
+		for k, v := range v.ObjectValue() {
+			obj[string(k)] = removeSecrets(v)
+		}
+		return obj
+	}
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
@@ -384,25 +401,37 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		if k == "version" {
 			continue
 		}
-		// The configure method has to accept strings, so we go through and strip off all the secret markers before
-		// calling configure.
-		for v.IsSecret() {
-			v = v.SecretValue().Element
-		}
-		switch {
-		case v.IsComputed():
+
+		if v.ContainsUnknowns() {
 			p.cfgknown, p.acceptSecrets = false, false
 			close(p.cfgdone)
 			return nil
-		case v.IsString():
-			// Pass the older spelling of a configuration key across the RPC interface, for now, to support
-			// providers which are on the older plan.
-			config[string(p.Pkg())+":config:"+string(k)] = v.StringValue()
-		default:
-			p.cfgerr = errors.Errorf("provider property values must be strings; '%v' is a %v", k, v.TypeString())
-			close(p.cfgdone)
-			return p.cfgerr
 		}
+
+		mapped := removeSecrets(v)
+		if _, isString := mapped.(string); !isString {
+			marshalled, err := json.Marshal(mapped)
+			if err != nil {
+				p.cfgerr = errors.Wrapf(err, "marshaling configuration property '%v'", k)
+				close(p.cfgdone)
+				return p.cfgerr
+			}
+			mapped = string(marshalled)
+		}
+
+		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
+		// providers which are on the older plan.
+		config[string(p.Pkg())+":config:"+string(k)] = mapped.(string)
+	}
+
+	minputs, err := MarshalProperties(inputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		p.cfgerr = errors.Wrapf(err, "marshaling provider inputs")
+		close(p.cfgdone)
+		return p.cfgerr
 	}
 
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
@@ -411,6 +440,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
 			AcceptSecrets: true,
 			Variables:     config,
+			Args:          minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)

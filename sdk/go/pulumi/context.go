@@ -271,13 +271,22 @@ func (ctx *Context) ReadResource(
 		options.Parent = ctx.stack
 	}
 
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	if err != nil {
+		return err
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
+	// Merge providers.
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, resource, mergeProviders(t, options.Parent, options.Provider, options.Providers))
+	res := makeResourceState(t, name, resource, providers, aliasURNs)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -297,7 +306,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, res.providers, options)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
 		if err != nil {
 			return
 		}
@@ -310,6 +319,7 @@ func (ctx *Context) ReadResource(
 			Properties: inputs.rpcProps,
 			Provider:   inputs.provider,
 			Id:         string(idToRead),
+			Aliases:    inputs.aliases,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -381,13 +391,22 @@ func (ctx *Context) RegisterResource(
 		options.Parent = ctx.stack
 	}
 
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	if err != nil {
+		return err
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
+	// Merge providers.
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, resource, mergeProviders(t, options.Parent, options.Provider, options.Providers))
+	res := makeResourceState(t, name, resource, providers, aliasURNs)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -403,7 +422,7 @@ func (ctx *Context) RegisterResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, res.providers, options)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
 		if err != nil {
 			return
 		}
@@ -423,6 +442,7 @@ func (ctx *Context) RegisterResource(
 			ImportId:             inputs.importID,
 			CustomTimeouts:       inputs.customTimeouts,
 			IgnoreChanges:        inputs.ignoreChanges,
+			Aliases:              inputs.aliases,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -448,6 +468,8 @@ func (ctx *Context) RegisterComponentResource(
 type resourceState struct {
 	outputs   map[string]Output
 	providers map[string]ProviderResource
+	aliases   []URNOutput
+	name      string
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
@@ -485,9 +507,34 @@ func getPackage(t string) string {
 	return components[0]
 }
 
+// collapseAliases collapses a list of Aliases into alist of URNs.
+func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
+	project, stack := ctx.Project(), ctx.Stack()
+
+	var aliasURNs []URNOutput
+	if parent != nil {
+		for _, alias := range parent.getAliases() {
+			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, alias)
+			aliasURNs = append(aliasURNs, urn)
+		}
+	}
+
+	for _, alias := range aliases {
+		urn, err := alias.collapseToURN(name, t, parent, project, stack)
+		if err != nil {
+			return nil, errors.Wrap(err, "error collapsing alias to URN")
+		}
+		aliasURNs = append(aliasURNs, urn)
+	}
+
+	return aliasURNs, nil
+}
+
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func makeResourceState(t string, resourceV Resource, providers map[string]ProviderResource) *resourceState {
+func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
+	aliases []URNOutput) *resourceState {
+
 	resource := reflect.ValueOf(resourceV)
 
 	typ := resource.Type()
@@ -552,6 +599,10 @@ func makeResourceState(t string, resourceV Resource, providers map[string]Provid
 	rs.providers = providers
 	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
 	state.outputs["urn"] = rs.urn
+	state.name = name
+	rs.name = name
+	state.aliases = aliases
+	rs.aliases = aliases
 
 	return state
 }
@@ -619,11 +670,14 @@ type resourceInputs struct {
 	importID            string
 	customTimeouts      *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges       []string
+	aliases             []string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props Input, t string,
-	providers map[string]ProviderResource, opts *resourceOptions) (*resourceInputs, error) {
+	opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+
+	providers := resource.providers
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
@@ -677,6 +731,16 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	}
 	sort.Strings(deps)
 
+	// Await alias URNs
+	aliases := make([]string, len(resource.aliases))
+	for i, alias := range resource.aliases {
+		urn, _, err := alias.awaitURN(context.Background())
+		if err != nil {
+			return nil, errors.Wrap(err, "error waiting for alias URN to resolve")
+		}
+		aliases[i] = string(urn)
+	}
+
 	return &resourceInputs{
 		parent:              string(parent),
 		deps:                deps,
@@ -689,6 +753,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 		importID:            string(importID),
 		customTimeouts:      getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:       ignoreChanges,
+		aliases:             aliases,
 	}, nil
 }
 

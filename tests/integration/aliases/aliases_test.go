@@ -80,3 +80,23 @@ func TestDotNetAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestGoAliases(t *testing.T) {
+	for _, dir := range dirs {
+		d := filepath.Join("go", dir)
+		t.Run(d, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:          filepath.Join(d, "step1"),
+				Dependencies: []string{"Pulumi"},
+				Quick:        true,
+				EditDirs: []integration.EditDir{
+					{
+						Dir:             filepath.Join(d, "step2"),
+						ExpectNoChanges: true,
+						Additive:        true,
+					},
+				},
+			})
+		})
+	}
+}

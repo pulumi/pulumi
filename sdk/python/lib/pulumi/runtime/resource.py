@@ -343,6 +343,17 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
+            # translate the CustomTimeouts object
+            custom_timeouts = None
+            if opts.custom_timeouts is not None:
+                custom_timeouts = resource_pb2.RegisterResourceRequest.CustomTimeouts()
+                if opts.custom_timeouts.create is not None:
+                    custom_timeouts.create = opts.custom_timeouts.create
+                if opts.custom_timeouts.update is not None:
+                    custom_timeouts.update = opts.custom_timeouts.update
+                if opts.custom_timeouts.delete is not None:
+                    custom_timeouts.delete = opts.custom_timeouts.delete
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -360,7 +371,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
-                customTimeouts=opts.custom_timeouts,
+                customTimeouts=custom_timeouts,
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
             )

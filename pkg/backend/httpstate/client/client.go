@@ -376,11 +376,19 @@ func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([
 }
 
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
-func (pc *Client) ExportStackDeployment(ctx context.Context,
-	stack StackIdentifier) (apitype.UntypedDeployment, error) {
+// If version is nil, will export the latest version of the stack.
+func (pc *Client) ExportStackDeployment(
+	ctx context.Context, stack StackIdentifier, version *int) (apitype.UntypedDeployment, error) {
+
+	path := getStackPath(stack, "export")
+
+	// Tack on a specific version as desired.
+	if version != nil {
+		path += fmt.Sprintf("/%d", *version)
+	}
 
 	var resp apitype.ExportStackResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
 	}
 
