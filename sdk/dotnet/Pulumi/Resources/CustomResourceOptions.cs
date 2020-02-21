@@ -1,6 +1,5 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
 
 namespace Pulumi
@@ -42,15 +41,43 @@ namespace Pulumi
         internal override ResourceOptions Clone()
             => CreateCustomResourceOptionsCopy(this);
 
-        /// <inheritdoc cref="ResourceOptions.Merge(ResourceOptions, ResourceOptions)"/>
-        public static new CustomResourceOptions Merge(ResourceOptions? options1, ResourceOptions? options2)
+        /// <summary>
+        /// Takes two <see cref="CustomResourceOptions"/> values and produces a new
+        /// <see cref="CustomResourceOptions"/> with the respective
+        /// properties of <paramref name="options2"/> merged over the same properties in <paramref
+        /// name="options1"/>. The original options objects will be unchanged.
+        /// <para/>
+        /// A new instance will always be returned.
+        /// <para/>
+        /// Conceptually property merging follows these basic rules:
+        /// <list type="number">
+        /// <item>
+        /// If the property is a collection, the final value will be a collection containing the
+        /// values from each options object.
+        /// </item>
+        /// <item>
+        /// Simple scalar values from <paramref name="options2"/> (i.e. <see cref="string"/>s,
+        /// <see cref="int"/>s, <see cref="bool"/>s) will replace the values of <paramref
+        /// name="options1"/>.
+        /// </item>
+        /// <item>
+        /// <see langword="null"/> values in <paramref name="options2"/> will be ignored.
+        /// </item>
+        /// </list>
+        /// </summary>
+        public static CustomResourceOptions Merge(CustomResourceOptions? options1, CustomResourceOptions? options2)
         {
-            if (options1 is ComponentResourceOptions || options2 is ComponentResourceOptions)
-                throw new ArgumentException($"{nameof(CustomResourceOptions)}.{nameof(Merge)} cannot be used to merge {nameof(ComponentResourceOptions)}");
+            options1 = options1 != null ? CreateCustomResourceOptionsCopy(options1) : new CustomResourceOptions();
+            options2 = options2 != null ? CreateCustomResourceOptionsCopy(options2) : new CustomResourceOptions();
 
-            return (CustomResourceOptions)ResourceOptions.Merge(
-                CreateCustomResourceOptionsCopy(options1),
-                CreateCustomResourceOptionsCopy(options2));
+            // first, merge all the normal option values over
+            MergeNormalOptions(options1, options2);
+
+            options1.DeleteBeforeReplace = options2.DeleteBeforeReplace ?? options1.DeleteBeforeReplace;
+            options1.ImportId = options2.ImportId ?? options1.ImportId;
+
+            options1.AdditionalSecretOutputs.AddRange(options2.AdditionalSecretOutputs);
+            return options1;
         }
     }
 }
