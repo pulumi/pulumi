@@ -68,6 +68,7 @@ func GoValidator() func(t *testing.T, stack integration.RuntimeValidationStackIn
 	dynamicResName := "pulumi-go:dynamic:Resource"
 	return func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		foundRes1 := false
+		foundRes2 := false
 		for _, res := range stack.Deployment.Resources {
 			if res.URN.Name() == "res1" {
 				foundRes1 = true
@@ -75,8 +76,15 @@ func GoValidator() func(t *testing.T, stack integration.RuntimeValidationStackIn
 				assert.Len(t, res.Aliases, 1)
 				assert.Contains(t, res.Aliases[0], pulumi.URN("SimpleResource"))
 			}
+			if res.URN.Name() == "res2-child" {
+				foundRes2 = true
+				assert.Equal(t, res.Type, tokens.Type(dynamicResName))
+				assert.Len(t, res.Aliases, 1)
+				assert.Contains(t, res.Aliases[0], pulumi.URN("SimpleResource"))
+			}
 		}
 		assert.True(t, foundRes1)
+		assert.True(t, foundRes2)
 	}
 }
 
