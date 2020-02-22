@@ -43,8 +43,14 @@ func (rp *cloudRequiredPolicy) Version() string { return strconv.Itoa(rp.Require
 func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	policy := rp.RequiredPolicy
 
+	// If version tag is empty, we use the version tag. This is to support older version of
+	// pulumi/policy that do not have a version tag.
+	version := policy.VersionTag
+	if version == "" {
+		version = strconv.Itoa(policy.Version)
+	}
 	policyPackPath, installed, err := workspace.GetPolicyPath(
-		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), policy.VersionTag)
+		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		// Failed to get a sensible PolicyPack path.
 		return "", err
