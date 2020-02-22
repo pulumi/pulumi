@@ -349,7 +349,6 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 custom_timeouts = resource_pb2.RegisterResourceRequest.CustomTimeouts()
                 # It could be an actual CustomTimeouts object.
                 if known_types.is_custom_timeouts(opts.custom_timeouts):
-                    print('CustomTimeouts for real')
                     if opts.custom_timeouts.create is not None:
                         custom_timeouts.create = opts.custom_timeouts.create
                     if opts.custom_timeouts.update is not None:
@@ -358,7 +357,6 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                         custom_timeouts.delete = opts.custom_timeouts.delete
                 # Or, it could be a workaround passing in a dict.
                 elif isinstance(opts.custom_timeouts, dict):
-                    print('CustomTimeouts dict')
                     if 'create' in opts.custom_timeouts:
                         custom_timeouts.create = opts.custom_timeouts['create']
                     if 'update' in opts.custom_timeouts:
