@@ -1,8 +1,12 @@
 CHANGELOG
 =========
 
-- Fix a regression for CustomTimeouts in Python SDK
+## HEAD (unreleased)
+- Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)
+
+- Avoid panic when displaying failed stack policies.
+  [#3960](https://github.com/pulumi/pulumi/pull/3960)
 
 ## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
