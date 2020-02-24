@@ -116,7 +116,6 @@ message AnalyzeDiagnostic {
     repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
     EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
-    string policyPackVersionTag = 9;       // Version Tag of the Policy Pack.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
@@ -124,7 +123,7 @@ message AnalyzerInfo {
 	string name = 1;                  // Name of the PolicyPack.
 	string displayName = 2;           // Pretty name for the PolicyPack.
 	repeated PolicyInfo policies = 3; // Metadata about policies contained in PolicyPack.
-    string versionTag = 4;            // Version of the Policy Pack.
+    string version = 4;               // Version of the Policy Pack.
 }
 
 // PolicyInfo provides metadata about an individual Policy within a Policy Pack.

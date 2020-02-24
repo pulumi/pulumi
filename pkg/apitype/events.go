@@ -47,13 +47,12 @@ type DiagnosticEvent struct {
 
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
-	ResourceURN          string `json:"resourceUrn,omitempty"`
-	Message              string `json:"message"`
-	Color                string `json:"color"`
-	PolicyName           string `json:"policyName"`
-	PolicyPackName       string `json:"policyPackName"`
-	PolicyPackVersion    string `json:"policyPackVersion"`
-	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+	ResourceURN       string `json:"resourceUrn,omitempty"`
+	Message           string `json:"message"`
+	Color             string `json:"color"`
+	PolicyName        string `json:"policyName"`
+	PolicyPackName    string `json:"policyPackName"`
+	PolicyPackVersion string `json:"policyPackVersion"`
 
 	// EnforcementLevel is one of "warning" or "mandatory".
 	EnforcementLevel string `json:"enforcementLevel"`

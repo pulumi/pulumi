@@ -387,15 +387,14 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 		}
 
 		diagnostics[idx] = AnalyzeDiagnostic{
-			PolicyName:           protoD.PolicyName,
-			PolicyPackName:       protoD.PolicyPackName,
-			PolicyPackVersion:    protoD.PolicyPackVersion,
-			Description:          protoD.Description,
-			Message:              protoD.Message,
-			Tags:                 protoD.Tags,
-			EnforcementLevel:     enforcementLevel,
-			URN:                  resource.URN(protoD.Urn),
-			PolicyPackVersionTag: protoD.PolicyPackVersionTag,
+			PolicyName:        protoD.PolicyName,
+			PolicyPackName:    protoD.PolicyPackName,
+			PolicyPackVersion: protoD.PolicyPackVersion,
+			Description:       protoD.Description,
+			Message:           protoD.Message,
+			Tags:              protoD.Tags,
+			EnforcementLevel:  enforcementLevel,
+			URN:               resource.URN(protoD.Urn),
 		}
 	}
 
