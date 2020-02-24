@@ -42,12 +42,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// policyPackVersionTagPattern is the regex pattern for allowable version tags
-// of a Policy Pack.
-const policyPackVersionTagPattern = "^[a-zA-Z0-9-_.:]{1,150}$"
-
-var policyPackVersionTagRE = regexp.MustCompile(policyPackVersionTagPattern)
-
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL   string
@@ -553,26 +547,22 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	// publishing the PolicyPack.
 	//
 
-	// If a version tag was provided, validate version tag before sending the request. If no tag was provided,
-	// likely its an older version of pulumi/policy that does not implement version tags.
-	if analyzerInfo.VersionTag != "" && !policyPackVersionTagRE.MatchString(analyzerInfo.VersionTag) {
-		msg := fmt.Sprintf("invalid version %q - version may only contain alphanumeric, hyphens, underscores, "+
-			"periods, or colons. It must also be between 1 and 150 characters long.", analyzerInfo.VersionTag)
-		return 0, errors.New(msg)
+	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
+		return 0, err
 	}
 
 	req := apitype.CreatePolicyPackRequest{
 		Name:        analyzerInfo.Name,
 		DisplayName: analyzerInfo.DisplayName,
-		VersionTag:  analyzerInfo.VersionTag,
+		VersionTag:  analyzerInfo.Version,
 		Policies:    analyzerInfo.Policies,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
 	// is in use, which does not provide  a version tag.
 	publishingMsg := fmt.Sprintf("Publishing %q - version %s to %q organization\n",
-		analyzerInfo.Name, analyzerInfo.VersionTag, orgName)
-	if analyzerInfo.VersionTag == "" {
+		analyzerInfo.Name, analyzerInfo.Version, orgName)
+	if analyzerInfo.Version == "" {
 		publishingMsg = fmt.Sprintf("Publishing %q to %q organization\n", analyzerInfo.Name, orgName)
 	}
 	fmt.Print(publishingMsg)
@@ -604,7 +594,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	// If the version tag is empty, an older version of pulumi/policy is being used and
 	// we therefore need to use the version provided by the pulumi service.
-	version := analyzerInfo.VersionTag
+	version := analyzerInfo.Version
 	if version == "" {
 		version = strconv.Itoa(resp.Version)
 		fmt.Printf("Published as version %s\n", version)
@@ -616,6 +606,22 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	return resp.Version, nil
+}
+
+// validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
+// as it is likely an older version of pulumi/policy that does not gather the version.
+func validatePolicyPackVersion(s string) error {
+	if s == "" {
+		return nil
+	}
+
+	policyPackVersionTagRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
+	if !policyPackVersionTagRE.MatchString(s) {
+		msg := fmt.Sprintf("invalid version %q - version may only contain alphanumeric, hyphens, or underscores. "+
+			"It must also be between 1 and 100 characters long.", s)
+		return errors.New(msg)
+	}
+	return nil
 }
 
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,

@@ -273,7 +273,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	return AnalyzerInfo{
 		Name:        resp.GetName(),
 		DisplayName: resp.GetDisplayName(),
-		VersionTag:  resp.GetVersionTag(),
+		Version:     resp.GetVersion(),
 		Policies:    policies,
 	}, nil
 }

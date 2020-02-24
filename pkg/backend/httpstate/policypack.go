@@ -146,7 +146,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	// Update the name and version tag from the metadata.
 	pack.ref.name = tokens.QName(analyzerInfo.Name)
-	pack.ref.versionTag = analyzerInfo.VersionTag
+	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Println("Compressing policy pack")
 
@@ -175,11 +175,11 @@ func (pack *cloudPolicyPack) Publish(
 	}
 
 	// Handle older versions of pulumi/policy that do not provide the version tag.
-	if analyzerInfo.VersionTag == "" {
-		analyzerInfo.VersionTag = strconv.Itoa(version)
+	if analyzerInfo.Version == "" {
+		analyzerInfo.Version = strconv.Itoa(version)
 	}
 
-	fmt.Printf("\nPermalink: %s/policypacks/%s/%s\n", pack.Backend().URL(), pack.ref.Name(), analyzerInfo.VersionTag)
+	fmt.Printf("\nPermalink: %s/policypacks/%s/%s\n", pack.Backend().URL(), pack.ref.Name(), analyzerInfo.Version)
 	return nil
 }
 
