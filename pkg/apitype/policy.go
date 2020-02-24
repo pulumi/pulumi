@@ -122,6 +122,9 @@ const (
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
+
+	// Disabled is an enforcement level that disables the policy from being enforced.
+	Disabled EnforcementLevel = "disabled"
 )
 
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
