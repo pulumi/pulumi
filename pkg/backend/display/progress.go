@@ -812,18 +812,12 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			c = colors.SpecError
 		}
 
-		urn := policyEvent.ResourceURN
-		if urn == "" {
-			// An empty URN is associated with the stack itself.
-			urn = resource.DefaultRootStackURN(display.stack, display.proj)
-		}
-
 		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
 			c, policyEvent.EnforcementLevel,
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			urn.Name())
+			policyEvent.ResourceURN.Name())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.
