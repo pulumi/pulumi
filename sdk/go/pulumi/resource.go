@@ -64,6 +64,10 @@ func (s ResourceState) getTransformations() []ResourceTransformation {
 	return s.transformations
 }
 
+func (s *ResourceState) addTransformation(t ResourceTransformation) {
+	s.transformations = append(s.transformations, t)
+}
+
 func (ResourceState) isResource() {}
 
 type CustomResourceState struct {
@@ -105,8 +109,11 @@ type Resource interface {
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
 
-	// getTransformations return the transformations for the resource.
+	// getTransformations returns the transformations for the resource.
 	getTransformations() []ResourceTransformation
+
+	// addTransformation adds a single transformation to the resource.
+	addTransformation(t ResourceTransformation)
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing

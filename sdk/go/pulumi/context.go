@@ -1008,3 +1008,13 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 func (ctx *Context) Export(name string, value Input) {
 	ctx.exports[name] = value
 }
+
+// RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
+func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
+	if ctx.stack == nil {
+		return errors.New("the root stack resource was referenced before it was initialized")
+	}
+	ctx.stack.addTransformation(t)
+
+	return nil
+}
