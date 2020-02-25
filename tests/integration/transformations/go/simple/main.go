@@ -1,6 +1,8 @@
 package main
 
-import "github.com/pulumi/pulumi/sdk/go/pulumi"
+import (
+	"github.com/pulumi/pulumi/sdk/go/pulumi"
+)
 
 // SimpleResource is a resource with two outputs.
 type SimpleResource struct {
@@ -81,12 +83,34 @@ func res2Transformation(args *pulumi.ResourceTransformationArgs) *pulumi.Resourc
 		opts := args.Opts
 		opts.Aliases = NewAlias(args.Name)
 
+		props := args.Props
+		pulumi.All(props).ApplyT
+
 		return &pulumi.ResourceTransformationResult{
-			Props: args.Props,
+			Props: props,
 			Opts:  opts,
 		}
 	}
 
+	return nil
+}
+
+func res4Transformation1(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+	if args.Type == "pulumi-go:dynamic:Resource" {
+		return &pulumi.ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
+	return nil
+}
+func res4Transformation2(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+	if args.Type == "pulumi-go:dynamic:Resource" {
+		return &pulumi.ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
 	return nil
 }
 

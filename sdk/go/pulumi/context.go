@@ -441,7 +441,7 @@ func (ctx *Context) RegisterResource(
 
 		res := transformation(args)
 		if res != nil {
-			if res.Opts.Parent.URN() != options.Parent.URN() {
+			if res.Opts != nil && res.Opts.Parent.URN() != options.Parent.URN() {
 				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
 			props = res.Props

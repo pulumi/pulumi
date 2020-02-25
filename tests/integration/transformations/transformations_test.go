@@ -81,6 +81,9 @@ func GoValidator() func(t *testing.T, stack integration.RuntimeValidationStackIn
 				assert.Equal(t, res.Type, tokens.Type(dynamicResName))
 				assert.Len(t, res.Aliases, 1)
 				assert.Contains(t, res.Aliases[0], pulumi.URN("SimpleResource"))
+				optionalInput := res.Inputs["optionalInput"]
+				assert.NotNil(t, optionalInput)
+				assert.Equal(t, "newDefault", optionalInput.(string))
 			}
 		}
 		assert.True(t, foundRes1)

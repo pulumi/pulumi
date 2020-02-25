@@ -5216,6 +5216,154 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+// Inspired by transformations_test.go.
+func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	newAlias := func(name string) []pulumi.Alias {
+		return []pulumi.Alias{
+			pulumi.Alias{
+				URN: pulumi.URN(fmt.Sprintf("urn:pulumi:stack::project::pkgA:m:typA::%s", name)),
+			},
+		}
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		assert.NoError(t, err)
+
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			// Scenario #1 - apply a transformation to a CustomResource
+			var res1 testResource
+			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				opts := args.Opts
+				opts.Aliases = newAlias(args.Name)
+
+				return &pulumi.ResourceTransformationResult{
+					Props: args.Props,
+					Opts:  opts,
+				}
+			}
+			err := ctx.RegisterResource("pkgA:m:typA", "res1", &testResourceInputs{
+				Foo: pulumi.String("bar"),
+			}, &res1, pulumi.Transformations([]pulumi.ResourceTransformation{res1Transformation}))
+			assert.NoError(t, err)
+
+			// Scenario #2 - apply a transformation to a Component to transform it's children
+			var res2 testResource
+			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				if args.Name == "res2Child" {
+					opts := args.Opts
+					opts.Aliases = newAlias(args.Name)
+
+					return &pulumi.ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  opts,
+					}
+				}
+
+				return nil
+			}
+			err = ctx.RegisterResource("pkgA:m:typA", "res2", &testResourceInputs{
+				Foo: pulumi.String("bar"),
+			}, &res2, pulumi.Transformations([]pulumi.ResourceTransformation{res2Transformation}))
+			assert.NoError(t, err)
+
+			var res2Child testResource
+			err = ctx.RegisterResource("pkgA:m:typA", "res2Child", &testResourceInputs{
+				Foo: pulumi.String("bar"),
+			}, &res2Child, pulumi.Parent(&res2))
+			assert.NoError(t, err)
+
+			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
+			var res3 testResource
+			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				opts := args.Opts
+				opts.Aliases = newAlias(args.Name)
+
+				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
+					props := arr[0].(*testResourceArgs)
+					props.Foo = "baz"
+					return props
+				})
+
+				return &pulumi.ResourceTransformationResult{
+					Props: props,
+					Opts:  opts,
+				}
+			}
+			ctx.RegisterStackTransformation(res3Transformation)
+			err = ctx.RegisterResource("pkgA:m:typA", "res3", &testResourceInputs{
+				Foo: pulumi.String("bar"),
+			}, &res3)
+			assert.NoError(t, err)
+
+			return nil
+		})
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	p.Steps = []TestStep{{
+		Op: Update,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
+			foundRes1 := false
+			foundRes2Child := false
+			foundRes3 := false
+			for _, res := range j.Snap(target.Snapshot).Resources {
+				// "res1" has a transformation which adds additionalSecretOutputs
+				if res.URN.Name() == "res1" {
+					foundRes1 = true
+					assert.Len(t, res.Aliases, 1)
+					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
+				}
+				// "res2" has a transformation which adds additionalSecretOutputs to it's "child"
+				if res.URN.Name() == "res2Child" {
+					foundRes2Child = true
+					assert.Len(t, res.Aliases, 1)
+					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
+				}
+				if res.URN.Name() == "res3" {
+					foundRes3 = true
+					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
+				}
+			}
+
+			assert.True(t, foundRes1)
+			assert.True(t, foundRes2Child)
+			assert.True(t, foundRes3)
+			return res
+		},
+	}}
+
+	p.Run(t, nil)
+}
+
 // This test validates the wiring of the IgnoreChanges prop in the go SDK.
 // It doesn't attempt to validate underlying behavior.
 func TestIgnoreChangesGolangLifecycle(t *testing.T) {
@@ -5345,8 +5493,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		assert.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-			var provider pulumi.ProviderResourceState
-			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, &provider)
+			provider := &pulumi.ProviderResourceState{}
+			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, provider)
 			assert.NoError(t, err)
 
 			var res pulumi.CustomResourceState
@@ -5557,8 +5705,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				}, &providerBOverride)
 			assert.NoError(t, err)
 			parentProviders := make(map[string]pulumi.ProviderResource)
-			parentProviders["pkgA"] = providerA
-			parentProviders["pkgB"] = providerB
+			parentProviders["pkgA"] = &providerA
+			parentProviders["pkgB"] = &providerB
 			// create a parent resource that uses provider map
 			var parentResource pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgA:m:typA", "resA", nil, &parentResource, pulumi.ProviderMap(parentProviders))
@@ -5569,7 +5717,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// create a child resource
 			var childResource pulumi.CustomResourceState
-			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(parentResource))
+			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
@@ -5579,7 +5727,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			// create a child with a provider specified
 			var childWithOverride pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgB:m:typB", "resBChildOverride", nil, &childWithOverride,
-				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
@@ -5597,7 +5745,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			assert.Equal(t, providerA, parentResultProvider)
 
 			// read a child resource
-			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(parentResource))
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
@@ -5606,7 +5754,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// read a child with a provider specified
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &childWithOverride,
-				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
@@ -5617,19 +5765,19 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			var invokeResult struct{}
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
-			}, &invokeResult, pulumi.Provider(providerBOverride))
+			}, &invokeResult, pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// invoke with parent
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bar: "2",
-			}, &invokeResult, pulumi.Parent(parentResource))
+			}, &invokeResult, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// invoke with parent and provider
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
-			}, &invokeResult, pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+			}, &invokeResult, pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			return nil
