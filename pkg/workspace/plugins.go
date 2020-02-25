@@ -350,7 +350,7 @@ func HasPluginGTE(plug PluginInfo) (bool, error) {
 	return false, nil
 }
 
-// GetPolicyDir returns the directory in which policies on the current machine are managed.
+// GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.
 func GetPolicyDir(orgName string) (string, error) {
 	return GetPulumiPath(PolicyDir, orgName)
 }
