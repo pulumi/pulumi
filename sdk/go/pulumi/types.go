@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"log"
 	"reflect"
 	"sync"
 
@@ -556,6 +557,8 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 			// Handle pointer inputs.
 			if v.Kind() == reflect.Ptr {
 				v, valueType = v.Elem(), valueType.Elem()
+
+				log.Printf("valueType: %v resolved.Type(): %v", valueType, resolved.Type())
 
 				resolved.Set(reflect.New(resolved.Type().Elem()))
 				resolved = resolved.Elem()
