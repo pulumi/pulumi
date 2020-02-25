@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"log"
 	"reflect"
 	"sync"
 
@@ -563,6 +564,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		}
 	}
 
+	if !valueType.AssignableTo(resolved.Type()) {
+		log.Printf("valueType: %v resolved.Type(): %v v.Kind(): %v resolved.Kind(): %v", valueType, resolved.Type(), v.Kind(), resolved.Kind())
+	}
 	contract.Assert(valueType.AssignableTo(resolved.Type()))
 
 	// If the resolved type is an interface, make an appropriate destination from the value's type.
