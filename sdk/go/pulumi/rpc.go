@@ -455,17 +455,9 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		dest.Set(reflect.ValueOf(archive))
 		return secret, nil
 	case v.IsSecret():
-		secretVal, _, err := unmarshalPropertyValue(v.SecretValue().Element)
-		if err != nil {
-			return true, nil
+		if _, err := unmarshalOutput(v.SecretValue().Element, dest); err != nil {
+			return false, err
 		}
-
-		secretValType := reflect.TypeOf(secretVal)
-		if !secretValType.AssignableTo(dest.Type()) {
-			return true, errors.Errorf("expected a %s, got an %v", dest.Type(), secretValType)
-		}
-
-		dest.Set(reflect.ValueOf(secretVal))
 		return true, nil
 	}
 
