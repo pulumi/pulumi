@@ -5242,6 +5242,47 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		}
 	}
 
+	newResource := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
+		var res testResource
+		return ctx.RegisterResource("pkgA:m:typA", name, &testResourceInputs{
+			Foo: pulumi.String("bar"),
+		}, &res, opts...)
+	}
+
+	newComponent := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
+		var res testResource
+		err := ctx.RegisterComponentResource("pkgA:m:typA", name, &res, opts...)
+		if err != nil {
+			return err
+		}
+
+		var resChild testResource
+		return ctx.RegisterResource("pkgA:m:typA", name+"Child", &testResourceInputs{
+			Foo: pulumi.String("bar"),
+		}, &resChild, pulumi.Parent(&res))
+	}
+
+	/*newOtherComponent := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
+		var res testResource
+		err := ctx.RegisterComponentResource("pkgA:m:typA", name, &res, opts...)
+		if err != nil {
+			return err
+		}
+
+		var resChild1 testResource
+		err = ctx.RegisterResource("pkgA:m:typA", name+"Child1", &testResourceInputs{
+			Foo: pulumi.String("bar1"),
+		}, &resChild1, pulumi.Parent(&res))
+		if err != nil {
+			return err
+		}
+
+		var resChild2 testResource
+		return ctx.RegisterResource("pkgA:m:typA", name+"Child2", &testResourceInputs{
+			Foo: pulumi.String("bar2"),
+		}, &resChild2, pulumi.Parent(&res))
+	}*/
+
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
@@ -5254,7 +5295,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			// Scenario #1 - apply a transformation to a CustomResource
-			var res1 testResource
 			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				opts := args.Opts
 				opts.Aliases = newAlias(args.Name)
@@ -5264,13 +5304,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 					Opts:  opts,
 				}
 			}
-			err := ctx.RegisterResource("pkgA:m:typA", "res1", &testResourceInputs{
-				Foo: pulumi.String("bar"),
-			}, &res1, pulumi.Transformations([]pulumi.ResourceTransformation{res1Transformation}))
-			assert.NoError(t, err)
+			assert.NoError(t, newResource(ctx, "res1",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res1Transformation})))
 
 			// Scenario #2 - apply a transformation to a Component to transform it's children
-			var res2 testResource
 			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				if args.Name == "res2Child" {
 					opts := args.Opts
@@ -5284,19 +5321,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 
 				return nil
 			}
-			err = ctx.RegisterResource("pkgA:m:typA", "res2", &testResourceInputs{
-				Foo: pulumi.String("bar"),
-			}, &res2, pulumi.Transformations([]pulumi.ResourceTransformation{res2Transformation}))
-			assert.NoError(t, err)
-
-			var res2Child testResource
-			err = ctx.RegisterResource("pkgA:m:typA", "res2Child", &testResourceInputs{
-				Foo: pulumi.String("bar"),
-			}, &res2Child, pulumi.Parent(&res2))
-			assert.NoError(t, err)
+			assert.NoError(t, newComponent(ctx, "res2",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res2Transformation})))
 
 			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
-			var res3 testResource
 			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				opts := args.Opts
 				opts.Aliases = newAlias(args.Name)
@@ -5313,11 +5341,67 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				}
 			}
 			ctx.RegisterStackTransformation(res3Transformation)
-			err = ctx.RegisterResource("pkgA:m:typA", "res3", &testResourceInputs{
-				Foo: pulumi.String("bar"),
-			}, &res3)
-			assert.NoError(t, err)
+			assert.NoError(t, newResource(ctx, "res3"))
 
+			// Scenario #4 - transformations are applied in order of decreasing specificity
+			// 1. (not in this example) Child transformation
+			// 2. First parent transformation
+			// 3. Second parent transformation
+			// 4. Stack transformation
+			/*res4Transformation1 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
+					props := arr[0].(*testResourceArgs)
+					props.Foo = "baz1"
+					return props
+				})
+
+				return &pulumi.ResourceTransformationResult{
+					Props: props,
+					Opts:  args.Opts,
+				}
+			}
+			res4Transformation2 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
+					props := arr[0].(*testResourceArgs)
+					props.Foo = "baz2"
+					return props
+				})
+
+				return &pulumi.ResourceTransformationResult{
+					Props: args.Props,
+					Opts:  args.Opts,
+				}
+			}
+			assert.NoError(t, newComponent(ctx, "res4",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res4Transformation1, res4Transformation2})))
+
+			// Scenario #5 - cross-resource transformations that inject dependencies on one resource into another.
+			res5Transformation := func() func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				child2Future := make(chan *pulumi.ResourceTransformationArgs)
+				transform := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+					if strings.HasSuffix(args.Name, "Child2") {
+						child2Future <- args
+						return nil
+					} else if strings.HasSuffix(args.Name, "Child1") {
+						getOutput := func() *pulumi.ResourceTransformationArgs {
+							return <-child2Future
+						}
+						child2Input := getOutput().Props
+
+						return &pulumi.ResourceTransformationResult{
+							Props: child2Input,
+							Opts:  args.Opts,
+						}
+					}
+					return nil
+				}
+
+				return transform
+			}
+
+			assert.NoError(t, newOtherComponent(ctx, "res5",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res5Transformation()})))
+			*/
 			return nil
 		})
 	})
@@ -5335,6 +5419,8 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			foundRes1 := false
 			foundRes2Child := false
 			foundRes3 := false
+			// foundRes4Child := false
+			// foundRes5Child1 := false
 			for _, res := range j.Snap(target.Snapshot).Resources {
 				// "res1" has a transformation which adds additionalSecretOutputs
 				if res.URN.Name() == "res1" {
@@ -5345,18 +5431,35 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				// "res2" has a transformation which adds additionalSecretOutputs to it's "child"
 				if res.URN.Name() == "res2Child" {
 					foundRes2Child = true
+					assert.Equal(t, res.Parent.Name(), tokens.QName("res2"))
 					assert.Len(t, res.Aliases, 1)
 					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
 				}
+				// "res3" is impacted by a global stack transformation which sets
+				// optionalDefault to "stackDefault"
 				if res.URN.Name() == "res3" {
 					foundRes3 = true
-					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
+					assert.Equal(t, "bar", res.Inputs["foo"].StringValue())
 				}
+				// "res4" is impacted by two component parent transformations which set
+				// optionalDefault to "default1" and then "default2" and also a global stack
+				// transformation which sets optionalDefault to "stackDefault".  The end
+				// result should be "stackDefault".
+				/*if res.URN.Name() == "res4Child" {
+					foundRes4Child = true
+				}
+				// "res5" modifies one of its children to depend on another of its children.
+				if res.URN.Name() == "res5Child1" {
+					foundRes5Child1 = true
+					assert.Equal(t, "bar2", res.Inputs["foo"].StringValue())
+				}*/
 			}
 
 			assert.True(t, foundRes1)
 			assert.True(t, foundRes2Child)
 			assert.True(t, foundRes3)
+			// assert.True(t, foundRes4Child)
+			// assert.True(t, foundRes5Child1)
 			return res
 		},
 	}}
