@@ -19,8 +19,31 @@ const provproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
+/**
+ * Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
+ * their own implementations. This can be used during testing to ensure that calls to provider functions and resource constructors
+ * return predictable values.
+ */
 export interface Mocks {
+    /**
+     * call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
+     *
+     * @param token: The token that indicates which function is being called. This token is of the form "package:module:function".
+     * @param args: The arguments provided to the function call.
+     * @param provider: If provided, the identifier of the provider instance being used to make the call.
+     */
     call(token: string, args: any, provider?: string): Record<string, any>;
+
+    /**
+     * new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
+     * for the resource being constructed.
+     *
+     * @param type_: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
+     * @param name: The logical name of the resource instance.
+     * @param inputs: The inputs for the resource.
+     * @param provider: If provided, the identifier of the provider instnace being used to manage this resource.
+     * @param id_: If provided, the physical identifier of an existing resource to read or import.
+     */
     newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string, state: Record<string, any> };
 }
 
@@ -91,6 +114,14 @@ export class MockMonitor {
     }
 }
 
+/**
+ * setMocks configures the Pulumi runtime to use the given mocks for testing.
+ *
+ * @param mocks: The mocks to use for calls to provider functions and resource consrtuction.
+ * @param project: If provided, the name of the Pulumi project. Defaults to "project".
+ * @param stack: If provided, the name of the Pulumi stack. Defaults to "stack".
+ * @param preview: If provided, indicates whether or not the program is running a preview. Defaults to false.
+ */
 export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean) {
     setMockOptions(new MockMonitor(mocks), project, stack, preview);
 }
