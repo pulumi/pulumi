@@ -16,8 +16,8 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
@@ -27,8 +27,7 @@ import (
 func Try(ctx *pulumi.Context, key string) (string, error) {
 	v, ok := ctx.GetConfig(key)
 	if !ok {
-		return "",
-			errors.Errorf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+		return "", fmt.Errorf("missing required configuration variable '%s'; run `pulumi config` to set", key)
 	}
 	return v, nil
 }

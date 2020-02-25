@@ -16,10 +16,10 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
@@ -196,7 +196,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == "a string value" {
 				result <- val.(string)
 			} else {
-				errChan <- errors.Errorf("Invalid result: %v", val)
+				errChan <- fmt.Errorf("Invalid result: %v", val)
 
 			}
 		}
@@ -233,7 +233,7 @@ func TestSecretConfig(t *testing.T) {
 			if reflect.DeepEqual(expectedTestStruct, *ts) {
 				objResult <- *ts
 			} else {
-				errChan <- errors.Errorf("Invalid result: %v", val)
+				errChan <- fmt.Errorf("Invalid result: %v", val)
 			}
 		}
 		return v, nil
@@ -263,7 +263,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == true {
 				resultBool <- val.(bool)
 			} else {
-				errChan <- errors.Errorf("Invalid result: %v", val)
+				errChan <- fmt.Errorf("Invalid result: %v", val)
 
 			}
 		}
@@ -294,7 +294,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == 42 {
 				resultInt <- val.(int)
 			} else {
-				errChan <- errors.Errorf("Invalid result: %v", val)
+				errChan <- fmt.Errorf("Invalid result: %v", val)
 
 			}
 		}

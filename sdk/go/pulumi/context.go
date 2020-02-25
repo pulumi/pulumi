@@ -17,6 +17,9 @@
 package pulumi
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -24,8 +27,6 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -59,7 +60,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if addr := info.MonitorAddr; addr != "" {
 		conn, err := grpc.Dial(info.MonitorAddr, grpc.WithInsecure())
 		if err != nil {
-			return nil, errors.Wrap(err, "connecting to resource monitor over RPC")
+			return nil, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
 		}
 		monitorConn = conn
 		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
@@ -70,7 +71,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if addr := info.EngineAddr; addr != "" {
 		conn, err := grpc.Dial(info.EngineAddr, grpc.WithInsecure())
 		if err != nil {
-			return nil, errors.Wrap(err, "connecting to engine over RPC")
+			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
 		}
 		engineConn = conn
 		engine = pulumirpc.NewEngineClient(engineConn)
@@ -162,7 +163,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
-		return errors.Wrap(err, "marshaling arguments")
+		return fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -174,7 +175,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		resolvedArgsMap,
 		plugin.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
 	if err != nil {
-		return errors.Wrap(err, "marshaling arguments")
+		return fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
@@ -201,7 +202,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		var ferr error
 		for _, failure := range resp.Failures {
 			ferr = multierror.Append(ferr,
-				errors.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
+				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
 		return ferr
 	}
@@ -218,7 +219,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return err
 	}
 	if hasSecret {
-		return errors.Errorf("Unexpected secret result returned to invoke call.")
+		return errors.New("unexpected secret result returned to invoke call")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return nil
@@ -531,7 +532,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
 		if err != nil {
-			return nil, errors.Wrap(err, "error collapsing alias to URN")
+			return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 		}
 		aliasURNs = append(aliasURNs, urn)
 	}
@@ -702,13 +703,13 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	parent, optDeps, protect, provider, deleteBeforeReplace,
 		importID, ignoreChanges, additionalSecretOutputs, err := ctx.getOpts(t, providers, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "resolving options")
+		return nil, fmt.Errorf("resolving options: %w", err)
 	}
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
 	resolvedProps, propertyDeps, rpcDeps, err := marshalInputs(props)
 	if err != nil {
-		return nil, errors.Wrap(err, "marshaling properties")
+		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
 
 	// Marshal all properties for the RPC call.
@@ -717,7 +718,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 		resolvedProps,
 		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 	if err != nil {
-		return nil, errors.Wrap(err, "marshaling properties")
+		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
 
 	// Convert the property dependencies map for RPC and remove duplicates.
@@ -754,7 +755,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	for i, alias := range resource.aliases {
 		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
-			return nil, errors.Wrap(err, "error waiting for alias URN to resolve")
+			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
 		}
 		aliases[i] = string(urn)
 	}

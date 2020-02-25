@@ -15,14 +15,14 @@
 package pulumi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -53,7 +53,7 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 
 	// Validate some properties.
 	if info.Project == "" {
-		return errors.Errorf("missing project name")
+		return errors.New("missing project name")
 	} else if info.Stack == "" {
 		return errors.New("missing stack name")
 	} else if info.MonitorAddr == "" && info.Mocks == nil {
