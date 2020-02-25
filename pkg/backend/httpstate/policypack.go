@@ -169,17 +169,12 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading Policy Pack to Pulumi service")
 
-	version, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
 		return result.FromError(err)
 	}
 
-	// Handle older versions of pulumi/policy that do not provide the version tag.
-	if analyzerInfo.Version == "" {
-		analyzerInfo.Version = strconv.Itoa(version)
-	}
-
-	fmt.Printf("\nPermalink: %s/policypacks/%s/%s\n", pack.Backend().URL(), pack.ref.Name(), analyzerInfo.Version)
+	fmt.Printf("\nPermalink: %s/policypacks/%s/%s\n", pack.Backend().URL(), pack.ref.Name(), publishedVersion)
 	return nil
 }
 

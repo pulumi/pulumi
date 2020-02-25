@@ -538,9 +538,10 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string) (apitype.
 	return resp, nil
 }
 
-// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service.
+// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
+// the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (int, error) {
+	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (string, error) {
 
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -548,7 +549,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	//
 
 	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
-		return 0, err
+		return "", err
 	}
 
 	req := apitype.CreatePolicyPackRequest{
@@ -560,17 +561,16 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
 	// is in use, which does not provide  a version tag.
-	publishingMsg := fmt.Sprintf("Publishing %q - version %s to %q organization\n",
-		analyzerInfo.Name, analyzerInfo.Version, orgName)
-	if analyzerInfo.Version == "" {
-		publishingMsg = fmt.Sprintf("Publishing %q to %q organization\n", analyzerInfo.Name, orgName)
+	var versionMsg string
+	if analyzerInfo.Version != "" {
+		versionMsg = fmt.Sprintf(" - version %s", analyzerInfo.Version)
 	}
-	fmt.Print(publishingMsg)
+	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
 
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Publish policy pack failed")
+		return "", errors.Wrapf(err, "Publish policy pack failed")
 	}
 
 	//
@@ -580,12 +580,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	//
@@ -602,10 +602,10 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Request to signal completion of the publish operation failed")
+		return "", errors.Wrapf(err, "Request to signal completion of the publish operation failed")
 	}
 
-	return resp.Version, nil
+	return version, nil
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
