@@ -213,11 +213,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	// fail if there are secrets returned from the invoke
-	secret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
 	if err != nil {
 		return err
 	}
-	if secret {
+	if hasSecret {
 		return errors.Errorf("Unexpected secret result returned to invoke call.")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)

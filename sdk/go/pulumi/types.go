@@ -39,10 +39,10 @@ type Output interface {
 
 	getState() *OutputState
 	dependencies() []Resource
-	fulfillValue(value reflect.Value, known bool, secret bool, err error)
-	resolveValue(value reflect.Value, known bool, secret bool)
-	fulfill(value interface{}, known bool, secret bool, err error)
-	resolve(value interface{}, known bool, secret bool)
+	fulfillValue(value reflect.Value, known, secret bool, err error)
+	resolveValue(value reflect.Value, known, secret bool)
+	fulfill(value interface{}, known, secret bool, err error)
+	resolve(value interface{}, known, secret bool)
 	reject(err error)
 	await(ctx context.Context) (interface{}, bool, bool, error)
 }
@@ -149,7 +149,7 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, error
 		o.mutex.Lock()
 		for o.state == outputPending {
 			if ctx.Err() != nil {
-				return nil, true, o.secret, ctx.Err()
+				return nil, true, false, ctx.Err()
 			}
 			o.cond.Wait()
 		}
@@ -401,18 +401,16 @@ func (o *OutputState) IsSecret() bool {
 	return o.getState().secret
 }
 
-// SecretT wraps the input in an Output marked as secret. The result remains an output
-// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
-// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
+// SecretT wraps the input in an Output marked as secret
+// that will resolve when all Inputs contained in the given value have resolved.
 func SecretT(input interface{}) Output {
 	return SecretTWithContext(context.Background(), input)
 }
 
-// SecretTWithContext wraps the input in an Output marked as secret. The result remains an output
-// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
-// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
+// SecretTWithContext wraps the input in an Output marked as secret
+// that will resolve when all Inputs contained in the given value have resolved.
 func SecretTWithContext(ctx context.Context, input interface{}) Output {
-	o := toMaybeSecretOutputWithContext(ctx, input, true)
+	o := toOutputWithContext(ctx, input, true)
 	// set immediate secretness ahead of resolution/fufillment
 	o.getState().secret = true
 	return o
@@ -682,10 +680,10 @@ func ToOutput(v interface{}) Output {
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
-	return toMaybeSecretOutputWithContext(ctx, v, false)
+	return toOutputWithContext(ctx, v, false)
 }
 
-func toMaybeSecretOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) Output {
+func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) Output {
 	resolvedType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resolvedType = input.ElementType()

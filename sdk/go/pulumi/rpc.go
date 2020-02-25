@@ -215,7 +215,7 @@ func marshalInputAndDetermineSecret(v interface{},
 				for k, a := range as {
 					aa, _, err := marshalInput(a, anyType, await)
 					if err != nil {
-						return resource.PropertyValue{}, nil, secret, err
+						return resource.PropertyValue{}, nil, false, err
 					}
 					assets[k] = aa.V
 				}

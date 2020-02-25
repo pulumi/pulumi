@@ -215,11 +215,7 @@ func main() {
 		filename := strings.TrimRight(parts[len(parts)-1], ".template")
 		parts[len(parts)-1] = filename
 
-		var paths []string
-		paths = append(paths, pwd)
-		for _, p := range parts {
-			paths = append(paths, p)
-		}
+		paths := append([]string{pwd}, parts...)
 
 		fullname := filepath.Join(paths...)
 		f, err := os.Create(fullname)
