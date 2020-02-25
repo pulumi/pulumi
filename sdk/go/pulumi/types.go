@@ -17,7 +17,6 @@ package pulumi
 
 import (
 	"context"
-	"log"
 	"reflect"
 	"sync"
 
@@ -558,10 +557,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 			if v.Kind() == reflect.Ptr {
 				v, valueType = v.Elem(), valueType.Elem()
 
-				log.Printf("valueType: %v resolved.Type(): %v", valueType, resolved.Type())
+				if resolved.Kind() == reflect.Ptr {
+					contract.Assert(resolved.Kind() == reflect.Interface)
 
-				resolved.Set(reflect.New(resolved.Type().Elem()))
-				resolved = resolved.Elem()
+					resolved.Set(reflect.New(resolved.Type().Elem()))
+					resolved = resolved.Elem()
+				}
 			}
 		}
 	}
