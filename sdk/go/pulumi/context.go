@@ -663,15 +663,9 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 			known = !dryrun
 		}
 
-		secret := false
-		if v.IsSecret() {
-			secret = true
-		}
-
 		// Allocate storage for the unmarshalled output.
 		dest := reflect.New(output.ElementType()).Elem()
-		usecret, err := unmarshalOutput(v, dest)
-		secret = secret || usecret
+		secret, err := unmarshalOutput(v, dest)
 		if err != nil {
 			output.reject(err)
 		} else {
