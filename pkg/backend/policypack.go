@@ -34,8 +34,8 @@ type PublishOperation struct {
 // PolicyPackOperation is used to make various operations against a Policy Pack.
 type PolicyPackOperation struct {
 	// If nil, the latest version is assumed.
-	Version *int
-	Scopes  CancellationScopeSource
+	VersionTag *string
+	Scopes     CancellationScopeSource
 }
 
 // PolicyPack is a set of policies associated with a particular backend implementation.

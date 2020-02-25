@@ -30,14 +30,10 @@ namespace Pulumi
         /// current known resource state.
         /// </summary>
 #pragma warning disable RS0022 // Constructor make noninheritable base class inheritable
-        public CustomResource(string type, string name, ResourceArgs? args, ResourceOptions? options = null)
-            : base(type, name, custom: true, args ?? ResourceArgs.Empty, options ?? new ResourceOptions())
+        public CustomResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null)
+            : base(type, name, custom: true, args ?? ResourceArgs.Empty, options ?? new CustomResourceOptions())
 #pragma warning restore RS0022 // Constructor make noninheritable base class inheritable
         {
-            if (options is ComponentResourceOptions componentOpts && componentOpts.Providers != null)
-            {
-                throw new ResourceException("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", this);
-            }
         }
     }
 }

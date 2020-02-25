@@ -8,6 +8,19 @@ class Resource1(ComponentResource):
         super().__init__("my:module:Resource", name, None, opts)
 
 # Attempt to create a resource with a CustomTimeout
+res1 = Resource1("res1",
+    opts=ResourceOptions(custom_timeouts=CustomTimeouts(create='30m'))
+)
+
+# Also use the previous workaround method, which we should not regress upon
+res2 = Resource1("res2",
+    opts=ResourceOptions(custom_timeouts={'create': '15m', 'delete': '15m'})
+)
+
 res3 = Resource1("res3",
+    opts=ResourceOptions(custom_timeouts=CustomTimeouts(update='30m'))
+)
+
+res4 = Resource1("res4",
     opts=ResourceOptions(custom_timeouts=CustomTimeouts(delete='30m'))
 )

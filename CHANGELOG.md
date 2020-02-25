@@ -2,9 +2,16 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Fix a regression for CustomTimeouts in Python SDK.
+  [#3964](https://github.com/pulumi/pulumi/pull/3964)
+
+- Avoid panic when displaying failed stack policies.
+  [#3960](https://github.com/pulumi/pulumi/pull/3960)
+  
 - Add support for secrets in the Go SDK.
   [3938](https://github.com/pulumi/pulumi/pull/3938)
 
+## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
   [#3895](https://github.com/pulumi/pulumi/pull/3895)
 
@@ -25,6 +32,9 @@ CHANGELOG
 
 - Disable interactive progress display when no terminal size is available.
   [#3936](https://github.com/pulumi/pulumi/pull/3936)
+
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
 
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.

@@ -2506,7 +2506,8 @@ proto.pulumirpc.AnalyzerInfo.toObject = function(includeInstance, msg) {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     displayname: jspb.Message.getFieldWithDefault(msg, 2, ""),
     policiesList: jspb.Message.toObjectList(msg.getPoliciesList(),
-    proto.pulumirpc.PolicyInfo.toObject, includeInstance)
+    proto.pulumirpc.PolicyInfo.toObject, includeInstance),
+    version: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -2555,6 +2556,10 @@ proto.pulumirpc.AnalyzerInfo.deserializeBinaryFromReader = function(msg, reader)
       var value = new proto.pulumirpc.PolicyInfo;
       reader.readMessage(value,proto.pulumirpc.PolicyInfo.deserializeBinaryFromReader);
       msg.addPolicies(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
       break;
     default:
       reader.skipField();
@@ -2605,6 +2610,13 @@ proto.pulumirpc.AnalyzerInfo.serializeBinaryToWriter = function(message, writer)
       3,
       f,
       proto.pulumirpc.PolicyInfo.serializeBinaryToWriter
+    );
+  }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
     );
   }
 };
@@ -2668,6 +2680,21 @@ proto.pulumirpc.AnalyzerInfo.prototype.addPolicies = function(opt_value, opt_ind
 
 proto.pulumirpc.AnalyzerInfo.prototype.clearPoliciesList = function() {
   this.setPoliciesList([]);
+};
+
+
+/**
+ * optional string version = 4;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.AnalyzerInfo.prototype.setVersion = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

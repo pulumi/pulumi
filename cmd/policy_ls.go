@@ -79,11 +79,11 @@ func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error
 		// Name column
 		name := packs.Name
 
-		// Versions column
-		versions := strings.Trim(strings.Replace(fmt.Sprint(packs.Versions), " ", ", ", -1), "[]")
+		// Version Tags column
+		versionTags := strings.Trim(strings.Replace(fmt.Sprint(packs.VersionTags), " ", ", ", -1), "[]")
 
 		// Render the columns.
-		columns := []string{name, versions}
+		columns := []string{name, versionTags}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 	cmdutil.PrintTable(cmdutil.Table{
@@ -97,8 +97,8 @@ func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error
 // of policyPacksJSON objects.  While we can add fields to this structure in the future, we should not change
 // existing fields.
 type policyPacksJSON struct {
-	Name     string `json:"name"`
-	Versions []int  `json:"versions"`
+	Name     string   `json:"name"`
+	Versions []string `json:"versions"`
 }
 
 func formatPolicyPacksJSON(policyPacks apitype.ListPolicyPacksResponse) error {
@@ -106,7 +106,7 @@ func formatPolicyPacksJSON(policyPacks apitype.ListPolicyPacksResponse) error {
 	for i, pack := range policyPacks.PolicyPacks {
 		output[i] = policyPacksJSON{
 			Name:     pack.Name,
-			Versions: pack.Versions,
+			Versions: pack.VersionTags,
 		}
 	}
 	return printJSON(output)

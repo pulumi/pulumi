@@ -544,19 +544,21 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
 	aliases []URNOutput) *resourceState {
 
+	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
+	// ought to.
 	resource := reflect.ValueOf(resourceV)
-
 	typ := resource.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
-
 	resource, typ = resource.Elem(), typ.Elem()
 
 	var rs *ResourceState
 	var crs *CustomResourceState
 	var prs *ProviderResourceState
 
+	// Check to see if a value of exactly `*ResourceState`, `*CustomResourceState`, or `*ProviderResourceState` was
+	// provided.
 	switch r := resourceV.(type) {
 	case *ResourceState:
 		rs = r
@@ -566,6 +568,10 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		prs = r
 	}
 
+	// Find the particular Resource implementation and the settable, `pulumi`-tagged fields in the input type. The
+	// former is used for any URN or ID fields; the latter are used to determine the expected outputs of the resource
+	// after its RegisterResource call completes. For each of those fields, create an appropriately-typed Output and
+	// map the Output to its property name so we can resolve it later.
 	state := &resourceState{outputs: map[string]Output{}}
 	for i := 0; i < typ.NumField(); i++ {
 		fieldV := resource.Field(i)
@@ -593,17 +599,18 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		}
 	}
 
+	// Create provider- and custom resource-specific state/resolvers.
 	if prs != nil {
 		crs = &prs.CustomResourceState
 		prs.pkg = t[len("pulumi:providers:"):]
 	}
-
 	if crs != nil {
 		rs = &crs.ResourceState
 		crs.id = IDOutput{newOutputState(idType, resourceV)}
 		state.outputs["id"] = crs.id
 	}
 
+	// Populate ResourceState resolvers.
 	contract.Assert(rs != nil)
 	rs.providers = providers
 	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
