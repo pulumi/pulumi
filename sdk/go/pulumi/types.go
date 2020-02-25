@@ -554,15 +554,11 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr {
+			if v.Kind() == reflect.Ptr && resolved.Kind() == reflect.Ptr {
 				v, valueType = v.Elem(), valueType.Elem()
 
-				if resolved.Kind() == reflect.Ptr {
-					contract.Assert(resolved.Kind() == reflect.Interface)
-
-					resolved.Set(reflect.New(resolved.Type().Elem()))
-					resolved = resolved.Elem()
-				}
+				resolved.Set(reflect.New(resolved.Type().Elem()))
+				resolved = resolved.Elem()
 			}
 		}
 	}
