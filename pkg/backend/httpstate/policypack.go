@@ -28,17 +28,25 @@ import (
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
-	client *client.Client
+	client  *client.Client
+	orgName string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
-func newCloudRequiredPolicy(client *client.Client, policy apitype.RequiredPolicy) *cloudRequiredPolicy {
-	return &cloudRequiredPolicy{client: client, RequiredPolicy: policy}
+func newCloudRequiredPolicy(client *client.Client,
+	policy apitype.RequiredPolicy, orgName string) *cloudRequiredPolicy {
+
+	return &cloudRequiredPolicy{
+		client:         client,
+		RequiredPolicy: policy,
+		orgName:        orgName,
+	}
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
 func (rp *cloudRequiredPolicy) Version() string { return strconv.Itoa(rp.RequiredPolicy.Version) }
+func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
 func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	policy := rp.RequiredPolicy
@@ -49,7 +57,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	if version == "" {
 		version = strconv.Itoa(policy.Version)
 	}
-	policyPackPath, installed, err := workspace.GetPolicyPath(
+	policyPackPath, installed, err := workspace.GetPolicyPath(rp.OrgName(),
 		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		// Failed to get a sensible PolicyPack path.
