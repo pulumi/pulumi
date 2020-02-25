@@ -77,9 +77,13 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 }
 
 func newCloudBackendPolicyPackReference(
-	orgName string, name tokens.QName) *cloudBackendPolicyPackReference {
+	cloudConsoleURL, orgName string, name tokens.QName) *cloudBackendPolicyPackReference {
 
-	return &cloudBackendPolicyPackReference{orgName: orgName, name: name}
+	return &cloudBackendPolicyPackReference{
+		orgName:         orgName,
+		name:            name,
+		cloudConsoleURL: cloudConsoleURL,
+	}
 }
 
 // cloudBackendPolicyPackReference is a reference to a PolicyPack implemented by the Pulumi service.
@@ -92,6 +96,10 @@ type cloudBackendPolicyPackReference struct {
 	// versionTag of the Policy Pack. This is typically the version specified in
 	// a package.json, setup.py, or similar file.
 	versionTag string
+
+	// cloudConsoleURL is the root URL of where the Policy Pack can be found in the console. The
+	// version must be appended to the returned URL.
+	cloudConsoleURL string
 }
 
 var _ backend.PolicyPackReference = (*cloudBackendPolicyPackReference)(nil)
@@ -106,6 +114,10 @@ func (pr *cloudBackendPolicyPackReference) OrgName() string {
 
 func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 	return pr.name
+}
+
+func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
+	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
@@ -182,7 +194,8 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	fmt.Printf("\nPermalink: %s/policypacks/%s/%s\n", pack.Backend().URL(), pack.ref.Name(), publishedVersion)
+	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
+
 	return nil
 }
 
