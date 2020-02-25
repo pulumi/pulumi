@@ -181,7 +181,7 @@ func marshalInputAndDetermineSecret(v interface{},
 
 				// Await the output.
 				ov, known, outputSecret, err := output.await(context.TODO())
-				secret = secret || outputSecret
+				secret = outputSecret
 				if err != nil {
 					return resource.PropertyValue{}, nil, secret, err
 				}
