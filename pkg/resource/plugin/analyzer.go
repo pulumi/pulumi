@@ -96,5 +96,6 @@ type AnalyzeDiagnostic struct {
 type AnalyzerInfo struct {
 	Name        string
 	DisplayName string
+	Version     string
 	Policies    []apitype.Policy
 }
