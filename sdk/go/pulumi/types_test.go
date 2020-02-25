@@ -312,7 +312,7 @@ func TestToOutputInputAny(t *testing.T) {
 
 // Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
 func TestSecrets(t *testing.T) {
-	s := SecretT(String("foo"))
+	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
 	assert.True(t, s.IsSecret())
 
@@ -351,7 +351,7 @@ func TestSecrets(t *testing.T) {
 
 // Test that secretness is properly bubbled up with all/apply.
 func TestSecretApply(t *testing.T) {
-	s1 := SecretT(String("foo"))
+	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
 	assert.True(t, s1.IsSecret())
 	s2 := StringInput(String("bar"))

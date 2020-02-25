@@ -37,7 +37,7 @@ func main() {
 			results <- v
 			return v, nil
 		})
-		ctx.Export("val2", pulumi.SecretT(val))
+		ctx.Export("val2", pulumi.ToSecret(val))
 
 		select {
 		case err = <-errChan:

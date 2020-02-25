@@ -63,7 +63,7 @@ func TrySecret(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.String(v)), nil
+	return pulumi.ToSecret(pulumi.String(v)), nil
 }
 
 // TrySecretObject loads a configuration value by its key into the output variable,
@@ -74,7 +74,7 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 		return nil, err
 	}
 
-	return pulumi.SecretT(output), nil
+	return pulumi.ToSecret(output), nil
 }
 
 {{range .Builtins}}
@@ -86,7 +86,7 @@ func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.Output, error) 
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.{{.Name}}(v)), nil
+	return pulumi.ToSecret(pulumi.{{.Name}}(v)), nil
 }
 
 {{end}}

@@ -401,15 +401,15 @@ func (o *OutputState) IsSecret() bool {
 	return o.getState().secret
 }
 
-// SecretT wraps the input in an Output marked as secret
+// ToSecret wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func SecretT(input interface{}) Output {
-	return SecretTWithContext(context.Background(), input)
+func ToSecret(input interface{}) Output {
+	return ToSecretWithContext(context.Background(), input)
 }
 
-// SecretTWithContext wraps the input in an Output marked as secret
+// ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func SecretTWithContext(ctx context.Context, input interface{}) Output {
+func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	o := toOutputWithContext(ctx, input, true)
 	// set immediate secretness ahead of resolution/fufillment
 	o.getState().secret = true

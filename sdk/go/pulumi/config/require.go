@@ -122,90 +122,90 @@ func RequireUint8(ctx *pulumi.Context, key string) uint8 {
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
 func RequireSecret(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(Require(ctx, key))
+	return pulumi.ToSecret(Require(ctx, key))
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
 // returning it wrapped in a secret Output, or panics if unable to do so.
 func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
 	RequireObject(ctx, key, output)
-	return pulumi.SecretT(output)
+	return pulumi.ToSecret(output)
 }
 
 // RequireSecretBool loads an optional configuration value by its key,
 // as a bool wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretBool(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireBool(ctx, key))
+	return pulumi.ToSecret(RequireBool(ctx, key))
 }
 
 // RequireSecretFloat32 loads an optional configuration value by its key,
 // as a float32 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretFloat32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireFloat32(ctx, key))
+	return pulumi.ToSecret(RequireFloat32(ctx, key))
 }
 
 // RequireSecretFloat64 loads an optional configuration value by its key,
 // as a float64 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretFloat64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireFloat64(ctx, key))
+	return pulumi.ToSecret(RequireFloat64(ctx, key))
 }
 
 // RequireSecretInt loads an optional configuration value by its key,
 // as a int wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretInt(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireInt(ctx, key))
+	return pulumi.ToSecret(RequireInt(ctx, key))
 }
 
 // RequireSecretInt16 loads an optional configuration value by its key,
 // as a int16 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretInt16(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireInt16(ctx, key))
+	return pulumi.ToSecret(RequireInt16(ctx, key))
 }
 
 // RequireSecretInt32 loads an optional configuration value by its key,
 // as a int32 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretInt32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireInt32(ctx, key))
+	return pulumi.ToSecret(RequireInt32(ctx, key))
 }
 
 // RequireSecretInt64 loads an optional configuration value by its key,
 // as a int64 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretInt64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireInt64(ctx, key))
+	return pulumi.ToSecret(RequireInt64(ctx, key))
 }
 
 // RequireSecretInt8 loads an optional configuration value by its key,
 // as a int8 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretInt8(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireInt8(ctx, key))
+	return pulumi.ToSecret(RequireInt8(ctx, key))
 }
 
 // RequireSecretUint loads an optional configuration value by its key,
 // as a uint wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretUint(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireUint(ctx, key))
+	return pulumi.ToSecret(RequireUint(ctx, key))
 }
 
 // RequireSecretUint16 loads an optional configuration value by its key,
 // as a uint16 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretUint16(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireUint16(ctx, key))
+	return pulumi.ToSecret(RequireUint16(ctx, key))
 }
 
 // RequireSecretUint32 loads an optional configuration value by its key,
 // as a uint32 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretUint32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireUint32(ctx, key))
+	return pulumi.ToSecret(RequireUint32(ctx, key))
 }
 
 // RequireSecretUint64 loads an optional configuration value by its key,
 // as a uint64 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretUint64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireUint64(ctx, key))
+	return pulumi.ToSecret(RequireUint64(ctx, key))
 }
 
 // RequireSecretUint8 loads an optional configuration value by its key,
 // as a uint8 wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecretUint8(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.SecretT(RequireUint8(ctx, key))
+	return pulumi.ToSecret(RequireUint8(ctx, key))
 }

@@ -166,7 +166,7 @@ func TrySecret(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.String(v)), nil
+	return pulumi.ToSecret(pulumi.String(v)), nil
 }
 
 // TrySecretObject loads a configuration value by its key into the output variable,
@@ -177,7 +177,7 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 		return nil, err
 	}
 
-	return pulumi.SecretT(output), nil
+	return pulumi.ToSecret(output), nil
 }
 
 // TrySecretBool loads an optional configuration value by its key, as a bool,
@@ -187,7 +187,7 @@ func TrySecretBool(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Bool(v)), nil
+	return pulumi.ToSecret(pulumi.Bool(v)), nil
 }
 
 // TrySecretFloat32 loads an optional configuration value by its key, as a float32,
@@ -197,7 +197,7 @@ func TrySecretFloat32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Float32(v)), nil
+	return pulumi.ToSecret(pulumi.Float32(v)), nil
 }
 
 // TrySecretFloat64 loads an optional configuration value by its key, as a float64,
@@ -207,7 +207,7 @@ func TrySecretFloat64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Float64(v)), nil
+	return pulumi.ToSecret(pulumi.Float64(v)), nil
 }
 
 // TrySecretInt loads an optional configuration value by its key, as a int,
@@ -217,7 +217,7 @@ func TrySecretInt(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Int(v)), nil
+	return pulumi.ToSecret(pulumi.Int(v)), nil
 }
 
 // TrySecretInt16 loads an optional configuration value by its key, as a int16,
@@ -227,7 +227,7 @@ func TrySecretInt16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Int16(v)), nil
+	return pulumi.ToSecret(pulumi.Int16(v)), nil
 }
 
 // TrySecretInt32 loads an optional configuration value by its key, as a int32,
@@ -237,7 +237,7 @@ func TrySecretInt32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Int32(v)), nil
+	return pulumi.ToSecret(pulumi.Int32(v)), nil
 }
 
 // TrySecretInt64 loads an optional configuration value by its key, as a int64,
@@ -247,7 +247,7 @@ func TrySecretInt64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Int64(v)), nil
+	return pulumi.ToSecret(pulumi.Int64(v)), nil
 }
 
 // TrySecretInt8 loads an optional configuration value by its key, as a int8,
@@ -257,7 +257,7 @@ func TrySecretInt8(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Int8(v)), nil
+	return pulumi.ToSecret(pulumi.Int8(v)), nil
 }
 
 // TrySecretUint loads an optional configuration value by its key, as a uint,
@@ -267,7 +267,7 @@ func TrySecretUint(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Uint(v)), nil
+	return pulumi.ToSecret(pulumi.Uint(v)), nil
 }
 
 // TrySecretUint16 loads an optional configuration value by its key, as a uint16,
@@ -277,7 +277,7 @@ func TrySecretUint16(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Uint16(v)), nil
+	return pulumi.ToSecret(pulumi.Uint16(v)), nil
 }
 
 // TrySecretUint32 loads an optional configuration value by its key, as a uint32,
@@ -287,7 +287,7 @@ func TrySecretUint32(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Uint32(v)), nil
+	return pulumi.ToSecret(pulumi.Uint32(v)), nil
 }
 
 // TrySecretUint64 loads an optional configuration value by its key, as a uint64,
@@ -297,7 +297,7 @@ func TrySecretUint64(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Uint64(v)), nil
+	return pulumi.ToSecret(pulumi.Uint64(v)), nil
 }
 
 // TrySecretUint8 loads an optional configuration value by its key, as a uint8,
@@ -307,5 +307,5 @@ func TrySecretUint8(ctx *pulumi.Context, key string) (pulumi.Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pulumi.SecretT(pulumi.Uint8(v)), nil
+	return pulumi.ToSecret(pulumi.Uint8(v)), nil
 }
