@@ -31,9 +31,7 @@ func Get(ctx *pulumi.Context, key string) string {
 // GetObject attempts to load an optional configuration value by its key into the specified output variable.
 func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
 	if v, ok := ctx.GetConfig(key); ok {
-		if err := json.Unmarshal([]byte(v), output); err != nil {
-			return err
-		}
+		return json.Unmarshal([]byte(v), output)
 	}
 
 	return nil
