@@ -5756,7 +5756,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			assert.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider := parentResource.GetProvider("pkgA:m:typA")
-			assert.Equal(t, providerA, parentResultProvider)
+			assert.Equal(t, &providerA, parentResultProvider)
 
 			// create a child resource
 			var childResource pulumi.CustomResourceState
@@ -5765,7 +5765,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// child uses provider value from parent
 			childResultProvider := childResource.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerB, childResultProvider)
+			assert.Equal(t, &providerB, childResultProvider)
 
 			// create a child with a provider specified
 			var childWithOverride pulumi.CustomResourceState
@@ -5775,7 +5775,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider := childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, &providerBOverride, childWithOverrideProvider)
 
 			// pass in a fake ID
 			testID := pulumi.ID("testID")
@@ -5785,7 +5785,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			assert.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider = parentResource.GetProvider("pkgA:m:typA")
-			assert.Equal(t, providerA, parentResultProvider)
+			assert.Equal(t, &providerA, parentResultProvider)
 
 			// read a child resource
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(&parentResource))
@@ -5793,7 +5793,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// child uses provider value from parent
 			childResultProvider = childResource.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerB, childResultProvider)
+			assert.Equal(t, &providerB, childResultProvider)
 
 			// read a child with a provider specified
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &childWithOverride,
@@ -5802,7 +5802,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider = childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, &providerBOverride, childWithOverrideProvider)
 
 			// invoke with specific provider
 			var invokeResult struct{}
