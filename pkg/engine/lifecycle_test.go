@@ -5262,27 +5262,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		}, &resChild, pulumi.Parent(&res))
 	}
 
-	/*newOtherComponent := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
-		var res testResource
-		err := ctx.RegisterComponentResource("pkgA:m:typA", name, &res, opts...)
-		if err != nil {
-			return err
-		}
-
-		var resChild1 testResource
-		err = ctx.RegisterResource("pkgA:m:typA", name+"Child1", &testResourceInputs{
-			Foo: pulumi.String("bar1"),
-		}, &resChild1, pulumi.Parent(&res))
-		if err != nil {
-			return err
-		}
-
-		var resChild2 testResource
-		return ctx.RegisterResource("pkgA:m:typA", name+"Child2", &testResourceInputs{
-			Foo: pulumi.String("bar2"),
-		}, &resChild2, pulumi.Parent(&res))
-	}*/
-
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
@@ -5366,33 +5345,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			assert.NoError(t, newComponent(ctx, "res4",
 				pulumi.Transformations([]pulumi.ResourceTransformation{res4Transformation1, res4Transformation2})))
 
-			// Scenario #5 - cross-resource transformations that inject dependencies on one resource into another.
-			/*res5Transformation := func() func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				child2Future := make(chan *pulumi.ResourceTransformationArgs)
-				transform := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-					if strings.HasSuffix(args.Name, "Child2") {
-						child2Future <- args
-						return nil
-					} else if strings.HasSuffix(args.Name, "Child1") {
-						getOutput := func() *pulumi.ResourceTransformationArgs {
-							return <-child2Future
-						}
-						child2Input := getOutput().Props
-
-						return &pulumi.ResourceTransformationResult{
-							Props: child2Input,
-							Opts:  args.Opts,
-						}
-					}
-					return nil
-				}
-
-				return transform
-			}
-
-			assert.NoError(t, newOtherComponent(ctx, "res5",
-				pulumi.Transformations([]pulumi.ResourceTransformation{res5Transformation()})))
-			*/
 			return nil
 		})
 	})
@@ -5447,11 +5399,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 					assert.Equal(t, res.Parent.Name(), tokens.QName("res4"))
 					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
 				}
-				// "res5" modifies one of its children to depend on another of its children.
-				/*if res.URN.Name() == "res5Child1" {
-					foundRes5Child1 = true
-					assert.Equal(t, "bar2", res.Inputs["foo"].StringValue())
-				}*/
 			}
 
 			assert.True(t, foundRes1)
@@ -5459,7 +5406,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			assert.True(t, foundRes2Child)
 			assert.True(t, foundRes3)
 			assert.True(t, foundRes4Child)
-			// assert.True(t, foundRes5Child1)
 			return res
 		},
 	}}

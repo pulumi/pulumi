@@ -11,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
 )
 
 var dirs = []string{
@@ -45,49 +44,6 @@ func TestPythonTransformations(t *testing.T) {
 				ExtraRuntimeValidation: Validator("python"),
 			})
 		})
-	}
-}
-
-func TestGoTransformations(t *testing.T) {
-	for _, dir := range dirs {
-		d := filepath.Join("go", dir)
-		t.Run(d, func(t *testing.T) {
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:                    d,
-				Dependencies:           []string{"Pulumi"},
-				Quick:                  true,
-				ExtraRuntimeValidation: GoValidator(),
-			})
-		})
-	}
-}
-
-// Once we merge https://github.com/pulumi/pulumi/pull/3938, we should use `Validator`
-// instead and change the transformations in `go/simple` to use AdditonalSecretOutputs instead.
-func GoValidator() func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-	dynamicResName := "pulumi-go:dynamic:Resource"
-	return func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-		foundRes1 := false
-		foundRes2 := false
-		for _, res := range stack.Deployment.Resources {
-			if res.URN.Name() == "res1" {
-				foundRes1 = true
-				assert.Equal(t, res.Type, tokens.Type(dynamicResName))
-				assert.Len(t, res.Aliases, 1)
-				assert.Contains(t, res.Aliases[0], pulumi.URN("SimpleResource"))
-			}
-			if res.URN.Name() == "res2-child" {
-				foundRes2 = true
-				assert.Equal(t, res.Type, tokens.Type(dynamicResName))
-				assert.Len(t, res.Aliases, 1)
-				assert.Contains(t, res.Aliases[0], pulumi.URN("SimpleResource"))
-				optionalInput := res.Inputs["optionalInput"]
-				assert.NotNil(t, optionalInput)
-				assert.Equal(t, "newDefault", optionalInput.(string))
-			}
-		}
-		assert.True(t, foundRes1)
-		assert.True(t, foundRes2)
 	}
 }
 
