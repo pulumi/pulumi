@@ -132,6 +132,28 @@ function deserialize_pulumirpc_DiffResponse(buffer_arg) {
   return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetSchemaRequest(arg) {
+  if (!(arg instanceof provider_pb.GetSchemaRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetSchemaRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetSchemaRequest(buffer_arg) {
+  return provider_pb.GetSchemaRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetSchemaResponse(arg) {
+  if (!(arg instanceof provider_pb.GetSchemaResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetSchemaResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
+  return provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
@@ -213,6 +235,18 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // GetSchema fetches the schema for this resource provider.
+  getSchema: {
+    path: '/pulumirpc.ResourceProvider/GetSchema',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.GetSchemaRequest,
+    responseType: provider_pb.GetSchemaResponse,
+    requestSerialize: serialize_pulumirpc_GetSchemaRequest,
+    requestDeserialize: deserialize_pulumirpc_GetSchemaRequest,
+    responseSerialize: serialize_pulumirpc_GetSchemaResponse,
+    responseDeserialize: deserialize_pulumirpc_GetSchemaResponse,
+  },
   // CheckConfig validates the configuration for this resource provider.
   checkConfig: {
     path: '/pulumirpc.ResourceProvider/CheckConfig',

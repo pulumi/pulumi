@@ -17,6 +17,11 @@ class ResourceProviderStub(object):
     Args:
       channel: A grpc.Channel.
     """
+    self.GetSchema = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/GetSchema',
+        request_serializer=provider__pb2.GetSchemaRequest.SerializeToString,
+        response_deserializer=provider__pb2.GetSchemaResponse.FromString,
+        )
     self.CheckConfig = channel.unary_unary(
         '/pulumirpc.ResourceProvider/CheckConfig',
         request_serializer=provider__pb2.CheckRequest.SerializeToString,
@@ -88,6 +93,13 @@ class ResourceProviderServicer(object):
   """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
   within a single package.  It is driven by the overall planning engine in response to resource diffs.
   """
+
+  def GetSchema(self, request, context):
+    """GetSchema fetches the schema for this resource provider.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
 
   def CheckConfig(self, request, context):
     """CheckConfig validates the configuration for this resource provider.
@@ -190,6 +202,11 @@ class ResourceProviderServicer(object):
 
 def add_ResourceProviderServicer_to_server(servicer, server):
   rpc_method_handlers = {
+      'GetSchema': grpc.unary_unary_rpc_method_handler(
+          servicer.GetSchema,
+          request_deserializer=provider__pb2.GetSchemaRequest.FromString,
+          response_serializer=provider__pb2.GetSchemaResponse.SerializeToString,
+      ),
       'CheckConfig': grpc.unary_unary_rpc_method_handler(
           servicer.CheckConfig,
           request_deserializer=provider__pb2.CheckRequest.FromString,
