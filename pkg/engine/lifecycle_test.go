@@ -5300,7 +5300,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 					Opts:  args.Opts,
 				}
 			}
-			ctx.RegisterStackTransformation(res3Transformation)
+			assert.NoError(t, ctx.RegisterStackTransformation(res3Transformation))
 			assert.NoError(t, newResource(ctx, "res3"))
 
 			// Scenario #4 - transformations are applied in order of decreasing specificity

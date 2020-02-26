@@ -11,6 +11,9 @@ CHANGELOG
 - Add support for secrets in the Go SDK.
   [3938](https://github.com/pulumi/pulumi/pull/3938)
 
+- Add support for transformations in the Go SDK.
+  [3978](https://github.com/pulumi/pulumi/pull/3938)  
+
 ## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
   [#3895](https://github.com/pulumi/pulumi/pull/3895)
