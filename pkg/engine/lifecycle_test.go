@@ -5358,13 +5358,13 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			foundRes4Child := false
 			// foundRes5Child1 := false
 			for _, res := range j.Snap(target.Snapshot).Resources {
-				// "res1" has a transformation which adds an Alias
+				// "res1" has a transformation which adds additionalSecretOutputs
 				if res.URN.Name() == "res1" {
 					foundRes1 = true
 					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
 					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
 				}
-				// "res2" has a transformation which adds an Alias to it's "child"
+				// "res2" has a transformation which adds additionalSecretOutputs to it's "child"
 				if res.URN.Name() == "res2" {
 					foundRes2 = true
 					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
