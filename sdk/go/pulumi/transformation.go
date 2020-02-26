@@ -11,7 +11,7 @@ type ResourceTransformationArgs struct {
 	// The original properties passed to the resource constructor.
 	Props Input
 	// The original resource options passed to the resource constructor.
-	Opts *resourceOptions
+	Opts []ResourceOption
 }
 
 // ResourceTransformationResult is the result that must be returned by a resource transformation
@@ -21,7 +21,7 @@ type ResourceTransformationResult struct {
 	// The new properties to use in place of the original `props`.
 	Props Input
 	// The new resource options to use in place of the original `opts`.
-	Opts *resourceOptions
+	Opts []ResourceOption
 }
 
 // ResourceTransformation is the callback signature for the `transformations` resource option.  A

@@ -289,16 +289,21 @@ func (ctx *Context) ReadResource(
 			Type:     t,
 			Name:     name,
 			Props:    props,
-			Opts:     options,
+			Opts:     opts,
 		}
 
 		res := transformation(args)
 		if res != nil {
-			if res.Opts.Parent.URN() != options.Parent.URN() {
+			resOptions := &resourceOptions{}
+			for _, o := range res.Opts {
+				o.applyResourceOption(resOptions)
+			}
+
+			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
 			props = res.Props
-			options = res.Opts
+			options = resOptions
 		}
 	}
 
@@ -436,16 +441,21 @@ func (ctx *Context) RegisterResource(
 			Type:     t,
 			Name:     name,
 			Props:    props,
-			Opts:     options,
+			Opts:     opts,
 		}
 
 		res := transformation(args)
 		if res != nil {
-			if res.Opts != nil && res.Opts.Parent.URN() != options.Parent.URN() {
+			resOptions := &resourceOptions{}
+			for _, o := range res.Opts {
+				o.applyResourceOption(resOptions)
+			}
+
+			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
 			props = res.Props
-			options = res.Opts
+			options = resOptions
 		}
 	}
 

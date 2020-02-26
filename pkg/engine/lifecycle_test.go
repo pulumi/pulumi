@@ -5296,12 +5296,9 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			// Scenario #1 - apply a transformation to a CustomResource
 			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				opts := args.Opts
-				opts.Aliases = newAlias(args.Name)
-
 				return &pulumi.ResourceTransformationResult{
 					Props: args.Props,
-					Opts:  opts,
+					Opts:  append(args.Opts, pulumi.Aliases(newAlias(args.Name))),
 				}
 			}
 			assert.NoError(t, newResource(ctx, "res1",
@@ -5310,12 +5307,9 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			// Scenario #2 - apply a transformation to a Component to transform it's children
 			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				if args.Name == "res2Child" {
-					opts := args.Opts
-					opts.Aliases = newAlias(args.Name)
-
 					return &pulumi.ResourceTransformationResult{
 						Props: args.Props,
-						Opts:  opts,
+						Opts:  append(args.Opts, pulumi.Aliases(newAlias(args.Name))),
 					}
 				}
 
@@ -5326,18 +5320,13 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 
 			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
 			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				opts := args.Opts
-				opts.Aliases = newAlias(args.Name)
-
-				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
-					props := arr[0].(*testResourceArgs)
-					props.Foo = "baz"
-					return props
-				})
+				props := &testResourceInputs{
+					Foo: pulumi.String("baz"),
+				}
 
 				return &pulumi.ResourceTransformationResult{
 					Props: props,
-					Opts:  opts,
+					Opts:  args.Opts,
 				}
 			}
 			ctx.RegisterStackTransformation(res3Transformation)
@@ -5348,35 +5337,37 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			// 2. First parent transformation
 			// 3. Second parent transformation
 			// 4. Stack transformation
-			/*res4Transformation1 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
-					props := arr[0].(*testResourceArgs)
-					props.Foo = "baz1"
-					return props
-				})
+			res4Transformation1 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				if args.Name == "res4" {
+					props := &testResourceInputs{
+						Foo: pulumi.String("baz1"),
+					}
 
-				return &pulumi.ResourceTransformationResult{
-					Props: props,
-					Opts:  args.Opts,
+					return &pulumi.ResourceTransformationResult{
+						Props: props,
+						Opts:  args.Opts,
+					}
 				}
+				return nil
 			}
 			res4Transformation2 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				props := pulumi.All(args.Props).ApplyT(func(arr []interface{}) *testResourceArgs {
-					props := arr[0].(*testResourceArgs)
-					props.Foo = "baz2"
-					return props
-				})
+				if args.Name == "res4" {
+					props := &testResourceInputs{
+						Foo: pulumi.String("baz2"),
+					}
 
-				return &pulumi.ResourceTransformationResult{
-					Props: args.Props,
-					Opts:  args.Opts,
+					return &pulumi.ResourceTransformationResult{
+						Props: props,
+						Opts:  args.Opts,
+					}
 				}
+				return nil
 			}
 			assert.NoError(t, newComponent(ctx, "res4",
 				pulumi.Transformations([]pulumi.ResourceTransformation{res4Transformation1, res4Transformation2})))
 
 			// Scenario #5 - cross-resource transformations that inject dependencies on one resource into another.
-			res5Transformation := func() func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+			/*res5Transformation := func() func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				child2Future := make(chan *pulumi.ResourceTransformationArgs)
 				transform := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 					if strings.HasSuffix(args.Name, "Child2") {
@@ -5417,18 +5408,23 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			_ []Event, res result.Result) result.Result {
 
 			foundRes1 := false
+			foundRes2 := false
 			foundRes2Child := false
 			foundRes3 := false
-			// foundRes4Child := false
+			foundRes4Child := false
 			// foundRes5Child1 := false
 			for _, res := range j.Snap(target.Snapshot).Resources {
-				// "res1" has a transformation which adds additionalSecretOutputs
+				// "res1" has a transformation which adds an Alias
 				if res.URN.Name() == "res1" {
 					foundRes1 = true
 					assert.Len(t, res.Aliases, 1)
 					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
 				}
-				// "res2" has a transformation which adds additionalSecretOutputs to it's "child"
+				// "res2" has a transformation which adds an Alias to it's "child"
+				if res.URN.Name() == "res2" {
+					foundRes2 = true
+					assert.Len(t, res.Aliases, 0)
+				}
 				if res.URN.Name() == "res2Child" {
 					foundRes2Child = true
 					assert.Equal(t, res.Parent.Name(), tokens.QName("res2"))
@@ -5436,29 +5432,33 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
 				}
 				// "res3" is impacted by a global stack transformation which sets
-				// optionalDefault to "stackDefault"
+				// Foo to "baz"
 				if res.URN.Name() == "res3" {
 					foundRes3 = true
-					assert.Equal(t, "bar", res.Inputs["foo"].StringValue())
+					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
+					assert.Len(t, res.Aliases, 0)
 				}
 				// "res4" is impacted by two component parent transformations which set
-				// optionalDefault to "default1" and then "default2" and also a global stack
-				// transformation which sets optionalDefault to "stackDefault".  The end
-				// result should be "stackDefault".
-				/*if res.URN.Name() == "res4Child" {
+				// Foo to "baz1" and then "baz2" and also a global stack
+				// transformation which sets optionalDefault to "baz".  The end
+				// result should be "baz".
+				if res.URN.Name() == "res4Child" {
 					foundRes4Child = true
+					assert.Equal(t, res.Parent.Name(), tokens.QName("res4"))
+					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
 				}
 				// "res5" modifies one of its children to depend on another of its children.
-				if res.URN.Name() == "res5Child1" {
+				/*if res.URN.Name() == "res5Child1" {
 					foundRes5Child1 = true
 					assert.Equal(t, "bar2", res.Inputs["foo"].StringValue())
 				}*/
 			}
 
 			assert.True(t, foundRes1)
+			assert.True(t, foundRes2)
 			assert.True(t, foundRes2Child)
 			assert.True(t, foundRes3)
-			// assert.True(t, foundRes4Child)
+			assert.True(t, foundRes4Child)
 			// assert.True(t, foundRes5Child1)
 			return res
 		},
