@@ -445,7 +445,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 		orgName = currentUser
 	}
 
-	return newCloudBackendPolicyPackReference(orgName, tokens.QName(policyPackName)), nil
+	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil
 }
 
 func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
@@ -463,7 +463,7 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	apiToken := account.AccessToken
 
 	return &cloudPolicyPack{
-		ref: newCloudBackendPolicyPackReference(
+		ref: newCloudBackendPolicyPackReference(b.CloudConsoleURL(),
 			policyPackRef.OrgName(), policyPackRef.Name()),
 		b:  b,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
