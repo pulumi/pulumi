@@ -1266,6 +1266,10 @@ func TestStackReferenceGo(t *testing.T) {
 				Dir:      "step1",
 				Additive: true,
 			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
 		},
 	}
 	integration.ProgramTest(t, opts)

@@ -172,7 +172,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		plugin.MarshalOptions{KeepUnknowns: false})
+		plugin.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
 	if err != nil {
 		return errors.Wrap(err, "marshaling arguments")
 	}
@@ -212,8 +212,13 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return err
 	}
 
-	if err = unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem()); err != nil {
+	// fail if there are secrets returned from the invoke
+	hasSecret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
+	if err != nil {
 		return err
+	}
+	if hasSecret {
+		return errors.Errorf("Unexpected secret result returned to invoke call.")
 	}
 	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
 	return nil
@@ -300,7 +305,7 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, err := id.ToIDOutput().awaitID(context.TODO())
+		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
 		if !known || err != nil {
 			return
 		}
@@ -313,13 +318,15 @@ func (ctx *Context) ReadResource(
 
 		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
-			Type:       t,
-			Name:       name,
-			Parent:     inputs.parent,
-			Properties: inputs.rpcProps,
-			Provider:   inputs.provider,
-			Id:         string(idToRead),
-			Aliases:    inputs.aliases,
+			Type:                    t,
+			Name:                    name,
+			Parent:                  inputs.parent,
+			Properties:              inputs.rpcProps,
+			Provider:                inputs.provider,
+			Id:                      string(idToRead),
+			Aliases:                 inputs.aliases,
+			AcceptSecrets:           true,
+			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -429,20 +436,22 @@ func (ctx *Context) RegisterResource(
 
 		logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 		resp, err := ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
-			Type:                 t,
-			Name:                 name,
-			Parent:               inputs.parent,
-			Object:               inputs.rpcProps,
-			Custom:               custom,
-			Protect:              inputs.protect,
-			Dependencies:         inputs.deps,
-			Provider:             inputs.provider,
-			PropertyDependencies: inputs.rpcPropertyDeps,
-			DeleteBeforeReplace:  inputs.deleteBeforeReplace,
-			ImportId:             inputs.importID,
-			CustomTimeouts:       inputs.customTimeouts,
-			IgnoreChanges:        inputs.ignoreChanges,
-			Aliases:              inputs.aliases,
+			Type:                    t,
+			Name:                    name,
+			Parent:                  inputs.parent,
+			Object:                  inputs.rpcProps,
+			Custom:                  custom,
+			Protect:                 inputs.protect,
+			Dependencies:            inputs.deps,
+			Provider:                inputs.provider,
+			PropertyDependencies:    inputs.rpcPropertyDeps,
+			DeleteBeforeReplace:     inputs.deleteBeforeReplace,
+			ImportId:                inputs.importID,
+			CustomTimeouts:          inputs.customTimeouts,
+			IgnoreChanges:           inputs.ignoreChanges,
+			Aliases:                 inputs.aliases,
+			AcceptSecrets:           true,
+			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -656,28 +665,30 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 		// Allocate storage for the unmarshalled output.
 		dest := reflect.New(output.ElementType()).Elem()
-		if err = unmarshalOutput(v, dest); err != nil {
+		secret, err := unmarshalOutput(v, dest)
+		if err != nil {
 			output.reject(err)
 		} else {
-			output.resolve(dest.Interface(), known)
+			output.resolve(dest.Interface(), known, secret)
 		}
 	}
 }
 
 // resourceInputs reflects all of the inputs necessary to perform core resource RPC operations.
 type resourceInputs struct {
-	parent              string
-	deps                []string
-	protect             bool
-	provider            string
-	resolvedProps       resource.PropertyMap
-	rpcProps            *structpb.Struct
-	rpcPropertyDeps     map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
-	deleteBeforeReplace bool
-	importID            string
-	customTimeouts      *pulumirpc.RegisterResourceRequest_CustomTimeouts
-	ignoreChanges       []string
-	aliases             []string
+	parent                  string
+	deps                    []string
+	protect                 bool
+	provider                string
+	resolvedProps           resource.PropertyMap
+	rpcProps                *structpb.Struct
+	rpcPropertyDeps         map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
+	deleteBeforeReplace     bool
+	importID                string
+	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
+	ignoreChanges           []string
+	aliases                 []string
+	additionalSecretOutputs []string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -689,7 +700,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
 	parent, optDeps, protect, provider, deleteBeforeReplace,
-		importID, ignoreChanges, err := ctx.getOpts(t, providers, opts)
+		importID, ignoreChanges, additionalSecretOutputs, err := ctx.getOpts(t, providers, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving options")
 	}
@@ -704,7 +715,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	keepUnknowns := ctx.DryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepUnknowns: keepUnknowns})
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling properties")
 	}
@@ -741,7 +752,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	// Await alias URNs
 	aliases := make([]string, len(resource.aliases))
 	for i, alias := range resource.aliases {
-		urn, _, err := alias.awaitURN(context.Background())
+		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, errors.Wrap(err, "error waiting for alias URN to resolve")
 		}
@@ -749,18 +760,19 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	}
 
 	return &resourceInputs{
-		parent:              string(parent),
-		deps:                deps,
-		protect:             protect,
-		provider:            provider,
-		resolvedProps:       resolvedProps,
-		rpcProps:            rpcProps,
-		rpcPropertyDeps:     rpcPropertyDeps,
-		deleteBeforeReplace: deleteBeforeReplace,
-		importID:            string(importID),
-		customTimeouts:      getTimeouts(opts.CustomTimeouts),
-		ignoreChanges:       ignoreChanges,
-		aliases:             aliases,
+		parent:                  string(parent),
+		deps:                    deps,
+		protect:                 protect,
+		provider:                provider,
+		resolvedProps:           resolvedProps,
+		rpcProps:                rpcProps,
+		rpcPropertyDeps:         rpcPropertyDeps,
+		deleteBeforeReplace:     deleteBeforeReplace,
+		importID:                string(importID),
+		customTimeouts:          getTimeouts(opts.CustomTimeouts),
+		ignoreChanges:           ignoreChanges,
+		aliases:                 aliases,
+		additionalSecretOutputs: additionalSecretOutputs,
 	}, nil
 }
 
@@ -777,22 +789,22 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
 func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts *resourceOptions) (
-	URN, []URN, bool, string, bool, ID, []string, error) {
+	URN, []URN, bool, string, bool, ID, []string, []string, error) {
 
 	var importID ID
 	if opts.Import != nil {
-		id, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
+		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		importID = id
 	}
 
 	var parentURN URN
 	if opts.Parent != nil {
-		urn, _, err := opts.Parent.URN().awaitURN(context.TODO())
+		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		parentURN = urn
 	}
@@ -801,9 +813,9 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	if opts.DependsOn != nil {
 		depURNs = make([]URN, len(opts.DependsOn))
 		for i, r := range opts.DependsOn {
-			urn, _, err := r.URN().awaitURN(context.TODO())
+			urn, _, _, err := r.URN().awaitURN(context.TODO())
 			if err != nil {
-				return "", nil, false, "", false, "", nil, err
+				return "", nil, false, "", false, "", nil, nil, err
 			}
 			depURNs[i] = urn
 		}
@@ -819,20 +831,21 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	if provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return "", nil, false, "", false, "", nil, err
+			return "", nil, false, "", false, "", nil, nil, err
 		}
 		providerRef = pr
 	}
 
-	return parentURN, depURNs, opts.Protect, providerRef, opts.DeleteBeforeReplace, importID, opts.IgnoreChanges, nil
+	return parentURN, depURNs, opts.Protect, providerRef, opts.DeleteBeforeReplace,
+		importID, opts.IgnoreChanges, opts.AdditionalSecretOutputs, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
-	urn, _, err := provider.URN().awaitURN(context.TODO())
+	urn, _, _, err := provider.URN().awaitURN(context.TODO())
 	if err != nil {
 		return "", err
 	}
-	id, known, err := provider.ID().awaitID(context.TODO())
+	id, known, _, err := provider.ID().awaitID(context.TODO())
 	if err != nil {
 		return "", err
 	}
@@ -906,7 +919,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			ctx.endRPC(err)
 		}()
 
-		urn, _, err := resource.URN().awaitURN(context.TODO())
+		urn, _, _, err := resource.URN().awaitURN(context.TODO())
 		if err != nil {
 			return
 		}
@@ -919,7 +932,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		keepUnknowns := ctx.DryRun()
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
-			plugin.MarshalOptions{KeepUnknowns: keepUnknowns})
+			plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 		if err != nil {
 			return
 		}

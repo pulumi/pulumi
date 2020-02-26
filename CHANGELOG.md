@@ -7,6 +7,9 @@ CHANGELOG
 
 - Avoid panic when displaying failed stack policies.
   [#3960](https://github.com/pulumi/pulumi/pull/3960)
+  
+- Add support for secrets in the Go SDK.
+  [3938](https://github.com/pulumi/pulumi/pull/3938)
 
 ## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.

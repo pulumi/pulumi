@@ -1,0 +1,75 @@
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package config
+
+import (
+	"encoding/json"
+
+	"github.com/spf13/cast"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/pulumi"
+)
+
+// Require loads a configuration value by its key, or panics if it doesn't exist.
+func Require(ctx *pulumi.Context, key string) string {
+	v, ok := ctx.GetConfig(key)
+	if !ok {
+		contract.Failf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+	}
+	return v
+}
+
+// RequireObject loads an optional configuration value by its key into the output variable,
+// or panics if unable to do so.
+func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
+	v := Require(ctx, key)
+	if err := json.Unmarshal([]byte(v), output); err != nil {
+		contract.Failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+	}
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// Require{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or panics if it doesn't exist.
+func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
+	v := Require(ctx, key)
+	return cast.To{{.Name}}(v)
+}
+
+{{end}}
+{{end}}
+// RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
+// or panics if it doesn't exist.
+func RequireSecret(ctx *pulumi.Context, key string) pulumi.Output {
+	return pulumi.ToSecret(Require(ctx, key))
+}
+
+// RequireSecretObject loads an optional configuration value by its key into the output variable,
+// returning it wrapped in a secret Output, or panics if unable to do so.
+func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
+	RequireObject(ctx, key, output)
+	return pulumi.ToSecret(output)
+}
+
+{{range .Builtins}}
+{{if .GenerateConfig}}
+// RequireSecret{{.Name}} loads an optional configuration value by its key,
+// as a {{.Type}} wrapped in a secret Output, or panics if it doesn't exist.
+func RequireSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.Output {
+	return pulumi.ToSecret(Require{{.Name}}(ctx, key))
+}
+{{end}}
+{{end}}

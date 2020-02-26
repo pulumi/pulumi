@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
 )
 
+// Tests that the stack export that included secrets in step1 is read into a secret output.
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 
@@ -24,12 +25,14 @@ func main() {
 			return errors.Wrap(err, "Error reading stack reference.")
 		}
 
-		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val")))
+		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val2")))
 
 		errChan := make(chan error)
 		results := make(chan []string)
+		secret := make(chan bool)
 
 		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
 				errChan <- errors.Errorf("Invalid result")
 				return nil, errors.Errorf("Invalid result")
@@ -37,13 +40,20 @@ func main() {
 			results <- v
 			return v, nil
 		})
-		ctx.Export("val2", pulumi.ToSecret(val))
-
-		select {
-		case err = <-errChan:
-			return err
-		case <-results:
-			return nil
+		for i := 0; i < 2; i++ {
+			select {
+			case s := <-secret:
+				if !s {
+					return errors.Errorf("Error, stack export should be marked as secret!!!")
+				}
+				break
+			case err = <-errChan:
+				return err
+			case <-results:
+				return nil
+			}
 		}
+
+		return nil
 	})
 }
