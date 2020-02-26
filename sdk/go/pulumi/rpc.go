@@ -181,10 +181,10 @@ func marshalInputAndDetermineSecret(v interface{},
 
 				// Await the output.
 				ov, known, outputSecret, err := output.await(context.TODO())
-				secret = outputSecret
 				if err != nil {
-					return resource.PropertyValue{}, nil, secret, err
+					return resource.PropertyValue{}, nil, false, err
 				}
+				secret = outputSecret
 
 				// If the value is unknown, return the appropriate sentinel.
 				if !known {
@@ -231,7 +231,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
 			e, d, err := marshalInput(v.ID(), idType, await)
 			if err != nil {
-				return resource.PropertyValue{}, nil, secret, err
+				return resource.PropertyValue{}, nil, false, err
 			}
 			return e, append(deps, d...), secret, nil
 		}
@@ -279,7 +279,7 @@ func marshalInputAndDetermineSecret(v interface{},
 				elem := rv.Index(i)
 				e, d, err := marshalInput(elem.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, secret, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 				if !e.IsNull() {
 					arr = append(arr, e)
@@ -289,7 +289,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			return resource.NewArrayProperty(arr), deps, secret, nil
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
-				return resource.PropertyValue{}, nil, secret,
+				return resource.PropertyValue{}, nil, false,
 					errors.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
 			}
 
@@ -305,7 +305,7 @@ func marshalInputAndDetermineSecret(v interface{},
 				value := rv.MapIndex(key)
 				mv, d, err := marshalInput(value.Interface(), destElem, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, secret, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 				if !mv.IsNull() {
 					obj[resource.PropertyKey(key.String())] = mv
@@ -326,7 +326,7 @@ func marshalInputAndDetermineSecret(v interface{},
 
 				fv, d, err := marshalInput(rv.Field(i).Interface(), destField.Type, await)
 				if err != nil {
-					return resource.PropertyValue{}, nil, secret, err
+					return resource.PropertyValue{}, nil, false, err
 				}
 
 				if !fv.IsNull() {
@@ -336,7 +336,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			}
 			return resource.NewObjectProperty(obj), deps, secret, nil
 		}
-		return resource.PropertyValue{}, nil, secret, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
+		return resource.PropertyValue{}, nil, false, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
 }
 
@@ -420,7 +420,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
 	if v.IsNull() || v.IsComputed() || v.IsOutput() {
-		return v.IsSecret(), nil
+		return false, nil
 	}
 
 	// Allocate storage as necessary.
@@ -524,10 +524,10 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		for k, e := range v.ObjectValue() {
 			elem := reflect.New(elemType).Elem()
 			esecret, err := unmarshalOutput(e, elem)
-			secret = secret || esecret
 			if err != nil {
 				return false, err
 			}
+			secret = secret || esecret
 
 			key := reflect.New(keyType).Elem()
 			key.SetString(string(k))
