@@ -35,7 +35,6 @@ type Output interface {
 	ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput
 	ApplyT(applier interface{}) Output
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
-	IsSecret() bool
 
 	getState() *OutputState
 	dependencies() []Resource
@@ -45,6 +44,7 @@ type Output interface {
 	resolve(value interface{}, known, secret bool)
 	reject(err error)
 	await(ctx context.Context) (interface{}, bool, bool, error)
+	isSecret() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -396,8 +396,8 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	return result
 }
 
-// IsSecret returns a bool representing the secretness of the Output
-func (o *OutputState) IsSecret() bool {
+// isSecret returns a bool representing the secretness of the Output
+func (o *OutputState) isSecret() bool {
 	return o.getState().secret
 }
 

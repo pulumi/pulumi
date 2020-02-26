@@ -188,10 +188,6 @@ func TestSecretConfig(t *testing.T) {
 	s3 := cfg.GetSecret("sss")
 	assert.Nil(t, err)
 
-	assert.True(t, s1.IsSecret())
-	assert.True(t, s2.IsSecret())
-	assert.True(t, s3.IsSecret())
-
 	errChan := make(chan error)
 	result := make(chan string)
 
@@ -231,10 +227,6 @@ func TestSecretConfig(t *testing.T) {
 	s3, err = cfg.GetSecretObject("obj", &testStruct6)
 	assert.Nil(t, err)
 
-	assert.True(t, s1.IsSecret())
-	assert.True(t, s2.IsSecret())
-	assert.True(t, s3.IsSecret())
-
 	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
 		for _, val := range v {
 			ts := val.(*TestStruct)
@@ -262,10 +254,6 @@ func TestSecretConfig(t *testing.T) {
 	s2 = cfg.RequireSecretBool("bbb")
 	s3 = cfg.GetSecretBool("bbb")
 	assert.Nil(t, err)
-
-	assert.True(t, s1.IsSecret())
-	assert.True(t, s2.IsSecret())
-	assert.True(t, s3.IsSecret())
 
 	errChan = make(chan error)
 	resultBool := make(chan bool)
@@ -297,10 +285,6 @@ func TestSecretConfig(t *testing.T) {
 	s2 = cfg.RequireSecretInt("intint")
 	s3 = cfg.GetSecretInt("intint")
 	assert.Nil(t, err)
-
-	assert.True(t, s1.IsSecret())
-	assert.True(t, s2.IsSecret())
-	assert.True(t, s3.IsSecret())
 
 	errChan = make(chan error)
 	resultInt := make(chan int)

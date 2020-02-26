@@ -314,7 +314,7 @@ func TestToOutputInputAny(t *testing.T) {
 func TestSecrets(t *testing.T) {
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s.IsSecret())
+	assert.True(t, s.isSecret())
 
 	errChan := make(chan error)
 	resultChan := make(chan string)
@@ -322,7 +322,7 @@ func TestSecrets(t *testing.T) {
 
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.IsSecret()
+		secretChan <- s.isSecret()
 		val := v.(string)
 		if val == "foo" {
 			// validate the value
@@ -353,7 +353,7 @@ func TestSecrets(t *testing.T) {
 func TestSecretApply(t *testing.T) {
 	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s1.IsSecret())
+	assert.True(t, s1.isSecret())
 	s2 := StringInput(String("bar"))
 
 	errChan := make(chan error)
@@ -366,7 +366,7 @@ func TestSecretApply(t *testing.T) {
 	})
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.IsSecret()
+		secretChan <- s.isSecret()
 		val := v.(string)
 		if val == "foobar" {
 			// validate the value
