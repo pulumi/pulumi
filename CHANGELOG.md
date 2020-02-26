@@ -1,6 +1,9 @@
 CHANGELOG
 =========
 
+- Fix missing module import on Windows platform.
+  [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)
