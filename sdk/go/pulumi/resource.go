@@ -316,16 +316,16 @@ func Aliases(o []Alias) ResourceOption {
 	})
 }
 
-<<<<<<< HEAD
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
 func AdditionalSecretOutputs(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.AdditionalSecretOutputs = o
-=======
+	})
+}
+
 // Transformations is an optional list of transformations to be applied to the resource.
 func Transformations(o []ResourceTransformation) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Transformations = o
->>>>>>> 345a3690... started transformations for go sdk
 	})
 }
