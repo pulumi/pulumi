@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)
 
@@ -51,6 +51,7 @@ CHANGELOG
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
 - Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
 - Add support for aliases in the Go SDK
   [3853](https://github.com/pulumi/pulumi/pull/3853)
 
