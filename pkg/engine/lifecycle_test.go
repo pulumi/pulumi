@@ -5234,14 +5234,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		}),
 	}
 
-	newAlias := func(name string) []pulumi.Alias {
-		return []pulumi.Alias{
-			pulumi.Alias{
-				URN: pulumi.URN(fmt.Sprintf("urn:pulumi:stack::project::pkgA:m:typA::%s", name)),
-			},
-		}
-	}
-
 	newResource := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
 		var res testResource
 		return ctx.RegisterResource("pkgA:m:typA", name, &testResourceInputs{
@@ -5277,7 +5269,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				return &pulumi.ResourceTransformationResult{
 					Props: args.Props,
-					Opts:  append(args.Opts, pulumi.Aliases(newAlias(args.Name))),
+					Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output"})),
 				}
 			}
 			assert.NoError(t, newResource(ctx, "res1",
@@ -5288,7 +5280,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				if args.Name == "res2Child" {
 					return &pulumi.ResourceTransformationResult{
 						Props: args.Props,
-						Opts:  append(args.Opts, pulumi.Aliases(newAlias(args.Name))),
+						Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output", "output2"})),
 					}
 				}
 
@@ -5369,19 +5361,21 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				// "res1" has a transformation which adds an Alias
 				if res.URN.Name() == "res1" {
 					foundRes1 = true
-					assert.Len(t, res.Aliases, 1)
-					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
 				}
 				// "res2" has a transformation which adds an Alias to it's "child"
 				if res.URN.Name() == "res2" {
 					foundRes2 = true
-					assert.Len(t, res.Aliases, 0)
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.NotContains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
 				}
 				if res.URN.Name() == "res2Child" {
 					foundRes2Child = true
 					assert.Equal(t, res.Parent.Name(), tokens.QName("res2"))
-					assert.Len(t, res.Aliases, 1)
-					assert.Contains(t, res.Aliases[0], pulumi.URN("urn:pulumi:stack::project::pkgA:m:typA::"))
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output2"))
 				}
 				// "res3" is impacted by a global stack transformation which sets
 				// Foo to "baz"
