@@ -17,10 +17,11 @@ package pulumi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -328,7 +329,7 @@ func TestSecrets(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- errors.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("Invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -372,7 +373,7 @@ func TestSecretApply(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- errors.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("Invalid result: %v", val)
 		}
 		return val, nil
 	})

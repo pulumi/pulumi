@@ -15,9 +15,10 @@
 package pulumi
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -47,7 +48,7 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 		fieldName := from.Field(i).Name
 		j, ok := nameToIndex[fieldName]
 		if !ok {
-			panic(errors.Errorf("unknown field %v when marshaling inputs of type %v to %v", fieldName, from, to))
+			panic(fmt.Errorf("unknown field %v when marshaling inputs of type %v to %v", fieldName, from, to))
 		}
 
 		field := to.Field(j)
@@ -96,7 +97,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInput(pv.Field(i).Interface(), destField.Type, true)
 		if err != nil {
-			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", tag)
+			return nil, nil, nil, fmt.Errorf("awaiting input property %s: %w", tag, err)
 		}
 
 		// Record all dependencies accumulated from reading this property.
@@ -168,7 +169,7 @@ func marshalInputAndDetermineSecret(v interface{},
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {
-					err := errors.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
+					err := fmt.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
 					return resource.PropertyValue{}, nil, false, err
 				}
 			}
@@ -176,7 +177,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			// If the input is an Output, await its value. The returned value is fully resolved.
 			if output, ok := input.(Output); ok {
 				if !await {
-					return resource.PropertyValue{}, nil, false, errors.Errorf(cannotAwaitFmt, output)
+					return resource.PropertyValue{}, nil, false, fmt.Errorf(cannotAwaitFmt, output)
 				}
 
 				// Await the output.
@@ -290,7 +291,7 @@ func marshalInputAndDetermineSecret(v interface{},
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
 				return resource.PropertyValue{}, nil, false,
-					errors.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
+					fmt.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
 			}
 
 			if rv.IsNil() {
@@ -336,7 +337,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			}
 			return resource.NewObjectProperty(obj), deps, secret, nil
 		}
-		return resource.PropertyValue{}, nil, false, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
+		return resource.PropertyValue{}, nil, false, fmt.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
 }
 
@@ -434,7 +435,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 	switch {
 	case v.IsAsset():
 		if !assetType.AssignableTo(dest.Type()) {
-			return false, errors.Errorf("expected a %s, got an asset", dest.Type())
+			return false, fmt.Errorf("expected a %s, got an asset", dest.Type())
 		}
 
 		asset, secret, err := unmarshalPropertyValue(v)
@@ -445,7 +446,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		return secret, nil
 	case v.IsArchive():
 		if !archiveType.AssignableTo(dest.Type()) {
-			return false, errors.Errorf("expected a %s, got an archive", dest.Type())
+			return false, fmt.Errorf("expected a %s, got an archive", dest.Type())
 		}
 
 		archive, secret, err := unmarshalPropertyValue(v)
@@ -465,37 +466,37 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 	switch dest.Kind() {
 	case reflect.Bool:
 		if !v.IsBool() {
-			return false, errors.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetBool(v.BoolValue())
 		return false, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if !v.IsNumber() {
-			return false, errors.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetInt(int64(v.NumberValue()))
 		return false, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if !v.IsNumber() {
-			return false, errors.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetUint(uint64(v.NumberValue()))
 		return false, nil
 	case reflect.Float32, reflect.Float64:
 		if !v.IsNumber() {
-			return false, errors.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetFloat(v.NumberValue())
 		return false, nil
 	case reflect.String:
 		if !v.IsString() {
-			return false, errors.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetString(v.StringValue())
 		return false, nil
 	case reflect.Slice:
 		if !v.IsArray() {
-			return false, errors.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		arr := v.ArrayValue()
 		slice := reflect.MakeSlice(dest.Type(), len(arr), len(arr))
@@ -511,12 +512,12 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		return secret, nil
 	case reflect.Map:
 		if !v.IsObject() {
-			return false, errors.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
 		keyType, elemType := dest.Type().Key(), dest.Type().Elem()
 		if keyType.Kind() != reflect.String {
-			return false, errors.Errorf("map keys must be assignable from type string")
+			return false, fmt.Errorf("map keys must be assignable from type string")
 		}
 
 		result := reflect.MakeMap(dest.Type())
@@ -538,7 +539,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		return secret, nil
 	case reflect.Interface:
 		if !anyType.Implements(dest.Type()) {
-			return false, errors.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
+			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}
 
 		// If we're unmarshaling into the empty interface type, use the property type as the type of the result.
@@ -550,7 +551,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		return secret, nil
 	case reflect.Struct:
 		if !v.IsObject() {
-			return false, errors.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
+			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
 		obj := v.ObjectValue()
@@ -580,6 +581,6 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		}
 		return secret, nil
 	default:
-		return false, errors.Errorf("cannot unmarshal into type %v", dest.Type())
+		return false, fmt.Errorf("cannot unmarshal into type %v", dest.Type())
 	}
 }

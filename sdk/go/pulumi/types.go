@@ -17,10 +17,11 @@ package pulumi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -58,7 +59,7 @@ func RegisterOutputType(output Output) {
 	elementType := output.ElementType()
 	existing, hasExisting := concreteTypeToOutputType.LoadOrStore(elementType, reflect.TypeOf(output))
 	if hasExisting {
-		panic(errors.Errorf("an output type for %v is already registered: %v", elementType, existing))
+		panic(fmt.Errorf("an output type for %v is already registered: %v", elementType, existing))
 	}
 }
 
@@ -242,7 +243,7 @@ func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
 
 	ft := fv.Type()
 	if ft.NumIn() != 1 || !elementType.AssignableTo(ft.In(0)) {
-		panic(errors.Errorf("applier must have 1 input parameter assignable from %v", elementType))
+		panic(fmt.Errorf("applier must have 1 input parameter assignable from %v", elementType))
 	}
 
 	var outs []reflect.Type
@@ -277,7 +278,7 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 
 	ft := fv.Type()
 	if ft.NumIn() != 2 || !contextType.AssignableTo(ft.In(0)) || !elementType.AssignableTo(ft.In(1)) {
-		panic(errors.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
+		panic(fmt.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
 	}
 
 	switch ft.NumOut() {
@@ -541,7 +542,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 				// If the value type is not assignable to the destination, see if we can assign the input value itself
 				// to the destination.
 				if !v.Type().AssignableTo(resolved.Type()) {
-					panic(errors.Errorf("cannot convert an input of type %T to a value of type %v",
+					panic(fmt.Errorf("cannot convert an input of type %T to a value of type %v",
 						input, resolved.Type()))
 				} else {
 					assignInput = true
@@ -848,7 +849,7 @@ func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
 func convert(v interface{}, to reflect.Type) interface{} {
 	rv := reflect.ValueOf(v)
 	if !rv.Type().ConvertibleTo(to) {
-		panic(errors.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
+		panic(fmt.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
 	}
 	return rv.Convert(to).Interface()
 }
