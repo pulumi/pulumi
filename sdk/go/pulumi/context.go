@@ -279,32 +279,9 @@ func (ctx *Context) ReadResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	transformations := options.Transformations
-	if options.Parent != nil {
-		transformations = append(transformations, options.Parent.getTransformations()...)
-	}
-	for _, transformation := range transformations {
-		args := &ResourceTransformationArgs{
-			Resource: resource,
-			Type:     t,
-			Name:     name,
-			Props:    props,
-			Opts:     opts,
-		}
-
-		res := transformation(args)
-		if res != nil {
-			resOptions := &resourceOptions{}
-			for _, o := range res.Opts {
-				o.applyResourceOption(resOptions)
-			}
-
-			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
-				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
-			}
-			props = res.Props
-			options = resOptions
-		}
+	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return err
 	}
 
 	// Collapse aliases to URNs.
@@ -431,32 +408,9 @@ func (ctx *Context) RegisterResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	transformations := options.Transformations
-	if options.Parent != nil {
-		transformations = append(transformations, options.Parent.getTransformations()...)
-	}
-	for _, transformation := range transformations {
-		args := &ResourceTransformationArgs{
-			Resource: resource,
-			Type:     t,
-			Name:     name,
-			Props:    props,
-			Opts:     opts,
-		}
-
-		res := transformation(args)
-		if res != nil {
-			resOptions := &resourceOptions{}
-			for _, o := range res.Opts {
-				o.applyResourceOption(resOptions)
-			}
-
-			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
-				return errors.New("transformations cannot currently be used to change the `parent` of a resource")
-			}
-			props = res.Props
-			options = resOptions
-		}
+	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return err
 	}
 
 	// Collapse aliases to URNs.
@@ -541,6 +495,42 @@ type resourceState struct {
 	aliases         []URNOutput
 	name            string
 	transformations []ResourceTransformation
+}
+
+// Apply transformations and return the transformations themselves, as well as the transformed props and opts.
+func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
+	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
+
+	transformations := options.Transformations
+	if options.Parent != nil {
+		transformations = append(transformations, options.Parent.getTransformations()...)
+	}
+
+	for _, transformation := range transformations {
+		args := &ResourceTransformationArgs{
+			Resource: resource,
+			Type:     t,
+			Name:     name,
+			Props:    props,
+			Opts:     opts,
+		}
+
+		res := transformation(args)
+		if res != nil {
+			resOptions := &resourceOptions{}
+			for _, o := range res.Opts {
+				o.applyResourceOption(resOptions)
+			}
+
+			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
+				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
+			}
+			props = res.Props
+			options = resOptions
+		}
+	}
+
+	return props, options, transformations, nil
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
