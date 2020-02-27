@@ -31,7 +31,7 @@ func newPolicyDisableCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "disable <org-name>/<policy-pack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Disable a Policy Pack for a Pulumi organization",
+		Short: "[PREVIEW] Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Obtain current PolicyPack, tied to the Pulumi service backend.

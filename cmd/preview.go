@@ -207,11 +207,9 @@ func newPreviewCmd() *cobra.Command {
 		"Allows updating of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() || hasExperimentalCommands() {
-		cmd.PersistentFlags().StringSliceVar(
-			&policyPackPaths, "policy-pack", []string{},
-			"Run one or more analyzers as part of this update")
-	}
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackPaths, "policy-pack", []string{},
+		"[PREVIEW] Run one or more policy packs as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

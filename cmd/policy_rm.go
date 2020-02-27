@@ -27,7 +27,7 @@ func newPolicyRmCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
-		Short: "Removes a Policy Pack from a Pulumi organization",
+		Short: "[PREVIEW] Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
