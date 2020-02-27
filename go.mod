@@ -20,7 +20,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gofrs/flock v0.7.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
@@ -63,8 +63,8 @@ require (
 	golang.org/x/sys v0.0.0-20190620070143-6f217b454f45
 	golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5 // indirect
 	google.golang.org/api v0.6.0
-	google.golang.org/genproto v0.0.0-20190620144150-6af8c5fc6601
-	google.golang.org/grpc v1.21.1
+	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
+	google.golang.org/grpc v1.27.1
 	gopkg.in/AlecAivazis/survey.v1 v1.4.1
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
