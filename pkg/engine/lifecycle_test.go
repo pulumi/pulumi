@@ -5267,6 +5267,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			// Scenario #1 - apply a transformation to a CustomResource
 			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				// TODO[pulumi/pulumi#3846] We should use a mergeOptions-style API here.
 				return &pulumi.ResourceTransformationResult{
 					Props: args.Props,
 					Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output"})),
@@ -5278,6 +5279,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			// Scenario #2 - apply a transformation to a Component to transform it's children
 			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				if args.Name == "res2Child" {
+					// TODO[pulumi/pulumi#3846] We should use a mergeOptions-style API here.
 					return &pulumi.ResourceTransformationResult{
 						Props: args.Props,
 						Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output", "output2"})),
