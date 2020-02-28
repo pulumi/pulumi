@@ -108,9 +108,14 @@ func NewPolicyAnalyzer(
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), "."}, env)
 	if err != nil {
-		if err == errRunPolicyModuleNotFound {
+		// The original error might have been wrapped before being returned from newPlugin. So we look for
+		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
+		if errors.Cause(err) == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
 				"try running npm install or yarn install in %q", policyPackPath)
+		}
+		if errors.Cause(err) == errPluginNotFound {
+			return nil, fmt.Errorf("policy pack not found at %q", name)
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
