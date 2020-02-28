@@ -156,7 +156,7 @@ type ForTokens struct {
 
 func (ForTokens) isNodeTokens() {}
 
-// FunctionCallTokens records the tokens associated with an *hclsyntax.BinaryOpExpr.
+// FunctionCallTokens records the tokens associated with an *hclsyntax.FunctionCallExpr.
 type FunctionCallTokens struct {
 	Name       Token
 	OpenParen  Token
@@ -180,7 +180,7 @@ type LiteralValueTokens struct {
 
 func (LiteralValueTokens) isNodeTokens() {}
 
-// ObjectConstItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
+// ObjectConsItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
 type ObjectConsItemTokens struct {
 	Equals Token
 	Comma  *Token
@@ -284,7 +284,7 @@ func (l tokenList) offsetIndex(offset int) int {
 		case r.End.Byte <= offset:
 			l, base = l[i:], base+i
 		default:
-			contract.Failf("unexpected index condifion: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
+			contract.Failf("unexpected index condition: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
 		}
 	}
 	return -1
