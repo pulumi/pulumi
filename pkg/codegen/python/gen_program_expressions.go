@@ -99,6 +99,7 @@ type runeWriter interface {
 	WriteRune(c rune) (int, error)
 }
 
+// nolint: errcheck
 func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, escapeBraces bool) {
 	for _, c := range v {
 		switch c {
