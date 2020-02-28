@@ -298,12 +298,12 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	//
-	// If the diff does not require replacement and we are running a preview, register it under its current ID so that
-	// references to the provider from other resources will resolve properly.
+	// If the diff does not require replacement but does have changes, and we are running a preview, register it under
+	// its current ID so that references to the provider from other resources will resolve properly.
 	if len(diff.ReplaceKeys) != 0 {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-	} else if r.isPreview {
+	} else if r.isPreview && len(diff.ChangedKeys) != 0 {
 		r.setProvider(mustNewReference(urn, id), provider)
 	}
 

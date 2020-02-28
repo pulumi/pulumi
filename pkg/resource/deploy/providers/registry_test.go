@@ -615,11 +615,11 @@ func TestCRUDPreview(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{}, diff)
 
-		// The new provider should be registered.
+		// The original provider should be used because the config did not change.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
-		assert.False(t, p2 == old)
-		assert.True(t, p2 == p)
+		assert.True(t, p2 == old)
+		assert.False(t, p2 == p)
 	}
 
 	// Replace the existing provider for the last entry in olds.
