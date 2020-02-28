@@ -284,7 +284,7 @@
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
     </Exec>
 
-    <Error Text="examples tests (.\examples) failed" 
+    <Error Text="examples tests (.\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
     <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\tests\integration"

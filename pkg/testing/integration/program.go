@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -248,6 +249,8 @@ type ProgramTestOptions struct {
 	PipenvBin string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
 	DotNetBin string
+	// goDepBin is the location of a `dep` executable to be run. Taken from $PATH if missing.
+	GoDepBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -450,6 +453,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PipenvBin != "" {
 		opts.PipenvBin = overrides.PipenvBin
 	}
+	if overrides.GoDepBin != "" {
+		opts.GoDepBin = overrides.GoDepBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
 	}
@@ -629,6 +635,7 @@ type ProgramTester struct {
 	goBin        string              // the `go` binary we are using.
 	pipenvBin    string              // The `pipenv` binary we are using.
 	dotNetBin    string              // the `dotnet` binary we are using.
+	goDepBin     string              // the `goDep` binary we are using.
 	eventLog     string              // The path to the event log for this test.
 	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
 	tmpdir       string              // the temporary directory we use for our test environment
@@ -674,6 +681,10 @@ func (pt *ProgramTester) getPipenvBin() (string, error) {
 
 func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
+}
+
+func (pt *ProgramTester) getGoDepBin() (string, error) {
+	return getCmdBin(&pt.goDepBin, "dep", pt.opts.GoDepBin)
 }
 
 func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
@@ -894,7 +905,7 @@ func (pt *ProgramTester) TestCleanUp() {
 func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	err := pt.TestLifeCyclePrepare()
 	if err != nil {
-		return errors.Wrap(err, "copying test to temp dir")
+		return errors.Wrapf(err, "copying test to temp dir %s", pt.tmpdir)
 	}
 
 	pt.TestFinished = false
@@ -1448,26 +1459,29 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
-	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
-	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
+	stackName := string(pt.opts.GetStackName())
+
+	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must create
+	// a folder structure that adheres to GOPATH requirements
 	var tmpdir, projdir string
 	if projinfo.Proj.Runtime.Name() == "go" {
-		projdir = projinfo.Root
+		targetDir, err := tools.CreateTemporaryGoFolder("stackName")
+		if err != nil {
+			return "", "", errors.Wrap(err, "Couldn't create temporary directory")
+		}
+		tmpdir = targetDir
+		projdir = targetDir
 	} else {
-		stackName := string(pt.opts.GetStackName())
 		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
 		if tempErr != nil {
 			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 		}
-
-		// Copy the source project.
-		if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
-			return "", "", copyErr
-		}
-
-		// Set tmpdir so that the caller will clean up afterwards.
 		tmpdir = targetDir
 		projdir = targetDir
+	}
+	// Copy the source project.
+	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
+		return "", "", copyErr
 	}
 	projinfo.Root = projdir
 
@@ -1693,6 +1707,10 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return errors.Wrap(err, "locating `go` binary")
 	}
+	goDepBin, err := pt.getGoDepBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `dep` binary")
+	}
 
 	// Ensure GOPATH is known.
 	gopath := os.Getenv("GOPATH")
@@ -1710,13 +1728,34 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// skip building if the 'go run' invocation path is requested.
-	if !pt.opts.RunBuild {
-		return nil
+	// We only need to run dep-ensure if there is a Gopkg.toml file
+	_, err = os.Stat(filepath.Join(cwd, "Gopkg.toml"))
+	if err == nil {
+		err = pt.runCommand("dep-ensure", []string{goDepBin, "ensure", "-v"}, cwd)
+		if err != nil {
+			return fmt.Errorf("error installing go dependencies: %w", err)
+		}
 	}
 
+	// In our go tests, there seems to be an issue where we *need* to make a build before we
+	// actually run the tests. If a build isn't made, then we get an issue along the lines of
+	// `cannot import absolute path`. We will investigate this and add back in the respect
+	// for the runBuild option
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
-	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if runtime.GOOS == "windows" {
+		outBin = fmt.Sprintf("%s.exe", outBin)
+	}
+	err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(outBin)
+	if err != nil {
+		return fmt.Errorf("error finding built application artifact: %w", err)
+	}
+
+	return nil
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
