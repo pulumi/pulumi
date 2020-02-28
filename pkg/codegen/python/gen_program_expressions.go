@@ -1,6 +1,7 @@
 package python
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"strings"
@@ -94,36 +95,45 @@ func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression)
 	g.genNYI(w, "IndexExpression")
 }
 
+type runeWriter interface {
+	WriteRune(c rune) (int, error)
+}
+
+func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, escapeBraces bool) {
+	for _, c := range v {
+		switch c {
+		case '\n':
+			if escapeNewlines {
+				w.WriteRune('\\')
+				c = 'n'
+			}
+		case '"', '\\':
+			w.WriteRune('\\')
+		case '{', '}':
+			if escapeBraces {
+				w.WriteRune(c)
+			}
+		}
+		w.WriteRune(c)
+	}
+}
+
 func (g *generator) genStringLiteral(w io.Writer, v string) {
-	builder := strings.Builder{}
+	builder := &strings.Builder{}
 	newlines := strings.Count(v, "\n")
 	if newlines == 0 || newlines == 1 && (v[0] == '\n' || v[len(v)-1] == '\n') {
 		// This string either does not contain newlines or contains a single leading or trailing newline, so we'll
 		// Generate a short string literal. Quotes, backslashes, and newlines will be escaped in conformance with
 		// https://docs.python.org/3.7/reference/lexical_analysis.html#literals.
 		builder.WriteRune('"')
-		for _, c := range v {
-			if c == '\n' {
-				builder.WriteRune('\n')
-			} else {
-				if c == '"' || c == '\\' {
-					builder.WriteRune('\\')
-				}
-				builder.WriteRune(c)
-			}
-		}
+		g.genEscapedString(builder, v, true, false)
 		builder.WriteRune('"')
 	} else {
 		// This string does contain newlines, so we'll generate a long string literal. "${", backquotes, and
 		// backslashes will be escaped in conformance with
 		// https://docs.python.org/3.7/reference/lexical_analysis.html#literals.
 		builder.WriteString(`"""`)
-		for _, c := range v {
-			if c == '"' || c == '\\' {
-				builder.WriteRune('\\')
-			}
-			builder.WriteRune(c)
-		}
+		g.genEscapedString(builder, v, false, false)
 		builder.WriteString(`"""`)
 	}
 
@@ -215,15 +225,35 @@ func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression)
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
 	// TODO(pdg): triple-quoted string for multi-line literal, quoted braces
 
-	g.Fgen(w, `f"`)
-	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.Fgen(w, lit.Value.StringValue())
-		} else {
-			g.Fgenf(w, "{%v}", expr)
+	isMultiLine, quotes := false, `"`
+	for i, part := range expr.Parts {
+		if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			v := lit.Value.StringValue()
+			switch strings.Count(v, "\n") {
+			case 0:
+				continue
+			case 1:
+				if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
+					continue
+				}
+			}
+			isMultiLine, quotes = true, `"""`
+			break
 		}
 	}
-	g.Fgen(w, `"`)
+
+	b := bufio.NewWriter(w)
+	defer b.Flush()
+
+	g.Fprintf(b, `f%s`, quotes)
+	for _, expr := range expr.Parts {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			g.genEscapedString(b, lit.Value.StringValue(), !isMultiLine, true)
+		} else {
+			g.Fgenf(b, "{%v}", expr)
+		}
+	}
+	g.Fprint(b, quotes)
 }
 
 func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) {

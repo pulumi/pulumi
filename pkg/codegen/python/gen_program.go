@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -67,6 +68,39 @@ func pyName(pulumiName string, isObjectKey bool) string {
 		return fmt.Sprintf("%q", pulumiName)
 	}
 	return PyName(cleanName(pulumiName))
+}
+
+// genLeadingTrivia generates the list of leading trivia assicated with a given token.
+func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
+	// TODO(pdg): whitespace
+	for _, t := range token.LeadingTrivia {
+		if c, ok := t.(syntax.Comment); ok {
+			g.genComment(w, c)
+		}
+	}
+}
+
+// genTrailingTrivia generates the list of trailing trivia assicated with a given token.
+func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
+	// TODO(pdg): whitespace
+	for _, t := range token.TrailingTrivia {
+		if c, ok := t.(syntax.Comment); ok {
+			g.genComment(w, c)
+		}
+	}
+}
+
+// genTrivia generates the list of trivia assicated with a given token.
+func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
+	g.genLeadingTrivia(w, token)
+	g.genTrailingTrivia(w, token)
+}
+
+// genComment generates a comment into the output.
+func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
+	for _, l := range comment.Lines {
+		g.Fgenf(w, "%s#%s\n", g.Indent, l)
+	}
 }
 
 func (g *generator) genPreamble(w io.Writer, program *model.Program) {
@@ -139,6 +173,13 @@ func (g *generator) genResource(w io.Writer, r *model.Resource) {
 
 	name := pyName(r.Name(), false)
 	resName := g.makeResourceName(name, "")
+
+	g.genTrivia(w, r.Tokens.Type)
+	for _, l := range r.Tokens.Labels {
+		g.genTrivia(w, l)
+	}
+	g.genTrivia(w, r.Tokens.OpenBrace)
+
 	g.Fgenf(w, "%s%s = %s(%s", g.Indent, name, qualifiedMemberName, resName)
 	indenter := func(f func()) { f() }
 	if len(inputs.Items) > 1 {
@@ -156,8 +197,9 @@ func (g *generator) genResource(w io.Writer, r *model.Resource) {
 		}
 	})
 	g.Fgenf(w, "%s)\n", optionsBag)
+	g.genTrivia(w, r.Tokens.CloseBrace)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	g.Fgenf(w, "(lambda: throw Error(%q))()", fmt.Sprintf(reason, vs...))
+	g.Fgenf(w, "(lambda: raise Exception(%q))()", fmt.Sprintf(reason, vs...))
 }
