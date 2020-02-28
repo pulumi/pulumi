@@ -126,6 +126,17 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
+// GetSchema fetches the schema for this resource provider, if any.
+func (p *provider) GetSchema(version int) ([]byte, error) {
+	resp, err := p.clientRaw.GetSchema(p.ctx.Request(), &pulumirpc.GetSchemaRequest{
+		Version: int32(version),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return []byte(resp.GetSchema()), nil
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {

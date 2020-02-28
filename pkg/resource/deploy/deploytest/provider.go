@@ -81,6 +81,10 @@ func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
+func (prov *Provider) GetSchema(version int) ([]byte, error) {
+	return []byte("{}"), nil
+}
+
 func (prov *Provider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.CheckConfigF == nil {

@@ -184,6 +184,13 @@ func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
 
+// GetSchema returns the JSON-serialized schema for the provider.
+func (r *Registry) GetSchema(version int) ([]byte, error) {
+	contract.Fail()
+
+	return nil, errors.New("the provider registry has no schema")
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (r *Registry) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
