@@ -24,8 +24,9 @@ import { InvokeOptions } from "./invoke";
  * that synthesize properties dynamically (like Output).  Checking that the property has the 'true'
  * value isn't strictly necessary, but works to make sure that the impls are following a common
  * pattern.
+ *
+ * @internal
  */
-/** @internal */
 export function isInstance<T>(obj: any, name: keyof T): obj is T {
     return hasTrueBooleanMember(obj, name);
 }
@@ -52,6 +53,11 @@ export function values(obj: object): any[] {
         result.push((<any>obj)[key]);
     }
     return result;
+}
+
+/** @internal */
+export function union<T>(set1: Set<T>, set2: Set<T>) {
+    return new Set([...set1, ...set2]);
 }
 
 /**
@@ -94,11 +100,11 @@ export function promiseResult<T>(promise: Promise<T>): T {
 }
 
 /**
- * No longer supported. This function is now a no-op and will directly return the promise passed
- * into it.
- *
  * This is an advanced compat function for libraries and should not generally be used by normal
  * Pulumi application.
+ *
+ * @deprecated No longer supported. This function is now a no-op and will directly return the promise
+ * passed into it.
  */
 export function liftProperties<T>(promise: Promise<T>, opts: InvokeOptions = {}): Promise<T> & T {
     return <any>promise;

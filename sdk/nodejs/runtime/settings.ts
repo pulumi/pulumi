@@ -15,8 +15,6 @@
 import * as fs from "fs";
 import * as grpc from "grpc";
 import * as path from "path";
-import { RunError } from "../errors";
-import * as log from "../log";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
@@ -55,7 +53,7 @@ export interface Options {
  */
 const options = loadOptions();
 
-/** @internal Used only for testing purposes */
+/** @internal Used only for testing purposes. */
 export function _setIsDryRun(val: boolean) {
     (options as any).dryRun = val;
 }
@@ -90,12 +88,12 @@ function requireTestModeEnabled(): void {
     }
 }
 
-/* @internal Used only for testing purposes */
+/** @internal Used only for testing purposes. */
 export function _setQueryMode(val: boolean) {
     (options as any).queryMode = val;
 }
 
- /**
+/**
  * Returns true if query mode is enabled.
  */
 export function isQueryMode(): boolean {

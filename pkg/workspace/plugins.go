@@ -350,15 +350,15 @@ func HasPluginGTE(plug PluginInfo) (bool, error) {
 	return false, nil
 }
 
-// GetPolicyDir returns the directory in which policies on the current machine are managed.
-func GetPolicyDir() (string, error) {
-	return GetPulumiPath(PolicyDir)
+// GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.
+func GetPolicyDir(orgName string) (string, error) {
+	return GetPulumiPath(PolicyDir, orgName)
 }
 
 // GetPolicyPath finds a PolicyPack by its name version, as well as a bool marked true if the path
 // already exists and is a directory.
-func GetPolicyPath(name, version string) (string, bool, error) {
-	policiesDir, err := GetPolicyDir()
+func GetPolicyPath(orgName, name, version string) (string, bool, error) {
+	policiesDir, err := GetPolicyDir(orgName)
 	if err != nil {
 		return "", false, err
 	}

@@ -23,6 +23,9 @@ package pulumirpc;
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+    // GetSchema fetches the schema for this resource provider.
+    rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+
     // CheckConfig validates the configuration for this resource provider.
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
@@ -46,7 +49,7 @@ service ResourceProvider {
     // Diff checks what impacts a hypothetical update will have on the resource's properties.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
     // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
     rpc Create(CreateRequest) returns (CreateResponse) {}
     // Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
     // identify the resource; this is typically just the resource ID, but may also include some properties.
@@ -60,6 +63,14 @@ service ResourceProvider {
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+}
+
+message GetSchemaRequest {
+    int32 version = 1; // the schema version.
+}
+
+message GetSchemaResponse {
+    string schema = 1; // the JSON-encoded schema.
 }
 
 message ConfigureRequest {

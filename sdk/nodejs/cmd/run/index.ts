@@ -33,7 +33,7 @@ let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
     if (!programRunning) {
-        console.error(err.stack || err.message);
+        console.error(err.stack || err.message || ("" + err));
     }
 };
 
@@ -44,6 +44,7 @@ const uncaughtHandler = (err: Error) => {
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
 // https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+/** @internal */
 export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 process.on("uncaughtException", uncaughtHandler);

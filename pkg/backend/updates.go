@@ -70,6 +70,10 @@ const (
 	CISystem = "ci.system"
 	// CIBuildID is an opaque ID of the build in the CI system.
 	CIBuildID = "ci.build.id"
+	// CIBuildNumber is a sequentially incrementing number specific for a project/repo.
+	// This value is only set for CI systems that have separate Build ID and a Build Number.
+	// If this value is blank, use `CIBuildID` always.
+	CIBuildNumer = "ci.build.number"
 	// CIBuildType is the type of build of the CI system, e.g. "push", "pull_request", "test_only".
 	CIBuildType = "ci.build.type"
 	// CIBuildURL is a URL to get more information about the particular CI build.

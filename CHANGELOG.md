@@ -1,29 +1,210 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+- Fix missing module import on Windows platform.
+  [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
+## 1.11.1 (2020-02-26)
+- Fix a regression for CustomTimeouts in Python SDK.
+  [#3964](https://github.com/pulumi/pulumi/pull/3964)
+
+- Avoid panic when displaying failed stack policies.
+  [#3960](https://github.com/pulumi/pulumi/pull/3960)
+  
+- Add support for secrets in the Go SDK.
+  [3938](https://github.com/pulumi/pulumi/pull/3938)
+
+## 1.11.0 (2020-02-19)
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
+- Improve CPU utilization in the Python SDK when waiting for resource operations.
+  [#3892](https://github.com/pulumi/pulumi/pull/3892)
+
+- Expose resource options, parent, dependencies, and provider config to policies.
+  [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
+- Move .NET SDK attributes to the root namespace.
+  [#3902](https://github.com/pulumi/pulumi/pull/3902)
+
+- Support exporting older stack versions.
+  [#3906](https://github.com/pulumi/pulumi/pull/3906)
+
+- Disable interactive progress display when no terminal size is available.
+  [#3936](https://github.com/pulumi/pulumi/pull/3936)
+
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
+
+## 1.10.1 (2020-02-06)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
+- Fix the Windows release process.
+  [#3875](https://github.com/pulumi/pulumi/pull/3875)
+
+## 1.10.0 (2020-02-05)
+- Avoid writing checkpoints to backend storage in common case where no changes are being made.
+  [#3860](https://github.com/pulumi/pulumi/pull/3860)
+
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
+- Add support for aliases in the Go SDK
+  [3853](https://github.com/pulumi/pulumi/pull/3853)
+
+- Fix Python Dynamic Providers on Windows.
+  [#3855](https://github.com/pulumi/pulumi/pull/3855)
+
+## 1.9.1 (2020-01-27)
+- Fix a stack reference regression in the Python SDK.
+  [#3798](https://github.com/pulumi/pulumi/pull/3798)
+
+- Fix a buggy assertion in the Go SDK.
+  [#3794](https://github.com/pulumi/pulumi/pull/3794)
+
+- Add `--latest` flag to `pulumi policy enable`.
+
+- Breaking change for Policy which removes requirement for version when running `pulumi policy disable`. Add `--version` flag if user wants to specify version of Policy Pack to disable.
+
+- Fix rendering of Policy Packs to ensure they are always displayed.
+
+- Primitive input types in the Go SDK (e.g. Int, String, etc.) now implement the corresponding Ptr type e.g. IntPtr,
+  StringPtr, etc.). This is consistent with the output of the Go code generator and is much more ergonomic for
+  optional inputs than manually converting to pointer types.
+  [#3806](https://github.com/pulumi/pulumi/pull/3806)
+
+- Add ability to specify all versions when removing a Policy Pack.
+
+- Breaking change to Policy command: Change enable command to use `pulumi policy enable <org-name>/<policy-pack-name> latest` instead of a `--latest` flag.
+
+## 1.9.0 (2020-01-22)
+- Publish python types for PEP 561
+  [#3704](https://github.com/pulumi/pulumi/pull/3704)
+
+- Lock dep ts-node to v8.5.4
+  [#3733](https://github.com/pulumi/pulumi/pull/3733)
+
+- Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
+
+- Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
+
+- Add Permalink to output when publishing a Policy Pack.
+
+- Add `pulumi policy ls` and `pulumi policy group ls` to list Policy related resources.
+
+- Add `BuildNumber` to CI vars and backend metadata property bag for CI systems that have separate ID and a user-friendly number. [#3766](https://github.com/pulumi/pulumi/pull/3766)
+
+- Breaking changes for the Go SDK. Complete details are in [#3506](https://github.com/pulumi/pulumi/pull/3506).
+
+## 1.8.1 (2019-12-20)
+
+- Fix a panic in `pulumi stack select`.
+  [#3687](https://github.com/pulumi/pulumi/pull/3687)
+
+## 1.8.0 (2019-12-19)
+
+- Update version of TypeScript used by Pulumi to `3.7.3`.
+  [#3627](https://github.com/pulumi/pulumi/pull/3627)
+
+- Add support for GOOGLE_CREDENTIALS when using Google Cloud Storage backend.
+  [#2906](https://github.com/pulumi/pulumi/pull/2906)
+
+  ```sh
+   export GOOGLE_CREDENTIALS="$(cat ~/service-account-credentials.json)"
+   pulumi login gs://my-bucket
+  ```
+
+
+- Support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs.
+  [#3612](https://github.com/pulumi/pulumi/pull/3612)
+
+- Top-level Stack component in the .NET SDK.
+  [#3618](https://github.com/pulumi/pulumi/pull/3618)
+
+- Add the .NET Core 3.0 runtime to the `pulumi/pulumi` container.
+  [#3616](https://github.com/pulumi/pulumi/pull/3616)
+
+- Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
+  `--target-dependents` to align with `pulumi up`.
+  [#3675](https://github.com/pulumi/pulumi/pull/3675)
+
+- `ComponentResource`s now have built-in support for asynchronously constructing their children.
+  [#3676](https://github.com/pulumi/pulumi/pull/3676)
+
+- `Output.apply` (for the JS, Python and .Net sdks) has updated semantics, and will lift dependencies from inner Outputs to the returned Output.
+  [#3663](https://github.com/pulumi/pulumi/pull/3663)
+
+- Fix bug in determining PRNumber and BuildURL for an Azure Pipelines CI environment.
+  [#3677](https://github.com/pulumi/pulumi/pull/3677)
+
+- Improvements to `pulumi policy` functionality. Add ability to remove & disable Policy Packs.
+
+- Breaking change for Policy which is in Public Preview: Change `pulumi policy apply` to `pulumi policy enable`, and allow users to specify the Policy Group.
+
+## 1.7.1 (2019-12-13)
+
+- Fix [SxS issue](https://github.com/pulumi/pulumi/issues/3652) introduced in 1.7.0 when assigning
+  `Output`s across different versions of the `@pulumi/pulumi` SDK.
+  [#3658](https://github.com/pulumi/pulumi/pull/3658)
+
+## 1.7.0 (2019-12-11)
+
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This
+  allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
+  operations at the top-level.
+  [#3321](https://github.com/pulumi/pulumi/pull/3321)
+
+  ```ts
+  // JavaScript
+  module.exports = async () => {
+  }
+
+  //TypeScript
+  export = async () => {
+  }
+  ```
+
+## 1.6.1 (2019-11-26)
+
+- Support passing a parent and providers for `ReadResource`, `RegisterResource`, and `Invoke` in the go SDK. [#3563](https://github.com/pulumi/pulumi/pull/3563)
+
+- Fix go SDK ReadResource.
+  [#3581](https://github.com/pulumi/pulumi/pull/3581)
+
+- Fix go SDK DeleteBeforeReplace.
+  [#3572](https://github.com/pulumi/pulumi/pull/3572)
 
 - Support for setting the `PULUMI_PREFER_YARN` environment variable to opt-in to using `yarn` instead of `npm` for
-  installing Node.js dependencies. [#3556](https://github.com/pulumi/pulumi/pull/3556)
+  installing Node.js dependencies.
+  [#3556](https://github.com/pulumi/pulumi/pull/3556)
 
 - Fix regression that prevented relative paths passed to `--policy-pack` from working.
   [#3565](https://github.com/pulumi/pulumi/issues/3564)
 
 ## 1.6.0 (2019-11-20)
 
-- Support for config.GetObject and related variants for Golang. [#3526](https://github.com/pulumi/pulumi/pull/3526)
+- Support for config.GetObject and related variants for Golang.
+  [#3526](https://github.com/pulumi/pulumi/pull/3526)
 
-- Add support for IgnoreChanges in the go SDK [#3514](https://github.com/pulumi/pulumi/pull/3514)
+- Add support for IgnoreChanges in the go SDK.
+  [#3514](https://github.com/pulumi/pulumi/pull/3514)
 
 - Support for a `go run` style workflow. Building or installing a pulumi program written in go is
-  now optional. [#3503](https://github.com/pulumi/pulumi/pull/3503)
+  now optional.
+  [#3503](https://github.com/pulumi/pulumi/pull/3503)
 
 - Re-apply "propagate resource inputs to resource state during preview, including first-class unknown values." The new
   set of changes have additional fixes to ensure backwards compatibility with earlier code. This allows the preview to
   better estimate the state of a resource after an update, including property values that were populated using defaults
   calculated by the provider.
   [#3327](https://github.com/pulumi/pulumi/pull/3327)
-  
+
 - Validate StackName when passing a non-default secrets provider to `pulumi stack init`
 
 - Add support for go1.13.x
@@ -34,7 +215,8 @@ CHANGELOG
   reported resources as `--target`s, or pass the `--target-dependents` flag to allow necessary
   changes to unspecified dependent targets.
 
-- Support for node 13.x, building with gcc 8 and newer. [#3512] (https://github.com/pulumi/pulumi/pull/3512)
+- Support for node 13.x, building with gcc 8 and newer.
+  [#3512] (https://github.com/pulumi/pulumi/pull/3512)
 
 - Codepaths which could result in a hang will print a message to the console indicating the problem, along with a link
   to documentation on how to restructure code to best address it.
@@ -69,7 +251,8 @@ CHANGELOG
 - Improve startup time performance by 0.5-1s by checking for a newer CLI release in parallel.
   [#3441](https://github.com/pulumi/pulumi/pull/3441)
 
-- Add an experimental `pulumi watch` command. [#3391](https://github.com/pulumi/pulumi/pull/3391)
+- Add an experimental `pulumi watch` command.
+  [#3391](https://github.com/pulumi/pulumi/pull/3391)
 
 ## 1.4.1 (2019-11-01)
 
@@ -99,7 +282,8 @@ CHANGELOG
   [#3342](https://github.com/pulumi/pulumi/pull/3342)
 
 - `ResourceProvider#StreamInvoke` implemented, will be the basis for streaming
-  APIs in `pulumi query`. [#3424](https://github.com/pulumi/pulumi/pull/3424)
+  APIs in `pulumi query`.
+  [#3424](https://github.com/pulumi/pulumi/pull/3424)
 
 ## 1.4.0 (2019-10-24)
 
@@ -1389,3 +1573,4 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
+

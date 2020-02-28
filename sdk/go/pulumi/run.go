@@ -15,23 +15,26 @@
 package pulumi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// A RunOption is used to control the behavior of Run and RunErr.
+type RunOption func(*RunInfo)
+
 // Run executes the body of a Pulumi program, granting it access to a deployment context that it may use
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 // If the program fails, the process will be terminated and the function will not return.
-func Run(body RunFunc) {
-	if err := RunErr(body); err != nil {
+func Run(body RunFunc, opts ...RunOption) {
+	if err := RunErr(body, opts...); err != nil {
 		fmt.Fprintf(os.Stderr, "error: program failed: %v\n", err)
 		os.Exit(1)
 	}
@@ -39,20 +42,23 @@ func Run(body RunFunc) {
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
-func RunErr(body RunFunc) error {
+func RunErr(body RunFunc, opts ...RunOption) error {
 	// Parse the info out of environment variables.  This is a lame contract with the caller, but helps to keep
 	// boilerplate to a minimum in the average Pulumi Go program.
-	// TODO(joe): this is a fine default, but consider `...RunOpt`s to control how we get the various addresses, etc.
 	info := getEnvInfo()
+
+	for _, o := range opts {
+		o(&info)
+	}
 
 	// Validate some properties.
 	if info.Project == "" {
-		return errors.Errorf("missing project name")
+		return errors.New("missing project name")
 	} else if info.Stack == "" {
 		return errors.New("missing stack name")
-	} else if info.MonitorAddr == "" {
+	} else if info.MonitorAddr == "" && info.Mocks == nil {
 		return errors.New("missing resource monitor RPC address")
-	} else if info.EngineAddr == "" {
+	} else if info.EngineAddr == "" && info.Mocks == nil {
 		return errors.New("missing engine RPC address")
 	}
 
@@ -72,16 +78,13 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	info := ctx.info
 
 	// Create a root stack resource that we'll parent everything to.
-	reg, err := ctx.RegisterResource(
-		"pulumi:pulumi:Stack", fmt.Sprintf("%s-%s", info.Project, info.Stack), false, nil)
+	var stack ResourceState
+	err := ctx.RegisterResource(
+		"pulumi:pulumi:Stack", fmt.Sprintf("%s-%s", info.Project, info.Stack), nil, &stack)
 	if err != nil {
 		return err
 	}
-	ctx.stackR, _, err = reg.URN().await(context.TODO())
-	if err != nil {
-		return err
-	}
-	contract.Assertf(ctx.stackR != "", "expected root stack resource to have a non-empty URN")
+	ctx.stack = stack
 
 	// Execute the body.
 	var result error
@@ -90,12 +93,15 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	}
 
 	// Register all the outputs to the stack object.
-	if err = ctx.RegisterResourceOutputs(ctx.stackR, ctx.exports); err != nil {
+	if err = ctx.RegisterResourceOutputs(ctx.stack, Map(ctx.exports)); err != nil {
 		result = multierror.Append(result, err)
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
+	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
 	ctx.waitForRPCs()
+	if ctx.rpcError != nil {
+		return ctx.rpcError
+	}
 
 	// Propagate the error from the body, if any.
 	return result
@@ -114,6 +120,7 @@ type RunInfo struct {
 	DryRun      bool
 	MonitorAddr string
 	EngineAddr  string
+	Mocks       MockResourceMonitor
 }
 
 // getEnvInfo reads various program information from the process environment.

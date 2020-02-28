@@ -90,8 +90,17 @@ if [ -e package.json ]; then
     if [ -f yarn.lock ] || [ ! -z $USE_YARN ]; then
         yarn install
     else
+        # Set npm auth token if one is provided.
+        if [ ! -z "$NPM_AUTH_TOKEN" ]; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" > ~/.npmrc
+        fi
         npm install
     fi
+fi
+
+# If the user is running the Python SDK, we will need to install their requirements as well.
+if [ -e requirements.txt ]; then
+    pip3 install -r requirements.txt
 fi
 
 # Now just pass along all arguments to the Pulumi CLI, sending the output to a file for

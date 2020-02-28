@@ -10,8 +10,8 @@ namespace Pulumi.Tests.Core
     public partial class OutputTests : PulumiTest
     {
         private static Output<T> CreateOutput<T>(T value, bool isKnown, bool isSecret = false)
-            => new Output<T>(ImmutableHashSet<Resource>.Empty,
-                Task.FromResult(OutputData.Create(value, isKnown, isSecret)));
+            => new Output<T>(Task.FromResult(OutputData.Create(
+                ImmutableHashSet<Resource>.Empty, value, isKnown, isSecret)));
 
         public class PreviewTests
         {

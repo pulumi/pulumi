@@ -24,15 +24,15 @@ namespace Pulumi.Serialization
 
     internal class OutputCompletionSource<T> : IOutputCompletionSource
     {
+        private readonly ImmutableHashSet<Resource> _resources;
         private readonly TaskCompletionSource<OutputData<T>> _taskCompletionSource;
         public readonly Output<T> Output;
 
         public OutputCompletionSource(Resource? resource)
         {
+            _resources = resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource);
             _taskCompletionSource = new TaskCompletionSource<OutputData<T>>();
-            Output = new Output<T>(
-                resource == null ? ImmutableHashSet<Resource>.Empty : ImmutableHashSet.Create(resource),
-                _taskCompletionSource.Task);
+            Output = new Output<T>(_taskCompletionSource.Task);
         }
 
         public System.Type TargetType => typeof(T);
@@ -40,13 +40,16 @@ namespace Pulumi.Serialization
         IOutput IOutputCompletionSource.Output => Output;
 
         public void SetStringValue(string value, bool isKnown)
-            => _taskCompletionSource.SetResult(new OutputData<T>((T)(object)value, isKnown, isSecret: false));
+            => _taskCompletionSource.SetResult(new OutputData<T>(
+                _resources, (T)(object)value, isKnown, isSecret: false));
 
         public void SetValue(OutputData<object?> data)
-            => _taskCompletionSource.SetResult(new OutputData<T>((T)data.Value!, data.IsKnown, data.IsSecret));
+            => _taskCompletionSource.SetResult(new OutputData<T>(
+                _resources, (T)data.Value!, data.IsKnown, data.IsSecret));
 
         public void TrySetDefaultResult(bool isKnown)
-            => _taskCompletionSource.TrySetResult(new OutputData<T>(default!, isKnown, isSecret: false));
+            => _taskCompletionSource.TrySetResult(new OutputData<T>(
+                _resources, default!, isKnown, isSecret: false));
 
         public void TrySetException(Exception exception)
             => _taskCompletionSource.TrySetException(exception);
@@ -60,12 +63,15 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr = property.GetCustomAttribute<OutputAttribute>()
-                        where attr != null
-                        select (property, attr);
+                        let attr1 = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+#pragma warning disable 618
+                        let attr2 = property.GetCustomAttribute<Pulumi.Serialization.OutputAttribute>()
+#pragma warning restore 618
+                        where attr1 != null || attr2 != null
+                        select (property, attrName: attr1?.Name ?? attr2?.Name);
 
             var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
-            foreach (var (prop, attr) in query.ToList())
+            foreach (var (prop, attrName) in query.ToList())
             {
                 var propType = prop.PropertyType;
                 var propFullName = $"[Output] {resource.GetType().FullName}.{prop.Name}";
@@ -89,7 +95,9 @@ namespace Pulumi.Serialization
                 var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
 
                 setMethod.Invoke(resource, new[] { completionSource.Output });
-                result.Add(attr.Name, completionSource);
+
+                var outputName = attrName ?? prop.Name;
+                result.Add(outputName, completionSource);
             }
 
             Log.Debug("Fields to assign: " + JsonSerializer.Serialize(result.Keys), resource);

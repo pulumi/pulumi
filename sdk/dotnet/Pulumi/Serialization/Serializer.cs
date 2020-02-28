@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 
@@ -37,6 +38,7 @@ namespace Pulumi.Serialization
         /// <item><see cref="Archive"/>s</item>
         /// <item><see cref="Resource"/>s</item>
         /// <item><see cref="ResourceArgs"/>s</item>
+        /// <item><see cref="JsonElement"/></item>
         /// </list>
         /// Additionally, other more complex objects can be serialized as long as they are built
         /// out of serializable objects.  These complex objects include:
@@ -82,8 +84,8 @@ namespace Pulumi.Serialization
                 return prop;
             }
 
-            if (prop is ResourceArgs args)
-                return await SerializeResourceArgsAsync(ctx, args).ConfigureAwait(false);
+            if (prop is InputArgs args)
+                return await SerializeInputArgsAsync(ctx, args).ConfigureAwait(false);
 
             if (prop is AssetOrArchive assetOrArchive)
                 return await SerializeAssetOrArchiveAsync(ctx, assetOrArchive).ConfigureAwait(false);
@@ -114,6 +116,16 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 return await SerializeAsync(ctx, union.Value).ConfigureAwait(false);
             }
 
+            if (prop is JsonElement element)
+            {
+                if (_excessiveDebugOutput)
+                {
+                    Log.Debug($"Serialize property[{ctx}]: Recursing into Json");
+                }
+
+                return SerializeJson(ctx, element);
+            }
+
             if (prop is IOutput output)
             {
                 if (_excessiveDebugOutput)
@@ -121,8 +133,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
 
-                this.DependentResources.AddRange(output.Resources);
                 var data = await output.GetDataAsync().ConfigureAwait(false);
+                this.DependentResources.AddRange(data.Resources);
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
                 // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -193,6 +205,47 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             throw new InvalidOperationException($"{prop.GetType().FullName} is not a supported argument type.\n\t{ctx}");
         }
 
+        private object? SerializeJson(string ctx, JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Undefined:
+                case JsonValueKind.Null:
+                    return null;
+                case JsonValueKind.String:
+                    return element.GetString();
+                case JsonValueKind.Number:
+                    return element.GetDouble();
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return element.GetBoolean();
+                case JsonValueKind.Array:
+                {
+                    var result = ImmutableArray.CreateBuilder<object?>();
+                    var index = 0;
+                    foreach (var child in element.EnumerateArray())
+                    {
+                        result.Add(SerializeJson($"{ctx}[{index}]", child));
+                        index++;
+                    }
+
+                    return result.ToImmutable();
+                }
+                case JsonValueKind.Object:
+                {
+                    var result = ImmutableDictionary.CreateBuilder<string, object?>();
+                    foreach (var x in element.EnumerateObject())
+                    {
+                        result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
+                    }
+
+                    return result.ToImmutable();
+                }
+                default:
+                    throw new InvalidOperationException($"Unknown {nameof(JsonElement)}.{nameof(JsonElement.ValueKind)}: {element.ValueKind}");
+            }
+        }
+
         private async Task<ImmutableDictionary<string, object>> SerializeAssetOrArchiveAsync(string ctx, AssetOrArchive assetOrArchive)
         {
             if (_excessiveDebugOutput)
@@ -209,7 +262,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return builder.ToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeResourceArgsAsync(string ctx, ResourceArgs args)
+        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args)
         {
             if (_excessiveDebugOutput)
             {

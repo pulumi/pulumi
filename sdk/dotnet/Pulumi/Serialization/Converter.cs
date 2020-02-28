@@ -3,8 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
@@ -14,7 +16,7 @@ namespace Pulumi.Serialization
         public static OutputData<T> ConvertValue<T>(string context, Value value)
         {
             var (data, isKnown, isSecret) = ConvertValue(context, value, typeof(T));
-            return new OutputData<T>((T)data!, isKnown, isSecret);
+            return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)data!, isKnown, isSecret);
         }
 
         public static OutputData<object?> ConvertValue(string context, Value value, System.Type targetType)
@@ -24,7 +26,8 @@ namespace Pulumi.Serialization
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = ConvertObject(context, deserialized, targetType);
 
-            return new OutputData<object?>(converted, isKnown, isSecret);
+            return new OutputData<object?>(
+                ImmutableHashSet<Resource>.Empty, converted, isKnown, isSecret);
         }
 
         private static object? ConvertObject(string context, object? val, System.Type targetType)
@@ -92,6 +95,9 @@ namespace Pulumi.Serialization
             if (targetType == typeof(AssetOrArchive))
                 return TryEnsureType<AssetOrArchive>(context, val);
 
+            if (targetType == typeof(JsonElement))
+                return TryConvertJsonElement(context, val);
+
             if (targetType.IsConstructedGenericType)
             {
                 if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
@@ -107,14 +113,17 @@ namespace Pulumi.Serialization
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
-            if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
+            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null
+#pragma warning disable 618
+                && targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>() == null)
+#pragma warning restore 618
                 return (null, new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}"));
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
                 return (null, new InvalidOperationException(
-                    $"Expected target type {targetType.FullName} to have [{nameof(OutputConstructorAttribute)}] constructor when deserializing {context}"));
+                    $"Expected target type {targetType.FullName} to have [{nameof(Pulumi.OutputConstructorAttribute)}] constructor when deserializing {context}"));
 
             var (dictionary, tempException) = TryEnsureType<ImmutableDictionary<string, object>>(context, val);
             if (tempException != null)
@@ -139,6 +148,67 @@ namespace Pulumi.Serialization
             }
 
             return (constructor.Invoke(arguments), null);
+        }
+
+        private static (object?, InvalidOperationException?) TryConvertJsonElement(
+            string context, object val)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream))
+                {
+                    var exception = TryWriteJson(context, writer, val);
+                    if (exception != null)
+                        return (null, exception);
+                }
+
+                stream.Position = 0;
+                var document = JsonDocument.Parse(stream);
+                var element = document.RootElement;
+                return (element, null);
+            }
+        }
+
+        private static InvalidOperationException? TryWriteJson(string context, Utf8JsonWriter writer, object? val)
+        {
+            switch (val)
+            {
+                case string v:
+                    writer.WriteStringValue(v);
+                    return null;
+                case double v:
+                    writer.WriteNumberValue(v);
+                    return null;
+                case bool v:
+                    writer.WriteBooleanValue(v);
+                    return null;
+                case null:
+                    writer.WriteNullValue();
+                    return null;
+                case ImmutableArray<object?> v:
+                    writer.WriteStartArray();
+                    foreach (var element in v)
+                    {
+                        var exception = TryWriteJson(context, writer, element);
+                        if (exception != null)
+                            return exception;
+                    }
+                    writer.WriteEndArray();
+                    return null;
+                case ImmutableDictionary<string, object?> v:
+                    writer.WriteStartObject();
+                    foreach (var (key, element) in v)
+                    {
+                        writer.WritePropertyName(key);
+                        var exception = TryWriteJson(context, writer, element);
+                        if (exception != null)
+                            return exception;
+                    }
+                    writer.WriteEndObject();
+                    return null;
+                default:
+                    return new InvalidOperationException($"Unexpected type {val.GetType().FullName} when converting {context} to {nameof(JsonElement)}");
+            }
         }
 
         private static (T, InvalidOperationException?) TryEnsureType<T>(string context, object val)
@@ -245,7 +315,8 @@ namespace Pulumi.Serialization
                 targetType == typeof(string) ||
                 targetType == typeof(Asset) ||
                 targetType == typeof(Archive) ||
-                targetType == typeof(AssetOrArchive))
+                targetType == typeof(AssetOrArchive) ||
+                targetType == typeof(JsonElement))
             {
                 return;
             }
@@ -297,21 +368,24 @@ $@"{context} contains invalid type {targetType.FullName}:
                 }
             }
 
-            var propertyTypeAttribute = targetType.GetCustomAttribute<OutputTypeAttribute>();
+            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>()
+#pragma warning disable 618
+                                        ?? targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>();
+#pragma warning restore 618
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [{nameof(OutputTypeAttribute)}].");
+    a class explicitly marked with the [{nameof(Pulumi.OutputTypeAttribute)}].");
             }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(OutputConstructorAttribute)}].");
+$@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(Pulumi.OutputConstructorAttribute)}].");
             }
 
             foreach (var param in constructor.GetParameters())
@@ -322,6 +396,9 @@ $@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contai
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
+                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null
+#pragma warning disable 618
+                     || c.GetCustomAttributes<Pulumi.Serialization.OutputConstructorAttribute>() != null);
+#pragma warning restore 618
     }
 }

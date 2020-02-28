@@ -13,9 +13,9 @@
 // limitations under the License.
 
 import * as ts from "typescript";
-import * as closure from "./createClosure";
 import * as utils from "./utils";
 
+/** @internal */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
     const sourceFile = ts.createSourceFile(
         "", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);

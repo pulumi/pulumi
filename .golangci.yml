@@ -9,7 +9,6 @@ linters:
     - gosec
     - govet
     - ineffassign
-    - interfacer
     - lll
     - megacheck
     - misspell

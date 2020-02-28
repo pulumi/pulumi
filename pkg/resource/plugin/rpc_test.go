@@ -226,11 +226,29 @@ func TestAssetReject(t *testing.T) {
 func TestUnsupportedSecret(t *testing.T) {
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
+		"value":         "foo",
 	}))
 	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
 	assert.Nil(t, err)
-	_, err = UnmarshalPropertyValue(prop, MarshalOptions{})
-	assert.Error(t, err)
+	val, err := UnmarshalPropertyValue(prop, MarshalOptions{})
+	assert.Nil(t, err)
+	assert.True(t, val.IsString())
+	assert.False(t, val.IsSecret())
+	assert.Equal(t, "foo", val.StringValue())
+}
+
+func TestSupportedSecret(t *testing.T) {
+	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+		resource.SigKey: resource.SecretSig,
+		"value":         "foo",
+	}))
+	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{KeepSecrets: true})
+	assert.Nil(t, err)
+	val, err := UnmarshalPropertyValue(prop, MarshalOptions{KeepSecrets: true})
+	assert.Nil(t, err)
+	assert.False(t, val.IsString())
+	assert.True(t, val.IsSecret())
+	assert.Equal(t, "foo", val.SecretValue().Element.StringValue())
 }
 
 func TestUnknownSig(t *testing.T) {

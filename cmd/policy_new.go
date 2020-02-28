@@ -143,7 +143,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd); err != nil {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
 			if os.IsNotExist(err) {
 				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 			}

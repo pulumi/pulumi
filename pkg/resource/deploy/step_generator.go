@@ -15,7 +15,6 @@
 package deploy
 
 import (
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -62,6 +61,7 @@ type stepGenerator struct {
 
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
+	resourceGoals  map[resource.URN]*resource.Goal  // URN map of goals for ALL resources we have seen so far.
 	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
 
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
@@ -255,6 +255,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
+	sg.resourceGoals[urn] = goal
 	sg.resourceStates[urn] = new
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -314,22 +315,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// Load all policy packs into the plugin host.
-	for _, path := range sg.plan.localPolicyPackPaths {
-		abs, err := filepath.Abs(path)
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-
-		var analyzer plugin.Analyzer
-		analyzer, err = sg.plan.ctx.Host.PolicyAnalyzer(tokens.QName(abs), path)
-		if err != nil {
-			return nil, result.FromError(err)
-		} else if analyzer == nil {
-			return nil, result.Errorf("analyzer could not be loaded from path %q", path)
-		}
-	}
-
 	// Send the resource off to any Analyzers before being operated on.
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, analyzer := range analyzers {
@@ -338,7 +323,25 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			Type:       new.Type,
 			Name:       new.URN.Name(),
 			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Protect:                 new.Protect,
+				IgnoreChanges:           goal.IgnoreChanges,
+				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.Aliases,
+				CustomTimeouts:          new.CustomTimeouts,
+			},
 		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
+		if providerResource != nil {
+			r.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
+			}
+		}
+
 		diagnostics, err := analyzer.Analyze(r)
 		if err != nil {
 			return nil, result.FromError(err)
@@ -1148,6 +1151,20 @@ func (sg *stepGenerator) loadResourceProvider(
 	return p, nil
 }
 
+func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) *resource.State {
+	if provider == "" {
+		return nil
+	}
+
+	// All callers of this method are on paths that have previously validated that the provider
+	// reference can be parsed correctly and has a provider resource in the map.
+	ref, err := providers.ParseReference(provider)
+	contract.AssertNoErrorf(err, "failed to parse provider reference")
+	result := sg.providers[ref.URN()]
+	contract.Assertf(result != nil, "provider missing from step generator providers map")
+	return result
+}
+
 type dependentReplace struct {
 	res  *resource.State
 	keys []resource.PropertyKey
@@ -1259,16 +1276,40 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 func (sg *stepGenerator) AnalyzeResources() result.Result {
 	resourcesSeen := sg.resourceStates
-	resources := make([]plugin.AnalyzerResource, 0, len(resourcesSeen))
-	for _, v := range resourcesSeen {
-		resources = append(resources, plugin.AnalyzerResource{
-			URN:  v.URN,
-			Type: v.Type,
-			Name: v.URN.Name(),
-			// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
-			// to verify the final stack is in a compliant state.
-			Properties: v.Outputs,
-		})
+	resources := make([]plugin.AnalyzerStackResource, 0, len(resourcesSeen))
+	for urn, v := range resourcesSeen {
+		goal := sg.resourceGoals[urn]
+		resource := plugin.AnalyzerStackResource{
+			AnalyzerResource: plugin.AnalyzerResource{
+				URN:  v.URN,
+				Type: v.Type,
+				Name: v.URN.Name(),
+				// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
+				// to verify the final stack is in a compliant state.
+				Properties: v.Outputs,
+				Options: plugin.AnalyzerResourceOptions{
+					Protect:                 v.Protect,
+					IgnoreChanges:           goal.IgnoreChanges,
+					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
+					Aliases:                 v.Aliases,
+					CustomTimeouts:          v.CustomTimeouts,
+				},
+			},
+			Parent:               v.Parent,
+			Dependencies:         v.Dependencies,
+			PropertyDependencies: v.PropertyDependencies,
+		}
+		providerResource := sg.getProviderResource(v.URN, v.Provider)
+		if providerResource != nil {
+			resource.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
+			}
+		}
+		resources = append(resources, resource)
 	}
 
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
@@ -1280,12 +1321,16 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 		for _, d := range diagnostics {
 			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
 			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-			// Otherwise, use the default URN value ("") to not associate the violation with any particular URN.
+			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
+			// the default root stack URN.
 			var urn resource.URN
 			if d.URN != "" {
 				if _, ok := resourcesSeen[d.URN]; ok {
 					urn = d.URN
 				}
+			}
+			if urn == "" {
+				urn = resource.DefaultRootStackURN(sg.plan.Target().Name, sg.plan.source.Project())
 			}
 			sg.opts.Events.OnPolicyViolation(urn, d)
 		}
@@ -1313,6 +1358,7 @@ func newStepGenerator(
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
+		resourceGoals:        make(map[resource.URN]*resource.Goal),
 		resourceStates:       make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),

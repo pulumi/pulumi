@@ -175,14 +175,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 
 	contract.Assert(old.Delete == new.Delete)
 	contract.Assert(old.External == new.External)
-
-	if step.IsSkippedCreate() {
-		// In the case of a 'resource create' in a program that wasn't specified by the user in the
-		// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
-		// doesn't exist at all.  That way when the program runs the next time, we'll actually
-		// create it.
-		return false
-	}
+	contract.Assert(!step.IsSkippedCreate())
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
@@ -232,15 +225,23 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	}
 
 	// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
-	//
-	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
-	// checkpoint.
 	sortDeps := func(deps []resource.URN) {
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 	}
 	sortDeps(old.Dependencies)
 	sortDeps(new.Dependencies)
-	return !reflect.DeepEqual(old.Dependencies, new.Dependencies)
+	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
+	// lists being empty ourselves.
+	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
+		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+			return true
+		}
+	}
+
+	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
+	// checkpoint.
+
+	return false
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -249,7 +250,18 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Assert(successful)
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
+		sameStep := step.(*deploy.SameStep)
+
 		ssm.manager.markDone(step.Old())
+
+		// In the case of a 'resource create' in a program that wasn't specified by the user in the
+		// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
+		// doesn't exist at all.  That way when the program runs the next time, we'll actually
+		// create it.
+		if sameStep.IsSkippedCreate() {
+			return false
+		}
+
 		ssm.manager.markNew(step.New())
 
 		// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
@@ -257,10 +269,11 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		//
 		// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
 		// changes.
-		if !ssm.mustWrite(step.(*deploy.SameStep)) {
+		if !ssm.mustWrite(sameStep) {
 			logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
 			return false
 		}
+
 		return true
 	})
 }

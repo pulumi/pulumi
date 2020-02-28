@@ -169,7 +169,7 @@ class Config:
         :rtype: Optional[float]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self.get(key)
+        v = self.get_float(key)
         if v is None:
             return None
 
@@ -299,7 +299,7 @@ class Config:
             raise ConfigMissingError(self.full_key(key))
         return v
 
-    def require_secret_float(self, key: str) -> float:
+    def require_secret_float(self, key: str) -> Output[float]:
         """
         Returns a configuration value, as a float, marked as a secret by its given key.  If it doesn't exist, or the
         configuration value is not a legal number, an error is thrown.

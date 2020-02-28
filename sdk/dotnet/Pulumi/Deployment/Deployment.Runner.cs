@@ -12,8 +12,38 @@ namespace Pulumi
         {
             private readonly IDeploymentInternal _deployment;
 
+            /// <summary>
+            /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
+            /// to be able to expose a Synchronous <see cref="Resource"/> model for users. i.e. a
+            /// user just synchronously creates a resource, and we asynchronously kick off the work
+            /// to populate it.  This works well, however we have to make sure the console app
+            /// doesn't exit because it thinks there is no work to do.
+            /// <para/>
+            /// To ensure that doesn't happen, we have the main entrypoint of the app just
+            /// continuously, asynchronously loop, waiting for these tasks to complete, and only
+            /// exiting once the set becomes empty.
+            /// </summary>
+            private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
+
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
+
+            public Task<int> RunAsync<TStack>() where TStack : Stack, new()
+            {
+                try
+                {
+                    var stack = new TStack();
+                    // Stack doesn't call RegisterOutputs, so we register them on its behalf.
+                    stack.RegisterPropertyOutputs();
+                    RegisterTask("User program code.", stack.Outputs.DataTask);
+                }
+                catch (Exception ex)
+                {
+                    return HandleExceptionAsync(ex);
+                }
+
+                return WhileRunningAsync();
+            }
 
             public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
             {
@@ -24,9 +54,22 @@ namespace Pulumi
 
             public void RegisterTask(string description, Task task)
             {
-                lock (_taskToDescription)
+                Serilog.Log.Information($"Registering task: {description}");
+
+                lock (_inFlightTasks)
                 {
-                    _taskToDescription.Add(task, description);
+                    // We may get several of the same tasks with different descriptions.  That can
+                    // happen when the runtime reuses cached tasks that it knows are value-identical
+                    // (for example Task.CompletedTask).  In that case, we just store all the
+                    // descriptions. We'll print them all out as done once this task actually
+                    // finishes.
+                    if (!_inFlightTasks.TryGetValue(task, out var descriptions))
+                    {
+                        descriptions = new List<string>();
+                        _inFlightTasks.Add(task, descriptions);
+                    }
+
+                    descriptions.Add(description);
                 }
             }
 
@@ -37,8 +80,6 @@ namespace Pulumi
             // 32 was picked so as to be very unlikely to collide with any other error codes.
             private const int _processExitedAfterLoggingUserActionableMessage = 32;
 
-            private readonly Dictionary<Task, string> _taskToDescription = new Dictionary<Task, string>();
-
             private async Task<int> WhileRunningAsync()
             {
                 var tasks = new List<Task>();
@@ -47,26 +88,29 @@ namespace Pulumi
                 while (true)
                 {
                     tasks.Clear();
-                    lock (_taskToDescription)
+                    lock (_inFlightTasks)
                     {
-                        if (_taskToDescription.Count == 0)
+                        if (_inFlightTasks.Count == 0)
                         {
                             break;
                         }
 
-                        // grab all the tasks we currently have running.
-                        tasks.AddRange(_taskToDescription.Keys);
+                        // Grab all the tasks we currently have running.
+                        tasks.AddRange(_inFlightTasks.Keys);
                     }
 
                     // Now, wait for one of them to finish.
                     var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                    string description;
-                    lock (_taskToDescription)
+                    List<string> descriptions;
+                    lock (_inFlightTasks)
                     {
-                        // once finished, remove it from the set of tasks that are running.
-                        description = _taskToDescription[task];
-                        _taskToDescription.Remove(task);
+                        // Once finished, remove it from the set of tasks that are running.
+                        descriptions = _inFlightTasks[task];
+                        _inFlightTasks.Remove(task);
                     }
+
+                    foreach (var description in descriptions)
+                        Serilog.Log.Information($"Completed task: {description}");
 
                     try
                     {

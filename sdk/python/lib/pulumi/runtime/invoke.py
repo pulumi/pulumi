@@ -24,6 +24,21 @@ from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 
+# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
+# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
+# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs. If this setting ends up
+# causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s provider.
+#
+# This import was raising an exception on Windows [2], and the bug [3] it was fixing does not appear to be present on
+# Windows, so only enable this option on other platforms.
+#
+# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
+# [2] https://github.com/pulumi/pulumi/issues/3981
+# [3] https://github.com/pulumi/pulumi-kubernetes/issues/984
+if not sys.platform.startswith('win32'):
+    from google.protobuf.pyext._message import SetAllowOversizeProtos  # pylint: disable-msg=E0611
+    SetAllowOversizeProtos(True)
+
 # If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
 # implementation in order to support synchronous invokes.
 if sys.version_info[0] == 3 and sys.version_info[1] < 7:
@@ -39,8 +54,8 @@ if sys.version_info[0] == 3 and sys.version_info[1] < 7:
     _enter_task = enter_task
     _leave_task = leave_task
 else:
-    _enter_task = asyncio.tasks._enter_task
-    _leave_task = asyncio.tasks._leave_task
+    _enter_task = asyncio.tasks._enter_task # type: ignore
+    _leave_task = asyncio.tasks._leave_task # type: ignore
 
 
 def _sync_await(awaitable: Awaitable[Any]) -> Any:
@@ -72,17 +87,17 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     #
     # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
     # _run_once kernel with which we need to cooperate.
-    ntodo = len(loop._ready)
+    ntodo = len(loop._ready) # type: ignore
     while not fut.done() and not fut.cancelled():
-        loop._run_once()
-        if loop._stopping:
+        loop._run_once() # type: ignore
+        if loop._stopping: # type: ignore
             break
     # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
     # cancelled handles onto the list.
-    while len(loop._ready) < ntodo:
-        handle = asyncio.Handle(None, None, loop)
+    while len(loop._ready) < ntodo: # type: ignore
+        handle = asyncio.Handle(lambda: None, [], loop)
         handle._cancelled = True
-        loop._ready.append(handle)
+        loop._ready.append(handle) # type: ignore
 
     # If we were executing inside a task, restore its context and continue on.
     if task is not None:

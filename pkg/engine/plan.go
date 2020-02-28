@@ -135,8 +135,9 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
+	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 	plan, err := deploy.NewPlan(
-		plugctx, target, target.Snapshot, source, opts.LocalPolicyPackPaths, dryRun, ctx.BackendClient)
+		plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -225,7 +226,14 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[s
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(planResult.Options)
-	if res := planResult.Walk(ctx, actions, true); res != nil {
+	res := planResult.Walk(ctx, actions, true)
+
+	// Emit an event with a summary of operation counts.
+	changes := ResourceChanges(actions.Ops)
+	planResult.Options.Events.previewSummaryEvent(changes, policies)
+
+	if res != nil {
+
 		if res.IsBail() {
 			return nil, res
 		}
@@ -233,9 +241,6 @@ func printPlan(ctx *Context, planResult *planResult, dryRun bool, policies map[s
 		return nil, result.Error("an error occurred while advancing the preview")
 	}
 
-	// Emit an event with a summary of operation counts.
-	changes := ResourceChanges(actions.Ops)
-	planResult.Options.Events.previewSummaryEvent(changes, policies)
 	return changes, nil
 }
 

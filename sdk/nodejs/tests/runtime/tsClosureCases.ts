@@ -35,6 +35,7 @@ interface ClosureCase {
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
+/** @internal */
 export const exportedValue = 42;
 
 // This group of tests ensure that we serialize closures properly.

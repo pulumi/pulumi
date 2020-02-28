@@ -45,17 +45,23 @@ func (c *Config) Get(key string) string {
 	return Get(c.ctx, c.fullKey(key))
 }
 
+// GetObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) GetObject(key string, output interface{}) error {
+	return GetObject(c.ctx, c.fullKey(key), output)
+}
+
 // GetBool loads an optional bool configuration value by its key, or returns false if it doesn't exist.
 func (c *Config) GetBool(key string) bool {
 	return GetBool(c.ctx, c.fullKey(key))
 }
 
-// GetFloat32 loads an optional float32 configuration value by its key, or returns 0.0 if it doesn't exist.
+// GetFloat32 loads an optional float32 configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetFloat32(key string) float32 {
 	return GetFloat32(c.ctx, c.fullKey(key))
 }
 
-// GetFloat64 loads an optional float64 configuration value by its key, or returns 0.0 if it doesn't exist.
+// GetFloat64 loads an optional float64 configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetFloat64(key string) float64 {
 	return GetFloat64(c.ctx, c.fullKey(key))
 }
@@ -63,11 +69,6 @@ func (c *Config) GetFloat64(key string) float64 {
 // GetInt loads an optional int configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetInt(key string) int {
 	return GetInt(c.ctx, c.fullKey(key))
-}
-
-// GetInt8 loads an optional int8 configuration value by its key, or returns 0 if it doesn't exist.
-func (c *Config) GetInt8(key string) int8 {
-	return GetInt8(c.ctx, c.fullKey(key))
 }
 
 // GetInt16 loads an optional int16 configuration value by its key, or returns 0 if it doesn't exist.
@@ -85,20 +86,14 @@ func (c *Config) GetInt64(key string) int64 {
 	return GetInt64(c.ctx, c.fullKey(key))
 }
 
-// GetObject loads an optional configuration value into the specified output by its key,
-// or returns an error if unable to do so.
-func (c *Config) GetObject(key string, output interface{}) error {
-	return GetObject(c.ctx, c.fullKey(key), output)
+// GetInt8 loads an optional int8 configuration value by its key, or returns 0 if it doesn't exist.
+func (c *Config) GetInt8(key string) int8 {
+	return GetInt8(c.ctx, c.fullKey(key))
 }
 
 // GetUint loads an optional uint configuration value by its key, or returns 0 if it doesn't exist.
 func (c *Config) GetUint(key string) uint {
 	return GetUint(c.ctx, c.fullKey(key))
-}
-
-// GetUint8 loads an optional uint8 configuration value by its key, or returns 0 if it doesn't exist.
-func (c *Config) GetUint8(key string) uint8 {
-	return GetUint8(c.ctx, c.fullKey(key))
 }
 
 // GetUint16 loads an optional uint16 configuration value by its key, or returns 0 if it doesn't exist.
@@ -116,9 +111,20 @@ func (c *Config) GetUint64(key string) uint64 {
 	return GetUint64(c.ctx, c.fullKey(key))
 }
 
+// GetUint8 loads an optional uint8 configuration value by its key, or returns 0 if it doesn't exist.
+func (c *Config) GetUint8(key string) uint8 {
+	return GetUint8(c.ctx, c.fullKey(key))
+}
+
 // Require loads a configuration value by its key, or panics if it doesn't exist.
 func (c *Config) Require(key string) string {
 	return Require(c.ctx, c.fullKey(key))
+}
+
+// RequireObject loads a required configuration value into the specified output by its key,
+// or panics if unable to do so.
+func (c *Config) RequireObject(key string, output interface{}) {
+	RequireObject(c.ctx, c.fullKey(key), output)
 }
 
 // RequireBool loads a bool configuration value by its key, or panics if it doesn't exist.
@@ -141,11 +147,6 @@ func (c *Config) RequireInt(key string) int {
 	return RequireInt(c.ctx, c.fullKey(key))
 }
 
-// RequireInt8 loads a int8 configuration value by its key, or panics if it doesn't exist.
-func (c *Config) RequireInt8(key string) int8 {
-	return RequireInt8(c.ctx, c.fullKey(key))
-}
-
 // RequireInt16 loads a int16 configuration value by its key, or panics if it doesn't exist.
 func (c *Config) RequireInt16(key string) int16 {
 	return RequireInt16(c.ctx, c.fullKey(key))
@@ -161,20 +162,14 @@ func (c *Config) RequireInt64(key string) int64 {
 	return RequireInt64(c.ctx, c.fullKey(key))
 }
 
-// RequireObject loads a required configuration value into the specified output by its key,
-// or panics if unable to do so.
-func (c *Config) RequireObject(key string, output interface{}) {
-	RequireObject(c.ctx, c.fullKey(key), output)
+// RequireInt8 loads a int8 configuration value by its key, or panics if it doesn't exist.
+func (c *Config) RequireInt8(key string) int8 {
+	return RequireInt8(c.ctx, c.fullKey(key))
 }
 
 // RequireUint loads a uint configuration value by its key, or panics if it doesn't exist.
 func (c *Config) RequireUint(key string) uint {
 	return RequireUint(c.ctx, c.fullKey(key))
-}
-
-// RequireUint8 loads a uint8 configuration value by its key, or panics if it doesn't exist.
-func (c *Config) RequireUint8(key string) uint8 {
-	return RequireUint8(c.ctx, c.fullKey(key))
 }
 
 // RequireUint16 loads a uint16 configuration value by its key, or panics if it doesn't exist.
@@ -192,9 +187,20 @@ func (c *Config) RequireUint64(key string) uint64 {
 	return RequireUint64(c.ctx, c.fullKey(key))
 }
 
+// RequireUint8 loads a uint8 configuration value by its key, or panics if it doesn't exist.
+func (c *Config) RequireUint8(key string) uint8 {
+	return RequireUint8(c.ctx, c.fullKey(key))
+}
+
 // Try loads a configuration value by its key, returning a non-nil error if it doesn't exist.
 func (c *Config) Try(key string) (string, error) {
 	return Try(c.ctx, c.fullKey(key))
+}
+
+// TryObject loads an optional configuration value into the specified output by its key,
+// or returns an error if unable to do so.
+func (c *Config) TryObject(key string, output interface{}) error {
+	return TryObject(c.ctx, c.fullKey(key), output)
 }
 
 // TryBool loads an optional bool configuration value by its key, or returns an error if it doesn't exist.
@@ -217,11 +223,6 @@ func (c *Config) TryInt(key string) (int, error) {
 	return TryInt(c.ctx, c.fullKey(key))
 }
 
-// TryInt8 loads an optional int8 configuration value by its key, or returns an error if it doesn't exist.
-func (c *Config) TryInt8(key string) (int8, error) {
-	return TryInt8(c.ctx, c.fullKey(key))
-}
-
 // TryInt16 loads an optional int16 configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryInt16(key string) (int16, error) {
 	return TryInt16(c.ctx, c.fullKey(key))
@@ -237,20 +238,14 @@ func (c *Config) TryInt64(key string) (int64, error) {
 	return TryInt64(c.ctx, c.fullKey(key))
 }
 
-// TryObject loads an optional configuration value into the specified output by its key,
-// or returns an error if unable to do so.
-func (c *Config) TryObject(key string, output interface{}) error {
-	return TryObject(c.ctx, c.fullKey(key), output)
+// TryInt8 loads an optional int8 configuration value by its key, or returns an error if it doesn't exist.
+func (c *Config) TryInt8(key string) (int8, error) {
+	return TryInt8(c.ctx, c.fullKey(key))
 }
 
 // TryUint loads an optional uint configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryUint(key string) (uint, error) {
 	return TryUint(c.ctx, c.fullKey(key))
-}
-
-// TryUint8 loads an optional uint8 configuration value by its key, or returns an error if it doesn't exist.
-func (c *Config) TryUint8(key string) (uint8, error) {
-	return TryUint8(c.ctx, c.fullKey(key))
 }
 
 // TryUint16 loads an optional uint16 configuration value by its key, or returns an error if it doesn't exist.
@@ -266,4 +261,277 @@ func (c *Config) TryUint32(key string) (uint32, error) {
 // TryUint64 loads an optional uint64 configuration value by its key, or returns an error if it doesn't exist.
 func (c *Config) TryUint64(key string) (uint64, error) {
 	return TryUint64(c.ctx, c.fullKey(key))
+}
+
+// TryUint8 loads an optional uint8 configuration value by its key, or returns an error if it doesn't exist.
+func (c *Config) TryUint8(key string) (uint8, error) {
+	return TryUint8(c.ctx, c.fullKey(key))
+}
+
+// GetSecret loads an optional configuration value by its key
+// or "" if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecret(key string) pulumi.Output {
+	return GetSecret(c.ctx, c.fullKey(key))
+}
+
+// GetSecretObject loads an optional configuration value into the specified output by its key,
+// returning it wrapped in a secret Output or an error if unable to do so.
+func (c *Config) GetSecretObject(key string, output interface{}) (pulumi.Output, error) {
+	return GetSecretObject(c.ctx, c.fullKey(key), output)
+}
+
+// GetSecretBool loads an optional bool configuration value by its key
+// or false if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretBool(key string) pulumi.Output {
+	return GetSecretBool(c.ctx, c.fullKey(key))
+}
+
+// GetSecretFloat32 loads an optional float32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretFloat32(key string) pulumi.Output {
+	return GetSecretFloat32(c.ctx, c.fullKey(key))
+}
+
+// GetSecretFloat64 loads an optional float64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretFloat64(key string) pulumi.Output {
+	return GetSecretFloat64(c.ctx, c.fullKey(key))
+}
+
+// GetSecretInt loads an optional int configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt(key string) pulumi.Output {
+	return GetSecretInt(c.ctx, c.fullKey(key))
+}
+
+// GetSecretInt16 loads an optional int16 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt16(key string) pulumi.Output {
+	return GetSecretInt16(c.ctx, c.fullKey(key))
+}
+
+// GetSecretInt32 loads an optional int32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt32(key string) pulumi.Output {
+	return GetSecretInt32(c.ctx, c.fullKey(key))
+}
+
+// GetSecretInt64 loads an optional int64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt64(key string) pulumi.Output {
+	return GetSecretInt64(c.ctx, c.fullKey(key))
+}
+
+// GetSecretInt8 loads an optional int8 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretInt8(key string) pulumi.Output {
+	return GetSecretInt8(c.ctx, c.fullKey(key))
+}
+
+// GetSecretUint loads an optional uint configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint(key string) pulumi.Output {
+	return GetSecretUint(c.ctx, c.fullKey(key))
+}
+
+// GetSecretUint16 loads an optional uint16 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint16(key string) pulumi.Output {
+	return GetSecretUint16(c.ctx, c.fullKey(key))
+}
+
+// GetSecretUint32 loads an optional uint32 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint32(key string) pulumi.Output {
+	return GetSecretUint32(c.ctx, c.fullKey(key))
+}
+
+// GetSecretUint64 loads an optional uint64 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint64(key string) pulumi.Output {
+	return GetSecretUint64(c.ctx, c.fullKey(key))
+}
+
+// GetSecretUint8 loads an optional uint8 configuration value by its key
+// or 0 if it doesn't exist, and returns it wrapped in a secret Output.
+func (c *Config) GetSecretUint8(key string) pulumi.Output {
+	return GetSecretUint8(c.ctx, c.fullKey(key))
+}
+
+// RequireSecret loads a configuration value by its key
+// and returns it wrapped in a secret output, or panics if it doesn't exist.
+func (c *Config) RequireSecret(key string) pulumi.Output {
+	return RequireSecret(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretObject loads a required configuration value into the specified output by its key
+// and returns it wrapped in a secret Output, or panics if unable to do so.
+func (c *Config) RequireSecretObject(key string, output interface{}) pulumi.Output {
+	return RequireSecretObject(c.ctx, c.fullKey(key), output)
+}
+
+// RequireSecretBool loads a bool configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretBool(key string) pulumi.Output {
+	return RequireSecretBool(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretFloat32 loads a float32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretFloat32(key string) pulumi.Output {
+	return RequireSecretFloat32(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretFloat64 loads a float64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretFloat64(key string) pulumi.Output {
+	return RequireSecretFloat64(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretInt loads a int configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt(key string) pulumi.Output {
+	return RequireSecretInt(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretInt16 loads a int16 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt16(key string) pulumi.Output {
+	return RequireSecretInt16(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretInt32 loads a int32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt32(key string) pulumi.Output {
+	return RequireSecretInt32(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretInt64 loads a int64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt64(key string) pulumi.Output {
+	return RequireSecretInt64(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretInt8 loads a int8 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretInt8(key string) pulumi.Output {
+	return RequireSecretInt8(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretUint loads a uint configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint(key string) pulumi.Output {
+	return RequireSecretUint(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretUint16 loads a uint16 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint16(key string) pulumi.Output {
+	return RequireSecretUint16(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretUint32 loads a uint32 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint32(key string) pulumi.Output {
+	return RequireSecretUint32(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretUint64 loads a uint64 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint64(key string) pulumi.Output {
+	return RequireSecretUint64(c.ctx, c.fullKey(key))
+}
+
+// RequireSecretUint8 loads a uint8 configuration value by its key
+// and returns is wrapped in a secret Output, or panics if it doesn't exist.
+func (c *Config) RequireSecretUint8(key string) pulumi.Output {
+	return RequireSecretUint8(c.ctx, c.fullKey(key))
+}
+
+// TrySecret loads a configuration value by its key, returning a non-nil error if it doesn't exist.
+func (c *Config) TrySecret(key string) (pulumi.Output, error) {
+	return TrySecret(c.ctx, c.fullKey(key))
+}
+
+// TrySecretObject loads a configuration value by its key, returning a non-nil error if it doesn't exist.
+func (c *Config) TrySecretObject(key string, output interface{}) (pulumi.Output, error) {
+	return TrySecretObject(c.ctx, c.fullKey(key), output)
+}
+
+// TrySecretBool loads an optional bool configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretBool(key string) (pulumi.Output, error) {
+	return TrySecretBool(c.ctx, c.fullKey(key))
+}
+
+// TrySecretFloat32 loads an optional float32 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretFloat32(key string) (pulumi.Output, error) {
+	return TrySecretFloat32(c.ctx, c.fullKey(key))
+}
+
+// TrySecretFloat64 loads an optional float64 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretFloat64(key string) (pulumi.Output, error) {
+	return TrySecretFloat64(c.ctx, c.fullKey(key))
+}
+
+// TrySecretInt loads an optional int configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretInt(key string) (pulumi.Output, error) {
+	return TrySecretInt(c.ctx, c.fullKey(key))
+}
+
+// TrySecretInt16 loads an optional int16 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretInt16(key string) (pulumi.Output, error) {
+	return TrySecretInt16(c.ctx, c.fullKey(key))
+}
+
+// TrySecretInt32 loads an optional int32 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretInt32(key string) (pulumi.Output, error) {
+	return TrySecretInt32(c.ctx, c.fullKey(key))
+}
+
+// TrySecretInt64 loads an optional int64 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretInt64(key string) (pulumi.Output, error) {
+	return TrySecretInt64(c.ctx, c.fullKey(key))
+}
+
+// TrySecretInt8 loads an optional int8 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretInt8(key string) (pulumi.Output, error) {
+	return TrySecretInt8(c.ctx, c.fullKey(key))
+}
+
+// TrySecretUint loads an optional uint configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretUint(key string) (pulumi.Output, error) {
+	return TrySecretUint(c.ctx, c.fullKey(key))
+}
+
+// TrySecretUint16 loads an optional uint16 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretUint16(key string) (pulumi.Output, error) {
+	return TrySecretUint16(c.ctx, c.fullKey(key))
+}
+
+// TrySecretUint32 loads an optional uint32 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretUint32(key string) (pulumi.Output, error) {
+	return TrySecretUint32(c.ctx, c.fullKey(key))
+}
+
+// TrySecretUint64 loads an optional uint64 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretUint64(key string) (pulumi.Output, error) {
+	return TrySecretUint64(c.ctx, c.fullKey(key))
+}
+
+// TrySecretUint8 loads an optional uint8 configuration value by its key into a secret Output,
+// or returns an error if it doesn't exist.
+func (c *Config) TrySecretUint8(key string) (pulumi.Output, error) {
+	return TrySecretUint8(c.ctx, c.fullKey(key))
 }

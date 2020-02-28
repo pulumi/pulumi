@@ -21,11 +21,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
 func newStackSelectCmd() *cobra.Command {
 	var stack string
+	var secretsProvider string
+	var create bool
 	cmd := &cobra.Command{
 		Use:   "select [<stack>]",
 		Short: "Switch the current workspace to the given stack",
@@ -34,7 +37,8 @@ func newStackSelectCmd() *cobra.Command {
 			"Selecting a stack allows you to use commands like `config`, `preview`, and `update`\n" +
 			"without needing to type the stack name each time.\n" +
 			"\n" +
-			"If no <stack> argument is supplied, you will be prompted to select one interactively.",
+			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
+			"If provided stack name is not found you may pass the --create flag to create and select it",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -55,17 +59,25 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if stack != "" {
-				// A stack was given, ask the backend about it
+				// A stack was given, ask the backend about it.
 				stackRef, stackErr := b.ParseStackReference(stack)
 				if stackErr != nil {
 					return stackErr
 				}
 
-				stack, stackErr := b.GetStack(commandContext(), stackRef)
+				s, stackErr := b.GetStack(commandContext(), stackRef)
 				if stackErr != nil {
 					return stackErr
-				} else if stack != nil {
+				} else if s != nil {
 					return state.SetCurrentStack(stackRef.String())
+				}
+				// If create flag was passed and stack was not found, create it and select it.
+				if create && stack != "" {
+					s, err := stackInit(b, stack, false, secretsProvider)
+					if err != nil {
+						return err
+					}
+					return state.SetCurrentStack(s.Ref().String())
 				}
 
 				return errors.Errorf("no stack named '%s' found", stackRef)
@@ -76,6 +88,8 @@ func newStackSelectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			contract.Assert(stack != nil)
 			return state.SetCurrentStack(stack.Ref().String())
 
 		}),
@@ -83,5 +97,11 @@ func newStackSelectCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to select")
+	cmd.PersistentFlags().BoolVarP(
+		&create, "create", "c", false,
+		"If selected stack does not exist, create it")
+	cmd.PersistentFlags().StringVar(
+		&secretsProvider, "secrets-provider", "default",
+		"Use with --create flag, "+possibleSecretsProviderChoices)
 	return cmd
 }

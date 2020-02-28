@@ -3,30 +3,32 @@
 using System;
 using Google.Protobuf.WellKnownTypes;
 
-namespace Pulumi.Serialization
+namespace Pulumi
 {
     /// <summary>
-    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource output properties.
+    /// Attribute used by a mark <see cref="Resource"/> output properties. Use this attribute
+    /// in your Pulumi programs to mark outputs of <see cref="ComponentResource"/> and
+    /// <see cref="Stack"/> resources.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class OutputAttribute : Attribute 
     {
-        public string Name { get; }
+        public string? Name { get; }
 
-        public OutputAttribute(string name)
+        public OutputAttribute(string? name = null)
         {
             Name = name;
         }
     }
 
     /// <summary>
-    /// Attribute used by a Pulumi Cloud Provider Package to mark Resource input fields and
-    /// properties.
+    /// Attribute used by a Pulumi Cloud Provider Package to mark <see cref="Resource"/> input
+    /// fields and properties.
     /// <para/>
     /// Note: for simple inputs (i.e. <see cref="Input{T}"/> this should just be placed on the
     /// property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
     /// 
-    /// For collection inputs (i.e. <see cref="InputList{T}"/> this shuld be placed on the
+    /// For collection inputs (i.e. <see cref="InputList{T}"/> this should be placed on the
     /// backing field for the property.  i.e.
     /// 
     /// <code>

@@ -24,6 +24,7 @@ from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
 from .. import log
+from . import known_types
 
 from ..output import Output
 
@@ -43,10 +44,14 @@ async def run_in_stack(func: Callable):
         #
         # Note that "asyncio.sleep(0)" is the blessed way to do this:
         # https://github.com/python/asyncio/issues/284#issuecomment-154180935
+        #
+        # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while True:
             await asyncio.sleep(0)
-            if RPC_MANAGER.count == 0:
+            if len(RPC_MANAGER.rpcs) == 0:
                 break
+            log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
+            await RPC_MANAGER.rpcs.pop()
 
         # Asyncio event loops require that all outstanding tasks be completed by the time that the
         # event loop closes. If we're at this point and there are no outstanding RPCs, we should
@@ -71,7 +76,7 @@ async def run_in_stack(func: Callable):
     if RPC_MANAGER.unhandled_exception is not None:
         raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
-
+@known_types.stack
 class Stack(ComponentResource):
     """
     A synthetic stack component that automatically parents resources as the program runs.

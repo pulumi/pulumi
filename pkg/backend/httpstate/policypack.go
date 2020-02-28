@@ -28,23 +28,37 @@ import (
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
-	client *client.Client
+	client  *client.Client
+	orgName string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
-func newCloudRequiredPolicy(client *client.Client, policy apitype.RequiredPolicy) *cloudRequiredPolicy {
-	return &cloudRequiredPolicy{client: client, RequiredPolicy: policy}
+func newCloudRequiredPolicy(client *client.Client,
+	policy apitype.RequiredPolicy, orgName string) *cloudRequiredPolicy {
+
+	return &cloudRequiredPolicy{
+		client:         client,
+		RequiredPolicy: policy,
+		orgName:        orgName,
+	}
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
 func (rp *cloudRequiredPolicy) Version() string { return strconv.Itoa(rp.RequiredPolicy.Version) }
+func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
 func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 	policy := rp.RequiredPolicy
 
-	policyPackPath, installed, err := workspace.GetPolicyPath(
-		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), strconv.Itoa(policy.Version))
+	// If version tag is empty, we use the version tag. This is to support older version of
+	// pulumi/policy that do not have a version tag.
+	version := policy.VersionTag
+	if version == "" {
+		version = strconv.Itoa(policy.Version)
+	}
+	policyPackPath, installed, err := workspace.GetPolicyPath(rp.OrgName(),
+		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		// Failed to get a sensible PolicyPack path.
 		return "", err
@@ -63,9 +77,13 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 }
 
 func newCloudBackendPolicyPackReference(
-	orgName string, name tokens.QName) *cloudBackendPolicyPackReference {
+	cloudConsoleURL, orgName string, name tokens.QName) *cloudBackendPolicyPackReference {
 
-	return &cloudBackendPolicyPackReference{orgName: orgName, name: name}
+	return &cloudBackendPolicyPackReference{
+		orgName:         orgName,
+		name:            name,
+		cloudConsoleURL: cloudConsoleURL,
+	}
 }
 
 // cloudBackendPolicyPackReference is a reference to a PolicyPack implemented by the Pulumi service.
@@ -74,6 +92,14 @@ type cloudBackendPolicyPackReference struct {
 	name tokens.QName
 	// orgName that administrates the PolicyPack.
 	orgName string
+
+	// versionTag of the Policy Pack. This is typically the version specified in
+	// a package.json, setup.py, or similar file.
+	versionTag string
+
+	// cloudConsoleURL is the root URL of where the Policy Pack can be found in the console. The
+	// version must be appended to the returned URL.
+	cloudConsoleURL string
 }
 
 var _ backend.PolicyPackReference = (*cloudBackendPolicyPackReference)(nil)
@@ -88,6 +114,10 @@ func (pr *cloudBackendPolicyPackReference) OrgName() string {
 
 func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 	return pr.name
+}
+
+func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
+	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
@@ -124,7 +154,7 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -134,8 +164,9 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	// Update the name from the metadata.
+	// Update the name and version tag from the metadata.
 	pack.ref.name = tokens.QName(analyzerInfo.Name)
+	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Println("Compressing policy pack")
 
@@ -156,18 +187,37 @@ func (pack *cloudPolicyPack) Publish(
 	// Publish.
 	//
 
-	fmt.Println("Uploading policy pack to Pulumi service")
+	fmt.Println("Uploading Policy Pack to Pulumi service")
 
-	err = pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
 		return result.FromError(err)
 	}
 
+	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
+
 	return nil
 }
 
-func (pack *cloudPolicyPack) Apply(ctx context.Context, op backend.ApplyOperation) error {
-	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, string(pack.ref.name), op.Version)
+func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
+	if op.VersionTag == nil {
+		return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), "" /* versionTag */)
+	}
+	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.VersionTag)
+}
+
+func (pack *cloudPolicyPack) Disable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
+	if op.VersionTag == nil {
+		return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), "" /* versionTag */)
+	}
+	return pack.cl.DisablePolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.VersionTag)
+}
+
+func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOperation) error {
+	if op.VersionTag == nil {
+		return pack.cl.RemovePolicyPack(ctx, pack.ref.orgName, string(pack.ref.name))
+	}
+	return pack.cl.RemovePolicyPackByVersion(ctx, pack.ref.orgName, string(pack.ref.name), *op.VersionTag)
 }
 
 const npmPackageDir = "package"

@@ -22,7 +22,7 @@ Pulumi.AssetArchive
 Pulumi.AssetArchive.AssetArchive(System.Collections.Generic.IDictionary<string, Pulumi.AssetOrArchive> assets) -> void
 Pulumi.AssetOrArchive
 Pulumi.ComponentResource
-Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceOptions options = null) -> void
+Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
 Pulumi.ComponentResource.RegisterOutputs() -> void
 Pulumi.ComponentResource.RegisterOutputs(Pulumi.Output<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
 Pulumi.ComponentResource.RegisterOutputs(System.Collections.Generic.IDictionary<string, object> outputs) -> void
@@ -50,7 +50,7 @@ Pulumi.Config.RequireSecretBoolean(string key) -> Pulumi.Output<bool>
 Pulumi.Config.RequireSecretInt32(string key) -> Pulumi.Output<int>
 Pulumi.Config.RequireSecretObject<T>(string key) -> Pulumi.Output<T>
 Pulumi.CustomResource
-Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
+Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null) -> void
 Pulumi.CustomResource.Id.get -> Pulumi.Output<string>
 Pulumi.CustomResourceOptions
 Pulumi.CustomResourceOptions.AdditionalSecretOutputs.get -> System.Collections.Generic.List<string>
@@ -68,6 +68,8 @@ Pulumi.CustomTimeouts.Delete.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Delete.set -> void
 Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Update.set -> void
+Pulumi.DictionaryResourceArgs
+Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
 Pulumi.FileArchive
 Pulumi.FileArchive.FileArchive(string path) -> void
@@ -82,7 +84,11 @@ Pulumi.IDeployment.StackName.get -> string
 Pulumi.Input<T>
 Pulumi.InputArgs
 Pulumi.InputArgs.InputArgs() -> void
+Pulumi.InputAttribute
+Pulumi.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.InputExtensions
+Pulumi.InputJson
+Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
@@ -112,9 +118,16 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+Pulumi.OutputAttribute
+Pulumi.OutputAttribute.Name.get -> string
+Pulumi.OutputAttribute.OutputAttribute(string name = null) -> void
+Pulumi.OutputConstructorAttribute
+Pulumi.OutputConstructorAttribute.OutputConstructorAttribute() -> void
+Pulumi.OutputTypeAttribute
+Pulumi.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.OutputExtensions
 Pulumi.ProviderResource
-Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options = null) -> void
+Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null) -> void
 Pulumi.RemoteArchive
 Pulumi.RemoteArchive.RemoteArchive(string uri) -> void
 Pulumi.RemoteAsset
@@ -165,11 +178,26 @@ Pulumi.Serialization.InputAttribute
 Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.Serialization.OutputAttribute
 Pulumi.Serialization.OutputAttribute.Name.get -> string
-Pulumi.Serialization.OutputAttribute.OutputAttribute(string name) -> void
+Pulumi.Serialization.OutputAttribute.OutputAttribute(string name = null) -> void
 Pulumi.Serialization.OutputConstructorAttribute
 Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
 Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
+Pulumi.Stack
+Pulumi.Stack.Stack() -> void
+Pulumi.StackReference
+Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.GetValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
+Pulumi.StackReference.Name.get -> Pulumi.Output<string>
+Pulumi.StackReference.Outputs.get -> Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, object>>
+Pulumi.StackReference.RequireOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
+Pulumi.StackReference.RequireValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
+Pulumi.StackReference.SecretOutputNames.get -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<string>>
+Pulumi.StackReference.StackReference(string name, Pulumi.StackReferenceArgs args = null, Pulumi.CustomResourceOptions options = null) -> void
+Pulumi.StackReferenceArgs
+Pulumi.StackReferenceArgs.Name.get -> Pulumi.Input<string>
+Pulumi.StackReferenceArgs.Name.set -> void
+Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
 Pulumi.Union<T0, T1>
@@ -186,15 +214,17 @@ Pulumi.Union<T0, T1>.TryPickT0(out T0 value, out T1 remainder) -> bool
 Pulumi.Union<T0, T1>.TryPickT1(out T1 value, out T0 remainder) -> bool
 Pulumi.Union<T0, T1>.Value.get -> object
 Pulumi.Urn
+Pulumi.Utilities.OutputUtilities
 override Pulumi.Union<T0, T1>.Equals(object obj) -> bool
 override Pulumi.Union<T0, T1>.GetHashCode() -> int
 override Pulumi.Union<T0, T1>.ToString() -> string
-static Pulumi.ComponentResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ComponentResourceOptions
-static Pulumi.CustomResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.CustomResourceOptions
+static Pulumi.ComponentResourceOptions.Merge(Pulumi.ComponentResourceOptions options1, Pulumi.ComponentResourceOptions options2) -> Pulumi.ComponentResourceOptions
+static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1, Pulumi.CustomResourceOptions options2) -> Pulumi.CustomResourceOptions
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
@@ -203,6 +233,12 @@ static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Fun
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, U> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.ToOutput<T>(this Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonDocument> document) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonElement> element) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<string> json) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(System.Text.Json.JsonDocument document) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(System.Text.Json.JsonElement element) -> Pulumi.InputJson
+static Pulumi.InputJson.implicit operator Pulumi.InputJson(string json) -> Pulumi.InputJson
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T> value) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Input<T>[] values) -> Pulumi.InputList<T>
 static Pulumi.InputList<T>.implicit operator Pulumi.InputList<T>(Pulumi.Output<System.Collections.Generic.IEnumerable<T>> values) -> Pulumi.InputList<T>
@@ -231,6 +267,7 @@ static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(T0 
 static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(T1 value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.Log.Debug(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
+static Pulumi.Log.Exception(System.Exception exception, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
@@ -263,7 +300,8 @@ static Pulumi.OutputExtensions.IsT0<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, 
 static Pulumi.OutputExtensions.IsT1<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<bool>
 static Pulumi.OutputExtensions.Length<T>(this Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>> array) -> Pulumi.Output<int>
 static Pulumi.OutputExtensions.Value<T0, T1>(this Pulumi.Output<Pulumi.Union<T0, T1>> output) -> Pulumi.Output<object>
-static Pulumi.ResourceOptions.Merge(Pulumi.ResourceOptions options1, Pulumi.ResourceOptions options2) -> Pulumi.ResourceOptions
+static Pulumi.Utilities.OutputUtilities.GetDependenciesAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableHashSet<Pulumi.Resource>>
+static Pulumi.Utilities.OutputUtilities.GetIsKnownAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<bool>
 static Pulumi.Union<T0, T1>.FromT0(T0 input) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.FromT1(T1 input) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.implicit operator Pulumi.Union<T0, T1>(T0 t) -> Pulumi.Union<T0, T1>

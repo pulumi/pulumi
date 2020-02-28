@@ -18,11 +18,15 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+)
+
+const (
+	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
+		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
 )
 
 func newStackInitCmd() *cobra.Command {
@@ -87,7 +91,7 @@ func newStackInitCmd() *cobra.Command {
 						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 				}
 
-				name, nameErr := promptForValue(false, "stack name", "dev", false, workspace.ValidateStackName, opts)
+				name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
 				if nameErr != nil {
 					return nameErr
 				}
@@ -98,7 +102,7 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			if err := workspace.ValidateStackName(stackName); err != nil {
+			if err := b.ValidateStackName(stackName); err != nil {
 				return err
 			}
 
@@ -115,7 +119,6 @@ func newStackInitCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
+		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
 	return cmd
 }

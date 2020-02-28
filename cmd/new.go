@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// nolint: goconst
 package cmd
 
 import (
@@ -152,7 +153,7 @@ func runNew(args newArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd); err != nil {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
 				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
 			}
@@ -516,7 +517,7 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	}
 
 	for {
-		stackName, err := prompt(yes, "stack name", "dev", false, workspace.ValidateStackName, opts)
+		stackName, err := prompt(yes, "stack name", "dev", false, b.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -653,7 +654,12 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		// environment.
 
 		// Create the virtual environment.
-		commands = append(commands, "virtualenv -p python3 venv")
+		switch runtime.GOOS {
+		case "windows":
+			commands = append(commands, "python -m venv venv")
+		default:
+			commands = append(commands, "python3 -m venv venv")
+		}
 
 		// Activate the virtual environment. Only active in the user's current shell, so we can't
 		// just run it for the user here.
@@ -666,6 +672,13 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 
 		// Install dependencies within the virtualenv
 		commands = append(commands, "pip3 install -r requirements.txt")
+	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
+		// If we're generating a Go project, we (currently) will be placing a `Gopkg.toml`, and the
+		// user will need to `dep ensure` before running an update.  So we will recommend this to
+		// them explicitly.
+		//
+		// TODO[pulumi/pulumi#3817] When we move to Go modules, we will want to update this.
+		commands = append(commands, "dep ensure")
 	}
 
 	// If we didn't create a stack, show that as a command to run before `pulumi up`.

@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -97,24 +99,49 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 	return path.Join(append([]string{prefix}, components...)...)
 }
 
-// publishPolicyPackPath returns the API path to for the given organization with the given
-// components joined with path separators and appended to the organization root.
+// listPolicyGroupsPath returns the path for an API call to the Pulumi service to list the Policy Groups
+// in a Pulumi organization.
+func listPolicyGroupsPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policygroups", orgName)
+}
+
+// listPolicyPacksPath returns the path for an API call to the Pulumi service to list the Policy Packs
+// in a Pulumi organization.
+func listPolicyPacksPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
+}
+
+// publishPolicyPackPath returns the path for an API call to the Pulumi service to publish a new Policy Pack
+// in a Pulumi organization.
 func publishPolicyPackPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/policypacks", orgName)
 }
 
-// appyPolicyPackPath returns the path for an API call to the Pulumi service to apply a PolicyPack
-// to a Pulumi organization.
-func applyPolicyPackPath(orgName, policyPackName string, version int) string {
+// updatePolicyGroupPath returns the path for an API call to the Pulumi service to update a PolicyGroup
+// for a Pulumi organization.
+func updatePolicyGroupPath(orgName, policyGroup string) string {
 	return fmt.Sprintf(
-		"/api/orgs/%s/policypacks/%s/versions/%d/apply", orgName, policyPackName, version)
+		"/api/orgs/%s/policygroups/%s", orgName, policyGroup)
+}
+
+// deletePolicyPackPath returns the path for an API call to the Pulumi service to delete
+// all versions of a Policy Pack from a Pulumi organization.
+func deletePolicyPackPath(orgName, policyPackName string) string {
+	return fmt.Sprintf("/api/orgs/%s/policypacks/%s", orgName, policyPackName)
+}
+
+// deletePolicyPackVersionPath returns the path for an API call to the Pulumi service to delete
+// a version of a Policy Pack from a Pulumi organization.
+func deletePolicyPackVersionPath(orgName, policyPackName, versionTag string) string {
+	return fmt.Sprintf(
+		"/api/orgs/%s/policypacks/%s/versions/%s", orgName, policyPackName, versionTag)
 }
 
 // publishPolicyPackPublishComplete returns the path for an API call to signal to the Pulumi service
 // that a PolicyPack to a Pulumi organization.
-func publishPolicyPackPublishComplete(orgName, policyPackName string, version int) string {
+func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag string) string {
 	return fmt.Sprintf(
-		"/api/orgs/%s/policypacks/%s/versions/%d/complete", orgName, policyPackName, version)
+		"/api/orgs/%s/policypacks/%s/versions/%s/complete", orgName, policyPackName, versionTag)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -351,11 +378,19 @@ func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([
 }
 
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
-func (pc *Client) ExportStackDeployment(ctx context.Context,
-	stack StackIdentifier) (apitype.UntypedDeployment, error) {
+// If version is nil, will export the latest version of the stack.
+func (pc *Client) ExportStackDeployment(
+	ctx context.Context, stack StackIdentifier, version *int) (apitype.UntypedDeployment, error) {
+
+	path := getStackPath(stack, "export")
+
+	// Tack on a specific version as desired.
+	if version != nil {
+		path += fmt.Sprintf("/%d", *version)
+	}
 
 	var resp apitype.ExportStackResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
 	}
 
@@ -411,7 +446,7 @@ func (pc *Client) CreateUpdate(
 		Description: description,
 		Config:      wireConfig,
 		Options: apitype.UpdateOptions{
-			LocalPolicyPackPaths: opts.LocalPolicyPackPaths,
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
@@ -483,30 +518,60 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, nil
 }
 
-// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service.
+// ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
+func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+	var resp apitype.ListPolicyGroupsResponse
+	err := pc.restCall(ctx, "GET", listPolicyGroupsPath(orgName), nil, nil, &resp)
+	if err != nil {
+		return resp, errors.Wrapf(err, "List Policy Groups failed")
+	}
+	return resp, nil
+}
+
+// ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
+func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+	var resp apitype.ListPolicyPacksResponse
+	err := pc.restCall(ctx, "GET", listPolicyPacksPath(orgName), nil, nil, &resp)
+	if err != nil {
+		return resp, errors.Wrapf(err, "List Policy Packs failed")
+	}
+	return resp, nil
+}
+
+// PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
+// the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) error {
+	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader) (string, error) {
 
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
 	// publishing the PolicyPack.
 	//
 
+	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
+		return "", err
+	}
+
 	req := apitype.CreatePolicyPackRequest{
 		Name:        analyzerInfo.Name,
 		DisplayName: analyzerInfo.DisplayName,
+		VersionTag:  analyzerInfo.Version,
 		Policies:    analyzerInfo.Policies,
 	}
 
-	fmt.Printf("Publishing %s to %s\n", analyzerInfo.Name, orgName)
+	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
+	// is in use, which does not provide  a version tag.
+	var versionMsg string
+	if analyzerInfo.Version != "" {
+		versionMsg = fmt.Sprintf(" - version %s", analyzerInfo.Version)
+	}
+	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
 
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP POST to publish policy pack failed")
+		return "", errors.Wrapf(err, "Publish policy pack failed")
 	}
-
-	fmt.Printf("Published as version %d\n", resp.Version)
 
 	//
 	// Step 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The PolicyPack is
@@ -515,39 +580,119 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 
 	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	_, err = http.DefaultClient.Do(putS3Req)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
 	//
 	// Step 3: Signal to the service that the PolicyPack publish operation is complete.
 	//
 
+	// If the version tag is empty, an older version of pulumi/policy is being used and
+	// we therefore need to use the version provided by the pulumi service.
+	version := analyzerInfo.Version
+	if version == "" {
+		version = strconv.Itoa(resp.Version)
+		fmt.Printf("Published as version %s\n", version)
+	}
 	err = pc.restCall(ctx, "POST",
-		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, resp.Version), nil, nil, nil)
+		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "HTTP POST to signal completion of the publish operation failed")
+		return "", errors.Wrapf(err, "Request to signal completion of the publish operation failed")
 	}
 
+	return version, nil
+}
+
+// validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
+// as it is likely an older version of pulumi/policy that does not gather the version.
+func validatePolicyPackVersion(s string) error {
+	if s == "" {
+		return nil
+	}
+
+	policyPackVersionTagRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
+	if !policyPackVersionTagRE.MatchString(s) {
+		msg := fmt.Sprintf("invalid version %q - version may only contain alphanumeric, hyphens, or underscores. "+
+			"It must also be between 1 and 100 characters long.", s)
+		return errors.New(msg)
+	}
 	return nil
 }
 
-// ApplyPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName string, policyPackName string,
-	version int) error {
+// ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
+// it will enable the PolicyPack on the default PolicyGroup.
+func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
+	policyPackName, versionTag string) error {
 
-	req := apitype.ApplyPolicyPackRequest{Name: policyPackName, Version: version}
-
-	err := pc.restCall(
-		ctx, "POST", applyPolicyPackPath(orgName, policyPackName, version), nil, req, nil)
-	if err != nil {
-		return errors.Wrapf(err, "HTTP POST to apply policy pack failed")
+	// If a Policy Group was not specified, we use the default Policy Group.
+	if policyGroup == "" {
+		policyGroup = apitype.DefaultPolicyGroup
 	}
 
+	// If a Policy Group was specified, enable it for the specific group only.
+	req := apitype.UpdatePolicyGroupRequest{
+		AddPolicyPack: &apitype.PolicyPackMetadata{
+			Name:       policyPackName,
+			VersionTag: versionTag,
+		},
+	}
+
+	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Enable policy pack failed")
+	}
+	return nil
+}
+
+// DisablePolicyPack disables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
+// it will disable the PolicyPack on the default PolicyGroup.
+func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyGroup string,
+	policyPackName, versionTag string) error {
+
+	// If Policy Group was not specified, use the default Policy Group.
+	if policyGroup == "" {
+		policyGroup = apitype.DefaultPolicyGroup
+	}
+
+	req := apitype.UpdatePolicyGroupRequest{
+		RemovePolicyPack: &apitype.PolicyPackMetadata{
+			Name:       policyPackName,
+			VersionTag: versionTag,
+		},
+	}
+
+	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Request to disable policy pack failed")
+	}
+	return nil
+}
+
+// RemovePolicyPack removes all versions of a `PolicyPack` from the Pulumi organization.
+func (pc *Client) RemovePolicyPack(ctx context.Context, orgName string, policyPackName string) error {
+	path := deletePolicyPackPath(orgName, policyPackName)
+	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Request to remove policy pack failed")
+	}
+	return nil
+}
+
+// RemovePolicyPackByVersion removes a specific version of a `PolicyPack` from
+// the Pulumi organization.
+func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
+	policyPackName string, versionTag string) error {
+
+	path := deletePolicyPackVersionPath(orgName, policyPackName, versionTag)
+	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Request to remove policy pack failed")
+	}
 	return nil
 }
 

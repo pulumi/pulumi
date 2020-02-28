@@ -37,6 +37,11 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+// GetSchema returns the JSON-serialized schema for the provider.
+func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
+	return []byte("{}"), nil
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {

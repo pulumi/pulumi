@@ -15,7 +15,9 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/blang/semver"
@@ -59,7 +61,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), ctx.Pwd})
+		[]string{host.ServerAddr(), ctx.Pwd}, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ const policyAnalyzerName = "policy"
 
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, policyPackPath string) (Analyzer, error) {
+	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	_, pluginPath, err := workspace.GetPluginPath(
@@ -91,6 +93,12 @@ func NewPolicyAnalyzer(
 			"does not support resource policies", string(name))
 	}
 
+	// Create the environment variables from the options.
+	env, err := constructEnv(opts)
+	if err != nil {
+		return nil, err
+	}
+
 	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
 	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
 	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
@@ -98,7 +106,7 @@ func NewPolicyAnalyzer(
 	// node_modules is used.
 	pwd := policyPackPath
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), "."})
+		[]string{host.ServerAddr(), "."}, env)
 	if err != nil {
 		if err == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
@@ -134,11 +142,18 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
+	provider, err := marshalProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       string(name),
 		Properties: mprops,
+		Options:    marshalResourceOptions(r.Options),
+		Provider:   provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -157,7 +172,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -167,11 +182,37 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
 
+		provider, err := marshalProvider(resource.Provider)
+		if err != nil {
+			return nil, err
+		}
+
+		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
+		for pk, pd := range resource.PropertyDependencies {
+			// Skip properties that have no dependencies.
+			if len(pd) == 0 {
+				continue
+			}
+
+			pdeps := []string{}
+			for _, d := range pd {
+				pdeps = append(pdeps, string(d))
+			}
+			propertyDeps[string(pk)] = &pulumirpc.AnalyzerPropertyDependencies{
+				Urns: pdeps,
+			}
+		}
+
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:        string(resource.URN),
-			Type:       string(resource.Type),
-			Name:       string(resource.Name),
-			Properties: props,
+			Urn:                  string(resource.URN),
+			Type:                 string(resource.Type),
+			Name:                 string(resource.Name),
+			Properties:           props,
+			Options:              marshalResourceOptions(resource.Options),
+			Provider:             provider,
+			Parent:               string(resource.Parent),
+			Dependencies:         convertURNs(resource.Dependencies),
+			PropertyDependencies: propertyDeps,
 		}
 	}
 
@@ -232,6 +273,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	return AnalyzerInfo{
 		Name:        resp.GetName(),
 		DisplayName: resp.GetDisplayName(),
+		Version:     resp.GetVersion(),
 		Policies:    policies,
 	}, nil
 }
@@ -269,6 +311,59 @@ func (a *analyzer) Close() error {
 	return a.plug.Close()
 }
 
+func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
+	secs := make([]string, len(opts.AdditionalSecretOutputs))
+	for idx := range opts.AdditionalSecretOutputs {
+		secs[idx] = string(opts.AdditionalSecretOutputs[idx])
+	}
+
+	var deleteBeforeReplace bool
+	if opts.DeleteBeforeReplace != nil {
+		deleteBeforeReplace = *opts.DeleteBeforeReplace
+	}
+
+	result := &pulumirpc.AnalyzerResourceOptions{
+		Protect:                    opts.Protect,
+		IgnoreChanges:              opts.IgnoreChanges,
+		DeleteBeforeReplace:        deleteBeforeReplace,
+		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
+		AdditionalSecretOutputs:    secs,
+		Aliases:                    convertURNs(opts.Aliases),
+		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
+			Create: opts.CustomTimeouts.Create,
+			Update: opts.CustomTimeouts.Update,
+			Delete: opts.CustomTimeouts.Delete,
+		},
+	}
+	return result
+}
+
+func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerProviderResource, error) {
+	if provider == nil {
+		return nil, nil
+	}
+
+	props, err := MarshalProperties(provider.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling properties")
+	}
+
+	return &pulumirpc.AnalyzerProviderResource{
+		Urn:        string(provider.URN),
+		Type:       string(provider.Type),
+		Name:       string(provider.Name),
+		Properties: props,
+	}, nil
+}
+
+func convertURNs(urns []resource.URN) []string {
+	result := make([]string, len(urns))
+	for idx := range urns {
+		result[idx] = string(urns[idx])
+	}
+	return result
+}
+
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
 	switch el {
 	case pulumirpc.EnforcementLevel_ADVISORY:
@@ -304,4 +399,50 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 	}
 
 	return diagnostics, nil
+}
+
+// constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
+// is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
+// how config is passed to each language runtime plugin.
+func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
+	env := os.Environ()
+
+	maybeAppendEnv := func(k, v string) {
+		if v != "" {
+			env = append(env, k+"="+v)
+		}
+	}
+
+	config, err := constructConfig(opts)
+	if err != nil {
+		return nil, err
+	}
+	maybeAppendEnv("PULUMI_CONFIG", config)
+
+	if opts != nil {
+		maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
+		maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
+		maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+	}
+
+	return env, nil
+}
+
+// constructConfig JSON-serializes the configuration data.
+func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
+	if opts == nil || opts.Config == nil {
+		return "", nil
+	}
+
+	config := make(map[string]string)
+	for k, v := range opts.Config {
+		config[k.String()] = v
+	}
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configJSON), nil
 }

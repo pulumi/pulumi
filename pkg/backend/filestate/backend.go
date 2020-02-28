@@ -23,6 +23,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,7 +31,7 @@ import (
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	"gocloud.dev/blob/gcsblob"     // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
@@ -47,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/edit"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
@@ -106,16 +108,28 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
-	bucket, err := blob.OpenBucket(context.TODO(), u)
+	p, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
+	blobmux := blob.DefaultURLMux()
+
+	// for gcp we want to support additional credentials
+	// schemes on top of go-cloud's default credentials mux.
+	if p.Scheme == gcsblob.Scheme {
+		blobmux, err = GoogleCredentialsMux(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	bucket, err := blobmux.OpenBucket(context.TODO(), u)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
-		p, err := url.Parse(u)
-		if err != nil {
-			return nil, err
-		}
 		bucketSubDir := strings.TrimLeft(p.Path, "/")
 		if bucketSubDir != "" {
 			if !strings.HasSuffix(bucketSubDir, "/") {
@@ -212,6 +226,14 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
+func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+	return apitype.ListPolicyGroupsResponse{}, fmt.Errorf("File state backend does not support resource policy")
+}
+
+func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+	return apitype.ListPolicyPacksResponse{}, fmt.Errorf("File state backend does not support resource policy")
+}
+
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 func (b *localBackend) SupportsOrganizations() bool {
 	return false
@@ -219,6 +241,21 @@ func (b *localBackend) SupportsOrganizations() bool {
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+}
+
+// ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
+// httpstate backend.
+func (b *localBackend) ValidateStackName(stackName string) error {
+	if strings.Contains(stackName, "/") {
+		return errors.New("stack names may not contain slashes")
+	}
+
+	validNameRegex := regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+	if !validNameRegex.MatchString(stackName) {
+		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, or periods")
+	}
+
+	return nil
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
@@ -541,7 +578,12 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
-				return changes, result.FromError(errors.Wrap(err, "Could not get signed url for stack location"))
+				// we log a warning here rather then returning an error to avoid exiting
+				// pulumi with an error code.
+				// printing a statefile perma link happens after all the providers have finished
+				// deploying the infrastructure, failing the pulumi update because there was a
+				// problem printing a statefile perma link can be missleading in automated CI environments.
+				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
 			}
 		}
 

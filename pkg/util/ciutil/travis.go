@@ -28,12 +28,18 @@ type travisCI struct {
 func (t travisCI) DetectVars() Vars {
 	v := Vars{Name: Travis}
 	v.BuildID = os.Getenv("TRAVIS_JOB_ID")
+	v.BuildNumber = os.Getenv("TRAVIS_JOB_NUMBER")
 	v.BuildType = os.Getenv("TRAVIS_EVENT_TYPE")
 	v.BuildURL = os.Getenv("TRAVIS_BUILD_WEB_URL")
 	v.SHA = os.Getenv("TRAVIS_PULL_REQUEST_SHA")
 	v.BranchName = os.Getenv("TRAVIS_BRANCH")
 	v.CommitMessage = os.Getenv("TRAVIS_COMMIT_MESSAGE")
-	v.PRNumber = os.Getenv("TRAVIS_PULL_REQUEST")
+	// Travis sets the value of TRAVIS_PULL_REQUEST to false if the build
+	// is not a PR build.
+	// See: https://docs.travis-ci.com/user/environment-variables/#convenience-variables
+	if prNumber := os.Getenv("TRAVIS_PULL_REQUEST"); prNumber != "false" {
+		v.PRNumber = prNumber
+	}
 
 	return v
 }

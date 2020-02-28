@@ -18,8 +18,7 @@ import * as path from "path";
 import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import { disconnectSync } from "../../runtime/settings";
-import { runInPulumiStack } from "../../runtime/stack";
+import * as runtime from "../../runtime";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -138,6 +137,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
+/** @internal */
 export interface RunOpts {
     // TODO: Explicitly pass `main` in here instead of just argv.
 
@@ -148,6 +148,7 @@ export interface RunOpts {
     typeScript: boolean;
 }
 
+/** @internal */
 export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | Promise<void> {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = opts.argv["pwd"];
@@ -202,7 +203,10 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
-        const defaultMessage = err.stack || err.message;
+        //
+        // If both the stack and message are empty, then just stringify the err object itself. This
+        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
+        const defaultMessage = err.stack || err.message || ("" + err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {
@@ -226,12 +230,12 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", disconnectSync);
+    process.on("exit", runtime.disconnectSync);
 
     opts.programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    const runProgram = () => {
+    const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think
@@ -242,7 +246,17 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         // loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            return require(program);
+            // Execute the module and capture any module outputs it exported. If the exported value
+            // was itself a Function, then just execute it.  This allows for exported top level
+            // async functions that pulumi programs can live in.  Finally, await the value we get
+            // back.  That way, if it is async and throws an exception, we properly capture it here
+            // and handle it.
+            const reqResult = require(program);
+            const invokeResult = reqResult instanceof Function
+                ? reqResult()
+                : reqResult;
+
+            return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
             // not something we want to catch up here.
@@ -260,7 +274,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         }
     };
 
-    // NOTE: `Promise.resolve(runProgram())` to coerce the result of `runProgram` into a promise,
-    // just in case it wasn't already a promise.
-    return opts.runInStack ? runInPulumiStack(runProgram) : Promise.resolve(runProgram());
+    return opts.runInStack ? runtime.runInPulumiStack(runProgram) : runProgram();
 }

@@ -54,7 +54,8 @@ func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg s
 func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string) (plugin.Analyzer, error) {
+func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
+	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
@@ -98,6 +99,9 @@ func (prov *testProvider) Close() error {
 }
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
+}
+func (prov *testProvider) GetSchema(version int) ([]byte, error) {
+	return []byte("{}"), nil
 }
 func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
