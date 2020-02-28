@@ -396,6 +396,22 @@ func TestUnmarshalSecret(t *testing.T) {
 	assert.True(t, isSecret)
 }
 
+func TestUnmarshalInternalMapValue(t *testing.T) {
+	m := make(map[string]interface{})
+	m["foo"] = "bar"
+	m["__default"] = "buzz"
+	pmap := resource.NewObjectProperty(resource.NewPropertyMapFromMap(m))
+
+	var mv map[string]string
+	_, err := unmarshalOutput(pmap, reflect.ValueOf(&mv).Elem())
+	assert.Nil(t, err)
+	val, ok := mv["foo"]
+	assert.True(t, ok)
+	assert.Equal(t, "bar", val)
+	_, ok = mv["__default"]
+	assert.False(t, ok)
+}
+
 // TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {

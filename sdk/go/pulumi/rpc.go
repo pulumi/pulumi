@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"golang.org/x/net/context"
 
@@ -523,6 +524,10 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		result := reflect.MakeMap(dest.Type())
 		secret := false
 		for k, e := range v.ObjectValue() {
+			// ignore properties internal to the pulumi engine
+			if strings.HasPrefix(string(k), "__") {
+				continue
+			}
 			elem := reflect.New(elemType).Elem()
 			esecret, err := unmarshalOutput(e, elem)
 			if err != nil {
