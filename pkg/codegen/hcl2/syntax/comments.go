@@ -282,7 +282,7 @@ func (l tokenList) offsetIndex(offset int) int {
 		case r.Start.Byte <= offset && offset < r.End.Byte:
 			return base + i
 		case r.End.Byte <= offset:
-			l, base = l[i:], base+i
+			l, base = l[i+1:], base+i+1
 		default:
 			contract.Failf("unexpected index condition: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
 		}
