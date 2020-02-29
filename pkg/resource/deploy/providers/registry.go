@@ -300,10 +300,10 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	//
 	// If the diff does not require replacement but does have changes, and we are running a preview, register it under
 	// its current ID so that references to the provider from other resources will resolve properly.
-	if len(diff.ReplaceKeys) != 0 {
+	if diff.Replace() {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-	} else if r.isPreview && len(diff.ChangedKeys) != 0 {
+	} else if r.isPreview && diff.Changes == plugin.DiffSome {
 		r.setProvider(mustNewReference(urn, id), provider)
 	}
 
