@@ -92,7 +92,7 @@ function deserialize_pulumirpc_RunResponse(buffer_arg) {
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
   // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-  getRequiredPlugins: {
+getRequiredPlugins: {
     path: '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
     requestStream: false,
     responseStream: false,
@@ -104,7 +104,7 @@ var LanguageRuntimeService = exports.LanguageRuntimeService = {
     responseDeserialize: deserialize_pulumirpc_GetRequiredPluginsResponse,
   },
   // Run executes a program and returns its result.
-  run: {
+run: {
     path: '/pulumirpc.LanguageRuntime/Run',
     requestStream: false,
     responseStream: false,
@@ -116,7 +116,7 @@ var LanguageRuntimeService = exports.LanguageRuntimeService = {
     responseDeserialize: deserialize_pulumirpc_RunResponse,
   },
   // GetPluginInfo returns generic information about this plugin, like its version.
-  getPluginInfo: {
+getPluginInfo: {
     path: '/pulumirpc.LanguageRuntime/GetPluginInfo',
     requestStream: false,
     responseStream: false,

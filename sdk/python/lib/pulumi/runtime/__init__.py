@@ -23,6 +23,12 @@ from .config import (
     get_config_env_key,
 )
 
+from .mocks import (
+    Mocks,
+    set_mocks,
+    test,
+)
+
 from .settings import (
     Settings,
     configure,

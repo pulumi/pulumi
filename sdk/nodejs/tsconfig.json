@@ -51,6 +51,7 @@
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
+        "runtime/mocks.ts",
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",

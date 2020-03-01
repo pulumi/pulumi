@@ -1,11 +1,15 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
 - Avoid Configuring providers which are not used during preview.
   [#4004](https://github.com/pulumi/pulumi/pull/4004)
 
 - Fix missing module import on Windows platform.
   [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
+- Add support for mocking the resource monitor to the NodeJS and Python SDKs.
+  [#3738](https://github.com/pulumi/pulumi/pull/3738/files)
 
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
