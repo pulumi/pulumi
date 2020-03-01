@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Avoid Configuring providers which are not used during preview.
+  [#4004](https://github.com/pulumi/pulumi/pull/4004)
+
 - Fix missing module import on Windows platform.
   [#3983](https://github.com/pulumi/pulumi/pull/3983)
 
