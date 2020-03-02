@@ -66,7 +66,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 	depset := map[URN]bool{}
 	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
 
-	if props == nil {
+	if props == nil || (reflect.ValueOf(props).Kind() == reflect.Ptr && reflect.ValueOf(props).IsNil()) {
 		return pmap, pdeps, depURNs, nil
 	}
 
