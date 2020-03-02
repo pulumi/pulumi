@@ -182,7 +182,11 @@ Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> 
 Pulumi.Serialization.OutputTypeAttribute
 Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.Stack
-Pulumi.Stack.Stack() -> void
+Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
+Pulumi.StackOptions
+Pulumi.StackOptions.StackOptions() -> void
+Pulumi.StackOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
+Pulumi.StackOptions.ResourceTransformations.set -> void
 Pulumi.StackReference
 Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
 Pulumi.StackReference.GetValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
