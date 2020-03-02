@@ -5276,7 +5276,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			assert.NoError(t, newResource(ctx, "res1",
 				pulumi.Transformations([]pulumi.ResourceTransformation{res1Transformation})))
 
-			// Scenario #2 - apply a transformation to a Component to transform it's children
+			// Scenario #2 - apply a transformation to a Component to transform its children
 			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 				if args.Name == "res2Child" {
 					// TODO[pulumi/pulumi#3846] We should use a mergeOptions-style API here.
@@ -5293,9 +5293,14 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 
 			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
 			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				props := &testResourceInputs{
-					Foo: pulumi.String("baz"),
+				// Props might be nil.
+				var props *testResourceInputs
+				if args.Props == nil {
+					props = &testResourceInputs{}
+				} else {
+					props = args.Props.(*testResourceInputs)
 				}
+				props.Foo = pulumi.String("baz")
 
 				return &pulumi.ResourceTransformationResult{
 					Props: props,
@@ -5311,10 +5316,9 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			// 3. Second parent transformation
 			// 4. Stack transformation
 			res4Transformation1 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				if args.Name == "res4" {
-					props := &testResourceInputs{
-						Foo: pulumi.String("baz1"),
-					}
+				if args.Name == "res4Child" {
+					props := args.Props.(*testResourceInputs)
+					props.Foo = pulumi.String("baz1")
 
 					return &pulumi.ResourceTransformationResult{
 						Props: props,
@@ -5324,10 +5328,9 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				return nil
 			}
 			res4Transformation2 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
-				if args.Name == "res4" {
-					props := &testResourceInputs{
-						Foo: pulumi.String("baz2"),
-					}
+				if args.Name == "res4Child" {
+					props := args.Props.(*testResourceInputs)
+					props.Foo = pulumi.String("baz2")
 
 					return &pulumi.ResourceTransformationResult{
 						Props: props,
