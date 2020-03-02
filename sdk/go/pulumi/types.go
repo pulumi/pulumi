@@ -578,6 +578,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 		} else {
 			// Handle pointer inputs.
 			if v.Kind() == reflect.Ptr {
+				fmt.Printf("valueType: %v\n", valueType)
+				fmt.Printf("v.Type(): %v\n", v.Type())
+				fmt.Printf("resolved.Type(): %v\n", resolved.Type())
 				v, valueType = v.Elem(), valueType.Elem()
 
 				resolved.Set(reflect.New(resolved.Type().Elem()))
