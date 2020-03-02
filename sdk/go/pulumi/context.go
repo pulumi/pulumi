@@ -277,6 +277,13 @@ func (ctx *Context) ReadResource(
 		options.Parent = ctx.stack
 	}
 
+	// Before anything else, if there are transformations registered, give them a chance to run to modify the
+	// user-provided properties and options assigned to this resource.
+	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return err
+	}
+
 	// Collapse aliases to URNs.
 	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {
@@ -292,7 +299,7 @@ func (ctx *Context) ReadResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, name, resource, providers, aliasURNs)
+	res := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -399,6 +406,13 @@ func (ctx *Context) RegisterResource(
 		options.Parent = ctx.stack
 	}
 
+	// Before anything else, if there are transformations registered, give them a chance to run to modify the
+	// user-provided properties and options assigned to this resource.
+	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return err
+	}
+
 	// Collapse aliases to URNs.
 	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {
@@ -414,7 +428,7 @@ func (ctx *Context) RegisterResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, name, resource, providers, aliasURNs)
+	res := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -476,10 +490,47 @@ func (ctx *Context) RegisterComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs   map[string]Output
-	providers map[string]ProviderResource
-	aliases   []URNOutput
-	name      string
+	outputs         map[string]Output
+	providers       map[string]ProviderResource
+	aliases         []URNOutput
+	name            string
+	transformations []ResourceTransformation
+}
+
+// Apply transformations and return the transformations themselves, as well as the transformed props and opts.
+func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
+	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
+
+	transformations := options.Transformations
+	if options.Parent != nil {
+		transformations = append(transformations, options.Parent.getTransformations()...)
+	}
+
+	for _, transformation := range transformations {
+		args := &ResourceTransformationArgs{
+			Resource: resource,
+			Type:     t,
+			Name:     name,
+			Props:    props,
+			Opts:     opts,
+		}
+
+		res := transformation(args)
+		if res != nil {
+			resOptions := &resourceOptions{}
+			for _, o := range res.Opts {
+				o.applyResourceOption(resOptions)
+			}
+
+			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
+				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
+			}
+			props = res.Props
+			options = resOptions
+		}
+	}
+
+	return props, options, transformations, nil
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
@@ -543,7 +594,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	aliases []URNOutput) *resourceState {
+	aliases []URNOutput, transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
 	// ought to.
@@ -620,6 +671,8 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 	rs.name = name
 	state.aliases = aliases
 	rs.aliases = aliases
+	state.transformations = transformations
+	rs.transformations = transformations
 
 	return state
 }
@@ -954,4 +1007,11 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 // Export registers a key and value pair with the current context's stack.
 func (ctx *Context) Export(name string, value Input) {
 	ctx.exports[name] = value
+}
+
+// RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
+func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
+	ctx.stack.addTransformation(t)
+
+	return nil
 }

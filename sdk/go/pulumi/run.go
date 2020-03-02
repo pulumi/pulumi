@@ -84,7 +84,7 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	if err != nil {
 		return err
 	}
-	ctx.stack = stack
+	ctx.stack = &stack
 
 	// Execute the body.
 	var result error
