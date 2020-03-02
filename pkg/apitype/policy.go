@@ -153,9 +153,8 @@ type UpdatePolicyGroupRequest struct {
 	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
 	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
 
-	AddPolicyPack          *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
-	RemovePolicyPack       *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
-	UpdatePolicyPackConfig *PolicyPackMetadata `json:"updatePolicyPackConfig,omitempty"`
+	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
+	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
