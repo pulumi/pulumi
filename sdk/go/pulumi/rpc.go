@@ -72,6 +72,9 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 
 	pv := reflect.ValueOf(props)
 	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			return pmap, pdeps, depURNs, nil
+		}
 		pv = pv.Elem()
 	}
 	pt := pv.Type()
