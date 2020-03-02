@@ -9,7 +9,10 @@ CHANGELOG
   [#3983](https://github.com/pulumi/pulumi/pull/3983)
 
 - Add support for mocking the resource monitor to the NodeJS and Python SDKs.
-  [#3738](https://github.com/pulumi/pulumi/pull/3738/files)
+  [#3738](https://github.com/pulumi/pulumi/pull/3738)
+
+- Reinstate caching of TypeScript compilation.
+  [#4007](https://github.com/pulumi/pulumi/pull/4007)
 
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
