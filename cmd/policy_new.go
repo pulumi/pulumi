@@ -48,7 +48,7 @@ func newPolicyNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi Policy Pack",
+		Short:      "[PREVIEW] Create a new Pulumi Policy Pack",
 		Long: "Create a new Pulumi Policy Pack from a template.\n" +
 			"\n" +
 			"To create a Policy Pack from a specific template, pass the template name (such as `aws-typescript`\n" +

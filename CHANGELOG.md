@@ -14,6 +14,9 @@ CHANGELOG
 - Reinstate caching of TypeScript compilation.
   [#4007](https://github.com/pulumi/pulumi/pull/4007)
 
+- Remove the need to set PULUMI_EXPERIMENTAL to use the policy and watch commands.
+  [#4001](https://github.com/pulumi/pulumi/pull/4001)
+
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)

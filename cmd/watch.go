@@ -48,7 +48,7 @@ func newWatchCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "Continuously update the resources in a stack",
+		Short:      "[PREVIEW] Continuously update the resources in a stack",
 		Long: "Continuously update the resources in a stack.\n" +
 			"\n" +
 			"This command watches the working directory for the current project and updates the active stack whenever\n" +
@@ -159,11 +159,9 @@ func newWatchCmd() *cobra.Command {
 		"Optional message to associate with each update operation")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() || hasExperimentalCommands() {
-		cmd.PersistentFlags().StringSliceVar(
-			&policyPackPaths, "policy-pack", []string{},
-			"Run one or more policy packs as part of each update")
-	}
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackPaths, "policy-pack", []string{},
+		"[PREVIEW] Run one or more policy packs as part of each update")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
