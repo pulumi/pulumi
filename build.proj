@@ -306,5 +306,4 @@
 
   <Target Name="CIBuild"
           DependsOnTargets="Build;Tests" />
-
 </Project>
