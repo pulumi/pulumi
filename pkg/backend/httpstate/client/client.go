@@ -552,14 +552,20 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
-	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	var policies []apitype.Policy
 	for _, policy := range analyzerInfo.Policies {
+		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
+		if err != nil {
+			return "", err
+		}
+
 		policies = append(policies, apitype.Policy{
 			Name:             policy.Name,
 			DisplayName:      policy.DisplayName,
 			Description:      policy.Description,
 			EnforcementLevel: policy.EnforcementLevel,
 			Message:          policy.Message,
+			ConfigSchema:     configSchema,
 		})
 	}
 
@@ -617,6 +623,27 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	return version, nil
+}
+
+// convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.
+func convertPolicyConfigSchema(s *plugin.AnalyzerPolicyConfigSchema) (*apitype.PolicyConfigSchema, error) {
+	if s == nil {
+		return nil, nil
+	}
+	properties := map[string]*json.RawMessage{}
+	for k, v := range s.Properties {
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		raw := json.RawMessage(bytes)
+		properties[k] = &raw
+	}
+	return &apitype.PolicyConfigSchema{
+		Type:       apitype.Object,
+		Properties: properties,
+		Required:   s.Required,
+	}, nil
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
