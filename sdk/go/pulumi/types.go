@@ -572,6 +572,15 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 
 		v, isInput = reflect.ValueOf(input), true
 
+		// We require that the kind of an `Input`'s `ElementType` agrees with the kind of the `Input`'s underlying value.
+		// This requirement is trivially (and unintentionally) violated by `*T` if `*T` does not define `ElementType`,
+		// but `T` does (https://golang.org/ref/spec#Method_sets).
+		// In this case, dereference the pointer to get at its actual value.
+		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
+			v = v.Elem()
+			contract.Assert(v.Interface().(Input).ElementType() == valueType)
+		}
+
 		// If we are assigning the input value itself, update the value type.
 		if assignInput {
 			valueType = v.Type()
