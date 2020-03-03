@@ -3877,7 +3877,8 @@ proto.pulumirpc.ConfigureAnalyzerRequest.prototype.clearPolicyconfigMap = functi
  */
 proto.pulumirpc.EnforcementLevel = {
   ADVISORY: 0,
-  MANDATORY: 1
+  MANDATORY: 1,
+  DISABLED: 2
 };
 
 goog.object.extend(exports, proto.pulumirpc);

@@ -421,6 +421,8 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_ADVISORY
 	case apitype.Mandatory:
 		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Disabled:
+		return pulumirpc.EnforcementLevel_DISABLED
 	}
 	contract.Failf("Unrecognized enforcement level %s", el)
 	return 0
@@ -538,6 +540,8 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_DISABLED:
+		return apitype.Disabled, nil
 
 	default:
 		return "", fmt.Errorf("Invalid enforcement level %d", el)

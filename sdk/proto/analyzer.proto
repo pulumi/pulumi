@@ -107,6 +107,7 @@ message AnalyzeResponse {
 enum EnforcementLevel {
     ADVISORY = 0;  // Displayed to users, but does not block deployment.
     MANDATORY = 1; // Stops deployment, cannot be overridden.
+    DISABLED = 2;  // Disabled policies do not run during a deployment.
 }
 
 message AnalyzeDiagnostic {
