@@ -1,8 +1,8 @@
-{{define "propIsRequired"}}
-{{if .}} (Required) {{- else}} (Optional){{- end}}
-{{end}}
+{{ define "propIsRequired" }}
+{{ if . }} (Required) {{- else }} (Optional){{- end }}
+{{ end }}
 
-{{define "properties_table"}}
+{{ define "properties_table" }}
 <table class="ml-6">
     <thead>
         <tr>
@@ -12,30 +12,30 @@
         </tr>
     </thead>
     <tbody>
-    {{range .}}
+    {{ range . }}
         <tr>
-            <td class="align-top">{{htmlSafe .Name}}</td>
+            <td class="align-top">{{ htmlSafe .Name }}</td>
             <td class="align-top">
-                <code>{{htmlSafe .Type}}</code>
+                <code>{{ htmlSafe .Type }}</code>
             </td>
-            <td class="align-top">{{htmlSafe "{{% md %}}"}} {{if .IsInput}}{{template "propIsRequired" .IsRequired}}{{- end}} {{- .Comment}} {{htmlSafe "{{% /md %}}"}}</td>
+            <td class="align-top">{{ htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}</td>
         </tr>
-    {{end}}
+    {{ end }}
     </tbody>
 </table>
-{{end}}
+{{ end }}
 
-{{define "properties"}}
+{{ define "properties" }}
 
-{{htmlSafe "{{< langchoose csharp >}}"}}
+{{ htmlSafe "{{< langchoose csharp >}}" }}
 
-{{range $lang, $props := .}}
+{{ range $lang, $props := . }}
 {{ print "{{% lang" }} {{ print $lang }} {{ print "%}}" }}
 
-{{template "properties_table" $props}}
+{{ template "properties_table" $props }}
 
-{{print "{{% /lang %}}"}}
+{{ print "{{% /lang %}}" }}
 
-{{end}}
+{{ end }}
 
-{{end}}
+{{ end }}

@@ -1,111 +1,97 @@
-{{template "header" .Header}}
+{{ template "header" .Header }}
 
-{{htmlSafe .Comment}}
+{{ htmlSafe .Comment }}
 
-## Example Usage
+<!-- Examples -->
+{{ if ne (len .Examples) 0 }}{{ template "examples" .Examples }}{{ end }}
 
-{{range .Examples}}
-### {{.Heading}}
+<!-- Create resource -->
+## Create a {{ .Header.Title }} Resource
 
-{{htmlSafe "{{< langchoose nojavascript nogo >}}"}}
-
-```typescript
-{{htmlSafe .Code}}
-```
-
-```python
-Coming soon!
-```
-
-```csharp
-Coming soon!
-```
-{{end}}
-
-## Create a {{.Header.Title}} Resource
-
-{{htmlSafe "{{< langchoose csharp >}}"}}
+{{ htmlSafe "{{< langchoose csharp >}}" }}
 
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new</span>&nbsp;<span class="nx"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.Header.Title}}>{{.Header.Title}}</a></span><span class="p">(</span><span class="nx">name</span>:&nbsp;<span class="kt"><a href=https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String>string</a></span><span class="p">,</span>&nbsp;{{if .ArgsRequired}}<span class="nx">args</span>{{else}}<span class="nx">args?</span>{{end}}:&nbsp;<span class="kt">{{.Header.Title}}Args</span><span class="p">,</span>&nbsp;<span class="nx">opts?</span>:&nbsp;<span class="kt"><a href=/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions>pulumi.CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 
 ```python
-{{call .ConstructorGenerator "python" .ArgsRequired}}
+{{ call .ConstructorGenerator "python" .ArgsRequired }}
 ```
 
 ```go
-{{call .ConstructorGenerator "go" .ArgsRequired}}
+{{ call .ConstructorGenerator "go" .ArgsRequired }}
 ```
 
 ```csharp
-{{call .ConstructorGenerator "csharp" .ArgsRequired}}
+{{ call .ConstructorGenerator "csharp" .ArgsRequired }}
 ```
 
-Creates a {{.Header.Title}} resource with the given unique name, arguments, and options.
+Creates a {{ .Header.Title }} resource with the given unique name, arguments, and options.
 
-{{htmlSafe "{{% lang nodejs %}}"}}
-{{template "constructor_args"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang nodejs %}}" }}
+{{ template "constructor_args" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
-{{htmlSafe "{{% lang go %}}"}}
-{{template "constructor_args"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang go %}}" }}
+{{ template "constructor_args" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
-{{htmlSafe "{{% lang csharp %}}"}}
-{{template "constructor_args"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang csharp %}}" }}
+{{ template "constructor_args" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
 The following arguments are supported:
-{{template "properties" .InputProperties}}
+{{ template "properties" .InputProperties }}
 
+<!-- Output properties -->
 ## {{.Header.Title}} Output Properties
 
 The following output properties are available:
 
-{{template "properties" .OutputProperties}}
+{{ template "properties" .OutputProperties }}
 
+<!-- Read resource -->
 ## Look up an Existing {{.Header.Title}} Resource
 
-{{htmlSafe "{{< langchoose csharp >}}"}}
+{{ htmlSafe "{{< langchoose csharp >}}" }}
 
 ```typescript
-public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{.StateParam}}, opts?: pulumi.CustomResourceOptions): {{.Header.Title}};
+public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{ .StateParam }}, opts?: pulumi.CustomResourceOptions): {{ .Header.Title }};
 ```
 
-<!-- TODO: This is currently hard coded for Bucket. Need to generalize for all resources. -->
 ```python
-def get(resource_name, id, opts=None{{template "py_read_resource" .InputProperties.python}})
+def get(resource_name, id, opts=None{{ template "py_read_resource" .StateInputs.python }})
 ```
 
 ```go
-func Get{{.Header.Title}}(ctx *pulumi.Context, name string, id pulumi.IDInput, state *{{.StateParam}}, opts ...pulumi.ResourceOption) (*Bucket, error)
+func Get{{.Header.Title}}(ctx *pulumi.Context, name string, id pulumi.IDInput, state *{{ .StateParam }}, opts ...pulumi.ResourceOption) (*Bucket, error)
 ```
 
 ```csharp
-public static {{.Header.Title}} Get(string name, Input<string> id, {{.StateParam}}? state = null, CustomResourceOptions? options = null);
+public static {{ .Header.Title }} Get(string name, Input<string> id, {{ .StateParam }}? state = null, CustomResourceOptions? options = null);
 ```
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
-{{htmlSafe "{{% lang nodejs %}}"}}
-{{template "read_inputs"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang nodejs %}}" }}
+{{ template "read_inputs" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
-{{htmlSafe "{{% lang go %}}"}}
-{{template "read_inputs"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang go %}}" }}
+{{ template "read_inputs" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
-{{htmlSafe "{{% lang csharp %}}"}}
-{{template "read_inputs"}}
-{{htmlSafe "{{% /lang %}}"}}
+{{ htmlSafe "{{% lang csharp %}}" }}
+{{ template "read_inputs" }}
+{{ htmlSafe "{{% /lang %}}" }}
 
-{{if .StateParam }}
+{{ if .StateParam }}
 The following state arguments are supported:
-{{template "properties" .StateInputs}}
-{{end}}
+{{ template "properties" .StateInputs }}
+{{ end }}
 
+<!-- Supporting types -->
 ## Supporting Types
-{{range .NestedTypes}}
-#### {{.Name}}
+{{ range .NestedTypes }}
+#### {{ .Name }}
 
-{{template "properties" .Properties}}
-{{end}}
+{{ template "properties" .Properties }}
+{{ end }}

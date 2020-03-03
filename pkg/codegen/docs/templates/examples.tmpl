@@ -1,0 +1,21 @@
+{{ define "examples" }}
+## Example Usage
+
+{{ range . }}
+### {{ .Heading }}
+
+{{ htmlSafe "{{< langchoose nojavascript nogo >}}" }}
+
+```typescript
+{{ htmlSafe .Code }}
+```
+
+```python
+Coming soon!
+```
+
+```csharp
+Coming soon!
+```
+{{ end }}
+{{ end }}
