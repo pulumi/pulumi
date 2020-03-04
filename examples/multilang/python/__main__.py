@@ -16,10 +16,10 @@ from pulumi import ResourceOptions
 from pulumi_aws import ec2
 
 # TODO - this should go inside `pulumi_aws`.
-pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup", lambda name, opts: ec2.SecurityGroup(name, ResourceOptions(**opts)));
+pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup", lambda name, opts: ec2.SecurityGroup(name, ResourceOptions(**opts)))
 
 ######
-# This is code the user would write to use `mycomponenbt` from the guest language.
+# This is code the user would write to use `mycomponent` from the guest language.
 
 from mycomponent.python import MyComponent
 

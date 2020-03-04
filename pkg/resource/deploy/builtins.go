@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -260,6 +261,7 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 }
 
 func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	logging.V(9).Infof("builtinProvider: %v(inputs=%v)", readStackResource, inputs)
 	urnProp, ok := inputs["urn"]
 	if !ok {
 		return nil, fmt.Errorf("readStackResource missing required 'urn' argument")
@@ -275,7 +277,11 @@ func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resour
 	}
 	contract.Assert(state.URN == urn)
 
+	logging.V(9).Infof("builtinProvider: %v(inputs=%v) => (outputs=%v)", readStackResource, inputs, state.Outputs)
+
 	return resource.PropertyMap{
+		"urn":     resource.NewStringProperty(string(state.URN)),
+		"id":      resource.NewStringProperty(string(state.ID)),
 		"outputs": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }

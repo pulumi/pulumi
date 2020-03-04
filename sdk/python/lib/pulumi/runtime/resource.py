@@ -346,7 +346,7 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
             # dependencies returned to us from "serialize_property" (the second argument). This is
             # because a "get" resource does not actually have any dependencies at all in the cloud
             # provider sense, because a read resource already exists. We do not need to track this
-            # dependency. TODO: This this actually true for "get"?
+            # dependency. TODO: Is this actually true for "get"?
             resolved_urn = await rpc.serialize_property(urn, [])
             log.debug(f"get prepared: ty={ty}, name={name}, urn={urn}")
             resp = await invoke("pulumi:pulumi:readStackResource", {"urn": resolved_urn})
@@ -356,14 +356,16 @@ def _get_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inp
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
             resolve_urn_exn(exn)
-            if custom:
+            if resolve_id:
                 resolve_id(None, False, exn)
             raise
 
-        log.debug(f"resource get successful: ty={ty}, urn={urn}")
-        resolve_urn(urn)
-        if custom:
-            resolve_id(resp["outputs"]["id"], True, None)  # Get IDs are always known.
+        resp_urn = resp["urn"]
+        log.debug(f"resource get successful: ty={ty}, urn={resp_urn}")
+        resolve_urn(resp_urn)
+        if resolve_id:
+            id_known = bool(resp["id"])
+            resolve_id(resp["id"], id_known, None)
         await rpc.resolve_properties(resolvers, resp["outputs"])
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
