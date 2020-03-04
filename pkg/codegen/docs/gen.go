@@ -26,10 +26,12 @@ import (
 	"path"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -115,32 +117,6 @@ type typeDetails struct {
 	functionType bool
 }
 
-// wbr inserts HTML <wbr> in between case changes, e.g. "fooBar" becomes "foo<wbr>Bar".
-func wbr(s string) string {
-	var runes []rune
-	var prev rune
-	for i, r := range s {
-		if i != 0 && unicode.IsLower(prev) && unicode.IsUpper(r) {
-			runes = append(runes, []rune("<wbr>")...)
-		}
-		runes = append(runes, r)
-		prev = r
-	}
-	return string(runes)
-}
-
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-func lower(s string) string {
-	return strings.ToLower(s)
-}
-
 type modContext struct {
 	pkg         *schema.Package
 	mod         string
@@ -161,19 +137,6 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 		mod.typeDetails[t] = details
 	}
 	return details
-}
-
-func tokenToName(tok string) string {
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
-}
-
-func resourceName(r schema.Resource) string {
-	if r.IsProvider {
-		return "Provider"
-	}
-	return tokenToName(r.Token)
 }
 
 func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
@@ -243,7 +206,7 @@ func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []
 			Name: "name",
 			Type: PropertyType{
 				Name:        "string",
-				TypeDocLink: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+				TypeDocLink: nodejs.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -251,7 +214,7 @@ func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []
 			OptionalFlag: argsFlag,
 			Type: PropertyType{
 				Name:        argsType,
-				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/aws/s3/#BucketArgs",
+				TypeDocLink: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
 			},
 		},
 		{
@@ -259,7 +222,7 @@ func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []
 			OptionalFlag: "?",
 			Type: PropertyType{
 				Name:        "pulumi.CustomResourceOptions",
-				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions",
+				TypeDocLink: nodejs.GetDocLinkForResourceType("pulumi/pulumi", "CustomResourceOptions"),
 			},
 		},
 	}
@@ -287,7 +250,7 @@ func (mod *modContext) genConstructorGo(r schema.Resource, argsOptional bool) []
 			Name: "name",
 			Type: PropertyType{
 				Name:        "string",
-				TypeDocLink: "https://golang.org/pkg/builtin/#string",
+				TypeDocLink: go_gen.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -295,7 +258,7 @@ func (mod *modContext) genConstructorGo(r schema.Resource, argsOptional bool) []
 			OptionalFlag: argsFlag,
 			Type: PropertyType{
 				Name:        argsType,
-				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi-aws/sdk/go/aws/s3?tab=doc#Bucket",
+				TypeDocLink: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
 			},
 		},
 		{
@@ -326,13 +289,13 @@ func (mod *modContext) genConstructorCS(r schema.Resource, argsOptional bool) []
 		optionsType = "ResourceOptions"
 	}
 
-	// return fmt.Sprintf("public %s(string name, %s args%s, %s? options = null)\n", name, argsType, argsDefault, optionsType)
+	resourceProviderNamespace := fmt.Sprintf("Pulumi.%s", title(mod.pkg.Name))
 	return []ConstructorParam{
 		{
 			Name: "name",
 			Type: PropertyType{
 				Name:        "string",
-				TypeDocLink: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+				TypeDocLink: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
 			},
 		},
 		{
@@ -340,8 +303,10 @@ func (mod *modContext) genConstructorCS(r schema.Resource, argsOptional bool) []
 			OptionalFlag: argsFlag,
 			DefaultValue: argsDefault,
 			Type: PropertyType{
-				Name:        argsType,
-				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/aws/s3/#BucketArgs",
+				Name: argsType,
+				TypeDocLink: dotnet.GetDocLinkForResourceType(
+					resourceProviderNamespace,
+					fmt.Sprintf("%s.%s", title(mod.mod), argsType)),
 			},
 		},
 		{
@@ -350,7 +315,7 @@ func (mod *modContext) genConstructorCS(r schema.Resource, argsOptional bool) []
 			DefaultValue: " = null",
 			Type: PropertyType{
 				Name:        optionsType,
-				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions",
+				TypeDocLink: dotnet.GetDocLinkForResourceType("Pulumi", optionsType),
 			},
 		},
 	}
@@ -436,6 +401,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	stateInputs := make(map[string][]Property)
 	for _, lang := range supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
+		if r.IsProvider {
+			continue
+		}
 		outputProps[lang] = mod.getProperties(r.Properties, lang, false)
 		if r.StateInputs != nil {
 			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true)
@@ -475,11 +443,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		ConstructorResource: map[string]PropertyType{
 			"typescript": {
 				Name:        name,
-				TypeDocLink: "#",
+				TypeDocLink: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
 			},
 			"go": {
 				Name:        name,
-				TypeDocLink: "#",
+				TypeDocLink: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
 			},
 			"csharp": {
 				Name:        name,

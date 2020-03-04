@@ -16,7 +16,7 @@
 def get(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
 ```
 
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ template "go_constructor_param" .ConstructorParams.go }}<span class="p">) (* {{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ template "go_constructor_param" .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ template "csharp_constructor_param" .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
 
@@ -39,13 +39,16 @@ The following arguments are supported:
 {{ template "properties" .InputProperties }}
 
 <!-- Output properties -->
+{{ if ne (len .OutputProperties) 0 }}
 ## {{.Header.Title}} Output Properties
 
 The following output properties are available:
 
 {{ template "properties" .OutputProperties }}
+{{ end }}
 
 <!-- Read resource -->
+{{ if ne (len .StateInputs) 0 }}
 ## Look up an Existing {{.Header.Title}} Resource
 
 {{ htmlSafe "{{< langchoose csharp >}}" }}
@@ -80,7 +83,6 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 {{ template "read_inputs" }}
 {{ htmlSafe "{{% /lang %}}" }}
 
-{{ if .StateParam }}
 The following state arguments are supported:
 {{ template "properties" .StateInputs }}
 {{ end }}

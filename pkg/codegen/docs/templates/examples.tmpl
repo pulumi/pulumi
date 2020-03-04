@@ -4,17 +4,21 @@
 {{ range . }}
 ### {{ .Heading }}
 
-{{ htmlSafe "{{< langchoose nojavascript nogo >}}" }}
+{{ htmlSafe "{{< langchoose nojavascript >}}" }}
 
 ```typescript
 {{ htmlSafe .Code }}
 ```
 
-```python
+```csharp
 Coming soon!
 ```
 
-```csharp
+```go
+Coming soon!
+```
+
+```python
 Coming soon!
 ```
 {{ end }}
