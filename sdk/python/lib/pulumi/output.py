@@ -300,7 +300,7 @@ class Output(Generic[T]):
         return Output(o._resources, o._future, o._is_known, is_secret)
 
     @staticmethod
-    def all(*args: List[Input[T]]) -> 'Output[List[T]]':
+    def all(*args: Input[T]) -> 'Output[List[T]]':
         """
         Produces an Output of Lists from a List of Inputs.
 
@@ -308,7 +308,7 @@ class Output(Generic[T]):
         Output which can then be used as the target of `apply`. Resource dependencies
         are preserved in the returned Output.
 
-        :param List[Input[T]] args: A list of Inputs to convert.
+        :param Input[T] args: A list of Inputs to convert.
         :return: An output of lists, converted from an Input to prompt values.
         :rtype: Output[List[T]]
         """
@@ -338,7 +338,7 @@ class Output(Generic[T]):
         async def gather_futures(outputs):
             value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
             return await asyncio.gather(*value_futures)
-        from_input = cast(Callable[[List[Union[T, Awaitable[T], Output[T]]]], Output[T]], Output.from_input)
+        from_input = cast(Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input)
         # First, map all inputs to outputs using `from_input`.
         all_outputs = list(map(from_input, args))
 
@@ -352,7 +352,7 @@ class Output(Generic[T]):
         return Output(resources_futures, value_futures, known_futures, secret_futures)
 
     @staticmethod
-    def concat(*args: List[Input[str]]) -> 'Output[str]':
+    def concat(*args: Input[str]) -> 'Output[str]':
         """
         Concatenates a collection of Input[str] into a single Output[str].
 
@@ -361,7 +361,7 @@ class Output(Generic[T]):
 
             url = Output.concat("http://", server.hostname, ":", loadBalancer.port)
 
-        :param List[Input[str]] args: A list of string Inputs to concatenate.
+        :param Input[str] args: A list of string Inputs to concatenate.
         :return: A concatenated output string.
         :rtype: Output[str]
         """
