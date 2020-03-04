@@ -14,6 +14,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -21,11 +22,90 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type JSONTestCaseSuccess struct {
+	JSON     string
+	Expected map[string]AnalyzerPolicyConfig
+}
+
+var success = []JSONTestCaseSuccess{
+	{
+		JSON:     `{}`,
+		Expected: map[string]AnalyzerPolicyConfig{},
+	},
+	{
+		JSON: `{"foo":{"enforcementLevel":"advisory"}}`,
+		Expected: map[string]AnalyzerPolicyConfig{
+			"foo": {
+				EnforcementLevel: apitype.Advisory,
+			},
+		},
+	},
+	{
+		JSON: `{"foo":{"enforcementLevel":"mandatory"}}`,
+		Expected: map[string]AnalyzerPolicyConfig{
+			"foo": {
+				EnforcementLevel: apitype.Mandatory,
+			},
+		},
+	},
+	{
+		JSON: `{"foo":{"enforcementLevel":"advisory","bar":"blah"}}`,
+		Expected: map[string]AnalyzerPolicyConfig{
+			"foo": {
+				EnforcementLevel: apitype.Advisory,
+				Properties: map[string]interface{}{
+					"bar": "blah",
+				},
+			},
+		},
+	},
+	{
+		JSON:     `{"foo":{}}`,
+		Expected: map[string]AnalyzerPolicyConfig{},
+	},
+	{
+		JSON: `{"foo":{"bar":"blah"}}`,
+		Expected: map[string]AnalyzerPolicyConfig{
+			"foo": {
+				Properties: map[string]interface{}{
+					"bar": "blah",
+				},
+			},
+		},
+	},
+	{
+		JSON: `{"policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
+		Expected: map[string]AnalyzerPolicyConfig{
+			"policy1": {
+				Properties: map[string]interface{}{
+					"foo": "one",
+				},
+			},
+			"policy2": {
+				Properties: map[string]interface{}{
+					"foo": "two",
+				},
+			},
+		},
+	},
+}
+
+func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
+	for _, test := range success {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			config := make(map[string]*json.RawMessage)
+			unmarshalErr := json.Unmarshal([]byte(test.JSON), &config)
+			assert.NoError(t, unmarshalErr)
+
+			result, err := ParsePolicyPackConfigFromAPI(config)
+			assert.NoError(t, err)
+			assert.Equal(t, test.Expected, result)
+		})
+	}
+}
+
 func TestParsePolicyPackConfigSuccess(t *testing.T) {
-	tests := []struct {
-		JSON     string
-		Expected map[string]AnalyzerPolicyConfig
-	}{
+	tests := []JSONTestCaseSuccess{
 		{
 			JSON:     "",
 			Expected: nil,
@@ -35,8 +115,12 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 			Expected: nil,
 		},
 		{
-			JSON:     `{}`,
-			Expected: map[string]AnalyzerPolicyConfig{},
+			JSON:     "\t",
+			Expected: nil,
+		},
+		{
+			JSON:     "\n",
+			Expected: nil,
 		},
 		{
 			JSON: `{"foo":"advisory"}`,
@@ -51,62 +135,6 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 			Expected: map[string]AnalyzerPolicyConfig{
 				"foo": {
 					EnforcementLevel: apitype.Mandatory,
-				},
-			},
-		},
-		{
-			JSON: `{"foo":{"enforcementLevel":"advisory"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
-				"foo": {
-					EnforcementLevel: apitype.Advisory,
-				},
-			},
-		},
-		{
-			JSON: `{"foo":{"enforcementLevel":"mandatory"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
-				"foo": {
-					EnforcementLevel: apitype.Mandatory,
-				},
-			},
-		},
-		{
-			JSON: `{"foo":{"enforcementLevel":"advisory","bar":"blah"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
-				"foo": {
-					EnforcementLevel: apitype.Advisory,
-					Properties: map[string]interface{}{
-						"bar": "blah",
-					},
-				},
-			},
-		},
-		{
-			JSON:     `{"foo":{}}`,
-			Expected: map[string]AnalyzerPolicyConfig{},
-		},
-		{
-			JSON: `{"foo":{"bar":"blah"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
-				"foo": {
-					Properties: map[string]interface{}{
-						"bar": "blah",
-					},
-				},
-			},
-		},
-		{
-			JSON: `{"policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
-				"policy1": {
-					Properties: map[string]interface{}{
-						"foo": "one",
-					},
-				},
-				"policy2": {
-					Properties: map[string]interface{}{
-						"foo": "two",
-					},
 				},
 			},
 		},
@@ -129,6 +157,8 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 			},
 		},
 	}
+	tests = append(tests, success...)
+
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			result, err := parsePolicyPackConfig([]byte(test.JSON))
@@ -163,6 +193,111 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 			result, err := parsePolicyPackConfig([]byte(test))
 			assert.Nil(t, result)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestExtractEnforcementLevelSuccess(t *testing.T) {
+	tests := []struct {
+		Properties               map[string]interface{}
+		ExpectedEnforcementLevel apitype.EnforcementLevel
+		ExpectedProperties       map[string]interface{}
+	}{
+		{
+			Properties:               map[string]interface{}{},
+			ExpectedEnforcementLevel: "",
+			ExpectedProperties:       map[string]interface{}{},
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "advisory",
+			},
+			ExpectedEnforcementLevel: "advisory",
+			ExpectedProperties:       map[string]interface{}{},
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "mandatory",
+			},
+			ExpectedEnforcementLevel: "mandatory",
+			ExpectedProperties:       map[string]interface{}{},
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "disabled",
+			},
+			ExpectedEnforcementLevel: "disabled",
+			ExpectedProperties:       map[string]interface{}{},
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "advisory",
+				"foo":              "bar",
+				"blah":             1,
+			},
+			ExpectedEnforcementLevel: "advisory",
+			ExpectedProperties: map[string]interface{}{
+				"foo":  "bar",
+				"blah": 1,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			result, err := extractEnforcementLevel(test.Properties)
+			assert.NoError(t, err)
+			assert.Equal(t, test.ExpectedEnforcementLevel, result)
+			assert.Equal(t, test.ExpectedProperties, test.Properties)
+		})
+	}
+}
+
+func TestExtractEnforcementLevelFail(t *testing.T) {
+	tests := []struct {
+		Properties    map[string]interface{}
+		ExpectedError string
+	}{
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "",
+			},
+			ExpectedError: `"" is not a valid enforcement level`,
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": "foo",
+			},
+			ExpectedError: `"foo" is not a valid enforcement level`,
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": nil,
+			},
+			ExpectedError: `<nil> is not a valid enforcement level; must be a string`,
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": 1,
+			},
+			ExpectedError: `1 is not a valid enforcement level; must be a string`,
+		},
+		{
+			Properties: map[string]interface{}{
+				"enforcementLevel": []string{},
+			},
+			ExpectedError: `[] is not a valid enforcement level; must be a string`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			result, err := extractEnforcementLevel(test.Properties)
+			assert.Equal(t, apitype.EnforcementLevel(""), result)
+			assert.Error(t, err)
+			if test.ExpectedError != "" {
+				assert.Equal(t, test.ExpectedError, err.Error())
+			}
 		})
 	}
 }

@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,8 @@ type RequiredPolicy interface {
 	Version() string
 	// Install will install the PolicyPack locally, returning the path it was installed to.
 	Install(ctx context.Context) (string, error)
+	// Config returns the PolicyPack's configuration.
+	Config() map[string]*json.RawMessage
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -242,9 +245,29 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return err
 		}
 
-		_, err = plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
 		if err != nil {
 			return err
+		}
+
+		configFromAPI, err := plugin.ParsePolicyPackConfigFromAPI(policy.Config())
+		if err != nil {
+			return err
+		}
+
+		// If we have configuration from the API, pass it to the analyzer.
+		if len(configFromAPI) > 0 {
+			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return err
+			}
+			config, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
+			if err != nil {
+				return errors.Wrapf(err, "reconciling configuration for analyzer %q", analyzerInfo.Name)
+			}
+			if err = analyzer.Configure(config); err != nil {
+				return errors.Wrapf(err, "configuring analyzer %q", analyzerInfo.Name)
+			}
 		}
 	}
 

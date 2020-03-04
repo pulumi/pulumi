@@ -35,6 +35,44 @@ func LoadPolicyPackConfigFromFile(file string) (map[string]AnalyzerPolicyConfig,
 	return parsePolicyPackConfig(b)
 }
 
+// ParsePolicyPackConfigFromAPI parses the config returned from the service.
+func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[string]AnalyzerPolicyConfig, error) {
+	result := map[string]AnalyzerPolicyConfig{}
+	for k, v := range config {
+		if v == nil {
+			continue
+		}
+
+		var enforcementLevel apitype.EnforcementLevel
+		var properties map[string]interface{}
+
+		props := make(map[string]interface{})
+		if err := json.Unmarshal(*v, &props); err != nil {
+			return nil, err
+		}
+
+		el, err := extractEnforcementLevel(props)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing enforcement level for %q", k)
+		}
+		enforcementLevel = el
+		if len(props) > 0 {
+			properties = props
+		}
+
+		// Don't bother including empty configs.
+		if enforcementLevel == "" && len(properties) == 0 {
+			continue
+		}
+
+		result[k] = AnalyzerPolicyConfig{
+			EnforcementLevel: enforcementLevel,
+			Properties:       properties,
+		}
+	}
+	return result, nil
+}
+
 func parsePolicyPackConfig(b []byte) (map[string]AnalyzerPolicyConfig, error) {
 	result := make(map[string]AnalyzerPolicyConfig)
 
@@ -54,28 +92,21 @@ func parsePolicyPackConfig(b []byte) (map[string]AnalyzerPolicyConfig, error) {
 		case string:
 			el := apitype.EnforcementLevel(val)
 			if !el.IsValid() {
-				return nil, errors.Errorf("Value %q for %q is not a valid enforcement level", val, k)
+				return nil, errors.Errorf(
+					"parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
 			}
 			enforcementLevel = el
 		case map[string]interface{}:
-			if elUnknown, hasEnforcementLevel := val["enforcementLevel"]; hasEnforcementLevel {
-				elStr, isStr := elUnknown.(string)
-				if !isStr {
-					return nil, errors.Errorf("Value %v for %q is not a valid enforcement level", elUnknown, k)
-				}
-				el := apitype.EnforcementLevel(elStr)
-				if !el.IsValid() {
-					return nil, errors.Errorf("Value %q for %q is not a valid enforcement level", elStr, k)
-				}
-				enforcementLevel = el
-				// Remove enforcementLevel from the map.
-				delete(val, "enforcementLevel")
+			el, err := extractEnforcementLevel(val)
+			if err != nil {
+				return nil, errors.Wrapf(err, "parsing enforcement level for %q", k)
 			}
+			enforcementLevel = el
 			if len(val) > 0 {
 				properties = val
 			}
 		default:
-			return nil, errors.Errorf("Value %v for %q is not a valid value; must be a string or object", v, k)
+			return nil, errors.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
 		}
 
 		// Don't bother including empty configs.
@@ -89,6 +120,28 @@ func parsePolicyPackConfig(b []byte) (map[string]AnalyzerPolicyConfig, error) {
 		}
 	}
 	return result, nil
+}
+
+// extractEnforcementLevel looks for "enforcementLevel" in the map, and if so, validates that it is a valid value, and
+// if so, deletes it from the map and returns it.
+func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementLevel, error) {
+	contract.Assertf(props != nil, "props != nil")
+
+	var enforcementLevel apitype.EnforcementLevel
+	if unknown, ok := props["enforcementLevel"]; ok {
+		enforcementLevelStr, isStr := unknown.(string)
+		if !isStr {
+			return "", errors.Errorf("%v is not a valid enforcement level; must be a string", unknown)
+		}
+		el := apitype.EnforcementLevel(enforcementLevelStr)
+		if !el.IsValid() {
+			return "", errors.Errorf("%q is not a valid enforcement level", enforcementLevelStr)
+		}
+		enforcementLevel = el
+		// Remove enforcementLevel from the map.
+		delete(props, "enforcementLevel")
+	}
+	return enforcementLevel, nil
 }
 
 // ValidatePolicyPackConfig validates the policy pack's configuration.
