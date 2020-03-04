@@ -67,14 +67,33 @@ type DocNestedType struct {
 	Properties map[string][]Property
 }
 
+// PropertyType represents the type of a property.
+type PropertyType struct {
+	Name string
+	// TypeDocLink is the link to the language-specific
+	// doc page for this property.
+	TypeDocLink string
+}
+
+// ConstructorParam represents the formal parameters of a constructor.
+type ConstructorParam struct {
+	Name         string
+	Type         PropertyType
+	OptionalFlag string
+	DefaultValue string
+}
+
 type resourceArgs struct {
 	Header
 
 	Comment  string
 	Examples []exampleUsage
 
-	ConstructorGenerator func(string, bool) string
-	ArgsRequired         bool
+	ConstructorParams map[string][]ConstructorParam
+	// ConstructorResource is the resource that is being constructed or
+	// is the result of a constructor-like function.
+	ConstructorResource map[string]PropertyType
+	ArgsRequired        bool
 
 	InputProperties  map[string][]Property
 	OutputProperties map[string][]Property
@@ -211,37 +230,95 @@ func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
 	return typ
 }
 
-func (mod *modContext) genConstructorPython(r schema.Resource) string {
-	props := strings.Builder{}
-	for _, prop := range r.InputProperties {
-		props.WriteString(fmt.Sprintf(", %s=None", python.PyName(prop.Name)))
+func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []ConstructorParam {
+	name := resourceName(r)
+	argsType := name + "Args"
+	argsFlag := ""
+	if argsOptional {
+		argsFlag = "?"
 	}
-	// Note: We're excluding __name__ and __opts__ as those are only there for backwards compatibility and are
-	// deliberately not included in doc strings.
-	props.WriteString(fmt.Sprint(", __props__=None)"))
 
-	return fmt.Sprintf("def __init__(__self__, resource_name, opts=None%s", props.String())
+	return []ConstructorParam{
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name:        "string",
+				TypeDocLink: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			Type: PropertyType{
+				Name:        argsType,
+				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/aws/s3/#BucketArgs",
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			Type: PropertyType{
+				Name:        "pulumi.CustomResourceOptions",
+				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions",
+			},
+		},
+	}
 }
 
-func (mod *modContext) genConstructorGo(r schema.Resource) string {
+func (mod *modContext) genConstructorGo(r schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
-	return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	argsFlag := ""
+	if argsOptional {
+		argsFlag = "*"
+	}
+
+	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	return []ConstructorParam{
+		{
+			Name:         "ctx",
+			OptionalFlag: "*",
+			Type: PropertyType{
+				Name:        "pulumi.Context",
+				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
+			},
+		},
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name:        "string",
+				TypeDocLink: "https://golang.org/pkg/builtin/#string",
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			Type: PropertyType{
+				Name:        argsType,
+				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi-aws/sdk/go/aws/s3?tab=doc#Bucket",
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "...",
+			Type: PropertyType{
+				Name:        "pulumi.ResourceOption",
+				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
+			},
+		},
+	}
 }
 
-func (mod *modContext) genConstructorCS(r schema.Resource) string {
+func (mod *modContext) genConstructorCS(r schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 
+	var argsFlag string
 	var argsDefault string
-	allOptionalInputs := true
-	for _, prop := range r.InputProperties {
-		allOptionalInputs = allOptionalInputs && !prop.IsRequired
-	}
-	if allOptionalInputs {
+	if argsOptional {
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsDefault = " = null"
-		argsType += "?"
+		argsFlag = "?"
 	}
 
 	optionsType := "CustomResourceOptions"
@@ -249,7 +326,34 @@ func (mod *modContext) genConstructorCS(r schema.Resource) string {
 		optionsType = "ResourceOptions"
 	}
 
-	return fmt.Sprintf("public %s(string name, %s args%s, %s? options = null)\n", name, argsType, argsDefault, optionsType)
+	// return fmt.Sprintf("public %s(string name, %s args%s, %s? options = null)\n", name, argsType, argsDefault, optionsType)
+	return []ConstructorParam{
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name:        "string",
+				TypeDocLink: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			DefaultValue: argsDefault,
+			Type: PropertyType{
+				Name:        argsType,
+				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/aws/s3/#BucketArgs",
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			DefaultValue: " = null",
+			Type: PropertyType{
+				Name:        optionsType,
+				TypeDocLink: "https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions",
+			},
+		},
+	}
 }
 
 func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocNestedType {
@@ -324,19 +428,6 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(*r)
 
-	constructorGenerator := func(lang string, isArgsRequired bool) string {
-		switch lang {
-		case "python":
-			return mod.genConstructorPython(*r)
-		case "go":
-			return mod.genConstructorGo(*r)
-		case "csharp":
-			return mod.genConstructorCS(*r)
-		default:
-			return "Unknown language!"
-		}
-	}
-
 	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
 	// The args are all just named parameters of the constructor. Consider injecting
 	// `resource_name` and `opts` as the first two items in the table of properties.
@@ -360,6 +451,17 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		}
 	}
 
+	constructorParams := make(map[string][]ConstructorParam)
+	for _, lang := range supportedLanguages {
+		switch lang {
+		case "nodejs":
+			constructorParams["typescript"] = mod.genConstructorTS(*r, allOptionalInputs)
+		case "go":
+			constructorParams["go"] = mod.genConstructorGo(*r, allOptionalInputs)
+		case "csharp":
+			constructorParams["csharp"] = mod.genConstructorCS(*r, allOptionalInputs)
+		}
+	}
 	data := resourceArgs{
 		Header: Header{
 			Title: name,
@@ -369,8 +471,22 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		// TODO: This is just temporary to include some data we don't have available yet.
 		Examples: mod.getMockupExamples(r),
 
-		ConstructorGenerator: constructorGenerator,
-		ArgsRequired:         !allOptionalInputs,
+		ConstructorParams: constructorParams,
+		ConstructorResource: map[string]PropertyType{
+			"typescript": {
+				Name:        name,
+				TypeDocLink: "#",
+			},
+			"go": {
+				Name:        name,
+				TypeDocLink: "#",
+			},
+			"csharp": {
+				Name:        name,
+				TypeDocLink: "#",
+			},
+		},
+		ArgsRequired: !allOptionalInputs,
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,

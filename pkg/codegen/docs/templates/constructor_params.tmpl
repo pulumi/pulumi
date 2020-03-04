@@ -1,0 +1,7 @@
+{{ define "go_constructor_param" }}{{ range . }}<span class="nx">{{ .Name }}</span>{{ .OptionalFlag }} {{ template "linkify_param" .Type }}<span class="p">, </span>{{ end }}{{ end }}
+
+{{ define "ts_constructor_param" }}{{ range . }}<span class="nx">{{ .Name }}</span>{{ .OptionalFlag }}: {{ template "linkify_param" .Type }}<span class="p">, </span>{{ end }}{{ end }}
+
+{{ define "csharp_constructor_param" }}{{ range . }}{{ template "linkify_param" .Type }}{{ .OptionalFlag }} <span class="nx">{{ .Name }}{{ .DefaultValue }}</span><span class="p">, </span>{{ end }}{{ end }}
+
+{{ define "py_param" }}{{ range . }}, {{ htmlSafe .Name }}=None{{ end }}{{ end }}

@@ -10,19 +10,16 @@
 
 {{ htmlSafe "{{< langchoose csharp >}}" }}
 
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new</span>&nbsp;<span class="nx"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.Header.Title}}>{{.Header.Title}}</a></span><span class="p">(</span><span class="nx">name</span>:&nbsp;<span class="kt"><a href=https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String>string</a></span><span class="p">,</span>&nbsp;{{if .ArgsRequired}}<span class="nx">args</span>{{else}}<span class="nx">args?</span>{{end}}:&nbsp;<span class="kt">{{.Header.Title}}Args</span><span class="p">,</span>&nbsp;<span class="nx">opts?</span>:&nbsp;<span class="kt"><a href=/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions>pulumi.CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.typescript }}<span class="p">(</span>{{ template "ts_constructor_param" .ConstructorParams.typescript }}<span class="p">);</span></code></pre></div>
 
 ```python
-{{ call .ConstructorGenerator "python" .ArgsRequired }}
+def get(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
 ```
 
-```go
-{{ call .ConstructorGenerator "go" .ArgsRequired }}
-```
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ template "go_constructor_param" .ConstructorParams.go }}<span class="p">) (* {{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
-```csharp
-{{ call .ConstructorGenerator "csharp" .ArgsRequired }}
-```
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ template "csharp_constructor_param" .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
+
 
 Creates a {{ .Header.Title }} resource with the given unique name, arguments, and options.
 
@@ -58,7 +55,7 @@ public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{ .StatePa
 ```
 
 ```python
-def get(resource_name, id, opts=None{{ template "py_read_resource" .StateInputs.python }})
+def get(resource_name, id, opts=None{{ template "py_param" .StateInputs.python }})
 ```
 
 ```go
