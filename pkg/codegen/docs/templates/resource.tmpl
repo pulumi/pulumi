@@ -10,16 +10,15 @@
 
 {{ htmlSafe "{{< langchoose csharp >}}" }}
 
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.typescript }}<span class="p">(</span>{{ template "ts_constructor_param" .ConstructorParams.typescript }}<span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.typescript }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 
 ```python
 def get(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
 ```
 
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ template "go_constructor_param" .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ template "csharp_constructor_param" .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
 
 Creates a {{ .Header.Title }} resource with the given unique name, arguments, and options.
 

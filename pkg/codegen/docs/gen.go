@@ -91,7 +91,7 @@ type resourceArgs struct {
 	Comment  string
 	Examples []exampleUsage
 
-	ConstructorParams map[string][]ConstructorParam
+	ConstructorParams map[string]string
 	// ConstructorResource is the resource that is being constructed or
 	// is the result of a constructor-like function.
 	ConstructorResource map[string]PropertyType
@@ -125,6 +125,13 @@ type modContext struct {
 	typeDetails map[*schema.ObjectType]*typeDetails
 	children    []*modContext
 	tool        string
+}
+
+func resourceName(r *schema.Resource) string {
+	if r.IsProvider {
+		return "Provider"
+	}
+	return tokenToName(r.Token)
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -193,7 +200,7 @@ func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
 	return typ
 }
 
-func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -228,7 +235,7 @@ func (mod *modContext) genConstructorTS(r schema.Resource, argsOptional bool) []
 	}
 }
 
-func (mod *modContext) genConstructorGo(r schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -272,7 +279,7 @@ func (mod *modContext) genConstructorGo(r schema.Resource, argsOptional bool) []
 	}
 }
 
-func (mod *modContext) genConstructorCS(r schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 
@@ -387,11 +394,48 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 	return docProperties
 }
 
+func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) map[string]string {
+	constructorParams := make(map[string]string)
+	for _, lang := range supportedLanguages {
+		var (
+			paramTemplate string
+			params        []ConstructorParam
+		)
+		b := &bytes.Buffer{}
+
+		switch lang {
+		case "nodejs":
+			params = mod.genConstructorTS(r, allOptionalInputs)
+			paramTemplate = "ts_constructor_param"
+		case "go":
+			params = mod.genConstructorGo(r, allOptionalInputs)
+			paramTemplate = "go_constructor_param"
+		case "csharp":
+			params = mod.genConstructorCS(r, allOptionalInputs)
+			paramTemplate = "csharp_constructor_param"
+		}
+
+		n := len(params)
+		for i, p := range params {
+			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+				panic(err)
+			}
+			if i != n-1 {
+				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+					panic(err)
+				}
+			}
+		}
+		constructorParams[lang] = b.String()
+	}
+	return constructorParams
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// Create a resource module file into which all of this resource's types will go.
-	name := resourceName(*r)
+	name := resourceName(r)
 
 	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
 	// The args are all just named parameters of the constructor. Consider injecting
@@ -419,17 +463,6 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		}
 	}
 
-	constructorParams := make(map[string][]ConstructorParam)
-	for _, lang := range supportedLanguages {
-		switch lang {
-		case "nodejs":
-			constructorParams["typescript"] = mod.genConstructorTS(*r, allOptionalInputs)
-		case "go":
-			constructorParams["go"] = mod.genConstructorGo(*r, allOptionalInputs)
-		case "csharp":
-			constructorParams["csharp"] = mod.genConstructorCS(*r, allOptionalInputs)
-		}
-	}
 	data := resourceArgs{
 		Header: Header{
 			Title: name,
@@ -439,7 +472,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		// TODO: This is just temporary to include some data we don't have available yet.
 		Examples: mod.getMockupExamples(r),
 
-		ConstructorParams: constructorParams,
+		ConstructorParams: mod.genConstructors(r, allOptionalInputs),
 		ConstructorResource: map[string]PropertyType{
 			"typescript": {
 				Name:        name,
@@ -587,7 +620,7 @@ func (mod *modContext) gen(fs fs) error {
 	for _, r := range mod.resources {
 		data := mod.genResource(r)
 
-		title := resourceName(*r)
+		title := resourceName(r)
 		buffer := &bytes.Buffer{}
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
@@ -649,7 +682,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	// If there are resources in the root, list them.
 	var resources []string
 	for _, r := range mod.resources {
-		resources = append(resources, resourceName(*r))
+		resources = append(resources, resourceName(r))
 	}
 	if len(resources) > 0 {
 		sort.Strings(resources)
@@ -786,7 +819,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 // TODO: Remove this when we have real examples available.
 func (mod *modContext) getMockupExamples(r *schema.Resource) []exampleUsage {
 
-	if resourceName(*r) != "Bucket" {
+	if resourceName(r) != "Bucket" {
 		return nil
 	}
 

@@ -22,7 +22,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -56,11 +55,4 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return title(components[2])
-}
-
-func resourceName(r schema.Resource) string {
-	if r.IsProvider {
-		return "Provider"
-	}
-	return tokenToName(r.Token)
 }
