@@ -1,3 +1,5 @@
+//go:generate go run bundler.go
+
 // Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +41,7 @@ import (
 var supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
 
 var templates *template.Template
+var packagedTemplates map[string][]byte
 
 // Header represents the header of each resource markdown file.
 type Header struct {
@@ -676,8 +679,7 @@ func (mod *modContext) genIndex(exports []string) string {
 // GeneratePackage generates the docs package with docs for each resource given the Pulumi
 // schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	var err error
-	templates, err = template.New("").Funcs(template.FuncMap{
+	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
 			// so that html/template package doesn't try to inject data into it,
@@ -685,9 +687,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// nolint gosec
 			return template.HTML(html)
 		},
-	}).ParseGlob("/home/praneetloke/go/src/github.com/pulumi/pulumi/pkg/codegen/docs/templates/*.tmpl")
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing templates")
+	})
+
+	for name, b := range packagedTemplates {
+		template.Must(templates.New(name).Parse(string(b)))
 	}
 
 	// group resources, types, and functions into modules
