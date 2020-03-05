@@ -324,8 +324,17 @@ namespace Pulumi.Serialization
             if (targetType == typeof(ImmutableDictionary<string, object>))
             {
                 // This type is what is generated for things like azure/aws tags.  It's an untyped
-                // map in our original schema.  This is the only place that `object` should appear
-                // as a legal value.
+                // map in our original schema.  This is the 1st out of 2 places that `object` should
+                // appear as a legal value.
+                return;
+            }
+
+            if (targetType == typeof(ImmutableArray<object>))
+            {
+                // This type is what is generated for things like YAML decode invocation response
+                // in the Kubernetes provider. The elements of the array would typically be
+                // immutable dictionaries.  This is the 2nd out of 2 places that `object` should
+                // appear as a legal value.
                 return;
             }
 
