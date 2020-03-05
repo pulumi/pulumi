@@ -29,11 +29,10 @@ type binder struct {
 
 	packageSchemas map[string]*packageSchema
 
-	tokens      syntax.TokenMap
-	stack       []hclsyntax.Node
-	anonSymbols map[*hclsyntax.AnonSymbolExpr]*LocalVariable
-	scopes      *scopes
-	root        scope
+	tokens syntax.TokenMap
+	stack  []hclsyntax.Node
+	scopes *Scopes
+	root   *Scope
 }
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
@@ -55,10 +54,9 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
-		anonSymbols:    map[*hclsyntax.AnonSymbolExpr]*LocalVariable{},
-		scopes:         &scopes{},
+		scopes:         &Scopes{},
 	}
-	b.root = b.scopes.push()
+	b.root = b.scopes.Push(&hclsyntax.Body{})
 
 	var diagnostics hcl.Diagnostics
 
@@ -72,10 +70,10 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 
 	// Sort nodes in source order so downstream operations are deterministic.
 	var nodes []Node
-	for _, n := range b.root {
-		nodes = append(nodes, n)
+	for _, n := range b.root.defs {
+		nodes = append(nodes, n.(Node))
 	}
-	sourceOrderNodes(nodes)
+	SourceOrderNodes(nodes)
 
 	// Load referenced package schemas.
 	for _, n := range nodes {
@@ -102,18 +100,18 @@ func (b *binder) declareNodes(file *syntax.File) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
 	// Declare blocks (config, resources, outputs), then attributes (locals)
-	for _, block := range sourceOrderBlocks(file.Body.Blocks) {
+	for _, block := range SourceOrderBlocks(file.Body.Blocks) {
 		switch block.Type {
 		case "config":
 			if len(block.Labels) != 0 {
 				diagnostics = append(diagnostics, labelsErrorf(block, "config blocks do not support labels"))
 			}
 
-			for _, attr := range sourceOrderAttributes(block.Body.Attributes) {
+			for _, attr := range SourceOrderAttributes(block.Body.Attributes) {
 				diagnostics = append(diagnostics, errorf(attr.Range(), "unsupported attribute %q in config block", attr.Name))
 			}
 
-			for _, variable := range sourceOrderBlocks(block.Body.Blocks) {
+			for _, variable := range SourceOrderBlocks(block.Body.Blocks) {
 				if len(variable.Labels) > 1 {
 					diagnostics = append(diagnostics, labelsErrorf(block, "config variables must have no more than one label"))
 				}
@@ -141,11 +139,11 @@ func (b *binder) declareNodes(file *syntax.File) hcl.Diagnostics {
 				diagnostics = append(diagnostics, labelsErrorf(block, "outputs blocks do not support labels"))
 			}
 
-			for _, attr := range sourceOrderAttributes(block.Body.Attributes) {
+			for _, attr := range SourceOrderAttributes(block.Body.Attributes) {
 				diagnostics = append(diagnostics, errorf(attr.Range(), "unsupported attribute %q in outputs block", attr.Name))
 			}
 
-			for _, variable := range sourceOrderBlocks(block.Body.Blocks) {
+			for _, variable := range SourceOrderBlocks(block.Body.Blocks) {
 				if len(variable.Labels) > 1 {
 					diagnostics = append(diagnostics, labelsErrorf(block, "output variables must have no more than one label"))
 				}
@@ -157,7 +155,7 @@ func (b *binder) declareNodes(file *syntax.File) hcl.Diagnostics {
 		}
 	}
 
-	for _, attr := range sourceOrderAttributes(file.Body.Attributes) {
+	for _, attr := range SourceOrderAttributes(file.Body.Attributes) {
 		diagnostics = append(diagnostics, b.declareNode(attr.Name, &LocalVariable{
 			Syntax: attr,
 		})...)
@@ -169,9 +167,13 @@ func (b *binder) declareNodes(file *syntax.File) hcl.Diagnostics {
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
-	if !b.root.define(name, n) {
-		existing, _ := b.root.bindReference(name)
+	if !b.root.Define(name, n) {
+		existing, _ := b.root.BindReference(name)
 		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(), "%q already declared", name)}
 	}
 	return nil
+}
+
+func (b *binder) bindExpression(node hclsyntax.Node) (Expression, hcl.Diagnostics) {
+	return BindExpression(node, b.scopes, b.tokens)
 }

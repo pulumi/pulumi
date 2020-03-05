@@ -80,14 +80,15 @@ func (b *binder) getDependencies(node Node) []Node {
 		}
 
 		// Missing reference errors will be issued during expression binding.
-		if referent, ok := b.root.bindReference(depName); ok && !depSet.Has(referent) {
-			depSet.Add(referent)
-			deps = append(deps, referent)
+		referent, _ := b.root.BindReference(depName)
+		if node, ok := referent.(Node); ok && !depSet.Has(node) {
+			depSet.Add(node)
+			deps = append(deps, node)
 		}
 		return nil
 	})
 	contract.Assert(len(diags) == 0)
-	return sourceOrderNodes(deps)
+	return SourceOrderNodes(deps)
 }
 
 func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {

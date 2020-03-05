@@ -22,6 +22,8 @@ import (
 
 // Resource represents a resource instantiation inside of a program or component.
 type Resource struct {
+	node
+
 	// The syntax node associated with the resource instantiation.
 	Syntax *hclsyntax.Block
 	// The syntax tokens associated with the resource instantiation.
@@ -37,9 +39,6 @@ type Resource struct {
 	// The range expression for this resource, if any. TODO: unimplemented.
 	Range Expression
 
-	state bindState
-	deps  []Node
-
 	// TODO: Resource options
 }
 
@@ -53,23 +52,9 @@ func (r *Resource) Type() Type {
 	return r.OutputType
 }
 
-func (r *Resource) getState() bindState {
-	return r.state
+func (r *Resource) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return r.OutputType.Traverse(traverser)
 }
-
-func (r *Resource) setState(s bindState) {
-	r.state = s
-}
-
-func (r *Resource) getDependencies() []Node {
-	return r.deps
-}
-
-func (r *Resource) setDependencies(nodes []Node) {
-	r.deps = nodes
-}
-
-func (*Resource) isNode() {}
 
 // Name returns the name of the resource.
 func (r *Resource) Name() string {

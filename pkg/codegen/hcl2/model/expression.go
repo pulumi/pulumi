@@ -270,8 +270,8 @@ type RelativeTraversalExpression struct {
 
 	// The expression that computes the value being traversed.
 	Source Expression
-	// The types of the traversal's parts.
-	Types []Type
+	// The traversal's parts.
+	Parts []Traversable
 }
 
 // SyntaxNode returns the syntax node associated with the relative traversal expression.
@@ -281,7 +281,7 @@ func (x *RelativeTraversalExpression) SyntaxNode() hclsyntax.Node {
 
 // Type returns the type of the relative traversal expression.
 func (x *RelativeTraversalExpression) Type() Type {
-	return x.Types[len(x.Types)-1]
+	return GetTraversableType(x.Parts[len(x.Parts)-1])
 }
 
 func (*RelativeTraversalExpression) isExpression() {}
@@ -291,10 +291,8 @@ type ScopeTraversalExpression struct {
 	// The syntax node associated with the scope traversal expression.
 	Syntax *hclsyntax.ScopeTraversalExpr
 
-	// The definition that corresponds to the root of the traversal.
-	Node Node
-	// The types of the traversal's parts.
-	Types []Type
+	// The traversal's parts.
+	Parts []Traversable
 }
 
 // SyntaxNode returns the syntax node associated with the scope traversal expression.
@@ -304,7 +302,7 @@ func (x *ScopeTraversalExpression) SyntaxNode() hclsyntax.Node {
 
 // Type returns the type of the scope traversal expression.
 func (x *ScopeTraversalExpression) Type() Type {
-	return x.Types[len(x.Types)-1]
+	return GetTraversableType(x.Parts[len(x.Parts)-1])
 }
 
 func (*ScopeTraversalExpression) isExpression() {}

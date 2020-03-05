@@ -20,82 +20,55 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// bindTraversalTypes computes the type for each element of the given traversal.
-func (b *binder) bindTraversalTypes(receiver Type, traversal hcl.Traversal) ([]Type, hcl.Diagnostics) {
-	types := make([]Type, len(traversal)+1)
-	types[0] = receiver
+type Traversable interface {
+	Traverse(t hcl.Traverser) (Traversable, hcl.Diagnostics)
+}
+
+type TypedTraversable interface {
+	Type() Type
+}
+
+func GetTraversableType(t Traversable) Type {
+	switch t := t.(type) {
+	case TypedTraversable:
+		return t.Type()
+	case Type:
+		return t
+	default:
+		return AnyType
+	}
+}
+
+func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
+	switch t := t.(type) {
+	case hcl.TraverseAttr:
+		return cty.StringVal(t.Name), StringType
+	case hcl.TraverseIndex:
+		if t.Key.Type().Equals(typeCapsule) {
+			return cty.DynamicVal, *(t.Key.EncapsulatedValue().(*Type))
+		}
+		return t.Key, ctyTypeToType(t.Key.Type(), false)
+	default:
+		contract.Failf("unexpected traverser of type %T (%v)", t, t.SourceRange())
+		return cty.DynamicVal, AnyType
+	}
+}
+
+// bindTraversalParts computes the type for each element of the given traversal.
+func (b *expressionBinder) bindTraversalParts(receiver Traversable, traversal hcl.Traversal) ([]Traversable, hcl.Diagnostics) {
+	parts := make([]Traversable, len(traversal)+1)
+	parts[0] = receiver
 
 	var diagnostics hcl.Diagnostics
 	for i, part := range traversal {
-		var index cty.Value
-		switch part := part.(type) {
-		case hcl.TraverseAttr:
-			index = cty.StringVal(part.Name)
-		case hcl.TraverseIndex:
-			index = part.Key
-		default:
-			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
-		}
-
-		nextReceiver, indexDiags := b.bindIndexType(receiver, ctyTypeToType(index.Type(), false), index, part.SourceRange())
-		types[i+1], receiver, diagnostics = nextReceiver, nextReceiver, append(diagnostics, indexDiags...)
+		nextReceiver, partDiags := parts[i].Traverse(part)
+		parts[i+1], diagnostics = nextReceiver, append(diagnostics, partDiags...)
 	}
 
-	return types, diagnostics
-}
-
-// bindIndexType computes the type of the result of applying the given index to the given receiver type.
-// - If the receiver is an optional(T), the result will be optional(bindIndexType(T, ...))
-// - If the receiver is an output(T), the result will be output(bindIndexType(T, ...))
-// - If the receiver is a promise(T), the result will be promise(bindIndexType(T, ...))
-// - If the receiver is a map(T), the index must be assignable to string and the result will be T
-// - If the receiver is an array(T), the index must be assignable to number and the result will be T
-// - If the receiver is an object({K_0 = T_0, ..., K_N = T_N}), the index must be assignable to string and the result
-//   will be object[K].
-func (b *binder) bindIndexType(receiver Type, indexType Type, indexVal cty.Value,
-	indexRange hcl.Range) (Type, hcl.Diagnostics) {
-
-	switch receiver := receiver.(type) {
-	case *OptionalType:
-		elementType, diagnostics := b.bindIndexType(receiver.ElementType, indexType, indexVal, indexRange)
-		return NewOptionalType(elementType), diagnostics
-	case *OutputType:
-		elementType, diagnostics := b.bindIndexType(receiver.ElementType, indexType, indexVal, indexRange)
-		return NewOutputType(elementType), diagnostics
-	case *PromiseType:
-		elementType, diagnostics := b.bindIndexType(receiver.ElementType, indexType, indexVal, indexRange)
-		return NewPromiseType(elementType), diagnostics
-	case *MapType:
-		var diagnostics hcl.Diagnostics
-		if !inputType(StringType).AssignableFrom(indexType) {
-			diagnostics = hcl.Diagnostics{unsupportedMapKey(indexRange)}
-		}
-		return receiver.ElementType, diagnostics
-	case *ArrayType:
-		var diagnostics hcl.Diagnostics
-		if !inputType(NumberType).AssignableFrom(indexType) {
-			diagnostics = hcl.Diagnostics{unsupportedArrayIndex(indexRange)}
-		}
-		return receiver.ElementType, diagnostics
-	case *ObjectType:
-		if !inputType(StringType).AssignableFrom(indexType) {
-			return AnyType, hcl.Diagnostics{unsupportedObjectProperty(indexRange)}
-		}
-
-		if indexVal == cty.DynamicVal {
-			return AnyType, nil
-		}
-
-		propertyName := indexVal.AsString()
-		propertyType, hasProperty := receiver.Properties[propertyName]
-		if !hasProperty {
-			return AnyType, hcl.Diagnostics{unknownObjectProperty(propertyName, indexRange)}
-		}
-		return propertyType, nil
-	default:
-		if receiver == AnyType {
-			return AnyType, nil
-		}
-		return AnyType, hcl.Diagnostics{unsupportedReceiverType(receiver, indexRange)}
+	// TODO: expand this to all untyped traversables
+	if _, isScope := parts[len(parts)-1].(*Scope); isScope {
+		diagnostics = append(diagnostics, undefinedVariable(traversal.SourceRange()))
 	}
+
+	return parts, diagnostics
 }

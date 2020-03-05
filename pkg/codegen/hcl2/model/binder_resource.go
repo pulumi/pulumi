@@ -66,7 +66,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 
 	// Bind the resource's body.
 	bodyItems := make([]hclsyntax.ObjectConsItem, len(node.Syntax.Body.Attributes))
-	for i, attr := range sourceOrderAttributes(node.Syntax.Body.Attributes) {
+	for i, attr := range SourceOrderAttributes(node.Syntax.Body.Attributes) {
 		bodyItems[i] = hclsyntax.ObjectConsItem{
 			KeyExpr:   &hclsyntax.LiteralValueExpr{Val: cty.StringVal(attr.Name), SrcRange: attr.NameRange},
 			ValueExpr: attr.Expr,

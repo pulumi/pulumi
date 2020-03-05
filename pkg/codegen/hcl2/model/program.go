@@ -34,8 +34,8 @@ const (
 
 // Node represents a single definition in a program or component. Nodes may be config, locals, resources, or outputs.
 type Node interface {
-	// SyntaxNode returns the hclsyntax.Node associated with the node.
-	SyntaxNode() hclsyntax.Node
+	Definition
+
 	// Type returns the type of the node.
 	Type() Type
 
@@ -46,6 +46,29 @@ type Node interface {
 
 	isNode()
 }
+
+type node struct {
+	state bindState
+	deps  []Node
+}
+
+func (r *node) getState() bindState {
+	return r.state
+}
+
+func (r *node) setState(s bindState) {
+	r.state = s
+}
+
+func (r *node) getDependencies() []Node {
+	return r.deps
+}
+
+func (r *node) setDependencies(nodes []Node) {
+	r.deps = nodes
+}
+
+func (*node) isNode() {}
 
 // Program represents a semantically-analyzed Pulumi HCL2 program.
 type Program struct {

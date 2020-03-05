@@ -18,7 +18,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 	}
 
 	thenTraversal, ok := then.Body.(*model.ScopeTraversalExpression)
-	if !ok || thenTraversal.Node != then.Parameters[0] {
+	if !ok || thenTraversal.Parts[0] != then.Parameters[0] {
 		return nil, false
 	}
 

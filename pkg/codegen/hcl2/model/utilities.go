@@ -23,30 +23,54 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen"
 )
 
-func sourceOrderBlocks(blocks []*hclsyntax.Block) []*hclsyntax.Block {
+func SourceOrderLess(a, b hcl.Range) bool {
+	return a.Filename < b.Filename || a.Start.Byte < b.Start.Byte
+}
+
+func SourceOrderBody(body *hclsyntax.Body) []hclsyntax.Node {
+	items := make([]hclsyntax.Node, 0, len(body.Attributes)+len(body.Blocks))
+	for _, attr := range body.Attributes {
+		items = append(items, attr)
+	}
+	for _, block := range body.Blocks {
+		items = append(items, block)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return SourceOrderLess(items[i].Range(), items[j].Range())
+	})
+	return items
+}
+
+func SourceOrderBlocks(blocks []*hclsyntax.Block) []*hclsyntax.Block {
 	sort.Slice(blocks, func(i, j int) bool {
-		return blocks[i].Range().Start.Byte < blocks[j].Range().Start.Byte
+		return SourceOrderLess(blocks[i].Range(), blocks[j].Range())
 	})
 	return blocks
 }
 
-func sourceOrderAttributes(attrMap map[string]*hclsyntax.Attribute) []*hclsyntax.Attribute {
-	var attrs []*hclsyntax.Attribute
+func SourceOrderAttributes(attrMap map[string]*hclsyntax.Attribute) []*hclsyntax.Attribute {
+	attrs := make([]*hclsyntax.Attribute, 0, len(attrMap))
 	for _, attr := range attrMap {
 		attrs = append(attrs, attr)
 	}
 	sort.Slice(attrs, func(i, j int) bool {
-		return attrs[i].Range().Start.Byte < attrs[j].Range().End.Byte
+		return SourceOrderLess(attrs[i].Range(), attrs[j].Range())
 	})
 	return attrs
 }
 
-func sourceOrderNodes(nodes []Node) []Node {
+func SourceOrderNodes(nodes []Node) []Node {
 	sort.Slice(nodes, func(i, j int) bool {
-		ir, jr := nodes[i].SyntaxNode().Range(), nodes[j].SyntaxNode().Range()
-		return ir.Filename < jr.Filename || ir.Start.Byte < jr.Start.Byte
+		return SourceOrderLess(nodes[i].SyntaxNode().Range(), nodes[j].SyntaxNode().Range())
 	})
 	return nodes
+}
+
+func SourceOrderDefinitions(defs []Definition) []Definition {
+	sort.Slice(defs, func(i, j int) bool {
+		return SourceOrderLess(defs[i].SyntaxNode().Range(), defs[j].SyntaxNode().Range())
+	})
+	return defs
 }
 
 func decomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
@@ -94,7 +118,7 @@ func Linearize(p *Program) []Node {
 	// Now build a worklist out of the set of files, sorting the nodes in each file in source order as we go.
 	worklist := make([]*file, 0, len(files))
 	for _, f := range files {
-		sourceOrderNodes(f.nodes)
+		SourceOrderNodes(f.nodes)
 		worklist = append(worklist, f)
 	}
 

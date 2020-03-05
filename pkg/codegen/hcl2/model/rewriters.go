@@ -48,23 +48,22 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *ScopeTraversalExpr
 	// Compute the type of the apply and callback arguments.
 	var applyArg *ScopeTraversalExpression
 	var paramType Type
-	var types []Type
+	var parts []Traversable
 	var traversal hcl.Traversal
 
 	splitTraversal := expr.Syntax.Traversal.SimpleSplit()
-	if rootResolvedType, rootIsEventual := isEventualType(expr.Types[0]); rootIsEventual {
+	if rootResolvedType, rootIsEventual := isEventualType(GetTraversableType(expr.Parts[0])); rootIsEventual {
 		applyArg = &ScopeTraversalExpression{
 			Syntax: &hclsyntax.ScopeTraversalExpr{
 				Traversal: splitTraversal.Abs,
 				SrcRange:  splitTraversal.Abs.SourceRange(),
 			},
-			Node:  expr.Node,
-			Types: expr.Types[:1],
+			Parts: expr.Parts[:1],
 		}
-		paramType, traversal, types = rootResolvedType, expr.Syntax.Traversal.SimpleSplit().Rel, expr.Types[1:]
+		paramType, traversal, parts = rootResolvedType, expr.Syntax.Traversal.SimpleSplit().Rel, expr.Parts[1:]
 	} else {
 		for i := range splitTraversal.Rel {
-			if resolvedType, isEventual := isEventualType(expr.Types[i+1]); isEventual {
+			if resolvedType, isEventual := isEventualType(GetTraversableType(expr.Parts[i+1])); isEventual {
 				absTraversal, relTraversal := expr.Syntax.Traversal[:i+2], expr.Syntax.Traversal[i+2:]
 
 				applyArg = &ScopeTraversalExpression{
@@ -72,10 +71,9 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *ScopeTraversalExpr
 						Traversal: absTraversal,
 						SrcRange:  absTraversal.SourceRange(),
 					},
-					Node:  expr.Node,
-					Types: expr.Types[:i+2],
+					Parts: expr.Parts[:i+2],
 				}
-				paramType, traversal, types = resolvedType, relTraversal, expr.Types[i+2:]
+				paramType, traversal, parts = resolvedType, relTraversal, expr.Parts[i+2:]
 				break
 			}
 		}
@@ -94,12 +92,12 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *ScopeTraversalExpr
 
 	// TODO(pdg): this risks information loss for nested output-typed properties... The `Types` array on traversals
 	// ought to store the original types.
-	resolvedTypes := make([]Type, len(types)+1)
-	resolvedTypes[0] = paramType
-	for i, t := range types {
-		resolved, isEventual := isEventualType(t)
+	resolvedParts := make([]Traversable, len(parts)+1)
+	resolvedParts[0] = callbackParam
+	for i, p := range parts {
+		resolved, isEventual := isEventualType(GetTraversableType(p))
 		contract.Assert(isEventual)
-		resolvedTypes[i+1] = resolved
+		resolvedParts[i+1] = resolved
 	}
 
 	return &ScopeTraversalExpression{
@@ -107,8 +105,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *ScopeTraversalExpr
 			Traversal: hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
 			SrcRange:  traversal.SourceRange(),
 		},
-		Node:  callbackParam,
-		Types: resolvedTypes,
+		Parts: resolvedParts,
 	}
 }
 

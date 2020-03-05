@@ -15,15 +15,33 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
+type expressionBinder struct {
+	anonSymbols map[*hclsyntax.AnonSymbolExpr]Node
+	scopes      *Scopes
+}
+
+// BindExpression binds an HCL2 expression using the given scopes and token map.
+func BindExpression(syntax hclsyntax.Node, scopes *Scopes, tokens syntax.TokenMap) (Expression, hcl.Diagnostics) {
+	b := &expressionBinder{
+		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Node{},
+		scopes:      scopes,
+	}
+
+	return b.bindExpression(syntax)
+}
+
 // bindExpression binds a single HCL2 expression.
-func (b *binder) bindExpression(syntax hclsyntax.Node) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindExpression(syntax hclsyntax.Node) (Expression, hcl.Diagnostics) {
 	switch syntax := syntax.(type) {
 	case *hclsyntax.AnonSymbolExpr:
 		return b.bindAnonSymbolExpression(syntax)
@@ -86,6 +104,12 @@ func ctyTypeToType(t cty.Type, optional bool) Type {
 		return NewOptionalType(result)
 	}
 	return result
+}
+
+var typeCapsule = cty.Capsule("type", reflect.TypeOf(Type(nil)))
+
+func encapsulateType(t Type) cty.Value {
+	return cty.CapsuleVal(typeCapsule, &t)
 }
 
 // getOperationSignature returns the equivalent FunctionSignature for a given Operation. This signature can be used
@@ -154,7 +178,7 @@ func typecheckArgs(srcRange hcl.Range, signature FunctionSignature, args ...Expr
 // bindAnonSymbolExpression binds an anonymous symbol expression. These expressions should only occur in the context of
 // splat expressions, and are used represent the receiver of the expression following the splat. It is an error for
 // an anonymous symbol expression to occur outside this context.
-func (b *binder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbolExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbolExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	lv, ok := b.anonSymbols[syntax]
@@ -168,14 +192,13 @@ func (b *binder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbolExpr) (Exp
 			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "<anonymous>", SrcRange: syntax.SrcRange}},
 			SrcRange:  syntax.SrcRange,
 		},
-		Node:  lv,
-		Types: []Type{lv.Type()},
+		Parts: []Traversable{lv},
 	}, diagnostics
 }
 
 // bindBinaryOpExpression binds a binary operator expression. If the operands to the binary operator contain eventuals,
 // the result of the binary operator is eventual.
-func (b *binder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	// Bind the operands.
@@ -209,7 +232,7 @@ func (b *binder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr) (Express
 // - If neither type is assignable to the other, the type of the expression is the union of the two types.
 //
 // If the type of the condition is eventual, the type of the expression is eventual.
-func (b *binder) bindConditionalExpression(syntax *hclsyntax.ConditionalExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.ConditionalExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	// Bind the operands.
@@ -285,7 +308,7 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 	}
 }
 
-func (b *binder) bindForExpression(syntax *hclsyntax.ForExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	collection, collectionDiags := b.bindExpression(syntax.CollExpr)
@@ -312,13 +335,13 @@ func (b *binder) bindForExpression(syntax *hclsyntax.ForExpr) (Expression, hcl.D
 	}
 
 	// Push a scope for the key and value variables and define these vars.
-	forScope := b.scopes.push()
-	defer b.scopes.pop()
+	forScope := b.scopes.Push(syntax)
+	defer b.scopes.Pop()
 	if syntax.KeyVar != "" {
-		ok := forScope.define(syntax.KeyVar, &LocalVariable{Name: syntax.KeyVar, VariableType: keyType})
+		ok := forScope.Define(syntax.KeyVar, &LocalVariable{Name: syntax.KeyVar, VariableType: keyType})
 		contract.Assert(ok)
 	}
-	if ok := forScope.define(syntax.ValVar, &LocalVariable{Name: syntax.ValVar, VariableType: valueType}); !ok {
+	if ok := forScope.Define(syntax.ValVar, &LocalVariable{Name: syntax.ValVar, VariableType: valueType}); !ok {
 		diagnostics = append(diagnostics, nameAlreadyDefined(syntax.ValVar, syntax.Range()))
 	}
 
@@ -378,7 +401,7 @@ func (b *binder) bindForExpression(syntax *hclsyntax.ForExpr) (Expression, hcl.D
 	}, diagnostics
 }
 
-func (b *binder) bindFunctionCallExpression(syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindFunctionCallExpression(syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	definition, definitionDiags := getFunctionDefinition(syntax.Name, syntax.NameRange)
@@ -425,7 +448,7 @@ func (b *binder) bindFunctionCallExpression(syntax *hclsyntax.FunctionCallExpr) 
 	}, diagnostics
 }
 
-func (b *binder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	collection, collectionDiags := b.bindExpression(syntax.Collection)
@@ -434,18 +457,22 @@ func (b *binder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, h
 	key, keyDiags := b.bindExpression(syntax.Key)
 	diagnostics = append(diagnostics, keyDiags...)
 
-	typ, typDiags := b.bindIndexType(collection.Type(), key.Type(), cty.DynamicVal, syntax.Key.Range())
-	diagnostics = append(diagnostics, typDiags...)
+	part, partDiags := collection.Type().Traverse(hcl.TraverseIndex{
+		Key:      encapsulateType(key.Type()),
+		SrcRange: syntax.Key.Range(),
+	})
+
+	diagnostics = append(diagnostics, partDiags...)
 
 	return &IndexExpression{
 		Syntax:     syntax,
 		Collection: collection,
 		Key:        key,
-		exprType:   liftOperationType(typ, collection, key),
+		exprType:   liftOperationType(part.(Type), collection, key),
 	}, diagnostics
 }
 
-func (b *binder) bindLiteralValueExpression(syntax *hclsyntax.LiteralValueExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindLiteralValueExpression(syntax *hclsyntax.LiteralValueExpr) (Expression, hcl.Diagnostics) {
 	pv, typ, diagnostics := resource.PropertyValue{}, Type(nil), hcl.Diagnostics(nil)
 
 	v := syntax.Val
@@ -470,7 +497,7 @@ func (b *binder) bindLiteralValueExpression(syntax *hclsyntax.LiteralValueExpr) 
 	}, diagnostics
 }
 
-func (b *binder) bindObjectConsExpression(syntax *hclsyntax.ObjectConsExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectConsExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	items := make([]ObjectConsItem, len(syntax.Items))
@@ -514,7 +541,7 @@ func (b *binder) bindObjectConsExpression(syntax *hclsyntax.ObjectConsExpr) (Exp
 	}, diagnostics
 }
 
-func (b *binder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKeyExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKeyExpr) (Expression, hcl.Diagnostics) {
 	if !syntax.ForceNonLiteral {
 		if name := hcl.ExprAsKeyword(syntax); name != "" {
 			return b.bindExpression(&hclsyntax.LiteralValueExpr{
@@ -526,43 +553,42 @@ func (b *binder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKeyExpr) (Exp
 	return b.bindExpression(syntax.Wrapped)
 }
 
-func (b *binder) bindRelativeTraversalExpression(
+func (b *expressionBinder) bindRelativeTraversalExpression(
 	syntax *hclsyntax.RelativeTraversalExpr) (Expression, hcl.Diagnostics) {
 
 	source, diagnostics := b.bindExpression(syntax.Source)
 
-	types, typDiags := b.bindTraversalTypes(source.Type(), syntax.Traversal)
-	diagnostics = append(diagnostics, typDiags...)
+	parts, partDiags := b.bindTraversalParts(source.Type(), syntax.Traversal)
+	diagnostics = append(diagnostics, partDiags...)
 
 	return &RelativeTraversalExpression{
 		Syntax: syntax,
 		Source: source,
-		Types:  types,
+		Parts:  parts,
 	}, diagnostics
 }
 
-func (b *binder) bindScopeTraversalExpression(syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
-	node, ok := b.scopes.bindReference(syntax.Traversal.RootName())
+func (b *expressionBinder) bindScopeTraversalExpression(syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
+	def, ok := b.scopes.BindReference(syntax.Traversal.RootName())
 	if !ok {
-		types := make([]Type, len(syntax.Traversal))
-		for i := range types {
-			types[i] = AnyType
+		parts := make([]Traversable, len(syntax.Traversal))
+		for i := range parts {
+			parts[i] = AnyType
 		}
 		return &ScopeTraversalExpression{
 			Syntax: syntax,
-			Types:  types,
+			Parts:  parts,
 		}, hcl.Diagnostics{undefinedVariable(syntax.Traversal.SimpleSplit().Abs.SourceRange())}
 	}
 
-	types, diagnostics := b.bindTraversalTypes(node.Type(), syntax.Traversal.SimpleSplit().Rel)
+	parts, diagnostics := b.bindTraversalParts(def, syntax.Traversal.SimpleSplit().Rel)
 	return &ScopeTraversalExpression{
 		Syntax: syntax,
-		Node:   node,
-		Types:  types,
+		Parts:  parts,
 	}, diagnostics
 }
 
-func (b *binder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	source, sourceDiags := b.bindExpression(syntax.Source)
@@ -602,7 +628,7 @@ func (b *binder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Expression, h
 	}, diagnostics
 }
 
-func (b *binder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr) (Expression, hcl.Diagnostics) {
 	if syntax.IsStringLiteral() {
 		return b.bindExpression(syntax.Parts[0])
 	}
@@ -621,7 +647,7 @@ func (b *binder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr) (Express
 	}, diagnostics
 }
 
-func (b *binder) bindTemplateJoinExpression(syntax *hclsyntax.TemplateJoinExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTemplateJoinExpression(syntax *hclsyntax.TemplateJoinExpr) (Expression, hcl.Diagnostics) {
 	tuple, diagnostics := b.bindExpression(syntax.Tuple)
 
 	return &TemplateJoinExpression{
@@ -631,11 +657,11 @@ func (b *binder) bindTemplateJoinExpression(syntax *hclsyntax.TemplateJoinExpr) 
 	}, diagnostics
 }
 
-func (b *binder) bindTemplateWrapExpression(syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTemplateWrapExpression(syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
 	return b.bindExpression(syntax.Wrapped)
 }
 
-func (b *binder) bindTupleConsExpression(syntax *hclsyntax.TupleConsExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTupleConsExpression(syntax *hclsyntax.TupleConsExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	exprs := make([]Expression, len(syntax.Exprs))
 	for i, syntax := range syntax.Exprs {
@@ -663,7 +689,7 @@ func (b *binder) bindTupleConsExpression(syntax *hclsyntax.TupleConsExpr) (Expre
 
 // bindUnaryOpExpression binds a unary operator expression. If the operand to the unary operator contains eventuals,
 // the result of the unary operator is eventual.
-func (b *binder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	// Bind the operand.

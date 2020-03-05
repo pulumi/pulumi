@@ -12,8 +12,8 @@ import (
 // expression that does not contain references to potentially-undefined values (e.g. optional fields of a resource) can
 // be lifted.
 func (g *generator) canLiftScopeTraversalExpression(v *model.ScopeTraversalExpression) bool {
-	for _, t := range v.Types {
-		if model.IsOptionalType(t) {
+	for _, p := range v.Parts {
+		if model.IsOptionalType(model.GetTraversableType(p)) {
 			return false
 		}
 	}
@@ -31,7 +31,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 	}
 
 	thenTraversal, ok := then.Body.(*model.ScopeTraversalExpression)
-	if !ok || thenTraversal.Node != then.Parameters[0] {
+	if !ok || thenTraversal.Parts[0] != then.Parameters[0] {
 		return nil, false
 	}
 	if !g.canLiftScopeTraversalExpression(thenTraversal) {
@@ -51,7 +51,7 @@ func referencesCallbackParameter(expr model.Expression, parameters codegen.Set) 
 	has := false
 	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		if expr, isScopeTraversal := expr.(*model.ScopeTraversalExpression); isScopeTraversal {
-			if parameters.Has(expr.Node) {
+			if parameters.Has(expr.Parts[0]) {
 				has = true
 			}
 		}
@@ -89,11 +89,11 @@ func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
 	for i, expr := range template.Parts {
 		traversal, isTraversal := expr.(*model.ScopeTraversalExpression)
 		switch {
-		case isTraversal && parameters.Has(traversal.Node):
+		case isTraversal && parameters.Has(traversal.Parts[0]):
 			if !g.canLiftScopeTraversalExpression(traversal) {
 				return nil, false
 			}
-			arg := args[indices[traversal.Node]]
+			arg := args[indices[traversal.Parts[0].(model.Node)]]
 			traversal := hcl.TraversalJoin(arg.Syntax.Traversal, traversal.Syntax.Traversal[1:])
 			expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 				Traversal: traversal,

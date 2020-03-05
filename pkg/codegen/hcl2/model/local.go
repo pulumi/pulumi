@@ -15,11 +15,14 @@
 package model
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 // LocalVariable represents a program- or component-scoped local variable.
 type LocalVariable struct {
+	node
+
 	// The syntax node associated with the local variable.
 	Syntax *hclsyntax.Attribute
 
@@ -29,9 +32,6 @@ type LocalVariable struct {
 	VariableType Type
 	// The value of the local variable.
 	Value Expression
-
-	state bindState
-	deps  []Node
 }
 
 // SyntaxNode returns the syntax node associated with the local variable.
@@ -39,25 +39,13 @@ func (lv *LocalVariable) SyntaxNode() hclsyntax.Node {
 	return lv.Syntax
 }
 
+func (lv *LocalVariable) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return lv.VariableType.Traverse(traverser)
+}
+
 // Type returns the type of the local variable.
 func (lv *LocalVariable) Type() Type {
 	return lv.VariableType
-}
-
-func (lv *LocalVariable) getState() bindState {
-	return lv.state
-}
-
-func (lv *LocalVariable) setState(s bindState) {
-	lv.state = s
-}
-
-func (lv *LocalVariable) getDependencies() []Node {
-	return lv.deps
-}
-
-func (lv *LocalVariable) setDependencies(nodes []Node) {
-	lv.deps = nodes
 }
 
 func (*LocalVariable) isNode() {}

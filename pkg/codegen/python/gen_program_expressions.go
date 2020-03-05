@@ -178,7 +178,7 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, types []model.Type) {
+func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, types []model.Traversable) {
 	for _, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {
@@ -210,13 +210,13 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, t
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
 	g.Fgen(w, expr.Source)
-	g.genRelativeTraversal(w, expr.Syntax.Traversal, expr.Types)
+	g.genRelativeTraversal(w, expr.Syntax.Traversal, expr.Parts)
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
 	traversal := expr.Syntax.Traversal
 	g.Fgen(w, pyName(traversal.RootName(), false))
-	g.genRelativeTraversal(w, traversal.SimpleSplit().Rel, expr.Types)
+	g.genRelativeTraversal(w, traversal.SimpleSplit().Rel, expr.Parts)
 }
 
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {

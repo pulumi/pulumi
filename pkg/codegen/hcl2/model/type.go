@@ -19,12 +19,16 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
 // equal values.
 type Type interface {
+	Traversable
+
 	AssignableFrom(src Type) bool
 	String() string
 
@@ -73,6 +77,13 @@ func (t primitiveType) String() string {
 	default:
 		panic("unknown primitive type")
 	}
+}
+
+func (t primitiveType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	if t == anyType {
+		return anyType, nil
+	}
+	return anyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
 func (primitiveType) isType() {}
@@ -130,6 +141,11 @@ func NewOptionalType(elementType Type) *OptionalType {
 	return t
 }
 
+func (t *OptionalType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	element, diagnostics := t.ElementType.Traverse(traverser)
+	return NewOptionalType(element.(Type)), diagnostics
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. An optional(T) is assignable
 // from values of type any, none, optional(U), and U, where T is assignable from U.
 func (t *OptionalType) AssignableFrom(src Type) bool {
@@ -175,6 +191,11 @@ func NewOutputType(elementType Type) *OutputType {
 	t := &OutputType{ElementType: elementType}
 	outputTypes[elementType] = t
 	return t
+}
+
+func (t *OutputType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	element, diagnostics := t.ElementType.Traverse(traverser)
+	return NewOutputType(element.(Type)), diagnostics
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. An output(T) is assignable
@@ -296,6 +317,11 @@ func NewPromiseType(elementType Type) *PromiseType {
 	return t
 }
 
+func (t *PromiseType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	element, diagnostics := t.ElementType.Traverse(traverser)
+	return NewPromiseType(element.(Type)), diagnostics
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A promise(T) is assignable
 // from values of type any, promise(U), and U, where T is assignable from U.
 func (t *PromiseType) AssignableFrom(src Type) bool {
@@ -347,6 +373,16 @@ func NewMapType(elementType Type) *MapType {
 	return t
 }
 
+func (t *MapType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	_, keyType := GetTraverserKey(traverser)
+
+	var diagnostics hcl.Diagnostics
+	if !inputType(StringType).AssignableFrom(keyType) {
+		diagnostics = hcl.Diagnostics{unsupportedMapKey(traverser.SourceRange())}
+	}
+	return t.ElementType, diagnostics
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A map(T) is assignable
 // from values of type any, map(U), and U, where T is assignable from U.
 func (t *MapType) AssignableFrom(src Type) bool {
@@ -375,6 +411,30 @@ type ArrayType struct {
 	s string
 }
 
+// The set of array types, indexed by element type.
+var arrayTypes = map[Type]*ArrayType{}
+
+// NewArrayType creates a new array type with the given element type.
+func NewArrayType(elementType Type) *ArrayType {
+	if t, ok := arrayTypes[elementType]; ok {
+		return t
+	}
+
+	t := &ArrayType{ElementType: elementType}
+	arrayTypes[elementType] = t
+	return t
+}
+
+func (t *ArrayType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	_, indexType := GetTraverserKey(traverser)
+
+	var diagnostics hcl.Diagnostics
+	if !inputType(NumberType).AssignableFrom(indexType) {
+		diagnostics = hcl.Diagnostics{unsupportedArrayIndex(traverser.SourceRange())}
+	}
+	return t.ElementType, diagnostics
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A array(T) is assignable
 // from values of type any, array(U), and U, where T is assignable from U.
 func (t *ArrayType) AssignableFrom(src Type) bool {
@@ -394,20 +454,6 @@ func (t *ArrayType) String() string {
 }
 
 func (*ArrayType) isType() {}
-
-// The set of array types, indexed by element type.
-var arrayTypes = map[Type]*ArrayType{}
-
-// NewArrayType creates a new array type with the given element type.
-func NewArrayType(elementType Type) *ArrayType {
-	if t, ok := arrayTypes[elementType]; ok {
-		return t
-	}
-
-	t := &ArrayType{ElementType: elementType}
-	arrayTypes[elementType] = t
-	return t
-}
 
 // UnionType represents values that may be any one of a specified set of types.
 type UnionType struct {
@@ -471,6 +517,11 @@ func NewUnionType(type1, type2 Type, rest ...Type) Type {
 	return t
 }
 
+func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	// TODO(pdg): produce the union of the results of Traverse on each element type?
+	return AnyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A union(T_0, ..., T_n)
 // from values of type any, union(U_0, ..., U_M) where all of U_0 through U_M are assignable to some type in
 // (T_0, ..., T_N), and V, where V is assignable to at least one of (T_0, ..., T_N).
@@ -526,6 +577,25 @@ func NewObjectType(properties map[string]Type) *ObjectType {
 	}
 	objectTypes[t.String()] = t
 	return t
+}
+
+func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	key, keyType := GetTraverserKey(traverser)
+
+	if !inputType(StringType).AssignableFrom(keyType) {
+		return AnyType, hcl.Diagnostics{unsupportedObjectProperty(traverser.SourceRange())}
+	}
+
+	if key == cty.DynamicVal {
+		return AnyType, nil
+	}
+
+	propertyName := key.AsString()
+	propertyType, hasProperty := t.Properties[propertyName]
+	if !hasProperty {
+		return AnyType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
+	}
+	return propertyType, nil
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type.
@@ -589,6 +659,10 @@ func NewTokenType(token string) (*TokenType, error) {
 	t := &TokenType{Token: token}
 	tokenTypes[token] = t
 	return t, nil
+}
+
+func (t *TokenType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return AnyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A token(name) is assignable

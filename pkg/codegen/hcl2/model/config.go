@@ -15,12 +15,15 @@
 package model
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 // ConfigVariable represents a program- or component-scoped input variable. The value for a config variable may come
 // from stack configuration or component inputs, respectively, and may have a default value.
 type ConfigVariable struct {
+	node
+
 	// The syntax node for the config variable.
 	Syntax *hclsyntax.Block
 
@@ -28,9 +31,6 @@ type ConfigVariable struct {
 
 	// The default value for the config variable, if any.
 	DefaultValue Expression
-
-	state bindState
-	deps  []Node
 }
 
 // SyntaxNode returns the syntax node associated with the config variable.
@@ -38,25 +38,11 @@ func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
 	return cv.Syntax
 }
 
+func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return cv.typ.Traverse(traverser)
+}
+
 // Type returns the type of the config variable.
 func (cv *ConfigVariable) Type() Type {
 	return cv.typ
 }
-
-func (cv *ConfigVariable) getState() bindState {
-	return cv.state
-}
-
-func (cv *ConfigVariable) setState(s bindState) {
-	cv.state = s
-}
-
-func (cv *ConfigVariable) getDependencies() []Node {
-	return cv.deps
-}
-
-func (cv *ConfigVariable) setDependencies(nodes []Node) {
-	cv.deps = nodes
-}
-
-func (*ConfigVariable) isNode() {}
