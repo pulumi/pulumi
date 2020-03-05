@@ -20,6 +20,8 @@ package nodejs
 
 import (
 	"fmt"
+
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
@@ -30,4 +32,12 @@ func GetDocLinkForResourceType(path string, typeName string) string {
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
 func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
+}
+
+// GetLanguageType returns the language-specific type given a Pulumi schema type.
+func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
+	mod := &modContext{
+		pkg: pkg,
+	}
+	return mod.typeString(t, input, false, optional)
 }

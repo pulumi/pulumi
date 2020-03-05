@@ -25,14 +25,12 @@ import (
 	"io"
 	"path"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
 	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -146,58 +144,25 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
-	var br string
-	lt := "<"
-	gt := ">"
+func (mod *modContext) typeStringPulumi(t schema.Type, lang string, input, optional bool) string {
+	var langType string
 
-	// If we're linking, we're including HTML, so also include word breaks,
-	// and escape < and >.
-	if link {
-		br = "<wbr>"
-		lt = "&lt;<wbr>"
-		gt = "<wbr>&gt;"
-	}
-
-	var typ string
-	switch t := t.(type) {
-	case *schema.ArrayType:
-
-		typ = fmt.Sprintf("Array%s%s%s", lt, mod.typeStringPulumi(t.ElementType, link), gt)
-	case *schema.MapType:
-		typ = fmt.Sprintf("Map%s%s%s", lt, mod.typeStringPulumi(t.ElementType, link), gt)
-	case *schema.ObjectType:
-		if link {
-			typ = fmt.Sprintf("<a href=\"#%s\">%s</a>", lower(tokenToName(t.Token)), wbr(tokenToName(t.Token)))
-		} else {
-			typ = tokenToName(t.Token)
-		}
-	case *schema.TokenType:
-		typ = tokenToName(t.Token)
-	case *schema.UnionType:
-		var elements []string
-		for _, e := range t.ElementTypes {
-			elements = append(elements, mod.typeStringPulumi(e, link))
-		}
-		sep := fmt.Sprintf(", %s", br)
-		return fmt.Sprintf("Union%s%s%s", lt, strings.Join(elements, sep), gt)
+	switch lang {
+	case "nodejs":
+		nodejs.GetLanguageType(mod.pkg, t, input, optional)
+	case "go":
+	case "csharp":
 	default:
-		switch t {
-		case schema.BoolType:
-			typ = "boolean"
-		case schema.IntType, schema.NumberType:
-			typ = "number"
-		case schema.StringType:
-			typ = "string"
-		case schema.ArchiveType:
-			typ = "Archive"
-		case schema.AssetType:
-			typ = fmt.Sprintf("Union%sAsset, %sArchive%s", lt, br, gt)
-		case schema.AnyType:
-			typ = "any"
-		}
+		panic(errors.Errorf("Unknown language (%q) passed!", lang))
 	}
-	return typ
+
+	// If the type is an object type, let's also wrap it with a link to the supporting type
+	// on the same page using an anchor tag.
+	switch t := t.(type) {
+	case *schema.ObjectType:
+		langType = fmt.Sprintf("<a href=\"#%s\">%s</a>", lower(tokenToName(t.Token)), wbr(langType))
+	}
+	return langType
 }
 
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []ConstructorParam {
@@ -359,17 +324,6 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 	return objs
 }
 
-func getLanguagePropertyName(name string, lang string) string {
-	switch lang {
-	case "python":
-		return python.PyName(name)
-	case "go", "csharp":
-		return title(name)
-	default:
-		return wbr(name)
-	}
-}
-
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
 func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []Property {
@@ -387,7 +341,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			Comment:    prop.Comment,
 			IsRequired: prop.IsRequired,
 			IsInput:    isInput,
-			Type:       mod.typeStringPulumi(prop.Type, true),
+			Type:       mod.typeStringPulumi(prop.Type, lang, isInput, !prop.IsRequired),
 		})
 	}
 
