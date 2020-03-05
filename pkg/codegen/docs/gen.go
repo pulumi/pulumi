@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
 	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -149,9 +150,13 @@ func (mod *modContext) typeStringPulumi(t schema.Type, lang string, input, optio
 
 	switch lang {
 	case "nodejs":
-		nodejs.GetLanguageType(mod.pkg, t, input, optional)
+		langType = nodejs.GetLanguageType(mod.pkg, t, input, optional)
 	case "go":
+		langType = go_gen.GetLanguageType(mod.pkg, t, input, optional)
 	case "csharp":
+		langType = dotnet.GetLanguageType(mod.pkg, t, input, optional)
+	case "python":
+		langType = python.GetLanguageType(mod.pkg, t, input, optional)
 	default:
 		panic(errors.Errorf("Unknown language (%q) passed!", lang))
 	}

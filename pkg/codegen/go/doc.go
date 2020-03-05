@@ -20,6 +20,8 @@ package gen
 
 import (
 	"fmt"
+
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
@@ -30,4 +32,12 @@ func GetDocLinkForResourceType(packageName string, path string, typeName string)
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
 func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
+}
+
+// GetLanguageType returns the language-specific type given a Pulumi schema type.
+func GetLanguageType(pkg *schema.Package, t schema.Type, _, optional bool) string {
+	mod := &pkgContext{
+		pkg: pkg,
+	}
+	return mod.plainType(t, optional)
 }

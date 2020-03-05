@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
-package dotnet
+package python
 
-import (
-	"fmt"
-
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
-)
-
-// GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
-func GetDocLinkForResourceType(namespace string, typeName string) string {
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/Pulumi%[1]s/%[1]s.%[2]s.html", namespace, typeName)
-}
+import "github.com/pulumi/pulumi/pkg/codegen/schema"
 
 // GetLanguageType returns the language-specific type given a Pulumi schema type.
 func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
-	typeDetails := map[*schema.ObjectType]*typeDetails{}
-	mod := &modContext{
-		pkg:         pkg,
-		typeDetails: typeDetails,
-	}
-	return mod.typeString(t, "", input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
+	return pyType(t)
 }
