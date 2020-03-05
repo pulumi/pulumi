@@ -241,3 +241,58 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectNames(t *testing.T) {
+	tests := []struct {
+		testName    string
+		projectName string
+		expectError bool
+	}{
+		{
+			testName:    "Correct Project Name",
+			projectName: "SampleProject",
+			expectError: false,
+		},
+		{
+			testName:    "Project Name with unsupported punctuation",
+			projectName: "SampleProject!",
+			expectError: true,
+		},
+		{
+			testName:    "Project Name starting with the word Pulumi",
+			projectName: "PulumiProject",
+			expectError: false,
+		},
+		{
+			testName:    "Project Name greater than 100 characters",
+			projectName: "cZClTe6xrjgKzH5QS8rFEPqYK1z4bbMeMr6n89n87djq9emSAlznQXXkkCEpBBCaZAFNlCvbfqVcqoifYlfPl11hvekIDjXVIY7m1",
+			expectError: true,
+		},
+		{
+			testName:    "Project Name is Pulumi",
+			projectName: "Pulumi",
+			expectError: true,
+		},
+		{
+			testName:    "Project Name is Pulumi - mixed case",
+			projectName: "pUlumI",
+			expectError: true,
+		},
+		{
+			testName:    "Project Name is Pulumi.Test",
+			projectName: "Pulumi.Test",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			err := ValidateProjectName(tt.projectName)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
