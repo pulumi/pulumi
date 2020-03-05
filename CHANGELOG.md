@@ -4,8 +4,8 @@ CHANGELOG
 ## HEAD (Unreleased)
 * Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
-
----
+- Avoid projects beginning with `Pulumi` to stop cyclic imports
+  [#4013](https://github.com/pulumi/pulumi/pull/4013)
 
 ## 1.12.0 (2020-03-04)
 - Avoid Configuring providers which are not used during preview.
