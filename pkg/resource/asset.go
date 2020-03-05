@@ -1034,8 +1034,10 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
-		Name:   file,
-		Method: zip.Deflate,
+		Name:           file,
+		Method:         zip.Deflate,
+		CreatorVersion: 3 << 8,      // indicates Unix
+		ExternalAttrs:  33261 << 16, // -rwxr-xr-x file permissions
 	}
 
 	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure
@@ -1108,9 +1110,9 @@ func (a *Archive) EnsureHash() error {
 				return err
 			}
 		} else {
-			// Otherwise, it's not an archive; we'll need to transform it into one.  Pick tar since it avoids
-			// any superfluous compression which doesn't actually help us in this situation.
-			err := a.Archive(TarArchive, hash)
+			// Otherwise, it's not an archive; we'll need to transform it into one.
+			// Pick ZIP as default for compat with lambda.
+			err := a.Archive(ZIPArchive, hash)
 			if err != nil {
 				return err
 			}
