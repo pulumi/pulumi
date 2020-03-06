@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	"math"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -117,7 +118,7 @@ type Plan struct {
 	preview              bool                             // true if this plan is to be previewed rather than applied.
 	depGraph             *graph.DependencyGraph           // the dependency graph of the old snapshot
 	providers            *providers.Registry              // the provider registry for this plan.
-	current              map[resource.URN]*resource.State // a map of all current resources
+	current              *sync.Map                        // a map of all current resources
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version

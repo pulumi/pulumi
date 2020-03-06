@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
@@ -61,7 +62,9 @@ type stepGenerator struct {
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 	resourceGoals  map[resource.URN]*resource.Goal  // URN map of goals for ALL resources we have seen so far.
-	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
+
+	// resourceStates is exposed to other goroutines so needs to be a sync.Map.
+	resourceStates *sync.Map // URN map of state for ALL resources we have seen so far.
 
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
@@ -256,7 +259,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.resourceGoals[urn] = goal
-	sg.resourceStates[urn] = new
+	sg.resourceStates.Store(urn, new)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -1286,8 +1289,11 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 func (sg *stepGenerator) AnalyzeResources() result.Result {
 	resourcesSeen := sg.resourceStates
-	resources := make([]plugin.AnalyzerStackResource, 0, len(resourcesSeen))
-	for urn, v := range resourcesSeen {
+	// resources := make([]plugin.AnalyzerStackResource, 0, resourcesSeen.len(resourcesSeen))
+	var resources []plugin.AnalyzerStackResource
+	resourcesSeen.Range(func(key, val interface{}) bool {
+		urn := key.(resource.URN)
+		v := val.(*resource.State)
 		goal := sg.resourceGoals[urn]
 		resource := plugin.AnalyzerStackResource{
 			AnalyzerResource: plugin.AnalyzerResource{
@@ -1320,7 +1326,8 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			}
 		}
 		resources = append(resources, resource)
-	}
+		return true
+	})
 
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, analyzer := range analyzers {
@@ -1335,7 +1342,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			// the default root stack URN.
 			var urn resource.URN
 			if d.URN != "" {
-				if _, ok := resourcesSeen[d.URN]; ok {
+				if _, ok := resourcesSeen.Load(d.URN); ok {
 					urn = d.URN
 				}
 			}
@@ -1369,7 +1376,7 @@ func newStepGenerator(
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
 		resourceGoals:        make(map[resource.URN]*resource.Goal),
-		resourceStates:       make(map[resource.URN]*resource.State),
+		resourceStates:       &sync.Map{},
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}

@@ -271,10 +271,11 @@ func (p *builtinProvider) readStackResource(inputs resource.PropertyMap) (resour
 	}
 	urn := resource.URN(urnProp.StringValue())
 
-	state := p.plan.current[urn]
-	if state == nil {
+	urnState, ok := p.plan.current.Load(urn)
+	if !ok || urnState == nil {
 		return nil, fmt.Errorf("resource '%s' not yet registered in current stack state", urn)
 	}
+	state := urnState.(*resource.State)
 	contract.Assert(state.URN == urn)
 
 	logging.V(9).Infof("builtinProvider: %v(inputs=%v) => (outputs=%v)", readStackResource, inputs, state.Outputs)
