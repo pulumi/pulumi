@@ -270,18 +270,21 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			return AnalyzerInfo{}, err
 		}
 
-		schema := convertConfigSchema(p.GetConfigSchema())
+		var schema *AnalyzerPolicyConfigSchema
+		if resp.GetSupportsConfig() {
+			schema = convertConfigSchema(p.GetConfigSchema())
 
-		// Inject `enforcementLevel` into the schema.
-		if schema == nil {
-			schema = &AnalyzerPolicyConfigSchema{}
-		}
-		if schema.Properties == nil {
-			schema.Properties = map[string]JSONSchema{}
-		}
-		schema.Properties["enforcementLevel"] = JSONSchema{
-			"type": "string",
-			"enum": []string{"advisory", "mandatory", "disabled"},
+			// Inject `enforcementLevel` into the schema.
+			if schema == nil {
+				schema = &AnalyzerPolicyConfigSchema{}
+			}
+			if schema.Properties == nil {
+				schema.Properties = map[string]JSONSchema{}
+			}
+			schema.Properties["enforcementLevel"] = JSONSchema{
+				"type": "string",
+				"enum": []string{"advisory", "mandatory", "disabled"},
+			}
 		}
 
 		policies[i] = AnalyzerPolicyInfo{
@@ -298,10 +301,11 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	})
 
 	return AnalyzerInfo{
-		Name:        resp.GetName(),
-		DisplayName: resp.GetDisplayName(),
-		Version:     resp.GetVersion(),
-		Policies:    policies,
+		Name:           resp.GetName(),
+		DisplayName:    resp.GetDisplayName(),
+		Version:        resp.GetVersion(),
+		SupportsConfig: resp.GetSupportsConfig(),
+		Policies:       policies,
 	}, nil
 }
 
@@ -337,6 +341,11 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 	label := fmt.Sprintf("%s.Configure(...)", a.label())
 	logging.V(7).Infof("%s executing", label)
 
+	if len(policyConfig) == 0 {
+		logging.V(7).Infof("%s returning early, no config specified", label)
+		return nil
+	}
+
 	c := make(map[string]*pulumirpc.PolicyConfig)
 
 	for k, v := range policyConfig {
@@ -354,15 +363,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		// Handle the case where the policy pack doesn't implement a recent enough
-		// AnalyzerService to support the Configure method. Ignore the error as it
-		// just means the analyzer isn't capable of being configured in this way.
-		if rpcError.Code() == codes.Unimplemented {
-			logging.V(7).Infof("%s.Configure(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
-			return nil
-		}
-
-		logging.V(7).Infof("%s.Configure(...) failed: err=%v", a.label(), rpcError)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return rpcError
 	}
 	return nil

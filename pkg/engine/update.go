@@ -265,6 +265,12 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		}
 
 		// Parse the config, reconcile & validate it, and pass it to the policy pack.
+		if !analyzerInfo.SupportsConfig {
+			if len(policy.Config()) > 0 {
+				logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+			}
+			continue
+		}
 		configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
 		if err != nil {
 			return err
@@ -301,6 +307,12 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		localPolicyPacks[i].Name = analyzerInfo.Name
 
 		// Load config, reconcile & validate it, and pass it to the policy pack.
+		if !analyzerInfo.SupportsConfig {
+			if pack.Config != "" {
+				return errors.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
+			}
+			continue
+		}
 		var configFromFile map[string]plugin.AnalyzerPolicyConfig
 		if pack.Config != "" {
 			configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)

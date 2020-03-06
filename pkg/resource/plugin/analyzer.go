@@ -96,10 +96,11 @@ type AnalyzeDiagnostic struct {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
-	Name        string
-	DisplayName string
-	Version     string
-	Policies    []AnalyzerPolicyInfo
+	Name           string
+	DisplayName    string
+	Version        string
+	SupportsConfig bool
+	Policies       []AnalyzerPolicyInfo
 }
 
 // AnalyzerPolicyInfo defines the metadata for an individual Policy within a Policy Pack.

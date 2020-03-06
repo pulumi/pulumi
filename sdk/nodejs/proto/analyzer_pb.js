@@ -2843,7 +2843,8 @@ proto.pulumirpc.AnalyzerInfo.toObject = function(includeInstance, msg) {
     displayname: jspb.Message.getFieldWithDefault(msg, 2, ""),
     policiesList: jspb.Message.toObjectList(msg.getPoliciesList(),
     proto.pulumirpc.PolicyInfo.toObject, includeInstance),
-    version: jspb.Message.getFieldWithDefault(msg, 4, "")
+    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    supportsconfig: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -2896,6 +2897,10 @@ proto.pulumirpc.AnalyzerInfo.deserializeBinaryFromReader = function(msg, reader)
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsconfig(value);
       break;
     default:
       reader.skipField();
@@ -2952,6 +2957,13 @@ proto.pulumirpc.AnalyzerInfo.serializeBinaryToWriter = function(message, writer)
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getSupportsconfig();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -3047,6 +3059,24 @@ proto.pulumirpc.AnalyzerInfo.prototype.getVersion = function() {
  */
 proto.pulumirpc.AnalyzerInfo.prototype.setVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional bool supportsConfig = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.getSupportsconfig = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.AnalyzerInfo} returns this
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.setSupportsconfig = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 

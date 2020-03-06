@@ -127,6 +127,7 @@ message AnalyzerInfo {
     string displayName = 2;           // Pretty name for the PolicyPack.
     repeated PolicyInfo policies = 3; // Metadata about policies contained in PolicyPack.
     string version = 4;               // Version of the Policy Pack.
+    bool supportsConfig = 5;          // Whether the Policy Pack supports config.
 }
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.
