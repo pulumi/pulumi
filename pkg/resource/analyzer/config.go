@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plugin
+package analyzer
 
 import (
 	"encoding/json"
@@ -22,12 +22,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/xeipuuv/gojsonschema"
 )
 
 // LoadPolicyPackConfigFromFile loads the JSON config from a file.
-func LoadPolicyPackConfigFromFile(file string) (map[string]AnalyzerPolicyConfig, error) {
+func LoadPolicyPackConfigFromFile(file string) (map[string]plugin.AnalyzerPolicyConfig, error) {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -36,8 +37,8 @@ func LoadPolicyPackConfigFromFile(file string) (map[string]AnalyzerPolicyConfig,
 }
 
 // ParsePolicyPackConfigFromAPI parses the config returned from the service.
-func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[string]AnalyzerPolicyConfig, error) {
-	result := map[string]AnalyzerPolicyConfig{}
+func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[string]plugin.AnalyzerPolicyConfig, error) {
+	result := map[string]plugin.AnalyzerPolicyConfig{}
 	for k, v := range config {
 		if v == nil {
 			continue
@@ -65,7 +66,7 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 			continue
 		}
 
-		result[k] = AnalyzerPolicyConfig{
+		result[k] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: enforcementLevel,
 			Properties:       properties,
 		}
@@ -73,8 +74,8 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 	return result, nil
 }
 
-func parsePolicyPackConfig(b []byte) (map[string]AnalyzerPolicyConfig, error) {
-	result := make(map[string]AnalyzerPolicyConfig)
+func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, error) {
+	result := make(map[string]plugin.AnalyzerPolicyConfig)
 
 	// Gracefully allow empty content.
 	if strings.TrimSpace(string(b)) == "" {
@@ -114,7 +115,7 @@ func parsePolicyPackConfig(b []byte) (map[string]AnalyzerPolicyConfig, error) {
 			continue
 		}
 
-		result[k] = AnalyzerPolicyConfig{
+		result[k] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: enforcementLevel,
 			Properties:       properties,
 		}
@@ -145,7 +146,8 @@ func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementL
 }
 
 // ValidatePolicyPackConfig validates the policy pack's configuration.
-func validatePolicyPackConfig(policies []AnalyzerPolicyInfo, config map[string]AnalyzerPolicyConfig) ([]string, error) {
+func validatePolicyPackConfig(
+	policies []plugin.AnalyzerPolicyInfo, config map[string]plugin.AnalyzerPolicyConfig) ([]string, error) {
 	contract.Assertf(config != nil, "contract != nil")
 	var errors []string
 	for _, policy := range policies {
@@ -171,7 +173,7 @@ func validatePolicyPackConfig(policies []AnalyzerPolicyInfo, config map[string]A
 }
 
 // validatePolicyConfig validates an individual policy's configuration.
-func validatePolicyConfig(schema AnalyzerPolicyConfigSchema, config map[string]interface{}) ([]string, error) {
+func validatePolicyConfig(schema plugin.AnalyzerPolicyConfigSchema, config map[string]interface{}) ([]string, error) {
 	var errors []string
 	schemaLoader := gojsonschema.NewGoLoader(convertSchema(schema))
 	documentLoader := gojsonschema.NewGoLoader(config)
@@ -190,8 +192,8 @@ func validatePolicyConfig(schema AnalyzerPolicyConfigSchema, config map[string]i
 	return errors, nil
 }
 
-func convertSchema(schema AnalyzerPolicyConfigSchema) JSONSchema {
-	result := JSONSchema{}
+func convertSchema(schema plugin.AnalyzerPolicyConfigSchema) plugin.JSONSchema {
+	result := plugin.JSONSchema{}
 	result["type"] = "object"
 	if len(schema.Properties) > 0 {
 		result["properties"] = schema.Properties
@@ -203,8 +205,8 @@ func convertSchema(schema AnalyzerPolicyConfigSchema) JSONSchema {
 }
 
 // createConfigWithDefaults returns a new map filled-in with defaults from the policy metadata.
-func createConfigWithDefaults(policies []AnalyzerPolicyInfo) map[string]AnalyzerPolicyConfig {
-	result := make(map[string]AnalyzerPolicyConfig)
+func createConfigWithDefaults(policies []plugin.AnalyzerPolicyInfo) map[string]plugin.AnalyzerPolicyConfig {
+	result := make(map[string]plugin.AnalyzerPolicyConfig)
 
 	// Prepare the resulting config with all defaults from the policy metadata.
 	for _, policy := range policies {
@@ -222,7 +224,7 @@ func createConfigWithDefaults(policies []AnalyzerPolicyInfo) map[string]Analyzer
 			}
 		}
 
-		result[policy.Name] = AnalyzerPolicyConfig{
+		result[policy.Name] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: policy.EnforcementLevel,
 			Properties:       props,
 		}
@@ -234,8 +236,8 @@ func createConfigWithDefaults(policies []AnalyzerPolicyInfo) map[string]Analyzer
 // ReconcilePolicyPackConfig takes metadata about each policy containing default values and config schema, and
 // reconciles this with the given config to produce a new config that has all default values filled-in and then sets
 // configured values.
-func ReconcilePolicyPackConfig(policies []AnalyzerPolicyInfo,
-	config map[string]AnalyzerPolicyConfig) (map[string]AnalyzerPolicyConfig, []string, error) {
+func ReconcilePolicyPackConfig(policies []plugin.AnalyzerPolicyInfo,
+	config map[string]plugin.AnalyzerPolicyConfig) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
 	// Prepare the resulting config with all defaults from the policy metadata.
 	result := createConfigWithDefaults(policies)
 	contract.Assertf(result != nil, "result != nil")
@@ -245,7 +247,7 @@ func ReconcilePolicyPackConfig(policies []AnalyzerPolicyInfo,
 	if config != nil {
 		if all, hasAll := config["all"]; hasAll && all.EnforcementLevel.IsValid() {
 			for k, v := range result {
-				result[k] = AnalyzerPolicyConfig{
+				result[k] = plugin.AnalyzerPolicyConfig{
 					EnforcementLevel: all.EnforcementLevel,
 					Properties:       v.Properties,
 				}
@@ -272,7 +274,7 @@ func ReconcilePolicyPackConfig(policies []AnalyzerPolicyInfo,
 		for k, v := range givenConfig.Properties {
 			properties[k] = v
 		}
-		result[policy] = AnalyzerPolicyConfig{
+		result[policy] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: enforcementLevel,
 			Properties:       properties,
 		}

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package plugin
+package analyzer
 
 import (
 	"encoding/json"
@@ -19,22 +19,23 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 
 type JSONTestCaseSuccess struct {
 	JSON     string
-	Expected map[string]AnalyzerPolicyConfig
+	Expected map[string]plugin.AnalyzerPolicyConfig
 }
 
 var success = []JSONTestCaseSuccess{
 	{
 		JSON:     `{}`,
-		Expected: map[string]AnalyzerPolicyConfig{},
+		Expected: map[string]plugin.AnalyzerPolicyConfig{},
 	},
 	{
 		JSON: `{"foo":{"enforcementLevel":"advisory"}}`,
-		Expected: map[string]AnalyzerPolicyConfig{
+		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
 				EnforcementLevel: apitype.Advisory,
 			},
@@ -42,7 +43,7 @@ var success = []JSONTestCaseSuccess{
 	},
 	{
 		JSON: `{"foo":{"enforcementLevel":"mandatory"}}`,
-		Expected: map[string]AnalyzerPolicyConfig{
+		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
 				EnforcementLevel: apitype.Mandatory,
 			},
@@ -50,7 +51,7 @@ var success = []JSONTestCaseSuccess{
 	},
 	{
 		JSON: `{"foo":{"enforcementLevel":"advisory","bar":"blah"}}`,
-		Expected: map[string]AnalyzerPolicyConfig{
+		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
 				EnforcementLevel: apitype.Advisory,
 				Properties: map[string]interface{}{
@@ -61,11 +62,11 @@ var success = []JSONTestCaseSuccess{
 	},
 	{
 		JSON:     `{"foo":{}}`,
-		Expected: map[string]AnalyzerPolicyConfig{},
+		Expected: map[string]plugin.AnalyzerPolicyConfig{},
 	},
 	{
 		JSON: `{"foo":{"bar":"blah"}}`,
-		Expected: map[string]AnalyzerPolicyConfig{
+		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"foo": {
 				Properties: map[string]interface{}{
 					"bar": "blah",
@@ -75,7 +76,7 @@ var success = []JSONTestCaseSuccess{
 	},
 	{
 		JSON: `{"policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
-		Expected: map[string]AnalyzerPolicyConfig{
+		Expected: map[string]plugin.AnalyzerPolicyConfig{
 			"policy1": {
 				Properties: map[string]interface{}{
 					"foo": "one",
@@ -124,7 +125,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			JSON: `{"foo":"advisory"}`,
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"foo": {
 					EnforcementLevel: apitype.Advisory,
 				},
@@ -132,7 +133,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			JSON: `{"foo":"mandatory"}`,
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"foo": {
 					EnforcementLevel: apitype.Mandatory,
 				},
@@ -140,7 +141,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			JSON: `{"all":"mandatory","policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: apitype.Mandatory,
 				},
@@ -305,19 +306,19 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 	tests := []struct {
 		Test     string
-		Policies []AnalyzerPolicyInfo
-		Config   map[string]AnalyzerPolicyConfig
-		Expected map[string]AnalyzerPolicyConfig
+		Policies []plugin.AnalyzerPolicyInfo
+		Config   map[string]plugin.AnalyzerPolicyConfig
+		Expected map[string]plugin.AnalyzerPolicyConfig
 	}{
 		{
 			Test: "Default enforcement level used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "mandatory",
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "mandatory",
 				},
@@ -325,18 +326,18 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Specified enforcement level used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "mandatory",
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 				},
@@ -344,18 +345,18 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Enforcement level from 'all' used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "disabled",
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "mandatory",
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "mandatory",
 				},
@@ -366,7 +367,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Enforcement level from 'all' used with multiple policies",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy-one",
 					EnforcementLevel: "advisory",
@@ -376,12 +377,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					EnforcementLevel: "mandatory",
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "disabled",
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "disabled",
 				},
@@ -395,13 +396,13 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Specified config enforcement level used even if 'all' is present",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "disabled",
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "mandatory",
 				},
@@ -409,7 +410,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					EnforcementLevel: "advisory",
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
 					EnforcementLevel: "mandatory",
 				},
@@ -420,12 +421,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Default string value specified in schema used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "string",
 								"default": "bar",
@@ -434,7 +435,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -445,12 +446,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Default number value specified in schema used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "number",
 								"default": float64(42),
@@ -459,7 +460,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -470,12 +471,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Specified config value overrides default value",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "string",
 								"default": "bar",
@@ -484,7 +485,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -492,7 +493,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -503,12 +504,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "Default value specified in schema for required field used",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "string",
 								"default": "bar",
@@ -518,7 +519,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -529,12 +530,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: string",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "string",
 							},
@@ -542,7 +543,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -550,7 +551,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -561,12 +562,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: number (int)",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "number",
 							},
@@ -574,7 +575,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -582,7 +583,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -593,12 +594,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: number (float)",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "number",
 							},
@@ -606,7 +607,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -614,7 +615,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -625,12 +626,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: integer",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "integer",
 							},
@@ -638,7 +639,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -646,7 +647,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -657,12 +658,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: boolean true",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "boolean",
 							},
@@ -670,7 +671,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -678,7 +679,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -689,12 +690,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: boolean false",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "boolean",
 							},
@@ -702,7 +703,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -710,7 +711,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -721,12 +722,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: object",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "object",
 							},
@@ -734,7 +735,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -742,7 +743,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -753,12 +754,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: array",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "array",
 							},
@@ -766,7 +767,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -774,7 +775,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -785,12 +786,12 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 		},
 		{
 			Test: "type: null",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "null",
 							},
@@ -798,7 +799,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -806,7 +807,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-			Expected: map[string]AnalyzerPolicyConfig{
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -830,18 +831,18 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 	tests := []struct {
 		Test                     string
-		Policies                 []AnalyzerPolicyInfo
-		Config                   map[string]AnalyzerPolicyConfig
+		Policies                 []plugin.AnalyzerPolicyInfo
+		Config                   map[string]plugin.AnalyzerPolicyConfig
 		ExpectedValidationErrors []string
 	}{
 		{
 			Test: "Required config property not set",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "string",
 							},
@@ -854,12 +855,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Default value set to incorrect type",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "string",
 								"default": 1,
@@ -872,11 +873,11 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Default value too long",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name: "foo-policy",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":      "string",
 								"maxLength": 3,
@@ -890,11 +891,11 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Default value too short",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name: "foo-policy",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":      "string",
 								"minLength": 50,
@@ -908,12 +909,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Default value set to invalid enum value",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":    "string",
 								"enum":    []string{"bar", "baz"},
@@ -927,12 +928,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Default value set to invalid constant value",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"const":   "bar",
 								"default": "blah",
@@ -945,12 +946,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Incorrect type",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "string",
 							},
@@ -958,7 +959,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -970,12 +971,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Invalid enum value",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type": "string",
 								"enum": []string{"bar", "baz"},
@@ -984,7 +985,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -996,12 +997,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Invalid constant value",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"const": "bar",
 							},
@@ -1009,7 +1010,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{
@@ -1021,12 +1022,12 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 		},
 		{
 			Test: "Multiple validation errors",
-			Policies: []AnalyzerPolicyInfo{
+			Policies: []plugin.AnalyzerPolicyInfo{
 				{
 					Name:             "foo-policy",
 					EnforcementLevel: "advisory",
-					ConfigSchema: &AnalyzerPolicyConfigSchema{
-						Properties: map[string]JSONSchema{
+					ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
+						Properties: map[string]plugin.JSONSchema{
 							"foo": {
 								"type":      "string",
 								"maxLength": 3,
@@ -1038,7 +1039,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 					},
 				},
 			},
-			Config: map[string]AnalyzerPolicyConfig{
+			Config: map[string]plugin.AnalyzerPolicyConfig{
 				"foo-policy": {
 					EnforcementLevel: "advisory",
 					Properties: map[string]interface{}{

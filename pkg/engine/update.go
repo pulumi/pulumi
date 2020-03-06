@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -264,11 +265,11 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		}
 
 		// Parse the config, reconcile & validate it, and pass it to the policy pack.
-		configFromAPI, err := plugin.ParsePolicyPackConfigFromAPI(policy.Config())
+		configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
 		if err != nil {
 			return err
 		}
-		config, validationErrors, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
 		if err != nil {
 			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
 		}
@@ -302,12 +303,12 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		// Load config, reconcile & validate it, and pass it to the policy pack.
 		var configFromFile map[string]plugin.AnalyzerPolicyConfig
 		if pack.Config != "" {
-			configFromFile, err = plugin.LoadPolicyPackConfigFromFile(pack.Config)
+			configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
 			if err != nil {
 				return err
 			}
 		}
-		config, validationErrors, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
 		if err != nil {
 			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
 		}

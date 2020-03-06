@@ -341,7 +341,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 
 	for k, v := range policyConfig {
 		if !v.EnforcementLevel.IsValid() {
-			errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
+			return errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
 		}
 		c[k] = &pulumirpc.PolicyConfig{
 			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
