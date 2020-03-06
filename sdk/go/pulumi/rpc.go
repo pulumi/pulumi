@@ -267,7 +267,10 @@ func marshalInputAndDetermineSecret(v interface{},
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, secret, nil
 			}
-			v, destType = rv.Elem().Interface(), destType.Elem()
+			if destType.Kind() == reflect.Ptr {
+				destType = destType.Elem()
+			}
+			v = rv.Elem().Interface()
 			continue
 		case reflect.String:
 			return resource.NewStringProperty(rv.String()), deps, secret, nil
