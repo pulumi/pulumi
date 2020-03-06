@@ -26,12 +26,27 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+func isDotNetTypeNameBoundary(prev rune, next rune) bool {
+	// For C# type names, which are PascalCase are qualified using "." as the separator.
+	return prev == rune('.') && unicode.IsUpper(next)
+}
+
+func isPythonTypeNameBoundary(prev rune, next rune) bool {
+	// For Python, names are snake_cased (Duh?).
+	return (prev == rune('_') && unicode.IsLower(next))
+}
+
 // wbr inserts HTML <wbr> in between case changes, e.g. "fooBar" becomes "foo<wbr>Bar".
 func wbr(s string) string {
 	var runes []rune
 	var prev rune
 	for i, r := range s {
-		if i != 0 && unicode.IsLower(prev) && unicode.IsUpper(r) {
+		if i != 0 &&
+
+			// For TS, JS and Go, names are camelCased.
+			((unicode.IsLower(prev) && unicode.IsUpper(r)) ||
+				isDotNetTypeNameBoundary(prev, r) ||
+				isPythonTypeNameBoundary(prev, r)) {
 			runes = append(runes, []rune("<wbr>")...)
 		}
 		runes = append(runes, r)

@@ -1,6 +1,6 @@
 {{ define "param_separator" }}<span class="p">, </span>{{ end }}
 
-{{ define "go_constructor_param" }}<span class="nx">{{ .Name }}</span>{{ .OptionalFlag }} {{ template "linkify_param" .Type }}{{ end }}
+{{ define "go_constructor_param" }}<span class="nx">{{ .Name }}</span> {{ .OptionalFlag }}{{ template "linkify_param" .Type }}{{ end }}
 
 {{ define "ts_constructor_param" }}<span class="nx">{{ .Name }}</span>{{ .OptionalFlag }}: {{ template "linkify_param" .Type }}{{ end }}
 

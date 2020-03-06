@@ -16,7 +16,11 @@
         <tr>
             <td class="align-top">{{ htmlSafe .Name }}</td>
             <td class="align-top">
-                <code>{{ htmlSafe .Type }}</code>
+                {{ if eq .Type.Link "#" "" }}
+                <code>{{ htmlSafe .Type.Name }}</code>
+                {{- else }}
+                <code>{{ template "linkify" .Type }}</code>
+                {{- end }}
             </td>
             <td class="align-top">{{ htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}</td>
         </tr>

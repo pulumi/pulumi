@@ -57,7 +57,7 @@ type exampleUsage struct {
 type Property struct {
 	Name       string
 	Comment    string
-	Type       string
+	Type       PropertyType
 	IsRequired bool
 
 	// IsInput is a flag to indicate if a property is an input
@@ -74,16 +74,21 @@ type DocNestedType struct {
 // PropertyType represents the type of a property.
 type PropertyType struct {
 	Name string
-	// TypeDocLink is the link to the language-specific
-	// doc page for this property.
-	TypeDocLink string
+	// Link can be a link to an anchor tag on the same
+	// page, or to another page/site.
+	Link string
 }
 
 // ConstructorParam represents the formal parameters of a constructor.
 type ConstructorParam struct {
-	Name         string
-	Type         PropertyType
+	Name string
+	Type PropertyType
+
+	// This is the language specific optional type indicator.
+	// For example, in nodejs this is the character "?" and in Go
+	// it's "*".
 	OptionalFlag string
+
 	DefaultValue string
 }
 
@@ -148,12 +153,12 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) typeStringPulumi(t schema.Type, lang string, input, optional bool) string {
+func (mod *modContext) typeString(t schema.Type, lang string, input, optional bool) PropertyType {
 	var langType string
 
 	switch lang {
 	case "nodejs":
-		langType = nodejs.GetLanguageType(mod.pkg, t, input, optional)
+		langType = nodejs.GetLanguageType(mod.pkg, mod.mod, t, input, optional)
 	case "go":
 		langType = go_gen.GetLanguageType(mod.pkg, t, input, optional)
 	case "csharp":
@@ -166,11 +171,20 @@ func (mod *modContext) typeStringPulumi(t schema.Type, lang string, input, optio
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
+	var href string
 	switch t := t.(type) {
+	case *schema.ArrayType:
+		elementLangType := mod.typeString(t.ElementType, lang, input, optional)
+		href = elementLangType.Link
 	case *schema.ObjectType:
-		langType = fmt.Sprintf("<a href=\"#%s\">%s</a>", lower(tokenToName(t.Token)), wbr(langType))
+		tokenName := tokenToName(t.Token)
+		// Links to anchor targs on the same page must be lower-cased.
+		href = "#" + lower(tokenName)
 	}
-	return langType
+	return PropertyType{
+		Link: href,
+		Name: wbr(langType),
+	}
 }
 
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []ConstructorParam {
@@ -185,24 +199,24 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		{
 			Name: "name",
 			Type: PropertyType{
-				Name:        "string",
-				TypeDocLink: nodejs.GetDocLinkForBuiltInType("string"),
+				Name: "string",
+				Link: nodejs.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
 			Name:         "args",
 			OptionalFlag: argsFlag,
 			Type: PropertyType{
-				Name:        argsType,
-				TypeDocLink: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
+				Name: argsType,
+				Link: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
 			},
 		},
 		{
 			Name:         "opts",
 			OptionalFlag: "?",
 			Type: PropertyType{
-				Name:        "pulumi.CustomResourceOptions",
-				TypeDocLink: nodejs.GetDocLinkForResourceType("pulumi/pulumi", "CustomResourceOptions"),
+				Name: "pulumi.CustomResourceOptions",
+				Link: nodejs.GetDocLinkForResourceType("pulumi/pulumi", "CustomResourceOptions"),
 			},
 		},
 	}
@@ -222,31 +236,31 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: PropertyType{
-				Name:        "pulumi.Context",
-				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
+				Name: "pulumi.Context",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
 			},
 		},
 		{
 			Name: "name",
 			Type: PropertyType{
-				Name:        "string",
-				TypeDocLink: go_gen.GetDocLinkForBuiltInType("string"),
+				Name: "string",
+				Link: go_gen.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
 			Name:         "args",
 			OptionalFlag: argsFlag,
 			Type: PropertyType{
-				Name:        argsType,
-				TypeDocLink: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
+				Name: argsType,
+				Link: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), argsType),
 			},
 		},
 		{
 			Name:         "opts",
 			OptionalFlag: "...",
 			Type: PropertyType{
-				Name:        "pulumi.ResourceOption",
-				TypeDocLink: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
+				Name: "pulumi.ResourceOption",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
 			},
 		},
 	}
@@ -274,8 +288,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		{
 			Name: "name",
 			Type: PropertyType{
-				Name:        "string",
-				TypeDocLink: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
+				Name: "string",
+				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
 			},
 		},
 		{
@@ -284,7 +298,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: PropertyType{
 				Name: argsType,
-				TypeDocLink: dotnet.GetDocLinkForResourceType(
+				Link: dotnet.GetDocLinkForResourceType(
 					resourceProviderNamespace,
 					fmt.Sprintf("%s.%s", title(mod.mod), argsType)),
 			},
@@ -294,8 +308,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			DefaultValue: " = null",
 			Type: PropertyType{
-				Name:        optionsType,
-				TypeDocLink: dotnet.GetDocLinkForResourceType("Pulumi", optionsType),
+				Name: optionsType,
+				Link: dotnet.GetDocLinkForResourceType("Pulumi", optionsType),
 			},
 		},
 	}
@@ -335,7 +349,7 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
 func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []Property {
-	if properties == nil {
+	if len(properties) == 0 {
 		return nil
 	}
 
@@ -349,7 +363,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			Comment:    prop.Comment,
 			IsRequired: prop.IsRequired,
 			IsInput:    isInput,
-			Type:       mod.typeStringPulumi(prop.Type, lang, isInput, !prop.IsRequired),
+			Type:       mod.typeString(prop.Type, lang, isInput, !prop.IsRequired),
 		})
 	}
 
@@ -437,16 +451,16 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		ConstructorParams: mod.genConstructors(r, allOptionalInputs),
 		ConstructorResource: map[string]PropertyType{
 			"typescript": {
-				Name:        name,
-				TypeDocLink: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
+				Name: name,
+				Link: nodejs.GetDocLinkForResourceType(fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
 			},
 			"go": {
-				Name:        name,
-				TypeDocLink: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
+				Name: name,
+				Link: go_gen.GetDocLinkForResourceType(mod.pkg.Name, fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod), name),
 			},
 			"csharp": {
-				Name:        name,
-				TypeDocLink: "#",
+				Name: name,
+				Link: "#",
 			},
 		},
 		ArgsRequired: !allOptionalInputs,

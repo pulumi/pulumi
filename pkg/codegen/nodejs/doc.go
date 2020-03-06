@@ -20,6 +20,7 @@ package nodejs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
@@ -35,9 +36,13 @@ func GetDocLinkForBuiltInType(typeName string) string {
 }
 
 // GetLanguageType returns the language-specific type given a Pulumi schema type.
-func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
-	mod := &modContext{
+func GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+	modCtx := &modContext{
 		pkg: pkg,
+		mod: moduleName,
 	}
-	return mod.typeString(t, input, false, optional)
+	typeName := modCtx.typeString(t, input, false, optional)
+	typeName = strings.Replace(typeName, "inputs."+moduleName+".", "", -1)
+	typeName = strings.Replace(typeName, " | undefined", "?", -1)
+	return typeName
 }

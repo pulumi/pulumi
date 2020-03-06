@@ -12,11 +12,64 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Pulling out some of the repeated strings tokens into constants would harm readability,
+// so we just ignore the goconst linter's warning.
+//
+// nolint: lll, goconst
 package python
 
-import "github.com/pulumi/pulumi/pkg/codegen/schema"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
+)
 
 // GetLanguageType returns the language-specific type given a Pulumi schema type.
 func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
-	return pyType(t)
+	name := pyType(t)
+
+	// The Python language generator will simply return
+	// "list" or "dict" for certain enumerables. Once the generator
+	// is updated with "types", the following code block ideally
+	// wouldn't run anymore.
+	switch name {
+	case "list":
+		arrTy := t.(*schema.ArrayType)
+		elType := arrTy.ElementType.String()
+		return getListWithTypeName(elementTypeToName(elType))
+	case "dict":
+		switch dictionaryTy := t.(type) {
+		case *schema.MapType:
+			elType := dictionaryTy.ElementType.String()
+			return getDictWithTypeName(elementTypeToName(elType))
+		case *schema.ObjectType:
+			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
+		}
+	}
+	return name
+}
+
+// elementTypeToName returns the type name from an element type of the form
+// package:module:_type, with its leading "_" stripped.
+func elementTypeToName(el string) string {
+	parts := strings.Split(el, ":")
+	if len(parts) == 3 {
+		el = parts[2]
+	}
+	el = strings.TrimPrefix(el, "_")
+
+	return el
+}
+
+// getListWithTypeName returns a Python representation of a list containing
+// items of `t`.
+func getListWithTypeName(t string) string {
+	return fmt.Sprintf("list[%s]", PyName(t))
+}
+
+// getDictWithTypeName returns the Python representation of a dictionary
+// where each item is of type `t`.
+func getDictWithTypeName(t string) string {
+	return fmt.Sprintf("dict{%s}", PyName(t))
 }
