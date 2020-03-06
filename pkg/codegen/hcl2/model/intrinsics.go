@@ -25,7 +25,7 @@ const (
 
 // NewApplyCall returns a new expression that represents a call to IntrinsicApply.
 func NewApplyCall(args []*ScopeTraversalExpression, then *AnonymousFunctionExpression) *FunctionCallExpression {
-	signature := FunctionSignature{
+	signature := StaticFunctionSignature{
 		Parameters: make([]Parameter, len(args)+1),
 	}
 

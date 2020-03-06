@@ -27,14 +27,14 @@ import (
 
 type expressionBinder struct {
 	anonSymbols map[*hclsyntax.AnonSymbolExpr]Node
-	scopes      *Scopes
+	scope       *Scope
 }
 
-// BindExpression binds an HCL2 expression using the given scopes and token map.
-func BindExpression(syntax hclsyntax.Node, scopes *Scopes, tokens syntax.TokenMap) (Expression, hcl.Diagnostics) {
+// BindExpression binds an HCL2 expression using the given scope and token map.
+func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens syntax.TokenMap) (Expression, hcl.Diagnostics) {
 	b := &expressionBinder{
 		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Node{},
-		scopes:      scopes,
+		scope:       scope,
 	}
 
 	return b.bindExpression(syntax)
@@ -112,12 +112,12 @@ func encapsulateType(t Type) cty.Value {
 	return cty.CapsuleVal(typeCapsule, &t)
 }
 
-// getOperationSignature returns the equivalent FunctionSignature for a given Operation. This signature can be used
+// getOperationSignature returns the equivalent StaticFunctionSignature for a given Operation. This signature can be used
 // for typechecking the operation's arguments.
-func getOperationSignature(op *hclsyntax.Operation) FunctionSignature {
+func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	ctyParams := op.Impl.Params()
 
-	sig := FunctionSignature{
+	sig := StaticFunctionSignature{
 		Parameters: make([]Parameter, len(ctyParams)),
 	}
 	for i, p := range ctyParams {
@@ -139,7 +139,7 @@ func getOperationSignature(op *hclsyntax.Operation) FunctionSignature {
 }
 
 // typecheckArgs typechecks the arguments against a given function signature.
-func typecheckArgs(srcRange hcl.Range, signature FunctionSignature, args ...Expression) hcl.Diagnostics {
+func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args ...Expression) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
 	// First typecheck the arguments for positional parameters. It is an error if there are fewer arguments than parameters
@@ -262,7 +262,7 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	}
 
 	// Typecheck the condition expression.
-	signature := FunctionSignature{Parameters: []Parameter{{Name: "condition", Type: inputType(BoolType)}}}
+	signature := StaticFunctionSignature{Parameters: []Parameter{{Name: "condition", Type: inputType(BoolType)}}}
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, condition)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
@@ -335,13 +335,13 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	}
 
 	// Push a scope for the key and value variables and define these vars.
-	forScope := b.scopes.Push(syntax)
-	defer b.scopes.Pop()
+	b.scope = b.scope.PushScope(syntax)
+	defer func() { b.scope = b.scope.Pop() }()
 	if syntax.KeyVar != "" {
-		ok := forScope.Define(syntax.KeyVar, &LocalVariable{Name: syntax.KeyVar, VariableType: keyType})
+		ok := b.scope.Define(syntax.KeyVar, &LocalVariable{Name: syntax.KeyVar, VariableType: keyType})
 		contract.Assert(ok)
 	}
-	if ok := forScope.Define(syntax.ValVar, &LocalVariable{Name: syntax.ValVar, VariableType: valueType}); !ok {
+	if ok := b.scope.Define(syntax.ValVar, &LocalVariable{Name: syntax.ValVar, VariableType: valueType}); !ok {
 		diagnostics = append(diagnostics, nameAlreadyDefined(syntax.ValVar, syntax.Range()))
 	}
 
@@ -404,20 +404,20 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 func (b *expressionBinder) bindFunctionCallExpression(syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
-	definition, definitionDiags := getFunctionDefinition(syntax.Name, syntax.NameRange)
-	diagnostics = append(diagnostics, definitionDiags...)
-
 	args := make([]Expression, len(syntax.Args))
 	for i, syntax := range syntax.Args {
 		arg, argDiagnostics := b.bindExpression(syntax)
 		args[i], diagnostics = arg, append(diagnostics, argDiagnostics...)
 	}
 
-	if definition == nil {
+	function, hasFunction := b.scope.BindFunctionReference(syntax.Name)
+	if !hasFunction {
+		diagnostics = append(diagnostics, unknownFunction(syntax.Name, syntax.NameRange))
+
 		return &FunctionCallExpression{
 			Syntax: syntax,
 			Name:   syntax.Name,
-			Signature: FunctionSignature{
+			Signature: StaticFunctionSignature{
 				VarargsParameter: &Parameter{Name: "args", Type: AnyType},
 				ReturnType:       AnyType,
 			},
@@ -425,7 +425,7 @@ func (b *expressionBinder) bindFunctionCallExpression(syntax *hclsyntax.Function
 		}, diagnostics
 	}
 
-	signature, sigDiags := definition.signature(args)
+	signature, sigDiags := function.GetSignature(args)
 	diagnostics = append(diagnostics, sigDiags...)
 
 	for i := range signature.Parameters {
@@ -569,7 +569,7 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 }
 
 func (b *expressionBinder) bindScopeTraversalExpression(syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
-	def, ok := b.scopes.BindReference(syntax.Traversal.RootName())
+	def, ok := b.scope.BindReference(syntax.Traversal.RootName())
 	if !ok {
 		parts := make([]Traversable, len(syntax.Traversal))
 		for i := range parts {

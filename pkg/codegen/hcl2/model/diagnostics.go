@@ -135,3 +135,11 @@ func internalError(rng hcl.Range, fmt string, args ...interface{}) *hcl.Diagnost
 func nameAlreadyDefined(name string, rng hcl.Range) *hcl.Diagnostic {
 	return errorf(rng, "name %v already defined", name)
 }
+
+func cannotTraverseKeyword(name string, rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "'%s' is a keyword and cannot be traversed", name)
+}
+
+func cannotTraverseFunction(name string, rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "'%s' is a function and cannot be traversed", name)
+}

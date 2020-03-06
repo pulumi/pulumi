@@ -35,7 +35,7 @@ type Expression interface {
 // transforms over the IR for a program (e.g. the Apply transform).
 type AnonymousFunctionExpression struct {
 	// The signature for the anonymous function.
-	Signature FunctionSignature
+	Signature StaticFunctionSignature
 	// The parameter definitions for the anonymous function.
 	Parameters []*LocalVariable
 
@@ -167,7 +167,7 @@ type FunctionCallExpression struct {
 	// The name of the called function.
 	Name string
 	// The signature of the called function.
-	Signature FunctionSignature
+	Signature StaticFunctionSignature
 	// The arguments to the function call.
 	Args []Expression
 }

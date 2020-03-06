@@ -61,7 +61,7 @@ const (
 func newInterpolateCall(args []model.Expression) *model.FunctionCallExpression {
 	return &model.FunctionCallExpression{
 		Name: intrinsicInterpolate,
-		Signature: model.FunctionSignature{
+		Signature: model.StaticFunctionSignature{
 			VarargsParameter: &model.Parameter{Name: "args", Type: model.AnyType},
 			ReturnType:       model.NewOutputType(model.StringType),
 		},

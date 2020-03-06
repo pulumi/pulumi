@@ -14,7 +14,15 @@
 
 package model
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
+)
+
+type FunctionSignature interface {
+	GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics)
+}
 
 // Parameter represents a single function parameter.
 type Parameter struct {
@@ -22,56 +30,79 @@ type Parameter struct {
 	Type Type   // The type of the parameter.
 }
 
-// FunctionSignature represents the parameters and return type of a function.
-type FunctionSignature struct {
+// StaticFunctionSignature represents the parameters and return type of a function.
+type StaticFunctionSignature struct {
 	Parameters       []Parameter
 	VarargsParameter *Parameter
 	ReturnType       Type
 }
 
-// functionDefinition represents a function definition that can be used to retrieve the signature of a function given a
-// list of arguments.
-type functionDefinition func(arguments []Expression) (FunctionSignature, hcl.Diagnostics)
-
-// signature gets the signature for this function given a list of arguments.
-func (f functionDefinition) signature(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-	return f(arguments)
+func (fs StaticFunctionSignature) GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
+	return fs, nil
 }
 
-// getFunctionDefinition fetches the definition for the function of the given name.
-func getFunctionDefinition(name string, nameRange hcl.Range) (functionDefinition, hcl.Diagnostics) {
-	switch name {
-	case "fileAsset":
-		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-			return FunctionSignature{
-				Parameters: []Parameter{{
-					Name: "path",
-					Type: StringType,
-				}},
-				ReturnType: AssetType,
-			}, nil
-		}, nil
-	case "mimeType":
-		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-			return FunctionSignature{
-				Parameters: []Parameter{{
-					Name: "path",
-					Type: StringType,
-				}},
-				ReturnType: StringType,
-			}, nil
-		}, nil
-	case "toJSON":
-		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-			return FunctionSignature{
-				Parameters: []Parameter{{
-					Name: "value",
-					Type: AnyType,
-				}},
-				ReturnType: StringType,
-			}, nil
-		}, nil
-	default:
-		return nil, hcl.Diagnostics{unknownFunction(name, nameRange)}
-	}
+type GenericFunctionSignature func(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics)
+
+func (fs GenericFunctionSignature) GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
+	return fs(arguments)
 }
+
+// Function represents a function definition.
+type Function struct {
+	name      string
+	signature FunctionSignature
+}
+
+func NewFunction(name string, signature FunctionSignature) *Function {
+	return &Function{name: name, signature: signature}
+}
+
+func (f *Function) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
+func (f *Function) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return AnyType, hcl.Diagnostics{cannotTraverseFunction(f.name, traverser.SourceRange())}
+}
+
+func (f *Function) GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
+	return f.signature.GetSignature(arguments)
+}
+
+//// getFunctionDefinition fetches the definition for the function of the given name.
+//func getFunctionDefinition(name string, nameRange hcl.Range) (functionDefinition, hcl.Diagnostics) {
+//	switch name {
+//	case "fileAsset":
+//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
+//			return FunctionSignature{
+//				Parameters: []Parameter{{
+//					Name: "path",
+//					Type: StringType,
+//				}},
+//				ReturnType: AssetType,
+//			}, nil
+//		}, nil
+//	case "mimeType":
+//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
+//			return FunctionSignature{
+//				Parameters: []Parameter{{
+//					Name: "path",
+//					Type: StringType,
+//				}},
+//				ReturnType: StringType,
+//			}, nil
+//		}, nil
+//	case "toJSON":
+//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
+//			return FunctionSignature{
+//				Parameters: []Parameter{{
+//					Name: "value",
+//					Type: AnyType,
+//				}},
+//				ReturnType: StringType,
+//			}, nil
+//		}, nil
+//	default:
+//		return nil, hcl.Diagnostics{unknownFunction(name, nameRange)}
+//	}
+//}

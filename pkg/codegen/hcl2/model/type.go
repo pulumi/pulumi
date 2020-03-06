@@ -20,14 +20,16 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
 // equal values.
 type Type interface {
-	Traversable
+	Definition
 
 	AssignableFrom(src Type) bool
 	String() string
@@ -77,6 +79,10 @@ func (t primitiveType) String() string {
 	default:
 		panic("unknown primitive type")
 	}
+}
+
+func (primitiveType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
 }
 
 func (t primitiveType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -141,6 +147,10 @@ func NewOptionalType(elementType Type) *OptionalType {
 	return t
 }
 
+func (*OptionalType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
 func (t *OptionalType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	element, diagnostics := t.ElementType.Traverse(traverser)
 	return NewOptionalType(element.(Type)), diagnostics
@@ -191,6 +201,10 @@ func NewOutputType(elementType Type) *OutputType {
 	t := &OutputType{ElementType: elementType}
 	outputTypes[elementType] = t
 	return t
+}
+
+func (*OutputType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
 }
 
 func (t *OutputType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -317,6 +331,10 @@ func NewPromiseType(elementType Type) *PromiseType {
 	return t
 }
 
+func (*PromiseType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
 func (t *PromiseType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	element, diagnostics := t.ElementType.Traverse(traverser)
 	return NewPromiseType(element.(Type)), diagnostics
@@ -383,6 +401,10 @@ func (t *MapType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 	return t.ElementType, diagnostics
 }
 
+func (*MapType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A map(T) is assignable
 // from values of type any, map(U), and U, where T is assignable from U.
 func (t *MapType) AssignableFrom(src Type) bool {
@@ -423,6 +445,10 @@ func NewArrayType(elementType Type) *ArrayType {
 	t := &ArrayType{ElementType: elementType}
 	arrayTypes[elementType] = t
 	return t
+}
+
+func (*ArrayType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
 }
 
 func (t *ArrayType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -517,6 +543,10 @@ func NewUnionType(type1, type2 Type, rest ...Type) Type {
 	return t
 }
 
+func (*UnionType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
 func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	// TODO(pdg): produce the union of the results of Traverse on each element type?
 	return AnyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
@@ -577,6 +607,10 @@ func NewObjectType(properties map[string]Type) *ObjectType {
 	}
 	objectTypes[t.String()] = t
 	return t
+}
+
+func (*ObjectType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
 }
 
 func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -659,6 +693,10 @@ func NewTokenType(token string) (*TokenType, error) {
 	t := &TokenType{Token: token}
 	tokenTypes[token] = t
 	return t, nil
+}
+
+func (*TokenType) SyntaxNode() hclsyntax.Node {
+	return syntax.None
 }
 
 func (t *TokenType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {

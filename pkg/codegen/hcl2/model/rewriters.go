@@ -121,7 +121,7 @@ func (r *applyRewriter) rewriteRoot(expr Expression) Expression {
 
 	// Create a new anonymous function definition.
 	callback := &AnonymousFunctionExpression{
-		Signature: FunctionSignature{
+		Signature: StaticFunctionSignature{
 			Parameters: make([]Parameter, len(r.callbackParams)),
 			ReturnType: expr.Type(),
 		},

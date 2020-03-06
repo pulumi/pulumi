@@ -31,7 +31,6 @@ type binder struct {
 
 	tokens syntax.TokenMap
 	stack  []hclsyntax.Node
-	scopes *Scopes
 	root   *Scope
 }
 
@@ -54,9 +53,8 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
-		scopes:         &Scopes{},
+		root:           NewRootScope(syntax.None),
 	}
-	b.root = b.scopes.Push(&hclsyntax.Body{})
 
 	var diagnostics hcl.Diagnostics
 
@@ -175,5 +173,5 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 }
 
 func (b *binder) bindExpression(node hclsyntax.Node) (Expression, hcl.Diagnostics) {
-	return BindExpression(node, b.scopes, b.tokens)
+	return BindExpression(node, b.root, b.tokens)
 }
