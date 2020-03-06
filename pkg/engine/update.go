@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -64,9 +65,7 @@ type LocalPolicyPack struct {
 func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPolicyPack {
 	// If we have any configPaths, we should have already validated that the length of
 	// the localPaths and configPaths are the same.
-	if len(configPaths) > 0 {
-		contract.Assertf(len(localPaths) == len(configPaths), "len(localPaths) != len(configPaths)")
-	}
+	contract.Assert(len(configPaths) == 0 || len(configPaths) == len(localPaths))
 
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
@@ -235,8 +234,17 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPacks []LocalPolicyPack,
-	opts *plugin.PolicyAnalyzerOptions) error {
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
+	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions) error {
+
+	var allValidationErrors []string
+	appendValidationErrors := func(policyPackName, policyPackVersion string, validationErrors []string) {
+		for _, validationError := range validationErrors {
+			allValidationErrors = append(allValidationErrors,
+				fmt.Sprintf("validating policy config: %s %s  %s",
+					policyPackName, policyPackVersion, validationError))
+		}
+	}
 
 	// Install and load required policy packs.
 	for _, policy := range policies {
@@ -250,24 +258,23 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return err
 		}
 
-		configFromAPI, err := plugin.ParsePolicyPackConfigFromAPI(policy.Config())
+		analyzerInfo, err := analyzer.GetAnalyzerInfo()
 		if err != nil {
 			return err
 		}
 
-		// If we have configuration from the API, pass it to the analyzer.
-		if len(configFromAPI) > 0 {
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
-			if err != nil {
-				return err
-			}
-			config, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
-			if err != nil {
-				return errors.Wrapf(err, "reconciling configuration for analyzer %q", analyzerInfo.Name)
-			}
-			if err = analyzer.Configure(config); err != nil {
-				return errors.Wrapf(err, "configuring analyzer %q", analyzerInfo.Name)
-			}
+		// Parse the config, reconcile & validate it, and pass it to the policy pack.
+		configFromAPI, err := plugin.ParsePolicyPackConfigFromAPI(policy.Config())
+		if err != nil {
+			return err
+		}
+		config, validationErrors, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
+		if err != nil {
+			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
+		}
+		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+		if err = analyzer.Configure(config); err != nil {
+			return errors.Wrapf(err, "configuring policy pack %q", analyzerInfo.Name)
 		}
 	}
 
@@ -282,7 +289,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 		if err != nil {
 			return err
 		} else if analyzer == nil {
-			return errors.Errorf("analyzer could not be loaded from path %q", pack.Path)
+			return errors.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
 		}
 
 		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
@@ -292,22 +299,33 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 		}
 		localPolicyPacks[i].Name = analyzerInfo.Name
 
-		// If a config file was specified, load it, and pass it to the analyzer.
+		// Load config, reconcile & validate it, and pass it to the policy pack.
+		var configFromFile map[string]plugin.AnalyzerPolicyConfig
 		if pack.Config != "" {
-			configFromFile, err := plugin.LoadPolicyPackConfigFromFile(pack.Config)
+			configFromFile, err = plugin.LoadPolicyPackConfigFromFile(pack.Config)
 			if err != nil {
 				return err
 			}
-			config, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
-			if err != nil {
-				return errors.Wrapf(err, "reconciling configuration for analyzer %q at %q",
-					analyzerInfo.Name, pack.Path)
-			}
-			if err = analyzer.Configure(config); err != nil {
-				return errors.Wrapf(err, "configuring analyzer %q at %q", analyzerInfo.Name, pack.Path)
-			}
+		}
+		config, validationErrors, err := plugin.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
+		if err != nil {
+			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
+		}
+		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+		if err = analyzer.Configure(config); err != nil {
+			return errors.Wrapf(err, "configuring policy pack %q at %q", analyzerInfo.Name, pack.Path)
 		}
 	}
+
+	// Report any policy config validation errors and return an error.
+	if len(allValidationErrors) > 0 {
+		sort.Strings(allValidationErrors)
+		for _, validationError := range allValidationErrors {
+			plugctx.Diag.Errorf(diag.Message("", validationError))
+		}
+		return errors.New("validating policy config")
+	}
+
 	return nil
 }
 
@@ -348,7 +366,7 @@ func newUpdateSource(
 		Config:  config,
 		DryRun:  dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies, opts.LocalPolicyPacks,
+	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}
