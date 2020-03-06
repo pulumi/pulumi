@@ -36,6 +36,73 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
+const unableToFindProgramTemplate = "unable to find program: %s"
+
+// findExecutable attempts to find the needed executable in various locations on the
+// filesystem, eventually resorting to searching in $PATH.
+func findExecutable(program string) (string, error) {
+	// look in the same directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to get current working directory")
+	}
+
+	cwdProgram := filepath.Join(cwd, program)
+	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
+		logging.V(5).Infof("program %s found in CWD", program)
+		return cwdProgram, nil
+	}
+
+	// look in $GOPATH/bin
+	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
+		goPathProgram := filepath.Join(goPath, "bin", program)
+		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
+			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
+			return goPathProgram, nil
+		}
+	}
+
+	// look in the $PATH somewhere
+	if fullPath, err := exec.LookPath(program); err == nil {
+		logging.V(5).Infof("program %s found in $PATH", program)
+		return fullPath, nil
+	}
+
+	return "", errors.Errorf(unableToFindProgramTemplate, program)
+}
+
+func findProgram(project string) (*exec.Cmd, error) {
+	// The program to execute is simply the name of the project. This ensures good Go toolability, whereby
+	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
+	// For ease of use, if we don't find a pre-built program, we attempt to invoke via 'go run' on behalf of the user.
+	program, err := findExecutable(project)
+	if err == nil {
+		return exec.Command(program), nil
+	}
+
+	const message = "problem executing program (could not run language executor)"
+	if err.Error() == fmt.Sprintf(unableToFindProgramTemplate, project) {
+		logging.V(5).Infof("Unable to find program %s in $PATH, attempting invocation via 'go run'", program)
+		program, err = findExecutable("go")
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, message)
+	}
+
+	// Fall back to 'go run' style execution
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get current working directory")
+	}
+
+	goFileSearchPattern := filepath.Join(cwd, "*.go")
+	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
+		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
+	}
+
+	return exec.Command(program, "run", cwd), nil
+}
+
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
 	var tracing string
@@ -89,43 +156,33 @@ func newLanguageHost(engineAddress, tracing string) pulumirpc.LanguageRuntimeSer
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
-}
 
-const unableToFindProgramTemplate = "unable to find program: %s"
-
-// findProgram attempts to find the needed program in various locations on the
-// filesystem, eventually resorting to searching in $PATH.
-func findProgram(program string) (string, error) {
-
-	// look in the same directory
-	cwd, err := os.Getwd()
+	cmd, err := findProgram(req.GetProject())
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get current working directory")
+		return nil, err
 	}
 
-	cwdProgram := filepath.Join(cwd, program)
-	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-		logging.V(5).Infof("program %s found in CWD", program)
-		return cwdProgram, nil
+	cmd.Env = []string{"PULUMI_PLUGINS=true"}
+	stdout, err := cmd.Output()
+	if err != nil {
+		return nil, err
 	}
 
-	// look in $GOPATH/bin
-	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		goPathProgram := filepath.Join(goPath, "bin", program)
-		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
-			return goPathProgram, nil
-		}
+	var infos map[string][]pulumi.PackageInfo
+	if err := json.Unmarshal(stdout, &infos); err != nil {
+		return nil, err
 	}
 
-	// look in the $PATH somewhere
-	if fullPath, err := exec.LookPath(program); err == nil {
-		logging.V(5).Infof("program %s found in $PATH", program)
-		return fullPath, nil
+	var plugins []*pulumirpc.PluginDependency
+	for _, info := range infos["plugins"] {
+		plugins = append(plugins, &pulumirpc.PluginDependency{
+			Name:    info.Name,
+			Kind:    "resource",
+			Version: info.Version,
+			Server:  info.Server,
+		})
 	}
-
-	return "", errors.Errorf(unableToFindProgramTemplate, program)
+	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
@@ -137,54 +194,14 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
-	// by default we try to run a named executable on the path, but we will fallback to 'go run' style execution
-	goRunInvoke := false
-
-	// The program to execute is simply the name of the project.  This ensures good Go toolability, whereby
-	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
-	// For ease of use, if we don't find a pre-built program, we attempt to invoke via 'go run' on behalf of the user.
-	program, err := findProgram(req.GetProject())
+	cmd, err := findProgram(req.GetProject())
 	if err != nil {
-		const message = "problem executing program (could not run language executor)"
-		if err.Error() == fmt.Sprintf(unableToFindProgramTemplate, req.GetProject()) {
-			logging.V(5).Infof("Unable to find program %s in $PATH, attempting invocation via 'go run'", program)
-			program, err = findProgram("go")
-			if err != nil {
-				return nil, errors.Wrap(err, message)
-			}
-			goRunInvoke = true
-		} else {
-			return nil, errors.Wrap(err, message)
-		}
+		return nil, err
 	}
-
-	logging.V(5).Infof("language host launching process: %s", program)
-
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	var errResult string
-	var cmd *exec.Cmd
-
-	if goRunInvoke {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to get current working directory")
-		}
-
-		goFileSearchPattern := filepath.Join(cwd, "*.go")
-		if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
-			return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
-		}
-
-		args := []string{"run", cwd}
-		// go run $cwd
-		cmd = exec.Command(program, args...)
-	} else {
-		cmd = exec.Command(program)
-	}
-
 	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+
+	var errResult string
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
