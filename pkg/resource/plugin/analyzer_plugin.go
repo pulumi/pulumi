@@ -108,9 +108,14 @@ func NewPolicyAnalyzer(
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), "."}, env)
 	if err != nil {
-		if err == errRunPolicyModuleNotFound {
+		// The original error might have been wrapped before being returned from newPlugin. So we look for
+		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
+		if errors.Cause(err) == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
 				"try running npm install or yarn install in %q", policyPackPath)
+		}
+		if errors.Cause(err) == errPluginNotFound {
+			return nil, fmt.Errorf("policy pack not found at %q", name)
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
@@ -142,11 +147,18 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
+	provider, err := marshalProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       string(name),
 		Properties: mprops,
+		Options:    marshalResourceOptions(r.Options),
+		Provider:   provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -165,7 +177,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -175,11 +187,37 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnost
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
 
+		provider, err := marshalProvider(resource.Provider)
+		if err != nil {
+			return nil, err
+		}
+
+		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
+		for pk, pd := range resource.PropertyDependencies {
+			// Skip properties that have no dependencies.
+			if len(pd) == 0 {
+				continue
+			}
+
+			pdeps := []string{}
+			for _, d := range pd {
+				pdeps = append(pdeps, string(d))
+			}
+			propertyDeps[string(pk)] = &pulumirpc.AnalyzerPropertyDependencies{
+				Urns: pdeps,
+			}
+		}
+
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:        string(resource.URN),
-			Type:       string(resource.Type),
-			Name:       string(resource.Name),
-			Properties: props,
+			Urn:                  string(resource.URN),
+			Type:                 string(resource.Type),
+			Name:                 string(resource.Name),
+			Properties:           props,
+			Options:              marshalResourceOptions(resource.Options),
+			Provider:             provider,
+			Parent:               string(resource.Parent),
+			Dependencies:         convertURNs(resource.Dependencies),
+			PropertyDependencies: propertyDeps,
 		}
 	}
 
@@ -240,6 +278,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	return AnalyzerInfo{
 		Name:        resp.GetName(),
 		DisplayName: resp.GetDisplayName(),
+		Version:     resp.GetVersion(),
 		Policies:    policies,
 	}, nil
 }
@@ -275,6 +314,59 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (a *analyzer) Close() error {
 	return a.plug.Close()
+}
+
+func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
+	secs := make([]string, len(opts.AdditionalSecretOutputs))
+	for idx := range opts.AdditionalSecretOutputs {
+		secs[idx] = string(opts.AdditionalSecretOutputs[idx])
+	}
+
+	var deleteBeforeReplace bool
+	if opts.DeleteBeforeReplace != nil {
+		deleteBeforeReplace = *opts.DeleteBeforeReplace
+	}
+
+	result := &pulumirpc.AnalyzerResourceOptions{
+		Protect:                    opts.Protect,
+		IgnoreChanges:              opts.IgnoreChanges,
+		DeleteBeforeReplace:        deleteBeforeReplace,
+		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
+		AdditionalSecretOutputs:    secs,
+		Aliases:                    convertURNs(opts.Aliases),
+		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
+			Create: opts.CustomTimeouts.Create,
+			Update: opts.CustomTimeouts.Update,
+			Delete: opts.CustomTimeouts.Delete,
+		},
+	}
+	return result
+}
+
+func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerProviderResource, error) {
+	if provider == nil {
+		return nil, nil
+	}
+
+	props, err := MarshalProperties(provider.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling properties")
+	}
+
+	return &pulumirpc.AnalyzerProviderResource{
+		Urn:        string(provider.URN),
+		Type:       string(provider.Type),
+		Name:       string(provider.Name),
+		Properties: props,
+	}, nil
+}
+
+func convertURNs(urns []resource.URN) []string {
+	result := make([]string, len(urns))
+	for idx := range urns {
+		result[idx] = string(urns[idx])
+	}
+	return result
 }
 
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {

@@ -1,6 +1,91 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+* Fix Kubernetes YAML parsing error in .NET.
+  [#4023](https://github.com/pulumi/pulumi/pull/4023)
+- Avoid projects beginning with `Pulumi` to stop cyclic imports
+  [#4013](https://github.com/pulumi/pulumi/pull/4013)
+
+## 1.12.0 (2020-03-04)
+- Avoid Configuring providers which are not used during preview.
+  [#4004](https://github.com/pulumi/pulumi/pull/4004)
+
+- Fix missing module import on Windows platform.
+  [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
+- Add support for mocking the resource monitor to the NodeJS and Python SDKs.
+  [#3738](https://github.com/pulumi/pulumi/pull/3738)
+
+- Reinstate caching of TypeScript compilation.
+  [#4007](https://github.com/pulumi/pulumi/pull/4007)
+
+- Remove the need to set PULUMI_EXPERIMENTAL to use the policy and watch commands.
+  [#4001](https://github.com/pulumi/pulumi/pull/4001)
+
+- Fix type annotations for `Output.all` and `Output.concat` in Python SDK.
+  [#4016](https://github.com/pulumi/pulumi/pull/4016)
+
+## 1.11.1 (2020-02-26)
+- Fix a regression for CustomTimeouts in Python SDK.
+  [#3964](https://github.com/pulumi/pulumi/pull/3964)
+
+- Avoid panic when displaying failed stack policies.
+  [#3960](https://github.com/pulumi/pulumi/pull/3960)
+  
+- Add support for secrets in the Go SDK.
+  [3938](https://github.com/pulumi/pulumi/pull/3938)
+
+- Add support for transformations in the Go SDK.
+  [3978](https://github.com/pulumi/pulumi/pull/3938)  
+
+## 1.11.0 (2020-02-19)
+- Allow oversize protocol buffers for Python SDK.
+  [#3895](https://github.com/pulumi/pulumi/pull/3895)
+
+- Avoid duplicated messages in preview/update progress display.
+  [#3890](https://github.com/pulumi/pulumi/pull/3890)
+
+- Improve CPU utilization in the Python SDK when waiting for resource operations.
+  [#3892](https://github.com/pulumi/pulumi/pull/3892)
+
+- Expose resource options, parent, dependencies, and provider config to policies.
+  [#3862](https://github.com/pulumi/pulumi/pull/3862)
+
+- Move .NET SDK attributes to the root namespace.
+  [#3902](https://github.com/pulumi/pulumi/pull/3902)
+
+- Support exporting older stack versions.
+  [#3906](https://github.com/pulumi/pulumi/pull/3906)
+
+- Disable interactive progress display when no terminal size is available.
+  [#3936](https://github.com/pulumi/pulumi/pull/3936)
+
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
+
+## 1.10.1 (2020-02-06)
+- Support stack references in the Go SDK.
+  [#3829](https://github.com/pulumi/pulumi/pull/3829)
+
+- Fix the Windows release process.
+  [#3875](https://github.com/pulumi/pulumi/pull/3875)
+
+## 1.10.0 (2020-02-05)
+- Avoid writing checkpoints to backend storage in common case where no changes are being made.
+  [#3860](https://github.com/pulumi/pulumi/pull/3860)
+
+- Add information about an in-flight operation to the stack command output, if applicable.
+  [#3822](https://github.com/pulumi/pulumi/pull/3822)
+
+- Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
+- Add support for aliases in the Go SDK
+  [3853](https://github.com/pulumi/pulumi/pull/3853)
+
+- Fix Python Dynamic Providers on Windows.
+  [#3855](https://github.com/pulumi/pulumi/pull/3855)
+
 ## 1.9.1 (2020-01-27)
 - Fix a stack reference regression in the Python SDK.
   [#3798](https://github.com/pulumi/pulumi/pull/3798)
@@ -73,7 +158,7 @@ CHANGELOG
 - Add `pulumi preview` support for `--refresh`, `--target`, `--replace`, `--target-replace` and
   `--target-dependents` to align with `pulumi up`.
   [#3675](https://github.com/pulumi/pulumi/pull/3675)
-  
+
 - `ComponentResource`s now have built-in support for asynchronously constructing their children.
   [#3676](https://github.com/pulumi/pulumi/pull/3676)
 
@@ -95,7 +180,7 @@ CHANGELOG
 
 ## 1.7.0 (2019-12-11)
 
-- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This 
+- A Pulumi JavaScript/TypeScript program can now consist of a single exported top level function. This
   allows for an easy approach to create a Pulumi program that needs to perform `async`/`await`
   operations at the top-level.
   [#3321](https://github.com/pulumi/pulumi/pull/3321)
@@ -191,7 +276,7 @@ CHANGELOG
 - Improve startup time performance by 0.5-1s by checking for a newer CLI release in parallel.
   [#3441](https://github.com/pulumi/pulumi/pull/3441)
 
-- Add an experimental `pulumi watch` command. 
+- Add an experimental `pulumi watch` command.
   [#3391](https://github.com/pulumi/pulumi/pull/3391)
 
 ## 1.4.1 (2019-11-01)
@@ -1513,3 +1598,4 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
+

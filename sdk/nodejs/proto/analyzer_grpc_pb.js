@@ -95,8 +95,8 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
 // issues -- style, policy, correctness, security, and so on.
 var AnalyzerService = exports.AnalyzerService = {
   // Analyze analyzes a single resource object, and returns any errors that it finds.
-  // Called with the "inputs" to the resource, before it is updated.
-  analyze: {
+// Called with the "inputs" to the resource, before it is updated.
+analyze: {
     path: '/pulumirpc.Analyzer/Analyze',
     requestStream: false,
     responseStream: false,
@@ -108,9 +108,9 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
   // AnalyzeStack analyzes all resources within a stack, at the end of a successful
-  // preview or update. The provided resources are the "outputs", after any mutations
-  // have taken place.
-  analyzeStack: {
+// preview or update. The provided resources are the "outputs", after any mutations
+// have taken place.
+analyzeStack: {
     path: '/pulumirpc.Analyzer/AnalyzeStack',
     requestStream: false,
     responseStream: false,
@@ -122,7 +122,7 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
   // GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-  getAnalyzerInfo: {
+getAnalyzerInfo: {
     path: '/pulumirpc.Analyzer/GetAnalyzerInfo',
     requestStream: false,
     responseStream: false,
@@ -134,7 +134,7 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzerInfo,
   },
   // GetPluginInfo returns generic information about this plugin, like its version.
-  getPluginInfo: {
+getPluginInfo: {
     path: '/pulumirpc.Analyzer/GetPluginInfo',
     requestStream: false,
     responseStream: false,

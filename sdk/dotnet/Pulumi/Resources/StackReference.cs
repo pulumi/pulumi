@@ -39,7 +39,7 @@ namespace Pulumi
         /// <param name="name">The unique name of the stack reference.</param>
         /// <param name="args">The arguments to use to populate this resource's properties.</param>
         /// <param name="options">A bag of options that control this resource's behavior.</param>
-        public StackReference(string name, StackReferenceArgs? args = null, ResourceOptions? options = null)
+        public StackReference(string name, StackReferenceArgs? args = null, CustomResourceOptions? options = null)
             : base("pulumi:pulumi:StackReference",
                   name,
                   new StackReferenceArgs { Name = args?.Name ?? name },

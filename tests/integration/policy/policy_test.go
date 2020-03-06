@@ -62,8 +62,8 @@ func TestPolicy(t *testing.T) {
 }
 
 type policyPacksJSON struct {
-	Name     string `json:"name"`
-	Versions []int  `json:"versions"`
+	Name     string   `json:"name"`
+	Versions []string `json:"versions"`
 }
 
 type policyGroupsJSON struct {

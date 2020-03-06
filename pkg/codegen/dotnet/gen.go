@@ -341,6 +341,9 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			fmt.Fprintf(w, "\n")
 			printComment(w, prop.Comment, indent+"    ")
 		}
+		if prop.DeprecationMessage != "" {
+			fmt.Fprintf(w, "%s    [Obsolete(@\"%s\")]\n", indent, strings.Replace(prop.DeprecationMessage, `"`, `""`, -1))
+		}
 
 		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
 		// ensure that the user does not see warnings when initializing these properties using object or collection

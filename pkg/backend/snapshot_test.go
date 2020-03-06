@@ -62,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	return NewSnapshotManager(sp, baseSnap), sp
 }
 
-func NewResource(name string, deps ...resource.URN) *resource.State {
+func NewResourceWithDeps(name string, deps []resource.URN) *resource.State {
 	return &resource.State{
 		Type:         tokens.Type("test"),
 		URN:          resource.URN(name),
@@ -70,6 +70,10 @@ func NewResource(name string, deps ...resource.URN) *resource.State {
 		Outputs:      make(resource.PropertyMap),
 		Dependencies: deps,
 	}
+}
+
+func NewResource(name string, deps ...resource.URN) *resource.State {
+	return NewResourceWithDeps(name, deps)
 }
 
 func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
@@ -113,6 +117,21 @@ func TestIdenticalSames(t *testing.T) {
 	// Our same resource should be the first entry in the snapshot list.
 	inSnapshot := sp.SavedSnapshots[0].Resources[0]
 	assert.Equal(t, sameState.URN, inSnapshot.URN)
+}
+
+func TestSamesWithEmptyDependencies(t *testing.T) {
+	res := NewResourceWithDeps("a-unique-urn-resource-a", nil)
+	snap := NewSnapshot([]*resource.State{
+		res,
+	})
+	manager, sp := MockSetup(t, snap)
+	resUpdated := NewResourceWithDeps(string(res.URN), []resource.URN{})
+	same := deploy.NewSameStep(nil, nil, res, resUpdated)
+	mutation, err := manager.BeginMutation(same)
+	assert.NoError(t, err)
+	err = mutation.End(same, true)
+	assert.NoError(t, err)
+	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
 }
 
 // This test challenges the naive approach of mutating resources

@@ -125,6 +125,9 @@ type cloudBackend struct {
 	currentProject *workspace.Project
 }
 
+// Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
+var _ backend.SpecificDeploymentExporter = &cloudBackend{}
+
 // New creates a new Pulumi backend for the given cloud API URL and token.
 func New(d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
@@ -442,7 +445,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 		orgName = currentUser
 	}
 
-	return newCloudBackendPolicyPackReference(orgName, tokens.QName(policyPackName)), nil
+	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil
 }
 
 func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
@@ -460,7 +463,7 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	apiToken := account.AccessToken
 
 	return &cloudPolicyPack{
-		ref: newCloudBackendPolicyPackReference(
+		ref: newCloudBackendPolicyPackReference(b.CloudConsoleURL(),
 			policyPackRef.OrgName(), policyPackRef.Name()),
 		b:  b,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
@@ -864,7 +867,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	//
 	for _, policy := range reqdPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy))
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
@@ -1160,17 +1163,32 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	stack backend.Stack) (*apitype.UntypedDeployment, error) {
-	return b.exportDeployment(ctx, stack.Ref())
+	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
 }
 
-func (b *cloudBackend) exportDeployment(ctx context.Context,
-	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+func (b *cloudBackend) ExportDeploymentForVersion(
+	ctx context.Context, stack backend.Stack, version string) (*apitype.UntypedDeployment, error) {
+	// The Pulumi Console defines versions as a positive integer. Parse the provided version string and
+	// ensure it is valid.
+	//
+	// The first stack update version is 1, and monotonically increasing from there.
+	versionNumber, err := strconv.Atoi(version)
+	if err != nil || versionNumber <= 0 {
+		return nil, errors.Errorf("%q is not a valid stack version. It should be a positive integer.", version)
+	}
+
+	return b.exportDeployment(ctx, stack.Ref(), &versionNumber)
+}
+
+// exportDeployment exports the checkpoint file for a stack, optionally getting a previous version.
+func (b *cloudBackend) exportDeployment(
+	ctx context.Context, stackRef backend.StackReference, version *int) (*apitype.UntypedDeployment, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	deployment, err := b.client.ExportStackDeployment(ctx, stack)
+	deployment, err := b.client.ExportStackDeployment(ctx, stack, version)
 	if err != nil {
 		return nil, err
 	}

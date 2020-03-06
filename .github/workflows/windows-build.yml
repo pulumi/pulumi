@@ -1,0 +1,65 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        platform: [windows-latest]
+        go-version: [1.13.x]
+        node-version: [10.x]
+        python-version: [3.7]
+        dotnet: ['3.1.100']
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Install DotNet ${{ matrix.dotnet }}
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ matrix.dotnet }}
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Install Pulumi CLI
+      uses: pulumi/action-install-pulumi-cli@releases/v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Python Deps
+      run: |
+        pip3 install pyenv-win
+        pip3 install pipenv
+    - name: Set Build Env Vars
+      uses: allenevans/set-env@v1.0.0
+      with:
+        PULUMI_TEST_OWNER: "moolumi"
+        PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+        PULUMI_ROOT: "D:\\Pulumi"
+        PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Get dependencies
+      run: |
+        set GOMODULE111=on
+        go mod tidy
+        go mod vendor
+    - name: Build Pulumi
+      run: |
+        dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+    - name: Run Pulumi Tests
+      run: |
+        dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"

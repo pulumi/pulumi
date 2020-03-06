@@ -135,8 +135,9 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
+	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 	plan, err := deploy.NewPlan(
-		plugctx, target, target.Snapshot, source, opts.LocalPolicyPackPaths, dryRun, ctx.BackendClient)
+		plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err

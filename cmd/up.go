@@ -120,14 +120,14 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPackPaths: policyPackPaths,
-			Parallel:             parallel,
-			Debug:                debug,
-			Refresh:              refresh,
-			ReplaceTargets:       replaceURNs,
-			UseLegacyDiff:        useLegacyDiff(),
-			UpdateTargets:        targetURNs,
-			TargetDependents:     targetDependents,
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refresh,
+			ReplaceTargets:   replaceURNs,
+			UseLegacyDiff:    useLegacyDiff(),
+			UpdateTargets:    targetURNs,
+			TargetDependents: targetDependents,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -281,10 +281,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPackPaths: policyPackPaths,
-			Parallel:             parallel,
-			Debug:                debug,
-			Refresh:              refresh,
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refresh,
 		}
 
 		// TODO for the URL case:
@@ -410,11 +410,9 @@ func newUpCmd() *cobra.Command {
 		"Allows updating of dependent targets discovered but not specified in --target list")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() || hasExperimentalCommands() {
-		cmd.PersistentFlags().StringSliceVar(
-			&policyPackPaths, "policy-pack", []string{},
-			"Run one or more policy packs as part of this update")
-	}
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackPaths, "policy-pack", []string{},
+		"[PREVIEW] Run one or more policy packs as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

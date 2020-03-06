@@ -343,6 +343,29 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
+            # Translate the CustomTimeouts object.
+            custom_timeouts = None
+            if opts.custom_timeouts is not None:
+                custom_timeouts = resource_pb2.RegisterResourceRequest.CustomTimeouts()
+                # It could be an actual CustomTimeouts object.
+                if known_types.is_custom_timeouts(opts.custom_timeouts):
+                    if opts.custom_timeouts.create is not None:
+                        custom_timeouts.create = opts.custom_timeouts.create
+                    if opts.custom_timeouts.update is not None:
+                        custom_timeouts.update = opts.custom_timeouts.update
+                    if opts.custom_timeouts.delete is not None:
+                        custom_timeouts.delete = opts.custom_timeouts.delete
+                # Or, it could be a workaround passing in a dict.
+                elif isinstance(opts.custom_timeouts, dict):
+                    if 'create' in opts.custom_timeouts:
+                        custom_timeouts.create = opts.custom_timeouts['create']
+                    if 'update' in opts.custom_timeouts:
+                        custom_timeouts.update = opts.custom_timeouts['update']
+                    if 'delete' in opts.custom_timeouts:
+                        custom_timeouts.delete = opts.custom_timeouts['delete']
+                else:
+                    raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -360,7 +383,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
-                customTimeouts=opts.custom_timeouts,
+                customTimeouts=custom_timeouts,
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
             )

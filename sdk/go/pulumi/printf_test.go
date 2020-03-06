@@ -15,14 +15,16 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	// Fprintf
 	buf := &bytes.Buffer{}
 	out := Output(Fprintf(buf, f, ins...))
-	_, known, err := await(out)
+	_, known, secret, err := await(out)
 	assert.True(t, known)
+	assert.False(t, secret)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, buf.String())
 
 	// Sprintf
 	out = Sprintf(f, ins...)
-	v, known, err := await(out)
+	v, known, secret, err := await(out)
+	assert.False(t, secret)
 	assert.True(t, known)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, v)

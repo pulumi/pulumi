@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ func newStackCmd() *cobra.Command {
 	var showURNs bool
 	var showSecrets bool
 	var stackName string
+	var startTime string
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -69,13 +71,20 @@ func newStackCmd() *cobra.Command {
 			if isCloud {
 				if cs, ok := s.(httpstate.Stack); ok {
 					fmt.Printf("    Owner: %s\n", cs.OrgName())
+					// If there is an in-flight operation, provide info.
+					if currentOp := cs.CurrentOperation(); currentOp != nil {
+						fmt.Printf("    Update in progress:\n")
+						startTime = humanize.Time(time.Unix(currentOp.Started, 0))
+						fmt.Printf("	Started: %v\n", startTime)
+						fmt.Printf("	Requested By: %s\n", currentOp.Author)
+					}
 				}
 			}
 
 			if snap != nil {
-				if t := snap.Manifest.Time; t.IsZero() {
+				if t := snap.Manifest.Time; t.IsZero() && startTime == "" {
 					fmt.Printf("    Last update time unknown\n")
-				} else {
+				} else if startTime == "" {
 					fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
 				}
 				var cliver string

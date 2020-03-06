@@ -17,10 +17,11 @@ package pulumi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -38,12 +39,13 @@ type Output interface {
 
 	getState() *OutputState
 	dependencies() []Resource
-	fulfillValue(value reflect.Value, known bool, err error)
-	resolveValue(value reflect.Value, known bool)
-	fulfill(value interface{}, known bool, err error)
-	resolve(value interface{}, known bool)
+	fulfillValue(value reflect.Value, known, secret bool, err error)
+	resolveValue(value reflect.Value, known, secret bool)
+	fulfill(value interface{}, known, secret bool, err error)
+	resolve(value interface{}, known, secret bool)
 	reject(err error)
-	await(ctx context.Context) (interface{}, bool, error)
+	await(ctx context.Context) (interface{}, bool, bool, error)
+	isSecret() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -57,7 +59,7 @@ func RegisterOutputType(output Output) {
 	elementType := output.ElementType()
 	existing, hasExisting := concreteTypeToOutputType.LoadOrStore(elementType, reflect.TypeOf(output))
 	if hasExisting {
-		panic(errors.Errorf("an output type for %v is already registered: %v", elementType, existing))
+		panic(fmt.Errorf("an output type for %v is already registered: %v", elementType, existing))
 	}
 }
 
@@ -74,9 +76,10 @@ type OutputState struct {
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
-	value interface{} // the value of this output if it is resolved.
-	err   error       // the error associated with this output if it is rejected.
-	known bool        // true if this output's value is known.
+	value  interface{} // the value of this output if it is resolved.
+	err    error       // the error associated with this output if it is rejected.
+	known  bool        // true if this output's value is known.
+	secret bool        // true if this output's value is secret
 
 	element reflect.Type // the element type of this output.
 	deps    []Resource   // the dependencies associated with this output property.
@@ -96,11 +99,11 @@ func (o *OutputState) dependencies() []Resource {
 	return o.deps
 }
 
-func (o *OutputState) fulfill(value interface{}, known bool, err error) {
-	o.fulfillValue(reflect.ValueOf(value), known, err)
+func (o *OutputState) fulfill(value interface{}, known, secret bool, err error) {
+	o.fulfillValue(reflect.ValueOf(value), known, secret, err)
 }
 
-func (o *OutputState) fulfillValue(value reflect.Value, known bool, err error) {
+func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, err error) {
 	if o == nil {
 		return
 	}
@@ -116,45 +119,45 @@ func (o *OutputState) fulfillValue(value reflect.Value, known bool, err error) {
 	}
 
 	if err != nil {
-		o.state, o.err, o.known = outputRejected, err, true
+		o.state, o.err, o.known, o.secret = outputRejected, err, true, secret
 	} else {
 		if value.IsValid() {
 			reflect.ValueOf(&o.value).Elem().Set(value)
 		}
-		o.state, o.known = outputResolved, known
+		o.state, o.known, o.secret = outputResolved, known, secret
 	}
 }
 
-func (o *OutputState) resolve(value interface{}, known bool) {
-	o.fulfill(value, known, nil)
+func (o *OutputState) resolve(value interface{}, known, secret bool) {
+	o.fulfill(value, known, secret, nil)
 }
 
-func (o *OutputState) resolveValue(value reflect.Value, known bool) {
-	o.fulfillValue(value, known, nil)
+func (o *OutputState) resolveValue(value reflect.Value, known, secret bool) {
+	o.fulfillValue(value, known, secret, nil)
 }
 
 func (o *OutputState) reject(err error) {
-	o.fulfill(nil, true, err)
+	o.fulfill(nil, true, false, err)
 }
 
-func (o *OutputState) await(ctx context.Context) (interface{}, bool, error) {
+func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, error) {
 	for {
 		if o == nil {
 			// If the state is nil, treat its value as resolved and unknown.
-			return nil, false, nil
+			return nil, false, false, nil
 		}
 
 		o.mutex.Lock()
 		for o.state == outputPending {
 			if ctx.Err() != nil {
-				return nil, true, ctx.Err()
+				return nil, true, false, ctx.Err()
 			}
 			o.cond.Wait()
 		}
 		o.mutex.Unlock()
 
 		if !o.known || o.err != nil {
-			return nil, o.known, o.err
+			return nil, o.known, o.secret, o.err
 		}
 
 		// If the result is an Output, await it in turn.
@@ -163,7 +166,7 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, error) {
 		// the element type of the outer output. We should reconsider this.
 		ov, ok := o.value.(Output)
 		if !ok {
-			return o.value, true, nil
+			return o.value, true, o.secret, nil
 		}
 		o = ov.getState()
 	}
@@ -220,7 +223,7 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 	out := newOutputState(anyType)
 
 	resolve := func(v interface{}) {
-		out.resolve(v, true)
+		out.resolve(v, true, false)
 	}
 	reject := func(err error) {
 		out.reject(err)
@@ -240,7 +243,7 @@ func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
 
 	ft := fv.Type()
 	if ft.NumIn() != 1 || !elementType.AssignableTo(ft.In(0)) {
-		panic(errors.Errorf("applier must have 1 input parameter assignable from %v", elementType))
+		panic(fmt.Errorf("applier must have 1 input parameter assignable from %v", elementType))
 	}
 
 	var outs []reflect.Type
@@ -275,7 +278,7 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 
 	ft := fv.Type()
 	if ft.NumIn() != 2 || !contextType.AssignableTo(ft.In(0)) || !elementType.AssignableTo(ft.In(1)) {
-		panic(errors.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
+		panic(fmt.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
 	}
 
 	switch ft.NumOut() {
@@ -375,9 +378,9 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 
 	result := newOutput(resultType, o.dependencies()...)
 	go func() {
-		v, known, err := o.await(ctx)
+		v, known, secret, err := o.await(ctx)
 		if err != nil || !known {
-			result.fulfill(nil, known, err)
+			result.fulfill(nil, known, secret, err)
 			return
 		}
 
@@ -389,9 +392,29 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 
 		// Fulfill the result.
-		result.fulfillValue(results[0], true, nil)
+		result.fulfillValue(results[0], true, secret, nil)
 	}()
 	return result
+}
+
+// isSecret returns a bool representing the secretness of the Output
+func (o *OutputState) isSecret() bool {
+	return o.getState().secret
+}
+
+// ToSecret wraps the input in an Output marked as secret
+// that will resolve when all Inputs contained in the given value have resolved.
+func ToSecret(input interface{}) Output {
+	return ToSecretWithContext(context.Background(), input)
+}
+
+// ToSecretWithContext wraps the input in an Output marked as secret
+// that will resolve when all Inputs contained in the given value have resolved.
+func ToSecretWithContext(ctx context.Context, input interface{}) Output {
+	o := toOutputWithContext(ctx, input, true)
+	// set immediate secretness ahead of resolution/fufillment
+	o.getState().secret = true
+	return o
 }
 
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
@@ -489,11 +512,11 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 	return toOutputMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})[0].Interface().(Output), true
 }
 
-func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
+func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, error) {
 	contract.Assert(v.IsValid())
 
 	if !resolved.CanSet() {
-		return true, nil
+		return true, false, nil
 	}
 
 	// If the value is an Input with of a different element type, turn it into an Output of the appropriate type and
@@ -503,7 +526,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		input, isNonNil := v.Interface().(Input)
 		if !isNonNil {
 			// A nil input is already fully-resolved.
-			return true, nil
+			return true, false, nil
 		}
 
 		valueType = input.ElementType()
@@ -519,7 +542,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 				// If the value type is not assignable to the destination, see if we can assign the input value itself
 				// to the destination.
 				if !v.Type().AssignableTo(resolved.Type()) {
-					panic(errors.Errorf("cannot convert an input of type %T to a value of type %v",
+					panic(fmt.Errorf("cannot convert an input of type %T to a value of type %v",
 						input, resolved.Type()))
 				} else {
 					assignInput = true
@@ -529,25 +552,34 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 
 		// If the input is an Output, await its value. The returned value is fully resolved.
 		if output, ok := input.(Output); ok {
-			e, known, err := output.await(ctx)
+			e, known, secret, err := output.await(ctx)
 			if err != nil || !known {
-				return known, err
+				return known, secret, err
 			}
 			if !assignInput {
 				resolved.Set(reflect.ValueOf(e))
 			} else {
 				resolved.Set(reflect.ValueOf(input))
 			}
-			return true, nil
+			return true, secret, nil
 		}
 
 		// Check for types that are already fully-resolved.
 		if v, ok := getResolvedValue(input); ok {
 			resolved.Set(v)
-			return true, nil
+			return true, false, nil
 		}
 
 		v, isInput = reflect.ValueOf(input), true
+
+		// We require that the kind of an `Input`'s `ElementType` agrees with the kind of the `Input`'s underlying value.
+		// This requirement is trivially (and unintentionally) violated by `*T` if `*T` does not define `ElementType`,
+		// but `T` does (https://golang.org/ref/spec#Method_sets).
+		// In this case, dereference the pointer to get at its actual value.
+		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
+			v = v.Elem()
+			contract.Assert(v.Interface().(Input).ElementType() == valueType)
+		}
 
 		// If we are assigning the input value itself, update the value type.
 		if assignInput {
@@ -572,7 +604,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		resolved = reflect.New(valueType).Elem()
 	}
 
-	known, err := true, error(nil)
+	known, secret, err := true, false, error(nil)
 	switch v.Kind() {
 	case reflect.Interface:
 		if !v.IsNil() {
@@ -589,8 +621,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		numFields := typ.NumField()
 		for i := 0; i < numFields; i++ {
 			_, field := getMappedField(resolved, i)
-			fknown, ferr := awaitInputs(ctx, v.Field(i), field)
+			fknown, fsecret, ferr := awaitInputs(ctx, v.Field(i), field)
 			known = known && fknown
+			secret = secret || fsecret
 			if err == nil {
 				err = ferr
 			}
@@ -598,8 +631,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 	case reflect.Array:
 		l := v.Len()
 		for i := 0; i < l; i++ {
-			eknown, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
+			eknown, esecret, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
+			secret = secret || esecret
 			if err == nil {
 				err = eerr
 			}
@@ -608,8 +642,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		l := v.Len()
 		resolved.Set(reflect.MakeSlice(resolved.Type(), l, l))
 		for i := 0; i < l; i++ {
-			eknown, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
+			eknown, esecret, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
+			secret = secret || esecret
 			if err == nil {
 				err = eerr
 			}
@@ -620,13 +655,13 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		iter := v.MapRange()
 		for iter.Next() {
 			kv := reflect.New(resolvedKeyType).Elem()
-			kknown, kerr := awaitInputs(ctx, iter.Key(), kv)
+			kknown, ksecret, kerr := awaitInputs(ctx, iter.Key(), kv)
 			if err == nil {
 				err = kerr
 			}
 
 			vv := reflect.New(resolvedValueType).Elem()
-			vknown, verr := awaitInputs(ctx, iter.Value(), vv)
+			vknown, vsecret, verr := awaitInputs(ctx, iter.Value(), vv)
 			if err == nil {
 				err = verr
 			}
@@ -636,6 +671,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 			}
 
 			known = known && kknown && vknown
+			secret = secret || ksecret || vsecret
 		}
 	default:
 		if isInput {
@@ -643,7 +679,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
 		}
 		resolved.Set(v)
 	}
-	return known, err
+	return known, secret, err
 }
 
 // ToOutput returns an Output that will resolve when all Inputs contained in the given value have resolved.
@@ -654,6 +690,10 @@ func ToOutput(v interface{}) Output {
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
+	return toOutputWithContext(ctx, v, false)
+}
+
+func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) Output {
 	resolvedType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resolvedType = input.ElementType()
@@ -668,13 +708,14 @@ func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 	go func() {
 		element := reflect.New(resolvedType).Elem()
 
-		known, err := awaitInputs(ctx, reflect.ValueOf(v), element)
+		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), element)
+		secret = secret || forceSecret
 		if err != nil || !known {
-			result.fulfill(nil, known, err)
+			result.fulfill(nil, known, secret, err)
 			return
 		}
 
-		result.resolveValue(element, true)
+		result.resolveValue(element, true, secret)
 	}()
 	return result
 }
@@ -754,8 +795,8 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
 		var result interface{}
-		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
-		out.fulfill(result, known, err)
+		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
+		out.fulfill(result, known, secret, err)
 	}()
 	return out.(AnyOutput)
 }
@@ -782,12 +823,12 @@ func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOut
 	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
-func (o IDOutput) awaitID(ctx context.Context) (ID, bool, error) {
-	id, known, err := o.await(ctx)
+func (o IDOutput) awaitID(ctx context.Context) (ID, bool, bool, error) {
+	id, known, secret, err := o.await(ctx)
 	if !known || err != nil {
-		return "", known, err
+		return "", known, false, err
 	}
-	return ID(convert(id, stringType).(string)), true, nil
+	return ID(convert(id, stringType).(string)), true, secret, nil
 }
 
 func (in URN) ToStringPtrOutput() StringPtrOutput {
@@ -806,18 +847,18 @@ func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOu
 	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
-func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, error) {
-	id, known, err := o.await(ctx)
+func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
+	id, known, secret, err := o.await(ctx)
 	if !known || err != nil {
-		return "", known, err
+		return "", known, secret, err
 	}
-	return URN(convert(id, stringType).(string)), true, nil
+	return URN(convert(id, stringType).(string)), true, secret, nil
 }
 
 func convert(v interface{}, to reflect.Type) interface{} {
 	rv := reflect.ValueOf(v)
 	if !rv.Type().ConvertibleTo(to) {
-		panic(errors.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
+		panic(fmt.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
 	}
 	return rv.Convert(to).Interface()
 }

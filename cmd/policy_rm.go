@@ -15,9 +15,6 @@
 package cmd
 
 import (
-	"strconv"
-
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -30,7 +27,7 @@ func newPolicyRmCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
-		Short: "Removes a Policy Pack from a Pulumi organization",
+		Short: "[PREVIEW] Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
@@ -40,18 +37,14 @@ func newPolicyRmCmd() *cobra.Command {
 				return err
 			}
 
-			var version *int
+			var version *string
 			if cliArgs[1] != allKeyword {
-				v, err := strconv.Atoi(cliArgs[1])
-				if err != nil {
-					return errors.Wrapf(err, "Could not parse version (should be an integer)")
-				}
-				version = &v
+				version = &cliArgs[1]
 			}
 
 			// Attempt to remove the Policy Pack.
 			return policyPack.Remove(commandContext(), backend.PolicyPackOperation{
-				Version: version, Scopes: cancellationScopes})
+				VersionTag: version, Scopes: cancellationScopes})
 		}),
 	}
 

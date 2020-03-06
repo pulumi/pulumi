@@ -3,7 +3,6 @@
 package ints
 
 import (
-	"path"
 	"path/filepath"
 	"testing"
 
@@ -20,7 +19,7 @@ var dirs = []string{
 
 func TestNodejsTransformations(t *testing.T) {
 	for _, dir := range dirs {
-		d := path.Join("nodejs", dir)
+		d := filepath.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    d,
@@ -34,7 +33,7 @@ func TestNodejsTransformations(t *testing.T) {
 
 func TestPythonTransformations(t *testing.T) {
 	for _, dir := range dirs {
-		d := path.Join("python", dir)
+		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: d,

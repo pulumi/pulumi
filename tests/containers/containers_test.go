@@ -143,6 +143,8 @@ func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
 		"--volume", fmt.Sprintf("%s:/src", e.CWD),
 		// Set working directory when running the container.
 		"--workdir", "/src",
+		// Cleanup the container on shutdown.
+		"--rm",
 		// Container to run.
 		container,
 		// Flags to the container's entry point (`pulumi`).

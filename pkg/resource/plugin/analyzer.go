@@ -36,15 +36,43 @@ type Analyzer interface {
 	Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error)
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
-	AnalyzeStack(resources []AnalyzerResource) ([]AnalyzeDiagnostic, error)
+	AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }
 
-// AnalyzerResource mirrors a resource that is sent to the analyzer.
+// AnalyzerResource mirrors a resource that is passed to `Analyze`.
 type AnalyzerResource struct {
+	URN        resource.URN
+	Type       tokens.Type
+	Name       tokens.QName
+	Properties resource.PropertyMap
+	Options    AnalyzerResourceOptions
+	Provider   *AnalyzerProviderResource
+}
+
+// AnalyzerStackResource mirrors a resource that is passed to `AnalyzeStack`.
+type AnalyzerStackResource struct {
+	AnalyzerResource
+	Parent               resource.URN                            // an optional parent URN for this resource.
+	Dependencies         []resource.URN                          // dependencies of this resource object.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN // the set of dependencies that affect each property.
+}
+
+// AnalyzerResourceOptions mirrors resource options sent to the analyzer.
+type AnalyzerResourceOptions struct {
+	Protect                 bool                    // true to protect this resource from deletion.
+	IgnoreChanges           []string                // a list of property names to ignore during changes.
+	DeleteBeforeReplace     *bool                   // true if this resource should be deleted prior to replacement.
+	AdditionalSecretOutputs []resource.PropertyKey  // outputs that should always be treated as secrets.
+	Aliases                 []resource.URN          // additional URNs that should be aliased to this resource.
+	CustomTimeouts          resource.CustomTimeouts // an optional config object for resource options
+}
+
+// AnalyzerProviderResource mirrors a resource's provider sent to the analyzer.
+type AnalyzerProviderResource struct {
 	URN        resource.URN
 	Type       tokens.Type
 	Name       tokens.QName
@@ -68,5 +96,6 @@ type AnalyzeDiagnostic struct {
 type AnalyzerInfo struct {
 	Name        string
 	DisplayName string
+	Version     string
 	Policies    []apitype.Policy
 }

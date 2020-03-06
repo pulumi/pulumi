@@ -15,6 +15,7 @@
 import asyncio
 import base64
 from concurrent import futures
+import sys
 import time
 
 import dill
@@ -166,7 +167,7 @@ def main():
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
     server.start()
-    print(port)
+    sys.stdout.buffer.write(f"{port}\n".encode())
     try:
         while True:
             time.sleep(_ONE_DAY_IN_SECONDS)

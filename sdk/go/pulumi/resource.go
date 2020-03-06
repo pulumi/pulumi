@@ -32,6 +32,12 @@ type ResourceState struct {
 	urn URNOutput `pulumi:"urn"`
 
 	providers map[string]ProviderResource
+
+	aliases []URNOutput
+
+	name string
+
+	transformations []ResourceTransformation
 }
 
 func (s ResourceState) URN() URNOutput {
@@ -44,6 +50,22 @@ func (s ResourceState) GetProvider(token string) ProviderResource {
 
 func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
+}
+
+func (s ResourceState) getAliases() []URNOutput {
+	return s.aliases
+}
+
+func (s ResourceState) getName() string {
+	return s.name
+}
+
+func (s ResourceState) getTransformations() []ResourceTransformation {
+	return s.transformations
+}
+
+func (s *ResourceState) addTransformation(t ResourceTransformation) {
+	s.transformations = append(s.transformations, t)
 }
 
 func (ResourceState) isResource() {}
@@ -78,8 +100,20 @@ type Resource interface {
 	// getProviders returns the provider map for this resource.
 	getProviders() map[string]ProviderResource
 
+	// getAliases returns the list of aliases for this resource
+	getAliases() []URNOutput
+
+	// getName returns the name of the resource
+	getName() string
+
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
+
+	// getTransformations returns the transformations for the resource.
+	getTransformations() []ResourceTransformation
+
+	// addTransformation adds a single transformation to the resource.
+	addTransformation(t ResourceTransformation)
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
@@ -137,6 +171,14 @@ type resourceOptions struct {
 	CustomTimeouts *CustomTimeouts
 	// Ignore changes to any of the specified properties.
 	IgnoreChanges []string
+	// Aliases is an optional list of identifiers used to find and use existing resources.
+	Aliases []Alias
+	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
+	AdditionalSecretOutputs []string
+	// Transformations is an optional list of transformations to apply to this resource during construction.
+	// The transformations are applied in order, and are applied prior to transformation and to parents
+	// walking from the resource up to the stack.
+	Transformations []ResourceTransformation
 }
 
 type invokeOptions struct {
@@ -264,5 +306,26 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = o
+	})
+}
+
+// Aliases applies a list of identifiers to find and use existing resources.
+func Aliases(o []Alias) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Aliases = o
+	})
+}
+
+// AdditionalSecretOutputs specifies a list of output properties to mark as secret.
+func AdditionalSecretOutputs(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.AdditionalSecretOutputs = o
+	})
+}
+
+// Transformations is an optional list of transformations to be applied to the resource.
+func Transformations(o []ResourceTransformation) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Transformations = o
 	})
 }

@@ -177,18 +177,40 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	return typ
 }
 
+func isStringType(t schema.Type) bool {
+	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
+		t = tt.UnderlyingType
+	}
+
+	return t == schema.StringType
+}
+
 func sanitizeComment(str string) string {
 	return strings.Replace(str, "*/", "*&#47;", -1)
 }
 
-func printComment(w io.Writer, comment string, indent string) {
+func printComment(w io.Writer, comment, deprecationMessage, indent string) {
+	if comment == "" && deprecationMessage == "" {
+		return
+	}
+
 	lines := strings.Split(sanitizeComment(comment), "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
 	fmt.Fprintf(w, "%s/**\n", indent)
 	for _, l := range lines {
-		fmt.Fprintf(w, "%s * %s\n", indent, l)
+		if l == "" {
+			fmt.Fprintf(w, "%s *\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s * %s\n", indent, l)
+		}
+	}
+	if deprecationMessage != "" {
+		if len(lines) > 0 {
+			fmt.Fprintf(w, "%s *\n", indent)
+		}
+		fmt.Fprintf(w, "%s * @deprecated %s\n", indent, deprecationMessage)
 	}
 	fmt.Fprintf(w, "%s */\n", indent)
 }
@@ -196,14 +218,11 @@ func printComment(w io.Writer, comment string, indent string) {
 func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput, readonly bool, level int) {
 	indent := strings.Repeat("    ", level)
 
-	if comment != "" {
-		printComment(w, comment, indent)
-	}
+	printComment(w, comment, "", indent)
+
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
 	for _, p := range properties {
-		if p.Comment != "" {
-			printComment(w, p.Comment, indent+"    ")
-		}
+		printComment(w, p.Comment, p.DeprecationMessage, indent+"    ")
 
 		prefix := ""
 		if readonly {
@@ -307,7 +326,7 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 		fmt.Fprintf(w, "%s", part)
 	}
 
-	fmt.Fprintf(w, "}")
+	fmt.Fprintf(w, " }")
 }
 
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
@@ -315,9 +334,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
 	// Write the TypeDoc/JSDoc for the resource class
-	if r.Comment != "" {
-		printComment(w, r.Comment, "")
-	}
+	printComment(w, r.Comment, "", "")
 
 	baseType := "CustomResource"
 	if r.IsProvider {
@@ -382,9 +399,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired
 	}
 	for _, prop := range r.Properties {
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, "    ")
-		}
+		printComment(w, prop.Comment, prop.DeprecationMessage, "    ")
 
 		// Make a little comment in the code so it's easy to pick out output properties.
 		var outcomment string
@@ -469,7 +484,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		// provider properties must be marshaled as JSON strings.
-		if r.IsProvider && prop.Type != schema.StringType {
+		if r.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)\n", arg)
 		}
 
@@ -528,9 +543,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	name := camel(tokenToName(fun.Token))
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	if fun.Comment != "" {
-		printComment(w, fun.Comment, "")
-	}
+	printComment(w, fun.Comment, "", "")
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
@@ -751,9 +764,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			getfunc = fmt.Sprintf("getObject<%s>", mod.typeString(p.Type, false, false, false))
 		}
 
-		if p.Comment != "" {
-			printComment(w, p.Comment, "")
-		}
+		printComment(w, p.Comment, "", "")
 
 		configFetch := fmt.Sprintf("__config.%s(\"%s\")", getfunc, p.Name)
 		if p.DefaultValue != nil {

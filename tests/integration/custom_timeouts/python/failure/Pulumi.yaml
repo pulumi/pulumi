@@ -1,0 +1,3 @@
+name: custom_timeouts
+description: A program that instantiates a resource with a custom timeout
+runtime: python

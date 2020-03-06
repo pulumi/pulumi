@@ -5,8 +5,7 @@ import * as crypto from "crypto";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
-import { Config } from "@pulumi/pulumi";
-import { serializeFunction } from "@pulumi/pulumi/runtime"
+import * as pulumi from "@pulumi/pulumi";
 
 function tempDirName(prefix: string) {
     const b = crypto.randomBytes(4);
@@ -15,15 +14,15 @@ function tempDirName(prefix: string) {
 
 (async function() {
     // Just test that basic config works.
-    const config = new Config();
+    const config = new pulumi.Config();
 
-    const outsideCapture = await serializeFunction(() => {
+    const outsideCapture = await pulumi.runtime.serializeFunction(() => {
         assert("it works" == config.require("value"));
         console.log("outside capture works")
     });
 
-    const insideCapture = await serializeFunction(() => {
-        const config = new Config();
+    const insideCapture = await pulumi.runtime.serializeFunction(() => {
+        const config = new pulumi.Config();
         assert("it works" == config.require("value"));
         console.log("inside capture works")
     });

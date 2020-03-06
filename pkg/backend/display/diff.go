@@ -192,9 +192,6 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 		}
 	}
 
-	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
-	renderPolicyPacks(out, event.PolicyPacks, opts)
-
 	summaryPieces := []string{}
 	if changeKindCount >= 2 {
 		// Only if we made multiple types of changes do we need to print out the total number of
@@ -220,6 +217,9 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 		fprintfIgnoreError(out, "\n")
 	}
+
+	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
+	renderPolicyPacks(out, event.PolicyPacks, opts)
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {

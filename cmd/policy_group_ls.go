@@ -27,7 +27,7 @@ import (
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "group",
-		Short: "Manage policy groups",
+		Short: "[PREVIEW] Manage policy groups",
 		Args:  cmdutil.NoArgs,
 	}
 
@@ -40,7 +40,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Groups for a Pulumi organization",
+		Short: "[PREVIEW] List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.

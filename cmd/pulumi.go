@@ -174,6 +174,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
+	cmd.AddCommand(newWatchCmd())
 	//     - Stack Management Commands:
 	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newConfigCmd())
@@ -181,6 +182,8 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
 	cmd.AddCommand(newWhoAmICmd())
+	//     - Policy Management Commands:
+	cmd.AddCommand(newPolicyCmd())
 	//     - Advanced Commands:
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newRefreshCmd())
@@ -198,13 +201,8 @@ func NewPulumiCmd() *cobra.Command {
 	// We have a set of commands that are still experimental and that we add only when PULUMI_EXPERIMENTAL is set
 	// to true.
 	if hasExperimentalCommands() {
-		//     - Deploy Commands:
-		cmd.AddCommand(newWatchCmd())
 		//     - Query Commands:
 		cmd.AddCommand(newQueryCmd())
-		//     - Policy Management Commands:
-		cmd.AddCommand(newPolicyCmd())
-
 	}
 
 	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
@@ -215,13 +213,11 @@ func NewPulumiCmd() *cobra.Command {
 		//     - Diagnostic Commands:
 		cmd.AddCommand(newViewTraceCmd())
 
-		// For legacy reasons, we make these two commands available also under PULUMI_DEBUG_COMMANDS, though
+		// For legacy reasons, we make this command available also under PULUMI_DEBUG_COMMANDS, though
 		// PULUMI_EXPERIMENTAL should be preferred.
 
 		//     - Query Commands:
 		cmd.AddCommand(newQueryCmd())
-		//     - Policy Management Commands:
-		cmd.AddCommand(newPolicyCmd())
 	}
 
 	return cmd

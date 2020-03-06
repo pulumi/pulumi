@@ -522,6 +522,12 @@ func ValidateProjectName(s string) error {
 		return errors.New("A project name may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 
+	// This is needed to stop cyclic imports in DotNet projects
+	if strings.ToLower(s) == "pulumi" || strings.HasPrefix(strings.ToLower(s), "pulumi.") {
+		return errors.New("A project name must not be `Pulumi` and must not start with the prefix `Pulumi.` " +
+			"to avoid collision with standard libraries")
+	}
+
 	return nil
 }
 

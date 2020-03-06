@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	mobytime "github.com/docker/docker/api/types/time"
@@ -125,8 +126,12 @@ func newLogsCmd() *cobra.Command {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 						if !jsonOut {
-							fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat),
-								logEntry.ID, logEntry.Message)
+							fmt.Printf(
+								"%30.30s[%30.30s] %v\n",
+								eventTime.Format(timeFormat),
+								logEntry.ID,
+								strings.TrimRight(logEntry.Message, "\n"),
+							)
 						} else {
 							err = printJSON(logEntryJSON{
 								ID:        logEntry.ID,

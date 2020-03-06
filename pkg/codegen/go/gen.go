@@ -284,7 +284,11 @@ func printComment(w io.Writer, comment string, indent bool) {
 		if indent {
 			fmt.Fprintf(w, "\t")
 		}
-		fmt.Fprintf(w, "// %s\n", l)
+		if l == "" {
+			fmt.Fprintf(w, "//\n")
+		} else {
+			fmt.Fprintf(w, "// %s\n", l)
+		}
 	}
 }
 

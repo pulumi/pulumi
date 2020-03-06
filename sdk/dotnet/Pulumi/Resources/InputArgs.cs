@@ -23,14 +23,22 @@ namespace Pulumi
         {
             var fieldQuery =
                 from field in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                let attr = field.GetCustomAttribute<InputAttribute>()
-                where attr != null
+                let attr1 = field.GetCustomAttribute<Pulumi.InputAttribute>()
+#pragma warning disable 618
+                let attr2 = field.GetCustomAttribute<Pulumi.Serialization.InputAttribute>()
+#pragma warning restore 618
+                where attr1 != null || attr2 != null
+                let attr = attr1 ?? new Pulumi.InputAttribute(attr2.Name, attr2.IsRequired, attr2.Json)
                 select (attr, memberName: field.Name, memberType: field.FieldType, getValue: (Func<object, object?>)field.GetValue);
 
             var propQuery =
                 from prop in this.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                let attr = prop.GetCustomAttribute<InputAttribute>()
-                where attr != null
+                let attr1 = prop.GetCustomAttribute<Pulumi.InputAttribute>()
+#pragma warning disable 618
+                let attr2 = prop.GetCustomAttribute<Pulumi.Serialization.InputAttribute>()
+#pragma warning restore 618
+                where attr1 != null || attr2 != null
+                let attr = attr1 ?? new Pulumi.InputAttribute(attr2.Name, attr2.IsRequired, attr2.Json)
                 select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object, object?>)prop.GetValue);
 
             var all = fieldQuery.Concat(propQuery).ToList();
@@ -45,7 +53,7 @@ namespace Pulumi
                 new InputInfo(t.attr, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
         }
 
-        internal async Task<ImmutableDictionary<string, object?>> ToDictionaryAsync()
+        internal virtual async Task<ImmutableDictionary<string, object?>> ToDictionaryAsync()
         {
             var builder = ImmutableDictionary.CreateBuilder<string, object?>();
             foreach (var info in _inputInfos)

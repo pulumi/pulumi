@@ -7,7 +7,7 @@ namespace Pulumi
     /// <summary>
     /// ResourceOptions is a bag of optional settings that control a resource's behavior.
     /// </summary>
-    public partial class ResourceOptions
+    public abstract partial class ResourceOptions
     {
         /// <summary>
         /// An optional existing ID to load, rather than create.
@@ -87,7 +87,6 @@ namespace Pulumi
         /// </summary>
         public List<Input<Alias>> Aliases { get; set; } = new List<Input<Alias>>();
 
-        internal virtual ResourceOptions Clone()
-            => CreateResourceOptionsCopy(this);
+        internal abstract ResourceOptions Clone();
     }
 }

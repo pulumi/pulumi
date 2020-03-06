@@ -189,6 +189,17 @@ type Backend interface {
 	CurrentUser() (string, error)
 }
 
+// SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
+// ability to export a specific versions of a stack's deployment. This isn't a requirement for all backends and
+// should be checked for dynamically.
+type SpecificDeploymentExporter interface {
+	// ExportDeploymentForVersion exports a specific deployment from the history of a stack. The meaning of
+	// version is backend-specific. For the Pulumi Console, it is the numeric version. (The first update
+	// being version "1", the second "2", and so on.) Though this might change in the future to use some
+	// other type of identifier or commitish .
+	ExportDeploymentForVersion(ctx context.Context, stack Stack, version string) (*apitype.UntypedDeployment, error)
+}
+
 // UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
 type UpdateOperation struct {
 	Proj               *workspace.Project

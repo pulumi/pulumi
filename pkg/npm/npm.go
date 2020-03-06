@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
@@ -75,7 +76,8 @@ func Install(dir string, stdout, stderr io.Writer) (string, error) {
 	}
 
 	// Ensure the "node_modules" directory exists.
-	if _, err := os.Stat("node_modules"); os.IsNotExist(err) {
+	nodeModulesPath := filepath.Join(dir, "node_modules")
+	if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
 		return bin, errors.Errorf("%s install reported success, but node_modules directory is missing", bin)
 	}
 

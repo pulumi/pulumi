@@ -6,14 +6,13 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -25,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+const WindowsOS = "windows"
 
 // assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
 // failures when a scenario exceeds the provided threshold.
@@ -70,7 +71,7 @@ func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
 	})
@@ -79,9 +80,8 @@ func TestEmptyPython(t *testing.T) {
 // TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:      filepath.Join("empty", "go"),
-		Quick:    true,
-		RunBuild: true,
+		Dir:   filepath.Join("empty", "go"),
+		Quick: true,
 	})
 }
 
@@ -181,7 +181,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
-		assert.Equal(t, "Updating (main-abs):\n", stdout)
+		assert.Equal(t, "Updating (main-abs):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -197,7 +197,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
-		assert.Equal(t, "Updating (main-parent):\n", stdout)
+		assert.Equal(t, "Updating (main-parent):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
@@ -248,7 +248,7 @@ func TestStackTagValidation(t *testing.T) {
 		prefix = prefix + prefix + prefix + prefix // 416 + the current Pulumi.yaml's description
 
 		// Change the contents of the Description property of Pulumi.yaml.
-		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
+		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
 		err := integration.ReplaceInFile("description: ", "description: "+prefix, yamlPath)
 		assert.NoError(t, err)
 
@@ -464,6 +464,9 @@ func TestStackParenting(t *testing.T) {
 }
 
 func TestStackBadParenting(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
 		Dependencies:  []string{"@pulumi/pulumi"},
@@ -926,6 +929,9 @@ func TestConfigBasicNodeJS(t *testing.T) {
 }
 
 func TestConfigCaptureNodeJS(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -950,7 +956,7 @@ func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "python"),
 		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -999,7 +1005,6 @@ func TestConfigBasicGo(t *testing.T) {
 			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
-		RunBuild: true,
 	})
 }
 
@@ -1096,6 +1101,9 @@ func TestGetCreated(t *testing.T) {
 
 // Tests that stack references work in Node.
 func TestStackReferenceNodeJS(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -1122,6 +1130,9 @@ func TestStackReferenceNodeJS(t *testing.T) {
 }
 
 func TestStackReferencePython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -1135,12 +1146,81 @@ func TestStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
 	}
 	integration.ProgramTest(t, opts)
 }
 
+func TestMultiStackReferencePython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	// build a stack with an export
+	exporterOpts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		NoParallel: true,
+	}
+
+	// we're going to manually initialize and then defer the deletion of this stack
+	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
+	exporterPt.TestFinished = false
+	err := exporterPt.TestLifeCyclePrepare()
+	assert.NoError(t, err)
+	err = exporterPt.TestLifeCycleInitialize()
+	assert.NoError(t, err)
+
+	defer func() {
+		destroyErr := exporterPt.TestLifeCycleDestroy()
+		assert.NoError(t, destroyErr)
+		exporterPt.TestFinished = true
+		exporterPt.TestCleanUp()
+	}()
+
+	err = exporterPt.TestPreviewUpdateAndEdits()
+	assert.NoError(t, err)
+
+	exporterStackName := exporterOpts.GetStackName().String()
+
+	importerOpts := &integration.ProgramTestOptions{
+		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
+			"exporter_stack_name": exporterStackName,
+		},
+		NoParallel: true,
+	}
+	integration.ProgramTest(t, importerOpts)
+}
+
 // Tests that stack references work in .NET.
 func TestStackReferenceDotnet(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -1149,6 +1229,35 @@ func TestStackReferenceDotnet(t *testing.T) {
 		Dir:          filepath.Join("stack_reference", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
+		Config: map[string]string{
+			"org": os.Getenv("PULUMI_TEST_OWNER"),
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step1",
+				Additive: true,
+			},
+			{
+				Dir:      "step2",
+				Additive: true,
+			},
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Tests that stack references work in Go.
+func TestStackReferenceGo(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:   filepath.Join("stack_reference", "go"),
+		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -1175,9 +1284,9 @@ func TestPython3NotInstalled(t *testing.T) {
 		"error: Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: path.Join("empty", "python"),
+		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
 		Env: []string{
@@ -1210,7 +1319,7 @@ func TestDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomVal = stack.Outputs["random_val"].(string)
@@ -1253,6 +1362,9 @@ func TestResourceWithSecretSerialization(t *testing.T) {
 }
 
 func TestStackReferenceSecretsNodejs(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -1261,7 +1373,7 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          path.Join(d, "nodejs", "step1"),
+		Dir:          filepath.Join(d, "nodejs", "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Config: map[string]string{
 			"org": owner,
@@ -1269,7 +1381,7 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:             path.Join(d, "nodejs", "step2"),
+				Dir:             filepath.Join(d, "nodejs", "step2"),
 				Additive:        true,
 				ExpectNoChanges: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1286,6 +1398,9 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 }
 
 func TestStackReferenceSecretsDotnet(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -1294,7 +1409,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          path.Join(d, "dotnet", "step1"),
+		Dir:          filepath.Join(d, "dotnet", "step1"),
 		Dependencies: []string{"Pulumi"},
 		Config: map[string]string{
 			"org": owner,
@@ -1302,7 +1417,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:             path.Join(d, "dotnet", "step2"),
+				Dir:             filepath.Join(d, "dotnet", "step2"),
 				Additive:        true,
 				ExpectNoChanges: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1367,10 +1482,13 @@ func TestPartialValuesNode(t *testing.T) {
 }
 
 func TestPartialValuesPython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
-			path.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		AllowEmptyPreviewChanges: true,
 	})
