@@ -361,6 +361,9 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			if !ok {
 				return nil, errors.New("malformed RPC resource: missing urn")
 			}
+			if !urn.IsString() {
+				return nil, errors.New("malformed RPC resource: urn not a string")
+			}
 			r := resource.NewResourceProperty(resource.Resource{Urn: urn})
 			return &r, nil
 		default:

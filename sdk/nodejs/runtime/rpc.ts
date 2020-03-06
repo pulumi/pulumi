@@ -506,8 +506,8 @@ export function deserializeProperty(prop: any): any {
                         value: deserializeProperty(prop["value"]),
                     };
                 case specialResourceSig:
+                    // Deserialize the resource into a live Resource reference
                     const urn = prop["urn"];
-                    // If this value is a URN, create a proxy wrapper around it.
                     const urnParts = urn.split("::");
                     const qualifiedType = urnParts[2];
                     const type = qualifiedType.split("$").pop()!;
