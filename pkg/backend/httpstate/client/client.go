@@ -552,21 +552,21 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
-	var policies []apitype.Policy
-	for _, policy := range analyzerInfo.Policies {
+	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	for i, policy := range analyzerInfo.Policies {
 		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
 		if err != nil {
 			return "", err
 		}
 
-		policies = append(policies, apitype.Policy{
+		policies[i] = apitype.Policy{
 			Name:             policy.Name,
 			DisplayName:      policy.DisplayName,
 			Description:      policy.Description,
 			EnforcementLevel: policy.EnforcementLevel,
 			Message:          policy.Message,
 			ConfigSchema:     configSchema,
-		})
+		}
 	}
 
 	req := apitype.CreatePolicyPackRequest{
@@ -626,12 +626,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 }
 
 // convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.
-func convertPolicyConfigSchema(s *plugin.AnalyzerPolicyConfigSchema) (*apitype.PolicyConfigSchema, error) {
-	if s == nil {
+func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apitype.PolicyConfigSchema, error) {
+	if schema == nil {
 		return nil, nil
 	}
 	properties := map[string]*json.RawMessage{}
-	for k, v := range s.Properties {
+	for k, v := range schema.Properties {
 		bytes, err := json.Marshal(v)
 		if err != nil {
 			return nil, err
@@ -642,7 +642,7 @@ func convertPolicyConfigSchema(s *plugin.AnalyzerPolicyConfigSchema) (*apitype.P
 	return &apitype.PolicyConfigSchema{
 		Type:       apitype.Object,
 		Properties: properties,
-		Required:   s.Required,
+		Required:   schema.Required,
 	}, nil
 }
 

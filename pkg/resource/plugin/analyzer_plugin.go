@@ -262,8 +262,9 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		return AnalyzerInfo{}, rpcError
 	}
 
-	policies := []AnalyzerPolicyInfo{}
-	for _, p := range resp.GetPolicies() {
+	rpcPolicies := resp.GetPolicies()
+	policies := make([]AnalyzerPolicyInfo, len(rpcPolicies))
+	for i, p := range rpcPolicies {
 		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
 		if err != nil {
 			return AnalyzerInfo{}, err
@@ -272,22 +273,25 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		schema := convertConfigSchema(p.GetConfigSchema())
 
 		// Inject `enforcementLevel` into the schema.
-		if schema != nil {
-			contract.Assertf(schema.Properties != nil, "schema.Properties != nil")
-			schema.Properties["enforcementLevel"] = JSONSchema{
-				"type": "string",
-				"enum": []string{"advisory", "mandatory", "disabled"},
-			}
+		if schema == nil {
+			schema = &AnalyzerPolicyConfigSchema{}
+		}
+		if schema.Properties == nil {
+			schema.Properties = map[string]JSONSchema{}
+		}
+		schema.Properties["enforcementLevel"] = JSONSchema{
+			"type": "string",
+			"enum": []string{"advisory", "mandatory", "disabled"},
 		}
 
-		policies = append(policies, AnalyzerPolicyInfo{
+		policies[i] = AnalyzerPolicyInfo{
 			Name:             p.GetName(),
 			DisplayName:      p.GetDisplayName(),
 			Description:      p.GetDescription(),
 			EnforcementLevel: enforcementLevel,
 			Message:          p.GetMessage(),
 			ConfigSchema:     schema,
-		})
+		}
 	}
 	sort.Slice(policies, func(i, j int) bool {
 		return policies[i].Name < policies[j].Name
