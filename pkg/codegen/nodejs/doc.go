@@ -22,11 +22,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
-// GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
-func GetDocLinkForResourceType(path string, typeName string) string {
+// DocLanguageHelper is the NodeJS-specific implementation of the DocLanguageHelper.
+type DocLanguageHelper struct{}
+
+var _ codegen.DocLanguageHelper = DocLanguageHelper{}
+
+// GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
+func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
+	path := fmt.Sprintf("%s/%s", packageName, modName)
+	typeName = strings.ReplaceAll(typeName, "?", "")
 	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }
 
@@ -36,13 +44,24 @@ func GetDocLinkForBuiltInType(typeName string) string {
 }
 
 // GetLanguageType returns the language-specific type given a Pulumi schema type.
-func GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	modCtx := &modContext{
 		pkg: pkg,
 		mod: moduleName,
 	}
 	typeName := modCtx.typeString(t, input, false, optional)
-	typeName = strings.Replace(typeName, "inputs."+moduleName+".", "", -1)
-	typeName = strings.Replace(typeName, " | undefined", "?", -1)
+
+	// Remove any package qualifiers from the type name.
+	typeQualifierPackage := "inputs"
+	if !input {
+		typeQualifierPackage = "outputs"
+	}
+	typeName = strings.ReplaceAll(typeName, fmt.Sprintf("%s.%s.", typeQualifierPackage, moduleName), "")
+
+	// Remove the union with `undefined` for optional types,
+	// since we will show that information separately anyway.
+	if optional {
+		typeName = strings.ReplaceAll(typeName, " | undefined", "?")
+	}
 	return typeName
 }

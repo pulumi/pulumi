@@ -21,11 +21,18 @@ package gen
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
+// DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
+type DocLanguageHelper struct{}
+
+var _ codegen.DocLanguageHelper = DocLanguageHelper{}
+
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
-func GetDocLinkForResourceType(packageName string, path string, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleName string, typeName string) string {
+	path := fmt.Sprintf("%s/%s", packageName, moduleName)
 	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
 }
 
@@ -34,8 +41,8 @@ func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
 }
 
-// GetLanguageType returns the language-specific type given a Pulumi schema type.
-func GetLanguageType(pkg *schema.Package, t schema.Type, _, optional bool) string {
+// GetLanguageType returns the Go-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	mod := &pkgContext{
 		pkg: pkg,
 	}

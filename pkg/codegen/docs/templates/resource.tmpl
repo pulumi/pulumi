@@ -8,9 +8,9 @@
 <!-- Create resource -->
 ## Create a {{ .Header.Title }} Resource
 
-{{ htmlSafe "{{< langchoose csharp >}}" }}
+{{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
 
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.typescript }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 
 ```python
 def get(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
@@ -50,7 +50,7 @@ The following output properties are available:
 {{ if ne (len .StateInputs) 0 }}
 ## Look up an Existing {{.Header.Title}} Resource
 
-{{ htmlSafe "{{< langchoose csharp >}}" }}
+{{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
 
 ```typescript
 public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{ .StateParam }}, opts?: pulumi.CustomResourceOptions): {{ .Header.Title }};
@@ -87,9 +87,22 @@ The following state arguments are supported:
 {{ end }}
 
 <!-- Supporting types -->
+{{ if ne (len .NestedTypes) 0 }}
 ## Supporting Types
 {{ range .NestedTypes }}
 #### {{ .Name }}
+{{ htmlSafe "{{% lang nodejs %}}" }}
+> See the API doc <a href="{{ .APIDocLinks.nodejs }}">here</a>.
+{{ htmlSafe "{{% /lang %}}" }}
+
+{{ htmlSafe "{{% lang go %}}" }}
+> See the API doc <a href="{{ .APIDocLinks.go }}" target="_blank" rel="noopener">here</a>.
+{{ htmlSafe "{{% /lang %}}" }}
+
+{{ htmlSafe "{{% lang csharp %}}" }}
+> See the API doc <a href="{{ .APIDocLinks.csharp }}" target="_blank" rel="noopener">here</a>.
+{{ htmlSafe "{{% /lang %}}" }}
 
 {{ template "properties" .Properties }}
+{{ end }}
 {{ end }}

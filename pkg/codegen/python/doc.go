@@ -22,11 +22,22 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
-// GetLanguageType returns the language-specific type given a Pulumi schema type.
-func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
+// DocLanguageHelper is the Python-specific implementation of the DocLanguageHelper.
+type DocLanguageHelper struct{}
+
+var _ codegen.DocLanguageHelper = DocLanguageHelper{}
+
+// GetDocLinkForResourceType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
+	return ""
+}
+
+// GetLanguageType returns the Python-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
 	// The Python language generator will simply return

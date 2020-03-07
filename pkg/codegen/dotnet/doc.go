@@ -17,17 +17,25 @@ package dotnet
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
-// GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
-func GetDocLinkForResourceType(namespace string, typeName string) string {
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/Pulumi%[1]s/%[1]s.%[2]s.html", namespace, typeName)
+// DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
+type DocLanguageHelper struct{}
+
+var _ codegen.DocLanguageHelper = DocLanguageHelper{}
+
+// GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
+func (d DocLanguageHelper) GetDocLinkForResourceType(namespace, modulePath, typeName string) string {
+	typeName = strings.ReplaceAll(typeName, "?", "")
+	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/%s/%s.html", namespace, typeName)
 }
 
-// GetLanguageType returns the language-specific type given a Pulumi schema type.
-func GetLanguageType(pkg *schema.Package, t schema.Type, input, optional bool) string {
+// GetLanguageType returns the DotNet-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,

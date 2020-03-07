@@ -22,7 +22,11 @@
                 <code>{{ template "linkify" .Type }}</code>
                 {{- end }}
             </td>
-            <td class="align-top">{{ htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}</td>
+            <td class="align-top">
+            {{- htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}
+
+            {{ .DeprecationMessage }}
+            </td>
         </tr>
     {{ end }}
     </tbody>
@@ -31,7 +35,7 @@
 
 {{ define "properties" }}
 
-{{ htmlSafe "{{< langchoose csharp >}}" }}
+{{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
 
 {{ range $lang, $props := . }}
 {{ print "{{% lang" }} {{ print $lang }} {{ print "%}}" }}
