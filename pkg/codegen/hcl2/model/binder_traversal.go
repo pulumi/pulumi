@@ -55,7 +55,9 @@ func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
 }
 
 // bindTraversalParts computes the type for each element of the given traversal.
-func (b *expressionBinder) bindTraversalParts(receiver Traversable, traversal hcl.Traversal) ([]Traversable, hcl.Diagnostics) {
+func (b *expressionBinder) bindTraversalParts(receiver Traversable,
+	traversal hcl.Traversal) ([]Traversable, hcl.Diagnostics) {
+
 	parts := make([]Traversable, len(traversal)+1)
 	parts[0] = receiver
 

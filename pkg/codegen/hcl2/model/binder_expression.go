@@ -112,8 +112,8 @@ func encapsulateType(t Type) cty.Value {
 	return cty.CapsuleVal(typeCapsule, &t)
 }
 
-// getOperationSignature returns the equivalent StaticFunctionSignature for a given Operation. This signature can be used
-// for typechecking the operation's arguments.
+// getOperationSignature returns the equivalent StaticFunctionSignature for a given Operation. This signature can be
+// used for typechecking the operation's arguments.
 func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	ctyParams := op.Impl.Params()
 
@@ -401,7 +401,9 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	}, diagnostics
 }
 
-func (b *expressionBinder) bindFunctionCallExpression(syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindFunctionCallExpression(
+	syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
+
 	var diagnostics hcl.Diagnostics
 
 	args := make([]Expression, len(syntax.Args))
@@ -472,7 +474,9 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 	}, diagnostics
 }
 
-func (b *expressionBinder) bindLiteralValueExpression(syntax *hclsyntax.LiteralValueExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindLiteralValueExpression(
+	syntax *hclsyntax.LiteralValueExpr) (Expression, hcl.Diagnostics) {
+
 	pv, typ, diagnostics := resource.PropertyValue{}, Type(nil), hcl.Diagnostics(nil)
 
 	v := syntax.Val
@@ -568,7 +572,9 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	}, diagnostics
 }
 
-func (b *expressionBinder) bindScopeTraversalExpression(syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindScopeTraversalExpression(
+	syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
+
 	def, ok := b.scope.BindReference(syntax.Traversal.RootName())
 	if !ok {
 		parts := make([]Traversable, len(syntax.Traversal))
@@ -647,7 +653,9 @@ func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr
 	}, diagnostics
 }
 
-func (b *expressionBinder) bindTemplateJoinExpression(syntax *hclsyntax.TemplateJoinExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTemplateJoinExpression(
+	syntax *hclsyntax.TemplateJoinExpr) (Expression, hcl.Diagnostics) {
+
 	tuple, diagnostics := b.bindExpression(syntax.Tuple)
 
 	return &TemplateJoinExpression{
@@ -657,7 +665,9 @@ func (b *expressionBinder) bindTemplateJoinExpression(syntax *hclsyntax.Template
 	}, diagnostics
 }
 
-func (b *expressionBinder) bindTemplateWrapExpression(syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
+func (b *expressionBinder) bindTemplateWrapExpression(
+	syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
+
 	return b.bindExpression(syntax.Wrapped)
 }
 
