@@ -20,6 +20,7 @@ package gen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
@@ -33,7 +34,15 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleName string, typeName string) string {
 	path := fmt.Sprintf("%s/%s", packageName, moduleName)
+	typeNameParts := strings.Split(typeName, ".")
+	typeName = typeNameParts[len(typeNameParts)-1]
 	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
+}
+
+// GetDocLinkForInputType returns the godoc URL for an input type.
+func (d DocLanguageHelper) GetDocLinkForInputType(packageName, moduleName, typeName string) string {
+	name := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+	return name + "Args"
 }
 
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.

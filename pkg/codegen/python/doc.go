@@ -36,6 +36,11 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeN
 	return ""
 }
 
+// GetDocLinkForInputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
+	return ""
+}
+
 // GetLanguageType returns the Python-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)

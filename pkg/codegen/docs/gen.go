@@ -27,6 +27,7 @@ import (
 	"io"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -281,6 +282,10 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
+	argsSchemaType := &schema.ObjectType{
+		Token: r.Token,
+	}
+	argLangType := mod.typeString(argsSchemaType, "csharp", true, argsOptional, false)
 
 	var argsFlag string
 	var argsDefault string
@@ -290,13 +295,12 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		argsFlag = "?"
 	}
 
-	optionsType := "CustomResourceOptions"
+	optionsType := "Pulumi.CustomResourceOptions"
 	if r.IsProvider {
-		optionsType = "ResourceOptions"
+		optionsType = "Pulumi.ResourceOptions"
 	}
 
 	docLangHelper := dotnet.DocLanguageHelper{}
-	resourceProviderNamespace := fmt.Sprintf("Pulumi.%s", title(mod.pkg.Name))
 	return []ConstructorParam{
 		{
 			Name: "name",
@@ -311,10 +315,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: PropertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(
-					mod.pkg.Name,
-					resourceProviderNamespace,
-					fmt.Sprintf("%s.%s", title(mod.mod), argsType)),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
 			},
 		},
 		{
@@ -323,7 +324,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: " = null",
 			Type: PropertyType{
 				Name: optionsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "Pulumi", optionsType),
+				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
 			},
 		},
 	}
@@ -348,13 +349,9 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 				for _, lang := range supportedLanguages {
 					var docLangHelper codegen.DocLanguageHelper
 
-					modName := mod.mod
-					objLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
+					inputObjLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
 					switch lang {
 					case "csharp":
-						// The object type name will already contain the module name as a qualifier,
-						// so we should pass a blank module name here for C#.
-						modName = ""
 						docLangHelper = dotnet.DocLanguageHelper{}
 					case "go":
 						docLangHelper = go_gen.DocLanguageHelper{}
@@ -366,7 +363,7 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 					default:
 						panic(errors.Errorf("cannot generate nested type doc link for unhandled language %q", lang))
 					}
-					apiDocLinks[lang] = docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, objLangType.Name)
+					apiDocLinks[lang] = docLangHelper.GetDocLinkForInputType(mod.pkg.Name, mod.mod, inputObjLangType.Name)
 					props[lang] = mod.getProperties(obj.Properties, lang, true)
 				}
 
@@ -450,8 +447,9 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 
 // getConstructorResourceInfo returns a map of per-language information about
 // the resource being constructed.
-func (mod *modContext) getConstructorResourceInfo(resourceName string) map[string]PropertyType {
+func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]PropertyType {
 	resourceMap := make(map[string]PropertyType)
+	resourceDisplayName := resourceTypeName
 
 	for _, lang := range supportedLanguages {
 		var docLangHelper codegen.DocLanguageHelper
@@ -462,6 +460,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceName string) map[strin
 			docLangHelper = go_gen.DocLanguageHelper{}
 		case "csharp":
 			docLangHelper = dotnet.DocLanguageHelper{}
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
 			continue
@@ -470,8 +469,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceName string) map[strin
 		}
 
 		resourceMap[lang] = PropertyType{
-			Name: resourceName,
-			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceName),
+			Name: resourceDisplayName,
+			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
 		}
 	}
 

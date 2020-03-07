@@ -13,7 +13,7 @@
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 
 ```python
-def get(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
+def {{ .Header.Title}}(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
 ```
 
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
@@ -92,15 +92,15 @@ The following state arguments are supported:
 {{ range .NestedTypes }}
 #### {{ .Name }}
 {{ htmlSafe "{{% lang nodejs %}}" }}
-> See the API doc <a href="{{ .APIDocLinks.nodejs }}">here</a>.
+> See the <a href="{{ .APIDocLinks.nodejs }}">input</a> API doc.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ htmlSafe "{{% lang go %}}" }}
-> See the API doc <a href="{{ .APIDocLinks.go }}" target="_blank" rel="noopener">here</a>.
+> See the <a href="{{ .APIDocLinks.go }}">input</a> API doc.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ htmlSafe "{{% lang csharp %}}" }}
-> See the API doc <a href="{{ .APIDocLinks.csharp }}" target="_blank" rel="noopener">here</a>.
+> See the <a href="{{ .APIDocLinks.csharp }}">input</a> API doc.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ template "properties" .Properties }}

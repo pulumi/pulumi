@@ -38,6 +38,12 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeN
 	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }
 
+// GetDocLinkForInputType returns the doc link for an input type.
+func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
+	typeName = strings.ReplaceAll(typeName, "?", "")
+	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
+}
+
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
 func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
@@ -56,7 +62,7 @@ func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName strin
 	if !input {
 		typeQualifierPackage = "outputs"
 	}
-	typeName = strings.ReplaceAll(typeName, fmt.Sprintf("%s.%s.", typeQualifierPackage, moduleName), "")
+	typeName = strings.ReplaceAll(typeName, typeQualifierPackage+".", "")
 
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.

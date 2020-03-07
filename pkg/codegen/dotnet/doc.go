@@ -29,9 +29,18 @@ type DocLanguageHelper struct{}
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
-func (d DocLanguageHelper) GetDocLinkForResourceType(namespace, modulePath, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, _, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/%s/%s.html", namespace, typeName)
+	var packageNamespace string
+	if packageName != "" {
+		packageNamespace = "." + title(packageName)
+	}
+	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
+}
+
+// GetDocLinkForInputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForInputType(packageName, moduleName, typeName string) string {
+	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
 }
 
 // GetLanguageType returns the DotNet-specific type given a Pulumi schema type.

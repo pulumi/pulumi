@@ -55,14 +55,6 @@ func wbr(s string) string {
 	return string(runes)
 }
 
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
 func lower(s string) string {
 	return strings.ToLower(s)
 }
@@ -70,7 +62,7 @@ func lower(s string) string {
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
+	return strings.Title(components[2])
 }
 
 func getLanguagePropertyName(name string, lang string) string {
@@ -78,7 +70,7 @@ func getLanguagePropertyName(name string, lang string) string {
 	case "python":
 		return python.PyName(name)
 	case "go", "csharp":
-		return title(name)
+		return strings.Title(name)
 	default:
 		return wbr(name)
 	}

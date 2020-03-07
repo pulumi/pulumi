@@ -21,6 +21,7 @@ import (
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
-	GetDocLinkForResourceType(packageName, modName, typeName string) string
+	GetDocLinkForResourceType(packageName, moduleName, typeName string) string
+	GetDocLinkForInputType(packageName, moduleName, typeName string) string
 	GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
 }
