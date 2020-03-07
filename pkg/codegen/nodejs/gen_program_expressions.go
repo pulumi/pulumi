@@ -100,6 +100,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%v)", expr.Args[0])
+	case "toJSON":
+		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

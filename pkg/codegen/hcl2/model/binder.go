@@ -56,6 +56,11 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		root:           NewRootScope(syntax.None),
 	}
 
+	// Define builtin functions.
+	for name, fn := range pulumiBuiltins {
+		b.root.Define(name, fn)
+	}
+
 	var diagnostics hcl.Diagnostics
 
 	// Sort files in source order, then declare all top-level nodes in each.
@@ -68,8 +73,10 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 
 	// Sort nodes in source order so downstream operations are deterministic.
 	var nodes []Node
-	for _, n := range b.root.defs {
-		nodes = append(nodes, n.(Node))
+	for _, def := range b.root.defs {
+		if node, ok := def.(Node); ok {
+			nodes = append(nodes, node)
+		}
 	}
 	SourceOrderNodes(nodes)
 

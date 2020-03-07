@@ -45,10 +45,13 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if !ok {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
+
+	token = canonicalizeToken(token, pkgSchema.schema)
 	res, ok := pkgSchema.resources[token]
 	if !ok {
 		return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 	}
+	node.Token = token
 
 	// Create input and output types for the schema.
 	inputType := inputType(schemaTypeToType(&schema.ObjectType{Properties: res.InputProperties}))

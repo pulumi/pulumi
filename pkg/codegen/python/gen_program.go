@@ -122,6 +122,9 @@ func (g *generator) genPreamble(w io.Writer, program *model.Program) {
 		}
 	}
 
+	// TODO(pdg): do this optionally
+	g.Fprintln(w, "import json")
+
 	// Now sort the imports, so we emit them deterministically, and emit them.
 	sort.Strings(imports)
 	for _, line := range imports {

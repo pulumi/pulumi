@@ -49,12 +49,11 @@ func (fs GenericFunctionSignature) GetSignature(arguments []Expression) (StaticF
 
 // Function represents a function definition.
 type Function struct {
-	name      string
 	signature FunctionSignature
 }
 
-func NewFunction(name string, signature FunctionSignature) *Function {
-	return &Function{name: name, signature: signature}
+func NewFunction(signature FunctionSignature) *Function {
+	return &Function{signature: signature}
 }
 
 func (f *Function) SyntaxNode() hclsyntax.Node {
@@ -62,47 +61,33 @@ func (f *Function) SyntaxNode() hclsyntax.Node {
 }
 
 func (f *Function) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	return AnyType, hcl.Diagnostics{cannotTraverseFunction(f.name, traverser.SourceRange())}
+	return AnyType, hcl.Diagnostics{cannotTraverseFunction(traverser.SourceRange())}
 }
 
 func (f *Function) GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
 	return f.signature.GetSignature(arguments)
 }
 
-//// getFunctionDefinition fetches the definition for the function of the given name.
-//func getFunctionDefinition(name string, nameRange hcl.Range) (functionDefinition, hcl.Diagnostics) {
-//	switch name {
-//	case "fileAsset":
-//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-//			return FunctionSignature{
-//				Parameters: []Parameter{{
-//					Name: "path",
-//					Type: StringType,
-//				}},
-//				ReturnType: AssetType,
-//			}, nil
-//		}, nil
-//	case "mimeType":
-//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-//			return FunctionSignature{
-//				Parameters: []Parameter{{
-//					Name: "path",
-//					Type: StringType,
-//				}},
-//				ReturnType: StringType,
-//			}, nil
-//		}, nil
-//	case "toJSON":
-//		return func(arguments []Expression) (FunctionSignature, hcl.Diagnostics) {
-//			return FunctionSignature{
-//				Parameters: []Parameter{{
-//					Name: "value",
-//					Type: AnyType,
-//				}},
-//				ReturnType: StringType,
-//			}, nil
-//		}, nil
-//	default:
-//		return nil, hcl.Diagnostics{unknownFunction(name, nameRange)}
-//	}
-//}
+var pulumiBuiltins = map[string]*Function{
+	"fileAsset": NewFunction(StaticFunctionSignature{
+		Parameters: []Parameter{{
+			Name: "path",
+			Type: StringType,
+		}},
+		ReturnType: AssetType,
+	}),
+	"mimeType": NewFunction(StaticFunctionSignature{
+		Parameters: []Parameter{{
+			Name: "path",
+			Type: StringType,
+		}},
+		ReturnType: AssetType,
+	}),
+	"toJSON": NewFunction(StaticFunctionSignature{
+		Parameters: []Parameter{{
+			Name: "value",
+			Type: AnyType,
+		}},
+		ReturnType: StringType,
+	}),
+}

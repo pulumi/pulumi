@@ -140,6 +140,6 @@ func cannotTraverseKeyword(name string, rng hcl.Range) *hcl.Diagnostic {
 	return errorf(rng, "'%s' is a keyword and cannot be traversed", name)
 }
 
-func cannotTraverseFunction(name string, rng hcl.Range) *hcl.Diagnostic {
-	return errorf(rng, "'%s' is a function and cannot be traversed", name)
+func cannotTraverseFunction(rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "functions cannot be traversed")
 }

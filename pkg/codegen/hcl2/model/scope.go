@@ -46,7 +46,7 @@ type Scope struct {
 }
 
 func NewRootScope(syntax hclsyntax.Node) *Scope {
-	return &Scope{syntax: syntax, defs: map[string]Definition{}}
+	return &Scope{syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
 }
 
 func (s *Scope) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -131,7 +131,7 @@ func (s *Scope) DefineFunction(name string, def *Function) bool {
 func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 	if s != nil {
 		if _, exists := s.defs[name]; !exists {
-			child := &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}}
+			child := &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
 			s.defs[name] = child
 			return child, true
 		}
@@ -141,7 +141,7 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 
 // PushScope defines an anonymous child scope associated with the given syntax node.
 func (s *Scope) PushScope(syntax hclsyntax.Node) *Scope {
-	return &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}}
+	return &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
 }
 
 // Pop returns this scope's parent.

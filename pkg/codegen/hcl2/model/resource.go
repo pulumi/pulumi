@@ -29,6 +29,9 @@ type Resource struct {
 	// The syntax tokens associated with the resource instantiation.
 	Tokens syntax.BlockTokens
 
+	// Token is the type token for this resource.
+	Token string
+
 	// The type of the resource's inputs. This will always be either Any or an object type.
 	InputType Type
 	// The type of the resource's outputs. This will always be either Any or an object type.
@@ -64,6 +67,6 @@ func (r *Resource) Name() string {
 // DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition
 // fails, a description of the failure is returned in the diagnostics.
 func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
-	token, tokenRange := getResourceToken(r)
-	return decomposeToken(token, tokenRange)
+	_, tokenRange := getResourceToken(r)
+	return decomposeToken(r.Token, tokenRange)
 }
