@@ -399,7 +399,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			continue
 		}
 		docProperties = append(docProperties, Property{
-			Name:               getLanguagePropertyName(prop.Name, lang),
+			Name:               getLanguagePropertyName(prop.Name, lang, true),
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,

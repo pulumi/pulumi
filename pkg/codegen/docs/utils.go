@@ -42,7 +42,7 @@ func wbr(s string) string {
 	var prev rune
 	for i, r := range s {
 		if i != 0 &&
-			// For TS, JS and Go, names are camelCased.
+			// For TS, JS and Go, property names are camelCase and types are PascalCase.
 			((unicode.IsLower(prev) && unicode.IsUpper(r)) ||
 				isDotNetTypeNameBoundary(prev, r) ||
 				isPythonTypeNameBoundary(prev, r)) {
@@ -58,19 +58,25 @@ func lower(s string) string {
 	return strings.ToLower(s)
 }
 
+// tokenToName returns the resource name from a Pulumi token.
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return strings.Title(components[2])
 }
 
-func getLanguagePropertyName(name string, lang string) string {
+// getLanguagePropertyName returns a language-specific representation of a given
+// property name.
+func getLanguagePropertyName(name string, lang string, insertWordBreak bool) string {
 	switch lang {
 	case "python":
-		return python.PyName(name)
+		name = python.PyName(name)
 	case "go", "csharp":
-		return strings.Title(name)
-	default:
-		return wbr(name)
+		name = strings.Title(name)
 	}
+
+	if !insertWordBreak {
+		return name
+	}
+	return wbr(name)
 }
