@@ -41,8 +41,8 @@ func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName
 	return ""
 }
 
-// GetLanguageType returns the Python-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+// GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
 	// The Python language generator will simply return

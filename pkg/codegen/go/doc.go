@@ -50,8 +50,8 @@ func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
 }
 
-// GetLanguageType returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+// GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	mod := &pkgContext{
 		pkg: pkg,
 	}

@@ -43,8 +43,8 @@ func (d DocLanguageHelper) GetDocLinkForInputType(packageName, moduleName, typeN
 	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
 }
 
-// GetLanguageType returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+// GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,

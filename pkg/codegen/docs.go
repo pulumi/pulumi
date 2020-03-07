@@ -23,5 +23,5 @@ import (
 type DocLanguageHelper interface {
 	GetDocLinkForResourceType(packageName, moduleName, typeName string) string
 	GetDocLinkForInputType(packageName, moduleName, typeName string) string
-	GetLanguageType(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
+	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
 }

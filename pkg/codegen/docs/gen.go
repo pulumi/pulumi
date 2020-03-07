@@ -175,7 +175,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, input, optional bo
 		panic(errors.Errorf("Unknown language (%q) passed!", lang))
 	}
 
-	langType = docLanguageHelper.GetLanguageType(mod.pkg, mod.mod, t, input, optional)
+	langType = docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, input, optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
