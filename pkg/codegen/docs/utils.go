@@ -42,7 +42,6 @@ func wbr(s string) string {
 	var prev rune
 	for i, r := range s {
 		if i != 0 &&
-
 			// For TS, JS and Go, names are camelCased.
 			((unicode.IsLower(prev) && unicode.IsUpper(r)) ||
 				isDotNetTypeNameBoundary(prev, r) ||

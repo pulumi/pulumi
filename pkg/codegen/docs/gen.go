@@ -23,6 +23,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"path"
@@ -190,6 +191,9 @@ func (mod *modContext) typeString(t schema.Type, lang string, input, optional bo
 	}
 
 	if insertWordBreaks {
+		if lang == "csharp" {
+			langType = html.EscapeString(langType)
+		}
 		langType = wbr(langType)
 	}
 	return PropertyType{
@@ -358,8 +362,7 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 					case "nodejs":
 						docLangHelper = nodejs.DocLanguageHelper{}
 					case "python":
-						// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
-						continue
+						docLangHelper = python.DocLanguageHelper{}
 					default:
 						panic(errors.Errorf("cannot generate nested type doc link for unhandled language %q", lang))
 					}
@@ -452,6 +455,9 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 	resourceDisplayName := resourceTypeName
 
 	for _, lang := range supportedLanguages {
+		// Reset the type name back to the display name.
+		resourceTypeName = resourceDisplayName
+
 		var docLangHelper codegen.DocLanguageHelper
 		switch lang {
 		case "nodejs":
