@@ -39,6 +39,11 @@ class AnalyzerStub(object):
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=plugin__pb2.PluginInfo.FromString,
         )
+    self.Configure = channel.unary_unary(
+        '/pulumirpc.Analyzer/Configure',
+        request_serializer=analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
 
 
 class AnalyzerServicer(object):
@@ -79,6 +84,13 @@ class AnalyzerServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def Configure(self, request, context):
+    """Configure configures the analyzer, passing configuration properties for each policy.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_AnalyzerServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -101,6 +113,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
           servicer.GetPluginInfo,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
           response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+      ),
+      'Configure': grpc.unary_unary_rpc_method_handler(
+          servicer.Configure,
+          request_deserializer=analyzer__pb2.ConfigureAnalyzerRequest.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

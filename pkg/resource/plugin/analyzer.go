@@ -41,6 +41,8 @@ type Analyzer interface {
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+	// Configure configures the analyzer, passing configuration properties for each policy.
+	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 }
 
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.
@@ -94,8 +96,48 @@ type AnalyzeDiagnostic struct {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
+	Name           string
+	DisplayName    string
+	Version        string
+	SupportsConfig bool
+	Policies       []AnalyzerPolicyInfo
+}
+
+// AnalyzerPolicyInfo defines the metadata for an individual Policy within a Policy Pack.
+type AnalyzerPolicyInfo struct {
+	// Unique URL-safe name for the policy.  This is unique to a specific version
+	// of a Policy Pack.
 	Name        string
 	DisplayName string
-	Version     string
-	Policies    []apitype.Policy
+
+	// Description is used to provide more context about the purpose of the policy.
+	Description      string
+	EnforcementLevel apitype.EnforcementLevel
+
+	// Message is the message that will be displayed to end users when they violate
+	// this policy.
+	Message string
+
+	// ConfigSchema is optional config schema for the policy.
+	ConfigSchema *AnalyzerPolicyConfigSchema
+}
+
+// JSONSchema represents a JSON schema.
+type JSONSchema map[string]interface{}
+
+// AnalyzerPolicyConfigSchema provides metadata about a policy's configuration.
+type AnalyzerPolicyConfigSchema struct {
+	// Map of config property names to JSON schema.
+	Properties map[string]JSONSchema
+
+	// Required config properties
+	Required []string
+}
+
+// AnalyzerPolicyConfig is the configuration for a policy.
+type AnalyzerPolicyConfig struct {
+	// Configured enforcement level for the policy.
+	EnforcementLevel apitype.EnforcementLevel
+	// Configured properties of the policy.
+	Properties map[string]interface{}
 }

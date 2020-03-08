@@ -552,11 +552,28 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
+	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	for i, policy := range analyzerInfo.Policies {
+		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
+		if err != nil {
+			return "", err
+		}
+
+		policies[i] = apitype.Policy{
+			Name:             policy.Name,
+			DisplayName:      policy.DisplayName,
+			Description:      policy.Description,
+			EnforcementLevel: policy.EnforcementLevel,
+			Message:          policy.Message,
+			ConfigSchema:     configSchema,
+		}
+	}
+
 	req := apitype.CreatePolicyPackRequest{
 		Name:        analyzerInfo.Name,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
-		Policies:    analyzerInfo.Policies,
+		Policies:    policies,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -606,6 +623,27 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	return version, nil
+}
+
+// convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.
+func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apitype.PolicyConfigSchema, error) {
+	if schema == nil {
+		return nil, nil
+	}
+	properties := map[string]*json.RawMessage{}
+	for k, v := range schema.Properties {
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		raw := json.RawMessage(bytes)
+		properties[k] = &raw
+	}
+	return &apitype.PolicyConfigSchema{
+		Type:       apitype.Object,
+		Properties: properties,
+		Required:   schema.Required,
+	}, nil
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,

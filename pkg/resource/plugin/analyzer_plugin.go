@@ -18,10 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -259,27 +262,50 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		return AnalyzerInfo{}, rpcError
 	}
 
-	policies := []apitype.Policy{}
-	for _, p := range resp.GetPolicies() {
+	rpcPolicies := resp.GetPolicies()
+	policies := make([]AnalyzerPolicyInfo, len(rpcPolicies))
+	for i, p := range rpcPolicies {
 		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
 		if err != nil {
 			return AnalyzerInfo{}, err
 		}
 
-		policies = append(policies, apitype.Policy{
+		var schema *AnalyzerPolicyConfigSchema
+		if resp.GetSupportsConfig() {
+			schema = convertConfigSchema(p.GetConfigSchema())
+
+			// Inject `enforcementLevel` into the schema.
+			if schema == nil {
+				schema = &AnalyzerPolicyConfigSchema{}
+			}
+			if schema.Properties == nil {
+				schema.Properties = map[string]JSONSchema{}
+			}
+			schema.Properties["enforcementLevel"] = JSONSchema{
+				"type": "string",
+				"enum": []string{"advisory", "mandatory", "disabled"},
+			}
+		}
+
+		policies[i] = AnalyzerPolicyInfo{
 			Name:             p.GetName(),
 			DisplayName:      p.GetDisplayName(),
 			Description:      p.GetDescription(),
 			EnforcementLevel: enforcementLevel,
 			Message:          p.GetMessage(),
-		})
+			ConfigSchema:     schema,
+		}
 	}
+	sort.Slice(policies, func(i, j int) bool {
+		return policies[i].Name < policies[j].Name
+	})
 
 	return AnalyzerInfo{
-		Name:        resp.GetName(),
-		DisplayName: resp.GetDisplayName(),
-		Version:     resp.GetVersion(),
-		Policies:    policies,
+		Name:           resp.GetName(),
+		DisplayName:    resp.GetDisplayName(),
+		Version:        resp.GetVersion(),
+		SupportsConfig: resp.GetSupportsConfig(),
+		Policies:       policies,
 	}, nil
 }
 
@@ -309,6 +335,38 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind:    workspace.AnalyzerPlugin,
 		Version: version,
 	}, nil
+}
+
+func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
+	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	logging.V(7).Infof("%s executing", label)
+
+	if len(policyConfig) == 0 {
+		logging.V(7).Infof("%s returning early, no config specified", label)
+		return nil
+	}
+
+	c := make(map[string]*pulumirpc.PolicyConfig)
+
+	for k, v := range policyConfig {
+		if !v.EnforcementLevel.IsValid() {
+			return errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
+		}
+		c[k] = &pulumirpc.PolicyConfig{
+			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
+			Properties:       marshalMap(v.Properties),
+		}
+	}
+
+	_, err := a.client.Configure(a.ctx.Request(), &pulumirpc.ConfigureAnalyzerRequest{
+		PolicyConfig: c,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return rpcError
+	}
+	return nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.
@@ -361,6 +419,117 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	}, nil
 }
 
+func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementLevel {
+	switch el {
+	case apitype.Advisory:
+		return pulumirpc.EnforcementLevel_ADVISORY
+	case apitype.Mandatory:
+		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Disabled:
+		return pulumirpc.EnforcementLevel_DISABLED
+	}
+	contract.Failf("Unrecognized enforcement level %s", el)
+	return 0
+}
+
+func marshalMap(m map[string]interface{}) *structpb.Struct {
+	fields := make(map[string]*structpb.Value)
+	for k, v := range m {
+		val := marshalMapValue(v)
+		if val != nil {
+			fields[k] = val
+		}
+	}
+	return &structpb.Struct{
+		Fields: fields,
+	}
+}
+
+func marshalMapValue(v interface{}) *structpb.Value {
+	if v == nil {
+		return &structpb.Value{
+			Kind: &structpb.Value_NullValue{
+				NullValue: structpb.NullValue_NULL_VALUE,
+			},
+		}
+	}
+
+	switch val := v.(type) {
+	case bool:
+		return &structpb.Value{
+			Kind: &structpb.Value_BoolValue{
+				BoolValue: val,
+			},
+		}
+	case float64:
+		return &structpb.Value{
+			Kind: &structpb.Value_NumberValue{
+				NumberValue: val,
+			},
+		}
+	case string:
+		return &structpb.Value{
+			Kind: &structpb.Value_StringValue{
+				StringValue: val,
+			},
+		}
+	case []interface{}:
+		arr := make([]*structpb.Value, len(val))
+		for i, e := range val {
+			arr[i] = marshalMapValue(e)
+		}
+		return &structpb.Value{
+			Kind: &structpb.Value_ListValue{
+				ListValue: &structpb.ListValue{Values: arr},
+			},
+		}
+	case map[string]interface{}:
+		return &structpb.Value{
+			Kind: &structpb.Value_StructValue{
+				StructValue: marshalMap(val),
+			},
+		}
+	}
+
+	contract.Failf("Unrecognized value: %v (type=%v)", v, reflect.TypeOf(v))
+	return nil
+}
+
+func unmarshalMap(s *structpb.Struct) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	result := make(map[string]interface{})
+	for k, v := range s.Fields {
+		result[k] = unmarshalMapValue(v)
+	}
+	return result
+}
+
+func unmarshalMapValue(v *structpb.Value) interface{} {
+	switch val := v.Kind.(type) {
+	case *structpb.Value_NullValue:
+		return nil
+	case *structpb.Value_BoolValue:
+		return val.BoolValue
+	case *structpb.Value_NumberValue:
+		return val.NumberValue
+	case *structpb.Value_StringValue:
+		return val.StringValue
+	case *structpb.Value_ListValue:
+		arr := make([]interface{}, len(val.ListValue.Values))
+		for i, e := range val.ListValue.Values {
+			arr[i] = unmarshalMapValue(e)
+		}
+		return arr
+	case *structpb.Value_StructValue:
+		return unmarshalMap(val.StructValue)
+	}
+
+	contract.Failf("Unrecognized kind: %v (type=%v)", v.Kind, reflect.TypeOf(v.Kind))
+	return nil
+}
+
 func convertURNs(urns []resource.URN) []string {
 	result := make([]string, len(urns))
 	for idx := range urns {
@@ -375,9 +544,28 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_DISABLED:
+		return apitype.Disabled, nil
 
 	default:
 		return "", fmt.Errorf("Invalid enforcement level %d", el)
+	}
+}
+
+func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyConfigSchema {
+	if schema == nil {
+		return nil
+	}
+
+	props := make(map[string]JSONSchema)
+	for k, v := range unmarshalMap(schema.GetProperties()) {
+		s := v.(map[string]interface{})
+		props[k] = JSONSchema(s)
+	}
+
+	return &AnalyzerPolicyConfigSchema{
+		Properties: props,
+		Required:   schema.GetRequired(),
 	}
 }
 

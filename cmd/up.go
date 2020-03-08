@@ -55,6 +55,7 @@ func newUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
+	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -120,7 +121,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refresh,
@@ -281,7 +282,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refresh,
@@ -338,6 +339,10 @@ func newUpCmd() *cobra.Command {
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
+				return result.FromError(err)
+			}
+
+			if err = validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return result.FromError(err)
 			}
 
@@ -413,6 +418,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
 		"[PREVIEW] Run one or more policy packs as part of this update")
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackConfigPaths, "policy-pack-config", []string{},
+		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
@@ -452,6 +460,23 @@ func newUpCmd() *cobra.Command {
 			"Log events to a file at this path")
 	}
 	return cmd
+}
+
+// validatePolicyPackConfig validates the `--policy-pack-config` and `--policy-pack` flags. These two flags are
+// order-dependent, e.g., the first `--policy-pack-config` flag value corresponds to the first `--policy-pack`
+// flag value, and so on for the second, third, etc. An error is returned if `--policy-pack-config` is specified
+// and there isn't a `--policy-pack-config` for every `--policy-pack` that was set.
+func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []string) error {
+	if len(policyPackConfigPaths) > 0 {
+		if len(policyPackPaths) == 0 {
+			return errors.New(`"--policy-pack-config" must be specified with "--policy-pack"`)
+		}
+		if len(policyPackConfigPaths) != len(policyPackPaths) {
+			return errors.New(
+				`the number of "--policy-pack-config" flags must match the number of "--policy-pack" flags`)
+		}
+	}
+	return nil
 }
 
 // handleConfig handles prompting for config values (as needed) and saving config.

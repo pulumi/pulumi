@@ -26,6 +26,9 @@ CHANGELOG
 - Fix type annotations for `Output.all` and `Output.concat` in Python SDK.
   [#4016](https://github.com/pulumi/pulumi/pull/4016)
 
+- Add support for configuring policies.
+  [#4015](https://github.com/pulumi/pulumi/pull/4015)
+
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)
