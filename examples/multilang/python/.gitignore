@@ -1,2 +1,4 @@
 __pycache__
 Pipfile.lock
+*.egg-info
+package-lock.json

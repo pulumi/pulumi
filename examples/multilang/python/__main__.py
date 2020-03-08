@@ -21,7 +21,7 @@ pulumi.runtime.register_proxy_constructor("aws:ec2/securityGroup:SecurityGroup",
 ######
 # This is code the user would write to use `mycomponent` from the guest language.
 
-from mycomponent.python import MyComponent
+from pulumi_mycomponent import MyComponent
 
 res = MyComponent("n", input1=42)
 

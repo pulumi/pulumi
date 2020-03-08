@@ -1,0 +1,1 @@
+# MyComponent in Python

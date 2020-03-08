@@ -1,7 +1,8 @@
 {
-    "name": "@pulumi/eks",
+    "name": "@pulumi/mycomponent",
     "version": "0.0.1",
     "dependencies": {
-        "@pulumi/pulumi": "latest"
+        "@pulumi/pulumi": "latest",
+        "@pulumi/aws": "latest"
     }
 }

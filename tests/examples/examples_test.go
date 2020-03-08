@@ -4,7 +4,6 @@ package examples
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -345,16 +344,22 @@ func TestNodeJSMultilang(t *testing.T) {
 }
 
 func TestPythonMultilang(t *testing.T) {
-	t.Skip("Python package installation for multilang not yet supported by test framework")
-	dir := path.Join(getCwd(t), "multilang")
+	dir := path.Join(getCwd(t), "multilang", "python")
 	test := getPythonBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: dir,
+			Dependencies: []string{
+				filepath.Join("..", "sdk", "python", "env", "src"),
+				filepath.Join(dir, "mycomponent"),
+			},
 			Config: map[string]string{
 				"aws:region": "us-west-2",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				fmt.Printf("%v\n", stackInfo.Outputs)
+				assert.Equal(t, "foo", stackInfo.Outputs["id2"])
+				assert.Equal(t, "mydata", stackInfo.Outputs["innerComponent"])
+				assert.Equal(t, "sg-", stackInfo.Outputs["nodeSecurityGroupId"].(string)[0:3])
+				assert.Equal(t, 42.0, stackInfo.Outputs["output1"])
 			},
 		})
 
