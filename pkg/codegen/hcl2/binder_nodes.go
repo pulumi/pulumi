@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
@@ -24,31 +24,12 @@ import (
 // bindNode binds a single node in a program. The node's dependencies are bound prior to the node itself; it is an
 // error for a node to depend--directly or indirectly--upon itself.
 func (b *binder) bindNode(node Node) hcl.Diagnostics {
-	switch node.getState() {
-	case binding:
-		// Circular reference
-		return hcl.Diagnostics{circularReference(b.stack, node.SyntaxNode())}
-	case bound:
-		// Already done
-		return nil
-	}
+	//TODO(pdg): detect circular references
 
-	node.setState(binding)
-	b.stack = append(b.stack, node.SyntaxNode())
-	defer func() {
-		b.stack = b.stack[:len(b.stack)-1]
-		node.setState(bound)
-	}()
-
-	// Bind the node's dependencies.
 	deps := b.getDependencies(node)
 	node.setDependencies(deps)
 
 	var diagnostics hcl.Diagnostics
-	for _, dep := range deps {
-		diagnostics = append(diagnostics, b.bindNode(dep)...)
-	}
-
 	switch node := node.(type) {
 	case *ConfigVariable:
 		diagnostics = append(diagnostics, b.bindConfigVariable(node)...)
@@ -72,6 +53,7 @@ func (b *binder) getDependencies(node Node) []Node {
 		depName := ""
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
+			// TODO(pdg): function scope binds tighter than "normal" scope
 			depName = node.Name
 		case *hclsyntax.ScopeTraversalExpr:
 			depName = node.Traversal.RootName()

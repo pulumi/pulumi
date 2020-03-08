@@ -316,7 +316,7 @@ func (l tokenList) inRange(r hcl.Range) []Token {
 
 // A TokenMap is used to map from syntax nodes to information about their tokens and leading whitespace/comments.
 type TokenMap interface {
-	ForNode(n hclsyntax.Node) (NodeTokens, bool)
+	ForNode(n hclsyntax.Node) NodeTokens
 
 	isTokenMap()
 }
@@ -324,9 +324,8 @@ type TokenMap interface {
 type tokenMap map[hclsyntax.Node]NodeTokens
 
 // ForNode returns the token information for the given node, if any.
-func (m tokenMap) ForNode(n hclsyntax.Node) (NodeTokens, bool) {
-	tokens, ok := m[n]
-	return tokens, ok
+func (m tokenMap) ForNode(n hclsyntax.Node) NodeTokens {
+	return m[n]
 }
 
 func (tokenMap) isTokenMap() {}

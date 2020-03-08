@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 )
 
 // ConfigVariable represents a program- or component-scoped input variable. The value for a config variable may come
@@ -27,10 +28,10 @@ type ConfigVariable struct {
 	// The syntax node for the config variable.
 	Syntax *hclsyntax.Block
 
-	typ Type
+	typ model.Type
 
 	// The default value for the config variable, if any.
-	DefaultValue Expression
+	DefaultValue model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the config variable.
@@ -38,11 +39,11 @@ func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
 	return cv.Syntax
 }
 
-func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return cv.typ.Traverse(traverser)
 }
 
 // Type returns the type of the config variable.
-func (cv *ConfigVariable) Type() Type {
+func (cv *ConfigVariable) Type() model.Type {
 	return cv.typ
 }

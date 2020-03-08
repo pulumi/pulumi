@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"encoding/json"
@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -119,33 +120,33 @@ func (b *binder) loadPackageSchema(name string) error {
 }
 
 // schemaTypeToType converts a schema.Type to a model Type.
-func schemaTypeToType(src schema.Type) Type {
+func schemaTypeToType(src schema.Type) model.Type {
 	switch src := src.(type) {
 	case *schema.ArrayType:
-		return NewArrayType(schemaTypeToType(src.ElementType))
+		return model.NewArrayType(schemaTypeToType(src.ElementType))
 	case *schema.MapType:
-		return NewMapType(schemaTypeToType(src.ElementType))
+		return model.NewMapType(schemaTypeToType(src.ElementType))
 	case *schema.ObjectType:
-		properties := map[string]Type{}
+		properties := map[string]model.Type{}
 		for _, prop := range src.Properties {
 			t := schemaTypeToType(prop.Type)
 			if !prop.IsRequired {
-				t = NewOptionalType(t)
+				t = model.NewOptionalType(t)
 			}
 			properties[prop.Name] = t
 		}
-		return NewObjectType(properties)
+		return model.NewObjectType(properties)
 	case *schema.TokenType:
-		t, ok := GetTokenType(src.Token)
+		t, ok := model.GetOpaqueType(src.Token)
 		if !ok {
-			tt, err := NewTokenType(src.Token)
+			tt, err := model.NewOpaqueType(src.Token)
 			contract.IgnoreError(err)
 			t = tt
 		}
 
 		if src.UnderlyingType != nil {
 			underlyingType := schemaTypeToType(src.UnderlyingType)
-			return NewUnionType(t, underlyingType)
+			return model.NewUnionType(t, underlyingType)
 		}
 		return t
 	case *schema.UnionType:
@@ -155,28 +156,28 @@ func schemaTypeToType(src schema.Type) Type {
 		case 1:
 			return schemaTypeToType(src.ElementTypes[0])
 		default:
-			types := make([]Type, len(src.ElementTypes))
+			types := make([]model.Type, len(src.ElementTypes))
 			for i, src := range src.ElementTypes {
 				types[i] = schemaTypeToType(src)
 			}
-			return NewUnionType(types[0], types[1], types[2:]...)
+			return model.NewUnionType(types[0], types[1], types[2:]...)
 		}
 	default:
 		switch src {
 		case schema.BoolType:
-			return BoolType
+			return model.BoolType
 		case schema.IntType:
-			return IntType
+			return model.IntType
 		case schema.NumberType:
-			return NumberType
+			return model.NumberType
 		case schema.StringType:
-			return StringType
+			return model.StringType
 		case schema.ArchiveType:
-			return ArchiveType
+			return model.ArchiveType
 		case schema.AssetType:
-			return AssetType
+			return model.AssetType
 		case schema.AnyType:
-			return AnyType
+			return model.AnyType
 		default:
 			return nil
 		}

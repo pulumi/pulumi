@@ -89,8 +89,7 @@ func BindBlock(block *hclsyntax.Block, scopes ScopeSource, tokens syntax.TokenMa
 		diagnostics = append(diagnostics, itemDiags...)
 	}
 
-	toks, _ := tokens.ForNode(block)
-	blockTokens, _ := toks.(syntax.BlockTokens)
+	blockTokens, _ := tokens.ForNode(block).(syntax.BlockTokens)
 	return &Block{
 		Syntax: block,
 		Tokens: blockTokens,

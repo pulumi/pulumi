@@ -67,27 +67,3 @@ func (f *Function) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 func (f *Function) GetSignature(arguments []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
 	return f.signature.GetSignature(arguments)
 }
-
-var pulumiBuiltins = map[string]*Function{
-	"fileAsset": NewFunction(StaticFunctionSignature{
-		Parameters: []Parameter{{
-			Name: "path",
-			Type: StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"mimeType": NewFunction(StaticFunctionSignature{
-		Parameters: []Parameter{{
-			Name: "path",
-			Type: StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"toJSON": NewFunction(StaticFunctionSignature{
-		Parameters: []Parameter{{
-			Name: "value",
-			Type: AnyType,
-		}},
-		ReturnType: StringType,
-	}),
-}

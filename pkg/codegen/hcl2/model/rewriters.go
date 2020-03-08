@@ -27,7 +27,7 @@ import (
 type applyRewriter struct {
 	root           Expression
 	applyArgs      []*ScopeTraversalExpression
-	callbackParams []*LocalVariable
+	callbackParams []*Variable
 }
 
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with a call to
@@ -83,7 +83,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *ScopeTraversalExpr
 		return expr
 	}
 
-	callbackParam := &LocalVariable{
+	callbackParam := &Variable{
 		Name:         fmt.Sprintf("arg%d", len(r.callbackParams)),
 		VariableType: paramType,
 	}

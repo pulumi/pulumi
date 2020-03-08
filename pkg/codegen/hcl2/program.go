@@ -12,35 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"io"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
-)
-
-// bindState is used to track the binding state of a node.
-type bindState int
-
-// nolint: varcheck, deadcode
-const (
-	unbound = 0
-	binding = 1
-	bound   = 2
 )
 
 // Node represents a single definition in a program or component. Nodes may be config, locals, resources, or outputs.
 type Node interface {
-	Definition
+	model.Definition
 
 	// Type returns the type of the node.
-	Type() Type
+	Type() model.Type
 
-	getState() bindState
-	setState(s bindState)
 	getDependencies() []Node
 	setDependencies(nodes []Node)
 
@@ -48,16 +37,7 @@ type Node interface {
 }
 
 type node struct {
-	state bindState
-	deps  []Node
-}
-
-func (r *node) getState() bindState {
-	return r.state
-}
-
-func (r *node) setState(s bindState) {
-	r.state = s
+	deps []Node
 }
 
 func (r *node) getDependencies() []Node {
@@ -85,6 +65,6 @@ func (p *Program) NewDiagnosticWriter(w io.Writer, width uint, color bool) hcl.D
 }
 
 // BindExpression binds an HCL2 expression in the top-level context of the program.
-func (p *Program) BindExpression(node hclsyntax.Node) (Expression, hcl.Diagnostics) {
+func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
 	return p.binder.bindExpression(node)
 }

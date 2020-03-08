@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"os"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 )
@@ -30,8 +31,9 @@ type binder struct {
 	packageSchemas map[string]*packageSchema
 
 	tokens syntax.TokenMap
+	nodes  []Node
 	stack  []hclsyntax.Node
-	root   *Scope
+	root   *model.Scope
 }
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
@@ -53,7 +55,7 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
-		root:           NewRootScope(syntax.None),
+		root:           model.NewRootScope(syntax.None),
 	}
 
 	// Define builtin functions.
@@ -68,32 +70,24 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		return files[i].Name < files[j].Name
 	})
 	for _, f := range files {
-		diagnostics = append(diagnostics, b.declareNodes(f)...)
+		fileDiags := b.declareNodes(f)
+		diagnostics = append(diagnostics, fileDiags...)
 	}
-
-	// Sort nodes in source order so downstream operations are deterministic.
-	var nodes []Node
-	for _, def := range b.root.defs {
-		if node, ok := def.(Node); ok {
-			nodes = append(nodes, node)
-		}
-	}
-	SourceOrderNodes(nodes)
 
 	// Load referenced package schemas.
-	for _, n := range nodes {
+	for _, n := range b.nodes {
 		if err := b.loadReferencedPackageSchemas(n); err != nil {
 			return nil, nil, err
 		}
 	}
 
 	// Now bind the nodes.
-	for _, n := range nodes {
+	for _, n := range b.nodes {
 		diagnostics = append(diagnostics, b.bindNode(n)...)
 	}
 
 	return &Program{
-		Nodes:  nodes,
+		Nodes:  b.nodes,
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
@@ -104,66 +98,67 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 func (b *binder) declareNodes(file *syntax.File) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	// Declare blocks (config, resources, outputs), then attributes (locals)
-	for _, block := range SourceOrderBlocks(file.Body.Blocks) {
-		switch block.Type {
-		case "config":
-			if len(block.Labels) != 0 {
-				diagnostics = append(diagnostics, labelsErrorf(block, "config blocks do not support labels"))
-			}
-
-			for _, attr := range SourceOrderAttributes(block.Body.Attributes) {
-				diagnostics = append(diagnostics, errorf(attr.Range(), "unsupported attribute %q in config block", attr.Name))
-			}
-
-			for _, variable := range SourceOrderBlocks(block.Body.Blocks) {
-				if len(variable.Labels) > 1 {
-					diagnostics = append(diagnostics, labelsErrorf(block, "config variables must have no more than one label"))
+	// Declare body items in source order.
+	for _, item := range model.SourceOrderBody(file.Body) {
+		switch item := item.(type) {
+		case *hclsyntax.Attribute:
+			attrDiags := b.declareNode(item.Name, &LocalVariable{Syntax: item})
+			diagnostics = append(diagnostics, attrDiags...)
+		case *hclsyntax.Block:
+			switch item.Type {
+			case "config":
+				if len(item.Labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "config items do not support labels"))
 				}
 
-				diagnostics = append(diagnostics, b.declareNode(variable.Type, &ConfigVariable{
-					Syntax: variable,
-				})...)
-			}
-		case "resource":
-			if len(block.Labels) != 2 {
-				diagnostics = append(diagnostics, labelsErrorf(block, "resource variables must have exactly two labels"))
-			}
+				for _, item := range model.SourceOrderBody(item.Body) {
+					switch item := item.(type) {
+					case *hclsyntax.Attribute:
+						diagnostics = append(diagnostics, errorf(item.Range(), "unsupported attribute %q in config item", item.Name))
+					case *hclsyntax.Block:
+						if len(item.Labels) > 1 {
+							diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have no more than one label"))
+						}
 
-			var tokens syntax.BlockTokens
-			if ts, ok := b.tokens.ForNode(block); ok {
-				tokens, _ = ts.(syntax.BlockTokens)
-			}
-
-			diagnostics = append(diagnostics, b.declareNode(block.Labels[0], &Resource{
-				Syntax: block,
-				Tokens: tokens,
-			})...)
-		case "outputs":
-			if len(block.Labels) != 0 {
-				diagnostics = append(diagnostics, labelsErrorf(block, "outputs blocks do not support labels"))
-			}
-
-			for _, attr := range SourceOrderAttributes(block.Body.Attributes) {
-				diagnostics = append(diagnostics, errorf(attr.Range(), "unsupported attribute %q in outputs block", attr.Name))
-			}
-
-			for _, variable := range SourceOrderBlocks(block.Body.Blocks) {
-				if len(variable.Labels) > 1 {
-					diagnostics = append(diagnostics, labelsErrorf(block, "output variables must have no more than one label"))
+						configDiags := b.declareNode(item.Type, &ConfigVariable{Syntax: item})
+						diagnostics = append(diagnostics, configDiags...)
+					}
+				}
+			case "resource":
+				if len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
 
-				diagnostics = append(diagnostics, b.declareNode(variable.Type, &OutputVariable{
-					Syntax: variable,
-				})...)
+				tokens, _ := b.tokens.ForNode(item).(syntax.BlockTokens)
+				resource := &Resource{
+					Syntax: item,
+					Tokens: tokens,
+				}
+				declareDiags := b.declareNode(item.Labels[0], resource)
+				diagnostics = append(diagnostics, declareDiags...)
+
+				resourceDiags := b.bindResourceTypes(resource)
+				diagnostics = append(diagnostics, resourceDiags...)
+			case "outputs":
+				if len(item.Labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "outputs items do not support labels"))
+				}
+
+				for _, item := range model.SourceOrderBody(item.Body) {
+					switch item := item.(type) {
+					case *hclsyntax.Attribute:
+						diagnostics = append(diagnostics, errorf(item.Range(), "unsupported attribute %q in outputs item", item.Name))
+					case *hclsyntax.Block:
+						if len(item.Labels) > 1 {
+							diagnostics = append(diagnostics, labelsErrorf(item, "output variables must have no more than one label"))
+						}
+
+						outputDiags := b.declareNode(item.Type, &OutputVariable{Syntax: item})
+						diagnostics = append(diagnostics, outputDiags...)
+					}
+				}
 			}
 		}
-	}
-
-	for _, attr := range SourceOrderAttributes(file.Body.Attributes) {
-		diagnostics = append(diagnostics, b.declareNode(attr.Name, &LocalVariable{
-			Syntax: attr,
-		})...)
 	}
 
 	return diagnostics
@@ -176,9 +171,10 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 		existing, _ := b.root.BindReference(name)
 		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(), "%q already declared", name)}
 	}
+	b.nodes = append(b.nodes, n)
 	return nil
 }
 
-func (b *binder) bindExpression(node hclsyntax.Node) (Expression, hcl.Diagnostics) {
-	return BindExpression(node, b.root, b.tokens)
+func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
+	return model.BindExpression(node, b.root, b.tokens)
 }

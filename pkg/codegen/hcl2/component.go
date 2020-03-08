@@ -12,33 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 )
 
-// OutputVariable represents a program- or component-scoped output variable.
-type OutputVariable struct {
-	node
-
+// Component represents a component definition in a program.
+//
+// TODO(pdg): implement
+type Component struct {
 	Syntax *hclsyntax.Block
 
-	typ   Type
-	Value Expression
-}
+	InputTypes  map[string]model.Type
+	OutputTypes map[string]model.Type
 
-// SyntaxNode returns the syntax node associated with the output variable.
-func (ov *OutputVariable) SyntaxNode() hclsyntax.Node {
-	return ov.Syntax
-}
-
-func (ov *OutputVariable) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	return ov.typ.Traverse(traverser)
-}
-
-// Type returns the type of the output variable.
-func (ov *OutputVariable) Type() Type {
-	return ov.typ
+	Children []*Resource
+	Locals   []*LocalVariable
 }

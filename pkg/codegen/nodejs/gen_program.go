@@ -24,7 +24,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -34,14 +34,14 @@ type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program         *model.Program
+	program         *hcl2.Program
 	outputDirectory string
 	diagnostics     hcl.Diagnostics
 }
 
-func GenerateProgram(program *model.Program, outputDirectory string) (hcl.Diagnostics, error) {
+func GenerateProgram(program *hcl2.Program, outputDirectory string) (hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := model.Linearize(program)
+	nodes := hcl2.Linearize(program)
 
 	g := &generator{
 		program:         program,
@@ -97,7 +97,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *model.Program) {
+func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
@@ -106,7 +106,7 @@ func (g *generator) genPreamble(w io.Writer, program *model.Program) {
 	importSet := codegen.StringSet{}
 	for _, n := range program.Nodes {
 		// TODO: invokes
-		if r, isResource := n.(*model.Resource); isResource {
+		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
 
 			importName := cleanName(pkg)
@@ -125,18 +125,18 @@ func (g *generator) genPreamble(w io.Writer, program *model.Program) {
 	g.Fprint(w, "\n")
 }
 
-func (g *generator) genNode(w io.Writer, n model.Node) {
+func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	switch n := n.(type) {
-	case *model.Resource:
+	case *hcl2.Resource:
 		g.genResource(w, n)
-	case *model.ConfigVariable:
-	case *model.LocalVariable:
-	case *model.OutputVariable:
+	case *hcl2.ConfigVariable:
+	case *hcl2.LocalVariable:
+	case *hcl2.OutputVariable:
 	}
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
-func resourceTypeName(r *model.Resource) (string, string, string, hcl.Diagnostics) {
+func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
 	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
@@ -152,7 +152,7 @@ func (g *generator) makeResourceName(baseName, count string) string {
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
-func (g *generator) genResource(w io.Writer, r *model.Resource) {
+func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
 

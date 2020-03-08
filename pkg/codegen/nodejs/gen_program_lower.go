@@ -79,7 +79,7 @@ func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
 		return nil, false
 	}
 
-	parameters, indices := codegen.Set{}, map[model.Node]int{}
+	parameters, indices := codegen.Set{}, map[*model.Variable]int{}
 	for i, p := range then.Parameters {
 		parameters.Add(p)
 		indices[p] = i
@@ -93,7 +93,7 @@ func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
 			if !g.canLiftScopeTraversalExpression(traversal) {
 				return nil, false
 			}
-			arg := args[indices[traversal.Parts[0].(model.Node)]]
+			arg := args[indices[traversal.Parts[0].(*model.Variable)]]
 			traversal := hcl.TraversalJoin(arg.Syntax.Traversal, traversal.Syntax.Traversal[1:])
 			expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 				Traversal: traversal,

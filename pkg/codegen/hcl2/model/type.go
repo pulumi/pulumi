@@ -395,7 +395,7 @@ func (t *MapType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 	_, keyType := GetTraverserKey(traverser)
 
 	var diagnostics hcl.Diagnostics
-	if !inputType(StringType).AssignableFrom(keyType) {
+	if !InputType(StringType).AssignableFrom(keyType) {
 		diagnostics = hcl.Diagnostics{unsupportedMapKey(traverser.SourceRange())}
 	}
 	return t.ElementType, diagnostics
@@ -455,7 +455,7 @@ func (t *ArrayType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	_, indexType := GetTraverserKey(traverser)
 
 	var diagnostics hcl.Diagnostics
-	if !inputType(NumberType).AssignableFrom(indexType) {
+	if !InputType(NumberType).AssignableFrom(indexType) {
 		diagnostics = hcl.Diagnostics{unsupportedArrayIndex(traverser.SourceRange())}
 	}
 	return t.ElementType, diagnostics
@@ -616,7 +616,7 @@ func (*ObjectType) SyntaxNode() hclsyntax.Node {
 func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	key, keyType := GetTraverserKey(traverser)
 
-	if !inputType(StringType).AssignableFrom(keyType) {
+	if !InputType(StringType).AssignableFrom(keyType) {
 		return AnyType, hcl.Diagnostics{unsupportedObjectProperty(traverser.SourceRange())}
 	}
 
@@ -667,56 +667,56 @@ func (t *ObjectType) String() string {
 
 func (*ObjectType) isType() {}
 
-// TokenType represents a type that is named by a type token.
-type TokenType struct {
-	// Token is the type's Pulumi type token.
-	Token string
+// OpaqueType represents a type that is named by a string.
+type OpaqueType struct {
+	// Name is the type's name.
+	Name string
 
 	s string
 }
 
-// The set of token types, indexed by token.
-var tokenTypes = map[string]*TokenType{}
+// The set of opaque types, indexed by name.
+var opaqueTypes = map[string]*OpaqueType{}
 
-// GetTokenType fetches the token type for the given token.
-func GetTokenType(token string) (*TokenType, bool) {
-	t, ok := tokenTypes[token]
+// GetOpaqueType fetches the opaque type for the given name.
+func GetOpaqueType(name string) (*OpaqueType, bool) {
+	t, ok := opaqueTypes[name]
 	return t, ok
 }
 
-// NewTokenType creates a new token type with the given token and underlying type.
-func NewTokenType(token string) (*TokenType, error) {
-	if _, ok := tokenTypes[token]; ok {
-		return nil, errors.Errorf("token type %s is already defined", token)
+// NewOpaqueType creates a new opaque type with the given name.
+func NewOpaqueType(name string) (*OpaqueType, error) {
+	if _, ok := opaqueTypes[name]; ok {
+		return nil, errors.Errorf("opaque type %s is already defined", name)
 	}
 
-	t := &TokenType{Token: token}
-	tokenTypes[token] = t
+	t := &OpaqueType{Name: name}
+	opaqueTypes[name] = t
 	return t, nil
 }
 
-func (*TokenType) SyntaxNode() hclsyntax.Node {
+func (*OpaqueType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *TokenType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+func (t *OpaqueType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	return AnyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A token(name) is assignable
 // from any or token(name).
-func (t *TokenType) AssignableFrom(src Type) bool {
+func (t *OpaqueType) AssignableFrom(src Type) bool {
 	return src == AnyType || src == t
 }
 
-func (t *TokenType) String() string {
+func (t *OpaqueType) String() string {
 	if t.s == "" {
-		t.s = fmt.Sprintf("token(%s)", t.Token)
+		t.s = fmt.Sprintf("opaque(%s)", t.Name)
 	}
 	return t.s
 }
 
-func (*TokenType) isType() {}
+func (*OpaqueType) isType() {}
 
 // IsOptionalType returns true if t is an optional type.
 func IsOptionalType(t Type) bool {
@@ -747,7 +747,7 @@ func liftOperationType(resultType Type, arguments ...Expression) Type {
 
 var inputTypes = map[Type]Type{}
 
-func inputType(t Type) Type {
+func InputType(t Type) Type {
 	if t == AnyType || t == nil {
 		return t
 	}
@@ -758,25 +758,25 @@ func inputType(t Type) Type {
 	var src Type
 	switch t := t.(type) {
 	case *OptionalType:
-		src = NewOptionalType(inputType(t.ElementType))
+		src = NewOptionalType(InputType(t.ElementType))
 	case *OutputType:
 		return t
 	case *PromiseType:
-		src = NewPromiseType(inputType(t.ElementType))
+		src = NewPromiseType(InputType(t.ElementType))
 	case *MapType:
-		src = NewMapType(inputType(t.ElementType))
+		src = NewMapType(InputType(t.ElementType))
 	case *ArrayType:
-		src = NewArrayType(inputType(t.ElementType))
+		src = NewArrayType(InputType(t.ElementType))
 	case *UnionType:
 		elementTypes := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			elementTypes[i] = inputType(t)
+			elementTypes[i] = InputType(t)
 		}
 		src = NewUnionType(elementTypes[0], elementTypes[1], elementTypes[2:]...)
 	case *ObjectType:
 		properties := map[string]Type{}
 		for k, t := range t.Properties {
-			properties[k] = inputType(t)
+			properties[k] = InputType(t)
 		}
 		src = NewObjectType(properties)
 	default:

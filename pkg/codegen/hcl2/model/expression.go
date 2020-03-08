@@ -37,7 +37,7 @@ type AnonymousFunctionExpression struct {
 	// The signature for the anonymous function.
 	Signature StaticFunctionSignature
 	// The parameter definitions for the anonymous function.
-	Parameters []*LocalVariable
+	Parameters []*Variable
 
 	// The body of the anonymous function.
 	Body Expression
@@ -318,7 +318,7 @@ type SplatExpression struct {
 	Each Expression
 	// The local variable definition associated with the current item being processed. This definition is not part of
 	// a scope, and can only be referenced by an AnonSymbolExpr.
-	Item *LocalVariable
+	Item *Variable
 
 	exprType Type
 }

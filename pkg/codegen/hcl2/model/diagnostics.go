@@ -46,35 +46,7 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Di
 	return errorf(diagRange, f, args...)
 }
 
-func notYetImplemented(v interface{}) hcl.Diagnostics {
-	var subject hcl.Range
-	switch v := v.(type) {
-	case Node:
-		subject = v.SyntaxNode().Range()
-	case interface{ Range() hcl.Range }:
-		subject = v.Range()
-	}
-	return hcl.Diagnostics{errorf(subject, "NYI: %v", v)}
-}
-
-func malformedToken(token string, sourceRange hcl.Range) *hcl.Diagnostic {
-	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member'", token)
-}
-
-func circularReference(stack []hclsyntax.Node, referent hclsyntax.Node) *hcl.Diagnostic {
-	// TODO(pdg): stack trace
-	return errorf(referent.Range(), "circular reference to node")
-}
-
-func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {
-	return errorf(tokenRange, "unknown package '%s'", pkg)
-}
-
-func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
-	return errorf(tokenRange, "unknown resource type '%s'", token)
-}
-
-func exprNotAssignable(destType Type, expr Expression) *hcl.Diagnostic {
+func ExprNotAssignable(destType Type, expr Expression) *hcl.Diagnostic {
 	return errorf(expr.SyntaxNode().Range(), "cannot assign expression of type %v to location of type %v", expr.Type(),
 		destType)
 }

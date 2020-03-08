@@ -37,8 +37,7 @@ func (*Attribute) isBodyItem() {}
 // BindAttribute binds an HCL2 attribute using the given scope and token map.
 func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.TokenMap) (*Attribute, hcl.Diagnostics) {
 	value, diagnostics := BindExpression(attribute.Expr, scope, tokens)
-	toks, _ := tokens.ForNode(attribute)
-	attributeTokens, _ := toks.(syntax.AttributeTokens)
+	attributeTokens, _ := tokens.ForNode(attribute).(syntax.AttributeTokens)
 	return &Attribute{
 		Syntax: attribute,
 		Tokens: attributeTokens,

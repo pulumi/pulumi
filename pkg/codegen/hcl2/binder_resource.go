@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -26,13 +27,13 @@ func getResourceToken(node *Resource) (string, hcl.Range) {
 }
 
 func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
-	return b.bindResourceTypes(node)
+	return b.bindResourceBody(node)
 }
 
 // bindResourceTypes binds the input and output types for a resource.
 func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	// Set the input and output types to Any by default.
-	node.InputType, node.OutputType = AnyType, AnyType
+	node.InputType, node.OutputType = model.AnyType, model.AnyType
 
 	// Find the resource's schema.
 	token, tokenRange := getResourceToken(node)
@@ -54,22 +55,28 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Token = token
 
 	// Create input and output types for the schema.
-	inputType := inputType(schemaTypeToType(&schema.ObjectType{Properties: res.InputProperties}))
+	inputType := model.InputType(schemaTypeToType(&schema.ObjectType{Properties: res.InputProperties}))
 
-	outputProperties := map[string]Type{
-		"id":  NewOutputType(StringType),
-		"urn": NewOutputType(StringType),
+	outputProperties := map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
 	}
 	for _, prop := range res.Properties {
-		outputProperties[prop.Name] = NewOutputType(schemaTypeToType(prop.Type))
+		outputProperties[prop.Name] = model.NewOutputType(schemaTypeToType(prop.Type))
 	}
-	outputType := NewObjectType(outputProperties)
+	outputType := model.NewObjectType(outputProperties)
 
 	node.InputType, node.OutputType = inputType, outputType
+	return diagnostics
+}
+
+// bindResourceBody binds the body of a resource.
+func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
 
 	// Bind the resource's body.
 	bodyItems := make([]hclsyntax.ObjectConsItem, len(node.Syntax.Body.Attributes))
-	for i, attr := range SourceOrderAttributes(node.Syntax.Body.Attributes) {
+	for i, attr := range model.SourceOrderAttributes(node.Syntax.Body.Attributes) {
 		bodyItems[i] = hclsyntax.ObjectConsItem{
 			KeyExpr:   &hclsyntax.LiteralValueExpr{Val: cty.StringVal(attr.Name), SrcRange: attr.NameRange},
 			ValueExpr: attr.Expr,
@@ -85,7 +92,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 
 	// TODO(pdg): return diagnostics from AssignableFrom
 	if !node.InputType.AssignableFrom(bodyExpr.Type()) {
-		diagnostics = append(diagnostics, exprNotAssignable(node.InputType, bodyExpr))
+		diagnostics = append(diagnostics, model.ExprNotAssignable(node.InputType, bodyExpr))
 	}
 
 	node.Inputs = bodyExpr

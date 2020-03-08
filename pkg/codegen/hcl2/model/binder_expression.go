@@ -26,14 +26,14 @@ import (
 )
 
 type expressionBinder struct {
-	anonSymbols map[*hclsyntax.AnonSymbolExpr]Node
+	anonSymbols map[*hclsyntax.AnonSymbolExpr]Definition
 	scope       *Scope
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
 func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens syntax.TokenMap) (Expression, hcl.Diagnostics) {
 	b := &expressionBinder{
-		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Node{},
+		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Definition{},
 		scope:       scope,
 	}
 
@@ -123,13 +123,13 @@ func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	for i, p := range ctyParams {
 		sig.Parameters[i] = Parameter{
 			Name: p.Name,
-			Type: inputType(ctyTypeToType(p.Type, p.AllowNull)),
+			Type: InputType(ctyTypeToType(p.Type, p.AllowNull)),
 		}
 	}
 	if p := op.Impl.VarParam(); p != nil {
 		sig.VarargsParameter = &Parameter{
 			Name: p.Name,
-			Type: inputType(ctyTypeToType(p.Type, p.AllowNull)),
+			Type: InputType(ctyTypeToType(p.Type, p.AllowNull)),
 		}
 	}
 
@@ -152,7 +152,7 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 			}
 		} else {
 			if !param.Type.AssignableFrom(remainingArgs[0].Type()) {
-				diagnostics = append(diagnostics, exprNotAssignable(param.Type, remainingArgs[0]))
+				diagnostics = append(diagnostics, ExprNotAssignable(param.Type, remainingArgs[0]))
 			}
 			remainingArgs = remainingArgs[1:]
 		}
@@ -166,7 +166,7 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 		} else {
 			for _, arg := range remainingArgs {
 				if !varargs.Type.AssignableFrom(arg.Type()) {
-					diagnostics = append(diagnostics, exprNotAssignable(varargs.Type, arg))
+					diagnostics = append(diagnostics, ExprNotAssignable(varargs.Type, arg))
 				}
 			}
 		}
@@ -262,7 +262,7 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	}
 
 	// Typecheck the condition expression.
-	signature := StaticFunctionSignature{Parameters: []Parameter{{Name: "condition", Type: inputType(BoolType)}}}
+	signature := StaticFunctionSignature{Parameters: []Parameter{{Name: "condition", Type: InputType(BoolType)}}}
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, condition)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
@@ -338,10 +338,10 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	b.scope = b.scope.PushScope(syntax)
 	defer func() { b.scope = b.scope.Pop() }()
 	if syntax.KeyVar != "" {
-		ok := b.scope.Define(syntax.KeyVar, &LocalVariable{Name: syntax.KeyVar, VariableType: keyType})
+		ok := b.scope.Define(syntax.KeyVar, &Variable{Name: syntax.KeyVar, VariableType: keyType})
 		contract.Assert(ok)
 	}
-	if ok := b.scope.Define(syntax.ValVar, &LocalVariable{Name: syntax.ValVar, VariableType: valueType}); !ok {
+	if ok := b.scope.Define(syntax.ValVar, &Variable{Name: syntax.ValVar, VariableType: valueType}); !ok {
 		diagnostics = append(diagnostics, nameAlreadyDefined(syntax.ValVar, syntax.Range()))
 	}
 
@@ -351,8 +351,8 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 		key, diagnostics = keyExpr, append(diagnostics, keyDiags...)
 
 		// A key expression is only present when producing a map. Key types must therefore be strings.
-		if !inputType(StringType).AssignableFrom(key.Type()) {
-			diagnostics = append(diagnostics, exprNotAssignable(inputType(StringType), key))
+		if !InputType(StringType).AssignableFrom(key.Type()) {
+			diagnostics = append(diagnostics, ExprNotAssignable(InputType(StringType), key))
 		}
 	}
 
@@ -364,8 +364,8 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 		condExpr, conditionDiags := b.bindExpression(syntax.CondExpr)
 		condition, diagnostics = condExpr, append(diagnostics, conditionDiags...)
 
-		if !inputType(BoolType).AssignableFrom(condition.Type()) {
-			diagnostics = append(diagnostics, exprNotAssignable(inputType(BoolType), condition))
+		if !InputType(BoolType).AssignableFrom(condition.Type()) {
+			diagnostics = append(diagnostics, ExprNotAssignable(InputType(BoolType), condition))
 		}
 	}
 
@@ -431,10 +431,10 @@ func (b *expressionBinder) bindFunctionCallExpression(
 	diagnostics = append(diagnostics, sigDiags...)
 
 	for i := range signature.Parameters {
-		signature.Parameters[i].Type = inputType(signature.Parameters[i].Type)
+		signature.Parameters[i].Type = InputType(signature.Parameters[i].Type)
 	}
 	if signature.VarargsParameter != nil {
-		signature.VarargsParameter.Type = inputType(signature.VarargsParameter.Type)
+		signature.VarargsParameter.Type = InputType(signature.VarargsParameter.Type)
 	}
 
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, args...)
@@ -616,7 +616,7 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 		}
 	}
 
-	item := &LocalVariable{
+	item := &Variable{
 		Name:         "<anonymous>",
 		VariableType: elementType,
 	}

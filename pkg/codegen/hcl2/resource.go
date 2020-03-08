@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
@@ -33,14 +34,14 @@ type Resource struct {
 	Token string
 
 	// The type of the resource's inputs. This will always be either Any or an object type.
-	InputType Type
+	InputType model.Type
 	// The type of the resource's outputs. This will always be either Any or an object type.
-	OutputType Type
+	OutputType model.Type
 
 	// The inputs to this resource. This will always be an ObjectConsExpression or an ErrorExpression.
-	Inputs Expression
+	Inputs model.Expression
 	// The range expression for this resource, if any. TODO: unimplemented.
-	Range Expression
+	Range model.Expression
 
 	// TODO: Resource options
 }
@@ -51,11 +52,11 @@ func (r *Resource) SyntaxNode() hclsyntax.Node {
 }
 
 // Type returns the type of the resource.
-func (r *Resource) Type() Type {
+func (r *Resource) Type() model.Type {
 	return r.OutputType
 }
 
-func (r *Resource) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return r.OutputType.Traverse(traverser)
 }
 

@@ -37,6 +37,21 @@ func (kw Keyword) SyntaxNode() hclsyntax.Node {
 	return &hclsyntax.LiteralValueExpr{Val: cty.StringVal(string(kw))}
 }
 
+type Variable struct {
+	Syntax hclsyntax.Node
+
+	Name         string
+	VariableType Type
+}
+
+func (v *Variable) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	return v.VariableType, nil
+}
+
+func (v *Variable) SyntaxNode() hclsyntax.Node {
+	return v.Syntax
+}
+
 // A Scope is used to map names to definitions during expression binding.
 type Scope struct {
 	parent    *Scope
