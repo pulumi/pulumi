@@ -5957,27 +5957,73 @@ func TestReadStackResource(t *testing.T) {
 		inPropValue := "hello"
 		var outPropValue string
 
-		resUrn, _, resProps, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		////////////////////////////////
+		// Part 1: Custom Resource
+		////////////////////////////////
+
+		aUrn, _, aProps, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				resource.PropertyKey("inprop"): resource.NewStringProperty(inPropValue),
 			},
 		})
 		assert.NoError(t, err)
 		if !info.DryRun {
-			outPropValue = resProps[resource.PropertyKey("outprop")].StringValue()
+			outPropValue = aProps[resource.PropertyKey("outprop")].StringValue()
 		}
 
-		resReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
-			resource.PropertyKey("urn"): resource.NewStringProperty(string(resUrn)),
+		aReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
+			resource.PropertyKey("urn"): resource.NewStringProperty(string(aUrn)),
 		}, "", "1.0.0")
 		assert.NoError(t, err)
-		assert.Equal(t, string(resUrn), resReadProps[resource.PropertyKey("urn")].StringValue())
-		assert.Equal(t, inPropValue, resReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
+		assert.Equal(t, string(aUrn), aReadProps[resource.PropertyKey("urn")].StringValue())
+		assert.Equal(t, inPropValue, aReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
 		// These two fields of the result are not available during the preview step
 		if !info.DryRun {
-			assert.Equal(t, "id", resReadProps[resource.PropertyKey("id")].StringValue())
-			assert.Equal(t, outPropValue, resReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outprop")].StringValue())
+			assert.Equal(t, "id", aReadProps[resource.PropertyKey("id")].StringValue())
+			assert.Equal(t, outPropValue, aReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outprop")].StringValue())
 		}
+
+		////////////////////////////////
+		// Part 2: Component Resource
+		//         with nested Resources
+		////////////////////////////////
+
+		bUrn, _, _, err := monitor.RegisterResource("pkgB:m:typB", "resB", false, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				resource.PropertyKey("inprop"): resource.NewStringProperty(inPropValue),
+			},
+		})
+		assert.NoError(t, err)
+
+		// Try to read the resource before "RegisterResourceOutputs" is called
+		bReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
+			resource.PropertyKey("urn"): resource.NewStringProperty(string(bUrn)),
+		}, "", "1.0.0")
+		assert.NoError(t, err)
+		assert.Equal(t, string(bUrn), bReadProps[resource.PropertyKey("urn")].StringValue())
+		assert.Equal(t, "", bReadProps[resource.PropertyKey("id")].StringValue())
+		if info.DryRun {
+			// TODO: This does not seem intentional (or good) - but currently inputs are propagated into results of this
+			// function during preview - only if this is called before `RegisterResourceOutputs` - but are not visible
+			// to this function during update.
+			assert.Equal(t, inPropValue, bReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
+		}
+
+		err = monitor.RegisterResourceOutputs(bUrn, resource.PropertyMap{
+			resource.PropertyKey("outresprop"): resource.NewResourceProperty(resource.Resource{
+				Urn: resource.NewStringProperty(string(aUrn)),
+			}),
+		})
+		assert.NoError(t, err)
+
+		// Try to read the resource again after "RegisterResourceOutputs" is called
+		bReadProps, _, err = monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
+			resource.PropertyKey("urn"): resource.NewStringProperty(string(bUrn)),
+		}, "", "1.0.0")
+		assert.NoError(t, err)
+		assert.Equal(t, string(bUrn), bReadProps[resource.PropertyKey("urn")].StringValue())
+		assert.Equal(t, "", bReadProps[resource.PropertyKey("id")].StringValue())
+		assert.Equal(t, string(aUrn), bReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outresprop")].ResourceValue().Urn.StringValue())
 
 		return nil
 	})
@@ -5990,8 +6036,9 @@ func TestReadStackResource(t *testing.T) {
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default")
 	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
 	assert.Equal(t, string(snap.Resources[2].URN.Name()), "default_1_0_0")
+	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resB")
 }
