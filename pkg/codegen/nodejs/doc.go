@@ -35,16 +35,16 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
 	path := fmt.Sprintf("%s/%s", packageName, modName)
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }
 
 // GetDocLinkForInputType returns the doc link for an input type.
 func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
 }
 
-// GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
+// GetDocLinkForBuiltInType returns the URL for a built-in type.
 func GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
 }

@@ -35,7 +35,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, _, typeName st
 	if packageName != "" {
 		packageNamespace = "." + title(packageName)
 	}
-	return fmt.Sprintf("https://www.pulumi.com/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
+	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
 // GetDocLinkForInputType is not implemented at this time for Python.
