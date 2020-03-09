@@ -5936,3 +5936,62 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+func TestReadStackResource(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("id"), resource.PropertyMap{
+						resource.PropertyKey("inprop"):  inputs[resource.PropertyKey("inprop")],
+						resource.PropertyKey("outprop"): resource.NewStringProperty("goodbye"),
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Register a resource then read it back using its URN.
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inPropValue := "hello"
+		var outPropValue string
+
+		resUrn, _, resProps, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				resource.PropertyKey("inprop"): resource.NewStringProperty(inPropValue),
+			},
+		})
+		assert.NoError(t, err)
+		if !info.DryRun {
+			outPropValue = resProps[resource.PropertyKey("outprop")].StringValue()
+		}
+
+		resReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
+			resource.PropertyKey("urn"): resource.NewStringProperty(string(resUrn)),
+		}, "", "1.0.0")
+		assert.NoError(t, err)
+		assert.Equal(t, string(resUrn), resReadProps[resource.PropertyKey("urn")].StringValue())
+		assert.Equal(t, inPropValue, resReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
+		// These two fields of the result are not available during the preview step
+		if !info.DryRun {
+			assert.Equal(t, "id", resReadProps[resource.PropertyKey("id")].StringValue())
+			assert.Equal(t, outPropValue, resReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outprop")].StringValue())
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default")
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, string(snap.Resources[2].URN.Name()), "default_1_0_0")
+}
