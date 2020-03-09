@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
 )
 
 type test struct {
@@ -292,9 +292,9 @@ func TestResourceState(t *testing.T) {
 			Bar: Int(42),
 		},
 	})
-	s, err := plugin.MarshalProperties(
+	s, err := resource.MarshalProperties(
 		resolved,
-		plugin.MarshalOptions{KeepUnknowns: true})
+		resource.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
 	state.resolve(false, nil, nil, "foo", "bar", s)
 

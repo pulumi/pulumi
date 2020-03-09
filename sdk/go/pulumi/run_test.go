@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
 )
 
 type testMonitor struct {

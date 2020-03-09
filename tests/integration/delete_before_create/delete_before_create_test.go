@@ -5,7 +5,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pulumi/pkg/testing/integration"
 )
 
 // TestDeleteBeforeCreate tests a few different operational modes for

@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pulumi/pkg/tokens"
 )
 
 var dirs = []string{

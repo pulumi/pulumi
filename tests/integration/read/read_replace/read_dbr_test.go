@@ -5,7 +5,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pulumi/pkg/testing/integration"
 )
 
 // Test that the engine handles the replacement of an external resource with a

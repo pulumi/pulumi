@@ -22,9 +22,9 @@ import (
 	"os"
 	"strconv"
 
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/util/contract"
 )
 
 // A RunOption is used to control the behavior of Run and RunErr.

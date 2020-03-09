@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pulumi/pkg/testing/integration"
 )
 
 func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNames ...string) {

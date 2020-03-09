@@ -1,16 +1,14 @@
 package pulumi
 
 import (
+	"context"
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/go/pulumi/proto"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
 )
 
 type MockResourceMonitor interface {
@@ -32,13 +30,13 @@ type mockMonitor struct {
 }
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
-	parentType := tokens.Type("")
+	parentType := resource.Type("")
 	if parentURN := resource.URN(parent); parentURN != "" && parentURN.Type() != resource.RootStackType {
 		parentType = parentURN.QualifiedType()
 	}
 
-	return string(resource.NewURN(tokens.QName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
-		tokens.QName(name)))
+	return string(resource.NewURN(resource.QName(m.stack), resource.PackageName(m.project), parentType, resource.Type(typ),
+		resource.QName(name)))
 }
 
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,
@@ -52,7 +50,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 
-	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{KeepSecrets: true})
+	args, err := resource.UnmarshalProperties(in.GetArgs(), resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +60,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 		return nil, err
 	}
 
-	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{KeepSecrets: true})
+	result, err := resource.MarshalProperties(resultV, resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +79,7 @@ func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.InvokeRequ
 func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResourceRequest,
 	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
 
-	stateIn, err := plugin.UnmarshalProperties(in.GetProperties(), plugin.MarshalOptions{KeepSecrets: true})
+	stateIn, err := resource.UnmarshalProperties(in.GetProperties(), resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +89,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 		return nil, err
 	}
 
-	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{KeepSecrets: true})
+	stateOut, err := resource.MarshalProperties(state, resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +109,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		}, nil
 	}
 
-	inputs, err := plugin.UnmarshalProperties(in.GetObject(), plugin.MarshalOptions{KeepSecrets: true})
+	inputs, err := resource.UnmarshalProperties(in.GetObject(), resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		return nil, err
 	}
 
-	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{KeepSecrets: true})
+	stateOut, err := resource.MarshalProperties(state, resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return nil, err
 	}

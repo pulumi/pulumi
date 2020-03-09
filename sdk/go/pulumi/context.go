@@ -29,11 +29,10 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/go/pulumi/proto"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/util/logging"
 )
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -171,9 +170,9 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		resolvedArgsMap = resolvedArgs.ObjectValue()
 	}
 
-	rpcArgs, err := plugin.MarshalProperties(
+	rpcArgs, err := resource.MarshalProperties(
 		resolvedArgsMap,
-		plugin.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
+		resource.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
 	if err != nil {
 		return fmt.Errorf("marshaling arguments: %w", err)
 	}
@@ -208,7 +207,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	// Otherwsie, simply unmarshal the output properties and return the result.
-	outProps, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{KeepSecrets: true})
+	outProps, err := resource.UnmarshalProperties(resp.Return, resource.MarshalOptions{KeepSecrets: true})
 	if err != nil {
 		return err
 	}
@@ -688,7 +687,7 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 	var outprops resource.PropertyMap
 	if err == nil {
-		outprops, err = plugin.UnmarshalProperties(result, plugin.MarshalOptions{KeepSecrets: true})
+		outprops, err = resource.UnmarshalProperties(result, resource.MarshalOptions{KeepSecrets: true})
 	}
 	if err != nil {
 		// If there was an error, we must reject everything.
@@ -747,14 +746,14 @@ type resourceInputs struct {
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props Input, t string,
-	opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+	opts *resourceOptions, resourceState *resourceState) (*resourceInputs, error) {
 
-	providers := resource.providers
+	providers := resourceState.providers
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
-	// explicit parent, and a root stack resource exists, we will automatically parent to that.
+	// explicit parent, and a root stack resourceState exists, we will automatically parent to that.
 	parent, optDeps, protect, provider, deleteBeforeReplace,
-		importID, ignoreChanges, additionalSecretOutputs, err := ctx.getOpts(t, providers, opts)
+	importID, ignoreChanges, additionalSecretOutputs, err := ctx.getOpts(t, providers, opts)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -767,9 +766,9 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 
 	// Marshal all properties for the RPC call.
 	keepUnknowns := ctx.DryRun()
-	rpcProps, err := plugin.MarshalProperties(
+	rpcProps, err := resource.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
+		resource.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -804,8 +803,8 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	sort.Strings(deps)
 
 	// Await alias URNs
-	aliases := make([]string, len(resource.aliases))
-	for i, alias := range resource.aliases {
+	aliases := make([]string, len(resourceState.aliases))
+	for i, alias := range resourceState.aliases {
 		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
@@ -959,7 +958,7 @@ func (ctx *Context) waitForRPCs() {
 }
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
-func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
+func (ctx *Context) RegisterResourceOutputs(r Resource, outs Map) error {
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -973,7 +972,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			ctx.endRPC(err)
 		}()
 
-		urn, _, _, err := resource.URN().awaitURN(context.TODO())
+		urn, _, _, err := r.URN().awaitURN(context.TODO())
 		if err != nil {
 			return
 		}
@@ -984,9 +983,9 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		}
 
 		keepUnknowns := ctx.DryRun()
-		outsMarshalled, err := plugin.MarshalProperties(
+		outsMarshalled, err := resource.MarshalProperties(
 			outsResolved.ObjectValue(),
-			plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
+			resource.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
 		if err != nil {
 			return
 		}

@@ -5,7 +5,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pulumi/pkg/testing/integration"
 )
 
 // Test that the engine does not consider old inputs when calling Check during re-creation of

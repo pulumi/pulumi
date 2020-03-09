@@ -15,15 +15,14 @@
 package pulumi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"golang.org/x/net/context"
-
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/util/contract"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {

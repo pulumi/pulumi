@@ -3,8 +3,9 @@ package pulumi
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/go/pulumi/resource"
 )
 
 func TestStackReference(t *testing.T) {

@@ -15,10 +15,10 @@
 package pulumi
 
 import (
+	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"golang.org/x/net/context"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/util/contract"
 )
 
 // AssetOrArchive represents either an Asset or an Archive.
