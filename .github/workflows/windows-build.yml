@@ -28,8 +28,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Install Pulumi CLI
-      uses: pulumi/action-install-pulumi-cli@releases/v1
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
@@ -39,12 +37,15 @@ jobs:
         pip3 install pyenv-win
         pip3 install pipenv
     - name: Set Build Env Vars
+      shell: bash
+      run : |
+        echo "::set-env name=PULUMI_TEST_OWNER::moolumi"
+        echo "::set-env name=PULUMI_LOCAL_NUGET::D:\\Pulumi\\nuget"
+        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::add-path::D:\\Pulumi\\bin"
+    - name: Set AWS Env Vars
       uses: allenevans/set-env@v1.0.0
       with:
-        PULUMI_TEST_OWNER: "moolumi"
-        PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-        PULUMI_ROOT: "D:\\Pulumi"
-        PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
