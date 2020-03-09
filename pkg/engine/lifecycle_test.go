@@ -5957,30 +5957,37 @@ func TestReadStackResource(t *testing.T) {
 		inPropValue := "hello"
 		var outPropValue string
 
+		outputsKey := resource.PropertyKey("outputs")
+		outrespropKey := resource.PropertyKey("outresprop")
+		outpropKey := resource.PropertyKey("outprop")
+		idKey := resource.PropertyKey("id")
+		inpropKey := resource.PropertyKey("inprop")
+		urnKey := resource.PropertyKey("urn")
+
 		////////////////////////////////
 		// Part 1: Custom Resource
 		////////////////////////////////
 
 		aUrn, _, aProps, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("inprop"): resource.NewStringProperty(inPropValue),
+				inpropKey: resource.NewStringProperty(inPropValue),
 			},
 		})
 		assert.NoError(t, err)
 		if !info.DryRun {
-			outPropValue = aProps[resource.PropertyKey("outprop")].StringValue()
+			outPropValue = aProps[outpropKey].StringValue()
 		}
 
 		aReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
-			resource.PropertyKey("urn"): resource.NewStringProperty(string(aUrn)),
+			urnKey: resource.NewStringProperty(string(aUrn)),
 		}, "", "1.0.0")
 		assert.NoError(t, err)
-		assert.Equal(t, string(aUrn), aReadProps[resource.PropertyKey("urn")].StringValue())
-		assert.Equal(t, inPropValue, aReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
+		assert.Equal(t, string(aUrn), aReadProps[urnKey].StringValue())
+		assert.Equal(t, inPropValue, aReadProps[outputsKey].ObjectValue()[inpropKey].StringValue())
 		// These two fields of the result are not available during the preview step
 		if !info.DryRun {
-			assert.Equal(t, "id", aReadProps[resource.PropertyKey("id")].StringValue())
-			assert.Equal(t, outPropValue, aReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outprop")].StringValue())
+			assert.Equal(t, "id", aReadProps[idKey].StringValue())
+			assert.Equal(t, outPropValue, aReadProps[outputsKey].ObjectValue()[outpropKey].StringValue())
 		}
 
 		////////////////////////////////
@@ -5990,27 +5997,27 @@ func TestReadStackResource(t *testing.T) {
 
 		bUrn, _, _, err := monitor.RegisterResource("pkgB:m:typB", "resB", false, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				resource.PropertyKey("inprop"): resource.NewStringProperty(inPropValue),
+				inpropKey: resource.NewStringProperty(inPropValue),
 			},
 		})
 		assert.NoError(t, err)
 
 		// Try to read the resource before "RegisterResourceOutputs" is called
 		bReadProps, _, err := monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
-			resource.PropertyKey("urn"): resource.NewStringProperty(string(bUrn)),
+			urnKey: resource.NewStringProperty(string(bUrn)),
 		}, "", "1.0.0")
 		assert.NoError(t, err)
-		assert.Equal(t, string(bUrn), bReadProps[resource.PropertyKey("urn")].StringValue())
-		assert.Equal(t, "", bReadProps[resource.PropertyKey("id")].StringValue())
+		assert.Equal(t, string(bUrn), bReadProps[urnKey].StringValue())
+		assert.Equal(t, "", bReadProps[idKey].StringValue())
 		if info.DryRun {
 			// TODO: This does not seem intentional (or good) - but currently inputs are propagated into results of this
 			// function during preview - only if this is called before `RegisterResourceOutputs` - but are not visible
 			// to this function during update.
-			assert.Equal(t, inPropValue, bReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("inprop")].StringValue())
+			assert.Equal(t, inPropValue, bReadProps[outputsKey].ObjectValue()[inpropKey].StringValue())
 		}
 
 		err = monitor.RegisterResourceOutputs(bUrn, resource.PropertyMap{
-			resource.PropertyKey("outresprop"): resource.NewResourceProperty(resource.Resource{
+			outrespropKey: resource.NewResourceProperty(resource.Resource{
 				Urn: resource.NewStringProperty(string(aUrn)),
 			}),
 		})
@@ -6018,12 +6025,12 @@ func TestReadStackResource(t *testing.T) {
 
 		// Try to read the resource again after "RegisterResourceOutputs" is called
 		bReadProps, _, err = monitor.Invoke(tokens.ModuleMember("pulumi:pulumi:readStackResource"), resource.PropertyMap{
-			resource.PropertyKey("urn"): resource.NewStringProperty(string(bUrn)),
+			urnKey: resource.NewStringProperty(string(bUrn)),
 		}, "", "1.0.0")
 		assert.NoError(t, err)
-		assert.Equal(t, string(bUrn), bReadProps[resource.PropertyKey("urn")].StringValue())
-		assert.Equal(t, "", bReadProps[resource.PropertyKey("id")].StringValue())
-		assert.Equal(t, string(aUrn), bReadProps[resource.PropertyKey("outputs")].ObjectValue()[resource.PropertyKey("outresprop")].ResourceValue().Urn.StringValue())
+		assert.Equal(t, string(bUrn), bReadProps[urnKey].StringValue())
+		assert.Equal(t, "", bReadProps[idKey].StringValue())
+		assert.Equal(t, string(aUrn), bReadProps[outputsKey].ObjectValue()[outrespropKey].ResourceValue().Urn.StringValue())
 
 		return nil
 	})
