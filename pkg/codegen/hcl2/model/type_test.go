@@ -150,6 +150,36 @@ func TestOutputType(t *testing.T) {
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.StringVal("foo")}, typ, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.NumberIntVal(0)}, typ, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: encapsulateType(typ)}, typ, false)
+
+	// Test that ResolveOutputs correctly handles nested outputs.
+	assert.Equal(t, NewOptionalType(BoolType), ResolveOutputs(NewOptionalType(NewOutputType(BoolType))))
+	assert.Equal(t, BoolType, ResolveOutputs(NewOutputType(BoolType)))
+	assert.Equal(t, BoolType, ResolveOutputs(NewPromiseType(BoolType)))
+	assert.Equal(t, NewMapType(BoolType), ResolveOutputs(NewMapType(NewOutputType(BoolType))))
+	assert.Equal(t, NewArrayType(BoolType), ResolveOutputs(NewArrayType(NewOutputType(BoolType))))
+	assert.Equal(t, NewUnionType(BoolType, IntType), ResolveOutputs(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
+	assert.Equal(t, NewObjectType(map[string]Type{
+		"bool": BoolType,
+		"int":  IntType,
+	}), ResolveOutputs(NewObjectType(map[string]Type{
+		"bool": NewOutputType(BoolType),
+		"int":  NewOutputType(IntType),
+	})))
+
+	// Test that NewOutputType correctly handles nested outputs.
+	assert.Equal(t, NewOutputType(NewOptionalType(BoolType)), NewOutputType(NewOptionalType(NewOutputType(BoolType))))
+	assert.Equal(t, NewOutputType(BoolType), NewOutputType(NewOutputType(BoolType)))
+	assert.Equal(t, NewOutputType(BoolType), NewOutputType(NewPromiseType(BoolType)))
+	assert.Equal(t, NewOutputType(NewMapType(BoolType)), NewOutputType(NewMapType(NewOutputType(BoolType))))
+	assert.Equal(t, NewOutputType(NewArrayType(BoolType)), NewOutputType(NewArrayType(NewOutputType(BoolType))))
+	assert.Equal(t, NewOutputType(NewUnionType(BoolType, IntType)), NewOutputType(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
+	assert.Equal(t, NewOutputType(NewObjectType(map[string]Type{
+		"bool": BoolType,
+		"int":  IntType,
+	})), NewOutputType(NewObjectType(map[string]Type{
+		"bool": NewOutputType(BoolType),
+		"int":  NewOutputType(IntType),
+	})))
 }
 
 func TestPromiseType(t *testing.T) {
@@ -186,6 +216,36 @@ func TestPromiseType(t *testing.T) {
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.StringVal("foo")}, typ, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.NumberIntVal(0)}, typ, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: encapsulateType(typ)}, typ, false)
+
+	// Test that ResolvePromises correctly handles nested promises.
+	assert.Equal(t, NewOptionalType(BoolType), ResolvePromises(NewOptionalType(NewPromiseType(BoolType))))
+	assert.Equal(t, BoolType, ResolvePromises(NewPromiseType(BoolType)))
+	assert.Equal(t, BoolType, ResolvePromises(NewPromiseType(BoolType)))
+	assert.Equal(t, NewMapType(BoolType), ResolvePromises(NewMapType(NewPromiseType(BoolType))))
+	assert.Equal(t, NewArrayType(BoolType), ResolvePromises(NewArrayType(NewPromiseType(BoolType))))
+	assert.Equal(t, NewUnionType(BoolType, IntType), ResolvePromises(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
+	assert.Equal(t, NewObjectType(map[string]Type{
+		"bool": BoolType,
+		"int":  IntType,
+	}), ResolvePromises(NewObjectType(map[string]Type{
+		"bool": NewPromiseType(BoolType),
+		"int":  NewPromiseType(IntType),
+	})))
+
+	// Test that NewPromiseType correctly handles nested promises.
+	assert.Equal(t, NewPromiseType(NewOptionalType(BoolType)), NewPromiseType(NewOptionalType(NewPromiseType(BoolType))))
+	assert.Equal(t, NewPromiseType(BoolType), NewPromiseType(NewPromiseType(BoolType)))
+	assert.Equal(t, NewPromiseType(BoolType), NewPromiseType(NewPromiseType(BoolType)))
+	assert.Equal(t, NewPromiseType(NewMapType(BoolType)), NewPromiseType(NewMapType(NewPromiseType(BoolType))))
+	assert.Equal(t, NewPromiseType(NewArrayType(BoolType)), NewPromiseType(NewArrayType(NewPromiseType(BoolType))))
+	assert.Equal(t, NewPromiseType(NewUnionType(BoolType, IntType)), NewPromiseType(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
+	assert.Equal(t, NewPromiseType(NewObjectType(map[string]Type{
+		"bool": BoolType,
+		"int":  IntType,
+	})), NewPromiseType(NewObjectType(map[string]Type{
+		"bool": NewPromiseType(BoolType),
+		"int":  NewPromiseType(IntType),
+	})))
 }
 
 func TestMapType(t *testing.T) {
@@ -345,8 +405,37 @@ func TestObjectType(t *testing.T) {
 	testTraverse(t, typ, hcl.TraverseIndex{Key: encapsulateType(typ)}, AnyType, true)
 }
 
+func TestOpaqueType(t *testing.T) {
+	foo, err := NewOpaqueType("foo")
+	assert.NotNil(t, foo)
+	assert.NoError(t, err)
+
+	foo2, ok := GetOpaqueType("foo")
+	assert.EqualValues(t, foo, foo2)
+	assert.True(t, ok)
+
+	foo3, err := NewOpaqueType("foo")
+	assert.Nil(t, foo3)
+	assert.Error(t, err)
+
+	bar, ok := GetOpaqueType("bar")
+	assert.Nil(t, bar)
+	assert.False(t, ok)
+
+	bar, err = NewOpaqueType("bar")
+	assert.NotNil(t, bar)
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, foo, bar)
+}
+
 func TestInputType(t *testing.T) {
+	// Test that InputType(AnyType) just returns AnyType.
 	assert.Equal(t, AnyType, InputType(AnyType))
+
+	// Test that InputType(T) correctly recurses through constructed types. The result of InputType(T) should be
+	// union(innerInputType(T), output(innerInputType(T))), where innerInputType(T) recurses thorough constructed
+	// types.
 
 	assert.Equal(t, NewUnionType(BoolType, NewOutputType(BoolType)), InputType(BoolType))
 

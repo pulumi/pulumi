@@ -76,54 +76,53 @@ type validator struct {
 func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 	switch n := n.(type) {
 	case *hclsyntax.Attribute:
-		ts, _ := v.tokens.ForNode(n).(AttributeTokens)
+		tokens := v.tokens.ForNode(n).(AttributeTokens)
 		validateTrivia(v.t, tokens.Name, tokens.Equals)
 	case *hclsyntax.BinaryOpExpr:
-		tokens, _ := v.tokens.ForNode(n).(BinaryOpTokens)
+		tokens := v.tokens.ForNode(n).(BinaryOpTokens)
 		validateTrivia(v.t, tokens.Operator)
 	case *hclsyntax.Block:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(BlockTokens)
+		tokens := v.tokens.ForNode(n).(BlockTokens)
 		validateTrivia(v.t, tokens.Type, tokens.Labels, tokens.OpenBrace, tokens.CloseBrace)
 	case *hclsyntax.ConditionalExpr:
-		tokens, _ := v.tokens.ForNode(n).(ConditionalTokens)
+		tokens := v.tokens.ForNode(n).(ConditionalTokens)
 		validateTrivia(v.t, tokens.QuestionMark, tokens.Colon)
 	case *hclsyntax.ForExpr:
-		tokens, _ := v.tokens.ForNode(n).(ForTokens)
+		tokens := v.tokens.ForNode(n).(ForTokens)
 		validateTrivia(v.t, tokens.Open, tokens.For, tokens.Key, tokens.Comma, tokens.Value, tokens.In, tokens.Colon, tokens.Arrow, tokens.Group, tokens.If, tokens.Close)
 	case *hclsyntax.FunctionCallExpr:
-		tokens, _ := v.tokens.ForNode(n).(FunctionCallTokens)
+		tokens := v.tokens.ForNode(n).(FunctionCallTokens)
 		validateTrivia(v.t, tokens.Name, tokens.OpenParen, tokens.CloseParen)
 	case *hclsyntax.IndexExpr:
-		tokens, _ := v.tokens.ForNode(n).(IndexTokens)
+		tokens := v.tokens.ForNode(n).(IndexTokens)
 		validateTrivia(v.t, tokens.OpenBracket, tokens.CloseBracket)
 	case *hclsyntax.LiteralValueExpr:
 		// TODO(pdg): validate string literals
 		if !v.inTemplate {
-			tokens, _ := v.tokens.ForNode(n).(LiteralValueTokens)
+			tokens := v.tokens.ForNode(n).(LiteralValueTokens)
 			validateTrivia(v.t, tokens.Value)
 		}
 	case *hclsyntax.ObjectConsExpr:
-		tokens, _ := v.tokens.ForNode(n).(ObjectConsTokens)
+		tokens := v.tokens.ForNode(n).(ObjectConsTokens)
 		validateTrivia(v.t, tokens.OpenBrace, tokens.Items, tokens.CloseBrace)
 	case *hclsyntax.RelativeTraversalExpr:
-		tokens, _ := v.tokens.ForNode(n).(RelativeTraversalTokens)
+		tokens := v.tokens.ForNode(n).(RelativeTraversalTokens)
 		validateTrivia(v.t, tokens.Traversal)
 	case *hclsyntax.ScopeTraversalExpr:
-		tokens, _ := v.tokens.ForNode(n).(ScopeTraversalTokens)
+		tokens := v.tokens.ForNode(n).(ScopeTraversalTokens)
 		validateTrivia(v.t, tokens.Root, tokens.Traversal)
 	case *hclsyntax.SplatExpr:
-		tokens, _ := v.tokens.ForNode(n).(SplatTokens)
+		tokens := v.tokens.ForNode(n).(SplatTokens)
 		validateTrivia(v.t, tokens.Open, tokens.Star, tokens.Close)
 	case *hclsyntax.TemplateExpr:
 		// TODO(pdg): validate template tokens.
 		v.inTemplate = true
 	case *hclsyntax.TupleConsExpr:
-		tokens, _ := v.tokens.ForNode(n).(TupleConsTokens)
+		tokens := v.tokens.ForNode(n).(TupleConsTokens)
 		validateTrivia(v.t, tokens.OpenBracket, tokens.Commas, tokens.CloseBracket)
 	case *hclsyntax.UnaryOpExpr:
-		tokens, _ := v.tokens.ForNode(n).(UnaryOpTokens)
-		validateTrivia(v.t, ts.Operator)
+		tokens := v.tokens.ForNode(n).(UnaryOpTokens)
+		validateTrivia(v.t, tokens.Operator)
 	}
 	return nil
 }
