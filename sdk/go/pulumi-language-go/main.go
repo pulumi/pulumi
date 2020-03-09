@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -97,6 +98,9 @@ const unableToFindProgramTemplate = "unable to find program: %s"
 // findProgram attempts to find the needed program in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func findProgram(program string) (string, error) {
+	if runtime.GOOS == "windows" {
+		program = fmt.Sprintf("%s.exe", program)
+	}
 
 	// look in the same directory
 	cwd, err := os.Getwd()
