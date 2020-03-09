@@ -129,7 +129,7 @@ def get_project() -> str:
     project = SETTINGS.project
     if not project:
         require_test_mode_enabled()
-        raise RunError('Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT')
+        raise RunError('Missing project name; for test mode, please call `pulumi.runtime.set_mocks`')
     return project
 
 
