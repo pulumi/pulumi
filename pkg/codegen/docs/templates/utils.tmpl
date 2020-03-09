@@ -1,0 +1,3 @@
+{{ define "linkify_param" }}<span class="nx"><a href="{{ .Link }}">{{ .Name }}</a></span>{{ end }}
+
+{{ define "linkify" }}<a href="{{ .Link }}">{{ htmlSafe .Name }}</a>{{ end }}
