@@ -290,6 +290,8 @@ func chooseStack(
 	}
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
+	cmdutil.EndKeypadTransmitMode()
+
 	var option string
 	if err = survey.AskOne(&survey.Select{
 		Message: message,

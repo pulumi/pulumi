@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"os"
 	"strings"
 
@@ -160,6 +161,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
 		}
+
+		cmdutil.EndKeypadTransmitMode()
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
 		if err := survey.AskOne(&survey.Select{
