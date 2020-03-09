@@ -18,26 +18,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 )
 
-var pulumiBuiltins = map[string]*model.Function{
-	"fileAsset": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"mimeType": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"toJSON": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "value",
-			Type: model.AnyType,
-		}},
-		ReturnType: model.StringType,
-	}),
-}
+var (
+	// ArchiveType represents the set of Pulumi Archive values.
+	ArchiveType model.Type = model.MustNewOpaqueType("pulumi:pulumi:Archive")
+	// AssetType represents the set of Pulumi Asset values.
+	AssetType model.Type = model.MustNewOpaqueType("pulumi:pulumi:Asset")
+)

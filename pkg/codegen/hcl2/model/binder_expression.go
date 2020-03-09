@@ -106,7 +106,7 @@ func ctyTypeToType(t cty.Type, optional bool) Type {
 	return result
 }
 
-var typeCapsule = cty.Capsule("type", reflect.TypeOf(Type(nil)))
+var typeCapsule = cty.Capsule("type", reflect.TypeOf((*Type)(nil)).Elem())
 
 func encapsulateType(t Type) cty.Value {
 	return cty.CapsuleVal(typeCapsule, &t)

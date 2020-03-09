@@ -40,82 +40,17 @@ type Type interface {
 // None represents the set of undefined values.
 var None Type = nil
 
-type primitiveType int
-
-const (
-	boolType    primitiveType = 1
-	intType     primitiveType = 2
-	numberType  primitiveType = 3
-	stringType  primitiveType = 4
-	archiveType primitiveType = 5
-	assetType   primitiveType = 6
-	anyType     primitiveType = 7
-)
-
-func (t primitiveType) AssignableFrom(src Type) bool {
-	if t == anyType || src == anyType {
-		return true
-	}
-
-	return src == t
-}
-
-func (t primitiveType) String() string {
-	switch t {
-	case boolType:
-		return "boolean"
-	case intType:
-		return "integer"
-	case numberType:
-		return "number"
-	case stringType:
-		return "string"
-	case archiveType:
-		return "pulumi:pulumi:Archive"
-	case assetType:
-		return "pulumi:pulumi:Asset"
-	case anyType:
-		return "pulumi:pulumi:Any"
-	default:
-		panic("unknown primitive type")
-	}
-}
-
-func (primitiveType) SyntaxNode() hclsyntax.Node {
-	return syntax.None
-}
-
-func (t primitiveType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	if t == anyType {
-		return anyType, nil
-	}
-	return anyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
-}
-
-func (primitiveType) isType() {}
-
-// IsPrimitiveType returns true if the given Type is a primitive type. The primitive types are bool, int, number,
-// string, archive, asset, and any.
-func IsPrimitiveType(t Type) bool {
-	_, ok := t.(primitiveType)
-	return ok
-}
-
 var (
 	// BoolType represents the set of boolean values.
-	BoolType Type = boolType
+	BoolType Type = MustNewOpaqueType("boolean")
 	// IntType represents the set of 32-bit integer values.
-	IntType Type = intType
+	IntType Type = MustNewOpaqueType("integer")
 	// NumberType represents the set of IEEE754 double-precision values.
-	NumberType Type = numberType
+	NumberType Type = MustNewOpaqueType("number")
 	// StringType represents the set of UTF-8 string values.
-	StringType Type = stringType
-	// ArchiveType represents the set of Pulumi Archive values.
-	ArchiveType Type = archiveType
-	// AssetType represents the set of Pulumi Asset values.
-	AssetType Type = assetType
+	StringType Type = MustNewOpaqueType("string")
 	// AnyType represents the complete set of values.
-	AnyType Type = anyType
+	AnyType Type = MustNewOpaqueType("any")
 )
 
 // OptionalType represents values of a particular type that are optional.
@@ -267,7 +202,11 @@ func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
 		}
 		return t, makeIdentity
 	case *PromiseType:
-		return t.ElementType, makePromise
+		element, transform := resolveEventuals(t.ElementType, resolveOutputs)
+		if transform != makeOutput {
+			transform = makePromise
+		}
+		return element, transform
 	case *MapType:
 		resolved, transform := resolveEventuals(t.ElementType, resolveOutputs)
 		return NewMapType(resolved), transform
@@ -684,6 +623,15 @@ func GetOpaqueType(name string) (*OpaqueType, bool) {
 	return t, ok
 }
 
+// MustNewOpaqueType creates a new opaque type with the given name.
+func MustNewOpaqueType(name string) *OpaqueType {
+	t, err := NewOpaqueType(name)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 // NewOpaqueType creates a new opaque type with the given name.
 func NewOpaqueType(name string) (*OpaqueType, error) {
 	if _, ok := opaqueTypes[name]; ok {
@@ -700,13 +648,17 @@ func (*OpaqueType) SyntaxNode() hclsyntax.Node {
 }
 
 func (t *OpaqueType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	if t == AnyType {
+		return AnyType, nil
+	}
+
 	return AnyType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A token(name) is assignable
 // from any or token(name).
 func (t *OpaqueType) AssignableFrom(src Type) bool {
-	return src == AnyType || src == t
+	return src == AnyType || src == t || t == AnyType
 }
 
 func (t *OpaqueType) String() string {

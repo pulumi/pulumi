@@ -173,9 +173,9 @@ func schemaTypeToType(src schema.Type) model.Type {
 		case schema.StringType:
 			return model.StringType
 		case schema.ArchiveType:
-			return model.ArchiveType
+			return ArchiveType
 		case schema.AssetType:
-			return model.AssetType
+			return AssetType
 		case schema.AnyType:
 			return model.AnyType
 		default:
