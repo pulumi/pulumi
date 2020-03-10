@@ -97,7 +97,7 @@ type ConstructorParam struct {
 	DefaultValue string
 }
 
-type resourceArgs struct {
+type resourceDocArgs struct {
 	Header
 
 	Comment  string
@@ -485,7 +485,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
-func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
+func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
@@ -515,7 +515,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		}
 	}
 
-	data := resourceArgs{
+	data := resourceDocArgs{
 		Header: Header{
 			Title: name,
 		},
@@ -536,13 +536,6 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	}
 
 	return data
-}
-
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
-	fmt.Fprintf(w, "%s\n\n", fun.Comment)
-
-	// TODO: Emit the page for functions, similar to the page for resources.
-	fmt.Fprintf(w, "TODO\n\n")
 }
 
 func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
@@ -670,11 +663,13 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
+		data := mod.genFunction(f)
+
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, tokenToName(f.Token))
-
-		mod.genFunction(buffer, f)
-
+		err := templates.ExecuteTemplate(buffer, "function.tmpl", data)
+		if err != nil {
+			panic(err)
+		}
 		addFile(lower(tokenToName(f.Token))+".md", buffer.String())
 	}
 
