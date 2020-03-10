@@ -36,8 +36,13 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeN
 	return ""
 }
 
-// GetDocLinkForInputType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
+// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName string, input bool) string {
+	return ""
+}
+
+// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
 	return ""
 }
 

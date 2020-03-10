@@ -71,9 +71,10 @@ type Property struct {
 
 // DocNestedType represents a complex type.
 type DocNestedType struct {
-	Name        string
-	APIDocLinks map[string]string
-	Properties  map[string][]Property
+	Name         string
+	IsOutputType bool
+	APIDocLinks  map[string]string
+	Properties   map[string][]Property
 }
 
 // PropertyType represents the type of a property.
@@ -117,10 +118,24 @@ type resourceDocArgs struct {
 	NestedTypes []DocNestedType
 }
 
-type stringSet map[string]struct{}
+type appearsIn struct {
+	Input  bool
+	Output bool
+}
 
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
+type stringSet map[string]appearsIn
+
+func (ss stringSet) add(s string, input bool) {
+	if v, ok := ss[s]; ok {
+		v.Input = input
+		v.Output = !input
+		return
+	}
+
+	ss[s] = appearsIn{
+		Input:  input,
+		Output: !input,
+	}
 }
 
 type typeDetails struct {
@@ -334,12 +349,12 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocNestedType {
+func (mod *modContext) genNestedTypes(member interface{}, input bool, resourceType bool) []DocNestedType {
 	tokens := stringSet{}
-	mod.getTypes(properties, tokens)
+	mod.getTypes(member, tokens, input)
 
 	var objs []DocNestedType
-	for token := range tokens {
+	for token, appearsIn := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
 				if len(obj.Properties) == 0 {
@@ -347,13 +362,13 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 				}
 
 				// Create maps to hold the per-language properties of this object and links to
-				// the API doc fpr each language.
+				// the API doc for each language.
 				props := make(map[string][]Property)
 				apiDocLinks := make(map[string]string)
 				for _, lang := range supportedLanguages {
 					var docLangHelper codegen.DocLanguageHelper
 
-					inputObjLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
+					inputObjLangType := mod.typeString(t, lang, input /*input*/, true /*optional*/, false /*insertWordBreaks*/)
 					switch lang {
 					case "csharp":
 						docLangHelper = dotnet.DocLanguageHelper{}
@@ -366,7 +381,13 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 					default:
 						panic(errors.Errorf("cannot generate nested type doc link for unhandled language %q", lang))
 					}
-					apiDocLinks[lang] = docLangHelper.GetDocLinkForInputType(mod.pkg.Name, mod.mod, inputObjLangType.Name)
+
+					// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
+					if resourceType {
+						apiDocLinks[lang] = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, input)
+					} else {
+						apiDocLinks[lang] = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, appearsIn.Input)
+					}
 					props[lang] = mod.getProperties(obj.Properties, lang, true)
 				}
 
@@ -532,7 +553,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		OutputProperties: outputProps,
 		StateInputs:      stateInputs,
 		StateParam:       name + "State",
-		NestedTypes:      mod.genNestedTypes(r.InputProperties, true),
+		NestedTypes:      mod.genNestedTypes(r.InputProperties, true /*input*/, true /*resourceType*/),
 	}
 
 	return data
@@ -556,45 +577,45 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
 	}
 }
 
-func (mod *modContext) getNestedTypes(t schema.Type, types stringSet) {
+func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		mod.getNestedTypes(t.ElementType, types)
+		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.MapType:
-		mod.getNestedTypes(t.ElementType, types)
+		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.ObjectType:
-		types.add(t.Token)
-		mod.getTypes(t.Properties, types)
+		types.add(t.Token, input)
+		mod.getTypes(t.Properties, types, input)
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			mod.getNestedTypes(e, types)
+			mod.getNestedTypes(e, types, input)
 		}
 	}
 }
 
-func (mod *modContext) getTypes(member interface{}, types stringSet) {
+func (mod *modContext) getTypes(member interface{}, types stringSet, input bool) {
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		for _, p := range member.Properties {
-			mod.getNestedTypes(p.Type, types)
+			mod.getNestedTypes(p.Type, types, input)
 		}
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			mod.getNestedTypes(p.Type, types)
+			mod.getNestedTypes(p.Type, types, false)
 		}
 		for _, p := range member.InputProperties {
-			mod.getNestedTypes(p.Type, types)
+			mod.getNestedTypes(p.Type, types, true)
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			mod.getNestedTypes(member.Inputs, types)
+			mod.getNestedTypes(member.Inputs, types, true)
 		}
 		if member.Outputs != nil {
-			mod.getNestedTypes(member.Outputs, types)
+			mod.getNestedTypes(member.Outputs, types, false)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			mod.getNestedTypes(p.Type, types)
+			mod.getNestedTypes(p.Type, types, input)
 		}
 	}
 }
@@ -758,6 +779,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// which will most certainly fail.
 			// nolint gosec
 			return template.HTML(html)
+		},
+		"pyName": func(str string) string {
+			return python.PyName(str)
 		},
 	})
 
