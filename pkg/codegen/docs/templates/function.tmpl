@@ -1,0 +1,32 @@
+{{ template "header" .Header }}
+
+{{ htmlSafe .Comment }}
+
+{{ .DeprecationMessage }}
+
+<!-- Input properties -->
+## {{ .Header.Title }} Input Arguments
+
+{{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
+
+<!-- TS/JS -->
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>get{{ .ResourceName }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre></div>
+
+<!-- Python -->
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">function </span> get_{{ .ResourceName }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">)</span></code></pre></div>
+
+<!-- Go -->
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>Lookup{{ .ResourceName }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span></code></pre></div>
+
+<!-- C# -->
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">Get{{ .ResourceName }}(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span></code></pre></div>
+
+The following arguments are supported:
+{{ template "properties" .InputProperties }}
+
+<!-- Output properties -->
+## {{.Header.Title}} Output Properties
+
+The following output properties are available:
+
+{{ template "properties" .OutputProperties }}

@@ -66,6 +66,11 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return name
 }
 
+// GetResourceFunctionResultName is not implemented for Python and returns an empty string.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return ""
+}
+
 // elementTypeToName returns the type name from an element type of the form
 // package:module:_type, with its leading "_" stripped.
 func elementTypeToName(el string) string {

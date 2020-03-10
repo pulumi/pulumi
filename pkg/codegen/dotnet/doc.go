@@ -52,3 +52,9 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	}
 	return mod.typeString(t, "", input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
 }
+
+// GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
+// an existing resource.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return "Get" + resourceName + "Result"
+}
