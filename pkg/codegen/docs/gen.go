@@ -1,3 +1,5 @@
+//go:generate go run bundler.go
+
 // Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +23,99 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"html"
+	"html/template"
 	"io"
 	"path"
 	"sort"
 	"strings"
-	"unicode"
 
+	"github.com/pkg/errors"
+
+	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+var supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
+
+var templates *template.Template
+var packagedTemplates map[string][]byte
+
+// Header represents the header of each resource markdown file.
+type Header struct {
+	Title string
+}
+
+type exampleUsage struct {
+	Heading string
+	Code    string
+}
+
+// Property represents an input or an output property.
+type Property struct {
+	Name               string
+	Comment            string
+	Type               PropertyType
+	DeprecationMessage string
+
+	IsRequired bool
+	// IsInput is a flag to indicate if a property is an input
+	// property.
+	IsInput bool
+}
+
+// DocNestedType represents a complex type.
+type DocNestedType struct {
+	Name        string
+	APIDocLinks map[string]string
+	Properties  map[string][]Property
+}
+
+// PropertyType represents the type of a property.
+type PropertyType struct {
+	Name string
+	// Link can be a link to an anchor tag on the same
+	// page, or to another page/site.
+	Link string
+}
+
+// ConstructorParam represents the formal parameters of a constructor.
+type ConstructorParam struct {
+	Name string
+	Type PropertyType
+
+	// This is the language specific optional type indicator.
+	// For example, in nodejs this is the character "?" and in Go
+	// it's "*".
+	OptionalFlag string
+
+	DefaultValue string
+}
+
+type resourceArgs struct {
+	Header
+
+	Comment  string
+	Examples []exampleUsage
+
+	ConstructorParams map[string]string
+	// ConstructorResource is the resource that is being constructed or
+	// is the result of a constructor-like function.
+	ConstructorResource map[string]PropertyType
+	ArgsRequired        bool
+
+	InputProperties  map[string][]Property
+	OutputProperties map[string][]Property
+	StateInputs      map[string][]Property
+	StateParam       string
+
+	NestedTypes []DocNestedType
+}
 
 type stringSet map[string]struct{}
 
@@ -44,32 +129,6 @@ type typeDetails struct {
 	functionType bool
 }
 
-// wbr inserts HTML <wbr> in between case changes, e.g. "fooBar" becomes "foo<wbr>Bar".
-func wbr(s string) string {
-	var runes []rune
-	var prev rune
-	for i, r := range s {
-		if i != 0 && unicode.IsLower(prev) && unicode.IsUpper(r) {
-			runes = append(runes, []rune("<wbr>")...)
-		}
-		runes = append(runes, r)
-		prev = r
-	}
-	return string(runes)
-}
-
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-func lower(s string) string {
-	return strings.ToLower(s)
-}
-
 type modContext struct {
 	pkg         *schema.Package
 	mod         string
@@ -78,6 +137,13 @@ type modContext struct {
 	typeDetails map[*schema.ObjectType]*typeDetails
 	children    []*modContext
 	tool        string
+}
+
+func resourceName(r *schema.Resource) string {
+	if r.IsProvider {
+		return "Provider"
+	}
+	return tokenToName(r.Token)
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -92,336 +158,384 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func tokenToName(tok string) string {
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
-}
+func (mod *modContext) typeString(t schema.Type, lang string, input, optional bool, insertWordBreaks bool) PropertyType {
+	var langType string
 
-func resourceName(r *schema.Resource) string {
-	if r.IsProvider {
-		return "Provider"
-	}
-	return tokenToName(r.Token)
-}
-
-func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
-	var br string
-	lt := "<"
-	gt := ">"
-
-	// If we're linking, we're including HTML, so also include word breaks,
-	// and escape < and >.
-	if link {
-		br = "<wbr>"
-		lt = "&lt;<wbr>"
-		gt = "<wbr>&gt;"
+	var docLanguageHelper codegen.DocLanguageHelper
+	switch lang {
+	case "nodejs":
+		docLanguageHelper = nodejs.DocLanguageHelper{}
+	case "go":
+		docLanguageHelper = go_gen.DocLanguageHelper{}
+	case "csharp":
+		docLanguageHelper = dotnet.DocLanguageHelper{}
+	case "python":
+		docLanguageHelper = python.DocLanguageHelper{}
+	default:
+		panic(errors.Errorf("Unknown language (%q) passed!", lang))
 	}
 
-	var typ string
+	langType = docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, input, optional)
+
+	// If the type is an object type, let's also wrap it with a link to the supporting type
+	// on the same page using an anchor tag.
+	var href string
 	switch t := t.(type) {
 	case *schema.ArrayType:
-
-		typ = fmt.Sprintf("Array%s%s%s", lt, mod.typeStringPulumi(t.ElementType, link), gt)
-	case *schema.MapType:
-		typ = fmt.Sprintf("Map%s%s%s", lt, mod.typeStringPulumi(t.ElementType, link), gt)
+		elementLangType := mod.typeString(t.ElementType, lang, input, optional, false)
+		href = elementLangType.Link
 	case *schema.ObjectType:
-		if link {
-			typ = fmt.Sprintf("<a href=\"#%s\">%s</a>", lower(tokenToName(t.Token)), wbr(tokenToName(t.Token)))
-		} else {
-			typ = tokenToName(t.Token)
-		}
-	case *schema.TokenType:
-		typ = tokenToName(t.Token)
-	case *schema.UnionType:
-		var elements []string
-		for _, e := range t.ElementTypes {
-			elements = append(elements, mod.typeStringPulumi(e, link))
-		}
-		sep := fmt.Sprintf(", %s", br)
-		return fmt.Sprintf("Union%s%s%s", lt, strings.Join(elements, sep), gt)
-	default:
-		switch t {
-		case schema.BoolType:
-			typ = "boolean"
-		case schema.IntType, schema.NumberType:
-			typ = "number"
-		case schema.StringType:
-			typ = "string"
-		case schema.ArchiveType:
-			typ = "Archive"
-		case schema.AssetType:
-			typ = fmt.Sprintf("Union%sAsset, %sArchive%s", lt, br, gt)
-		case schema.AnyType:
-			typ = "any"
-		}
+		tokenName := tokenToName(t.Token)
+		// Links to anchor targs on the same page must be lower-cased.
+		href = "#" + lower(tokenName)
 	}
-	return typ
+
+	if insertWordBreaks {
+		if lang == "csharp" {
+			langType = html.EscapeString(langType)
+		}
+		langType = wbr(langType)
+	}
+	return PropertyType{
+		Link: href,
+		Name: langType,
+	}
 }
 
-func (mod *modContext) genConstructorTS(w io.Writer, r *schema.Resource) {
-	name := resourceName(r)
-
-	allOptionalInputs := true
-	for _, prop := range r.InputProperties {
-		allOptionalInputs = allOptionalInputs && !prop.IsRequired
-	}
-
-	var argsFlags string
-	if allOptionalInputs {
-		// If the number of required input properties was zero, we can make the args object optional.
-		argsFlags = "?"
-	}
-	argsType := name + "Args"
-
-	// TODO: The link to the class name and args type needs to factor in the package and module. Right now it's hardcoded to aws and s3.
-	fmt.Fprintf(w, "<span class=\"k\">new</span> <span class=\"nx\"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#%s>%s</a></span><span class=\"p\">(</span><span class=\"nx\">name</span>: <span class=\"kt\"><a href=https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String>string</a></span><span class=\"p\">,</span> <span class=\"nx\">args%s</span>: <span class=\"kt\"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#%s>%s</a></span><span class=\"p\">,</span> <span class=\"nx\">opts?</span>: <span class=\"kt\"><a href=/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions>pulumi.CustomResourceOptions</a></span><span class=\"p\">);</span>", name, name, argsFlags, argsType, argsType)
-}
-
-func (mod *modContext) genConstructorPython(w io.Writer, r *schema.Resource) {
-	fmt.Fprintf(w, "def __init__(__self__, resource_name, opts=None")
-	for _, prop := range r.InputProperties {
-		fmt.Fprintf(w, ", %s=None", python.PyName(prop.Name))
-	}
-	// Note: We're excluding __name__ and __opts__ as those are only there for backwards compatibility and are
-	// deliberately not included in doc strings.
-	fmt.Fprintf(w, ", __props__=None)")
-}
-
-func (mod *modContext) genConstructorGo(w io.Writer, r *schema.Resource) {
+func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
-	fmt.Fprintf(w, "func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	argsFlag := ""
+	if argsOptional {
+		argsFlag = "?"
+	}
+
+	docLangHelper := nodejs.DocLanguageHelper{}
+	return []ConstructorParam{
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name: "string",
+				Link: nodejs.GetDocLinkForBuiltInType("string"),
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			Type: PropertyType{
+				Name: argsType,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			Type: PropertyType{
+				Name: "pulumi.CustomResourceOptions",
+				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "CustomResourceOptions"),
+			},
+		},
+	}
 }
 
-func (mod *modContext) genConstructorCS(w io.Writer, r *schema.Resource) {
+func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []ConstructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
+	argsFlag := ""
+	if argsOptional {
+		argsFlag = "*"
+	}
 
+	docLangHelper := go_gen.DocLanguageHelper{}
+	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	return []ConstructorParam{
+		{
+			Name:         "ctx",
+			OptionalFlag: "*",
+			Type: PropertyType{
+				Name: "pulumi.Context",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
+			},
+		},
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name: "string",
+				Link: go_gen.GetDocLinkForBuiltInType("string"),
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			Type: PropertyType{
+				Name: argsType,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "...",
+			Type: PropertyType{
+				Name: "pulumi.ResourceOption",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
+			},
+		},
+	}
+}
+
+func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []ConstructorParam {
+	name := resourceName(r)
+	argsType := name + "Args"
+	argsSchemaType := &schema.ObjectType{
+		Token: r.Token,
+	}
+	argLangType := mod.typeString(argsSchemaType, "csharp", true, argsOptional, false)
+
+	var argsFlag string
 	var argsDefault string
-	allOptionalInputs := true
-	for _, prop := range r.InputProperties {
-		allOptionalInputs = allOptionalInputs && !prop.IsRequired
-	}
-	if allOptionalInputs {
+	if argsOptional {
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsDefault = " = null"
-		argsType += "?"
+		argsFlag = "?"
 	}
 
-	optionsType := "CustomResourceOptions"
+	optionsType := "Pulumi.CustomResourceOptions"
 	if r.IsProvider {
-		optionsType = "ResourceOptions"
+		optionsType = "Pulumi.ResourceOptions"
 	}
 
-	fmt.Fprintf(w, "public %s(string name, %s args%s, %s? options = null)\n", name, argsType, argsDefault, optionsType)
+	docLangHelper := dotnet.DocLanguageHelper{}
+	return []ConstructorParam{
+		{
+			Name: "name",
+			Type: PropertyType{
+				Name: "string",
+				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
+			},
+		},
+		{
+			Name:         "args",
+			OptionalFlag: argsFlag,
+			DefaultValue: argsDefault,
+			Type: PropertyType{
+				Name: argsType,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			DefaultValue: " = null",
+			Type: PropertyType{
+				Name: optionsType,
+				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
+			},
+		},
+	}
 }
 
-func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, input bool) {
-	if len(properties) == 0 {
-		return
-	}
-
-	fmt.Fprintf(w, "<table class=\"ml-6\">\n")
-	fmt.Fprintf(w, "    <thead>\n")
-	fmt.Fprintf(w, "        <tr>\n")
-	fmt.Fprintf(w, "            <th>Argument</th>\n")
-	fmt.Fprintf(w, "            <th>Type</th>\n")
-	fmt.Fprintf(w, "            <th>Description</th>\n")
-	fmt.Fprintf(w, "        </tr>\n")
-	fmt.Fprintf(w, "    </thead>\n")
-	fmt.Fprintf(w, "    <tbody>\n")
-
-	for _, prop := range properties {
-		var required string
-		if input {
-			required = "(Optional) "
-			if prop.IsRequired {
-				required = "(Required) "
-			}
-		}
-
-		// The comment contains markdown, so we must wrap it in our `{{% md %}}`` shortcode, which enables markdown
-		// to be rendered inside HTML tags (otherwise, Hugo's markdown renderer won't render it as markdown).
-		// Unfortunately, this injects an extra `<p>...</p>` around the rendered markdown content, which adds some margin
-		// to the top and bottom of the content which we don't want. So we inject some styles to remove the margins from
-		// those `p` tags.
-		fmt.Fprintf(w, "        <tr>\n")
-		fmt.Fprintf(w, "            <td class=\"align-top\">%s</td>\n", wbr(prop.Name))
-		fmt.Fprintf(w, "            <td class=\"align-top\"><code>%s</code></td>\n", mod.typeStringPulumi(prop.Type, true))
-		fmt.Fprintf(w, "            <td class=\"align-top\">{{%% md %%}}\n%s%s\n{{%% /md %%}}</td>\n", required, prop.Comment)
-		fmt.Fprintf(w, "        </tr>\n")
-	}
-
-	fmt.Fprintf(w, "    </tbody>\n")
-	fmt.Fprintf(w, "</table>\n\n")
-}
-
-func (mod *modContext) genNestedTypes(w io.Writer, properties []*schema.Property, input bool) {
+func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocNestedType {
 	tokens := stringSet{}
 	mod.getTypes(properties, tokens)
-	var objs []*schema.ObjectType
+
+	var objs []DocNestedType
 	for token := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
-				objs = append(objs, obj)
+				if len(obj.Properties) == 0 {
+					continue
+				}
+
+				// Create maps to hold the per-language properties of this object and links to
+				// the API doc fpr each language.
+				props := make(map[string][]Property)
+				apiDocLinks := make(map[string]string)
+				for _, lang := range supportedLanguages {
+					var docLangHelper codegen.DocLanguageHelper
+
+					inputObjLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
+					switch lang {
+					case "csharp":
+						docLangHelper = dotnet.DocLanguageHelper{}
+					case "go":
+						docLangHelper = go_gen.DocLanguageHelper{}
+					case "nodejs":
+						docLangHelper = nodejs.DocLanguageHelper{}
+					case "python":
+						docLangHelper = python.DocLanguageHelper{}
+					default:
+						panic(errors.Errorf("cannot generate nested type doc link for unhandled language %q", lang))
+					}
+					apiDocLinks[lang] = docLangHelper.GetDocLinkForInputType(mod.pkg.Name, mod.mod, inputObjLangType.Name)
+					props[lang] = mod.getProperties(obj.Properties, lang, true)
+				}
+
+				objs = append(objs, DocNestedType{
+					Name:        tokenToName(obj.Token),
+					APIDocLinks: apiDocLinks,
+					Properties:  props,
+				})
 			}
 		}
 	}
+
 	sort.Slice(objs, func(i, j int) bool {
-		return tokenToName(objs[i].Token) < tokenToName(objs[j].Token)
+		return objs[i].Name < objs[j].Name
 	})
-	for _, obj := range objs {
-		fmt.Fprintf(w, "#### %s\n\n", tokenToName(obj.Token))
 
-		mod.genProperties(w, obj.Properties, input)
-	}
+	return objs
 }
 
-func (mod *modContext) genGet(w io.Writer, r *schema.Resource) {
-	name := resourceName(r)
-
-	stateType := name + "State"
-
-	var stateParam string
-	if r.StateInputs != nil {
-		stateParam = fmt.Sprintf("state?: %s, ", stateType)
+// getProperties returns a slice of properties that can be rendered for docs for
+// the provided slice of properties in the schema.
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []Property {
+	if len(properties) == 0 {
+		return nil
 	}
 
-	fmt.Fprintf(w, "{{< langchoose csharp >}}\n\n")
-
-	fmt.Fprintf(w, "```typescript\n")
-	fmt.Fprintf(w, "public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.CustomResourceOptions): %s;\n", stateParam, name)
-	fmt.Fprintf(w, "```\n\n")
-
-	// TODO: This is currently hard coded for Bucket. Need to generalize for all resources.
-	fmt.Fprintf(w, "```python\n")
-	fmt.Fprintf(w, "def get(resource_name, id, opts=None, acceleration_status=None, acl=None, arn=None, bucket=None, bucket_domain_name=None, bucket_prefix=None, bucket_regional_domain_name=None, cors_rules=None, force_destroy=None, hosted_zone_id=None, lifecycle_rules=None, loggings=None, object_lock_configuration=None, policy=None, region=None, replication_configuration=None, request_payer=None, server_side_encryption_configuration=None, tags=None, versioning=None, website=None, website_domain=None, website_endpoint=None)\n")
-	fmt.Fprintf(w, "```\n\n")
-
-	// TODO: This is currently hard coded for Bucket. Need to generalize for all resources.
-	fmt.Fprintf(w, "```go\n")
-	fmt.Fprintf(w, "func GetBucket(ctx *pulumi.Context, name string, id pulumi.IDInput, state *BucketState, opts ...pulumi.ResourceOption) (*Bucket, error)\n")
-	fmt.Fprintf(w, "```\n\n")
-
-	// TODO: This is currently hard coded for Bucket. Need to generalize for all resources.
-	fmt.Fprintf(w, "```csharp\n")
-	fmt.Fprintf(w, "public static Bucket Get(string name, Input<string> id, BucketState? state = null, CustomResourceOptions? options = null);\n")
-	fmt.Fprintf(w, "```\n\n")
-
-	fmt.Fprintf(w, "Get an existing %s resource's state with the given name, ID, and optional extra\n", name)
-	fmt.Fprintf(w, "properties used to qualify the lookup.\n\n")
-
-	for _, lang := range []string{"nodejs", "go", "csharp"} {
-		fmt.Fprintf(w, "{{%% lang %s %%}}\n", lang)
-		fmt.Fprintf(w, "<ul class=\"pl-10\">\n")
-		fmt.Fprintf(w, "    <li><strong>name</strong> &ndash; (Required) The unique name of the resulting resource.</li>\n")
-		fmt.Fprintf(w, "    <li><strong>id</strong> &ndash; (Required) The _unique_ provider ID of the resource to lookup.</li>\n")
-		if stateParam != "" {
-			fmt.Fprintf(w, "    <li><strong>state</strong> &ndash; (Optional) Any extra arguments used during the lookup.</li>\n")
+	docProperties := make([]Property, 0, len(properties))
+	for _, prop := range properties {
+		if prop == nil {
+			continue
 		}
-		fmt.Fprintf(w, "    <li><strong>opts</strong> &ndash; (Optional) A bag of options that control this resource's behavior.</li>\n")
-		fmt.Fprintf(w, "</ul>\n")
-		fmt.Fprintf(w, "{{%% /lang %%}}\n\n")
+		docProperties = append(docProperties, Property{
+			Name:               getLanguagePropertyName(prop.Name, lang, true),
+			Comment:            prop.Comment,
+			DeprecationMessage: prop.DeprecationMessage,
+			IsRequired:         prop.IsRequired,
+			IsInput:            isInput,
+			Type:               mod.typeString(prop.Type, lang, isInput, !prop.IsRequired, true),
+		})
 	}
 
-	// TODO: Unlike the other languages, Python does not have a separate state object. The state args are all just
-	// named parameters of the get function. Consider injecting `resource_name`, `id`, and `opts` as the first three
-	// items in the table of state input properties.
-
-	if r.StateInputs != nil {
-		fmt.Fprintf(w, "The following state arguments are supported:\n\n")
-
-		mod.genProperties(w, r.StateInputs.Properties, true)
-	}
+	return docProperties
 }
 
-func (mod *modContext) genResource(w io.Writer, r *schema.Resource) {
+func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) map[string]string {
+	constructorParams := make(map[string]string)
+	for _, lang := range supportedLanguages {
+		var (
+			paramTemplate string
+			params        []ConstructorParam
+		)
+		b := &bytes.Buffer{}
+
+		switch lang {
+		case "nodejs":
+			params = mod.genConstructorTS(r, allOptionalInputs)
+			paramTemplate = "ts_constructor_param"
+		case "go":
+			params = mod.genConstructorGo(r, allOptionalInputs)
+			paramTemplate = "go_constructor_param"
+		case "csharp":
+			params = mod.genConstructorCS(r, allOptionalInputs)
+			paramTemplate = "csharp_constructor_param"
+		}
+
+		n := len(params)
+		for i, p := range params {
+			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+				panic(err)
+			}
+			if i != n-1 {
+				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+					panic(err)
+				}
+			}
+		}
+		constructorParams[lang] = b.String()
+	}
+	return constructorParams
+}
+
+// getConstructorResourceInfo returns a map of per-language information about
+// the resource being constructed.
+func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]PropertyType {
+	resourceMap := make(map[string]PropertyType)
+	resourceDisplayName := resourceTypeName
+
+	for _, lang := range supportedLanguages {
+		// Reset the type name back to the display name.
+		resourceTypeName = resourceDisplayName
+
+		var docLangHelper codegen.DocLanguageHelper
+		switch lang {
+		case "nodejs":
+			docLangHelper = nodejs.DocLanguageHelper{}
+		case "go":
+			docLangHelper = go_gen.DocLanguageHelper{}
+		case "csharp":
+			docLangHelper = dotnet.DocLanguageHelper{}
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resourceTypeName)
+		case "python":
+			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
+			continue
+		default:
+			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
+		}
+
+		resourceMap[lang] = PropertyType{
+			Name: resourceDisplayName,
+			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
+		}
+	}
+
+	return resourceMap
+}
+
+// genResource is the entrypoint for generating a doc for a resource
+// from its Pulumi schema.
+func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
-	fmt.Fprintf(w, "%s\n\n", r.Comment)
-
-	// TODO: Remove this - it's just temporary to include some data we don't have available yet.
-	mod.genMockupExamples(w, r)
-
-	fmt.Fprintf(w, "## Create a %s Resource\n\n", name)
-
-	// TODO: In the examples on the page, we only want to show TypeScript and Python tabs for now, as initially
-	// we'll only have examples in those languages.
-	// However, lower on the page, we will be showing declarations and types in all of the supported languages.
-	// The default behavior of the lang chooser is to switch all lang tabs on the page when a tab is selected.
-	// This means, if Go is selected lower in the page, then the chooser tabs for the examples will try to show
-	// Go content, which won't be present. We should fix this somehow such that selecting Go lower in the page
-	// doesn't cause the example tabs to change. But if Python is selected, the example tabs should change since
-	// Python is available there.
-	fmt.Fprintf(w, "{{< langchoose csharp >}}\n\n")
-
-	fmt.Fprintf(w, "<div class=\"highlight\"><pre class=\"chroma\"><code class=\"language-typescript\" data-lang=\"typescript\">")
-	mod.genConstructorTS(w, r)
-	fmt.Fprintf(w, "</code></pre></div>\n\n")
-
-	fmt.Fprintf(w, "```python\n")
-	mod.genConstructorPython(w, r)
-	fmt.Fprintf(w, "\n```\n\n")
-
-	fmt.Fprintf(w, "```go\n")
-	mod.genConstructorGo(w, r)
-	fmt.Fprintf(w, "\n```\n\n")
-
-	fmt.Fprintf(w, "```csharp\n")
-	mod.genConstructorCS(w, r)
-	fmt.Fprintf(w, "\n```\n\n")
-
-	fmt.Fprintf(w, "Creates a %s resource with the given unique name, arguments, and options.\n\n", name)
+	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
+	// The args are all just named parameters of the constructor. Consider injecting
+	// `resource_name` and `opts` as the first two items in the table of properties.
+	inputProps := make(map[string][]Property)
+	outputProps := make(map[string][]Property)
+	stateInputs := make(map[string][]Property)
+	for _, lang := range supportedLanguages {
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
+		if r.IsProvider {
+			continue
+		}
+		outputProps[lang] = mod.getProperties(r.Properties, lang, false)
+		if r.StateInputs != nil {
+			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true)
+		}
+	}
 
 	allOptionalInputs := true
 	for _, prop := range r.InputProperties {
-		allOptionalInputs = allOptionalInputs && !prop.IsRequired
+		// If at least one prop is required, then break.
+		if prop.IsRequired {
+			allOptionalInputs = false
+			break
+		}
 	}
 
-	argsRequired := "Required"
-	if allOptionalInputs {
-		argsRequired = "Optional"
+	data := resourceArgs{
+		Header: Header{
+			Title: name,
+		},
+
+		Comment: r.Comment,
+		// TODO: This is just temporary to include some data we don't have available yet.
+		Examples: mod.getMockupExamples(r),
+
+		ConstructorParams:   mod.genConstructors(r, allOptionalInputs),
+		ConstructorResource: mod.getConstructorResourceInfo(name),
+		ArgsRequired:        !allOptionalInputs,
+
+		InputProperties:  inputProps,
+		OutputProperties: outputProps,
+		StateInputs:      stateInputs,
+		StateParam:       name + "State",
+		NestedTypes:      mod.genNestedTypes(r.InputProperties, true),
 	}
 
-	for _, lang := range []string{"nodejs", "go", "csharp"} {
-		fmt.Fprintf(w, "{{%% lang %s %%}}\n", lang)
-		fmt.Fprintf(w, "<ul class=\"pl-10\">\n")
-		fmt.Fprintf(w, "    <li><strong>name</strong> &ndash; (Required) The unique name of the resulting resource.</li>\n")
-		fmt.Fprintf(w, "    <li><strong>args</strong> &ndash; (%s) The arguments to use to populate this resource's properties.</li>\n", argsRequired)
-		fmt.Fprintf(w, "    <li><strong>opts</strong> &ndash; (Optional) A bag of options that control this resource's behavior.</li>\n")
-		fmt.Fprintf(w, "</ul>\n")
-		fmt.Fprintf(w, "{{%% /lang %%}}\n\n")
-	}
-
-	fmt.Fprintf(w, "The following arguments are supported:\n\n")
-
-	// TODO: Unlike the other languages, Python does not have a separate Args object. The args are all just
-	// named parameters of the constructor. Consider injecting `resource_name` and `opts` as the first two items
-	// in the table of properties.
-
-	mod.genProperties(w, r.InputProperties, true)
-
-	fmt.Fprintf(w, "## %s Output Properties\n\n", name)
-
-	fmt.Fprintf(w, "The following output properties are available:\n\n")
-
-	mod.genProperties(w, r.Properties, false)
-
-	fmt.Fprintf(w, "## Look up an Existing %s Resource\n\n", name)
-
-	mod.genGet(w, r)
-
-	fmt.Fprintf(w, "## Import an Existing %s Resource\n\n", name)
-
-	// TODO: How do we want to show import? It will take a paragraph or two of explanation plus example, similar
-	// to the content at https://www.pulumi.com/docs/intro/concepts/programming-model/#import
-	fmt.Fprintf(w, "TODO\n\n")
-
-	fmt.Fprintf(w, "## Support Types\n\n")
-
-	mod.genNestedTypes(w, r.InputProperties, true)
+	return data
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
@@ -543,12 +657,15 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Resources
 	for _, r := range mod.resources {
+		data := mod.genResource(r)
+
+		title := resourceName(r)
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, resourceName(r))
-
-		mod.genResource(buffer, r)
-
-		addFile(lower(resourceName(r))+".md", buffer.String())
+		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
+		if err != nil {
+			panic(err)
+		}
+		addFile(lower(title)+".md", buffer.String())
 	}
 
 	// Functions
@@ -636,7 +753,23 @@ func (mod *modContext) genIndex(exports []string) string {
 	return w.String()
 }
 
+// GeneratePackage generates the docs package with docs for each resource given the Pulumi
+// schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	templates = template.New("").Funcs(template.FuncMap{
+		"htmlSafe": func(html string) template.HTML {
+			// Markdown fragments in the templates need to be rendered as-is,
+			// so that html/template package doesn't try to inject data into it,
+			// which will most certainly fail.
+			// nolint gosec
+			return template.HTML(html)
+		},
+	})
+
+	for name, b := range packagedTemplates {
+		template.Must(templates.New(name).Parse(string(b)))
+	}
+
 	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
 
@@ -723,18 +856,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 }
 
 // TODO: Remove this when we have real examples available.
-func (mod *modContext) genMockupExamples(w io.Writer, r *schema.Resource) {
+func (mod *modContext) getMockupExamples(r *schema.Resource) []exampleUsage {
 
 	if resourceName(r) != "Bucket" {
-		return
+		return nil
 	}
 
-	fmt.Fprintf(w, "## Example Usage\n\n")
-
-	examples := []struct {
-		Heading string
-		Code    string
-	}{
+	examples := []exampleUsage{
 		{
 			Heading: "Private Bucket w/ Tags",
 			Code: `import * as pulumi from "@pulumi/pulumi";
@@ -1003,15 +1131,5 @@ const mybucket = new aws.s3.Bucket("mybucket", {
 		},
 	}
 
-	for _, example := range examples {
-		fmt.Fprintf(w, "### %s\n\n", example.Heading)
-
-		fmt.Fprintf(w, "{{< langchoose nojavascript nogo >}}\n\n")
-
-		fmt.Fprintf(w, "```typescript\n")
-		fmt.Fprintf(w, example.Code)
-		fmt.Fprintf(w, "```\n\n")
-
-		fmt.Fprintf(w, "```python\nComing soon\n```\n\n")
-	}
+	return examples
 }

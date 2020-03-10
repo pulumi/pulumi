@@ -136,7 +136,7 @@ func (mod *modContext) gen(fs fs) error {
 			d = ""
 		}
 		if d == dir {
-			exports = append(exports, p[:len(p)-len(".py")])
+			exports = append(exports, strings.TrimSuffix(path.Base(p), ".py"))
 		}
 	}
 
