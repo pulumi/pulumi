@@ -21,7 +21,10 @@ CHANGELOG
 
 - Fix `pulumi stack ls` on Windows
   [#4094](https://github.com/pulumi/pulumi/pull/4094)
-  
+
+- Add support for running Python policy packs.
+  [#4057](https://github.com/pulumi/pulumi/pull/4057)
+
 ## 1.12.1 (2020-03-11)
 - Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
