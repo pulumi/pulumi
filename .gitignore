@@ -5,6 +5,7 @@
 **/.vscode/
 **/.vs/
 **/.ionide/
+**/.idea/
 coverage.cov
 *.coverprofile
 

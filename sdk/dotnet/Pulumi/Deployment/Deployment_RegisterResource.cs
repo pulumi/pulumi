@@ -28,7 +28,7 @@ namespace Pulumi
             PopulateRequest(request, prepareResult);
 
             Log.Debug($"Registering resource monitor start: t={type}, name={name}, custom={custom}");
-            var result = await this.Monitor.RegisterResourceAsync(request);
+            var result = await this.Monitor.RegisterResourceAsync(resource, request);
             Log.Debug($"Registering resource monitor end: t={type}, name={name}, custom={custom}");
             return (result.Urn, result.Id, result.Object);
         }
