@@ -3,6 +3,7 @@ package httpstate
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -75,6 +76,8 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 
 	return policyPackPath, installRequiredPolicy(policyPackPath, policyPackTarball)
 }
+
+func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
 
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName) *cloudBackendPolicyPackReference {

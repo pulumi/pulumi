@@ -54,6 +54,8 @@ install:
     set PULUMI_LOCAL_NUGET=C:\Pulumi\nuget
     
     set PULUMI_TEST_OWNER=moolumi
+
+    choco install dep
 - ps: >-
     New-Item -Type Directory "$env:USERPROFILE\go\bin"
 build_script:

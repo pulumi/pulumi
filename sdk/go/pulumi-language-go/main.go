@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -41,6 +42,9 @@ const unableToFindProgramTemplate = "unable to find program: %s"
 // findExecutable attempts to find the needed executable in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func findExecutable(program string) (string, error) {
+	if runtime.GOOS == "windows" {
+		program = fmt.Sprintf("%s.exe", program)
+	}
 	// look in the same directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -156,7 +160,6 @@ func newLanguageHost(engineAddress, tracing string) pulumirpc.LanguageRuntimeSer
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-
 	cmd, err := findProgram(req.GetProject())
 	if err != nil {
 		return nil, err

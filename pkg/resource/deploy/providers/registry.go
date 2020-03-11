@@ -295,6 +295,13 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
+	if diff.Changes == plugin.DiffUnknown {
+		if olds.DeepEquals(news) {
+			diff.Changes = plugin.DiffNone
+		} else {
+			diff.Changes = plugin.DiffSome
+		}
+	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	//

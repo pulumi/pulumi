@@ -75,7 +75,7 @@ namespace Pulumi.Serialization
             {
                 var propType = prop.PropertyType;
                 var propFullName = $"[Output] {resource.GetType().FullName}.{prop.Name}";
-                if (!propType.IsConstructedGenericType &&
+                if (!propType.IsConstructedGenericType ||
                     propType.GetGenericTypeDefinition() != typeof(Output<>))
                 {
                     throw new InvalidOperationException($"{propFullName} was not an Output<T>");

@@ -37,6 +37,7 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
 	var policyPackPaths []string
+	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -88,13 +89,17 @@ func newPreviewCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
+			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
+				return result.FromError(err)
+			}
+
 			s, err := requireStack(stack, true, displayOpts, true /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(s, configArray, configPath); err != nil {
 				return result.FromError(err)
 			}
 
@@ -135,7 +140,7 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+					LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:         parallel,
 					Debug:            debug,
 					Refresh:          refresh,
@@ -210,6 +215,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
 		"[PREVIEW] Run one or more policy packs as part of this update")
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackConfigPaths, "policy-pack-config", []string{},
+		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

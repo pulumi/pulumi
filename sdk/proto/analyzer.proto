@@ -36,6 +36,8 @@ service Analyzer {
     rpc GetAnalyzerInfo(google.protobuf.Empty) returns (AnalyzerInfo) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+    // Configure configures the analyzer, passing configuration properties for each policy.
+    rpc Configure(ConfigureAnalyzerRequest) returns (google.protobuf.Empty) {}
 }
 
 message AnalyzeRequest {
@@ -105,6 +107,7 @@ message AnalyzeResponse {
 enum EnforcementLevel {
     ADVISORY = 0;  // Displayed to users, but does not block deployment.
     MANDATORY = 1; // Stops deployment, cannot be overridden.
+    DISABLED = 2;  // Disabled policies do not run during a deployment.
 }
 
 message AnalyzeDiagnostic {
@@ -124,13 +127,32 @@ message AnalyzerInfo {
     string displayName = 2;           // Pretty name for the PolicyPack.
     repeated PolicyInfo policies = 3; // Metadata about policies contained in PolicyPack.
     string version = 4;               // Version of the Policy Pack.
+    bool supportsConfig = 5;          // Whether the Policy Pack supports config.
 }
 
-// PolicyInfo provides metadata about an individual Policy within a Policy Pack.
+// PolicyInfo provides metadata about a policy within a Policy Pack.
 message PolicyInfo {
-	string name = 1;                       // Name of the policy.
-	string displayName = 2;                // Pretty name for the policy.
-	string description = 3;                // Description of policy rule. e.g., "encryption enabled."
-	string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
+    string name = 1;                       // Name of the policy.
+    string displayName = 2;                // Pretty name for the policy.
+    string description = 3;                // Description of policy rule. e.g., "encryption enabled."
+    string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
+    EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
+    PolicyConfigSchema configSchema = 6;   // Config schema for the policy.
+}
+
+// PolicyConfigSchema provides the schema for a policy's configuration.
+message PolicyConfigSchema {
+    google.protobuf.Struct properties = 1; // JSON schema for each property.
+    repeated string required = 2;          // Required properties.
+}
+
+// PolicyConfig provides configuration for a policy.
+message PolicyConfig {
+    EnforcementLevel enforcementLevel = 1; // Enforcement level of the policy.
+    google.protobuf.Struct properties = 2; // Configuration properties of the policy.
+}
+
+// ConfigureAnalyzerRequest provides configuration information to the analyzer.
+message ConfigureAnalyzerRequest {
+    map<string, PolicyConfig> policyConfig = 1; // Map of policy name to config.
 }

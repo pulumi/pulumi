@@ -98,6 +98,8 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		optionMap[message] = ambiguousResource
 	}
 
+	cmdutil.EndKeypadTransmitMode()
+
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
@@ -146,6 +148,7 @@ func runTotalStateEdit(
 		surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
 		prompt += "This command will edit your stack's state directly. Confirm?"
+		cmdutil.EndKeypadTransmitMode()
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, nil); err != nil || !confirm {

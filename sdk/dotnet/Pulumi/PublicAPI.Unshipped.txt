@@ -198,6 +198,17 @@ Pulumi.StackReferenceArgs.Name.set -> void
 Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
+Pulumi.Testing.IMocks
+Pulumi.Testing.IMocks.CallAsync(string token, System.Collections.Immutable.ImmutableDictionary<string, object> args, string provider) -> System.Threading.Tasks.Task<object>
+Pulumi.Testing.IMocks.NewResourceAsync(string type, string name, System.Collections.Immutable.ImmutableDictionary<string, object> inputs, string provider, string id) -> System.Threading.Tasks.Task<(string id, object state)>
+Pulumi.Testing.TestOptions
+Pulumi.Testing.TestOptions.TestOptions() -> void
+Pulumi.Testing.TestOptions.ProjectName.get -> string
+Pulumi.Testing.TestOptions.ProjectName.set -> void
+Pulumi.Testing.TestOptions.StackName.get -> string
+Pulumi.Testing.TestOptions.StackName.set -> void
+Pulumi.Testing.TestOptions.IsPreview.get -> bool?
+Pulumi.Testing.TestOptions.IsPreview.set -> void
 Pulumi.Union<T0, T1>
 Pulumi.Union<T0, T1>.AsT0.get -> T0
 Pulumi.Union<T0, T1>.AsT1.get -> T1
@@ -223,6 +234,7 @@ static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Task
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.IMocks mocks, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>

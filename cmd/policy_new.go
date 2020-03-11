@@ -197,6 +197,8 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
 
+	cmdutil.EndKeypadTransmitMode()
+
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
