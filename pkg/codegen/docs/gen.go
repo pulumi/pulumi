@@ -41,13 +41,31 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-var supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
+var (
+	supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
+	templates          *template.Template
+	packagedTemplates  map[string][]byte
+	docHelpers         map[string]codegen.DocLanguageHelper
+)
 
-var templates *template.Template
-var packagedTemplates map[string][]byte
+func init() {
+	docHelpers = make(map[string]codegen.DocLanguageHelper)
+	for _, lang := range supportedLanguages {
+		switch lang {
+		case "csharp":
+			docHelpers[lang] = dotnet.DocLanguageHelper{}
+		case "go":
+			docHelpers[lang] = go_gen.DocLanguageHelper{}
+		case "nodejs":
+			docHelpers[lang] = nodejs.DocLanguageHelper{}
+		case "python":
+			docHelpers[lang] = python.DocLanguageHelper{}
+		}
+	}
+}
 
-// Header represents the header of each resource markdown file.
-type Header struct {
+// header represents the header of each resource markdown file.
+type header struct {
 	Title string
 }
 
@@ -56,11 +74,11 @@ type exampleUsage struct {
 	Code    string
 }
 
-// Property represents an input or an output property.
-type Property struct {
+// property represents an input or an output property.
+type property struct {
 	Name               string
 	Comment            string
-	Type               PropertyType
+	Type               propertyType
 	DeprecationMessage string
 
 	IsRequired bool
@@ -69,26 +87,32 @@ type Property struct {
 	IsInput bool
 }
 
-// DocNestedType represents a complex type.
-type DocNestedType struct {
-	Name         string
-	IsOutputType bool
-	APIDocLinks  map[string]string
-	Properties   map[string][]Property
+// apiTypeDocLinks represents the links for a type's input and output API doc.
+type apiTypeDocLinks struct {
+	InputType  string
+	OutputType string
 }
 
-// PropertyType represents the type of a property.
-type PropertyType struct {
+// docNestedType represents a complex type.
+type docNestedType struct {
+	Name         string
+	IsOutputType bool
+	APIDocLinks  map[string]apiTypeDocLinks
+	Properties   map[string][]property
+}
+
+// propertyType represents the type of a property.
+type propertyType struct {
 	Name string
 	// Link can be a link to an anchor tag on the same
 	// page, or to another page/site.
 	Link string
 }
 
-// ConstructorParam represents the formal parameters of a constructor.
-type ConstructorParam struct {
+// constructorParam represents the formal parameters of a constructor.
+type constructorParam struct {
 	Name string
-	Type PropertyType
+	Type propertyType
 
 	// This is the language specific optional type indicator.
 	// For example, in nodejs this is the character "?" and in Go
@@ -99,7 +123,7 @@ type ConstructorParam struct {
 }
 
 type resourceDocArgs struct {
-	Header
+	Header header
 
 	Comment  string
 	Examples []exampleUsage
@@ -107,15 +131,15 @@ type resourceDocArgs struct {
 	ConstructorParams map[string]string
 	// ConstructorResource is the resource that is being constructed or
 	// is the result of a constructor-like function.
-	ConstructorResource map[string]PropertyType
+	ConstructorResource map[string]propertyType
 	ArgsRequired        bool
 
-	InputProperties  map[string][]Property
-	OutputProperties map[string][]Property
-	StateInputs      map[string][]Property
+	InputProperties  map[string][]property
+	OutputProperties map[string][]property
+	StateInputs      map[string][]property
 	StateParam       string
 
-	NestedTypes []DocNestedType
+	NestedTypes []docNestedType
 }
 
 type appearsIn struct {
@@ -127,8 +151,11 @@ type stringSet map[string]appearsIn
 
 func (ss stringSet) add(s string, input bool) {
 	if v, ok := ss[s]; ok {
-		v.Input = input
-		v.Output = !input
+		if input {
+			v.Input = true
+		} else {
+			v.Output = true
+		}
 		return
 	}
 
@@ -161,6 +188,13 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
+	if h, ok := docHelpers[lang]; ok {
+		return h
+	}
+	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
+}
+
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	details, ok := mod.typeDetails[t]
 	if !ok {
@@ -173,24 +207,9 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) typeString(t schema.Type, lang string, input, optional bool, insertWordBreaks bool) PropertyType {
-	var langType string
-
-	var docLanguageHelper codegen.DocLanguageHelper
-	switch lang {
-	case "nodejs":
-		docLanguageHelper = nodejs.DocLanguageHelper{}
-	case "go":
-		docLanguageHelper = go_gen.DocLanguageHelper{}
-	case "csharp":
-		docLanguageHelper = dotnet.DocLanguageHelper{}
-	case "python":
-		docLanguageHelper = python.DocLanguageHelper{}
-	default:
-		panic(errors.Errorf("Unknown language (%q) passed!", lang))
-	}
-
-	langType = docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, input, optional)
+func (mod *modContext) typeString(t schema.Type, lang string, input, optional bool, insertWordBreaks bool) propertyType {
+	docLanguageHelper := getLanguageDocHelper(lang)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, input, optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
@@ -207,17 +226,17 @@ func (mod *modContext) typeString(t schema.Type, lang string, input, optional bo
 
 	if insertWordBreaks {
 		if lang == "csharp" {
-			langType = html.EscapeString(langType)
+			langTypeString = html.EscapeString(langTypeString)
 		}
-		langType = wbr(langType)
+		langTypeString = wbr(langTypeString)
 	}
-	return PropertyType{
+	return propertyType{
 		Link: href,
-		Name: langType,
+		Name: langTypeString,
 	}
 }
 
-func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []constructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -225,11 +244,11 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		argsFlag = "?"
 	}
 
-	docLangHelper := nodejs.DocLanguageHelper{}
-	return []ConstructorParam{
+	docLangHelper := getLanguageDocHelper("nodejs")
+	return []constructorParam{
 		{
 			Name: "name",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "string",
 				Link: nodejs.GetDocLinkForBuiltInType("string"),
 			},
@@ -237,7 +256,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		{
 			Name:         "args",
 			OptionalFlag: argsFlag,
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
 			},
@@ -245,7 +264,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		{
 			Name:         "opts",
 			OptionalFlag: "?",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "pulumi.CustomResourceOptions",
 				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "CustomResourceOptions"),
 			},
@@ -253,7 +272,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []constructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -261,20 +280,20 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 		argsFlag = "*"
 	}
 
-	docLangHelper := go_gen.DocLanguageHelper{}
+	docLangHelper := getLanguageDocHelper("go")
 	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
-	return []ConstructorParam{
+	return []constructorParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "pulumi.Context",
 				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
 			},
 		},
 		{
 			Name: "name",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "string",
 				Link: go_gen.GetDocLinkForBuiltInType("string"),
 			},
@@ -282,7 +301,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 		{
 			Name:         "args",
 			OptionalFlag: argsFlag,
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
 			},
@@ -290,7 +309,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 		{
 			Name:         "opts",
 			OptionalFlag: "...",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "pulumi.ResourceOption",
 				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
 			},
@@ -298,7 +317,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []ConstructorParam {
+func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []constructorParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsSchemaType := &schema.ObjectType{
@@ -319,11 +338,11 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		optionsType = "Pulumi.ResourceOptions"
 	}
 
-	docLangHelper := dotnet.DocLanguageHelper{}
-	return []ConstructorParam{
+	docLangHelper := getLanguageDocHelper("csharp")
+	return []constructorParam{
 		{
 			Name: "name",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "string",
 				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
 			},
@@ -332,7 +351,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			Name:         "args",
 			OptionalFlag: argsFlag,
 			DefaultValue: argsDefault,
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
 			},
@@ -341,7 +360,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			Name:         "opts",
 			OptionalFlag: "?",
 			DefaultValue: " = null",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: optionsType,
 				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
 			},
@@ -349,11 +368,13 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genNestedTypes(member interface{}, input bool, resourceType bool) []DocNestedType {
+func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
 	tokens := stringSet{}
-	mod.getTypes(member, tokens, input)
+	// Collect all of the types for this "member" as a map of resource names
+	// and if it appears in an input object and/or output object.
+	mod.getTypes(member, tokens)
 
-	var objs []DocNestedType
+	var objs []docNestedType
 	for token, appearsIn := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
@@ -363,35 +384,39 @@ func (mod *modContext) genNestedTypes(member interface{}, input bool, resourceTy
 
 				// Create maps to hold the per-language properties of this object and links to
 				// the API doc for each language.
-				props := make(map[string][]Property)
-				apiDocLinks := make(map[string]string)
+				props := make(map[string][]property)
+				apiDocLinks := make(map[string]apiTypeDocLinks)
 				for _, lang := range supportedLanguages {
-					var docLangHelper codegen.DocLanguageHelper
-
-					inputObjLangType := mod.typeString(t, lang, input /*input*/, true /*optional*/, false /*insertWordBreaks*/)
-					switch lang {
-					case "csharp":
-						docLangHelper = dotnet.DocLanguageHelper{}
-					case "go":
-						docLangHelper = go_gen.DocLanguageHelper{}
-					case "nodejs":
-						docLangHelper = nodejs.DocLanguageHelper{}
-					case "python":
-						docLangHelper = python.DocLanguageHelper{}
-					default:
-						panic(errors.Errorf("cannot generate nested type doc link for unhandled language %q", lang))
-					}
+					docLangHelper := getLanguageDocHelper(lang)
+					inputObjLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
+					outputObjLangType := mod.typeString(t, lang, false /*input*/, true /*optional*/, false /*insertWordBreaks*/)
 
 					// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
+					var inputTypeDocLink string
+					var outputTypeDocLink string
 					if resourceType {
-						apiDocLinks[lang] = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, input)
+						if appearsIn.Input {
+							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, true)
+						}
+						if appearsIn.Output {
+							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, outputObjLangType.Name, false)
+						}
 					} else {
-						apiDocLinks[lang] = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, appearsIn.Input)
+						if appearsIn.Input {
+							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, true)
+						}
+						if appearsIn.Output {
+							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, outputObjLangType.Name, false)
+						}
+					}
+					apiDocLinks[lang] = apiTypeDocLinks{
+						InputType:  inputTypeDocLink,
+						OutputType: outputTypeDocLink,
 					}
 					props[lang] = mod.getProperties(obj.Properties, lang, true)
 				}
 
-				objs = append(objs, DocNestedType{
+				objs = append(objs, docNestedType{
 					Name:        tokenToName(obj.Token),
 					APIDocLinks: apiDocLinks,
 					Properties:  props,
@@ -409,17 +434,17 @@ func (mod *modContext) genNestedTypes(member interface{}, input bool, resourceTy
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []Property {
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []property {
 	if len(properties) == 0 {
 		return nil
 	}
 
-	docProperties := make([]Property, 0, len(properties))
+	docProperties := make([]property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
 			continue
 		}
-		docProperties = append(docProperties, Property{
+		docProperties = append(docProperties, property{
 			Name:               getLanguagePropertyName(prop.Name, lang, true),
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
@@ -437,7 +462,7 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
-			params        []ConstructorParam
+			params        []constructorParam
 		)
 		b := &bytes.Buffer{}
 
@@ -471,22 +496,17 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 
 // getConstructorResourceInfo returns a map of per-language information about
 // the resource being constructed.
-func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]PropertyType {
-	resourceMap := make(map[string]PropertyType)
+func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]propertyType {
+	resourceMap := make(map[string]propertyType)
 	resourceDisplayName := resourceTypeName
 
 	for _, lang := range supportedLanguages {
 		// Reset the type name back to the display name.
 		resourceTypeName = resourceDisplayName
 
-		var docLangHelper codegen.DocLanguageHelper
+		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
-		case "nodejs":
-			docLangHelper = nodejs.DocLanguageHelper{}
-		case "go":
-			docLangHelper = go_gen.DocLanguageHelper{}
 		case "csharp":
-			docLangHelper = dotnet.DocLanguageHelper{}
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
@@ -495,7 +515,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
-		resourceMap[lang] = PropertyType{
+		resourceMap[lang] = propertyType{
 			Name: resourceDisplayName,
 			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
 		}
@@ -513,9 +533,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
 	// The args are all just named parameters of the constructor. Consider injecting
 	// `resource_name` and `opts` as the first two items in the table of properties.
-	inputProps := make(map[string][]Property)
-	outputProps := make(map[string][]Property)
-	stateInputs := make(map[string][]Property)
+	inputProps := make(map[string][]property)
+	outputProps := make(map[string][]property)
+	stateInputs := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
 		if r.IsProvider {
@@ -537,7 +557,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	}
 
 	data := resourceDocArgs{
-		Header: Header{
+		Header: header{
 			Title: name,
 		},
 
@@ -553,7 +573,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		OutputProperties: outputProps,
 		StateInputs:      stateInputs,
 		StateParam:       name + "State",
-		NestedTypes:      mod.genNestedTypes(r.InputProperties, true /*input*/, true /*resourceType*/),
+		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
 	}
 
 	return data
@@ -585,7 +605,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool
 		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.ObjectType:
 		types.add(t.Token, input)
-		mod.getTypes(t.Properties, types, input)
+		mod.getTypes(t.Properties, types)
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
 			mod.getNestedTypes(e, types, input)
@@ -593,11 +613,11 @@ func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool
 	}
 }
 
-func (mod *modContext) getTypes(member interface{}, types stringSet, input bool) {
+func (mod *modContext) getTypes(member interface{}, types stringSet) {
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		for _, p := range member.Properties {
-			mod.getNestedTypes(p.Type, types, input)
+			mod.getNestedTypes(p.Type, types, false)
 		}
 	case *schema.Resource:
 		for _, p := range member.Properties {
@@ -612,10 +632,6 @@ func (mod *modContext) getTypes(member interface{}, types stringSet, input bool)
 		}
 		if member.Outputs != nil {
 			mod.getNestedTypes(member.Outputs, types, false)
-		}
-	case []*schema.Property:
-		for _, p := range member {
-			mod.getNestedTypes(p.Type, types, input)
 		}
 	}
 }

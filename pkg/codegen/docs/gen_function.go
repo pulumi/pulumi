@@ -26,47 +26,40 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
-	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
-	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 type functionDocArgs struct {
-	Header
+	Header header
 
 	ResourceName       string
 	DeprecationMessage string
 	Comment            string
 
 	FunctionArgs   map[string]string
-	FunctionResult map[string]PropertyType
+	FunctionResult map[string]propertyType
 
-	InputProperties  map[string][]Property
-	OutputProperties map[string][]Property
+	InputProperties  map[string][]property
+	OutputProperties map[string][]property
 
-	NestedTypes []DocNestedType
+	NestedTypes []docNestedType
 }
 
 // getFunctionResourceInfo returns a map of per-language information about
 // the resource being looked-up using a static "getter" function.
-func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[string]PropertyType {
-	resourceMap := make(map[string]PropertyType)
+func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[string]propertyType {
+	resourceMap := make(map[string]propertyType)
 
 	var resultTypeName string
 	for _, lang := range supportedLanguages {
-		var docLangHelper codegen.DocLanguageHelper
+		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "nodejs":
-			docLangHelper = nodejs.DocLanguageHelper{}
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(resourceTypeName)
 		case "go":
-			docLangHelper = go_gen.DocLanguageHelper{}
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(resourceTypeName)
 		case "csharp":
-			docLangHelper = dotnet.DocLanguageHelper{}
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(resourceTypeName)
 			if mod.mod == "" {
 				resultTypeName = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), resultTypeName)
@@ -81,7 +74,7 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
-		resourceMap[lang] = PropertyType{
+		resourceMap[lang] = propertyType{
 			Name: resultTypeName,
 			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resultTypeName),
 		}
@@ -90,27 +83,27 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 	return resourceMap
 }
 
-func (mod *modContext) genFunctionTS(f *schema.Function) []ConstructorParam {
+func (mod *modContext) genFunctionTS(f *schema.Function) []constructorParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 
-	docLangHelper := nodejs.DocLanguageHelper{}
-	var params []ConstructorParam
+	docLangHelper := getLanguageDocHelper("nodejs")
+	var params []constructorParam
 
 	if f.Inputs != nil {
-		params = append(params, ConstructorParam{
+		params = append(params, constructorParam{
 			Name:         "args",
 			OptionalFlag: "",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
 			},
 		})
 	}
-	params = append(params, ConstructorParam{
+	params = append(params, constructorParam{
 		Name:         "opts",
 		OptionalFlag: "?",
-		Type: PropertyType{
+		Type: propertyType{
 			Name: "pulumi.InvokeOptions",
 			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "InvokeOptions"),
 		},
@@ -119,16 +112,16 @@ func (mod *modContext) genFunctionTS(f *schema.Function) []ConstructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionGo(f *schema.Function) []ConstructorParam {
+func (mod *modContext) genFunctionGo(f *schema.Function) []constructorParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 
-	docLangHelper := go_gen.DocLanguageHelper{}
-	params := []ConstructorParam{
+	docLangHelper := getLanguageDocHelper("go")
+	params := []constructorParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: "pulumi.Context",
 				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
 			},
@@ -136,20 +129,20 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []ConstructorParam {
 	}
 
 	if f.Inputs != nil {
-		params = append(params, ConstructorParam{
+		params = append(params, constructorParam{
 			Name:         "args",
 			OptionalFlag: "",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
 			},
 		})
 	}
 
-	params = append(params, ConstructorParam{
+	params = append(params, constructorParam{
 		Name:         "opts",
 		OptionalFlag: "...",
-		Type: PropertyType{
+		Type: propertyType{
 			Name: "pulumi.InvokeOption",
 			Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#InvokeOption",
 		},
@@ -157,7 +150,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []ConstructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionCS(f *schema.Function) []ConstructorParam {
+func (mod *modContext) genFunctionCS(f *schema.Function) []constructorParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 	argsSchemaType := &schema.ObjectType{
@@ -165,25 +158,25 @@ func (mod *modContext) genFunctionCS(f *schema.Function) []ConstructorParam {
 	}
 	argLangType := mod.typeString(argsSchemaType, "csharp", true /* input */, false /* optional */, false /* insertWordBreaks */)
 
-	docLangHelper := dotnet.DocLanguageHelper{}
-	var params []ConstructorParam
+	docLangHelper := getLanguageDocHelper("csharp")
+	var params []constructorParam
 	if f.Inputs != nil {
-		params = append(params, ConstructorParam{
+		params = append(params, constructorParam{
 			Name:         "args",
 			OptionalFlag: "",
 			DefaultValue: "",
-			Type: PropertyType{
+			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
 			},
 		})
 	}
 
-	params = append(params, ConstructorParam{
+	params = append(params, constructorParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		DefaultValue: " = null",
-		Type: PropertyType{
+		Type: propertyType{
 			Name: "InvokeOptions",
 			Link: docLangHelper.GetDocLinkForResourceType("", "", "InvokeOptions"),
 		},
@@ -191,25 +184,25 @@ func (mod *modContext) genFunctionCS(f *schema.Function) []ConstructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionPython(f *schema.Function) []ConstructorParam {
-	var params []ConstructorParam
+func (mod *modContext) genFunctionPython(f *schema.Function) []constructorParam {
+	var params []constructorParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
 	// For example, the `get_billing_service_account` function.
 	if f.Inputs != nil {
-		params = make([]ConstructorParam, 0, len(f.Inputs.Properties))
+		params = make([]constructorParam, 0, len(f.Inputs.Properties))
 		for _, prop := range f.Inputs.Properties {
-			fArg := ConstructorParam{
+			fArg := constructorParam{
 				Name:         python.PyName(prop.Name),
 				DefaultValue: "=None",
 			}
 			params = append(params, fArg)
 		}
 	} else {
-		params = make([]ConstructorParam, 0, 1)
+		params = make([]constructorParam, 0, 1)
 	}
 
-	params = append(params, ConstructorParam{
+	params = append(params, constructorParam{
 		Name:         "opts",
 		DefaultValue: "=None",
 	})
@@ -225,7 +218,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function) map[string]string {
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
-			params        []ConstructorParam
+			params        []constructorParam
 		)
 		b := &bytes.Buffer{}
 
@@ -270,8 +263,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	name := tokenToName(f.Token)
 	resourceName := strings.ReplaceAll(name, "Get", "")
 
-	inputProps := make(map[string][]Property)
-	outputProps := make(map[string][]Property)
+	inputProps := make(map[string][]property)
+	outputProps := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		if f.Inputs != nil {
 			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true)
@@ -281,10 +274,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		}
 	}
 
-	nestedTypes := mod.genNestedTypes(f, true /*input*/, false /*resourceType*/)
+	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/)
 
 	args := functionDocArgs{
-		Header: Header{
+		Header: header{
 			Title: name,
 		},
 
