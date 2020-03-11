@@ -70,6 +70,7 @@ type header struct {
 }
 
 type exampleUsage struct {
+	// Heading is the title of an example.
 	Heading string
 	Code    string
 }
@@ -82,9 +83,7 @@ type property struct {
 	DeprecationMessage string
 
 	IsRequired bool
-	// IsInput is a flag to indicate if a property is an input
-	// property.
-	IsInput bool
+	IsInput    bool
 }
 
 // apiTypeDocLinks represents the links for a type's input and output API doc.
@@ -125,6 +124,7 @@ type constructorParam struct {
 type resourceDocArgs struct {
 	Header header
 
+	// Comment represents the introductory resource comment.
 	Comment  string
 	Examples []exampleUsage
 
@@ -132,13 +132,26 @@ type resourceDocArgs struct {
 	// ConstructorResource is the resource that is being constructed or
 	// is the result of a constructor-like function.
 	ConstructorResource map[string]propertyType
-	ArgsRequired        bool
+	// ArgsRequired is a flag indicating if the args param is required
+	// when creating a new resource.
+	ArgsRequired bool
 
-	InputProperties  map[string][]property
+	// InputProperties is a map per language and a corresponding slice of
+	// input properties accepted as args while creating a new resource.
+	InputProperties map[string][]property
+	// InputProperties is a map per language and a corresponding slice of
+	// output properties returned when a new instance of the resource is
+	// created.
 	OutputProperties map[string][]property
-	StateInputs      map[string][]property
-	StateParam       string
 
+	// StateInputs is a map per language and the corresponding slice of
+	// state input properties required while looking-up an existing resource.
+	StateInputs map[string][]property
+	// StateParam is the type name of the state param, if any.
+	StateParam string
+
+	// NestedTypes is a slice of the nested types used in the input and
+	// output properties.
 	NestedTypes []docNestedType
 }
 
@@ -147,6 +160,9 @@ type appearsIn struct {
 	Output bool
 }
 
+// stringSet is a type-alias for a map of type tokens
+// and whether or not the type appears in input as well
+// as output properties.
 type stringSet map[string]appearsIn
 
 func (ss stringSet) add(s string, input bool) {

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
+// functionDocArgs represents the args that a Function doc template needs.
 type functionDocArgs struct {
 	Header header
 
@@ -37,12 +38,22 @@ type functionDocArgs struct {
 	DeprecationMessage string
 	Comment            string
 
-	FunctionArgs   map[string]string
+	// FunctionArgs is map per language view of the parameters
+	// in the Function.
+	FunctionArgs map[string]string
+	// FunctionResult is a map per language property types
+	// that is returned as a result of calling a Function.
 	FunctionResult map[string]propertyType
 
-	InputProperties  map[string][]property
+	// InputProperties is a map per language and the corresponding slice
+	// of input properties accepted by the Function.
+	InputProperties map[string][]property
+	// InputProperties is a map per language and the corresponding slice
+	// of output properties, which are properties of the FunctionResult type.
 	OutputProperties map[string][]property
 
+	// NestedTypes is a slice of the nested types used in the input and
+	// output properties.
 	NestedTypes []docNestedType
 }
 
