@@ -745,6 +745,8 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 			continue
 		}
 
+		cmdutil.EndKeypadTransmitMode()
+
 		var option string
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,

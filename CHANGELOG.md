@@ -13,6 +13,8 @@ CHANGELOG
 
 - Ensure Python overlays work as part of our SDK generation
   [#4043](https://github.com/pulumi/pulumi/pull/4043)
+- Fix terminal gets into a state where UP/DOWN don't work with prompts.
+  [#4042](https://github.com/pulumi/pulumi/pull/4042)
 
 - Ensure old provider is not used when configuration has changed
   [#4051](https://github.com/pulumi/pulumi/pull/4051)

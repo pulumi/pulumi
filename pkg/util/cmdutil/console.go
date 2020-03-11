@@ -95,6 +95,16 @@ func RemoveTrailingNewline(s string) string {
 	return s
 }
 
+// EndKeypadTransmitMode switches the terminal out of the keypad transmit 'application' mode back to 'normal' mode.
+func EndKeypadTransmitMode() {
+	if runtime.GOOS != "windows" && Interactive() {
+		// Print an escape sequence to switch the keypad mode, same as 'tput rmkx'.
+		// Work around https://github.com/pulumi/pulumi/issues/3480.
+		// A better fix might be fixing upstream https://github.com/AlecAivazis/survey/issues/228.
+		fmt.Print("\033[?1l")
+	}
+}
+
 type Table struct {
 	Headers []string
 	Rows    []TableRow // Rows of the table.
