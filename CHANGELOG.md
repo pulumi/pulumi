@@ -2,14 +2,24 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* Fix Kubernetes YAML parsing error in .NET.
+- Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
+
 - Avoid projects beginning with `Pulumi` to stop cyclic imports
   [#4013](https://github.com/pulumi/pulumi/pull/4013)
+
 - Ensure we can locate Go created application binaries on Windows
   [#4030](https://github.com/pulumi/pulumi/pull/4030)
+
 - Ensure Python overlays work as part of our SDK generation
   [#4043](https://github.com/pulumi/pulumi/pull/4043)
+
+- Fix terminal gets into a state where UP/DOWN don't work with prompts.
+  [#4042](https://github.com/pulumi/pulumi/pull/4042)
+
+- Ensure old provider is not used when configuration has changed
+  [#4051](https://github.com/pulumi/pulumi/pull/4051)
+
 - Support for unit testing and mocking in the .NET SDK.
   [#3696](https://github.com/pulumi/pulumi/pull/3696)
 
