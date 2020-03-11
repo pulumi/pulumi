@@ -96,9 +96,11 @@ namespace Pulumi
         /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}"/>
         /// must run serially; parallel execution is not supported.
         /// </summary>
+        /// <param name="mocks">Hooks to mock the engine calls.</param>
+        /// <param name="options">Optional settings for the test run.</param>
         /// <typeparam name="TStack">The type of the stack to test.</typeparam>
         /// <returns>Test result containing created resources and errors, if any.</returns>
-        public static async Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks) where TStack : Stack, new()
+        public static async Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null) where TStack : Stack, new()
         {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
@@ -108,7 +110,7 @@ namespace Pulumi
                 if (_instance != null)
                     throw new NotSupportedException($"Mulitple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
 
-                deployment = new Deployment(engine, monitor);
+                deployment = new Deployment(engine, monitor, options);
                 Instance = deployment;
             }
 

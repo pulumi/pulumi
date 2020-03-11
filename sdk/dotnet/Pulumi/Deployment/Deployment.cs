@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Pulumi.Testing;
 
 namespace Pulumi
 {
@@ -107,11 +108,11 @@ namespace Pulumi
         /// This constructor is called from <see cref="TestAsync{TStack}"/> with
         /// a mocked monitor and dummy values for project and stack.
         /// </summary>
-        private Deployment(IEngine engine, IMonitor monitor)
+        private Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
-            _isDryRun = true;
-            _stackName = "stack";
-            _projectName = "project";
+            _isDryRun = options?.IsPreview ?? true;
+            _stackName = options?.StackName ?? "stack";
+            _projectName = options?.ProjectName ?? "project";
             this.Engine = engine;
             this.Monitor = monitor;
             _runner = new Runner(this);
