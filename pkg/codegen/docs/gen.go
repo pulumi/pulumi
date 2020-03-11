@@ -94,10 +94,9 @@ type apiTypeDocLinks struct {
 
 // docNestedType represents a complex type.
 type docNestedType struct {
-	Name         string
-	IsOutputType bool
-	APIDocLinks  map[string]apiTypeDocLinks
-	Properties   map[string][]property
+	Name        string
+	APIDocLinks map[string]apiTypeDocLinks
+	Properties  map[string][]property
 }
 
 // propertyType represents the type of a property.
@@ -139,7 +138,7 @@ type resourceDocArgs struct {
 	// InputProperties is a map per language and a corresponding slice of
 	// input properties accepted as args while creating a new resource.
 	InputProperties map[string][]property
-	// InputProperties is a map per language and a corresponding slice of
+	// OutputProperties is a map per language and a corresponding slice of
 	// output properties returned when a new instance of the resource is
 	// created.
 	OutputProperties map[string][]property
@@ -160,12 +159,12 @@ type appearsIn struct {
 	Output bool
 }
 
-// stringSet is a type-alias for a map of type tokens
-// and whether or not the type appears in input as well
-// as output properties.
-type stringSet map[string]appearsIn
+// nestedTypeUsageInfo is a type-alias for a map of Pulumi type-tokens
+// and whether or not the type appears in input and/or output
+// properties.
+type nestedTypeUsageInfo map[string]appearsIn
 
-func (ss stringSet) add(s string, input bool) {
+func (ss nestedTypeUsageInfo) add(s string, input bool) {
 	if v, ok := ss[s]; ok {
 		if input {
 			v.Input = true
@@ -386,7 +385,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 }
 
 func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
-	tokens := stringSet{}
+	tokens := nestedTypeUsageInfo{}
 	// Collect all of the types for this "member" as a map of resource names
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
@@ -616,7 +615,7 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
 	}
 }
 
-func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool) {
+func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, input bool) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
 		mod.getNestedTypes(t.ElementType, types, input)
@@ -634,7 +633,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool
 	}
 }
 
-func (mod *modContext) getTypes(member interface{}, types stringSet) {
+func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 	switch t := member.(type) {
 	case *schema.ObjectType:
 		for _, p := range t.Properties {
