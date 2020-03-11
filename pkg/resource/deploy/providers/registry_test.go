@@ -484,7 +484,7 @@ func TestCRUD(t *testing.T) {
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, plugin.DiffResult{}, diff)
+		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The old provider should still be registered.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
