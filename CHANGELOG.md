@@ -2,14 +2,21 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* Fix Kubernetes YAML parsing error in .NET.
+- Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
+
 - Avoid projects beginning with `Pulumi` to stop cyclic imports
   [#4013](https://github.com/pulumi/pulumi/pull/4013)
+
 - Ensure we can locate Go created application binaries on Windows
   [#4030](https://github.com/pulumi/pulumi/pull/4030)
+
 - Ensure Python overlays work as part of our SDK generation
   [#4043](https://github.com/pulumi/pulumi/pull/4043)
+
+- Ensure old provider is not used when configuration has changed
+  [#4051](https://github.com/pulumi/pulumi/pull/4051)
+
 
 ## 1.12.0 (2020-03-04)
 - Avoid Configuring providers which are not used during preview.
