@@ -94,15 +94,15 @@ The following state arguments are supported:
 {{ range .NestedTypes }}
 #### {{ .Name }}
 {{ htmlSafe "{{% lang nodejs %}}" }}
-> See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a> and {{- end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} for this type.
+> See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.nodejs.InputType "") (ne .APIDocLinks.nodejs.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ htmlSafe "{{% lang go %}}" }}
-> See the {{ if ne .APIDocLinks.go.InputType "" }}<a href="{{ .APIDocLinks.go.InputType }}">input</a> and {{- end }} {{ if ne .APIDocLinks.go.OutputType "" }}<a href="{{ .APIDocLinks.go.OutputType }}">output</a>{{ end }} for this type.
+> See the {{ if ne .APIDocLinks.go.InputType "" }}<a href="{{ .APIDocLinks.go.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.go.InputType "") (ne .APIDocLinks.go.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.go.OutputType "" }}<a href="{{ .APIDocLinks.go.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ htmlSafe "{{% lang csharp %}}" }}
-> See the {{ if ne .APIDocLinks.csharp.InputType "" }}<a href="{{ .APIDocLinks.csharp.InputType }}">input</a> and {{- end }} {{ if ne .APIDocLinks.csharp.OutputType "" }}<a href="{{ .APIDocLinks.csharp.OutputType }}">output</a>{{ end }} for this type.
+> See the {{ if ne .APIDocLinks.csharp.InputType "" }}<a href="{{ .APIDocLinks.csharp.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.csharp.InputType "") (ne .APIDocLinks.csharp.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.csharp.OutputType "" }}<a href="{{ .APIDocLinks.csharp.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /lang %}}" }}
 
 {{ template "properties" .Properties }}

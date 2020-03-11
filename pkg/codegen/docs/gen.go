@@ -156,6 +156,7 @@ func (ss stringSet) add(s string, input bool) {
 		} else {
 			v.Output = true
 		}
+		ss[s] = v
 		return
 	}
 
@@ -506,6 +507,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
+		case "nodejs", "go":
+			// Intentionally left blank.
 		case "csharp":
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resourceTypeName)
 		case "python":
@@ -605,7 +608,9 @@ func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool
 		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.ObjectType:
 		types.add(t.Token, input)
-		mod.getTypes(t.Properties, types)
+		for _, p := range t.Properties {
+			mod.getNestedTypes(p.Type, types, input)
+		}
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
 			mod.getNestedTypes(e, types, input)
@@ -614,24 +619,24 @@ func (mod *modContext) getNestedTypes(t schema.Type, types stringSet, input bool
 }
 
 func (mod *modContext) getTypes(member interface{}, types stringSet) {
-	switch member := member.(type) {
+	switch t := member.(type) {
 	case *schema.ObjectType:
-		for _, p := range member.Properties {
+		for _, p := range t.Properties {
 			mod.getNestedTypes(p.Type, types, false)
 		}
 	case *schema.Resource:
-		for _, p := range member.Properties {
+		for _, p := range t.Properties {
 			mod.getNestedTypes(p.Type, types, false)
 		}
-		for _, p := range member.InputProperties {
+		for _, p := range t.InputProperties {
 			mod.getNestedTypes(p.Type, types, true)
 		}
 	case *schema.Function:
-		if member.Inputs != nil {
-			mod.getNestedTypes(member.Inputs, types, true)
+		if t.Inputs != nil {
+			mod.getNestedTypes(t.Inputs, types, true)
 		}
-		if member.Outputs != nil {
-			mod.getNestedTypes(member.Outputs, types, false)
+		if t.Outputs != nil {
+			mod.getNestedTypes(t.Outputs, types, false)
 		}
 	}
 }
