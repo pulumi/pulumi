@@ -282,7 +282,7 @@ func (l tokenList) offsetIndex(offset int) int {
 		case r.Start.Byte <= offset && offset < r.End.Byte:
 			return base + i
 		case r.End.Byte <= offset:
-			l, base = l[i:], base+i
+			l, base = l[i+1:], base+i+1
 		default:
 			contract.Failf("unexpected index condition: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
 		}
@@ -316,7 +316,7 @@ func (l tokenList) inRange(r hcl.Range) []Token {
 
 // A TokenMap is used to map from syntax nodes to information about their tokens and leading whitespace/comments.
 type TokenMap interface {
-	ForNode(n hclsyntax.Node) (NodeTokens, bool)
+	ForNode(n hclsyntax.Node) NodeTokens
 
 	isTokenMap()
 }
@@ -324,9 +324,8 @@ type TokenMap interface {
 type tokenMap map[hclsyntax.Node]NodeTokens
 
 // ForNode returns the token information for the given node, if any.
-func (m tokenMap) ForNode(n hclsyntax.Node) (NodeTokens, bool) {
-	tokens, ok := m[n]
-	return tokens, ok
+func (m tokenMap) ForNode(n hclsyntax.Node) NodeTokens {
+	return m[n]
 }
 
 func (tokenMap) isTokenMap() {}
@@ -344,7 +343,7 @@ func NewTokenMapForFiles(files []*File) TokenMap {
 
 // mapTokens builds a mapping from the syntax nodes in the given source file to their tokens. The mapping is recorded
 // in the map passed in to the function.
-func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, tokenMap tokenMap) {
+func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap) {
 	// Turn the list of raw tokens into a list of trivia-carrying tokens.
 	var lastEndPos hcl.Pos
 	var tokens tokenList
@@ -352,7 +351,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 	for _, raw := range rawTokens {
 		// Snip whitespace out of the body and turn it in to trivia.
 		if startPos := raw.Range.Start; startPos.Byte != lastEndPos.Byte {
-			triviaBytes := file.Bytes[lastEndPos.Byte:startPos.Byte]
+			triviaBytes := contents[lastEndPos.Byte:startPos.Byte]
 
 			// If this trivia begins a new line, attach the current trivia to the last processed token, if any.
 			if len(tokens) > 0 {
@@ -397,8 +396,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 	// expression or a token) is used to find the token.
 	//
 	// TODO(pdg): handle parenthesized expressions
-	body := file.Body.(*hclsyntax.Body)
-	diags := hclsyntax.VisitAll(body, func(n hclsyntax.Node) hcl.Diagnostics {
+	diags := hclsyntax.VisitAll(root, func(n hclsyntax.Node) hcl.Diagnostics {
 		var nodeTokens NodeTokens
 		switch n := n.(type) {
 		case *hclsyntax.Attribute:
@@ -538,11 +536,13 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 		case *hclsyntax.TupleConsExpr:
 			exprs := n.Exprs
 			commas := make([]Token, 0, len(exprs))
-			for _, ex := range exprs[:len(exprs)-1] {
-				commas = append(commas, tokens.atPos(ex.Range().End))
-			}
-			if trailing := tokens.atPos(exprs[len(exprs)-1].Range().End); trailing.Raw.Type == hclsyntax.TokenComma {
-				commas = append(commas, trailing)
+			if len(exprs) > 0 {
+				for _, ex := range exprs[:len(exprs)-1] {
+					commas = append(commas, tokens.atPos(ex.Range().End))
+				}
+				if trailing := tokens.atPos(exprs[len(exprs)-1].Range().End); trailing.Raw.Type == hclsyntax.TokenComma {
+					commas = append(commas, trailing)
+				}
 			}
 			nodeTokens = TupleConsTokens{
 				OpenBracket:  tokens.atPos(n.OpenRange.Start),
@@ -562,8 +562,9 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 	})
 	contract.Assert(diags == nil)
 
-	// If there is a trailing end-of-file token (and there should be), attach it to the top-level body.
-	if len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
+	// If the root was a Body and there is a trailing end-of-file token, attach it to the body.
+	body, isBody := root.(*hclsyntax.Body)
+	if isBody && len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
 		tokenMap[body] = BodyTokens{EndOfFile: tokens[len(tokens)-1]}
 	}
 }
