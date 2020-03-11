@@ -613,7 +613,7 @@ func TestCRUDPreview(t *testing.T) {
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, plugin.DiffResult{}, diff)
+		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The original provider should be used because the config did not change.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
