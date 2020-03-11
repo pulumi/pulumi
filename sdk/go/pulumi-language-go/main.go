@@ -162,18 +162,20 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	cmd, err := findProgram(req.GetProject())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to find program")
 	}
 
-	cmd.Env = []string{"PULUMI_PLUGINS=true"}
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_PLUGINS=true")
+
 	stdout, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to execute program cmd")
 	}
 
 	var infos map[string][]pulumi.PackageInfo
 	if err := json.Unmarshal(stdout, &infos); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal result")
 	}
 
 	var plugins []*pulumirpc.PluginDependency
