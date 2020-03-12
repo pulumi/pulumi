@@ -33,12 +33,8 @@ if TYPE_CHECKING:
     from ..resource import Resource
 
 
-loop = None
-
-
 def test(fn):
     def wrapper(*args, **kwargs):
-        asyncio.set_event_loop(loop)
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
@@ -93,7 +89,6 @@ class MockMonitor:
 
         ret = self.mocks.call(request.tok, args, request.provider)
 
-        asyncio.set_event_loop(loop)
         ret_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(ret, {})))
 
         fields = {"failures": None, "return": ret_proto}
@@ -104,7 +99,6 @@ class MockMonitor:
 
         _, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
 
-        asyncio.set_event_loop(loop)
         props_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(state, {})))
 
         urn = self.make_urn(request.parent, request.type, request.name)
@@ -115,7 +109,6 @@ class MockMonitor:
 
         id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
 
-        asyncio.set_event_loop(loop)
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         urn = self.make_urn(request.parent, request.type, request.name)
@@ -158,7 +151,3 @@ def set_mocks(mocks: Mocks,
                         dry_run=preview,
                         test_mode_enabled=True)
     configure(settings)
-
-    # Make sure we have an event loop.
-    global loop
-    loop = asyncio.get_event_loop()

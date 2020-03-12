@@ -23,6 +23,7 @@ from typing import Callable, Any, Dict, List
 from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
+from .sync_await import _all_tasks, _get_current_task
 from .. import log
 from . import known_types
 
@@ -55,9 +56,9 @@ async def run_pulumi_func(func: Callable):
         # We will occasionally start tasks deliberately that we know will never complete. We must
         # cancel them before shutting down the event loop.
         log.debug("Canceling all outstanding tasks")
-        for task in asyncio.Task.all_tasks():
+        for task in _all_tasks():
             # Don't kill ourselves, that would be silly.
-            if task == asyncio.Task.current_task():
+            if task == _get_current_task():
                 continue
             task.cancel()
 
