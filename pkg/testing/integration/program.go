@@ -1739,10 +1739,19 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		for _, pkg := range pt.opts.Dependencies {
 			err = pt.runCommand("vendor-rm-dep",
 				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg)}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
 			err = pt.runCommand("vendor-cp-dep",
 				[]string{"/bin/cp", "-r", filepath.Join(gopath, "src", pkg), filepath.Join(".", "vendor", pkg)}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
 			err = pt.runCommand("vendor-rm-dep-vendor",
 				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg, "vendor")}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
 		}
 	}
 
