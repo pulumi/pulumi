@@ -2,9 +2,6 @@
 
 {{ htmlSafe .Comment }}
 
-<!-- Examples -->
-{{ if ne (len .Examples) 0 }}{{ template "examples" .Examples }}{{ end }}
-
 <!-- Create resource -->
 ## Create a {{ .Header.Title }} Resource
 
