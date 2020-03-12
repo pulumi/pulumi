@@ -1,5 +1,8 @@
 CHANGELOG
 =========
+## HEAD (Unreleased)
+- Add support for plugin acquisition for Go programs
+  [#4060](https://github.com/pulumi/pulumi/pull/4060)
 
 ## 1.12.1 (2020-03-11)
 - Fix Kubernetes YAML parsing error in .NET.
@@ -7,8 +10,6 @@ CHANGELOG
 
 - Avoid projects beginning with `Pulumi` to stop cyclic imports
   [#4013](https://github.com/pulumi/pulumi/pull/4013)
-- Add support for plugin acquisition for Go programs
-  [#3830](https://github.com/pulumi/pulumi/pull/3830)
 
 - Ensure we can locate Go created application binaries on Windows
   [#4030](https://github.com/pulumi/pulumi/pull/4030)
