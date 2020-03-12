@@ -21,8 +21,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Log is a group of logging functions that can be called from a Go application that will be logged to the
-// Pulumi log stream.  These events will be printed in the terminal while the Pulumi app
+// Log is a group of logging functions that can be called from a Go application that will be logged
+// to the Pulumi log stream.  These events will be printed in the terminal while the Pulumi app
 // runs, and will be available from the Web console afterwards.
 type Log interface {
 	Debug(msg string, resource Resource, streamID int32, ephemeral bool) error

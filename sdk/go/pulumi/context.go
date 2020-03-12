@@ -50,7 +50,8 @@ type Context struct {
 	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
 	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
 	rpcError    error       // the first error (if any) encountered during an RPC.
-	Log         Log
+
+	Log Log // the logging interface for the Pulumi log stream.
 }
 
 // NewContext creates a fresh run context out of the given metadata.
