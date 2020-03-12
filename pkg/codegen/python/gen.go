@@ -685,7 +685,7 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPack(pkg.Name))
 	fmt.Fprintf(w, "      version='${VERSION}',\n")
 	if pkg.Description != "" {
-		fmt.Fprintf(w, "      description=\"%s\",\n", sanitizePackageDescription(pkg.Description))
+		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")
