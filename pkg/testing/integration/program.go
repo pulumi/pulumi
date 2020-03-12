@@ -1735,6 +1735,15 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		if err != nil {
 			return fmt.Errorf("error installing go dependencies: %w", err)
 		}
+
+		for _, pkg := range pt.opts.Dependencies {
+			err = pt.runCommand("vendor-rm-dep",
+				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg)}, cwd)
+			err = pt.runCommand("vendor-cp-dep",
+				[]string{"/bin/cp", "-r", filepath.Join(gopath, "src", pkg), filepath.Join(".", "vendor", pkg)}, cwd)
+			err = pt.runCommand("vendor-rm-dep-vendor",
+				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg, "vendor")}, cwd)
+		}
 	}
 
 	// In our go tests, there seems to be an issue where we *need* to make a build before we
