@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+- Improve documentation of URL formats for `pulumi login`
+  [#4059](https://github.com/pulumi/pulumi/pull/4059)
+  
 ## 1.12.1 (2020-03-11)
 - Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
