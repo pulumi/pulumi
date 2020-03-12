@@ -50,6 +50,7 @@ type Context struct {
 	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
 	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
 	rpcError    error       // the first error (if any) encountered during an RPC.
+	Log         Log
 }
 
 // NewContext creates a fresh run context out of the given metadata.
@@ -83,6 +84,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	mutex := &sync.Mutex{}
+	log := &logState{
+		engine: engine,
+		ctx:    ctx,
+	}
 	return &Context{
 		ctx:         ctx,
 		info:        info,
@@ -94,6 +99,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		rpcs:        0,
 		rpcsLock:    mutex,
 		rpcsDone:    sync.NewCond(mutex),
+		Log:         log,
 	}, nil
 }
 
