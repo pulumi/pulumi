@@ -38,8 +38,17 @@ type logState struct {
 
 // LogArgs may be used to specify arguments to be used for logging.
 type LogArgs struct {
-	Resource  Resource
-	StreamID  int32
+	// Optional resource this log is associated with.
+	Resource Resource
+
+	// Optional stream id that a stream of log messages can be associated with. This allows
+	// clients to not have to buffer a large set of log messages that they all want to be
+	// conceptually connected.  Instead the messages can be sent as chunks (with the same stream id)
+	// and the end display can show the messages as they arrive, while still stitching them together
+	// into one total log message.
+	StreamID int32
+
+	// Optional value indicating whether this is a status message.
 	Ephemeral bool
 }
 
