@@ -485,6 +485,18 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 		case "csharp":
 			params = mod.genConstructorCS(r, allOptionalInputs)
 			paramTemplate = "csharp_constructor_param"
+		case "python":
+			paramTemplate = "py_constructor_param"
+			// The Pulumi Python SDK does not yet have types for constructor args.
+			// The input properties for a resource needs to be exploded as
+			// individual constructor params.
+			params = make([]constructorParam, 0, len(r.InputProperties))
+			for _, p := range r.InputProperties {
+				params = append(params, constructorParam{
+					Name:         python.PyName(p.Name),
+					DefaultValue: "=None",
+				})
+			}
 		}
 
 		n := len(params)

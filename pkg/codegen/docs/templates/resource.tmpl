@@ -9,9 +9,7 @@
 
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 
-```python
-def {{ .Header.Title }}(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
-```
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span><span class="nf">{{ .Header.Title }}</span><span class="p">(resource_name, id, opts=None, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">, __props__=None);</span></code></pre></div>
 
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
@@ -54,7 +52,7 @@ public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{ .StatePa
 ```
 
 ```python
-def get(resource_name, id, opts=None{{ template "py_param" .StateInputs.python }})
+def get(resource_name, id, opts=None{{ range .StateInputs.python }}, {{ htmlSafe .Name }}=None{{ end }})
 ```
 
 ```go

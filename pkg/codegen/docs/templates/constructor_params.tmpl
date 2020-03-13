@@ -6,6 +6,6 @@
 
 {{ define "csharp_constructor_param" }}{{ template "linkify_param" .Type }}{{ .OptionalFlag }} <span class="nx">{{ .Name }}{{ .DefaultValue }}{{ end }}
 
-{{ define "py_param" }}{{ range . }}, {{ htmlSafe .Name }}=None{{ end }}{{ end }}
+{{ define "py_constructor_param" }}{{ .Name }}{{ .DefaultValue }}{{ end }}
 
 {{ define "py_function_param" }}{{ htmlSafe .Name }}{{ .DefaultValue }}{{ end }}
