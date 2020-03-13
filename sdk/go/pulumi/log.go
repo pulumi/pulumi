@@ -36,30 +36,41 @@ type logState struct {
 	ctx    context.Context
 }
 
+// LogArgs may be used to specify arguments to be used for logging.
+type LogArgs struct {
+	Resource  Resource
+	StreamID  int32
+	Ephemeral bool
+}
+
 // Debug logs a debug-level message that is generally hidden from end-users.
-func (log *logState) Debug(msg string, resource Resource, streamID int32, ephemeral bool) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_DEBUG, msg, resource, streamID, ephemeral)
+func (log *logState) Debug(msg string, args *LogArgs) error {
+	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_DEBUG, msg, args)
 }
 
 // Logs an informational message that is generally printed to stdout during resource
-func (log *logState) Info(msg string, resource Resource, streamID int32, ephemeral bool) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_INFO, msg, resource, streamID, ephemeral)
+func (log *logState) Info(msg string, args *LogArgs) error {
+	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_INFO, msg, args)
 }
 
 // Logs a warning to indicate that something went wrong, but not catastrophically so.
-func (log *logState) Warn(msg string, resource Resource, streamID int32, ephemeral bool) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_WARNING, msg, resource, streamID, ephemeral)
+func (log *logState) Warn(msg string, args *LogArgs) error {
+	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_WARNING, msg, args)
 }
 
 // Logs a fatal error to indicate that the tool should stop processing resource
-func (log *logState) Error(msg string, resource Resource, streamID int32, ephemeral bool) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_ERROR, msg, resource, streamID, ephemeral)
+func (log *logState) Error(msg string, args *LogArgs) error {
+	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_ERROR, msg, args)
 }
 
 func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc.LogSeverity,
-	message string, resource Resource, streamID int32, ephemeral bool) error {
+	message string, args *LogArgs) error {
 
-	resolvedUrn, _, _, err := resource.URN().awaitURN(ctx)
+	if args == nil {
+		args = &LogArgs{}
+	}
+
+	resolvedUrn, _, _, err := args.Resource.URN().awaitURN(ctx)
 	if err != nil {
 		return err
 	}
@@ -68,8 +79,8 @@ func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc
 		Severity:  severity,
 		Message:   message,
 		Urn:       string(resolvedUrn),
-		StreamId:  streamID,
-		Ephemeral: ephemeral,
+		StreamId:  args.StreamID,
+		Ephemeral: args.Ephemeral,
 	}
 	_, err = engine.Log(ctx, logRequest)
 	return err
