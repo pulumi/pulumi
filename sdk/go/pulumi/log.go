@@ -25,10 +25,10 @@ import (
 // to the Pulumi log stream.  These events will be printed in the terminal while the Pulumi app
 // runs, and will be available from the Web console afterwards.
 type Log interface {
-	Debug(msg string, resource Resource, streamID int32, ephemeral bool) error
-	Info(msg string, resource Resource, streamID int32, ephemeral bool) error
-	Warn(msg string, resource Resource, streamID int32, ephemeral bool) error
-	Error(msg string, resource Resource, streamID int32, ephemeral bool) error
+	Debug(msg string, args *LogArgs) error
+	Info(msg string, args *LogArgs) error
+	Warn(msg string, args *LogArgs) error
+	Error(msg string, args *LogArgs) error
 }
 
 type logState struct {
