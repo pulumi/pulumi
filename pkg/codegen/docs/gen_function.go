@@ -123,7 +123,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 }
 
 func (mod *modContext) genFunctionGo(f *schema.Function, resourceName string) []formalParam {
-	argsType := "Get" + resourceName + "Args"
+	argsType := "Lookup" + resourceName + "Args"
 
 	docLangHelper := getLanguageDocHelper("go")
 	params := []formalParam{
