@@ -41,7 +41,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, m
 	return ""
 }
 
-// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+// GetDocLinkForFunctionInputOrOutputType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
 	return ""
 }

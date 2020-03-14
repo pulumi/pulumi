@@ -94,15 +94,15 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 	return resourceMap
 }
 
-func (mod *modContext) genFunctionTS(f *schema.Function) []constructorParam {
+func (mod *modContext) genFunctionTS(f *schema.Function) []formalParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 
 	docLangHelper := getLanguageDocHelper("nodejs")
-	var params []constructorParam
+	var params []formalParam
 
 	if f.Inputs != nil {
-		params = append(params, constructorParam{
+		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			Type: propertyType{
@@ -111,7 +111,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function) []constructorParam {
 			},
 		})
 	}
-	params = append(params, constructorParam{
+	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		Type: propertyType{
@@ -123,12 +123,12 @@ func (mod *modContext) genFunctionTS(f *schema.Function) []constructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionGo(f *schema.Function) []constructorParam {
+func (mod *modContext) genFunctionGo(f *schema.Function) []formalParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 
 	docLangHelper := getLanguageDocHelper("go")
-	params := []constructorParam{
+	params := []formalParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
@@ -140,7 +140,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []constructorParam {
 	}
 
 	if f.Inputs != nil {
-		params = append(params, constructorParam{
+		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			Type: propertyType{
@@ -150,7 +150,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []constructorParam {
 		})
 	}
 
-	params = append(params, constructorParam{
+	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "...",
 		Type: propertyType{
@@ -161,18 +161,23 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []constructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionCS(f *schema.Function) []constructorParam {
+func (mod *modContext) genFunctionCS(f *schema.Function) []formalParam {
 	resourceName := tokenToName(f.Token)
 	argsType := resourceName + "Args"
 	argsSchemaType := &schema.ObjectType{
 		Token: f.Token,
 	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", true /* input */, false /* optional */, false /* insertWordBreaks */)
+
+	characteristics := propertyCharacteristics{
+		input:    true,
+		optional: false,
+	}
+	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false /* insertWordBreaks */)
 
 	docLangHelper := getLanguageDocHelper("csharp")
-	var params []constructorParam
+	var params []formalParam
 	if f.Inputs != nil {
-		params = append(params, constructorParam{
+		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			DefaultValue: "",
@@ -183,7 +188,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function) []constructorParam {
 		})
 	}
 
-	params = append(params, constructorParam{
+	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		DefaultValue: " = null",
@@ -195,25 +200,25 @@ func (mod *modContext) genFunctionCS(f *schema.Function) []constructorParam {
 	return params
 }
 
-func (mod *modContext) genFunctionPython(f *schema.Function) []constructorParam {
-	var params []constructorParam
+func (mod *modContext) genFunctionPython(f *schema.Function) []formalParam {
+	var params []formalParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
 	// For example, the `get_billing_service_account` function.
 	if f.Inputs != nil {
-		params = make([]constructorParam, 0, len(f.Inputs.Properties))
+		params = make([]formalParam, 0, len(f.Inputs.Properties))
 		for _, prop := range f.Inputs.Properties {
-			fArg := constructorParam{
+			fArg := formalParam{
 				Name:         python.PyName(prop.Name),
 				DefaultValue: "=None",
 			}
 			params = append(params, fArg)
 		}
 	} else {
-		params = make([]constructorParam, 0, 1)
+		params = make([]formalParam, 0, 1)
 	}
 
-	params = append(params, constructorParam{
+	params = append(params, formalParam{
 		Name:         "opts",
 		DefaultValue: "=None",
 	})
@@ -229,23 +234,23 @@ func (mod *modContext) genFunctionArgs(f *schema.Function) map[string]string {
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
-			params        []constructorParam
+			params        []formalParam
 		)
 		b := &bytes.Buffer{}
 
 		switch lang {
 		case "nodejs":
 			params = mod.genFunctionTS(f)
-			paramTemplate = "ts_constructor_param"
+			paramTemplate = "ts_formal_param"
 		case "go":
 			params = mod.genFunctionGo(f)
-			paramTemplate = "go_constructor_param"
+			paramTemplate = "go_formal_param"
 		case "csharp":
 			params = mod.genFunctionCS(f)
-			paramTemplate = "csharp_constructor_param"
+			paramTemplate = "csharp_formal_param"
 		case "python":
 			params = mod.genFunctionPython(f)
-			paramTemplate = "py_function_param"
+			paramTemplate = "py_formal_param"
 		}
 
 		n := len(params)

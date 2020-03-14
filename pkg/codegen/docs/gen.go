@@ -101,8 +101,9 @@ type propertyType struct {
 	Link string
 }
 
-// constructorParam represents the formal parameters of a constructor.
-type constructorParam struct {
+// formalParam represents the formal parameters of a constructor
+// or a lookup function.
+type formalParam struct {
 	Name string
 	Type propertyType
 
@@ -136,6 +137,9 @@ type resourceDocArgs struct {
 	// created.
 	OutputProperties map[string][]property
 
+	// LookupParams is a map of the param string to be rendered per language
+	// for looking-up a resource.
+	LookupParams map[string]string
 	// StateInputs is a map per language and the corresponding slice of
 	// state input properties required while looking-up an existing resource.
 	StateInputs map[string][]property
@@ -216,16 +220,25 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) typeString(t schema.Type, lang string, input, optional bool, insertWordBreaks bool) propertyType {
+type propertyCharacteristics struct {
+	// input is a flag indicating if the property is an input type.
+	input bool
+	// optional is a flag indicating if the property is optional.
+	optional bool
+}
+
+// typeString returns a property type suitable for docs with its display name and the anchor link to
+// a type if the type of the property is an array or an object.
+func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
 	docLanguageHelper := getLanguageDocHelper(lang)
-	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, input, optional)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, characteristics.input, characteristics.optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
 	var href string
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		elementLangType := mod.typeString(t.ElementType, lang, input, optional, false)
+		elementLangType := mod.typeString(t.ElementType, lang, characteristics, false)
 		href = elementLangType.Link
 	case *schema.ObjectType:
 		tokenName := tokenToName(t.Token)
@@ -245,7 +258,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, input, optional bo
 	}
 }
 
-func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []constructorParam {
+func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -254,7 +267,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("nodejs")
-	return []constructorParam{
+	return []formalParam{
 		{
 			Name: "name",
 			Type: propertyType{
@@ -281,7 +294,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []constructorParam {
+func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
 	argsType := name + "Args"
 	argsFlag := ""
@@ -291,13 +304,13 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 	docLangHelper := getLanguageDocHelper("go")
 	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
-	return []constructorParam{
+	return []formalParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "pulumi.Context",
-				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#Context",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
 			},
 		},
 		{
@@ -320,19 +333,22 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "...",
 			Type: propertyType{
 				Name: "pulumi.ResourceOption",
-				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
 			},
 		},
 	}
 }
 
-func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []constructorParam {
+func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	argsType := name + "Args"
 	argsSchemaType := &schema.ObjectType{
 		Token: r.Token,
 	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", true, argsOptional, false)
+	characteristics := propertyCharacteristics{
+		input:    true,
+		optional: argsOptional,
+	}
+	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
 
 	var argsFlag string
 	var argsDefault string
@@ -348,7 +364,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("csharp")
-	return []constructorParam{
+	return []formalParam{
 		{
 			Name: "name",
 			Type: propertyType{
@@ -361,7 +377,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			DefaultValue: argsDefault,
 			Type: propertyType{
-				Name: argsType,
+				Name: name + "Args",
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
 			},
 		},
@@ -397,8 +413,16 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				apiDocLinks := make(map[string]apiTypeDocLinks)
 				for _, lang := range supportedLanguages {
 					docLangHelper := getLanguageDocHelper(lang)
-					inputObjLangType := mod.typeString(t, lang, true /*input*/, true /*optional*/, false /*insertWordBreaks*/)
-					outputObjLangType := mod.typeString(t, lang, false /*input*/, true /*optional*/, false /*insertWordBreaks*/)
+					inputCharacteristics := propertyCharacteristics{
+						input:    true,
+						optional: true,
+					}
+					outputCharacteristics := propertyCharacteristics{
+						input:    false,
+						optional: true,
+					}
+					inputObjLangType := mod.typeString(t, lang, inputCharacteristics, false /*insertWordBreaks*/)
+					outputObjLangType := mod.typeString(t, lang, outputCharacteristics, false /*insertWordBreaks*/)
 
 					// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
 					var inputTypeDocLink string
@@ -453,13 +477,18 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		if prop == nil {
 			continue
 		}
+
+		characteristics := propertyCharacteristics{
+			input:    isInput,
+			optional: !prop.IsRequired,
+		}
 		docProperties = append(docProperties, property{
 			Name:               getLanguagePropertyName(prop.Name, lang, true),
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
 			IsInput:            isInput,
-			Type:               mod.typeString(prop.Type, lang, isInput, !prop.IsRequired, true),
+			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}
 
@@ -471,28 +500,28 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
-			params        []constructorParam
+			params        []formalParam
 		)
 		b := &bytes.Buffer{}
 
 		switch lang {
 		case "nodejs":
 			params = mod.genConstructorTS(r, allOptionalInputs)
-			paramTemplate = "ts_constructor_param"
+			paramTemplate = "ts_formal_param"
 		case "go":
 			params = mod.genConstructorGo(r, allOptionalInputs)
-			paramTemplate = "go_constructor_param"
+			paramTemplate = "go_formal_param"
 		case "csharp":
 			params = mod.genConstructorCS(r, allOptionalInputs)
-			paramTemplate = "csharp_constructor_param"
+			paramTemplate = "csharp_formal_param"
 		case "python":
-			paramTemplate = "py_constructor_param"
+			paramTemplate = "py_formal_param"
 			// The Pulumi Python SDK does not yet have types for constructor args.
 			// The input properties for a resource needs to be exploded as
 			// individual constructor params.
-			params = make([]constructorParam, 0, len(r.InputProperties))
+			params = make([]formalParam, 0, len(r.InputProperties))
 			for _, p := range r.InputProperties {
-				params = append(params, constructorParam{
+				params = append(params, formalParam{
 					Name:         python.PyName(p.Name),
 					DefaultValue: "=None",
 				})
@@ -547,6 +576,182 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 	return resourceMap
 }
 
+func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	docLangHelper := getLanguageDocHelper("nodejs")
+	return []formalParam{
+		{
+			Name: "name",
+			Type: propertyType{
+				Name: "string",
+				Link: nodejs.GetDocLinkForBuiltInType("string"),
+			},
+		},
+		{
+			Name: "id",
+			Type: propertyType{
+				Name: "pulumi.Input<pulumi.ID>",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ID"),
+			},
+		},
+		{
+			Name:         "state",
+			OptionalFlag: "?",
+			Type: propertyType{
+				Name: stateParam,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, stateParam),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			Type: propertyType{
+				Name: "pulumi.CustomResourceOptions",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "CustomResourceOptions"),
+			},
+		},
+	}
+}
+
+func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	docLangHelper := getLanguageDocHelper("go")
+	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	return []formalParam{
+		{
+			Name:         "ctx",
+			OptionalFlag: "*",
+			Type: propertyType{
+				Name: "pulumi.Context",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
+			},
+		},
+		{
+			Name: "name",
+			Type: propertyType{
+				Name: "string",
+				Link: go_gen.GetDocLinkForBuiltInType("string"),
+			},
+		},
+		{
+			Name: "id",
+			Type: propertyType{
+				Name: "pulumi.IDInput",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "IDInput"),
+			},
+		},
+		{
+			Name:         "state",
+			OptionalFlag: "*",
+			Type: propertyType{
+				Name: stateParam,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, stateParam),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "...",
+			Type: propertyType{
+				Name: "pulumi.ResourceOption",
+				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
+			},
+		},
+	}
+}
+
+func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), stateParam)
+
+	optionsType := "Pulumi.CustomResourceOptions"
+	docLangHelper := getLanguageDocHelper("csharp")
+	return []formalParam{
+		{
+			Name: "name",
+			Type: propertyType{
+				Name: "string",
+				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
+			},
+		},
+		{
+			Name: "id",
+			Type: propertyType{
+				Name: "Pulumi.Input<string>",
+				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.Input"),
+			},
+		},
+		{
+			Name:         "state",
+			OptionalFlag: "?",
+			Type: propertyType{
+				Name: stateParam,
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", stateParamFQDN),
+			},
+		},
+		{
+			Name:         "opts",
+			OptionalFlag: "?",
+			DefaultValue: " = null",
+			Type: propertyType{
+				Name: optionsType,
+				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
+			},
+		},
+	}
+}
+
+// genLookupParams generates a map of per-language way of rendering the formal parameters of the lookup function
+// used to lookup an existing resource.
+func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) map[string]string {
+	lookupParams := make(map[string]string)
+	if r.StateInputs == nil {
+		return lookupParams
+	}
+
+	for _, lang := range supportedLanguages {
+		var (
+			paramTemplate string
+			params        []formalParam
+		)
+		b := &bytes.Buffer{}
+
+		switch lang {
+		case "nodejs":
+			params = mod.getTSLookupParams(r, stateParam)
+			paramTemplate = "ts_formal_param"
+		case "go":
+			params = mod.getGoLookupParams(r, stateParam)
+			paramTemplate = "go_formal_param"
+		case "csharp":
+			params = mod.getCSLookupParams(r, stateParam)
+			paramTemplate = "csharp_formal_param"
+		case "python":
+			paramTemplate = "py_formal_param"
+			// The Pulumi Python SDK does not yet have types for formal parameters.
+			// The input properties for a resource needs to be exploded as
+			// individual constructor params.
+			params = make([]formalParam, 0, len(r.StateInputs.Properties))
+			for _, p := range r.StateInputs.Properties {
+				params = append(params, formalParam{
+					Name:         python.PyName(p.Name),
+					DefaultValue: "=None",
+				})
+			}
+		}
+
+		n := len(params)
+		for i, p := range params {
+			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+				panic(err)
+			}
+			if i != n-1 {
+				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+					panic(err)
+				}
+			}
+		}
+		lookupParams[lang] = b.String()
+	}
+	return lookupParams
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -579,6 +784,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		}
 	}
 
+	stateParam := name + "State"
 	data := resourceDocArgs{
 		Header: header{
 			Title: name,
@@ -592,8 +798,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,
+		LookupParams:     mod.genLookupParams(r, stateParam),
 		StateInputs:      stateInputs,
-		StateParam:       name + "State",
+		StateParam:       stateParam,
 		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
 	}
 
