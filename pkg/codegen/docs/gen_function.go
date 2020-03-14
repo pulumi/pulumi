@@ -94,9 +94,8 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 	return resourceMap
 }
 
-func (mod *modContext) genFunctionTS(f *schema.Function) []formalParam {
-	resourceName := tokenToName(f.Token)
-	argsType := resourceName + "Args"
+func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []formalParam {
+	argsType := "Get" + resourceName + "Args"
 
 	docLangHelper := getLanguageDocHelper("nodejs")
 	var params []formalParam
@@ -123,8 +122,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function) []formalParam {
 	return params
 }
 
-func (mod *modContext) genFunctionGo(f *schema.Function) []formalParam {
-	resourceName := tokenToName(f.Token)
+func (mod *modContext) genFunctionGo(f *schema.Function, resourceName string) []formalParam {
 	argsType := resourceName + "Args"
 
 	docLangHelper := getLanguageDocHelper("go")
@@ -161,9 +159,8 @@ func (mod *modContext) genFunctionGo(f *schema.Function) []formalParam {
 	return params
 }
 
-func (mod *modContext) genFunctionCS(f *schema.Function) []formalParam {
-	resourceName := tokenToName(f.Token)
-	argsType := resourceName + "Args"
+func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []formalParam {
+	argsType := "Get" + resourceName + "Args"
 	argsSchemaType := &schema.ObjectType{
 		Token: f.Token,
 	}
@@ -200,7 +197,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function) []formalParam {
 	return params
 }
 
-func (mod *modContext) genFunctionPython(f *schema.Function) []formalParam {
+func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
 	var params []formalParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
@@ -228,7 +225,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function) []formalParam {
 
 // genFunctionArgs generates the arguments string for a given Function that can be
 // rendered directly into a template.
-func (mod *modContext) genFunctionArgs(f *schema.Function) map[string]string {
+func (mod *modContext) genFunctionArgs(f *schema.Function, resourceName string) map[string]string {
 	functionParams := make(map[string]string)
 
 	for _, lang := range supportedLanguages {
@@ -240,16 +237,16 @@ func (mod *modContext) genFunctionArgs(f *schema.Function) map[string]string {
 
 		switch lang {
 		case "nodejs":
-			params = mod.genFunctionTS(f)
+			params = mod.genFunctionTS(f, resourceName)
 			paramTemplate = "ts_formal_param"
 		case "go":
-			params = mod.genFunctionGo(f)
+			params = mod.genFunctionGo(f, resourceName)
 			paramTemplate = "go_formal_param"
 		case "csharp":
-			params = mod.genFunctionCS(f)
+			params = mod.genFunctionCS(f, resourceName)
 			paramTemplate = "csharp_formal_param"
 		case "python":
-			params = mod.genFunctionPython(f)
+			params = mod.genFunctionPython(f, resourceName)
 			paramTemplate = "py_formal_param"
 		}
 
@@ -298,7 +295,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		},
 
 		ResourceName:   resourceName,
-		FunctionArgs:   mod.genFunctionArgs(f),
+		FunctionArgs:   mod.genFunctionArgs(f, resourceName),
 		FunctionResult: mod.getFunctionResourceInfo(resourceName),
 
 		Comment:            f.Comment,
