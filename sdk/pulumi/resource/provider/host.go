@@ -19,10 +19,10 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.

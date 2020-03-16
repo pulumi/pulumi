@@ -17,10 +17,10 @@ package plugin
 import (
 	"io"
 
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each

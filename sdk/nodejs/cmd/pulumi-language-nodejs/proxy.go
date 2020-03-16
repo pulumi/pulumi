@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // pipes is the platform agnostic abstraction over a pair of channels we can read and write binary

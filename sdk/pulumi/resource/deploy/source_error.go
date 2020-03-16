@@ -17,8 +17,8 @@ package deploy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 )
 
 // NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected

@@ -17,8 +17,8 @@ package b64
 import (
 	"encoding/base64"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 )
 
 const Type = "b64"

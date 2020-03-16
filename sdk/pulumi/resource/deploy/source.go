@@ -19,12 +19,12 @@ import (
 	"io"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pulumi/pulumi/pkg/util/result"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.

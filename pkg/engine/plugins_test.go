@@ -20,9 +20,9 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func mustMakeVersion(v string) *semver.Version {

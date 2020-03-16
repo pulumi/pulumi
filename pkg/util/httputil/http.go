@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/retry"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // maxRetryCount is the number of times to try an http request before giving up an returning the last error

@@ -29,12 +29,12 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/version"
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
