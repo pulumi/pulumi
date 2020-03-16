@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Update to Helm v3 in pulumi Docker image
+  [#4090](https://github.com/pulumi/pulumi/pull/4090)
+
 - Improve documentation of URL formats for `pulumi login`
   [#4059](https://github.com/pulumi/pulumi/pull/4059)
 
