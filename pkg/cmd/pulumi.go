@@ -45,7 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 

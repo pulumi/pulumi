@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/version"
 	"github.com/spf13/cobra"
 )
 

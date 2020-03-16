@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/version"
 )
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot

@@ -13,7 +13,7 @@ $PublishTargets = @($GitHash, $Version, $Branch)
 function RunGoBuild($goPackage) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     $outputName = Split-Path -Leaf $(go list -f "{{.Target}}" $goPackage)
-    go build -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=$Version" -o "$binRoot\$outputName" $goPackage
+    go build -ldflags "-X github.com/pulumi/pulumi/sdk/pulumi/version.Version=$Version" -o "$binRoot\$outputName" $goPackage
 }
 
 function CopyPackage($pathToModule, $moduleName) {

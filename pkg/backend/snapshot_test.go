@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/version"
 )
 
 type MockRegisterResourceEvent struct {

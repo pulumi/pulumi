@@ -28,7 +28,7 @@ build_package::
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/pulumi/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 build:: build_package build_plugin
 
@@ -37,7 +37,7 @@ install_package::
 	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/pulumi/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
@@ -57,6 +57,6 @@ test_all:: sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/pulumi/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/

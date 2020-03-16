@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/cmd"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/version"
 )
 
 func panicHandler() {
