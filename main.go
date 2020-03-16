@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/pulumi/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/cmd"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/version"
 )

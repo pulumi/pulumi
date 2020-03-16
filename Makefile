@@ -3,7 +3,7 @@ SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
-PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+PROJECT_PKGS    := $(shell go list ./pkg/... | grep -v /vendor/)
 EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version HEAD)
 
