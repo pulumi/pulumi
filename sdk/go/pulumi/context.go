@@ -669,17 +669,20 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		state.outputs["id"] = crs.id
 	}
 
-	// Populate ResourceState resolvers.
-	contract.Assert(rs != nil)
-	rs.providers = providers
-	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
-	state.outputs["urn"] = rs.urn
-	state.name = name
-	rs.name = name
-	state.aliases = aliases
-	rs.aliases = aliases
-	state.transformations = transformations
-	rs.transformations = transformations
+	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
+	populateResourceStateResolvers := func() {
+		contract.Assert(rs != nil)
+		rs.providers = providers
+		rs.urn = URNOutput{newOutputState(urnType, resourceV)}
+		state.outputs["urn"] = rs.urn
+		state.name = name
+		rs.name = name
+		state.aliases = aliases
+		rs.aliases = aliases
+		state.transformations = transformations
+		rs.transformations = transformations
+	}
+	populateResourceStateResolvers()
 
 	return state
 }
