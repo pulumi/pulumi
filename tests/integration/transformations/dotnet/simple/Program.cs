@@ -26,7 +26,7 @@ class MyOtherComponent : ComponentResource
     public RandomString Child2 { get; }
     
     public MyOtherComponent(string name, ComponentResourceOptions? options = null)
-    : base("my:component:MyComponent", name, options)
+        : base("my:component:MyComponent", name, options)
     {
         this.Child1 = new RandomString($"{name}-child1",
             new RandomStringArgs { Length = 5 },
