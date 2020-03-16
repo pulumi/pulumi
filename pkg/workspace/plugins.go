@@ -38,7 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 

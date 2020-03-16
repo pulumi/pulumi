@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the

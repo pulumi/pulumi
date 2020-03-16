@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as

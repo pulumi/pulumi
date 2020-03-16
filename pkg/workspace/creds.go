@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.

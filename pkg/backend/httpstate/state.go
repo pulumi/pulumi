@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"

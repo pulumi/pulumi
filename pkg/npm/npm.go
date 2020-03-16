@@ -14,7 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a

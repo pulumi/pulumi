@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 

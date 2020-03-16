@@ -29,7 +29,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"

@@ -24,7 +24,7 @@ import (
 	"syscall"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // Unix specific pipe implementation. Fairly simple as it sits on top of a pair of standard fifo

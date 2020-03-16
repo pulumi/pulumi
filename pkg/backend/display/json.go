@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/stack"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
