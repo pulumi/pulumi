@@ -16,3 +16,5 @@ linters:
     - structcheck
     - unconvert
     - varcheck
+  disable:
+    - staticcheck # Disabled due to OOM errors in golangci-lint@v1.18.0
