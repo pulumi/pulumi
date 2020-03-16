@@ -7,5 +7,8 @@ Please see the respective `README`s for information about installing and using t
 * [Node.js](./nodejs)
 * [Python](./python)
 * [Go](./go)
+* [.NET](./dotnet)
 
 The language providers work by implementing gRPC interfaces defined in [proto/](./proto/).
+
+Common models and utils shared by the SDKs and CLI are located in [pulumi/](./pulumi/).
