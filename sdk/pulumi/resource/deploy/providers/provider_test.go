@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 )
 
 func TestProviderRequestNameNil(t *testing.T) {

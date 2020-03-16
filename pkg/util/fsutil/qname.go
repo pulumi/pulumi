@@ -18,7 +18,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 )
 
 // QnamePath just cleans a name and makes sure it's appropriate to use as a path.
