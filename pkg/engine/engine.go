@@ -17,7 +17,7 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )

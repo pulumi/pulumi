@@ -22,8 +22,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/stack"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
 )

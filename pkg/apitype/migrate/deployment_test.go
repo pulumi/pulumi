@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/stretchr/testify/assert"
 )
 

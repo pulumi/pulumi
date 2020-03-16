@@ -15,7 +15,7 @@
 package diag
 
 import (
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 )
 
 // newError registers a new error message underneath the given id.

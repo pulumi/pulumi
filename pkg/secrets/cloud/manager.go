@@ -26,7 +26,7 @@ import (
 	_ "gocloud.dev/secrets/gcpkms"        // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
 
-	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/pkg/secrets"
 )
 

@@ -16,7 +16,7 @@ package migrate
 
 import (
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 )
 
 // UpToResourceV2 migrates a resource from ResourceV1 to ResourceV2.
