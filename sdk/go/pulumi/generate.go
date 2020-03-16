@@ -172,11 +172,31 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 		case "Archive", "Asset", "AssetOrArchive", "":
 			// do nothing
 		default:
-			builtins = append(builtins, &builtin{Name: name + "Ptr", Type: "*" + p.Type, inputType: "*" + unexported(p.Type) + "Ptr", Example: fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example)})
+			builtins = append(builtins, &builtin{
+				Name:      name + "Ptr",
+				Type:      "*" + p.Type,
+				inputType: "*" + unexported(p.Type) + "Ptr",
+				Example:   fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example),
+			})
 		}
-		builtins = append(builtins, &builtin{Name: name + "Array", Type: "[]" + name + "Input", elementType: "[]" + p.Type, Example: fmt.Sprintf("%sArray{%s}", name, p.Example)})
-		builtins = append(builtins, &builtin{Name: name + "Map", Type: "map[string]" + name + "Input", elementType: "map[string]" + p.Type, Example: fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example)})
-		builtins = append(builtins, &builtin{Name: name + "ArrayMap", Type: "map[string]" + name + "ArrayInput", elementType: "map[string][]" + p.Type, Example: fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example)})
+		builtins = append(builtins, &builtin{
+			Name:        name + "Array",
+			Type:        "[]" + name + "Input",
+			elementType: "[]" + p.Type,
+			Example:     fmt.Sprintf("%sArray{%s}", name, p.Example),
+		})
+		builtins = append(builtins, &builtin{
+			Name:        name + "Map",
+			Type:        "map[string]" + name + "Input",
+			elementType: "map[string]" + p.Type,
+			Example:     fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example),
+		})
+		builtins = append(builtins, &builtin{
+			Name:        name + "ArrayMap",
+			Type:        "map[string]" + name + "ArrayInput",
+			elementType: "map[string][]" + p.Type,
+			Example:     fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
+		})
 	}
 
 	nameToBuiltin := map[string]*builtin{}
