@@ -25,7 +25,7 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 	"sourcegraph.com/sourcegraph/appdash/traceapp"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 

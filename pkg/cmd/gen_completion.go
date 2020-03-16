@@ -22,7 +22,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 )
 
 // newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.

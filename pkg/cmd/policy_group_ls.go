@@ -20,7 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 

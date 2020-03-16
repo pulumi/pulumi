@@ -29,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 

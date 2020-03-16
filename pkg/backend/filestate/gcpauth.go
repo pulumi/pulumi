@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 
 	"golang.org/x/oauth2/google"
 

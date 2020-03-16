@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
