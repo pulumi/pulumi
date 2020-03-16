@@ -25,7 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 

@@ -33,8 +33,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )

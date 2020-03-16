@@ -29,7 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
