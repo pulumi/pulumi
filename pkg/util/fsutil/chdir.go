@@ -18,7 +18,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // Chdir changes the directory so that all operations from now on are relative to the project we are working with.

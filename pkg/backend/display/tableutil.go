@@ -19,7 +19,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 func columnHeader(msg string) string {

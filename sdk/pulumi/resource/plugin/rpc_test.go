@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 func setProperty(s *structpb.Value, k string, v interface{}) {

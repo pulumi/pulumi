@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/graph"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // Print prints a resource graph.

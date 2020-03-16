@@ -18,7 +18,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // Name is an identifier.  It conforms to the regex [A-Za-z_.][A-Za-z0-9_]*.

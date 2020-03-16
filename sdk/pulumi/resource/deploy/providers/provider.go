@@ -20,7 +20,7 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // A ProviderRequest is a tuple of an optional semantic version and a package name. Whenever the engine receives a

@@ -15,7 +15,7 @@
 package colors
 
 import (
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 type Colorization string

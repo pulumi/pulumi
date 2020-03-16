@@ -23,7 +23,7 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 

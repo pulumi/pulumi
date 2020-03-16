@@ -21,7 +21,7 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/cmd"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 

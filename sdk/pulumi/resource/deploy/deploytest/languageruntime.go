@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )

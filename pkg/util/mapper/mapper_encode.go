@@ -17,7 +17,7 @@ package mapper
 import (
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // Encode encodes a strongly typed struct into a weakly typed JSON-like property bag.

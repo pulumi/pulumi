@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"

@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
 // DecodeMapString takes a string of the form key1=value1:key2=value2 and returns a go map.
