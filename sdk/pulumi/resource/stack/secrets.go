@@ -19,11 +19,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/secrets/service"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/service"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 )

@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/b64"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
