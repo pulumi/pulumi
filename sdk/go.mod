@@ -23,8 +23,6 @@ require (
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0
-	gocloud.dev v0.19.0
-	gocloud.dev/secrets/hashivault v0.19.0
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.28.0
@@ -39,5 +37,3 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 )
-
-replace gocloud.dev => github.com/pulumi/go-cloud v0.18.1-0.20191119155701-6a8381d0793f
