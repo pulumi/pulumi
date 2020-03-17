@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 )
 
 // TestPulumiDockerImage simulates building and running Pulumi programs on the pulumi/pulumi Docker image.
