@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Add ArrayMap builtin types to Go SDK
+  [#4086](https://github.com/pulumi/pulumi/pull/4086)
+
 - Improve documentation of URL formats for `pulumi login`
   [#4059](https://github.com/pulumi/pulumi/pull/4059)
 
