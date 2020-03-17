@@ -20,7 +20,7 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"

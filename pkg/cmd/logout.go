@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 )
 

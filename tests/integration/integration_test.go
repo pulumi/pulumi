@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"

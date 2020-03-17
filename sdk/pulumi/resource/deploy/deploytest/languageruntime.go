@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"

@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/stack"

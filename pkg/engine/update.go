@@ -28,7 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/sdk/pulumi/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"

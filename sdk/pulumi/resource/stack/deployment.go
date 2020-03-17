@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"

@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
