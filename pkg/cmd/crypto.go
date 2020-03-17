@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
-	"github.com/pulumi/pulumi/sdk/pulumi/resource/stack"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
