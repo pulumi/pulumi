@@ -321,7 +321,7 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 // the result is an list unless a key expression is present, in which case it is a map. Key types must be strings.
 // The element type of the result is the type of the value expression. If the type of the value being iterated is
 // optional or eventual, the type of the result is optional or eventual. If the type of the key expression or
-// condition expresison is eventual, the result is also eventual.
+// condition expression is eventual, the result is also eventual.
 func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
@@ -427,7 +427,7 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 
 // bindFunctionCallExpression binds a function call expression. The name of the function is bound using the current
 // scope chain. An argument to a function must be assignable to the type of the corresponding parameter. It is not an
-// error to omit arugments for trailing positional parameters if those parameters are optional. If any of the
+// error to omit arguments for trailing positional parameters if those parameters are optional. If any of the
 // parameters to the function are eventual, the result type of the function is also eventual.
 func (b *expressionBinder) bindFunctionCallExpression(
 	syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {

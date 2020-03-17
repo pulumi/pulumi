@@ -35,17 +35,6 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 	}
 }
 
-func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Diagnostic {
-	startRange := block.LabelRanges[0]
-
-	diagRange := hcl.Range{
-		Filename: startRange.Filename,
-		Start:    startRange.Start,
-		End:      block.LabelRanges[len(block.LabelRanges)-1].End,
-	}
-	return errorf(diagRange, f, args...)
-}
-
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
 	return errorf(expr.SyntaxNode().Range(), "cannot assign expression of type %v to location of type %v", expr.Type(),
 		destType)

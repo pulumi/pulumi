@@ -176,7 +176,8 @@ func TestOutputType(t *testing.T) {
 	assert.Equal(t, BoolType, ResolveOutputs(NewPromiseType(BoolType)))
 	assert.Equal(t, NewMapType(BoolType), ResolveOutputs(NewMapType(NewOutputType(BoolType))))
 	assert.Equal(t, NewListType(BoolType), ResolveOutputs(NewListType(NewOutputType(BoolType))))
-	assert.Equal(t, NewUnionType(BoolType, IntType), ResolveOutputs(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
+	assert.Equal(t, NewUnionType(BoolType, IntType), ResolveOutputs(NewUnionType(NewOutputType(BoolType),
+		NewOutputType(IntType))))
 	assert.Equal(t, NewObjectType(map[string]Type{
 		"bool": BoolType,
 		"int":  IntType,
@@ -191,7 +192,8 @@ func TestOutputType(t *testing.T) {
 	assert.Equal(t, NewOutputType(BoolType), NewOutputType(NewPromiseType(BoolType)))
 	assert.Equal(t, NewOutputType(NewMapType(BoolType)), NewOutputType(NewMapType(NewOutputType(BoolType))))
 	assert.Equal(t, NewOutputType(NewListType(BoolType)), NewOutputType(NewListType(NewOutputType(BoolType))))
-	assert.Equal(t, NewOutputType(NewUnionType(BoolType, IntType)), NewOutputType(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
+	assert.Equal(t, NewOutputType(NewUnionType(BoolType, IntType)),
+		NewOutputType(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
 	assert.Equal(t, NewOutputType(NewObjectType(map[string]Type{
 		"bool": BoolType,
 		"int":  IntType,
@@ -243,7 +245,8 @@ func TestPromiseType(t *testing.T) {
 	assert.Equal(t, BoolType, ResolvePromises(NewPromiseType(BoolType)))
 	assert.Equal(t, NewMapType(BoolType), ResolvePromises(NewMapType(NewPromiseType(BoolType))))
 	assert.Equal(t, NewListType(BoolType), ResolvePromises(NewListType(NewPromiseType(BoolType))))
-	assert.Equal(t, NewUnionType(BoolType, IntType), ResolvePromises(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
+	assert.Equal(t, NewUnionType(BoolType, IntType),
+		ResolvePromises(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
 	assert.Equal(t, NewObjectType(map[string]Type{
 		"bool": BoolType,
 		"int":  IntType,
@@ -258,7 +261,8 @@ func TestPromiseType(t *testing.T) {
 	assert.Equal(t, NewPromiseType(BoolType), NewPromiseType(NewPromiseType(BoolType)))
 	assert.Equal(t, NewPromiseType(NewMapType(BoolType)), NewPromiseType(NewMapType(NewPromiseType(BoolType))))
 	assert.Equal(t, NewPromiseType(NewListType(BoolType)), NewPromiseType(NewListType(NewPromiseType(BoolType))))
-	assert.Equal(t, NewPromiseType(NewUnionType(BoolType, IntType)), NewPromiseType(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
+	assert.Equal(t, NewPromiseType(NewUnionType(BoolType, IntType)),
+		NewPromiseType(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
 	assert.Equal(t, NewPromiseType(NewObjectType(map[string]Type{
 		"bool": BoolType,
 		"int":  IntType,

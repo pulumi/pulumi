@@ -89,7 +89,8 @@ func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		validateTrivia(v.t, tokens.QuestionMark, tokens.Colon)
 	case *hclsyntax.ForExpr:
 		tokens := v.tokens.ForNode(n).(ForTokens)
-		validateTrivia(v.t, tokens.Open, tokens.For, tokens.Key, tokens.Comma, tokens.Value, tokens.In, tokens.Colon, tokens.Arrow, tokens.Group, tokens.If, tokens.Close)
+		validateTrivia(v.t, tokens.Open, tokens.For, tokens.Key, tokens.Comma, tokens.Value, tokens.In, tokens.Colon,
+			tokens.Arrow, tokens.Group, tokens.If, tokens.Close)
 	case *hclsyntax.FunctionCallExpr:
 		tokens := v.tokens.ForNode(n).(FunctionCallTokens)
 		validateTrivia(v.t, tokens.Name, tokens.OpenParen, tokens.CloseParen)

@@ -48,7 +48,7 @@ func GetTraversableType(t Traversable) Type {
 	}
 }
 
-// GetTraverserKey extracts the value and type of the key assocaited with the given traverser.
+// GetTraverserKey extracts the value and type of the key associated with the given traverser.
 func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
 	switch t := t.(type) {
 	case hcl.TraverseAttr:

@@ -202,12 +202,8 @@ func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
 	case *UnionType:
 		// If the other type is also a union type, produce a new type that is the union of their elements.
 		elements := make([]Type, 0, len(t.ElementTypes)+len(other.ElementTypes))
-		for _, t := range t.ElementTypes {
-			elements = append(elements, t)
-		}
-		for _, t := range other.ElementTypes {
-			elements = append(elements, t)
-		}
+		elements = append(elements, t.ElementTypes...)
+		elements = append(elements, other.ElementTypes...)
 		return NewUnionType(elements...), SafeConversion
 	default:
 		// Otherwise, unify the other type with each element of the union and return a new union type.
