@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )

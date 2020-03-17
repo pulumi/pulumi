@@ -20,12 +20,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/graph"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // planExecutor is responsible for taking a plan and driving it to completion.

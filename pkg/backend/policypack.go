@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 )
 

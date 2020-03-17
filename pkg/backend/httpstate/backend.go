@@ -44,7 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"

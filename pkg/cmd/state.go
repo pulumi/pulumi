@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 

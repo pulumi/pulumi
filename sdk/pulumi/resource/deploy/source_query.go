@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"

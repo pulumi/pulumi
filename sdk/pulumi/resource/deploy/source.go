@@ -19,7 +19,7 @@ import (
 	"io"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
