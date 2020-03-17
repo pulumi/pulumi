@@ -9,6 +9,20 @@ VERSION         := $(shell scripts/get-version HEAD)
 
 TESTPARALLELISM := 10
 
+ensure::
+	$(call STEP_MESSAGE)
+ifeq ($(NOPROXY), true)
+	@echo "cd sdk && GO111MODULE=on go mod tidy"; cd sdk && GO111MODULE=on go mod tidy
+	@echo "cd sdk && GO111MODULE=on go mod vendor"; cd sdk && GO111MODULE=on go mod vendor
+	@echo "cd pkg && GO111MODULE=on go mod tidy"; cd pkg && GO111MODULE=on go mod tidy
+	@echo "cd pkg && GO111MODULE=on go mod vendor"; cd pkg && GO111MODULE=on go mod vendor
+else
+	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+endif
+
 build-proto::
 	cd sdk/proto && ./generate.sh
 
