@@ -21,7 +21,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/testing"
+	"github.com/pulumi/pulumi/sdk/pulumi/testing"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/stretchr/testify/assert"
 )

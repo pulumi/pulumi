@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 )
 
 // deleteIfNotFailed deletes the files in the testing environment if the testcase has

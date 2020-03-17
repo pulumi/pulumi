@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 )
 
 // TestPolicy tests policy related commands work.

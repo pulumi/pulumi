@@ -10,7 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/fsutil"
 )

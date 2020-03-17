@@ -37,7 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 )
 
 func TestStackCommands(t *testing.T) {
