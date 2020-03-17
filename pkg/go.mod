@@ -30,6 +30,7 @@ require (
 	github.com/spf13/cobra v0.0.6
 	github.com/stretchr/testify v1.5.1
 	gocloud.dev v0.19.0
+	gocloud.dev/secrets/hashivault v0.19.0
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
