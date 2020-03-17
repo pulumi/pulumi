@@ -50,10 +50,9 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, m
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
-	// The Python language generator will simply return
-	// "list" or "dict" for certain enumerables. Once the generator
-	// is updated with "types", the following code block ideally
-	// wouldn't run anymore.
+	// The Python SDK generator will simply return "list" or "dict" for enumerables.
+	// So we examine the underlying types to provide some more information on
+	// the elements inside the enumerable.
 	switch name {
 	case "list":
 		arrTy := t.(*schema.ArrayType)
@@ -66,6 +65,8 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 			return getMapWithTypeName(elementTypeToName(elType))
 		case *schema.ObjectType:
 			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
+		default:
+			return "Dict[Any, Any]"
 		}
 	}
 	return name
@@ -107,8 +108,12 @@ func getDictWithTypeName(t string) string {
 // getMapWithTypeName returns the Python representation of a dictionary
 // with a key of type `t` and a value of Any.
 func getMapWithTypeName(t string) string {
-	if t == "string" {
+	switch t {
+	case "string":
 		return "Dict[str, Any]"
+	case "any":
+		return "Dict[Any, Any]"
+	default:
+		return fmt.Sprintf("Dict[%s, Any]", t)
 	}
-	return fmt.Sprintf("Dict[%s, Any]", PyName(t))
 }
