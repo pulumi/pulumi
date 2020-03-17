@@ -17,8 +17,8 @@ package cmd
 import (
 	"encoding/base64"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"

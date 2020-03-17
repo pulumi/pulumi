@@ -15,12 +15,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/sdk/pulumi/testing"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
