@@ -832,7 +832,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 	var imports []string
 	if len(importedPackages) > 0 {
 		for k := range importedPackages {
-			imports = append(imports, fmt.Sprintf("%s", k))
+			imports = append(imports, k)
 		}
 		sort.Strings(imports)
 
@@ -917,7 +917,7 @@ type GoInfo struct {
 	// Base path for package imports
 	//
 	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
-	ImportBasePath string `json:"importBasePath"`
+	ImportBasePath string `json:"importBasePath,omitempty"`
 
 	// Map from module -> package name
 	//
