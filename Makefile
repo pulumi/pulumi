@@ -16,11 +16,19 @@ ifeq ($(NOPROXY), true)
 	@echo "cd sdk && GO111MODULE=on go mod vendor"; cd sdk && GO111MODULE=on go mod vendor
 	@echo "cd pkg && GO111MODULE=on go mod tidy"; cd pkg && GO111MODULE=on go mod tidy
 	@echo "cd pkg && GO111MODULE=on go mod vendor"; cd pkg && GO111MODULE=on go mod vendor
+	@echo "cd examples && GO111MODULE=on go mod tidy"; cd examples && GO111MODULE=on go mod tidy
+	@echo "cd examples && GO111MODULE=on go mod vendor"; cd examples && GO111MODULE=on go mod vendor
+	@echo "cd tests && GO111MODULE=on go mod tidy"; cd tests && GO111MODULE=on go mod tidy
+	@echo "cd tests && GO111MODULE=on go mod vendor"; cd tests && GO111MODULE=on go mod vendor
 else
 	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
 	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
 	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
 	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
 endif
 
 build-proto::

@@ -82,5 +82,25 @@ build_script:
 
     popd
 
+    pushd .
+
+    cd examples
+
+    go mod tidy
+
+    go mod vendor
+
+    popd
+
+    pushd .
+
+    cd tests
+
+    go mod tidy
+
+    go mod vendor
+
+    popd
+
     if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj )
 test: off

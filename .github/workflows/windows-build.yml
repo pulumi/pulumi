@@ -74,6 +74,16 @@ jobs:
         go mod tidy
         go mod vendor
         popd
+        pushd .
+        cd examples
+        go mod tidy
+        go mod vendor
+        popd
+        pushd .
+        cd tests
+        go mod tidy
+        go mod vendor
+        popd
     - name: Build Pulumi
       run: |
         cd src\github.com\${{ github.repository }}
