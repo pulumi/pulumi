@@ -20,6 +20,7 @@ package gen
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -84,16 +85,21 @@ func camel(s string) string {
 }
 
 type pkgContext struct {
-	pkg           *schema.Package
-	mod           string
-	typeDetails   map[*schema.ObjectType]*typeDetails
-	types         []*schema.ObjectType
-	resources     []*schema.Resource
-	functions     []*schema.Function
-	names         stringSet
-	functionNames map[*schema.Function]string
-	needsUtils    bool
-	tool          string
+	pkg            *schema.Package
+	mod            string
+	importBasePath string
+	typeDetails    map[*schema.ObjectType]*typeDetails
+	types          []*schema.ObjectType
+	resources      []*schema.Resource
+	functions      []*schema.Function
+	names          stringSet
+	functionNames  map[*schema.Function]string
+	needsUtils     bool
+	tool           string
+
+	// Name overrides set in GoInfo
+	modToPkg         map[string]string // Module name -> package name
+	pkgImportAliases map[string]string // Package name -> import alias
 }
 
 func (pkg *pkgContext) details(t *schema.ObjectType) *typeDetails {
@@ -113,6 +119,10 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	contract.Assert(len(components) == 3)
 
 	mod, name := pkg.pkg.TokenToModule(tok), components[2]
+	if override, ok := pkg.modToPkg[mod]; ok {
+		mod = override
+	}
+
 	if mod == pkg.mod {
 		name := title(name)
 		if pkg.names.has(name) {
@@ -428,7 +438,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	}
 
 	if details.ptrElement {
-		fmt.Fprintf(w, "type %sPtrOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sPtrOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Ptr", "*"+name)
 
@@ -447,7 +457,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	}
 
 	if details.arrayElement {
-		fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Array", "[]"+name)
 
@@ -459,7 +469,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	}
 
 	if details.mapElement {
-		fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Map", "map[string]"+name)
 
@@ -739,36 +749,49 @@ func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "}\n")
 }
 
-func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet) {
+func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		pkg.getTypeImports(t.ElementType, imports)
+		if recurse {
+			pkg.getTypeImports(t.ElementType, false, imports)
+		}
 	case *schema.MapType:
-		pkg.getTypeImports(t.ElementType, imports)
+		if recurse {
+			pkg.getTypeImports(t.ElementType, false, imports)
+		}
 	case *schema.ObjectType:
 		mod := pkg.pkg.TokenToModule(t.Token)
+		if override, ok := pkg.modToPkg[mod]; ok {
+			mod = override
+		}
 		if mod != pkg.mod {
-			imports.add(path.Join(pkg.pkg.Repository, mod))
+			imports.add(path.Join(pkg.importBasePath, mod))
 		}
 
 		for _, p := range t.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			if recurse {
+				pkg.getTypeImports(p.Type, false, imports)
+			}
 		}
 	case *schema.UnionType:
-		// TODO(pdg): union types
+		for _, e := range t.ElementTypes {
+			if recurse {
+				pkg.getTypeImports(e, false, imports)
+			}
+		}
 	}
 }
 
 func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 	switch member := member.(type) {
 	case *schema.ObjectType:
-		pkg.getTypeImports(member, imports)
+		pkg.getTypeImports(member, true, imports)
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports)
 		}
 		for _, p := range member.InputProperties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports)
 
 			if p.IsRequired {
 				imports.add("github.com/pkg/errors")
@@ -776,14 +799,14 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			pkg.getTypeImports(member.Inputs, imports)
+			pkg.getTypeImports(member.Inputs, false, imports)
 		}
 		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, imports)
+			pkg.getTypeImports(member.Outputs, false, imports)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports)
 		}
 	default:
 		return
@@ -812,6 +835,12 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 			imports = append(imports, k)
 		}
 		sort.Strings(imports)
+
+		for i, k := range imports {
+			if alias, ok := pkg.pkgImportAliases[k]; ok {
+				imports[i] = fmt.Sprintf(`%s "%s"`, alias, k)
+			}
+		}
 	}
 
 	if len(goImports) > 0 {
@@ -826,7 +855,11 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 			if i == "" {
 				fmt.Fprintf(w, "\n")
 			} else {
-				fmt.Fprintf(w, "\t\"%s\"\n", i)
+				if strings.Contains(i, `"`) { // Imports with aliases already include quotes.
+					fmt.Fprintf(w, "\t%s\n", i)
+				} else {
+					fmt.Fprintf(w, "\t%q\n", i)
+				}
 			}
 		}
 		fmt.Fprintf(w, ")\n\n")
@@ -879,20 +912,53 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
+// GoInfo holds information required to generate the Go SDK from a schema.
+type GoInfo struct {
+	// Base path for package imports
+	//
+	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
+	ImportBasePath string `json:"importBasePath,omitempty"`
+
+	// Map from module -> package name
+	//
+	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
+	//
+	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
+
+	// Map from package name -> package alias
+	//
+	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
+	//
+	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
+}
+
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	var goInfo GoInfo
+	err := json.Unmarshal(pkg.Language["go"], &goInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	// group resources, types, and functions into Go packages
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
+		if override, ok := goInfo.ModuleToPackage[mod]; ok {
+			mod = override
+		}
+
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:           pkg,
-				mod:           mod,
-				typeDetails:   map[*schema.ObjectType]*typeDetails{},
-				names:         stringSet{},
-				functionNames: map[*schema.Function]string{},
-				tool:          tool,
+				pkg:              pkg,
+				mod:              mod,
+				importBasePath:   goInfo.ImportBasePath,
+				typeDetails:      map[*schema.ObjectType]*typeDetails{},
+				names:            stringSet{},
+				functionNames:    map[*schema.Function]string{},
+				tool:             tool,
+				modToPkg:         goInfo.ModuleToPackage,
+				pkgImportAliases: goInfo.PackageImportAliases,
 			}
 			packages[mod] = pack
 		}
