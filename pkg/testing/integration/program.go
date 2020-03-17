@@ -43,7 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/pulumi/testing"
-	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/sdk/pulumi/tools"
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
