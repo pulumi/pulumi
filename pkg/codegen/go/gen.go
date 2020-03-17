@@ -25,7 +25,6 @@ import (
 	"io"
 	"path"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -837,12 +836,8 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 		}
 		sort.Strings(imports)
 
-		// Match the end of an import path that can be mapped to an alias.
-		//   "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/meta/v1" -> meta/v1
-		re := regexp.MustCompile(`\w+/\w+$`)
 		for i, k := range imports {
-			aliasSuffix := re.FindString(k)
-			if alias, ok := pkg.pkgImportAliases[aliasSuffix]; ok {
+			if alias, ok := pkg.pkgImportAliases[k]; ok {
 				imports[i] = fmt.Sprintf(`%s "%s"`, alias, k)
 			}
 		}
@@ -927,7 +922,7 @@ type GoInfo struct {
 
 	// Map from package name -> package alias
 	//
-	//     { "flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
+	//     { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 }
