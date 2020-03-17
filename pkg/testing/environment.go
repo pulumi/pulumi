@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/tools"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/encoding"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/fsutil"
 )
 
 const (
