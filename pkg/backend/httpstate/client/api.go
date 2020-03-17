@@ -27,7 +27,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"

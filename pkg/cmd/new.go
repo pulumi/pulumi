@@ -35,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"

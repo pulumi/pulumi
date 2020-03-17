@@ -20,8 +20,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"

@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 )

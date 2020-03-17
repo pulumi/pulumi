@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"

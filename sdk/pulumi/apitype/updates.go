@@ -17,7 +17,7 @@ package apitype
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 )
 
 // CreateUpdateConfig describes the configuration data for an request to `POST /updates`.

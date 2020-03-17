@@ -17,7 +17,7 @@ package testutil
 import (
 	"io/ioutil"
 
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 )
 
 // TestDiagSink suppresses message output, but captures them, so that they can be compared to expected results.

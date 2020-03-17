@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 

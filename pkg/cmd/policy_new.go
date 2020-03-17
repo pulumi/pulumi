@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"

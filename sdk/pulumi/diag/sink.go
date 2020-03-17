@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )

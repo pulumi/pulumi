@@ -26,7 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"

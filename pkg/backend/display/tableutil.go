@@ -18,7 +18,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
 
