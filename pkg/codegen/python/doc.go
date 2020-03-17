@@ -66,7 +66,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		case *schema.ObjectType:
 			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
 		default:
-			return "Dict[Any, Any]"
+			return "Dict[str, Any]"
 		}
 	}
 	return name
@@ -106,14 +106,14 @@ func getDictWithTypeName(t string) string {
 }
 
 // getMapWithTypeName returns the Python representation of a dictionary
-// with a key of type `t` and a value of Any.
+// with a string keu and a value of type `t`.
 func getMapWithTypeName(t string) string {
 	switch t {
 	case "string":
-		return "Dict[str, Any]"
+		return "Dict[str, str]"
 	case "any":
-		return "Dict[Any, Any]"
+		return "Dict[str, Any]"
 	default:
-		return fmt.Sprintf("Dict[%s, Any]", t)
+		return fmt.Sprintf("Dict[str, %s]", PyName(t))
 	}
 }
