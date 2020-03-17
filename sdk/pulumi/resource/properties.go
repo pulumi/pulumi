@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/mapper"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 )
