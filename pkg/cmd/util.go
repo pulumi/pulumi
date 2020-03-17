@@ -45,7 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/ciutil"
-	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"

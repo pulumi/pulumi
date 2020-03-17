@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	pul_testing "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/gitutil"
 	"github.com/stretchr/testify/assert"
 )
 
