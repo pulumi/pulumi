@@ -86,16 +86,17 @@ func camel(s string) string {
 }
 
 type pkgContext struct {
-	pkg           *schema.Package
-	mod           string
-	typeDetails   map[*schema.ObjectType]*typeDetails
-	types         []*schema.ObjectType
-	resources     []*schema.Resource
-	functions     []*schema.Function
-	names         stringSet
-	functionNames map[*schema.Function]string
-	needsUtils    bool
-	tool          string
+	pkg            *schema.Package
+	mod            string
+	importBasePath string
+	typeDetails    map[*schema.ObjectType]*typeDetails
+	types          []*schema.ObjectType
+	resources      []*schema.Resource
+	functions      []*schema.Function
+	names          stringSet
+	functionNames  map[*schema.Function]string
+	needsUtils     bool
+	tool           string
 
 	// Name overrides set in GoInfo
 	modToPkg         map[string]string // Module name -> package name
@@ -749,14 +750,6 @@ func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "}\n")
 }
 
-// importBasePath converts from a repository URL to an import path.
-//   https://github.com/pulumi/pulumi-kubernetes -> github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
-func (pkg *pkgContext) importBasePath() string {
-	s := pkg.pkg.Repository
-	s = strings.TrimPrefix(s, "https://")
-	return fmt.Sprintf("%s/sdk/go/%s", s, pkg.pkg.Name)
-}
-
 func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
@@ -773,7 +766,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports strin
 			mod = override
 		}
 		if mod != pkg.mod {
-			imports.add(path.Join(pkg.importBasePath(), mod))
+			imports.add(path.Join(pkg.importBasePath, mod))
 		}
 
 		for _, p := range t.Properties {
@@ -946,6 +939,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		return nil, err
 	}
 
+	// importBasePath converts from a repository URL to an import path.
+	//   https://github.com/pulumi/pulumi-kubernetes -> github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
+	importBasePath := func() string {
+		s := pkg.Repository
+		s = strings.TrimPrefix(s, "https://")
+		return fmt.Sprintf("%s/sdk/go/%s", s, pkg.Name)
+	}
+
 	// group resources, types, and functions into Go packages
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
@@ -959,6 +960,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pack = &pkgContext{
 				pkg:              pkg,
 				mod:              mod,
+				importBasePath:   importBasePath(),
 				typeDetails:      map[*schema.ObjectType]*typeDetails{},
 				names:            stringSet{},
 				functionNames:    map[*schema.Function]string{},
