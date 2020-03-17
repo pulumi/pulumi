@@ -11,6 +11,7 @@ import (
 
 func TestMassageBlobPath(t *testing.T) {
 	testMassagePath := func(t *testing.T, s string, want string) {
+		t.Helper()
 		massaged, err := massageBlobPath(s)
 		assert.NoError(t, err)
 		assert.Equal(t, want, massaged,
@@ -34,7 +35,7 @@ func TestMassageBlobPath(t *testing.T) {
 
 		// When running on Windows, the "home directory" takes on a different meaning.
 		if runtime.GOOS == "windows" {
-			t.Logf("Running on %v", runtime.GOOS)
+			t.Logf("Running on %v, running more tests...", runtime.GOOS)
 
 			t.Run("NormalizeDirSeparator", func(t *testing.T) {
 				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve")

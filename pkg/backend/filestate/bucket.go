@@ -40,10 +40,9 @@ func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
 }
 
 func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
-	// optsCopy := *opts
-	// optsCopy.Prefix = filepath.ToSlash(opts.Prefix)
-	// return b.bucket.List(&optsCopy)
-	return b.bucket.List(opts)
+	optsCopy := *opts
+	optsCopy.Prefix = filepath.ToSlash(opts.Prefix)
+	return b.bucket.List(&optsCopy)
 }
 
 func (b *wrappedBucket) SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error) {
