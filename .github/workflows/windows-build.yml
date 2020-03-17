@@ -64,8 +64,16 @@ jobs:
       run: |
         cd src\github.com\${{ github.repository }}
         set GOMODULE111=on
+        pushd .
+        cd sdk
         go mod tidy
         go mod vendor
+        popd
+        pushd .
+        cd pkg
+        go mod tidy
+        go mod vendor
+        popd
     - name: Build Pulumi
       run: |
         cd src\github.com\${{ github.repository }}
