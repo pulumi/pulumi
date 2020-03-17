@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Update to Helm v3 in pulumi Docker image
+  [#4090](https://github.com/pulumi/pulumi/pull/4090)
+
 - Add ArrayMap builtin types to Go SDK
   [#4086](https://github.com/pulumi/pulumi/pull/4086)
 
