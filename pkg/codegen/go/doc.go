@@ -36,13 +36,26 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleN
 	path := fmt.Sprintf("%s/%s", packageName, moduleName)
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
+	typeName = strings.TrimPrefix(typeName, "*")
 	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
 }
 
-// GetDocLinkForInputType returns the godoc URL for an input type.
-func (d DocLanguageHelper) GetDocLinkForInputType(packageName, moduleName, typeName string) string {
-	name := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
-	return name + "Args"
+// GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
+	link := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+	if !input {
+		return link + "Output"
+	}
+	return link + "Args"
+}
+
+// GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
+	link := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+	if !input {
+		return link
+	}
+	return link + "Args"
 }
 
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
@@ -56,4 +69,10 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		pkg: pkg,
 	}
 	return mod.plainType(t, optional)
+}
+
+// GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
+// an existing resource.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return "Lookup" + resourceName + "Result"
 }

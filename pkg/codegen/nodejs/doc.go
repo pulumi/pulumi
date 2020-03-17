@@ -38,10 +38,19 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeN
 	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }
 
-// GetDocLinkForInputType returns the doc link for an input type.
-func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
+// GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName string, input bool) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
+	typeName = strings.ReplaceAll(typeName, modName+".", "")
+	if input {
+		return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
+	}
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/output/#%s", packageName, typeName)
+}
+
+// GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
+	return d.GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName, input)
 }
 
 // GetDocLinkForBuiltInType returns the URL for a built-in type.
@@ -70,4 +79,10 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		typeName = strings.ReplaceAll(typeName, " | undefined", "?")
 	}
 	return typeName
+}
+
+// GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
+// an existing resource.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return "Get" + resourceName + "Result"
 }

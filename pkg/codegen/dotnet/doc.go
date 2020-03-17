@@ -38,8 +38,13 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, _, typeName st
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
-// GetDocLinkForInputType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForInputType(packageName, moduleName, typeName string) string {
+// GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
+	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+}
+
+// GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
 	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
 }
 
@@ -51,4 +56,10 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		typeDetails: typeDetails,
 	}
 	return mod.typeString(t, "", input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
+}
+
+// GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
+// an existing resource.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return "Get" + resourceName + "Result"
 }

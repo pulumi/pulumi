@@ -36,8 +36,13 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeN
 	return ""
 }
 
-// GetDocLinkForInputType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForInputType(packageName, modName, typeName string) string {
+// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName string, input bool) string {
+	return ""
+}
+
+// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
 	return ""
 }
 
@@ -64,6 +69,11 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		}
 	}
 	return name
+}
+
+// GetResourceFunctionResultName is not implemented for Python and returns an empty string.
+func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+	return ""
 }
 
 // elementTypeToName returns the type name from an element type of the form

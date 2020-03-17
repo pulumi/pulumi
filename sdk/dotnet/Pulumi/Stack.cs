@@ -50,8 +50,10 @@ namespace Pulumi
         /// <summary>
         /// Create a Stack with stack resources defined in derived class constructor.
         /// </summary>
-        public Stack()
-            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
+        public Stack(StackOptions? options = null)
+            : base(_rootPulumiStackTypeName, 
+                $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}",
+                ConvertOptions(options))
         {
             Deployment.InternalInstance.Stack = this;
         }
@@ -120,6 +122,17 @@ namespace Pulumi
             return dictionary == null
                 ? ImmutableDictionary<string, object?>.Empty
                 : dictionary.ToImmutableDictionary();
+        }
+        
+        private static ComponentResourceOptions? ConvertOptions(StackOptions? options)
+        {
+            if (options == null)
+                return null;
+            
+            return new ComponentResourceOptions
+            {
+                ResourceTransformations = options.ResourceTransformations
+            };
         }
     }
 }

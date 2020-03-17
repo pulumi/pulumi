@@ -5,6 +5,13 @@ CHANGELOG
 - Display resource type in PAC violation output
   [#4061](https://github.com/pulumi/pulumi/issues/4061)
 
+- Improve documentation of URL formats for `pulumi login`
+  [#4059](https://github.com/pulumi/pulumi/pull/4059)
+
+- Add support for stack transformations in the .NET SDK.
+  [4008](https://github.com/pulumi/pulumi/pull/4008)
+  
+## 1.12.1 (2020-03-11)
 - Fix Kubernetes YAML parsing error in .NET.
   [#4023](https://github.com/pulumi/pulumi/pull/4023)
 
