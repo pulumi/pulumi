@@ -914,15 +914,20 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 // GoInfo holds information required to generate the Go SDK from a schema.
 type GoInfo struct {
+	// Base path for package imports
+	//
+	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
+	ImportBasePath string `json:"importBasePath"`
+
 	// Map from module -> package name
 	//
-	//     { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
+	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
 	//
 	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
 
 	// Map from package name -> package alias
 	//
-	//     { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
+	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 }
@@ -932,14 +937,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	err := json.Unmarshal(pkg.Language["go"], &goInfo)
 	if err != nil {
 		return nil, err
-	}
-
-	// importBasePath converts from a repository URL to an import path.
-	//   https://github.com/pulumi/pulumi-kubernetes -> github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
-	importBasePath := func() string {
-		s := pkg.Repository
-		s = strings.TrimPrefix(s, "https://")
-		return fmt.Sprintf("%s/sdk/go/%s", s, pkg.Name)
 	}
 
 	// group resources, types, and functions into Go packages
@@ -955,7 +952,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pack = &pkgContext{
 				pkg:              pkg,
 				mod:              mod,
-				importBasePath:   importBasePath(),
+				importBasePath:   goInfo.ImportBasePath,
 				typeDetails:      map[*schema.ObjectType]*typeDetails{},
 				names:            stringSet{},
 				functionNames:    map[*schema.Function]string{},
