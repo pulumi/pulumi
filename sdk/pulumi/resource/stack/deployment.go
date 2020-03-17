@@ -21,8 +21,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/apitype/migrate"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"

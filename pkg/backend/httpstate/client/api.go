@@ -33,7 +33,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/tracing"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/stretchr/testify/assert"
 )
 

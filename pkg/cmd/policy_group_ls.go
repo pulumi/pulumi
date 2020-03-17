@@ -18,7 +18,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/spf13/cobra"
