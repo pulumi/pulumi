@@ -44,7 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tools"
-	"github.com/pulumi/pulumi/pkg/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
