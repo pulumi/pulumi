@@ -33,11 +33,20 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleName string, typeName string) string {
-	path := fmt.Sprintf("%s/%s", packageName, moduleName)
+	var path string
+	if packageName != "" {
+		path = fmt.Sprintf("%s/%s", packageName, moduleName)
+	} else {
+		path = moduleName
+	}
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
+
+	if packageName != "" {
+		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
+	}
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/%s?tab=doc#%s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.

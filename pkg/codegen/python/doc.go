@@ -41,7 +41,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, m
 	return ""
 }
 
-// GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
+// GetDocLinkForFunctionInputOrOutputType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
 	return ""
 }
@@ -50,10 +50,9 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, m
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
-	// The Python language generator will simply return
-	// "list" or "dict" for certain enumerables. Once the generator
-	// is updated with "types", the following code block ideally
-	// wouldn't run anymore.
+	// The Python SDK generator will simply return "list" or "dict" for enumerables.
+	// So we examine the underlying types to provide some more information on
+	// the elements inside the enumerable.
 	switch name {
 	case "list":
 		arrTy := t.(*schema.ArrayType)
@@ -63,9 +62,11 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		switch dictionaryTy := t.(type) {
 		case *schema.MapType:
 			elType := dictionaryTy.ElementType.String()
-			return getDictWithTypeName(elementTypeToName(elType))
+			return getMapWithTypeName(elementTypeToName(elType))
 		case *schema.ObjectType:
 			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
+		default:
+			return "Dict[str, Any]"
 		}
 	}
 	return name
@@ -91,11 +92,28 @@ func elementTypeToName(el string) string {
 // getListWithTypeName returns a Python representation of a list containing
 // items of `t`.
 func getListWithTypeName(t string) string {
-	return fmt.Sprintf("list[%s]", PyName(t))
+	if t == "string" {
+		return "List[str]"
+	}
+
+	return fmt.Sprintf("List[%s]", PyName(t))
 }
 
 // getDictWithTypeName returns the Python representation of a dictionary
 // where each item is of type `t`.
 func getDictWithTypeName(t string) string {
-	return fmt.Sprintf("dict{%s}", PyName(t))
+	return fmt.Sprintf("Dict[%s]", PyName(t))
+}
+
+// getMapWithTypeName returns the Python representation of a dictionary
+// with a string keu and a value of type `t`.
+func getMapWithTypeName(t string) string {
+	switch t {
+	case "string":
+		return "Dict[str, str]"
+	case "any":
+		return "Dict[str, Any]"
+	default:
+		return fmt.Sprintf("Dict[str, %s]", PyName(t))
+	}
 }
