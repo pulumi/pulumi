@@ -63,7 +63,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		switch dictionaryTy := t.(type) {
 		case *schema.MapType:
 			elType := dictionaryTy.ElementType.String()
-			return getDictWithTypeName(elementTypeToName(elType))
+			return getMapWithTypeName(elementTypeToName(elType))
 		case *schema.ObjectType:
 			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
 		}
@@ -91,11 +91,24 @@ func elementTypeToName(el string) string {
 // getListWithTypeName returns a Python representation of a list containing
 // items of `t`.
 func getListWithTypeName(t string) string {
-	return fmt.Sprintf("list[%s]", PyName(t))
+	if t == "string" {
+		return "List[str]"
+	}
+
+	return fmt.Sprintf("List[%s]", PyName(t))
 }
 
 // getDictWithTypeName returns the Python representation of a dictionary
 // where each item is of type `t`.
 func getDictWithTypeName(t string) string {
-	return fmt.Sprintf("dict{%s}", PyName(t))
+	return fmt.Sprintf("Dict[%s]", PyName(t))
+}
+
+// getMapWithTypeName returns the Python representation of a dictionary
+// with a key of type `t` and a value of Any.
+func getMapWithTypeName(t string) string {
+	if t == "string" {
+		return "Dict[str, Any]"
+	}
+	return fmt.Sprintf("Dict[%s, Any]", PyName(t))
 }
