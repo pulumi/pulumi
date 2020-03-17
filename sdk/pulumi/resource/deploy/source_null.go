@@ -17,9 +17,9 @@ package deploy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"

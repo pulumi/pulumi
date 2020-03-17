@@ -30,11 +30,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 func newConfigCmd() *cobra.Command {

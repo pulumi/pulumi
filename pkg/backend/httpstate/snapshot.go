@@ -20,9 +20,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
-	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.

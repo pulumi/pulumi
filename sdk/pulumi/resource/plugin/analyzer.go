@@ -18,9 +18,9 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or

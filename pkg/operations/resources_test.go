@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {

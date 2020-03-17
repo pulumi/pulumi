@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 )

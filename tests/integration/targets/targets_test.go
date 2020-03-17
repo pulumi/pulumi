@@ -11,8 +11,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/fsutil"
 )
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {

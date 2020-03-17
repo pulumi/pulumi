@@ -31,15 +31,15 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/util/validation"
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/util/validation"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.

@@ -19,9 +19,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 func TestPrettyKeyForProject(t *testing.T) {

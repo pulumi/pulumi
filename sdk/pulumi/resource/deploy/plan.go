@@ -23,13 +23,13 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/graph"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // BackendClient provides an interface for retrieving information about other stacks.

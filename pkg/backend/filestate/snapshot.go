@@ -15,8 +15,8 @@
 package filestate
 
 import (
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 )
 

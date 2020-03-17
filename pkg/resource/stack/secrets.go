@@ -19,13 +19,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/secrets/service"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource"
+	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets/cloud"
 	"github.com/pulumi/pulumi/sdk/pulumi/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/secrets/service"
-	"github.com/pulumi/pulumi/sdk/pulumi/resource"
-	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.

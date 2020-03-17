@@ -27,13 +27,13 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling

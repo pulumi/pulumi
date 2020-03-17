@@ -15,8 +15,8 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 )
 

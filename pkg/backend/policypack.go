@@ -19,8 +19,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.

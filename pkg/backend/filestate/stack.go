@@ -20,12 +20,12 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.

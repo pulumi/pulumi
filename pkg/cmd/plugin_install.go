@@ -25,9 +25,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 func newPluginInstallCmd() *cobra.Command {

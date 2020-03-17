@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/graph"
@@ -29,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // stepGenerator is responsible for turning resource events into steps that

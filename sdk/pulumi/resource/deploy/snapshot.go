@@ -21,11 +21,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their

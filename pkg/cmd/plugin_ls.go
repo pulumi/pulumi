@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 func newPluginLsCmd() *cobra.Command {

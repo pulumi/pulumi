@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/mapper"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/mapper"
 )
 
 // PropertyKey is the name of a property.

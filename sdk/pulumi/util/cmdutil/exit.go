@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 )
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.

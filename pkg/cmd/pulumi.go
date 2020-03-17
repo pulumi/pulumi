@@ -41,12 +41,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/diag/colors"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/httputil"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/httputil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
 	"github.com/pulumi/pulumi/sdk/pulumi/version"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.

@@ -17,14 +17,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/npm"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 type cloudRequiredPolicy struct {

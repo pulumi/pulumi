@@ -15,12 +15,12 @@
 package engine
 
 import (
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {

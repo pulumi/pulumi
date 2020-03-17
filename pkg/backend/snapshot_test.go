@@ -20,10 +20,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/version"
 )

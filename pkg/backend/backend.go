@@ -22,20 +22,20 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
+	"github.com/pulumi/pulumi/sdk/pulumi/apitype"
+	"github.com/pulumi/pulumi/sdk/pulumi/diag"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/config"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/pulumi/secrets"
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 var (

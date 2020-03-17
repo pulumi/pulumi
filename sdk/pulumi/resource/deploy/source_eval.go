@@ -26,8 +26,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
-	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource"
 	"github.com/pulumi/pulumi/sdk/pulumi/resource/deploy/providers"
@@ -35,8 +33,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/pulumi/tokens"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/contract"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/logging"
+	"github.com/pulumi/pulumi/sdk/pulumi/util/result"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/pulumi/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/pulumi/workspace"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
