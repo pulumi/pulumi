@@ -82,7 +82,7 @@ func TestWrappedBucket(t *testing.T) {
 
 		// Verify it is found. NOTE: This requires that any files created
 		// during other tests have successfully been cleaned up too.
-		objects, err := listBucket(wrappedBucket, ".pulumi\bucket-test")
+		objects, err := listBucket(wrappedBucket, `.pulumi\bucket-test`)
 		mustNotHaveError(t, "listBucket", err)
 		if len(objects) != len(filenames) {
 			assert.Equal(t, 3, len(objects), "listBucket returned unexpected number of objects.")
