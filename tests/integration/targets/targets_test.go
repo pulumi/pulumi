@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
 )
 

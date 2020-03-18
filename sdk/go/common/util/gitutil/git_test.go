@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 

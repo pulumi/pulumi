@@ -37,7 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 )
 
 func TestStackCommands(t *testing.T) {
