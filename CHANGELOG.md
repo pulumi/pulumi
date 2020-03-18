@@ -4,7 +4,9 @@ CHANGELOG
 - Add support for plugin acquisition for Go programs
   [#4060](https://github.com/pulumi/pulumi/pull/4060)
 
-## HEAD (Unreleased)
+- Display resource type in PAC violation output
+  [#4061](https://github.com/pulumi/pulumi/issues/4061)
+  
 - Update to Helm v3 in pulumi Docker image
   [#4090](https://github.com/pulumi/pulumi/pull/4090)
 
@@ -1633,4 +1635,3 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
-
