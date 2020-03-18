@@ -14,7 +14,7 @@
 
 package display
 
-import "github.com/pulumi/pulumi/pkg/diag/colors"
+import "github.com/pulumi/pulumi/sdk/go/common/diag/colors"
 
 // Type of output to display.
 type Type int

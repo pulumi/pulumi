@@ -26,8 +26,8 @@ import (
 	"github.com/dustin/go-humanize/english"
 
 	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"

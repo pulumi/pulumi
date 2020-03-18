@@ -18,8 +18,8 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
