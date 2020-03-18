@@ -26,7 +26,7 @@ import (
 	"sourcegraph.com/sourcegraph/appdash/traceapp"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 func readTrace(path string, store io.ReaderFrom) error {
