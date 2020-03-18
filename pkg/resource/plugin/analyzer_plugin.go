@@ -88,13 +88,11 @@ func NewPolicyAnalyzer(
 		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
 	}
 
-	var policyAnalyzerName string
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		policyAnalyzerName = "policy"
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		policyAnalyzerName = "policy-python"
-	} else {
-		return nil, fmt.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+	// For historical reasons, the Node.js plugin name is just "policy".
+	// All other languages have the runtime appended, e.g. "policy-<runtime>".
+	policyAnalyzerName := "policy"
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
@@ -622,13 +620,6 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 		}
 	}
 
-	langSpecificVar := func(k string) string {
-		if runtime == "nodejs" {
-			return strings.Replace(k, "PULUMI_", "PULUMI_NODEJS_", 1)
-		}
-		return k
-	}
-
 	config, err := constructConfig(opts)
 	if err != nil {
 		return nil, err
@@ -636,9 +627,19 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 	maybeAppendEnv("PULUMI_CONFIG", config)
 
 	if opts != nil {
-		maybeAppendEnv(langSpecificVar("PULUMI_PROJECT"), opts.Project)
-		maybeAppendEnv(langSpecificVar("PULUMI_STACK"), opts.Stack)
-		maybeAppendEnv(langSpecificVar("PULUMI_DRY_RUN"), fmt.Sprintf("%v", opts.DryRun))
+		// Set both PULUMI_NODEJS_* and PULUMI_* environment variables for Node.js. The Node.js
+		// SDK currently looks for the PULUMI_NODEJS_* variants only, but we'd like to move to
+		// using the more general PULUMI_* variants for all languages to avoid special casing
+		// like this, and setting the PULUMI_* variants for Node.js is the first step.
+		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
+			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		}
+
+		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
+		maybeAppendEnv("PULUMI_STACK", opts.Stack)
+		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 	}
 
 	return env, nil
