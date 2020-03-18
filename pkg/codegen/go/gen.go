@@ -600,7 +600,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "// Get%[1]s gets an existing %[1]s resource's state with the given name, ID, and optional\n", name)
 		fmt.Fprintf(w, "// state properties that are used to uniquely qualify the lookup (nil if not required).\n")
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context,\n", name)
-		fmt.Fprintf(w, "\tname string, id pulumi.StringInput, state *%[1]sState, opts ...pulumi.ResourceOption) (*%[1]s, error) {\n", name)
+		fmt.Fprintf(w, "\tname string, id pulumi.IDInput, state *%[1]sState, opts ...pulumi.ResourceOption) (*%[1]s, error) {\n", name)
 		fmt.Fprintf(w, "\tvar resource %s\n", name)
 		fmt.Fprintf(w, "\terr := ctx.ReadResource(\"%s\", name, id, state, &resource, opts...)\n", r.Token)
 		fmt.Fprintf(w, "\tif err != nil {\n")
