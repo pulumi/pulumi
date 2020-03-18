@@ -14,7 +14,7 @@
 
 package migrate
 
-import "github.com/pulumi/pulumi/pkg/apitype"
+import "github.com/pulumi/pulumi/sdk/go/common/apitype"
 
 // UpToDeploymentV2 migrates a deployment from DeploymentV1 to DeploymentV2.
 func UpToDeploymentV2(v1 apitype.DeploymentV1) apitype.DeploymentV2 {

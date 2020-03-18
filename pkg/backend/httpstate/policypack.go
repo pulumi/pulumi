@@ -17,7 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/npm"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"

@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 )
 

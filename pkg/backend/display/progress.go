@@ -30,7 +30,7 @@ import (
 	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"

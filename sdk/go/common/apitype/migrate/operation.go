@@ -14,7 +14,7 @@
 
 package migrate
 
-import "github.com/pulumi/pulumi/pkg/apitype"
+import "github.com/pulumi/pulumi/sdk/go/common/apitype"
 
 // UpToOperationV2 migrates a resource from OperationV1 to OperationV2.
 func UpToOperationV2(v1 apitype.OperationV1) apitype.OperationV2 {

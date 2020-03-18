@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"

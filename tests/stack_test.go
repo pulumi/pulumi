@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
