@@ -48,7 +48,7 @@ copy_package() {
 # Build binaries
 run_go_build "${ROOT}"
 run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-language-nodejs"
-run_go_build "${ROOT}/sdk/python/cmd/pulumi-language-python"
+run_go_build "${ROOT}/pkg/cmd/pulumi-language-python"
 run_go_build "${ROOT}/sdk/dotnet/cmd/pulumi-language-dotnet"
 run_go_build "${ROOT}/sdk/go/pulumi-language-go"
 

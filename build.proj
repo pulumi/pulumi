@@ -219,7 +219,7 @@
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <ItemGroup>
-      <PythonPackagesToBuild Include="github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python" />
+      <PythonPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-python" />
     </ItemGroup>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(PythonPackagesToBuild.Identity)" />
   </Target>
@@ -236,7 +236,7 @@
     <Copy SourceFiles="@(PythonDistFiles)"
           DestinationFolder="$(PulumiBin)\" />
     <ItemGroup>
-      <PythonPackagesToBuild Include="github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python" />
+      <PythonPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-python" />
     </ItemGroup>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
