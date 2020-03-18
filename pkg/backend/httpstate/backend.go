@@ -791,7 +791,8 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 	// for general use yet.
 	if stackID.Owner != newIdentity.Owner {
 		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
-			"of a stack to another organization, please contact support@pulumi.com."
+			"of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
+			"\"Settings\" page of the stack and then clicking the \"Transfer Stack\" button."
 		return errors.Errorf(errMsg)
 	}
 
