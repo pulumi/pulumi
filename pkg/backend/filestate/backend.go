@@ -53,7 +53,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/validation"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // Backend extends the base backend interface with specific information about local backends.

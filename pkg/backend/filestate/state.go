@@ -41,7 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"

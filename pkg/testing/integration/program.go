@@ -52,7 +52,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const PythonRuntime = "python"

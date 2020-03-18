@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 func readPassphrase(prompt string) (string, error) {

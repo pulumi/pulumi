@@ -18,7 +18,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be

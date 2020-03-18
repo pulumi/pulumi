@@ -46,7 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.

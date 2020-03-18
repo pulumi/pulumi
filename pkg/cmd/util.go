@@ -50,7 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/tracing"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 func hasDebugCommands() bool {

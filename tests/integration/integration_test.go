@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const WindowsOS = "windows"

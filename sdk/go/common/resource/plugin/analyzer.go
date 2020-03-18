@@ -20,7 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or

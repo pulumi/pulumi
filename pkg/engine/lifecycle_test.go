@@ -45,7 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/result"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 
 	combinations "github.com/mxschmitt/golang-combinations"

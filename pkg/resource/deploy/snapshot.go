@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their

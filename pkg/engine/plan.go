@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.

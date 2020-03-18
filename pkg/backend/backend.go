@@ -35,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 var (
