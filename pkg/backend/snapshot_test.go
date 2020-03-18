@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 

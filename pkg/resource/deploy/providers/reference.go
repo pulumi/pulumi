@@ -21,7 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 

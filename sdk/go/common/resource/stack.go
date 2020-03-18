@@ -15,7 +15,7 @@
 package resource
 
 import (
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 )
 
 // RootStackType is the type name that will be used for the root component in the Pulumi resource tree.

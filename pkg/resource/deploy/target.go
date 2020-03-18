@@ -16,7 +16,7 @@ package deploy
 
 import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 )
 
 // Target represents information about a deployment target.

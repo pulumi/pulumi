@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )

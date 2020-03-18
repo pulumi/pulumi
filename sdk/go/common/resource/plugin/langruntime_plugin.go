@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"

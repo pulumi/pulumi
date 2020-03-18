@@ -20,7 +20,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )

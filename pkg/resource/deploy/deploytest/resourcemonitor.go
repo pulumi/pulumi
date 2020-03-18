@@ -20,7 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
