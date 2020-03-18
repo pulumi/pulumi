@@ -28,11 +28,9 @@ dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 lint::
-	cd cmd && golangci-lint run -c ../.golangci.yml --deadline 5m
-	cd examples && golangci-lint run -c ../.golangci.yml --deadline 5m
-	cd pkg && golangci-lint run -c ../.golangci.yml --deadline 5m
-	cd sdk && golangci-lint run -c ../.golangci.yml --deadline 5m
-	cd tests && golangci-lint run -c ../.golangci.yml --deadline 5m
+	for DIR in "cmd" "examples" "pkg" "sdk" "tests" ; do \
+		cd $$DIR && golangci-lint run -c ../.golangci.yml --deadline 5m ; \
+	done
 
 test_fast::
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
