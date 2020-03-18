@@ -29,7 +29,7 @@ dist::
 
 lint::
 	for DIR in "cmd" "examples" "pkg" "sdk" "tests" ; do \
-		cd $$DIR && golangci-lint run -c ../.golangci.yml --deadline 5m && cd .. ; \
+		pushd $$DIR && golangci-lint run -c ../.golangci.yml --deadline 5m && popd ; \
 	done
 
 test_fast::
