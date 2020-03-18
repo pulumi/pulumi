@@ -12,7 +12,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
 )
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {

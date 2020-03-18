@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )

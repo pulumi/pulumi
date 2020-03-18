@@ -50,7 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
