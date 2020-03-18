@@ -30,19 +30,23 @@ server.start();
 process.stdout.write(`${port}\n`);
 
 function construct(call: any, callback: (err: any, resp?: any) => void) {
-    const library = require(call.request.getLibrarypath())
-    const props = runtime.deserializeProperties(call.request.getArgs());
-    const opts = runtime.deserializeProperties(call.request.getOpts());
-    const resource = call.request.getResource();
-    const name = call.request.getName();
-    const ctor = library[resource];
+    try {
+        const library = require(call.request.getLibrarypath())
+        const props = runtime.deserializeProperties(call.request.getArgs());
+        const opts = runtime.deserializeProperties(call.request.getOpts());
+        const resource = call.request.getResource();
+        const name = call.request.getName();
+        const ctor = library[resource];
 
-    const res = new ctor(name, props, opts);
+        const res = new ctor(name, props, opts);
 
-    runtime.serializeProperties("inner-construct", res, { keepResources: true }).then(resolved => {
-        const outStruct = gstruct.Struct.fromJavaScript(resolved);
-        const reply = new runtimeProto.ConstructResponse();
-        reply.setOuts(outStruct);
-        callback(null, reply);
-    }).catch(err => callback(err));
+        runtime.serializeProperties("inner-construct", res, { keepResources: true }).then(resolved => {
+            const outStruct = gstruct.Struct.fromJavaScript(resolved);
+            const reply = new runtimeProto.ConstructResponse();
+            reply.setOuts(outStruct);
+            callback(null, reply);
+        }).catch(err => callback(err));
+    } catch (err) {
+        callback(err);
+    }
 }

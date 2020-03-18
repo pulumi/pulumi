@@ -36,6 +36,8 @@
         "log/index.ts",
 
         "remote/index.ts",
+        "remote/proxy.ts",
+        "remote/remoteServer.ts",
         "remote/server/index.ts",
 
         "runtime/index.ts",
@@ -79,7 +81,9 @@
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
-        "tests/runtime/langhost/run.spec.ts"
+        "tests/runtime/langhost/run.spec.ts",
+        "tests/remote/proxycomponentresource.spec.ts",
+        "tests/remote/component.ts"
     ]
 }
 
