@@ -11,10 +11,10 @@ gen::
 	go generate ./pulumi/...
 
 build:: gen
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_plugin
 
@@ -25,4 +25,4 @@ test_fast::
 	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

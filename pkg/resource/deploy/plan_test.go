@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 	"github.com/stretchr/testify/assert"
 )
 

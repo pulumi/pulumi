@@ -18,7 +18,7 @@ build_package::
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -32,7 +32,7 @@ install_package::
 
 install_plugin::
 	GOBIN=$(PULUMI_BIN) go install \
-		  -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+		  -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -43,6 +43,6 @@ test_fast::
 test_all:: test_fast
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/

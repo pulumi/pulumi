@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )

@@ -39,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/httputil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 )
 
 const (
