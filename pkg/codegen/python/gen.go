@@ -635,6 +635,14 @@ var oldestAllowedPulumi = semver.Version{
 	Patch: 28,
 }
 
+func sanitizePackageDescription(description string) string {
+	lines := strings.SplitN(description, "\n", 2)
+	if len(lines) > 0 {
+		return lines[0]
+	}
+	return ""
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
 	w := &bytes.Buffer{}
@@ -677,7 +685,7 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPack(pkg.Name))
 	fmt.Fprintf(w, "      version='${VERSION}',\n")
 	if pkg.Description != "" {
-		fmt.Fprintf(w, "      description=\"\"\"%s\"\"\",\n", pkg.Description)
+		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")

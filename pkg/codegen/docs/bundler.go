@@ -96,11 +96,15 @@ func main() {
 	contents := make(map[string][]byte)
 	for _, f := range files {
 		if f.IsDir() {
-			fmt.Printf("%q is a dir. Skipping...", f.Name())
+			fmt.Printf("%q is a dir. Skipping...\n", f.Name())
 		}
 		b, err := ioutil.ReadFile(docsTemplatesPath + "/" + f.Name())
 		if err != nil {
 			log.Fatalf("Error reading file %s: %v", f.Name(), err)
+		}
+		if len(b) == 0 {
+			fmt.Printf("%q is empty. Skipping...\n", f.Name())
+			continue
 		}
 		contents[f.Name()] = b
 	}

@@ -143,6 +143,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {"version": "0.1.0"}
         return proto.PluginInfo(**fields)
 
+    def GetSchema(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("GetSchema is not implemented by the dynamic provider")
+        raise NotImplementedError("GetSchema is not implemented by the dynamic provider")
+
     def Read(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)

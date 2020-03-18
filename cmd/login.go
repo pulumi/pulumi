@@ -47,12 +47,13 @@ func newLoginCmd() *cobra.Command {
 			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
 			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
 			"\n" +
-			"By default, this will log into `app.pulumi.com`. If you prefer to log into a separate instance\n" +
+			"By default, this will log into `api.pulumi.com`. If you prefer to log into a separate instance\n" +
 			"of the Pulumi service, such as Pulumi Enterprise, specify a URL. For example, run\n" +
 			"\n" +
-			"    $ pulumi login https://pulumi.acmecorp.com\n" +
+			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
-			"to log in to a Pulumi Enterprise server running at the pulumi.acmecorp.com domain.\n" +
+			"to log in to a Pulumi Enterprise server running at the\n" +
+			"api.pulumi.acmecorp.com and app.pulumi.acmecorp.com domains.\n" +
 			"\n" +
 			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
 			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
