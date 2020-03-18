@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/workspace"
 
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/result"
 )
 

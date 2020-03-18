@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"

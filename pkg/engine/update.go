@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
