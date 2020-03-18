@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
