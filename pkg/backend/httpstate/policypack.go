@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/archive"
+	"github.com/pulumi/pulumi/sdk/go/common/util/archive"
 
 	"github.com/pulumi/pulumi/pkg/npm"
 
