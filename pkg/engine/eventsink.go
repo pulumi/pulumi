@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 )
 
 func newEventSink(events eventEmitter, statusSink bool) diag.Sink {
