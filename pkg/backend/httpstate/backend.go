@@ -52,7 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/result"
-	"github.com/pulumi/pulumi/pkg/util/retry"
+	"github.com/pulumi/pulumi/sdk/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
