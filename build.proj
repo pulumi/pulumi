@@ -64,14 +64,14 @@
     <Exec Command="dotnet build dotnet.sln /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix=preview" 
           WorkingDirectory="$(DotNetSdkDirectory)" />
     <ItemGroup>
-      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" />
+      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-dotnet" />
     </ItemGroup>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)" />
   </Target>
 
   <Target Name="DotNetInstallPlugin">
     <ItemGroup>
-      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" />
+      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-dotnet" />
     </ItemGroup>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />

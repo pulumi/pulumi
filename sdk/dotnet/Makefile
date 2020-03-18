@@ -1,7 +1,5 @@
 PROJECT_NAME         := Pulumi .NET Core SDK
-LANGHOST_PKG         := github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet
-
-PROJECT_PKGS         := $(shell go list ./cmd...)
+LANGHOST_PKG         := github.com/pulumi/pulumi/pkg/cmd/pulumi-language-dotnet
 
 VERSION              := $(shell ../../scripts/get-version HEAD --embed-feature-branch)
 VERSION_DOTNET       := ${VERSION:v%=%}                                   # strip v from the beginning
@@ -47,9 +45,6 @@ install:: install_plugin
 	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
-lint::
-	golangci-lint run
-
 dotnet_test::
 	# include the version prefix/suffix to avoid generating a separate nupkg file
 	dotnet test /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
@@ -57,10 +52,8 @@ dotnet_test::
 	stty echo
 
 test_fast:: dotnet_test
-	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_all:: dotnet_test
-	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
