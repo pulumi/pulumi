@@ -15,7 +15,7 @@
 package resource
 
 import (
-	"github.com/pulumi/pulumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi/sdk/go/common/util/mapper"
 )
 
 // NewErrors creates a new error list pertaining to a resource.  Note that it just turns around and defers to

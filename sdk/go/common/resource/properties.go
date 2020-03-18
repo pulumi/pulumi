@@ -21,7 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi/sdk/go/common/util/mapper"
 )
 
 // PropertyKey is the name of a property.

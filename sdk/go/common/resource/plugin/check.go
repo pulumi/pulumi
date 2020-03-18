@@ -15,7 +15,7 @@
 package plugin
 
 import (
-	"github.com/pulumi/pulumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi/sdk/go/common/util/mapper"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
