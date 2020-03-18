@@ -77,6 +77,23 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) st
 	return ""
 }
 
+// GenPropertyCaseMap generates the snake_case map for a property.
+func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property) map[string]string {
+	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
+	mod := &modContext{
+		pkg:                  pkg,
+		mod:                  modName,
+		tool:                 tool,
+		snakeCaseToCamelCase: snakeCaseToCamelCase,
+		camelCaseToSnakeCase: camelCaseToSnakeCase,
+	}
+
+	if err := mod.recordProperty(prop); err != nil {
+		fmt.Printf("error building case maps for %q", prop.Name)
+	}
+	return camelCaseToSnakeCase
+}
+
 // elementTypeToName returns the type name from an element type of the form
 // package:module:_type, with its leading "_" stripped.
 func elementTypeToName(el string) string {
@@ -96,13 +113,13 @@ func getListWithTypeName(t string) string {
 		return "List[str]"
 	}
 
-	return fmt.Sprintf("List[%s]", PyName(t))
+	return fmt.Sprintf("List[%s]", strings.Title(t))
 }
 
 // getDictWithTypeName returns the Python representation of a dictionary
 // where each item is of type `t`.
 func getDictWithTypeName(t string) string {
-	return fmt.Sprintf("Dict[%s]", PyName(t))
+	return fmt.Sprintf("Dict[%s]", strings.Title(t))
 }
 
 // getMapWithTypeName returns the Python representation of a dictionary
@@ -114,6 +131,6 @@ func getMapWithTypeName(t string) string {
 	case "any":
 		return "Dict[str, Any]"
 	default:
-		return fmt.Sprintf("Dict[str, %s]", PyName(t))
+		return fmt.Sprintf("Dict[str, %s]", strings.Title(t))
 	}
 }

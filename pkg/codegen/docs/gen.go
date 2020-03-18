@@ -192,6 +192,9 @@ type modContext struct {
 	typeDetails map[*schema.ObjectType]*typeDetails
 	children    []*modContext
 	tool        string
+
+	// These are for the Python language.
+	camelCaseToSnakeCase map[string]string
 }
 
 func resourceName(r *schema.Resource) string {
@@ -482,8 +485,24 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			input:    isInput,
 			optional: !prop.IsRequired,
 		}
+
+		propName := getLanguagePropertyName(prop.Name, lang, true)
+
+		// For Python nested types, the property names must be in camelCase,
+		// instead of the regular snake_case if mapCase is true in the
+		// propertyInfo object.
+		if lang == "python" {
+			if _, ok := prop.Language["python"]; ok {
+				if snakeCase, ok := mod.camelCaseToSnakeCase[prop.Name]; ok {
+					propName = wbr(snakeCase)
+				} else {
+					propName = wbr(prop.Name)
+				}
+			}
+		}
+
 		docProperties = append(docProperties, property{
-			Name:               getLanguagePropertyName(prop.Name, lang, true),
+			Name:               propName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
@@ -1045,9 +1064,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:  pkg,
-				mod:  modName,
-				tool: tool,
+				pkg:                  pkg,
+				mod:                  modName,
+				tool:                 tool,
+				camelCaseToSnakeCase: map[string]string{},
 			}
 
 			if modName != "" {
@@ -1077,6 +1097,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
 		}
 		for _, p := range r.InputProperties {
+			docHelper := getLanguageDocHelper("python")
+			pyHelper := docHelper.(python.DocLanguageHelper)
+			camelCaseToSnakeCase := pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p)
+			for key, value := range camelCaseToSnakeCase {
+				mod.camelCaseToSnakeCase[key] = value
+			}
+
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
 					types.details(t).outputType = true
@@ -1084,6 +1111,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				types.details(t).inputType = true
 			})
 		}
+		// fmt.Printf("mod %q snakeCaseToCamelCase: %+v, camelCaseToSnakeCase: %+v\n", mod.mod, mod.snakeCaseToCamelCase, mod.camelCaseToSnakeCase)
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true })
 		}
