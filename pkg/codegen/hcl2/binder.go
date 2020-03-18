@@ -33,7 +33,6 @@ type binder struct {
 
 	tokens syntax.TokenMap
 	nodes  []Node
-	stack  []hclsyntax.Node
 	root   *model.Scope
 }
 

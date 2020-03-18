@@ -54,7 +54,9 @@ type applyRewriter struct {
 
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with a call to
 // the __applyArg intrinsic.
-func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression, isRoot bool) model.Expression {
+func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
+	isRoot bool) model.Expression {
+
 	// TODO(pdg): arrays of outputs, for expressions, etc.
 
 	// If the access is not an output() or a promise(), return the node as-is.
