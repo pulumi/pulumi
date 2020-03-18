@@ -31,7 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/sdk/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
