@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"

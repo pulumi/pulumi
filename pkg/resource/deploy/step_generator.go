@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"

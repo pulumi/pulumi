@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 )
 
 var errSecureKeyReserved = errors.New(`"secure" key in maps of length 1 are reserved`)

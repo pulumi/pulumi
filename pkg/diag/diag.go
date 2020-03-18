@@ -15,7 +15,7 @@
 package diag
 
 import (
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 )
 
 // ID is a unique diagnostics identifier.

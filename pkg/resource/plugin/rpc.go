@@ -21,7 +21,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
