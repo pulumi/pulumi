@@ -43,7 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/go/pulumi"

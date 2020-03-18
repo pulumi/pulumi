@@ -7,7 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )
 
 type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)

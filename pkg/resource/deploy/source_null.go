@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"

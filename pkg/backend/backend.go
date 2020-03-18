@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 

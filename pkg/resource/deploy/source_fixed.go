@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )
 
 // NewFixedSource returns a valid planning source that is comprised of a list of pre-computed steps.
