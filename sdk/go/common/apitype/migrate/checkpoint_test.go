@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
