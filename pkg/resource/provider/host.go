@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 

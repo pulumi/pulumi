@@ -20,7 +20,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
