@@ -13,7 +13,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 )
 
