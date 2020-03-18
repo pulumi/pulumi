@@ -50,7 +50,7 @@ run_go_build "${ROOT}"
 run_go_build "${ROOT}/pkg/cmd/pulumi-language-nodejs"
 run_go_build "${ROOT}/pkg/cmd/pulumi-language-python"
 run_go_build "${ROOT}/pkg/cmd/pulumi-language-dotnet"
-run_go_build "${ROOT}/sdk/go/pulumi-language-go"
+run_go_build "${ROOT}/pkg/cmd/pulumi-language-go"
 
 # Copy over the language and dynamic resource providers.
 cp "${ROOT}/sdk/nodejs/dist/pulumi-resource-pulumi-nodejs" "${PUBDIR}/bin/"

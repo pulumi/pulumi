@@ -31,7 +31,7 @@ RunGoBuild "github.com/pulumi/pulumi"
 RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi-language-nodejs"
 RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi-language-python"
 RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi-language-dotnet"
-RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go"
+RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi-language-go"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
