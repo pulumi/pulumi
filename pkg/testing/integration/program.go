@@ -47,7 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/sdk/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
