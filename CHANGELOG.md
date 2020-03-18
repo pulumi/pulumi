@@ -1,6 +1,7 @@
 CHANGELOG
 =========
-## HEAD (Unreleased)
+
+## 1.13.0 (2020-03-18)
 - Add support for plugin acquisition for Go programs
   [#4060](https://github.com/pulumi/pulumi/pull/4060)
 
