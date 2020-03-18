@@ -1,5 +1,8 @@
 CHANGELOG
 =========
+## HEAD (Unreleased)
+- Add support for plugin acquisition for Go programs
+  [#4060](https://github.com/pulumi/pulumi/pull/4060)
 
 ## HEAD (Unreleased)
 - Update to Helm v3 in pulumi Docker image
