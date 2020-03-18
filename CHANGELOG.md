@@ -1,9 +1,17 @@
 CHANGELOG
 =========
-
 ## HEAD (Unreleased)
+- Add support for plugin acquisition for Go programs
+  [#4060](https://github.com/pulumi/pulumi/pull/4060)
+
 - Display resource type in PAC violation output
   [#4061](https://github.com/pulumi/pulumi/issues/4061)
+  
+- Update to Helm v3 in pulumi Docker image
+  [#4090](https://github.com/pulumi/pulumi/pull/4090)
+
+- Add ArrayMap builtin types to Go SDK
+  [#4086](https://github.com/pulumi/pulumi/pull/4086)
 
 - Improve documentation of URL formats for `pulumi login`
   [#4059](https://github.com/pulumi/pulumi/pull/4059)

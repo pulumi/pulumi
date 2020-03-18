@@ -33,7 +33,12 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
-	path := fmt.Sprintf("%s/%s", packageName, modName)
+	var path string
+	if packageName != "" {
+		path = fmt.Sprintf("%s/%s", packageName, modName)
+	} else {
+		path = modName
+	}
 	typeName = strings.ReplaceAll(typeName, "?", "")
 	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }

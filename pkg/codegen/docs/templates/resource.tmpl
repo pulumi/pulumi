@@ -9,9 +9,7 @@
 
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 
-```python
-def {{ .Header.Title }}(resource_name, id, opts=None{{ template "py_param" .InputProperties.python }}, __props__=None)
-```
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span><span class="nf">{{ .Header.Title }}</span><span class="p">(resource_name, opts=None, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">, __props__=None);</span></code></pre></div>
 
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
@@ -49,21 +47,13 @@ The following output properties are available:
 
 {{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
 
-```typescript
-public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: {{ .StateParam }}, opts?: pulumi.CustomResourceOptions): {{ .Header.Title }};
-```
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span>{{ htmlSafe .LookupParams.nodejs }}<span class="p">): </span>{{ template "linkify_param" .ConstructorResource.nodejs }}</code></pre></div>
 
-```python
-def get(resource_name, id, opts=None{{ template "py_param" .StateInputs.python }})
-```
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">static </span><span class="nf">get</span><span class="p">(resource_name, id, opts=None, </span>{{ htmlSafe .LookupParams.python }}<span class="p">, __props__=None);</span></code></pre></div>
 
-```go
-func Get{{.Header.Title}}(ctx *pulumi.Context, name string, id pulumi.IDInput, state *{{ .StateParam }}, opts ...pulumi.ResourceOption) (*Bucket, error)
-```
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>Get{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .LookupParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 
-```csharp
-public static {{ .Header.Title }} Get(string name, Input<string> id, {{ .StateParam }}? state = null, CustomResourceOptions? options = null);
-```
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="nf"> Get</span><span class="p">(</span>{{ htmlSafe .LookupParams.csharp }}<span class="p">)</span></code></pre></div>
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
