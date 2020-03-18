@@ -48,7 +48,7 @@ import (
 	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/pkg/tools"
-	"github.com/pulumi/pulumi/pkg/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
