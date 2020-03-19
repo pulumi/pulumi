@@ -70,6 +70,8 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	Verbose = verbose
 	LogFlow = logFlow
 
+	glog.InitFlags(nil)
+
 	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
 	// we use cobra. In order to accommodate this, we call flag.CommandLine.Parse() with an empty array and
 	// explicitly set the flags we care about here.
