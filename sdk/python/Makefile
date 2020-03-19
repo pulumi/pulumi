@@ -29,6 +29,7 @@ lint::
 install_package::
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
+	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
 install_plugin::
 	GOBIN=$(PULUMI_BIN) go install \
@@ -46,3 +47,4 @@ dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
+	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/

@@ -812,12 +812,13 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			c = colors.SpecError
 		}
 
-		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
+		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s: %s)",
 			c, policyEvent.EnforcementLevel,
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Name())
+			policyEvent.ResourceURN.Name(),
+			policyEvent.ResourceURN.Type())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.

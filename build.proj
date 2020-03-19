@@ -278,6 +278,15 @@
 
   <!-- Tests -->
   <Target Name="Tests">
+    <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\pkg\backend\..."
+          IgnoreExitCode="true"
+          WorkingDirectory="$(RepoRootDirectory)">
+      <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
+    </Exec>
+
+    <Error Text="backend tests (.\pkg\backend) failed"
+           Condition="$(BackendTestsExitCode) != 0"/>
+
     <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(RepoRootDirectory)">

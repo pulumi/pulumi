@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -78,11 +79,21 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-const policyAnalyzerName = "policy"
-
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+
+	proj, err := workspace.LoadPolicyPack(filepath.Join(policyPackPath, "PulumiPolicy.yaml"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
+	}
+
+	// For historical reasons, the Node.js plugin name is just "policy".
+	// All other languages have the runtime appended, e.g. "policy-<runtime>".
+	policyAnalyzerName := "policy"
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	_, pluginPath, err := workspace.GetPluginPath(
@@ -97,7 +108,7 @@ func NewPolicyAnalyzer(
 	}
 
 	// Create the environment variables from the options.
-	env, err := constructEnv(opts)
+	env, err := constructEnv(opts, proj.Runtime.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +156,8 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	mprops, err := MarshalProperties(props,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +197,8 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
 	for idx, resource := range resources {
-		props, err := MarshalProperties(resource.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+		props, err := MarshalProperties(resource.Properties,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
@@ -406,7 +419,8 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		return nil, nil
 	}
 
-	props, err := MarshalProperties(provider.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	props, err := MarshalProperties(provider.Properties,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling properties")
 	}
@@ -597,7 +611,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 // constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
 // is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
 // how config is passed to each language runtime plugin.
-func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
+func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error) {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
@@ -613,9 +627,19 @@ func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
 	maybeAppendEnv("PULUMI_CONFIG", config)
 
 	if opts != nil {
-		maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
-		maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		// Set both PULUMI_NODEJS_* and PULUMI_* environment variables for Node.js. The Node.js
+		// SDK currently looks for the PULUMI_NODEJS_* variants only, but we'd like to move to
+		// using the more general PULUMI_* variants for all languages to avoid special casing
+		// like this, and setting the PULUMI_* variants for Node.js is the first step.
+		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
+			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		}
+
+		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
+		maybeAppendEnv("PULUMI_STACK", opts.Stack)
+		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 	}
 
 	return env, nil

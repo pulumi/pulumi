@@ -730,7 +730,7 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
 	pkg.genOutputTypes(w, obj, pkg.details(obj))
 }
 
-func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
+func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "func init() {\n")
 	for _, obj := range types {
 		name, details := pkg.tokenToType(obj.Token), pkg.details(obj)
@@ -912,6 +912,12 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
+func (pkg *pkgContext) genPackageRegistration(w io.Writer) {
+	fmt.Fprintf(w, "func init() {\n")
+	fmt.Fprintf(w, "\tpulumi.RegisterPackage(pulumi.PackageInfo{Name:\"%s\", Version:\"%s\"})\n", pkg.pkg.Name, pkg.pkg.Version.String())
+	fmt.Fprintf(w, "}\n")
+}
+
 // GoInfo holds information required to generate the Go SDK from a schema.
 type GoInfo struct {
 	// Base path for package imports
@@ -1058,7 +1064,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		files[relPath] = []byte(contents)
 	}
 
-	name := pkg.Name
+	name, registerPackage := pkg.Name, pkg.Provider != nil
 	for _, mod := range pkgMods {
 		pkg := packages[mod]
 
@@ -1130,9 +1136,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				pkg.genType(buffer, t)
 			}
 
-			pkg.genInitFn(buffer, pkg.types)
+			pkg.genTypeRegistrations(buffer, pkg.types)
 
 			setFile(path.Join(mod, "pulumiTypes.go"), buffer.String())
+		}
+
+		// Package registration
+		if registerPackage {
+			buffer := &bytes.Buffer{}
+
+			pkg.genHeader(buffer, []string{"github.com/pulumi/pulumi/sdk/go/pulumi"}, nil)
+			pkg.genPackageRegistration(buffer)
+
+			setFile(path.Join(mod, "pulumiManifest.go"), buffer.String())
 		}
 
 		// Utilities

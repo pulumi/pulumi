@@ -261,3 +261,27 @@ func TestUnknownSig(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestSkipInternalKeys(t *testing.T) {
+	opts := MarshalOptions{SkipInternalKeys: true}
+	expected := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"keepers": {
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{},
+					},
+				},
+			},
+		},
+	}
+	props := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"__defaults": []string{},
+		"keepers": map[string]interface{}{
+			"__defaults": []string{},
+		},
+	})
+	actual, err := MarshalProperties(props, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
