@@ -17,6 +17,7 @@ package buildutil
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,16 +25,18 @@ func TestVersions(t *testing.T) {
 	cases := map[string]string{
 		"v0.12.0":                                  "0.12.0",
 		"v0.12.0+dirty":                            "0.12.0+dirty",
-		"v0.12.0-rc.1":                             "0.12.0.rc1",
-		"v0.12.0-rc.1+dirty":                       "0.12.0.rc1+dirty",
-		"v0.12.1-dev.1524606809+gf2f1178b":         "0.12.1.dev1524606809",
-		"v0.12.1-dev.1524606809+gf2f1178b.dirty":   "0.12.1.dev1524606809+dirty",
-		"v1.14.0-alpha.1584648098+gce192898.dirty": "1.14.0.a1584648098+dirty",
+		"v0.12.0-rc.1":                             "0.12.0-rc1",
+		"v0.12.0-rc.1+dirty":                       "0.12.0-rc1+dirty",
+		"v0.12.1-dev.1524606809+gf2f1178b":         "0.12.1-dev1524606809",
+		"v0.12.1-dev.1524606809+gf2f1178b.dirty":   "0.12.1-dev1524606809+dirty",
+		"v1.14.0-alpha.1584648098+gce192898.dirty": "1.14.0-a1584648098+dirty",
 	}
 
 	for ver, expected := range cases {
 		p, err := PyPiVersionFromNpmVersion(ver)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, p, "failed parsing '%s'", ver)
+		_, err = semver.ParseTolerant(p)
+		assert.NoError(t, err)
 	}
 }

@@ -56,28 +56,28 @@ func PyPiVersionFromNpmVersion(s string) (string, error) {
 		return b.String(), nil
 	case rcVersionRegex.MatchString(s):
 		capMap := captureToMap(rcVersionRegex, s)
-		mustFprintf(&b, "%s.rc%s", capMap["version"], capMap["rcN"])
+		mustFprintf(&b, "%s-rc%s", capMap["version"], capMap["rcN"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
 	case betaVersionRegex.MatchString(s):
 		capMap := captureToMap(betaVersionRegex, s)
-		mustFprintf(&b, "%s.b%s", capMap["version"], capMap["betaN"])
+		mustFprintf(&b, "%s-b%s", capMap["version"], capMap["betaN"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
 	case alphaVersionRegex.MatchString(s):
 		capMap := captureToMap(alphaVersionRegex, s)
-		mustFprintf(&b, "%s.a%s", capMap["version"], capMap["time"])
+		mustFprintf(&b, "%s-a%s", capMap["version"], capMap["time"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
 	case devVersionRegex.MatchString(s):
 		capMap := captureToMap(devVersionRegex, s)
-		mustFprintf(&b, "%s.dev%s", capMap["version"], capMap["time"])
+		mustFprintf(&b, "%s-dev%s", capMap["version"], capMap["time"])
 		if capMap["dirty"] != "" {
 			mustFprintf(&b, "+dirty")
 		}
