@@ -21,145 +21,46 @@ package docs
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	unitTestTool    = "Pulumi Resource Docs Unit Test"
-	providerPackage = "prov"
-)
-
-var (
-	simpleProperties = map[string]schema.PropertySpec{
-		"stringProp": {
-			Description: "A string prop.",
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
-		},
-		"boolProp": {
-			Description: "A bool prop.",
-			TypeSpec: schema.TypeSpec{
-				Type: "boolean",
-			},
-		},
-	}
-	sampleSchema = schema.PackageSpec{
-		Name:        providerPackage,
-		Description: "A fake provider package used for testing.",
-		Meta: &schema.MetadataSpec{
-			ModuleFormat: "(.*)(?:/[^/]*)",
-		},
-		Types: map[string]schema.ObjectTypeSpec{
-			// Package-level types.
-			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
-				Description: "Options object for the package-level function getPackageResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
-			},
-
-			// Module-level types.
-			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
-				Description: "Options object for the module-level function getModuleResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
-			},
-			"prov:module/SomeResourceOptions:SomeResourceOptions": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties:  simpleProperties,
-			},
-		},
-		Resources: map[string]schema.ResourceSpec{
-			"prov:module/resource:Resource": {
-				InputProperties: map[string]schema.PropertySpec{
-					"integerProp": {
-						Description: "This is integerProp's description.",
-						TypeSpec: schema.TypeSpec{
-							Type: "integer",
-						},
-					},
-					"stringProp": {
-						Description: "This is stringProp's description.",
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
-						},
-					},
-					"optionsProp": {
-						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/prov:module/SomeResourceOptions:SomeResourceOptions",
-						},
-					},
-				},
-			},
-		},
-		Functions: map[string]schema.FunctionSpec{
-			// Package-level Functions.
-			"prov:/getPackageResource:getPackageResource": {
-				Description: "A package-level function.",
-				Inputs: &schema.ObjectTypeSpec{
-					Description: "Inputs for getPackageResource.",
-					Type:        "object",
-					Properties: map[string]schema.PropertySpec{
-						"options": {
-							TypeSpec: schema.TypeSpec{
-								Ref: "#/types/prov:/getPackageResourceOptions:getPackageResourceOptions",
-							},
-						},
-					},
-				},
-				Outputs: &schema.ObjectTypeSpec{
-					Description: "Outputs for getPackageResource.",
-					Properties:  simpleProperties,
-					Type:        "object",
-				},
-			},
-
-			// Module-level Functions.
-			"prov:module/getModuleResource:getModuleResource": {
-				Description: "A module-level function.",
-				Inputs: &schema.ObjectTypeSpec{
-					Description: "Inputs for getModuleResource.",
-					Type:        "object",
-					Properties: map[string]schema.PropertySpec{
-						"options": {
-							TypeSpec: schema.TypeSpec{
-								Ref: "#/types/prov:module/getModuleResource:getModuleResource",
-							},
-						},
-					},
-				},
-				Outputs: &schema.ObjectTypeSpec{
-					Description: "Outputs for getModuleResource.",
-					Properties:  simpleProperties,
-					Type:        "object",
-				},
-			},
-		},
-	}
-)
-
+// TestResourceNestedPropertyPythonCasing tests that the properties
+// of a nested object have the expected casing.
 func TestResourceNestedPropertyPythonCasing(t *testing.T) {
-	schemaPkg, err := schema.ImportSpec(sampleSchema)
+	schemaPkg, err := schema.ImportSpec(testPackageSpec)
 	assert.NoError(t, err, "importing spec")
 
 	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
-	for _, mod := range modules {
-		for _, r := range mod.resources {
-			props := mod.getProperties(r.InputProperties, "python", true, false)
-			for _, p := range props {
-				t.Logf("property %q. type: %q", p.Name, p.Type.Name)
+	mod := modules["module"]
+	for _, r := range mod.resources {
+		nestedTypes := mod.genNestedTypes(r, true)
+		if len(nestedTypes) == 0 {
+			t.Error("did not find any nested types")
+			return
+		}
+
+		n := nestedTypes[0]
+		assert.Equal(t, "SomeResourceOptions", n.Name, "got %v instead of SomeResourceOptions", n.Name)
+
+		pyProps := n.Properties["python"]
+		nestedObject, ok := testPackageSpec.Types["prov:module/SomeResourceOptions:SomeResourceOptions"]
+		if !ok {
+			t.Error("sample schema package spec does not contain known object type")
+			return
+		}
+
+		for name := range nestedObject.Properties {
+			found := false
+			for _, prop := range pyProps {
+				if prop.Name == python.PyName(name) {
+					found = true
+					break
+				}
 			}
-			nestedTypes := mod.genNestedTypes(r, true)
-			for _, n := range nestedTypes {
-				t.Logf("nested property %q", n.Name)
-				// assert.Equal(t, "OptionsProp", n.Name, "expected nested type", "")
-				// pyProps := n.Properties["python"]
-				// for _, prop := range pyProps {
-				// 	assert.Equal(t, "", "", "")
-				// }
-			}
+
+			assert.True(t, found, "expected to find %q", name)
 		}
 	}
 }
