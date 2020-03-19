@@ -438,17 +438,17 @@ func (host *defaultHost) Close() error {
 	// Close all plugins.
 	for _, plug := range host.analyzerPlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			logging.Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 	for _, plug := range host.resourcePlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			logging.Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 	for _, plug := range host.languagePlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			logging.Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 

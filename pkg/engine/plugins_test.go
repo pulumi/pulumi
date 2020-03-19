@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
@@ -31,7 +30,6 @@ func mustMakeVersion(v string) *semver.Version {
 }
 
 func TestDefaultProvidersSingle(t *testing.T) {
-	logging.InitLogging(true, 7, false)
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
@@ -60,7 +58,6 @@ func TestDefaultProvidersSingle(t *testing.T) {
 }
 
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
-	logging.InitLogging(true, 7, false)
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",

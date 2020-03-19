@@ -116,7 +116,7 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
-				logging.Infof("skipping update check")
+				logging.V(5).Infof("skipping update check")
 				close(updateCheckResult)
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
