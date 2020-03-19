@@ -146,7 +146,7 @@
     <Copy SourceFiles="@(NodeSdkTestDataFiles)"
           DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" />
     <ItemGroup>
-      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-nodejs" />
+      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" />
     </ItemGroup>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/go/common/version.Version=$(Version)&quot; %(NodeJSPackagesToBuild.Identity)" />
   </Target>
@@ -158,7 +158,7 @@
     <Copy SourceFiles="@(NodeJSDistFiles)"
           DestinationFolder="$(PulumiBin)\" />
     <ItemGroup>
-      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-nodejs" />
+      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" />
     </ItemGroup>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />

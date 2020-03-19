@@ -2,8 +2,9 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(shell ../../scripts/get-version HEAD)
 
-LANGUAGE_HOST    := github.com/pulumi/pulumi/pkg/cmd/pulumi-language-nodejs
+LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs
 
+PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM := 10
 TEST_FAST_TIMEOUT := 2m
 
@@ -12,6 +13,7 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
+	golangci-lint run
 	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
@@ -49,8 +51,10 @@ sxs_tests::
 	pushd tests/sxs_ts_latest && yarn && tsc && popd
 
 test_fast:: sxs_tests istanbul_tests
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_all:: sxs_tests istanbul_tests
+	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
