@@ -3,6 +3,7 @@ module github.com/pulumi/pulumi/sdk
 go 1.13
 
 require (
+	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v2.0.7+incompatible
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
