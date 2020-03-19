@@ -12,24 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package version
 
-import (
-	"fmt"
-
-	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/spf13/cobra"
-)
-
-func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Print Pulumi's version number",
-		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("%v\n", version.Version)
-			return nil
-		}),
-	}
-}
+// Version is initialized by the Go linker to contain the semver of this build.
+var Version string

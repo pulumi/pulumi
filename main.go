@@ -21,8 +21,8 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/cmd"
+	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/version"
 )
 
 func panicHandler() {

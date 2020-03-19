@@ -42,13 +42,13 @@ generate::
 	go generate ./pkg/codegen/docs/
 
 build::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${PROJECT}
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${PROJECT}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/go/common/version.Version=${VERSION}" ${PROJECT}
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 lint::
 	for DIR in "examples" "pkg" "sdk" "tests" ; do \
