@@ -46,6 +46,12 @@ var (
 	templates          *template.Template
 	packagedTemplates  map[string][]byte
 	docHelpers         map[string]codegen.DocLanguageHelper
+
+	// The following property case maps are for rendering property
+	// names of nested properties in Python language with the correct
+	// casing.
+	snakeCaseToCamelCase map[string]string
+	camelCaseToSnakeCase map[string]string
 )
 
 func init() {
@@ -62,6 +68,9 @@ func init() {
 			docHelpers[lang] = python.DocLanguageHelper{}
 		}
 	}
+
+	snakeCaseToCamelCase = map[string]string{}
+	camelCaseToSnakeCase = map[string]string{}
 }
 
 // header represents the header of each resource markdown file.
@@ -192,9 +201,6 @@ type modContext struct {
 	typeDetails map[*schema.ObjectType]*typeDetails
 	children    []*modContext
 	tool        string
-
-	// These are for the Python language.
-	camelCaseToSnakeCase map[string]string
 }
 
 func resourceName(r *schema.Resource) string {
@@ -486,23 +492,27 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			optional: !prop.IsRequired,
 		}
 
-		propName := getLanguagePropertyName(prop.Name, lang, true)
-
-		// For Python nested types, the property names must be in camelCase,
-		// instead of the regular snake_case if mapCase is true in the
-		// propertyInfo object.
-		if lang == "python" {
-			if _, ok := prop.Language["python"]; ok {
-				if snakeCase, ok := mod.camelCaseToSnakeCase[prop.Name]; ok {
-					propName = wbr(snakeCase)
-				} else {
-					propName = wbr(prop.Name)
-				}
+		var propLangName string
+		switch lang {
+		case "python":
+			// For the Python language, we check if the property is present in
+			// one of the case maps and use the corresponding case.
+			pyName := python.PyName(prop.Name)
+			if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
+				propLangName = snakeCase
+			} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
+				propLangName = camelCase
+			} else {
+				propLangName = prop.Name
 			}
+		case "go", "csharp":
+			propLangName = strings.Title(prop.Name)
+		default:
+			propLangName = prop.Name
 		}
 
 		docProperties = append(docProperties, property{
-			Name:               propName,
+			Name:               wbr(propLangName),
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
@@ -1064,10 +1074,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                  pkg,
-				mod:                  modName,
-				tool:                 tool,
-				camelCaseToSnakeCase: map[string]string{},
+				pkg:  pkg,
+				mod:  modName,
+				tool: tool,
 			}
 
 			if modName != "" {
@@ -1093,16 +1102,17 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
+
+		docHelper := getLanguageDocHelper("python")
+		pyHelper := docHelper.(python.DocLanguageHelper)
 		for _, p := range r.Properties {
+			pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
 		}
+
 		for _, p := range r.InputProperties {
-			docHelper := getLanguageDocHelper("python")
-			pyHelper := docHelper.(python.DocLanguageHelper)
-			camelCaseToSnakeCase := pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p)
-			for key, value := range camelCaseToSnakeCase {
-				mod.camelCaseToSnakeCase[key] = value
-			}
+			pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
 
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
@@ -1111,7 +1121,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				types.details(t).inputType = true
 			})
 		}
-		// fmt.Printf("mod %q snakeCaseToCamelCase: %+v, camelCaseToSnakeCase: %+v\n", mod.mod, mod.snakeCaseToCamelCase, mod.camelCaseToSnakeCase)
+
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true })
 		}

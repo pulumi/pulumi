@@ -78,8 +78,7 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) st
 }
 
 // GenPropertyCaseMap generates the snake_case map for a property.
-func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property) map[string]string {
-	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
+func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
 	mod := &modContext{
 		pkg:                  pkg,
 		mod:                  modName,
@@ -89,9 +88,8 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 	}
 
 	if err := mod.recordProperty(prop); err != nil {
-		fmt.Printf("error building case maps for %q", prop.Name)
+		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
 	}
-	return camelCaseToSnakeCase
 }
 
 // elementTypeToName returns the type name from an element type of the form

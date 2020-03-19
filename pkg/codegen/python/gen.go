@@ -839,7 +839,6 @@ func (mod *modContext) recordProperty(prop *schema.Property) error {
 	}
 
 	if mapCase {
-		fmt.Printf("adding %q to the map\n", prop.Name)
 		snakeCaseName := PyName(prop.Name)
 		mod.snakeCaseToCamelCase[snakeCaseName] = prop.Name
 		mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
