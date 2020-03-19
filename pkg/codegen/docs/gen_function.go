@@ -285,10 +285,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	outputProps := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		if f.Inputs != nil {
-			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true)
+			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false)
 		}
 		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false)
+			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false)
 		}
 	}
 

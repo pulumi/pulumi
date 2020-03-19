@@ -455,7 +455,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 						InputType:  inputTypeDocLink,
 						OutputType: outputTypeDocLink,
 					}
-					props[lang] = mod.getProperties(obj.Properties, lang, true)
+					props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 				}
 
 				objs = append(objs, docNestedType{
@@ -476,7 +476,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []property {
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested bool) []property {
 	if len(properties) == 0 {
 		return nil
 	}
@@ -488,27 +488,32 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 
 		characteristics := propertyCharacteristics{
-			input:    isInput,
+			input:    input,
 			optional: !prop.IsRequired,
 		}
 
-		var propLangName string
+		propLangName := prop.Name
 		switch lang {
 		case "python":
-			// For the Python language, we check if the property is present in
-			// one of the case maps and use the corresponding case.
 			pyName := python.PyName(prop.Name)
-			if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
-				propLangName = snakeCase
-			} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
-				propLangName = camelCase
-			} else {
-				propLangName = prop.Name
+			// The default casing for a Python property name is snake_case unless
+			// it is a property of a nested object, in which case, we should check the property
+			// case maps.
+			propLangName = pyName
+
+			if nested {
+				if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
+					propLangName = snakeCase
+				} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
+					propLangName = camelCase
+				} else {
+					// If neither of the property case maps have the property
+					// then use the default name of the property.
+					propLangName = prop.Name
+				}
 			}
 		case "go", "csharp":
 			propLangName = strings.Title(prop.Name)
-		default:
-			propLangName = prop.Name
 		}
 
 		docProperties = append(docProperties, property{
@@ -516,7 +521,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
-			IsInput:            isInput,
+			IsInput:            input,
 			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}
@@ -794,13 +799,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	outputProps := make(map[string][]property)
 	stateInputs := make(map[string][]property)
 	for _, lang := range supportedLanguages {
-		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false)
 		if r.IsProvider {
 			continue
 		}
-		outputProps[lang] = mod.getProperties(r.Properties, lang, false)
+		outputProps[lang] = mod.getProperties(r.Properties, lang, false, false)
 		if r.StateInputs != nil {
-			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true)
+			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
 		}
 	}
 
@@ -1094,6 +1099,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	types := &modContext{pkg: pkg, mod: "types", tool: tool}
+	docHelper := getLanguageDocHelper("python")
+	pyHelper := docHelper.(python.DocLanguageHelper)
 
 	for _, v := range pkg.Config {
 		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
@@ -1103,8 +1110,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
 
-		docHelper := getLanguageDocHelper("python")
-		pyHelper := docHelper.(python.DocLanguageHelper)
 		for _, p := range r.Properties {
 			pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
 
