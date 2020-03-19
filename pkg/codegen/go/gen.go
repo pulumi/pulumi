@@ -96,6 +96,7 @@ type pkgContext struct {
 	functionNames  map[*schema.Function]string
 	needsUtils     bool
 	tool           string
+	packages       map[string]*pkgContext
 
 	// Name overrides set in GoInfo
 	modToPkg         map[string]string // Module name -> package name
@@ -123,10 +124,18 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		mod = override
 	}
 
-	if mod == pkg.mod {
-		return title(name)
+	// If the package containing the type's token already has a resource with the
+	// same name, add a `Type` suffix.
+	modPkg := pkg.getPkg(mod)
+	name = title(name)
+	if modPkg.names.has(name) {
+		name += "Type"
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + title(name)
+
+	if mod == pkg.mod {
+		return name
+	}
+	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
 func tokenToName(tok string) string {
@@ -914,6 +923,17 @@ func (pkg *pkgContext) genPackageRegistration(w io.Writer) {
 	fmt.Fprintf(w, "}\n")
 }
 
+func (pkg *pkgContext) getPkg(mod string) *pkgContext {
+	if override, ok := pkg.modToPkg[mod]; ok {
+		mod = override
+	}
+	pack, ok := pkg.packages[mod]
+	if !ok {
+		return nil
+	}
+	return pack
+}
+
 // GoInfo holds information required to generate the Go SDK from a schema.
 type GoInfo struct {
 	// Base path for package imports
@@ -961,6 +981,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				tool:             tool,
 				modToPkg:         goInfo.ModuleToPackage,
 				pkgImportAliases: goInfo.PackageImportAliases,
+				packages:         packages,
 			}
 			packages[mod] = pack
 		}
