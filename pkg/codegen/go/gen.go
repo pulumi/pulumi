@@ -940,9 +940,10 @@ type GoInfo struct {
 
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	var goInfo GoInfo
-	err := json.Unmarshal(pkg.Language["go"], &goInfo)
-	if err != nil {
-		return nil, err
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			return nil, errors.Wrap(err, "decoding go package info")
+		}
 	}
 
 	// group resources, types, and functions into Go packages
