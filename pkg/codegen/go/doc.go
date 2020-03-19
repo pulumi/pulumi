@@ -19,6 +19,7 @@
 package gen
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -74,10 +75,15 @@ func GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	mod := &pkgContext{
-		pkg: pkg,
+	var goInfo GoInfo
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			panic(fmt.Errorf("decoding go package info %v", err))
+		}
 	}
-	return mod.plainType(t, optional)
+	packages := generatePackageContextMap("", pkg, goInfo)
+	modPkg := packages[moduleName]
+	return modPkg.plainType(t, optional)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup

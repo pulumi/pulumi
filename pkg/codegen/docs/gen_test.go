@@ -25,6 +25,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	unitTestTool    = "Pulumi Resource Docs Unit Test"
+	providerPackage = "prov"
+)
+
 var (
 	simpleProperties = map[string]schema.PropertySpec{
 		"stringProp": {
@@ -41,16 +46,27 @@ var (
 		},
 	}
 	sampleSchema = schema.PackageSpec{
-		Name:        "prov",
-		Description: "A fake provider's package spec used for testing.",
+		Name:        providerPackage,
+		Description: "A fake provider package used for testing.",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
 		Types: map[string]schema.ObjectTypeSpec{
-			"prov:/packageLevelFunction:packageLevelFunction": {
-				Description: "A package-level function.",
+			// Package-level types.
+			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
+				Description: "Options object for the package-level function getPackageResource.",
 				Type:        "object",
 				Properties:  simpleProperties,
 			},
-			"prov:module/resource:Options": {
-				Description: "The options object.",
+
+			// Module-level types.
+			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
+				Description: "Options object for the module-level function getModuleResource.",
+				Type:        "object",
+				Properties:  simpleProperties,
+			},
+			"prov:module/SomeResourceOptions:SomeResourceOptions": {
+				Description: "The resource options object.",
 				Type:        "object",
 				Properties:  simpleProperties,
 			},
@@ -58,37 +74,64 @@ var (
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
 				InputProperties: map[string]schema.PropertySpec{
-					"prop1": {
-						Description: "This is prop1's description.",
+					"integerProp": {
+						Description: "This is integerProp's description.",
 						TypeSpec: schema.TypeSpec{
 							Type: "integer",
 						},
 					},
-					"prop2": {
-						Description: "This is prop2's description.",
+					"stringProp": {
+						Description: "This is stringProp's description.",
 						TypeSpec: schema.TypeSpec{
 							Type: "string",
 						},
 					},
 					"optionsProp": {
 						TypeSpec: schema.TypeSpec{
-							Type: "object",
-							Ref:  "#/types/prov:module/resource:Options",
+							Ref: "#/types/prov:module/SomeResourceOptions:SomeResourceOptions",
 						},
 					},
 				},
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
-			"prov:/packageLevelFunction:packageLevelFunction": {
+			// Package-level Functions.
+			"prov:/getPackageResource:getPackageResource": {
 				Description: "A package-level function.",
 				Inputs: &schema.ObjectTypeSpec{
-					Description: "Inputs",
+					Description: "Inputs for getPackageResource.",
 					Type:        "object",
-					Properties:  simpleProperties,
+					Properties: map[string]schema.PropertySpec{
+						"options": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/prov:/getPackageResourceOptions:getPackageResourceOptions",
+							},
+						},
+					},
 				},
 				Outputs: &schema.ObjectTypeSpec{
-					Description: "Outputs",
+					Description: "Outputs for getPackageResource.",
+					Properties:  simpleProperties,
+					Type:        "object",
+				},
+			},
+
+			// Module-level Functions.
+			"prov:module/getModuleResource:getModuleResource": {
+				Description: "A module-level function.",
+				Inputs: &schema.ObjectTypeSpec{
+					Description: "Inputs for getModuleResource.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"options": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/prov:module/getModuleResource:getModuleResource",
+							},
+						},
+					},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Description: "Outputs for getModuleResource.",
 					Properties:  simpleProperties,
 					Type:        "object",
 				},
@@ -97,7 +140,26 @@ var (
 	}
 )
 
-func TestPythonCasing(t *testing.T) {
-	_, err := schema.ImportSpec(sampleSchema)
+func TestResourceNestedPropertyPythonCasing(t *testing.T) {
+	schemaPkg, err := schema.ImportSpec(sampleSchema)
 	assert.NoError(t, err, "importing spec")
+
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	for _, mod := range modules {
+		for _, r := range mod.resources {
+			props := mod.getProperties(r.InputProperties, "python", true, false)
+			for _, p := range props {
+				t.Logf("property %q. type: %q", p.Name, p.Type.Name)
+			}
+			nestedTypes := mod.genNestedTypes(r, true)
+			for _, n := range nestedTypes {
+				t.Logf("nested property %q", n.Name)
+				// assert.Equal(t, "OptionsProp", n.Name, "expected nested type", "")
+				// pyProps := n.Properties["python"]
+				// for _, prop := range pyProps {
+				// 	assert.Equal(t, "", "", "")
+				// }
+			}
+		}
+	}
 }

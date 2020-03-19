@@ -955,15 +955,8 @@ type GoInfo struct {
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	var goInfo GoInfo
-	if golang, ok := pkg.Language["go"]; ok {
-		if err := json.Unmarshal(golang, &goInfo); err != nil {
-			return nil, errors.Wrap(err, "decoding go package info")
-		}
-	}
-
-	// group resources, types, and functions into Go packages
+// generatePackageContextMap groups resources, types, and functions into Go packages.
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
@@ -1066,6 +1059,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.names.add(name + "Result")
 		}
 	}
+
+	return packages
+}
+
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	var goInfo GoInfo
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			return nil, errors.Wrap(err, "decoding go package info")
+		}
+	}
+
+	packages := generatePackageContextMap(tool, pkg, goInfo)
 
 	// emit each package
 	var pkgMods []string

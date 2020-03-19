@@ -1050,27 +1050,8 @@ func (mod *modContext) genIndex(exports []string) string {
 	return w.String()
 }
 
-// GeneratePackage generates the docs package with docs for each resource given the Pulumi
-// schema.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	templates = template.New("").Funcs(template.FuncMap{
-		"htmlSafe": func(html string) template.HTML {
-			// Markdown fragments in the templates need to be rendered as-is,
-			// so that html/template package doesn't try to inject data into it,
-			// which will most certainly fail.
-			// nolint gosec
-			return template.HTML(html)
-		},
-		"pyName": func(str string) string {
-			return python.PyName(str)
-		},
-	})
-
-	for name, b := range packagedTemplates {
-		template.Must(templates.New(name).Parse(string(b)))
-	}
-
-	// group resources, types, and functions into modules
+func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
+	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
 	var getMod func(token string) *modContext
@@ -1153,7 +1134,32 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			})
 		}
 	}
+	return modules
+}
 
+// GeneratePackage generates the docs package with docs for each resource given the Pulumi
+// schema.
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	templates = template.New("").Funcs(template.FuncMap{
+		"htmlSafe": func(html string) template.HTML {
+			// Markdown fragments in the templates need to be rendered as-is,
+			// so that html/template package doesn't try to inject data into it,
+			// which will most certainly fail.
+			// nolint gosec
+			return template.HTML(html)
+		},
+		"pyName": func(str string) string {
+			return python.PyName(str)
+		},
+	})
+
+	for name, b := range packagedTemplates {
+		template.Must(templates.New(name).Parse(string(b)))
+	}
+
+	// Generate the modules from the schema, and for every module
+	// run the generator functions to generate markdown files.
+	modules := generateModulesFromSchemaPackage(tool, pkg)
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
