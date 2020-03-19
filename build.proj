@@ -99,14 +99,14 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
     <ItemGroup>
-      <GoPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-go" />
+      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/go/pulumi-language-go" />
     </ItemGroup>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/go/common/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)" />
   </Target>
 
   <Target Name="GoInstallPlugin">
     <ItemGroup>
-      <GoPackagesToBuild Include="github.com/pulumi/pulumi/pkg/cmd/pulumi-language-go" />
+      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/go/pulumi-language-go" />
     </ItemGroup>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
