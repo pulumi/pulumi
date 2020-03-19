@@ -15,8 +15,8 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
 )
 

@@ -21,8 +21,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/display"
 	"github.com/pulumi/pulumi/pkg/graph"
 	"github.com/pulumi/pulumi/pkg/graph/dotconv"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )

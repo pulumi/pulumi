@@ -19,10 +19,10 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/edit"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 
 	"github.com/spf13/cobra"

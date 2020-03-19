@@ -25,10 +25,10 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 

@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

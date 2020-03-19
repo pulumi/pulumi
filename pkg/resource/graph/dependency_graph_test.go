@@ -5,8 +5,8 @@ package graph
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )

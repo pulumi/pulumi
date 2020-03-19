@@ -20,8 +20,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )

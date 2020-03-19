@@ -18,8 +18,8 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
