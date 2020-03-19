@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/format"
 	"io"
 	"path"
 	"reflect"
@@ -31,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -754,16 +756,16 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectT
 	fmt.Fprintf(w, "}\n")
 }
 
-func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet) {
+func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet, seen map[schema.Type]struct{}) {
+	if _, ok := seen[t]; ok {
+		return
+	}
+	seen[t] = struct{}{}
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		if recurse {
-			pkg.getTypeImports(t.ElementType, false, imports)
-		}
+		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.MapType:
-		if recurse {
-			pkg.getTypeImports(t.ElementType, false, imports)
-		}
+		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.ObjectType:
 		mod := pkg.pkg.TokenToModule(t.Token)
 		if override, ok := pkg.modToPkg[mod]; ok {
@@ -775,28 +777,27 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports strin
 
 		for _, p := range t.Properties {
 			if recurse {
-				pkg.getTypeImports(p.Type, false, imports)
+				pkg.getTypeImports(p.Type, recurse, imports, seen)
 			}
 		}
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			if recurse {
-				pkg.getTypeImports(e, false, imports)
-			}
+			pkg.getTypeImports(e, recurse, imports, seen)
 		}
 	}
 }
 
 func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
+	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
-		pkg.getTypeImports(member, true, imports)
+		pkg.getTypeImports(member, true, imports, seen)
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			pkg.getTypeImports(p.Type, false, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 		}
 		for _, p := range member.InputProperties {
-			pkg.getTypeImports(p.Type, false, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 
 			if p.IsRequired {
 				imports.add("github.com/pkg/errors")
@@ -804,14 +805,14 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			pkg.getTypeImports(member.Inputs, false, imports)
+			pkg.getTypeImports(member.Inputs, false, imports, seen)
 		}
 		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, false, imports)
+			pkg.getTypeImports(member.Outputs, false, imports, seen)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			pkg.getTypeImports(p.Type, false, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 		}
 	default:
 		return
@@ -1078,7 +1079,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
-		files[relPath] = []byte(contents)
+
+		// Run Go formatter on the code before saving to disk
+		formattedSource, err := format.Source([]byte(contents))
+		if err != nil {
+			panic(errors.Errorf("invalid Go source code:\n\n%s", contents))
+		}
+
+		files[relPath] = formattedSource
 	}
 
 	name, registerPackage := pkg.Name, pkg.Provider != nil
