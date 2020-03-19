@@ -124,11 +124,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	}
 
 	if mod == pkg.mod {
-		name := title(name)
-		if pkg.names.has(name) {
-			name += "Type"
-		}
-		return name
+		return title(name)
 	}
 	return strings.Replace(mod, "/", "", -1) + "." + title(name)
 }
