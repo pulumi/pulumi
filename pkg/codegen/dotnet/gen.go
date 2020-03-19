@@ -604,9 +604,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	optionsType := "CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "ResourceOptions"
-	}
 
 	tok := r.Token
 	if r.IsProvider {
@@ -743,7 +740,6 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Open the partial class we'll use for datasources.
-	// TODO(pdg): this needs a better name that is guaranteed to be unique.
 	fmt.Fprintf(w, "    public static partial class Invokes\n")
 	fmt.Fprintf(w, "    {\n")
 
@@ -774,8 +770,26 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	printComment(w, fun.Comment, "        ")
 
 	// Emit the datasource method.
+	className := methodName
+	fmt.Fprintf(w, "        [Obsolete(\"Use %s.InvokeAsync() instead\")]\n", className)
 	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)
 	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n", typeParameter, fun.Token, argsParamRef)
+
+	// Close the class.
+	fmt.Fprintf(w, "    }\n\n")
+
+	// Open the class we'll use for datasources.
+	fmt.Fprintf(w, "    public static class %s\n", className)
+	fmt.Fprintf(w, "    {\n")
+
+	// Emit the doc comment, if any.
+	printComment(w, fun.Comment, "        ")
+
+	// Emit the datasource method.
+	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
+		typeParameter, argsParamDef)
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
+		typeParameter, fun.Token, argsParamRef)
 
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
