@@ -70,6 +70,7 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	Verbose = verbose
 	LogFlow = logFlow
 
+	// TODO: https://github.com/pulumi/pulumi/issues/4121
 	glog.InitFlags(nil)
 
 	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
