@@ -14,7 +14,7 @@
     <tbody>
     {{ range . }}
         <tr>
-            <td class="align-top">{{ htmlSafe .Name }}</td>
+            <td class="align-top">{{ htmlSafe .DisplayName }}</td>
             <td class="align-top">
                 {{ if eq .Type.Link "#" "" }}
                 <code>{{ htmlSafe .Type.Name }}</code>
