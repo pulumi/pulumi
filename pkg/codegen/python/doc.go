@@ -77,7 +77,7 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) st
 	return ""
 }
 
-// GenPropertyCaseMap generates the snake_case map for a property.
+// GenPropertyCaseMap generates the case maps for a property.
 func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
 	mod := &modContext{
 		pkg:                  pkg,
