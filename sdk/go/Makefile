@@ -21,6 +21,8 @@ install:: install_plugin
 lint::
 	golangci-lint run
 
+test_all:: test_fast
+
 test_fast::
 	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
