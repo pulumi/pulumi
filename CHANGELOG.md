@@ -18,8 +18,89 @@ CHANGELOG
 
 - All data-source invocations are now asynchronous (Promise-returning) by default.
 
-## HEAD (Unreleased)
+## 1.13.0 (2020-03-18)
+- Add support for plugin acquisition for Go programs
+  [#4060](https://github.com/pulumi/pulumi/pull/4060)
 
+- Display resource type in PAC violation output
+  [#4061](https://github.com/pulumi/pulumi/issues/4061)
+  
+- Update to Helm v3 in pulumi Docker image
+  [#4090](https://github.com/pulumi/pulumi/pull/4090)
+
+- Add ArrayMap builtin types to Go SDK
+  [#4086](https://github.com/pulumi/pulumi/pull/4086)
+
+- Improve documentation of URL formats for `pulumi login`
+  [#4059](https://github.com/pulumi/pulumi/pull/4059)
+
+- Add support for stack transformations in the .NET SDK.
+  [#4008](https://github.com/pulumi/pulumi/pull/4008)
+
+- Fix `pulumi stack ls` on Windows
+  [#4094](https://github.com/pulumi/pulumi/pull/4094)
+
+- Add support for running Python policy packs.
+  [#4057](https://github.com/pulumi/pulumi/pull/4057)
+
+## 1.12.1 (2020-03-11)
+- Fix Kubernetes YAML parsing error in .NET.
+  [#4023](https://github.com/pulumi/pulumi/pull/4023)
+
+- Avoid projects beginning with `Pulumi` to stop cyclic imports
+  [#4013](https://github.com/pulumi/pulumi/pull/4013)
+
+- Ensure we can locate Go created application binaries on Windows
+  [#4030](https://github.com/pulumi/pulumi/pull/4030)
+
+- Ensure Python overlays work as part of our SDK generation
+  [#4043](https://github.com/pulumi/pulumi/pull/4043)
+
+- Fix terminal gets into a state where UP/DOWN don't work with prompts.
+  [#4042](https://github.com/pulumi/pulumi/pull/4042)
+
+- Ensure old provider is not used when configuration has changed
+  [#4051](https://github.com/pulumi/pulumi/pull/4051)
+
+- Support for unit testing and mocking in the .NET SDK.
+  [#3696](https://github.com/pulumi/pulumi/pull/3696)
+
+## 1.12.0 (2020-03-04)
+- Avoid Configuring providers which are not used during preview.
+  [#4004](https://github.com/pulumi/pulumi/pull/4004)
+
+- Fix missing module import on Windows platform.
+  [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
+- Add support for mocking the resource monitor to the NodeJS and Python SDKs.
+  [#3738](https://github.com/pulumi/pulumi/pull/3738)
+
+- Reinstate caching of TypeScript compilation.
+  [#4007](https://github.com/pulumi/pulumi/pull/4007)
+
+- Remove the need to set PULUMI_EXPERIMENTAL to use the policy and watch commands.
+  [#4001](https://github.com/pulumi/pulumi/pull/4001)
+
+- Fix type annotations for `Output.all` and `Output.concat` in Python SDK.
+  [#4016](https://github.com/pulumi/pulumi/pull/4016)
+
+- Add support for configuring policies.
+  [#4015](https://github.com/pulumi/pulumi/pull/4015)
+
+## 1.11.1 (2020-02-26)
+- Fix a regression for CustomTimeouts in Python SDK.
+  [#3964](https://github.com/pulumi/pulumi/pull/3964)
+
+- Avoid panic when displaying failed stack policies.
+  [#3960](https://github.com/pulumi/pulumi/pull/3960)
+  
+- Add support for secrets in the Go SDK.
+  [3938](https://github.com/pulumi/pulumi/pull/3938)
+
+- Add support for transformations in the Go SDK.
+  [3978](https://github.com/pulumi/pulumi/pull/3938)  
+
+## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
   [#3895](https://github.com/pulumi/pulumi/pull/3895)
 
@@ -38,6 +119,12 @@ CHANGELOG
 - Support exporting older stack versions.
   [#3906](https://github.com/pulumi/pulumi/pull/3906)
 
+- Disable interactive progress display when no terminal size is available.
+  [#3936](https://github.com/pulumi/pulumi/pull/3936)
+
+- Mark `ResourceOptions` class as abstract in the .NET SDK. Require the use of derived classes.
+  [#3943](https://github.com/pulumi/pulumi/pull/3943)
+
 ## 1.10.1 (2020-02-06)
 - Support stack references in the Go SDK.
   [#3829](https://github.com/pulumi/pulumi/pull/3829)
@@ -53,6 +140,7 @@ CHANGELOG
   [#3822](https://github.com/pulumi/pulumi/pull/3822)
 
 - Update `SummaryEvent` to include the actual name and local file path for locally-executed policy packs.
+
 - Add support for aliases in the Go SDK
   [3853](https://github.com/pulumi/pulumi/pull/3853)
 

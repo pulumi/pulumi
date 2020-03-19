@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -69,6 +70,9 @@ var nextStreamID int32
 // errRunPolicyModuleNotFound is returned when we determine that the plugin failed to load because
 // the stack's Pulumi SDK did not have the required modules. i.e. is too old.
 var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy as code")
+
+// errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
+var errPluginNotFound = errors.New("plugin not found")
 
 func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plugin, error) {
 	if logging.V(9) {
@@ -234,6 +238,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 	return plug, nil
 }
 
+// execPlugin starts the plugin executable.
 func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	var args []string
 	// Flow the logging information if set.
@@ -261,6 +266,20 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 	out, _ := cmd.StdoutPipe()
 	err, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
+		// If we try to run a plugin that isn't found, intercept the error
+		// and instead return a custom one so we can more easily check for
+		// it upstream
+		//
+		// In the case of PAC, note that the plugin usually _does_ exist.
+		// It is a shell script like "pulumi-analyzer-policy". But during
+		// the execution of that script, it fails with the ENOENT error.
+		if pathErr, ok := err.(*os.PathError); ok {
+			syscallErr, ok := pathErr.Err.(syscall.Errno)
+			if ok && syscallErr == syscall.ENOENT {
+				return nil, errPluginNotFound
+			}
+
+		}
 		return nil, err
 	}
 

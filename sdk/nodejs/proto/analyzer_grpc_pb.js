@@ -77,6 +77,17 @@ function deserialize_pulumirpc_AnalyzerInfo(buffer_arg) {
   return analyzer_pb.AnalyzerInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConfigureAnalyzerRequest(arg) {
+  if (!(arg instanceof analyzer_pb.ConfigureAnalyzerRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConfigureAnalyzerRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConfigureAnalyzerRequest(buffer_arg) {
+  return analyzer_pb.ConfigureAnalyzerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -95,8 +106,8 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
 // issues -- style, policy, correctness, security, and so on.
 var AnalyzerService = exports.AnalyzerService = {
   // Analyze analyzes a single resource object, and returns any errors that it finds.
-  // Called with the "inputs" to the resource, before it is updated.
-  analyze: {
+// Called with the "inputs" to the resource, before it is updated.
+analyze: {
     path: '/pulumirpc.Analyzer/Analyze',
     requestStream: false,
     responseStream: false,
@@ -108,9 +119,9 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
   // AnalyzeStack analyzes all resources within a stack, at the end of a successful
-  // preview or update. The provided resources are the "outputs", after any mutations
-  // have taken place.
-  analyzeStack: {
+// preview or update. The provided resources are the "outputs", after any mutations
+// have taken place.
+analyzeStack: {
     path: '/pulumirpc.Analyzer/AnalyzeStack',
     requestStream: false,
     responseStream: false,
@@ -122,7 +133,7 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
   // GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-  getAnalyzerInfo: {
+getAnalyzerInfo: {
     path: '/pulumirpc.Analyzer/GetAnalyzerInfo',
     requestStream: false,
     responseStream: false,
@@ -134,7 +145,7 @@ var AnalyzerService = exports.AnalyzerService = {
     responseDeserialize: deserialize_pulumirpc_AnalyzerInfo,
   },
   // GetPluginInfo returns generic information about this plugin, like its version.
-  getPluginInfo: {
+getPluginInfo: {
     path: '/pulumirpc.Analyzer/GetPluginInfo',
     requestStream: false,
     responseStream: false,
@@ -144,6 +155,18 @@ var AnalyzerService = exports.AnalyzerService = {
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
     responseDeserialize: deserialize_pulumirpc_PluginInfo,
+  },
+  // Configure configures the analyzer, passing configuration properties for each policy.
+configure: {
+    path: '/pulumirpc.Analyzer/Configure',
+    requestStream: false,
+    responseStream: false,
+    requestType: analyzer_pb.ConfigureAnalyzerRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_ConfigureAnalyzerRequest,
+    requestDeserialize: deserialize_pulumirpc_ConfigureAnalyzerRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

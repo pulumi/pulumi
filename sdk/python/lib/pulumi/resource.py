@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 
 
+@known_types.custom_timeouts
 class CustomTimeouts:
     create: Optional[str]
     """

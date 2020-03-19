@@ -22,7 +22,7 @@ import (
 
 type policyDisableArgs struct {
 	policyGroup string
-	version     int
+	version     string
 }
 
 func newPolicyDisableCmd() *cobra.Command {
@@ -31,7 +31,7 @@ func newPolicyDisableCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "disable <org-name>/<policy-pack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Disable a Policy Pack for a Pulumi organization",
+		Short: "[PREVIEW] Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
@@ -43,7 +43,7 @@ func newPolicyDisableCmd() *cobra.Command {
 
 			// Attempt to disable the Policy Pack.
 			return policyPack.Disable(commandContext(), args.policyGroup, backend.PolicyPackOperation{
-				Version: &args.version, Scopes: cancellationScopes})
+				VersionTag: &args.version, Scopes: cancellationScopes})
 		}),
 	}
 
@@ -51,8 +51,8 @@ func newPolicyDisableCmd() *cobra.Command {
 		&args.policyGroup, "policy-group", "",
 		"The Policy Group for which the Policy Pack will be disabled; if not specified, the default Policy Group is used")
 
-	cmd.PersistentFlags().IntVar(
-		&args.version, "version", 0,
+	cmd.PersistentFlags().StringVar(
+		&args.version, "version", "",
 		"The version of the Policy Pack that will be disabled; "+
 			"if not specified, any enabled version of the Policy Pack will be disabled")
 

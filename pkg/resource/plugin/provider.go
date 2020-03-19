@@ -39,6 +39,9 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
+	// GetSchema returns the schema for the provider.
+	GetSchema(version int) ([]byte, error)
+
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)

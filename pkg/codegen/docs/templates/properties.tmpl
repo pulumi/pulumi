@@ -1,0 +1,49 @@
+{{ define "propIsRequired" }}
+{{ if . }} (Required) {{- else }} (Optional){{- end }}
+{{ end }}
+
+{{ define "properties_table" }}
+<table class="ml-6">
+    <thead>
+        <tr>
+            <th>Argument</th>
+            <th>Type</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{ range . }}
+        <tr>
+            <td class="align-top">{{ htmlSafe .Name }}</td>
+            <td class="align-top">
+                {{ if eq .Type.Link "#" "" }}
+                <code>{{ htmlSafe .Type.Name }}</code>
+                {{- else }}
+                <code>{{ template "linkify" .Type }}</code>
+                {{- end }}
+            </td>
+            <td class="align-top">
+            {{- htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}
+
+            {{ .DeprecationMessage }}
+            </td>
+        </tr>
+    {{ end }}
+    </tbody>
+</table>
+{{ end }}
+
+{{ define "properties" }}
+
+{{ htmlSafe "{{< langchoose csharp nojavascript >}}" }}
+
+{{ range $lang, $props := . }}
+{{ print "{{% lang" }} {{ print $lang }} {{ print "%}}" }}
+
+{{ template "properties_table" $props }}
+
+{{ print "{{% /lang %}}" }}
+
+{{ end }}
+
+{{ end }}

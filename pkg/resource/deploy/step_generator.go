@@ -1321,12 +1321,16 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 		for _, d := range diagnostics {
 			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
 			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-			// Otherwise, use the default URN value ("") to not associate the violation with any particular URN.
+			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
+			// the default root stack URN.
 			var urn resource.URN
 			if d.URN != "" {
 				if _, ok := resourcesSeen[d.URN]; ok {
 					urn = d.URN
 				}
+			}
+			if urn == "" {
+				urn = resource.DefaultRootStackURN(sg.plan.Target().Name, sg.plan.source.Project())
 			}
 			sg.opts.Events.OnPolicyViolation(urn, d)
 		}

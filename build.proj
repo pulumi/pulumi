@@ -278,13 +278,22 @@
 
   <!-- Tests -->
   <Target Name="Tests">
+    <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\pkg\backend\..."
+          IgnoreExitCode="true"
+          WorkingDirectory="$(RepoRootDirectory)">
+      <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
+    </Exec>
+
+    <Error Text="backend tests (.\pkg\backend) failed"
+           Condition="$(BackendTestsExitCode) != 0"/>
+
     <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(RepoRootDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
     </Exec>
 
-    <Error Text="examples tests (.\examples) failed" 
+    <Error Text="examples tests (.\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
     <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\tests\integration"
@@ -306,5 +315,4 @@
 
   <Target Name="CIBuild"
           DependsOnTargets="Build;Tests" />
-
 </Project>

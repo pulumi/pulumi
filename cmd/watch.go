@@ -38,6 +38,7 @@ func newWatchCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
+	var policyPackConfigPaths []string
 	var parallel int
 	var refresh bool
 	var showConfig bool
@@ -48,7 +49,7 @@ func newWatchCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "Continuously update the resources in a stack",
+		Short:      "[PREVIEW] Continuously update the resources in a stack",
 		Long: "Continuously update the resources in a stack.\n" +
 			"\n" +
 			"This command watches the working directory for the current project and updates the active stack whenever\n" +
@@ -74,6 +75,10 @@ func newWatchCmd() *cobra.Command {
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
 				Debug:                debug,
+			}
+
+			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
+				return result.FromError(err)
 			}
 
 			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
@@ -107,7 +112,7 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths),
+				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 				Parallel:         parallel,
 				Debug:            debug,
 				Refresh:          refresh,
@@ -159,11 +164,12 @@ func newWatchCmd() *cobra.Command {
 		"Optional message to associate with each update operation")
 
 	// Flags for engine.UpdateOptions.
-	if hasDebugCommands() || hasExperimentalCommands() {
-		cmd.PersistentFlags().StringSliceVar(
-			&policyPackPaths, "policy-pack", []string{},
-			"Run one or more policy packs as part of each update")
-	}
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackPaths, "policy-pack", []string{},
+		"[PREVIEW] Run one or more policy packs as part of each update")
+	cmd.PersistentFlags().StringSliceVar(
+		&policyPackConfigPaths, "policy-pack-config", []string{},
+		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")

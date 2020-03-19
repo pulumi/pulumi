@@ -15,9 +15,8 @@
 package pulumi
 
 import (
+	"errors"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Alias is a partial description of prior named used for a resource. It can be processed in the

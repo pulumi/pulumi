@@ -18,10 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -75,11 +79,21 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-const policyAnalyzerName = "policy"
-
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+
+	proj, err := workspace.LoadPolicyPack(filepath.Join(policyPackPath, "PulumiPolicy.yaml"))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
+	}
+
+	// For historical reasons, the Node.js plugin name is just "policy".
+	// All other languages have the runtime appended, e.g. "policy-<runtime>".
+	policyAnalyzerName := "policy"
+	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	_, pluginPath, err := workspace.GetPluginPath(
@@ -94,7 +108,7 @@ func NewPolicyAnalyzer(
 	}
 
 	// Create the environment variables from the options.
-	env, err := constructEnv(opts)
+	env, err := constructEnv(opts, proj.Runtime.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +122,14 @@ func NewPolicyAnalyzer(
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), "."}, env)
 	if err != nil {
-		if err == errRunPolicyModuleNotFound {
+		// The original error might have been wrapped before being returned from newPlugin. So we look for
+		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
+		if errors.Cause(err) == errRunPolicyModuleNotFound {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
 				"try running npm install or yarn install in %q", policyPackPath)
+		}
+		if errors.Cause(err) == errPluginNotFound {
+			return nil, fmt.Errorf("policy pack not found at %q", name)
 		}
 		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
 	}
@@ -137,7 +156,8 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	mprops, err := MarshalProperties(props,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +197,8 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
 	for idx, resource := range resources {
-		props, err := MarshalProperties(resource.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+		props, err := MarshalProperties(resource.Properties,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
 			return nil, errors.Wrap(err, "marshalling properties")
 		}
@@ -254,26 +275,50 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		return AnalyzerInfo{}, rpcError
 	}
 
-	policies := []apitype.Policy{}
-	for _, p := range resp.GetPolicies() {
+	rpcPolicies := resp.GetPolicies()
+	policies := make([]AnalyzerPolicyInfo, len(rpcPolicies))
+	for i, p := range rpcPolicies {
 		enforcementLevel, err := convertEnforcementLevel(p.EnforcementLevel)
 		if err != nil {
 			return AnalyzerInfo{}, err
 		}
 
-		policies = append(policies, apitype.Policy{
+		var schema *AnalyzerPolicyConfigSchema
+		if resp.GetSupportsConfig() {
+			schema = convertConfigSchema(p.GetConfigSchema())
+
+			// Inject `enforcementLevel` into the schema.
+			if schema == nil {
+				schema = &AnalyzerPolicyConfigSchema{}
+			}
+			if schema.Properties == nil {
+				schema.Properties = map[string]JSONSchema{}
+			}
+			schema.Properties["enforcementLevel"] = JSONSchema{
+				"type": "string",
+				"enum": []string{"advisory", "mandatory", "disabled"},
+			}
+		}
+
+		policies[i] = AnalyzerPolicyInfo{
 			Name:             p.GetName(),
 			DisplayName:      p.GetDisplayName(),
 			Description:      p.GetDescription(),
 			EnforcementLevel: enforcementLevel,
 			Message:          p.GetMessage(),
-		})
+			ConfigSchema:     schema,
+		}
 	}
+	sort.Slice(policies, func(i, j int) bool {
+		return policies[i].Name < policies[j].Name
+	})
 
 	return AnalyzerInfo{
-		Name:        resp.GetName(),
-		DisplayName: resp.GetDisplayName(),
-		Policies:    policies,
+		Name:           resp.GetName(),
+		DisplayName:    resp.GetDisplayName(),
+		Version:        resp.GetVersion(),
+		SupportsConfig: resp.GetSupportsConfig(),
+		Policies:       policies,
 	}, nil
 }
 
@@ -303,6 +348,38 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind:    workspace.AnalyzerPlugin,
 		Version: version,
 	}, nil
+}
+
+func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
+	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	logging.V(7).Infof("%s executing", label)
+
+	if len(policyConfig) == 0 {
+		logging.V(7).Infof("%s returning early, no config specified", label)
+		return nil
+	}
+
+	c := make(map[string]*pulumirpc.PolicyConfig)
+
+	for k, v := range policyConfig {
+		if !v.EnforcementLevel.IsValid() {
+			return errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
+		}
+		c[k] = &pulumirpc.PolicyConfig{
+			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
+			Properties:       marshalMap(v.Properties),
+		}
+	}
+
+	_, err := a.client.Configure(a.ctx.Request(), &pulumirpc.ConfigureAnalyzerRequest{
+		PolicyConfig: c,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return rpcError
+	}
+	return nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.
@@ -342,7 +419,8 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		return nil, nil
 	}
 
-	props, err := MarshalProperties(provider.Properties, MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	props, err := MarshalProperties(provider.Properties,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling properties")
 	}
@@ -353,6 +431,117 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		Name:       string(provider.Name),
 		Properties: props,
 	}, nil
+}
+
+func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementLevel {
+	switch el {
+	case apitype.Advisory:
+		return pulumirpc.EnforcementLevel_ADVISORY
+	case apitype.Mandatory:
+		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Disabled:
+		return pulumirpc.EnforcementLevel_DISABLED
+	}
+	contract.Failf("Unrecognized enforcement level %s", el)
+	return 0
+}
+
+func marshalMap(m map[string]interface{}) *structpb.Struct {
+	fields := make(map[string]*structpb.Value)
+	for k, v := range m {
+		val := marshalMapValue(v)
+		if val != nil {
+			fields[k] = val
+		}
+	}
+	return &structpb.Struct{
+		Fields: fields,
+	}
+}
+
+func marshalMapValue(v interface{}) *structpb.Value {
+	if v == nil {
+		return &structpb.Value{
+			Kind: &structpb.Value_NullValue{
+				NullValue: structpb.NullValue_NULL_VALUE,
+			},
+		}
+	}
+
+	switch val := v.(type) {
+	case bool:
+		return &structpb.Value{
+			Kind: &structpb.Value_BoolValue{
+				BoolValue: val,
+			},
+		}
+	case float64:
+		return &structpb.Value{
+			Kind: &structpb.Value_NumberValue{
+				NumberValue: val,
+			},
+		}
+	case string:
+		return &structpb.Value{
+			Kind: &structpb.Value_StringValue{
+				StringValue: val,
+			},
+		}
+	case []interface{}:
+		arr := make([]*structpb.Value, len(val))
+		for i, e := range val {
+			arr[i] = marshalMapValue(e)
+		}
+		return &structpb.Value{
+			Kind: &structpb.Value_ListValue{
+				ListValue: &structpb.ListValue{Values: arr},
+			},
+		}
+	case map[string]interface{}:
+		return &structpb.Value{
+			Kind: &structpb.Value_StructValue{
+				StructValue: marshalMap(val),
+			},
+		}
+	}
+
+	contract.Failf("Unrecognized value: %v (type=%v)", v, reflect.TypeOf(v))
+	return nil
+}
+
+func unmarshalMap(s *structpb.Struct) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	result := make(map[string]interface{})
+	for k, v := range s.Fields {
+		result[k] = unmarshalMapValue(v)
+	}
+	return result
+}
+
+func unmarshalMapValue(v *structpb.Value) interface{} {
+	switch val := v.Kind.(type) {
+	case *structpb.Value_NullValue:
+		return nil
+	case *structpb.Value_BoolValue:
+		return val.BoolValue
+	case *structpb.Value_NumberValue:
+		return val.NumberValue
+	case *structpb.Value_StringValue:
+		return val.StringValue
+	case *structpb.Value_ListValue:
+		arr := make([]interface{}, len(val.ListValue.Values))
+		for i, e := range val.ListValue.Values {
+			arr[i] = unmarshalMapValue(e)
+		}
+		return arr
+	case *structpb.Value_StructValue:
+		return unmarshalMap(val.StructValue)
+	}
+
+	contract.Failf("Unrecognized kind: %v (type=%v)", v.Kind, reflect.TypeOf(v.Kind))
+	return nil
 }
 
 func convertURNs(urns []resource.URN) []string {
@@ -369,9 +558,28 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_DISABLED:
+		return apitype.Disabled, nil
 
 	default:
 		return "", fmt.Errorf("Invalid enforcement level %d", el)
+	}
+}
+
+func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyConfigSchema {
+	if schema == nil {
+		return nil
+	}
+
+	props := make(map[string]JSONSchema)
+	for k, v := range unmarshalMap(schema.GetProperties()) {
+		s := v.(map[string]interface{})
+		props[k] = JSONSchema(s)
+	}
+
+	return &AnalyzerPolicyConfigSchema{
+		Properties: props,
+		Required:   schema.GetRequired(),
 	}
 }
 
@@ -403,7 +611,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 // constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
 // is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
 // how config is passed to each language runtime plugin.
-func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
+func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error) {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
@@ -419,9 +627,19 @@ func constructEnv(opts *PolicyAnalyzerOptions) ([]string, error) {
 	maybeAppendEnv("PULUMI_CONFIG", config)
 
 	if opts != nil {
-		maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
-		maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		// Set both PULUMI_NODEJS_* and PULUMI_* environment variables for Node.js. The Node.js
+		// SDK currently looks for the PULUMI_NODEJS_* variants only, but we'd like to move to
+		// using the more general PULUMI_* variants for all languages to avoid special casing
+		// like this, and setting the PULUMI_* variants for Node.js is the first step.
+		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
+			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		}
+
+		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
+		maybeAppendEnv("PULUMI_STACK", opts.Stack)
+		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 	}
 
 	return env, nil

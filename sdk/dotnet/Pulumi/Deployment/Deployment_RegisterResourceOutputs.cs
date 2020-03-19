@@ -33,7 +33,7 @@ namespace Pulumi
             Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +
                 (_excessiveDebugOutput ? $", outputs ={JsonFormatter.Default.Format(serialized)}" : ""));
 
-            await Monitor.RegisterResourceOutputsAsync(new RegisterResourceOutputsRequest()
+            await Monitor.RegisterResourceOutputsAsync(new RegisterResourceOutputsRequest
             {
                 Urn = urn,
                 Outputs = serialized,

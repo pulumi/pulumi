@@ -5,8 +5,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
 )
@@ -21,7 +19,7 @@ func main() {
 		stackRef, err := pulumi.NewStackReference(ctx, slug, nil)
 
 		if err != nil {
-			return errors.Wrap(err, "Error reading stack reference.")
+			return fmt.Errorf("error reading stack reference: %v", err)
 		}
 
 		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val")))
@@ -31,12 +29,13 @@ func main() {
 
 		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
-				errChan <- errors.Errorf("Invalid result")
-				return nil, errors.Errorf("Invalid result")
+				errChan <- fmt.Errorf("invalid result")
+				return nil, fmt.Errorf("invalid result")
 			}
 			results <- v
 			return v, nil
 		})
+		ctx.Export("val2", pulumi.ToSecret(val))
 
 		select {
 		case err = <-errChan:

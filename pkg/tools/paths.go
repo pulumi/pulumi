@@ -15,8 +15,11 @@
 package tools
 
 import (
+	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"time"
 )
 
 // EnsureDir ensures that a target directory exists (like `mkdir -p`), returning a non-nil error if any problem occurs.
@@ -27,4 +30,24 @@ func EnsureDir(dir string) error {
 // EnsureFileDir ensures that a target file's parent directory exists, returning a non-nil error if any problem occurs.
 func EnsureFileDir(path string) error {
 	return EnsureDir(filepath.Dir(path))
+}
+
+func CreateTemporaryGoFolder(prefix string) (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+
+	folder := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+	testRoot := filepath.Join(gopath, "src", folder)
+	err := EnsureDir(testRoot)
+	if err != nil {
+		return "", err
+	}
+
+	return testRoot, err
 }

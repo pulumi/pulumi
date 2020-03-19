@@ -272,10 +272,15 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	}
 
 	terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
-	contract.IgnoreError(err)
-	display.isTerminal = opts.IsInteractive
-	display.terminalWidth = terminalWidth
-	display.terminalHeight = terminalHeight
+	if err == nil {
+		// If the terminal has a size, use it.
+		display.isTerminal = opts.IsInteractive
+		display.terminalWidth = terminalWidth
+		display.terminalHeight = terminalHeight
+	} else {
+		// Else assume we are not displaying in a terminal.
+		display.isTerminal = false
+	}
 
 	go func() {
 		display.processEvents(ticker, events)
@@ -807,12 +812,13 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			c = colors.SpecError
 		}
 
-		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
+		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s: %s)",
 			c, policyEvent.EnforcementLevel,
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Name())
+			policyEvent.ResourceURN.Name(),
+			policyEvent.ResourceURN.Type())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.

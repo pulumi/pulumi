@@ -3,9 +3,11 @@
 
 package pulumirpc
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,11 +18,11 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type ErrorCause struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
-	StackTrace           string   `protobuf:"bytes,2,opt,name=stackTrace" json:"stackTrace,omitempty"`
+	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	StackTrace           string   `protobuf:"bytes,2,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -30,16 +32,17 @@ func (m *ErrorCause) Reset()         { *m = ErrorCause{} }
 func (m *ErrorCause) String() string { return proto.CompactTextString(m) }
 func (*ErrorCause) ProtoMessage()    {}
 func (*ErrorCause) Descriptor() ([]byte, []int) {
-	return fileDescriptor_errors_f003e48c15598612, []int{0}
+	return fileDescriptor_24fe73c7f0ddb19c, []int{0}
 }
+
 func (m *ErrorCause) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ErrorCause.Unmarshal(m, b)
 }
 func (m *ErrorCause) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ErrorCause.Marshal(b, m, deterministic)
 }
-func (dst *ErrorCause) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ErrorCause.Merge(dst, src)
+func (m *ErrorCause) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ErrorCause.Merge(m, src)
 }
 func (m *ErrorCause) XXX_Size() int {
 	return xxx_messageInfo_ErrorCause.Size(m)
@@ -68,11 +71,11 @@ func init() {
 	proto.RegisterType((*ErrorCause)(nil), "pulumirpc.ErrorCause")
 }
 
-func init() { proto.RegisterFile("errors.proto", fileDescriptor_errors_f003e48c15598612) }
+func init() { proto.RegisterFile("errors.proto", fileDescriptor_24fe73c7f0ddb19c) }
 
-var fileDescriptor_errors_f003e48c15598612 = []byte{
+var fileDescriptor_24fe73c7f0ddb19c = []byte{
 	// 106 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x2d, 0x2a, 0xca,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x2d, 0x2a, 0xca,
 	0x2f, 0x2a, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2c, 0x28, 0xcd, 0x29, 0xcd, 0xcd,
 	0x2c, 0x2a, 0x48, 0x56, 0x72, 0xe3, 0xe2, 0x72, 0x05, 0x49, 0x39, 0x27, 0x96, 0x16, 0xa7, 0x0a,
 	0x49, 0x70, 0xb1, 0xe7, 0xa6, 0x16, 0x17, 0x27, 0xa6, 0xa7, 0x4a, 0x30, 0x2a, 0x30, 0x6a, 0x70,

@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,6 +57,21 @@ func WriteYarnRCForTest(root string) error {
 	return ioutil.WriteFile(
 		filepath.Join(root, ".yarnrc"),
 		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
+}
+
+// NewGoEnvironment returns a new Environment object, located in a GOPATH temp directory.
+func NewGoEnvironment(t *testing.T) *Environment {
+	testRoot, err := tools.CreateTemporaryGoFolder("test-env")
+	if err != nil {
+		t.Errorf("error creating test directory %s", err)
+	}
+
+	t.Logf("Created new go test environment")
+	return &Environment{
+		T:        t,
+		RootPath: testRoot,
+		CWD:      testRoot,
+	}
 }
 
 // NewEnvironment returns a new Environment object, located in a temp directory.

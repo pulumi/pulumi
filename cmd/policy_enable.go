@@ -15,9 +15,6 @@
 package cmd
 
 import (
-	"strconv"
-
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -35,7 +32,7 @@ func newPolicyEnableCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
 		Args:  cmdutil.ExactArgs(2),
-		Short: "Enable a Policy Pack for a Pulumi organization",
+		Short: "[PREVIEW] Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
@@ -46,18 +43,14 @@ func newPolicyEnableCmd() *cobra.Command {
 			}
 
 			// Parse version if it's specified.
-			var version *int
+			var version *string
 			if cliArgs[1] != latestKeyword {
-				v, err := strconv.Atoi(cliArgs[1])
-				if err != nil {
-					return errors.Wrapf(err, "Could not parse version (should be an integer)")
-				}
-				version = &v
+				version = &cliArgs[1]
 			}
 
 			// Attempt to enable the Policy Pack.
 			return policyPack.Enable(commandContext(), args.policyGroup, backend.PolicyPackOperation{
-				Version: version, Scopes: cancellationScopes})
+				VersionTag: version, Scopes: cancellationScopes})
 		}),
 	}
 

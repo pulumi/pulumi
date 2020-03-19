@@ -3,15 +3,16 @@
 
 package pulumirpc
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import empty "github.com/golang/protobuf/ptypes/empty"
-import _struct "github.com/golang/protobuf/ptypes/struct"
-
 import (
-	context "golang.org/x/net/context"
+	context "context"
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	empty "github.com/golang/protobuf/ptypes/empty"
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -23,7 +24,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // EnforcementLevel indicates the severity of a policy violation.
 type EnforcementLevel int32
@@ -31,31 +32,36 @@ type EnforcementLevel int32
 const (
 	EnforcementLevel_ADVISORY  EnforcementLevel = 0
 	EnforcementLevel_MANDATORY EnforcementLevel = 1
+	EnforcementLevel_DISABLED  EnforcementLevel = 2
 )
 
 var EnforcementLevel_name = map[int32]string{
 	0: "ADVISORY",
 	1: "MANDATORY",
+	2: "DISABLED",
 }
+
 var EnforcementLevel_value = map[string]int32{
 	"ADVISORY":  0,
 	"MANDATORY": 1,
+	"DISABLED":  2,
 }
 
 func (x EnforcementLevel) String() string {
 	return proto.EnumName(EnforcementLevel_name, int32(x))
 }
+
 func (EnforcementLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{0}
+	return fileDescriptor_fadbb7eccb91f143, []int{0}
 }
 
 type AnalyzeRequest struct {
-	Type                 string                    `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties           *_struct.Struct           `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
-	Urn                  string                    `protobuf:"bytes,3,opt,name=urn" json:"urn,omitempty"`
-	Name                 string                    `protobuf:"bytes,4,opt,name=name" json:"name,omitempty"`
-	Options              *AnalyzerResourceOptions  `protobuf:"bytes,5,opt,name=options" json:"options,omitempty"`
-	Provider             *AnalyzerProviderResource `protobuf:"bytes,6,opt,name=provider" json:"provider,omitempty"`
+	Type                 string                    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Properties           *_struct.Struct           `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Urn                  string                    `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	Name                 string                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Options              *AnalyzerResourceOptions  `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`
+	Provider             *AnalyzerProviderResource `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
 	XXX_unrecognized     []byte                    `json:"-"`
 	XXX_sizecache        int32                     `json:"-"`
@@ -65,16 +71,17 @@ func (m *AnalyzeRequest) Reset()         { *m = AnalyzeRequest{} }
 func (m *AnalyzeRequest) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeRequest) ProtoMessage()    {}
 func (*AnalyzeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{0}
+	return fileDescriptor_fadbb7eccb91f143, []int{0}
 }
+
 func (m *AnalyzeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeRequest.Unmarshal(m, b)
 }
 func (m *AnalyzeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzeRequest.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzeRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzeRequest.Merge(dst, src)
+func (m *AnalyzeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzeRequest.Merge(m, src)
 }
 func (m *AnalyzeRequest) XXX_Size() int {
 	return xxx_messageInfo_AnalyzeRequest.Size(m)
@@ -131,15 +138,15 @@ func (m *AnalyzeRequest) GetProvider() *AnalyzerProviderResource {
 // of the resource are specific to the type of analysis being performed. See the Analyzer
 // service definition for more information.
 type AnalyzerResource struct {
-	Type                 string                                   `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties           *_struct.Struct                          `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
-	Urn                  string                                   `protobuf:"bytes,3,opt,name=urn" json:"urn,omitempty"`
-	Name                 string                                   `protobuf:"bytes,4,opt,name=name" json:"name,omitempty"`
-	Options              *AnalyzerResourceOptions                 `protobuf:"bytes,5,opt,name=options" json:"options,omitempty"`
-	Provider             *AnalyzerProviderResource                `protobuf:"bytes,6,opt,name=provider" json:"provider,omitempty"`
-	Parent               string                                   `protobuf:"bytes,7,opt,name=parent" json:"parent,omitempty"`
-	Dependencies         []string                                 `protobuf:"bytes,8,rep,name=dependencies" json:"dependencies,omitempty"`
-	PropertyDependencies map[string]*AnalyzerPropertyDependencies `protobuf:"bytes,9,rep,name=propertyDependencies" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Type                 string                                   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Properties           *_struct.Struct                          `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Urn                  string                                   `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	Name                 string                                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Options              *AnalyzerResourceOptions                 `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`
+	Provider             *AnalyzerProviderResource                `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`
+	Parent               string                                   `protobuf:"bytes,7,opt,name=parent,proto3" json:"parent,omitempty"`
+	Dependencies         []string                                 `protobuf:"bytes,8,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	PropertyDependencies map[string]*AnalyzerPropertyDependencies `protobuf:"bytes,9,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}                                 `json:"-"`
 	XXX_unrecognized     []byte                                   `json:"-"`
 	XXX_sizecache        int32                                    `json:"-"`
@@ -149,16 +156,17 @@ func (m *AnalyzerResource) Reset()         { *m = AnalyzerResource{} }
 func (m *AnalyzerResource) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerResource) ProtoMessage()    {}
 func (*AnalyzerResource) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{1}
+	return fileDescriptor_fadbb7eccb91f143, []int{1}
 }
+
 func (m *AnalyzerResource) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerResource.Unmarshal(m, b)
 }
 func (m *AnalyzerResource) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerResource.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerResource) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerResource.Merge(dst, src)
+func (m *AnalyzerResource) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerResource.Merge(m, src)
 }
 func (m *AnalyzerResource) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerResource.Size(m)
@@ -234,13 +242,13 @@ func (m *AnalyzerResource) GetPropertyDependencies() map[string]*AnalyzerPropert
 
 // AnalyzerResourceOptions defines the options associated with a resource.
 type AnalyzerResourceOptions struct {
-	Protect                    bool                                    `protobuf:"varint,1,opt,name=protect" json:"protect,omitempty"`
-	IgnoreChanges              []string                                `protobuf:"bytes,2,rep,name=ignoreChanges" json:"ignoreChanges,omitempty"`
-	DeleteBeforeReplace        bool                                    `protobuf:"varint,3,opt,name=deleteBeforeReplace" json:"deleteBeforeReplace,omitempty"`
-	DeleteBeforeReplaceDefined bool                                    `protobuf:"varint,4,opt,name=deleteBeforeReplaceDefined" json:"deleteBeforeReplaceDefined,omitempty"`
-	AdditionalSecretOutputs    []string                                `protobuf:"bytes,5,rep,name=additionalSecretOutputs" json:"additionalSecretOutputs,omitempty"`
-	Aliases                    []string                                `protobuf:"bytes,6,rep,name=aliases" json:"aliases,omitempty"`
-	CustomTimeouts             *AnalyzerResourceOptions_CustomTimeouts `protobuf:"bytes,7,opt,name=customTimeouts" json:"customTimeouts,omitempty"`
+	Protect                    bool                                    `protobuf:"varint,1,opt,name=protect,proto3" json:"protect,omitempty"`
+	IgnoreChanges              []string                                `protobuf:"bytes,2,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	DeleteBeforeReplace        bool                                    `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`
+	DeleteBeforeReplaceDefined bool                                    `protobuf:"varint,4,opt,name=deleteBeforeReplaceDefined,proto3" json:"deleteBeforeReplaceDefined,omitempty"`
+	AdditionalSecretOutputs    []string                                `protobuf:"bytes,5,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
+	Aliases                    []string                                `protobuf:"bytes,6,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	CustomTimeouts             *AnalyzerResourceOptions_CustomTimeouts `protobuf:"bytes,7,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`
 	XXX_NoUnkeyedLiteral       struct{}                                `json:"-"`
 	XXX_unrecognized           []byte                                  `json:"-"`
 	XXX_sizecache              int32                                   `json:"-"`
@@ -250,16 +258,17 @@ func (m *AnalyzerResourceOptions) Reset()         { *m = AnalyzerResourceOptions
 func (m *AnalyzerResourceOptions) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerResourceOptions) ProtoMessage()    {}
 func (*AnalyzerResourceOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{2}
+	return fileDescriptor_fadbb7eccb91f143, []int{2}
 }
+
 func (m *AnalyzerResourceOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerResourceOptions.Unmarshal(m, b)
 }
 func (m *AnalyzerResourceOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerResourceOptions.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerResourceOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerResourceOptions.Merge(dst, src)
+func (m *AnalyzerResourceOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerResourceOptions.Merge(m, src)
 }
 func (m *AnalyzerResourceOptions) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerResourceOptions.Size(m)
@@ -321,9 +330,9 @@ func (m *AnalyzerResourceOptions) GetCustomTimeouts() *AnalyzerResourceOptions_C
 
 // CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
 type AnalyzerResourceOptions_CustomTimeouts struct {
-	Create               float64  `protobuf:"fixed64,1,opt,name=create" json:"create,omitempty"`
-	Update               float64  `protobuf:"fixed64,2,opt,name=update" json:"update,omitempty"`
-	Delete               float64  `protobuf:"fixed64,3,opt,name=delete" json:"delete,omitempty"`
+	Create               float64  `protobuf:"fixed64,1,opt,name=create,proto3" json:"create,omitempty"`
+	Update               float64  `protobuf:"fixed64,2,opt,name=update,proto3" json:"update,omitempty"`
+	Delete               float64  `protobuf:"fixed64,3,opt,name=delete,proto3" json:"delete,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -335,16 +344,17 @@ func (m *AnalyzerResourceOptions_CustomTimeouts) Reset() {
 func (m *AnalyzerResourceOptions_CustomTimeouts) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerResourceOptions_CustomTimeouts) ProtoMessage()    {}
 func (*AnalyzerResourceOptions_CustomTimeouts) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{2, 0}
+	return fileDescriptor_fadbb7eccb91f143, []int{2, 0}
 }
+
 func (m *AnalyzerResourceOptions_CustomTimeouts) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerResourceOptions_CustomTimeouts.Unmarshal(m, b)
 }
 func (m *AnalyzerResourceOptions_CustomTimeouts) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerResourceOptions_CustomTimeouts.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerResourceOptions_CustomTimeouts) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerResourceOptions_CustomTimeouts.Merge(dst, src)
+func (m *AnalyzerResourceOptions_CustomTimeouts) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerResourceOptions_CustomTimeouts.Merge(m, src)
 }
 func (m *AnalyzerResourceOptions_CustomTimeouts) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerResourceOptions_CustomTimeouts.Size(m)
@@ -378,10 +388,10 @@ func (m *AnalyzerResourceOptions_CustomTimeouts) GetDelete() float64 {
 
 // AnalyzerProviderResource provides information about a resource's provider.
 type AnalyzerProviderResource struct {
-	Type                 string          `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
-	Urn                  string          `protobuf:"bytes,3,opt,name=urn" json:"urn,omitempty"`
-	Name                 string          `protobuf:"bytes,4,opt,name=name" json:"name,omitempty"`
+	Type                 string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Urn                  string          `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	Name                 string          `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -391,16 +401,17 @@ func (m *AnalyzerProviderResource) Reset()         { *m = AnalyzerProviderResour
 func (m *AnalyzerProviderResource) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerProviderResource) ProtoMessage()    {}
 func (*AnalyzerProviderResource) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{3}
+	return fileDescriptor_fadbb7eccb91f143, []int{3}
 }
+
 func (m *AnalyzerProviderResource) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerProviderResource.Unmarshal(m, b)
 }
 func (m *AnalyzerProviderResource) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerProviderResource.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerProviderResource) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerProviderResource.Merge(dst, src)
+func (m *AnalyzerProviderResource) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerProviderResource.Merge(m, src)
 }
 func (m *AnalyzerProviderResource) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerProviderResource.Size(m)
@@ -441,7 +452,7 @@ func (m *AnalyzerProviderResource) GetName() string {
 
 // AnalyzerPropertyDependencies describes the resources that a particular property depends on.
 type AnalyzerPropertyDependencies struct {
-	Urns                 []string `protobuf:"bytes,1,rep,name=urns" json:"urns,omitempty"`
+	Urns                 []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -451,16 +462,17 @@ func (m *AnalyzerPropertyDependencies) Reset()         { *m = AnalyzerPropertyDe
 func (m *AnalyzerPropertyDependencies) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerPropertyDependencies) ProtoMessage()    {}
 func (*AnalyzerPropertyDependencies) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{4}
+	return fileDescriptor_fadbb7eccb91f143, []int{4}
 }
+
 func (m *AnalyzerPropertyDependencies) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerPropertyDependencies.Unmarshal(m, b)
 }
 func (m *AnalyzerPropertyDependencies) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerPropertyDependencies.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerPropertyDependencies) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerPropertyDependencies.Merge(dst, src)
+func (m *AnalyzerPropertyDependencies) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerPropertyDependencies.Merge(m, src)
 }
 func (m *AnalyzerPropertyDependencies) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerPropertyDependencies.Size(m)
@@ -479,7 +491,7 @@ func (m *AnalyzerPropertyDependencies) GetUrns() []string {
 }
 
 type AnalyzeStackRequest struct {
-	Resources            []*AnalyzerResource `protobuf:"bytes,1,rep,name=resources" json:"resources,omitempty"`
+	Resources            []*AnalyzerResource `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
 	XXX_unrecognized     []byte              `json:"-"`
 	XXX_sizecache        int32               `json:"-"`
@@ -489,16 +501,17 @@ func (m *AnalyzeStackRequest) Reset()         { *m = AnalyzeStackRequest{} }
 func (m *AnalyzeStackRequest) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeStackRequest) ProtoMessage()    {}
 func (*AnalyzeStackRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{5}
+	return fileDescriptor_fadbb7eccb91f143, []int{5}
 }
+
 func (m *AnalyzeStackRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeStackRequest.Unmarshal(m, b)
 }
 func (m *AnalyzeStackRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzeStackRequest.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzeStackRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzeStackRequest.Merge(dst, src)
+func (m *AnalyzeStackRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzeStackRequest.Merge(m, src)
 }
 func (m *AnalyzeStackRequest) XXX_Size() int {
 	return xxx_messageInfo_AnalyzeStackRequest.Size(m)
@@ -517,7 +530,7 @@ func (m *AnalyzeStackRequest) GetResources() []*AnalyzerResource {
 }
 
 type AnalyzeResponse struct {
-	Diagnostics          []*AnalyzeDiagnostic `protobuf:"bytes,2,rep,name=diagnostics" json:"diagnostics,omitempty"`
+	Diagnostics          []*AnalyzeDiagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -527,16 +540,17 @@ func (m *AnalyzeResponse) Reset()         { *m = AnalyzeResponse{} }
 func (m *AnalyzeResponse) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeResponse) ProtoMessage()    {}
 func (*AnalyzeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{6}
+	return fileDescriptor_fadbb7eccb91f143, []int{6}
 }
+
 func (m *AnalyzeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeResponse.Unmarshal(m, b)
 }
 func (m *AnalyzeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzeResponse.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzeResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzeResponse.Merge(dst, src)
+func (m *AnalyzeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzeResponse.Merge(m, src)
 }
 func (m *AnalyzeResponse) XXX_Size() int {
 	return xxx_messageInfo_AnalyzeResponse.Size(m)
@@ -555,14 +569,14 @@ func (m *AnalyzeResponse) GetDiagnostics() []*AnalyzeDiagnostic {
 }
 
 type AnalyzeDiagnostic struct {
-	PolicyName           string           `protobuf:"bytes,1,opt,name=policyName" json:"policyName,omitempty"`
-	PolicyPackName       string           `protobuf:"bytes,2,opt,name=policyPackName" json:"policyPackName,omitempty"`
-	PolicyPackVersion    string           `protobuf:"bytes,3,opt,name=policyPackVersion" json:"policyPackVersion,omitempty"`
-	Description          string           `protobuf:"bytes,4,opt,name=description" json:"description,omitempty"`
-	Message              string           `protobuf:"bytes,5,opt,name=message" json:"message,omitempty"`
-	Tags                 []string         `protobuf:"bytes,6,rep,name=tags" json:"tags,omitempty"`
-	EnforcementLevel     EnforcementLevel `protobuf:"varint,7,opt,name=enforcementLevel,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
-	Urn                  string           `protobuf:"bytes,8,opt,name=urn" json:"urn,omitempty"`
+	PolicyName           string           `protobuf:"bytes,1,opt,name=policyName,proto3" json:"policyName,omitempty"`
+	PolicyPackName       string           `protobuf:"bytes,2,opt,name=policyPackName,proto3" json:"policyPackName,omitempty"`
+	PolicyPackVersion    string           `protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"`
+	Description          string           `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Message              string           `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	Tags                 []string         `protobuf:"bytes,6,rep,name=tags,proto3" json:"tags,omitempty"`
+	EnforcementLevel     EnforcementLevel `protobuf:"varint,7,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
+	Urn                  string           `protobuf:"bytes,8,opt,name=urn,proto3" json:"urn,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -572,16 +586,17 @@ func (m *AnalyzeDiagnostic) Reset()         { *m = AnalyzeDiagnostic{} }
 func (m *AnalyzeDiagnostic) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeDiagnostic) ProtoMessage()    {}
 func (*AnalyzeDiagnostic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{7}
+	return fileDescriptor_fadbb7eccb91f143, []int{7}
 }
+
 func (m *AnalyzeDiagnostic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeDiagnostic.Unmarshal(m, b)
 }
 func (m *AnalyzeDiagnostic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzeDiagnostic.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzeDiagnostic) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzeDiagnostic.Merge(dst, src)
+func (m *AnalyzeDiagnostic) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzeDiagnostic.Merge(m, src)
 }
 func (m *AnalyzeDiagnostic) XXX_Size() int {
 	return xxx_messageInfo_AnalyzeDiagnostic.Size(m)
@@ -650,9 +665,11 @@ func (m *AnalyzeDiagnostic) GetUrn() string {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
-	Name                 string        `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	DisplayName          string        `protobuf:"bytes,2,opt,name=displayName" json:"displayName,omitempty"`
-	Policies             []*PolicyInfo `protobuf:"bytes,3,rep,name=policies" json:"policies,omitempty"`
+	Name                 string        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DisplayName          string        `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`
+	Policies             []*PolicyInfo `protobuf:"bytes,3,rep,name=policies,proto3" json:"policies,omitempty"`
+	Version              string        `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	SupportsConfig       bool          `protobuf:"varint,5,opt,name=supportsConfig,proto3" json:"supportsConfig,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -662,16 +679,17 @@ func (m *AnalyzerInfo) Reset()         { *m = AnalyzerInfo{} }
 func (m *AnalyzerInfo) String() string { return proto.CompactTextString(m) }
 func (*AnalyzerInfo) ProtoMessage()    {}
 func (*AnalyzerInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{8}
+	return fileDescriptor_fadbb7eccb91f143, []int{8}
 }
+
 func (m *AnalyzerInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzerInfo.Unmarshal(m, b)
 }
 func (m *AnalyzerInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AnalyzerInfo.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzerInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzerInfo.Merge(dst, src)
+func (m *AnalyzerInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerInfo.Merge(m, src)
 }
 func (m *AnalyzerInfo) XXX_Size() int {
 	return xxx_messageInfo_AnalyzerInfo.Size(m)
@@ -703,32 +721,48 @@ func (m *AnalyzerInfo) GetPolicies() []*PolicyInfo {
 	return nil
 }
 
-// PolicyInfo provides metadata about an individual Policy within a Policy Pack.
+func (m *AnalyzerInfo) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+func (m *AnalyzerInfo) GetSupportsConfig() bool {
+	if m != nil {
+		return m.SupportsConfig
+	}
+	return false
+}
+
+// PolicyInfo provides metadata about a policy within a Policy Pack.
 type PolicyInfo struct {
-	Name                 string           `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	DisplayName          string           `protobuf:"bytes,2,opt,name=displayName" json:"displayName,omitempty"`
-	Description          string           `protobuf:"bytes,3,opt,name=description" json:"description,omitempty"`
-	Message              string           `protobuf:"bytes,4,opt,name=message" json:"message,omitempty"`
-	EnforcementLevel     EnforcementLevel `protobuf:"varint,5,opt,name=enforcementLevel,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+	Name                 string              `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DisplayName          string              `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`
+	Description          string              `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Message              string              `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	EnforcementLevel     EnforcementLevel    `protobuf:"varint,5,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
+	ConfigSchema         *PolicyConfigSchema `protobuf:"bytes,6,opt,name=configSchema,proto3" json:"configSchema,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
 func (m *PolicyInfo) Reset()         { *m = PolicyInfo{} }
 func (m *PolicyInfo) String() string { return proto.CompactTextString(m) }
 func (*PolicyInfo) ProtoMessage()    {}
 func (*PolicyInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_d1afab8694e21adb, []int{9}
+	return fileDescriptor_fadbb7eccb91f143, []int{9}
 }
+
 func (m *PolicyInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PolicyInfo.Unmarshal(m, b)
 }
 func (m *PolicyInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PolicyInfo.Marshal(b, m, deterministic)
 }
-func (dst *PolicyInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PolicyInfo.Merge(dst, src)
+func (m *PolicyInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PolicyInfo.Merge(m, src)
 }
 func (m *PolicyInfo) XXX_Size() int {
 	return xxx_messageInfo_PolicyInfo.Size(m)
@@ -774,7 +808,151 @@ func (m *PolicyInfo) GetEnforcementLevel() EnforcementLevel {
 	return EnforcementLevel_ADVISORY
 }
 
+func (m *PolicyInfo) GetConfigSchema() *PolicyConfigSchema {
+	if m != nil {
+		return m.ConfigSchema
+	}
+	return nil
+}
+
+// PolicyConfigSchema provides the schema for a policy's configuration.
+type PolicyConfigSchema struct {
+	Properties           *_struct.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
+	Required             []string        `protobuf:"bytes,2,rep,name=required,proto3" json:"required,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
+}
+
+func (m *PolicyConfigSchema) Reset()         { *m = PolicyConfigSchema{} }
+func (m *PolicyConfigSchema) String() string { return proto.CompactTextString(m) }
+func (*PolicyConfigSchema) ProtoMessage()    {}
+func (*PolicyConfigSchema) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fadbb7eccb91f143, []int{10}
+}
+
+func (m *PolicyConfigSchema) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PolicyConfigSchema.Unmarshal(m, b)
+}
+func (m *PolicyConfigSchema) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PolicyConfigSchema.Marshal(b, m, deterministic)
+}
+func (m *PolicyConfigSchema) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PolicyConfigSchema.Merge(m, src)
+}
+func (m *PolicyConfigSchema) XXX_Size() int {
+	return xxx_messageInfo_PolicyConfigSchema.Size(m)
+}
+func (m *PolicyConfigSchema) XXX_DiscardUnknown() {
+	xxx_messageInfo_PolicyConfigSchema.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PolicyConfigSchema proto.InternalMessageInfo
+
+func (m *PolicyConfigSchema) GetProperties() *_struct.Struct {
+	if m != nil {
+		return m.Properties
+	}
+	return nil
+}
+
+func (m *PolicyConfigSchema) GetRequired() []string {
+	if m != nil {
+		return m.Required
+	}
+	return nil
+}
+
+// PolicyConfig provides configuration for a policy.
+type PolicyConfig struct {
+	EnforcementLevel     EnforcementLevel `protobuf:"varint,1,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
+	Properties           *_struct.Struct  `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *PolicyConfig) Reset()         { *m = PolicyConfig{} }
+func (m *PolicyConfig) String() string { return proto.CompactTextString(m) }
+func (*PolicyConfig) ProtoMessage()    {}
+func (*PolicyConfig) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fadbb7eccb91f143, []int{11}
+}
+
+func (m *PolicyConfig) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PolicyConfig.Unmarshal(m, b)
+}
+func (m *PolicyConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PolicyConfig.Marshal(b, m, deterministic)
+}
+func (m *PolicyConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PolicyConfig.Merge(m, src)
+}
+func (m *PolicyConfig) XXX_Size() int {
+	return xxx_messageInfo_PolicyConfig.Size(m)
+}
+func (m *PolicyConfig) XXX_DiscardUnknown() {
+	xxx_messageInfo_PolicyConfig.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PolicyConfig proto.InternalMessageInfo
+
+func (m *PolicyConfig) GetEnforcementLevel() EnforcementLevel {
+	if m != nil {
+		return m.EnforcementLevel
+	}
+	return EnforcementLevel_ADVISORY
+}
+
+func (m *PolicyConfig) GetProperties() *_struct.Struct {
+	if m != nil {
+		return m.Properties
+	}
+	return nil
+}
+
+// ConfigureAnalyzerRequest provides configuration information to the analyzer.
+type ConfigureAnalyzerRequest struct {
+	PolicyConfig         map[string]*PolicyConfig `protobuf:"bytes,1,rep,name=policyConfig,proto3" json:"policyConfig,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
+}
+
+func (m *ConfigureAnalyzerRequest) Reset()         { *m = ConfigureAnalyzerRequest{} }
+func (m *ConfigureAnalyzerRequest) String() string { return proto.CompactTextString(m) }
+func (*ConfigureAnalyzerRequest) ProtoMessage()    {}
+func (*ConfigureAnalyzerRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fadbb7eccb91f143, []int{12}
+}
+
+func (m *ConfigureAnalyzerRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ConfigureAnalyzerRequest.Unmarshal(m, b)
+}
+func (m *ConfigureAnalyzerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ConfigureAnalyzerRequest.Marshal(b, m, deterministic)
+}
+func (m *ConfigureAnalyzerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConfigureAnalyzerRequest.Merge(m, src)
+}
+func (m *ConfigureAnalyzerRequest) XXX_Size() int {
+	return xxx_messageInfo_ConfigureAnalyzerRequest.Size(m)
+}
+func (m *ConfigureAnalyzerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConfigureAnalyzerRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ConfigureAnalyzerRequest proto.InternalMessageInfo
+
+func (m *ConfigureAnalyzerRequest) GetPolicyConfig() map[string]*PolicyConfig {
+	if m != nil {
+		return m.PolicyConfig
+	}
+	return nil
+}
+
 func init() {
+	proto.RegisterEnum("pulumirpc.EnforcementLevel", EnforcementLevel_name, EnforcementLevel_value)
 	proto.RegisterType((*AnalyzeRequest)(nil), "pulumirpc.AnalyzeRequest")
 	proto.RegisterType((*AnalyzerResource)(nil), "pulumirpc.AnalyzerResource")
 	proto.RegisterMapType((map[string]*AnalyzerPropertyDependencies)(nil), "pulumirpc.AnalyzerResource.PropertyDependenciesEntry")
@@ -787,19 +965,98 @@ func init() {
 	proto.RegisterType((*AnalyzeDiagnostic)(nil), "pulumirpc.AnalyzeDiagnostic")
 	proto.RegisterType((*AnalyzerInfo)(nil), "pulumirpc.AnalyzerInfo")
 	proto.RegisterType((*PolicyInfo)(nil), "pulumirpc.PolicyInfo")
-	proto.RegisterEnum("pulumirpc.EnforcementLevel", EnforcementLevel_name, EnforcementLevel_value)
+	proto.RegisterType((*PolicyConfigSchema)(nil), "pulumirpc.PolicyConfigSchema")
+	proto.RegisterType((*PolicyConfig)(nil), "pulumirpc.PolicyConfig")
+	proto.RegisterType((*ConfigureAnalyzerRequest)(nil), "pulumirpc.ConfigureAnalyzerRequest")
+	proto.RegisterMapType((map[string]*PolicyConfig)(nil), "pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry")
+}
+
+func init() { proto.RegisterFile("analyzer.proto", fileDescriptor_fadbb7eccb91f143) }
+
+var fileDescriptor_fadbb7eccb91f143 = []byte{
+	// 1099 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x57, 0xdd, 0x6e, 0x1b, 0x45,
+	0x14, 0xce, 0xda, 0xf9, 0xb1, 0x8f, 0x1d, 0xd7, 0x99, 0x42, 0xb3, 0xdd, 0x86, 0x2a, 0xda, 0x22,
+	0x88, 0x10, 0xb8, 0xd4, 0x08, 0x51, 0x10, 0x05, 0x9c, 0x38, 0x8a, 0x82, 0x42, 0x63, 0xc6, 0x55,
+	0xd5, 0x5c, 0x6e, 0x77, 0x8f, 0xdd, 0x55, 0xd6, 0xbb, 0xd3, 0xd9, 0xd9, 0x48, 0xe6, 0x92, 0x4b,
+	0x24, 0x24, 0x5e, 0x80, 0xb7, 0xe0, 0x86, 0xa7, 0xe0, 0x86, 0x07, 0xe1, 0x11, 0xd0, 0xcc, 0xfe,
+	0x64, 0xd7, 0xbb, 0x76, 0xab, 0xdc, 0x70, 0xc1, 0xdd, 0x9c, 0x33, 0xdf, 0x39, 0x3b, 0xe7, 0x3b,
+	0x9f, 0xcf, 0x8c, 0xa1, 0x63, 0xf9, 0x96, 0x37, 0xff, 0x09, 0x79, 0x8f, 0xf1, 0x40, 0x04, 0xa4,
+	0xc9, 0x22, 0x2f, 0x9a, 0xb9, 0x9c, 0xd9, 0x46, 0x9b, 0x79, 0xd1, 0xd4, 0xf5, 0xe3, 0x0d, 0xe3,
+	0xde, 0x34, 0x08, 0xa6, 0x1e, 0x3e, 0x54, 0xd6, 0xcb, 0x68, 0xf2, 0x10, 0x67, 0x4c, 0xcc, 0x93,
+	0xcd, 0xbd, 0xc5, 0xcd, 0x50, 0xf0, 0xc8, 0x16, 0xf1, 0xae, 0xf9, 0x73, 0x0d, 0x3a, 0x83, 0xf8,
+	0x33, 0x14, 0x5f, 0x47, 0x18, 0x0a, 0x42, 0x60, 0x5d, 0xcc, 0x19, 0xea, 0xda, 0xbe, 0x76, 0xd0,
+	0xa4, 0x6a, 0x4d, 0xbe, 0x00, 0x60, 0x3c, 0x60, 0xc8, 0x85, 0x8b, 0xa1, 0x5e, 0xdb, 0xd7, 0x0e,
+	0x5a, 0xfd, 0xdd, 0x5e, 0x9c, 0xb9, 0x97, 0x66, 0xee, 0x8d, 0x55, 0x66, 0x9a, 0x83, 0x92, 0x2e,
+	0xd4, 0x23, 0xee, 0xeb, 0x75, 0x95, 0x4b, 0x2e, 0x65, 0x7a, 0xdf, 0x9a, 0xa1, 0xbe, 0x1e, 0xa7,
+	0x97, 0x6b, 0xf2, 0x35, 0x6c, 0x05, 0x4c, 0xb8, 0x81, 0x1f, 0xea, 0x1b, 0x2a, 0xb7, 0xd9, 0xcb,
+	0x6a, 0xed, 0x25, 0xc7, 0xe3, 0x14, 0xc3, 0x20, 0xe2, 0x36, 0x9e, 0xc7, 0x48, 0x9a, 0x86, 0x90,
+	0x6f, 0xa1, 0xc1, 0x78, 0x70, 0xe5, 0x3a, 0xc8, 0xf5, 0x4d, 0x15, 0xfe, 0xa0, 0x22, 0x7c, 0x94,
+	0x40, 0xd2, 0x34, 0x34, 0x0b, 0x32, 0x7f, 0x5f, 0x87, 0xee, 0xe2, 0x57, 0xfe, 0x7f, 0x34, 0x90,
+	0x3b, 0xb0, 0xc9, 0x2c, 0x8e, 0xbe, 0xd0, 0xb7, 0xd4, 0xa1, 0x12, 0x8b, 0x98, 0xd0, 0x76, 0x90,
+	0xa1, 0xef, 0xa0, 0x6f, 0xcb, 0xba, 0x1b, 0xfb, 0xf5, 0x83, 0x26, 0x2d, 0xf8, 0x88, 0x0b, 0xef,
+	0x24, 0xe5, 0xce, 0x87, 0x79, 0x6c, 0x73, 0xbf, 0x7e, 0xd0, 0xea, 0x7f, 0xbe, 0xa2, 0x8e, 0xde,
+	0xa8, 0x22, 0xee, 0xd8, 0x17, 0x7c, 0x4e, 0x2b, 0x53, 0x1a, 0x0c, 0xee, 0x2e, 0x0d, 0x91, 0x44,
+	0x5f, 0xe2, 0x3c, 0x69, 0x9a, 0x5c, 0x92, 0x27, 0xb0, 0x71, 0x65, 0x79, 0x11, 0x26, 0xed, 0xfa,
+	0xb0, 0x9a, 0x93, 0x52, 0x3a, 0x1a, 0x47, 0x7d, 0x55, 0x7b, 0xac, 0x99, 0x7f, 0xd7, 0x61, 0x77,
+	0x09, 0xfd, 0x44, 0x87, 0x2d, 0xd9, 0x78, 0xb4, 0x85, 0xfa, 0x68, 0x83, 0xa6, 0x26, 0x79, 0x1f,
+	0xb6, 0xdd, 0xa9, 0x1f, 0x70, 0x3c, 0x7a, 0x65, 0xf9, 0x53, 0xa5, 0x17, 0xc9, 0x5b, 0xd1, 0x49,
+	0x3e, 0x85, 0xdb, 0x0e, 0x7a, 0x28, 0xf0, 0x10, 0x27, 0x01, 0x47, 0x8a, 0xcc, 0xb3, 0x6c, 0x54,
+	0x4a, 0x69, 0xd0, 0xaa, 0x2d, 0xf2, 0x0d, 0x18, 0x15, 0xee, 0x21, 0x4e, 0x5c, 0x1f, 0x1d, 0xa5,
+	0xa7, 0x06, 0x5d, 0x81, 0x20, 0x8f, 0x61, 0xd7, 0x72, 0x1c, 0x57, 0x1e, 0xdf, 0xf2, 0xc6, 0x68,
+	0x73, 0x14, 0xe7, 0x91, 0x60, 0x91, 0x90, 0xaa, 0x93, 0x27, 0x5c, 0xb6, 0x2d, 0x6b, 0xb5, 0x3c,
+	0xd7, 0x0a, 0x31, 0xd4, 0x37, 0x15, 0x32, 0x35, 0xc9, 0x05, 0x74, 0xec, 0x28, 0x14, 0xc1, 0xec,
+	0x99, 0x3b, 0xc3, 0x40, 0xa6, 0xda, 0x52, 0x6c, 0x3f, 0x7a, 0xb3, 0x80, 0x7b, 0x47, 0x85, 0x40,
+	0xba, 0x90, 0xc8, 0x78, 0x01, 0x9d, 0x22, 0x42, 0xea, 0xd4, 0xe6, 0x68, 0x89, 0xf8, 0xb7, 0xa9,
+	0xd1, 0xc4, 0x92, 0xfe, 0x88, 0x39, 0xd2, 0x5f, 0x8b, 0xfd, 0xb1, 0x25, 0xfd, 0x31, 0x1d, 0x8a,
+	0x55, 0x8d, 0x26, 0x96, 0xf9, 0xab, 0x06, 0xfa, 0xb2, 0x9f, 0xc5, 0x7f, 0xf0, 0xf3, 0x37, 0xfb,
+	0xb0, 0xb7, 0x4a, 0x91, 0x32, 0x26, 0xe2, 0x7e, 0xa8, 0x6b, 0x8a, 0x7b, 0xb5, 0x36, 0x47, 0x70,
+	0x3b, 0x89, 0x19, 0x0b, 0xcb, 0xbe, 0x4c, 0x67, 0xf8, 0x97, 0xd0, 0xe4, 0x49, 0x25, 0x31, 0xbe,
+	0xd5, 0xbf, 0xb7, 0xa2, 0x15, 0xf4, 0x1a, 0x6d, 0xfe, 0x08, 0xb7, 0xb2, 0x0b, 0x21, 0x64, 0x81,
+	0x1f, 0x4a, 0xc5, 0xb5, 0x1c, 0xd7, 0x9a, 0xfa, 0x41, 0x28, 0x5c, 0x3b, 0xd6, 0x71, 0xab, 0xbf,
+	0x57, 0xce, 0x37, 0xcc, 0x40, 0x34, 0x1f, 0x60, 0xfe, 0x51, 0x83, 0x9d, 0x12, 0x84, 0xdc, 0x07,
+	0x60, 0x81, 0xe7, 0xda, 0xf3, 0xa7, 0x92, 0x88, 0x98, 0xe7, 0x9c, 0x87, 0x7c, 0x00, 0x9d, 0xd8,
+	0x1a, 0x59, 0xf6, 0xa5, 0xc2, 0xd4, 0x14, 0x66, 0xc1, 0x4b, 0x3e, 0x86, 0x9d, 0x6b, 0xcf, 0x73,
+	0xe4, 0xa1, 0x1b, 0xa4, 0x54, 0x97, 0x37, 0xc8, 0x3e, 0xb4, 0x1c, 0x0c, 0x6d, 0xee, 0x2a, 0xf5,
+	0x25, 0xfc, 0xe7, 0x5d, 0x52, 0xe5, 0x33, 0x0c, 0x43, 0x6b, 0x8a, 0x6a, 0x0a, 0x37, 0x69, 0x6a,
+	0x2a, 0x4d, 0x58, 0xd3, 0x54, 0xfc, 0x6a, 0x4d, 0x4e, 0xa0, 0x8b, 0xfe, 0x24, 0xe0, 0x36, 0xce,
+	0xd0, 0x17, 0x67, 0x78, 0x85, 0x9e, 0xd2, 0x7e, 0xa7, 0x40, 0xf8, 0xf1, 0x02, 0x84, 0x96, 0x82,
+	0x52, 0x8d, 0x34, 0x32, 0x8d, 0x98, 0x7f, 0x6a, 0xd0, 0x4e, 0x3b, 0x75, 0xea, 0x4f, 0x82, 0x4c,
+	0x34, 0x5a, 0xee, 0xce, 0x90, 0xf5, 0xb8, 0x21, 0xf3, 0xac, 0x79, 0x8e, 0xa2, 0xbc, 0x8b, 0x3c,
+	0x82, 0x86, 0xa2, 0x41, 0x6a, 0xb6, 0xae, 0x5a, 0xf7, 0x6e, 0xee, 0x64, 0x23, 0xc5, 0x90, 0x4c,
+	0x4f, 0x33, 0x98, 0xa4, 0xe0, 0x2a, 0x21, 0x32, 0x26, 0x28, 0x35, 0x65, 0x53, 0xc2, 0x88, 0xb1,
+	0x80, 0x8b, 0xf0, 0x28, 0xf0, 0x27, 0xee, 0x54, 0x71, 0xd4, 0xa0, 0x0b, 0x5e, 0xf3, 0x97, 0x1a,
+	0xc0, 0x75, 0xea, 0x1b, 0x9e, 0x7c, 0xa1, 0x57, 0xf5, 0x95, 0xbd, 0x5a, 0x2f, 0xf6, 0xaa, 0xaa,
+	0x2f, 0x1b, 0x37, 0xe9, 0xcb, 0x00, 0xda, 0xb6, 0xaa, 0x69, 0x6c, 0xbf, 0xc2, 0x99, 0x95, 0x5c,
+	0xad, 0xef, 0x95, 0x28, 0x3c, 0xca, 0x81, 0x68, 0x21, 0xc4, 0x74, 0x81, 0x94, 0x31, 0x0b, 0xd3,
+	0x44, 0x7b, 0xfb, 0x69, 0x62, 0x40, 0x83, 0xe3, 0xeb, 0xc8, 0xe5, 0xe8, 0x24, 0x77, 0x4a, 0x66,
+	0x9b, 0xbf, 0x69, 0xd0, 0xce, 0x7f, 0xab, 0x92, 0x07, 0xed, 0x26, 0x3c, 0xdc, 0x74, 0xf8, 0x99,
+	0x7f, 0x69, 0xa0, 0xc7, 0x87, 0x89, 0x38, 0x5e, 0x4f, 0x9e, 0x78, 0x50, 0x5d, 0x40, 0x9b, 0xe5,
+	0x8e, 0x9b, 0xcc, 0xaa, 0xfc, 0x7b, 0x61, 0x59, 0x68, 0x81, 0xf6, 0xf8, 0xbd, 0x50, 0x48, 0x65,
+	0xbc, 0x80, 0x9d, 0x12, 0xa4, 0xe2, 0x7d, 0xf0, 0x49, 0xf1, 0x7d, 0xb0, 0xbb, 0xa4, 0xb1, 0xb9,
+	0xf7, 0xc0, 0x47, 0x4f, 0xa0, 0xbb, 0x48, 0x18, 0x69, 0x43, 0x63, 0x30, 0x7c, 0x7e, 0x3a, 0x3e,
+	0xa7, 0x17, 0xdd, 0x35, 0xb2, 0x0d, 0xcd, 0x1f, 0x06, 0x4f, 0x87, 0x83, 0x67, 0xd2, 0xd4, 0xe4,
+	0xe6, 0xf0, 0x74, 0x3c, 0x38, 0x3c, 0x3b, 0x1e, 0x76, 0x6b, 0xfd, 0x7f, 0x6a, 0xd0, 0x48, 0x8b,
+	0x21, 0x87, 0xb0, 0x95, 0xac, 0xc9, 0xdd, 0xf2, 0x44, 0x4d, 0x6a, 0x35, 0x8c, 0xaa, 0xad, 0x78,
+	0x3a, 0x9b, 0x6b, 0xe4, 0x2c, 0x9b, 0x13, 0xea, 0x12, 0x20, 0xf7, 0xcb, 0xe8, 0xfc, 0xed, 0xf0,
+	0x86, 0x6c, 0x43, 0xb8, 0x75, 0x82, 0xa2, 0x30, 0x78, 0xee, 0x94, 0xfa, 0x7c, 0x2c, 0xff, 0x61,
+	0x18, 0xbb, 0x15, 0x77, 0x8a, 0x0c, 0x30, 0xd7, 0xc8, 0x77, 0xb0, 0x7d, 0x82, 0x62, 0xa4, 0xfe,
+	0xa6, 0xac, 0xcc, 0x51, 0x18, 0x46, 0x19, 0xdc, 0x5c, 0x23, 0xdf, 0x43, 0x33, 0xeb, 0x3d, 0x79,
+	0xf0, 0x16, 0x8a, 0x30, 0x96, 0x7c, 0xc2, 0x5c, 0x7b, 0xb9, 0xa9, 0x3c, 0x9f, 0xfd, 0x1b, 0x00,
+	0x00, 0xff, 0xff, 0xee, 0xfd, 0x35, 0x0d, 0x53, 0x0d, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc.ClientConnInterface
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
+const _ = grpc.SupportPackageIsVersion6
 
-// Client API for Analyzer service
-
+// AnalyzerClient is the client API for Analyzer service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type AnalyzerClient interface {
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	// Called with the "inputs" to the resource, before it is updated.
@@ -812,19 +1069,21 @@ type AnalyzerClient interface {
 	GetAnalyzerInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
+	// Configure configures the analyzer, passing configuration properties for each policy.
+	Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
 type analyzerClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewAnalyzerClient(cc *grpc.ClientConn) AnalyzerClient {
+func NewAnalyzerClient(cc grpc.ClientConnInterface) AnalyzerClient {
 	return &analyzerClient{cc}
 }
 
 func (c *analyzerClient) Analyze(ctx context.Context, in *AnalyzeRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error) {
 	out := new(AnalyzeResponse)
-	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/Analyze", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/Analyze", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -833,7 +1092,7 @@ func (c *analyzerClient) Analyze(ctx context.Context, in *AnalyzeRequest, opts .
 
 func (c *analyzerClient) AnalyzeStack(ctx context.Context, in *AnalyzeStackRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error) {
 	out := new(AnalyzeResponse)
-	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/AnalyzeStack", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/AnalyzeStack", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -842,7 +1101,7 @@ func (c *analyzerClient) AnalyzeStack(ctx context.Context, in *AnalyzeStackReque
 
 func (c *analyzerClient) GetAnalyzerInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error) {
 	out := new(AnalyzerInfo)
-	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/GetAnalyzerInfo", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/GetAnalyzerInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -851,15 +1110,23 @@ func (c *analyzerClient) GetAnalyzerInfo(ctx context.Context, in *empty.Empty, o
 
 func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
-	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/GetPluginInfo", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/GetPluginInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Analyzer service
+func (c *analyzerClient) Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/Configure", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
 
+// AnalyzerServer is the server API for Analyzer service.
 type AnalyzerServer interface {
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	// Called with the "inputs" to the resource, before it is updated.
@@ -872,6 +1139,28 @@ type AnalyzerServer interface {
 	GetAnalyzerInfo(context.Context, *empty.Empty) (*AnalyzerInfo, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
+	// Configure configures the analyzer, passing configuration properties for each policy.
+	Configure(context.Context, *ConfigureAnalyzerRequest) (*empty.Empty, error)
+}
+
+// UnimplementedAnalyzerServer can be embedded to have forward compatible implementations.
+type UnimplementedAnalyzerServer struct {
+}
+
+func (*UnimplementedAnalyzerServer) Analyze(ctx context.Context, req *AnalyzeRequest) (*AnalyzeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Analyze not implemented")
+}
+func (*UnimplementedAnalyzerServer) AnalyzeStack(ctx context.Context, req *AnalyzeStackRequest) (*AnalyzeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeStack not implemented")
+}
+func (*UnimplementedAnalyzerServer) GetAnalyzerInfo(ctx context.Context, req *empty.Empty) (*AnalyzerInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAnalyzerInfo not implemented")
+}
+func (*UnimplementedAnalyzerServer) GetPluginInfo(ctx context.Context, req *empty.Empty) (*PluginInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
+}
+func (*UnimplementedAnalyzerServer) Configure(ctx context.Context, req *ConfigureAnalyzerRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Configure not implemented")
 }
 
 func RegisterAnalyzerServer(s *grpc.Server, srv AnalyzerServer) {
@@ -950,6 +1239,24 @@ func _Analyzer_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Analyzer_Configure_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfigureAnalyzerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalyzerServer).Configure(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.Analyzer/Configure",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalyzerServer).Configure(ctx, req.(*ConfigureAnalyzerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Analyzer_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.Analyzer",
 	HandlerType: (*AnalyzerServer)(nil),
@@ -970,71 +1277,11 @@ var _Analyzer_serviceDesc = grpc.ServiceDesc{
 			MethodName: "GetPluginInfo",
 			Handler:    _Analyzer_GetPluginInfo_Handler,
 		},
+		{
+			MethodName: "Configure",
+			Handler:    _Analyzer_Configure_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "analyzer.proto",
-}
-
-func init() { proto.RegisterFile("analyzer.proto", fileDescriptor_analyzer_d1afab8694e21adb) }
-
-var fileDescriptor_analyzer_d1afab8694e21adb = []byte{
-	// 927 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe4, 0x56, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0xce, 0xda, 0x49, 0xbc, 0x3e, 0x4e, 0x5c, 0x77, 0x0a, 0xcd, 0xd6, 0x8d, 0x2a, 0x6b, 0x41,
-	0x10, 0x21, 0xe4, 0x50, 0x23, 0x44, 0x41, 0xfc, 0xa5, 0x75, 0x14, 0x55, 0x2a, 0x8d, 0x99, 0x54,
-	0x15, 0xbd, 0x9c, 0xee, 0x1e, 0x9b, 0x55, 0xd6, 0x33, 0xc3, 0xec, 0x6c, 0x90, 0xb9, 0xe4, 0x9e,
-	0x47, 0xe0, 0x8e, 0x47, 0xe0, 0x1d, 0x78, 0x01, 0x1e, 0x08, 0xcd, 0xec, 0x4f, 0xd6, 0xf6, 0xc6,
-	0x95, 0x7a, 0xc3, 0x05, 0x77, 0x73, 0xce, 0xf9, 0xce, 0x37, 0x33, 0xdf, 0x7c, 0x67, 0x6d, 0xe8,
-	0x32, 0xce, 0xe2, 0xc5, 0xaf, 0xa8, 0x86, 0x52, 0x09, 0x2d, 0x48, 0x5b, 0xa6, 0x71, 0x3a, 0x8f,
-	0x94, 0x0c, 0xfa, 0x7b, 0x32, 0x4e, 0x67, 0x11, 0xcf, 0x0a, 0xfd, 0xfb, 0x33, 0x21, 0x66, 0x31,
-	0x1e, 0xdb, 0xe8, 0x75, 0x3a, 0x3d, 0xc6, 0xb9, 0xd4, 0x8b, 0xbc, 0x78, 0xb8, 0x5a, 0x4c, 0xb4,
-	0x4a, 0x03, 0x9d, 0x55, 0xfd, 0xdf, 0x1a, 0xd0, 0x3d, 0xc9, 0xb6, 0xa1, 0xf8, 0x73, 0x8a, 0x89,
-	0x26, 0x04, 0xb6, 0xf5, 0x42, 0xa2, 0xe7, 0x0c, 0x9c, 0xa3, 0x36, 0xb5, 0x6b, 0xf2, 0x39, 0x80,
-	0x54, 0x42, 0xa2, 0xd2, 0x11, 0x26, 0x5e, 0x63, 0xe0, 0x1c, 0x75, 0x46, 0x07, 0xc3, 0x8c, 0x79,
-	0x58, 0x30, 0x0f, 0x2f, 0x2c, 0x33, 0xad, 0x40, 0x49, 0x0f, 0x9a, 0xa9, 0xe2, 0x5e, 0xd3, 0x72,
-	0x99, 0xa5, 0xa1, 0xe7, 0x6c, 0x8e, 0xde, 0x76, 0x46, 0x6f, 0xd6, 0xe4, 0x2b, 0x68, 0x09, 0xa9,
-	0x23, 0xc1, 0x13, 0x6f, 0xc7, 0x72, 0xfb, 0xc3, 0xf2, 0xae, 0xc3, 0xfc, 0x78, 0x8a, 0x62, 0x22,
-	0x52, 0x15, 0xe0, 0x79, 0x86, 0xa4, 0x45, 0x0b, 0xf9, 0x16, 0x5c, 0xa9, 0xc4, 0x55, 0x14, 0xa2,
-	0xf2, 0x76, 0x6d, 0xfb, 0x7b, 0x35, 0xed, 0x93, 0x1c, 0x52, 0xd0, 0xd0, 0xb2, 0xc9, 0xff, 0x63,
-	0x1b, 0x7a, 0xab, 0xbb, 0xfc, 0xff, 0x64, 0x20, 0x77, 0x61, 0x57, 0x32, 0x85, 0x5c, 0x7b, 0x2d,
-	0x7b, 0xa8, 0x3c, 0x22, 0x3e, 0xec, 0x85, 0x28, 0x91, 0x87, 0xc8, 0x03, 0x73, 0x6f, 0x77, 0xd0,
-	0x3c, 0x6a, 0xd3, 0xa5, 0x1c, 0x89, 0xe0, 0x9d, 0xfc, 0xba, 0x8b, 0x71, 0x15, 0xdb, 0x1e, 0x34,
-	0x8f, 0x3a, 0xa3, 0xcf, 0x36, 0xdc, 0x63, 0x38, 0xa9, 0xe9, 0x3b, 0xe5, 0x5a, 0x2d, 0x68, 0x2d,
-	0x65, 0x5f, 0xc2, 0xbd, 0x1b, 0x5b, 0x8c, 0xd0, 0x97, 0xb8, 0xc8, 0x1f, 0xcd, 0x2c, 0xc9, 0xd7,
-	0xb0, 0x73, 0xc5, 0xe2, 0x14, 0xf3, 0xe7, 0xfa, 0xb0, 0x5e, 0x93, 0x35, 0x3a, 0x9a, 0x75, 0x7d,
-	0xd9, 0x78, 0xe4, 0xf8, 0xff, 0x34, 0xe1, 0xe0, 0x06, 0xf9, 0x89, 0x07, 0x2d, 0xf3, 0xf0, 0x18,
-	0x68, 0xbb, 0xa9, 0x4b, 0x8b, 0x90, 0xbc, 0x0f, 0xfb, 0xd1, 0x8c, 0x0b, 0x85, 0x4f, 0x7e, 0x62,
-	0x7c, 0x66, 0xfd, 0x62, 0x74, 0x5b, 0x4e, 0x92, 0x4f, 0xe0, 0x4e, 0x88, 0x31, 0x6a, 0x7c, 0x8c,
-	0x53, 0xa1, 0x90, 0xa2, 0x8c, 0x59, 0x80, 0xd6, 0x29, 0x2e, 0xad, 0x2b, 0x91, 0x6f, 0xa0, 0x5f,
-	0x93, 0x1e, 0xe3, 0x34, 0xe2, 0x18, 0x5a, 0x3f, 0xb9, 0x74, 0x03, 0x82, 0x3c, 0x82, 0x03, 0x16,
-	0x86, 0x91, 0x39, 0x3e, 0x8b, 0x2f, 0x30, 0x50, 0xa8, 0xcf, 0x53, 0x2d, 0x53, 0x6d, 0x5c, 0x67,
-	0x4e, 0x78, 0x53, 0xd9, 0xdc, 0x95, 0xc5, 0x11, 0x4b, 0x30, 0xf1, 0x76, 0x2d, 0xb2, 0x08, 0xc9,
-	0x2b, 0xe8, 0x06, 0x69, 0xa2, 0xc5, 0xfc, 0x45, 0x34, 0x47, 0x61, 0xa8, 0x5a, 0x56, 0xed, 0x87,
-	0x6f, 0x36, 0xf0, 0xf0, 0xc9, 0x52, 0x23, 0x5d, 0x21, 0xea, 0xff, 0x08, 0xdd, 0x65, 0x84, 0xf1,
-	0x69, 0xa0, 0x90, 0xe9, 0x6c, 0x36, 0x1d, 0x9a, 0x47, 0x26, 0x9f, 0xca, 0xd0, 0xe4, 0x1b, 0x59,
-	0x3e, 0x8b, 0x4c, 0x3e, 0x93, 0xc3, 0xaa, 0xea, 0xd0, 0x3c, 0xf2, 0x7f, 0x77, 0xc0, 0xbb, 0x69,
-	0x2c, 0xfe, 0x83, 0xf1, 0xf7, 0x47, 0x70, 0xb8, 0xc9, 0x91, 0xa6, 0x27, 0x55, 0x3c, 0xf1, 0x1c,
-	0xab, 0xbd, 0x5d, 0xfb, 0x13, 0xb8, 0x93, 0xf7, 0x5c, 0x68, 0x16, 0x5c, 0x16, 0xdf, 0xf0, 0x2f,
-	0xa0, 0xad, 0xf2, 0x9b, 0x64, 0xf8, 0xce, 0xe8, 0xfe, 0x86, 0xa7, 0xa0, 0xd7, 0x68, 0xff, 0x07,
-	0xb8, 0x55, 0xfe, 0x20, 0x24, 0x52, 0xf0, 0xc4, 0x38, 0xae, 0x13, 0x46, 0x6c, 0xc6, 0x45, 0xa2,
-	0xa3, 0x20, 0xf3, 0x71, 0x67, 0x74, 0xb8, 0xce, 0x37, 0x2e, 0x41, 0xb4, 0xda, 0xe0, 0xff, 0xd5,
-	0x80, 0xdb, 0x6b, 0x10, 0xf2, 0x00, 0x40, 0x8a, 0x38, 0x0a, 0x16, 0xcf, 0x8d, 0x10, 0x99, 0xce,
-	0x95, 0x0c, 0xf9, 0x00, 0xba, 0x59, 0x34, 0x61, 0xc1, 0xa5, 0xc5, 0x34, 0x2c, 0x66, 0x25, 0x4b,
-	0x3e, 0x86, 0xdb, 0xd7, 0x99, 0x97, 0xa8, 0x92, 0x48, 0x14, 0x52, 0xaf, 0x17, 0xc8, 0x00, 0x3a,
-	0x21, 0x26, 0x81, 0x8a, 0xac, 0xfb, 0x72, 0xfd, 0xab, 0x29, 0xe3, 0xf2, 0x39, 0x26, 0x09, 0x9b,
-	0xa1, 0xfd, 0x0a, 0xb7, 0x69, 0x11, 0x5a, 0x4f, 0xb0, 0x59, 0x61, 0x7e, 0xbb, 0x26, 0x67, 0xd0,
-	0x43, 0x3e, 0x15, 0x2a, 0xc0, 0x39, 0x72, 0xfd, 0x0c, 0xaf, 0x30, 0xb6, 0xde, 0xef, 0x2e, 0x09,
-	0x7e, 0xba, 0x02, 0xa1, 0x6b, 0x4d, 0x85, 0x47, 0xdc, 0xd2, 0x23, 0xfe, 0x2f, 0xb0, 0x57, 0x3c,
-	0xd4, 0x53, 0x3e, 0x15, 0xa5, 0x67, 0x9c, 0xca, 0x4f, 0x86, 0xb9, 0x4e, 0x94, 0xc8, 0x98, 0x2d,
-	0x2a, 0x0a, 0x55, 0x53, 0xe4, 0x21, 0xb8, 0x56, 0x05, 0x63, 0xd9, 0xa6, 0x7d, 0xb9, 0x77, 0x2b,
-	0x07, 0x9b, 0x58, 0x81, 0x0c, 0x3d, 0x2d, 0x61, 0xfe, 0xdf, 0x0e, 0xc0, 0x75, 0xe1, 0x2d, 0xf7,
-	0x5d, 0x11, 0xba, 0xb9, 0x51, 0xe8, 0xed, 0x65, 0xa1, 0xeb, 0x44, 0xdd, 0x79, 0x0b, 0x51, 0x3f,
-	0x3a, 0x86, 0xde, 0x2a, 0x8a, 0xec, 0x81, 0x7b, 0x32, 0x7e, 0xf9, 0xf4, 0xe2, 0x9c, 0xbe, 0xea,
-	0x6d, 0x91, 0x7d, 0x68, 0x7f, 0x7f, 0xf2, 0x7c, 0x7c, 0xf2, 0xc2, 0x84, 0xce, 0xe8, 0xcf, 0x06,
-	0xb8, 0x85, 0xe8, 0xe4, 0x31, 0xb4, 0xf2, 0x35, 0xb9, 0xb7, 0xee, 0xf6, 0x7c, 0xd6, 0xfa, 0xfd,
-	0xba, 0x52, 0x36, 0x39, 0xfe, 0x16, 0x79, 0x56, 0x3e, 0xa2, 0x1d, 0x50, 0xf2, 0x60, 0x1d, 0x5d,
-	0x9d, 0xdc, 0x37, 0xb0, 0x8d, 0xe1, 0xd6, 0x19, 0xea, 0x25, 0x57, 0xdc, 0x5d, 0xfb, 0x00, 0x9d,
-	0x9a, 0x7f, 0x7f, 0xfd, 0x83, 0x9a, 0x79, 0x37, 0x0d, 0xfe, 0x16, 0xf9, 0x0e, 0xf6, 0xcf, 0x50,
-	0x4f, 0xec, 0x5f, 0xc8, 0x8d, 0x1c, 0x4b, 0x4e, 0x29, 0xe1, 0xfe, 0xd6, 0xeb, 0x5d, 0x0b, 0xfc,
-	0xf4, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x4f, 0x84, 0x2c, 0x94, 0xa3, 0x0a, 0x00, 0x00,
 }

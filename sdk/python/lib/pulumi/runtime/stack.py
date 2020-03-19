@@ -23,19 +23,15 @@ from typing import Callable, Any, Dict, List
 from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
+from .sync_await import _all_tasks, _get_current_task
 from .. import log
 from . import known_types
 
 from ..output import Output
 
-async def run_in_stack(func: Callable):
-    """
-    Run the given function inside of a new stack resource.  This ensures that any stack export calls
-    will end up as output properties on the resulting stack component in the checkpoint file.  This
-    is meant for internal runtime use only and is used by the Python SDK entrypoint program.
-    """
+async def run_pulumi_func(func: Callable):
     try:
-        Stack(func)
+        func()
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
@@ -60,9 +56,9 @@ async def run_in_stack(func: Callable):
         # We will occasionally start tasks deliberately that we know will never complete. We must
         # cancel them before shutting down the event loop.
         log.debug("Canceling all outstanding tasks")
-        for task in asyncio.Task.all_tasks():
+        for task in _all_tasks():
             # Don't kill ourselves, that would be silly.
-            if task == asyncio.Task.current_task():
+            if task == _get_current_task():
                 continue
             task.cancel()
 
@@ -71,10 +67,18 @@ async def run_in_stack(func: Callable):
         await asyncio.sleep(0)
 
         # Once we get scheduled again, all tasks have exited and we're good to go.
-        log.debug("run_in_stack completed")
+        log.debug("run_pulumi_func completed")
 
     if RPC_MANAGER.unhandled_exception is not None:
         raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
+
+async def run_in_stack(func: Callable):
+    """
+    Run the given function inside of a new stack resource.  This ensures that any stack export calls
+    will end up as output properties on the resulting stack component in the checkpoint file.  This
+    is meant for internal runtime use only and is used by the Python SDK entrypoint program.
+    """
+    await run_pulumi_func(lambda: Stack(func))
 
 @known_types.stack
 class Stack(ComponentResource):

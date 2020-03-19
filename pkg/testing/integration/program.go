@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tools"
 	"github.com/pulumi/pulumi/pkg/util/ciutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -248,6 +249,8 @@ type ProgramTestOptions struct {
 	PipenvBin string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
 	DotNetBin string
+	// goDepBin is the location of a `dep` executable to be run. Taken from $PATH if missing.
+	GoDepBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -450,6 +453,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PipenvBin != "" {
 		opts.PipenvBin = overrides.PipenvBin
 	}
+	if overrides.GoDepBin != "" {
+		opts.GoDepBin = overrides.GoDepBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
 	}
@@ -519,35 +525,10 @@ func GetLogs(
 	return logs
 }
 
-// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
-// binaries available on PATH.  It essentially executes the following workflow:
-//
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   (+) yarn run build
-//   pulumi init
-//   (*) pulumi login
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi up
-//   pulumi stack export --file stack.json
-//   pulumi stack import --file stack.json
-//   pulumi preview (expected to be empty)
-//   pulumi up (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
-//
-//   (*) Only if PULUMI_ACCESS_TOKEN is set.
-//   (+) Only if `opts.RunBuild` is true.
-//
-// All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
-func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	// If we're just listing tests, simply print this test's directory.
 	if listDirs {
 		fmt.Printf("%s\n", opts.Dir)
-		return
 	}
 
 	// If we have a matcher, ensure that this test matches its pattern.
@@ -595,10 +576,44 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	if opts.Tracing == "" {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
 	}
+}
 
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
+// binaries available on PATH.  It essentially executes the following workflow:
+//
+//   yarn install
+//   yarn link <each opts.Depencies>
+//   (+) yarn run build
+//   pulumi init
+//   (*) pulumi login
+//   pulumi stack init integrationtesting
+//   pulumi config set <each opts.Config>
+//   pulumi config set --secret <each opts.Secrets>
+//   pulumi preview
+//   pulumi up
+//   pulumi stack export --file stack.json
+//   pulumi stack import --file stack.json
+//   pulumi preview (expected to be empty)
+//   pulumi up (expected to be empty)
+//   pulumi destroy --yes
+//   pulumi stack rm --yes integrationtesting
+//
+//   (*) Only if PULUMI_ACCESS_TOKEN is set.
+//   (+) Only if `opts.RunBuild` is true.
+//
+// All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
+func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
-	err := pt.testLifeCycleInitAndDestroy()
+	err := pt.TestLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
+}
+
+// ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
+func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
+	prepareProgram(t, opts)
+	pt := newProgramTester(t, opts)
+	return pt
 }
 
 // fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
@@ -611,8 +626,8 @@ func fprintf(w io.Writer, format string, a ...interface{}) {
 	contract.IgnoreError(err)
 }
 
-// programTester contains state associated with running a single test pass.
-type programTester struct {
+// ProgramTester contains state associated with running a single test pass.
+type ProgramTester struct {
 	t            *testing.T          // the Go tester for this run.
 	opts         *ProgramTestOptions // options that control this test run.
 	bin          string              // the `pulumi` binary we are using.
@@ -620,11 +635,15 @@ type programTester struct {
 	goBin        string              // the `go` binary we are using.
 	pipenvBin    string              // The `pipenv` binary we are using.
 	dotNetBin    string              // the `dotnet` binary we are using.
+	goDepBin     string              // the `goDep` binary we are using.
 	eventLog     string              // The path to the event log for this test.
 	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
+	tmpdir       string              // the temporary directory we use for our test environment
+	projdir      string              // the project directory we use for this run
+	TestFinished bool                // whether or not the test if finished
 }
 
-func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
+func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	stackName := opts.GetStackName()
 	maxStepTries := 1
 	if opts.RetryFailedSteps {
@@ -635,7 +654,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 		opts.SkipExportImport = true
 		opts.SkipEmptyPreviewUpdate = true
 	}
-	return &programTester{
+	return &ProgramTester{
 		t:            t,
 		opts:         opts,
 		eventLog:     filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
@@ -643,28 +662,32 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
 	}
 }
 
-func (pt *programTester) getBin() (string, error) {
+func (pt *ProgramTester) getBin() (string, error) {
 	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }
 
-func (pt *programTester) getYarnBin() (string, error) {
+func (pt *ProgramTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
 }
 
-func (pt *programTester) getGoBin() (string, error) {
+func (pt *ProgramTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
 }
 
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
-func (pt *programTester) getPipenvBin() (string, error) {
+func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
 }
 
-func (pt *programTester) getDotNetBin() (string, error) {
+func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
-func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) getGoDepBin() (string, error) {
+	return getCmdBin(&pt.goDepBin, "dep", pt.opts.GoDepBin)
+}
+
+func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
 	bin, err := pt.getBin()
 	if err != nil {
 		return nil, err
@@ -680,7 +703,7 @@ func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
 	return cmd, nil
 }
 
-func (pt *programTester) yarnCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	bin, err := pt.getYarnBin()
 	if err != nil {
 		return nil, err
@@ -690,7 +713,7 @@ func (pt *programTester) yarnCmd(args []string) ([]string, error) {
 	return withOptionalYarnFlags(result), nil
 }
 
-func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 	bin, err := pt.getPipenvBin()
 	if err != nil {
 		return nil, err
@@ -700,11 +723,11 @@ func (pt *programTester) pipenvCmd(args []string) ([]string, error) {
 	return append(cmd, args...), nil
 }
 
-func (pt *programTester) runCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runCommand(name string, args []string, wd string) error {
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
 
-func (pt *programTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
+func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
 	cmd, err := pt.pulumiCmd(args)
 	if err != nil {
 		return err
@@ -769,7 +792,7 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string,
 	return err
 }
 
-func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
 	cmd, err := pt.yarnCmd(args)
 	if err != nil {
 		return err
@@ -796,7 +819,7 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 	return err
 }
 
-func (pt *programTester) runPipenvCommand(name string, args []string, wd string) error {
+func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string) error {
 	// Pipenv uses setuptools to install and uninstall packages. Setuptools has an installation mode called "develop"
 	// that we use to install the package being tested, since it is 1) lightweight and 2) not doing so has its own set
 	// of annoying problems.
@@ -820,7 +843,7 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
 	// problem of multiple processes stomping on the same files in the source tree. Note that pipenvMutex is a file
 	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
-	// processes. (Furthermore, each test gets an instance of programTester and thus the mutex, so we'd need to be
+	// processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd need to be
 	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {
 		if err := pipenvMutex.Lock(); err != nil {
@@ -846,69 +869,79 @@ func (pt *programTester) runPipenvCommand(name string, args []string, wd string)
 	return pt.runCommand(name, cmd, wd)
 }
 
-func (pt *programTester) testLifeCycleInitAndDestroy() error {
+// TestLifeCyclePrepare prepares a test by creating a temporary directory
+func (pt *ProgramTester) TestLifeCyclePrepare() error {
 	tmpdir, projdir, err := pt.copyTestToTemporaryDirectory()
-	if err != nil {
-		return errors.Wrap(err, "copying test to temp dir")
-	}
+	pt.tmpdir = tmpdir
+	pt.projdir = projdir
+	return err
+}
 
-	testFinished := false
-	defer func() {
-		if tmpdir != "" {
-			if !testFinished || pt.t.Failed() {
-				// Test aborted or failed. Maybe copy to "failed tests" directory.
-				failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
-				if failedTestsDir != "" {
-					dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
-					contract.IgnoreError(fsutil.CopyFile(dest, tmpdir, nil))
-				}
-			} else {
-				contract.IgnoreError(os.RemoveAll(tmpdir))
+// TestCleanUp cleans up the temporary directory that a test used
+func (pt *ProgramTester) TestCleanUp() {
+	testFinished := pt.TestFinished
+	if pt.tmpdir != "" {
+		if !testFinished || pt.t.Failed() {
+			// Test aborted or failed. Maybe copy to "failed tests" directory.
+			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
+			if failedTestsDir != "" {
+				dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
+				contract.IgnoreError(fsutil.CopyFile(dest, pt.tmpdir, nil))
 			}
 		} else {
-			// When tmpdir is empty, we ran "in tree", which means we wrote output
-			// to the "command-output" folder in the projdir, and we should clean
-			// it up if the test passed
-			if testFinished && !pt.t.Failed() {
-				contract.IgnoreError(os.RemoveAll(filepath.Join(projdir, commandOutputFolderName)))
-			}
+			contract.IgnoreError(os.RemoveAll(pt.tmpdir))
 		}
-	}()
+	} else {
+		// When tmpdir is empty, we ran "in tree", which means we wrote output
+		// to the "command-output" folder in the projdir, and we should clean
+		// it up if the test passed
+		if testFinished && !pt.t.Failed() {
+			contract.IgnoreError(os.RemoveAll(filepath.Join(pt.projdir, commandOutputFolderName)))
+		}
+	}
+}
 
-	err = pt.testLifeCycleInitialize(projdir)
+// TestLifeCycleInitAndDestroy executes the test and cleans up
+func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
+	err := pt.TestLifeCyclePrepare()
+	if err != nil {
+		return errors.Wrapf(err, "copying test to temp dir %s", pt.tmpdir)
+	}
+
+	pt.TestFinished = false
+	defer pt.TestCleanUp()
+
+	err = pt.TestLifeCycleInitialize()
 	if err != nil {
 		return errors.Wrap(err, "initializing test project")
 	}
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
-		if projdir != "" {
-			destroyErr := pt.testLifeCycleDestroy(projdir)
-			assert.NoError(pt.t, destroyErr)
-		}
+		destroyErr := pt.TestLifeCycleDestroy()
+		assert.NoError(pt.t, destroyErr)
 	}()
 
-	if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
+	if err = pt.TestPreviewUpdateAndEdits(); err != nil {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
 	if pt.opts.RunUpdateTest {
-
-		err = upgradeProjectDeps(projdir, pt)
+		err = upgradeProjectDeps(pt.projdir, pt)
 		if err != nil {
 			return errors.Wrap(err, "upgrading project dependencies")
 		}
 
-		if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
+		if err = pt.TestPreviewUpdateAndEdits(); err != nil {
 			return errors.Wrap(err, "running test preview, update, and edits")
 		}
 	}
 
-	testFinished = true
+	pt.TestFinished = true
 	return nil
 }
 
-func upgradeProjectDeps(projectDir string, pt *programTester) error {
+func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 	projInfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
 		return errors.Wrap(err, "getting project info")
@@ -930,7 +963,9 @@ func upgradeProjectDeps(projectDir string, pt *programTester) error {
 	return nil
 }
 
-func (pt *programTester) testLifeCycleInitialize(dir string) error {
+// TestLifeCycleInitialize initializes the project directory and stack along with any configuration
+func (pt *ProgramTester) TestLifeCycleInitialize() error {
+	dir := pt.projdir
 	stackName := pt.opts.GetStackName()
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
@@ -1011,32 +1046,37 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	return nil
 }
 
-func (pt *programTester) testLifeCycleDestroy(dir string) error {
-	// Destroy and remove the stack.
-	fprintf(pt.opts.Stdout, "Destroying stack\n")
-	destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
-	if pt.opts.GetDebugUpdates() {
-		destroy = append(destroy, "-d")
-	}
-	if err := pt.runPulumiCommand("pulumi-destroy", destroy, dir, false); err != nil {
-		return err
-	}
+// TestLifeCycleDestroy destroys a stack and removes it
+func (pt *ProgramTester) TestLifeCycleDestroy() error {
+	if pt.projdir != "" {
+		// Destroy and remove the stack.
+		fprintf(pt.opts.Stdout, "Destroying stack\n")
+		destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
+		if pt.opts.GetDebugUpdates() {
+			destroy = append(destroy, "-d")
+		}
+		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
+			return err
+		}
 
-	if pt.t.Failed() {
-		fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
-		return nil
-	}
+		if pt.t.Failed() {
+			fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+			return nil
+		}
 
-	if !pt.opts.SkipStackRemoval {
-		return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir, false)
+		if !pt.opts.SkipStackRemoval {
+			return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+		}
 	}
 	return nil
 }
 
-func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
+// TestPreviewUpdateAndEdits runs the preview, update, and any relevant edits
+func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
+	dir := pt.projdir
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
-	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
+	initErr := pt.PreviewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -1058,7 +1098,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 			msg = "(no changes expected)"
 		}
 		fprintf(pt.opts.Stdout, "Performing empty preview and update%s\n", msg)
-		if err := pt.previewAndUpdate(
+		if err := pt.PreviewAndUpdate(
 			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
 			return err
@@ -1088,7 +1128,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) exportImport(dir string) error {
+func (pt *ProgramTester) exportImport(dir string) error {
 	exportCmd := []string{"stack", "export", "--file", "stack.json"}
 	importCmd := []string{"stack", "import", "--file", "stack.json"}
 
@@ -1103,7 +1143,8 @@ func (pt *programTester) exportImport(dir string) error {
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
+// PreviewAndUpdate runs pulumi preview followed by pulumi up
+func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
@@ -1155,7 +1196,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	return nil
 }
 
-func (pt *programTester) query(dir string, name string, shouldFail bool) error {
+func (pt *ProgramTester) query(dir string, name string, shouldFail bool) error {
 
 	query := []string{"query", "--non-interactive"}
 	if pt.opts.GetDebugUpdates() {
@@ -1182,7 +1223,7 @@ func (pt *programTester) query(dir string, name string, shouldFail bool) error {
 	return nil
 }
 
-func (pt *programTester) testEdits(dir string) error {
+func (pt *ProgramTester) testEdits(dir string) error {
 	for i, edit := range pt.opts.EditDirs {
 		var err error
 		if err = pt.testEdit(dir, i, edit); err != nil {
@@ -1192,7 +1233,7 @@ func (pt *programTester) testEdits(dir string) error {
 	return nil
 }
 
-func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
+func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 	fprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	if edit.Additive {
@@ -1286,7 +1327,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 	}()
 
 	if !edit.QueryMode {
-		if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
+		if err = pt.PreviewAndUpdate(dir, fmt.Sprintf("edit-%d", i),
 			edit.ExpectFailure, edit.ExpectNoChanges, edit.ExpectNoChanges); err != nil {
 			return err
 		}
@@ -1298,7 +1339,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
 }
 
-func (pt *programTester) performExtraRuntimeValidation(
+func (pt *ProgramTester) performExtraRuntimeValidation(
 	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
 
 	if extraRuntimeValidation == nil {
@@ -1384,7 +1425,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 }
 
 // copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) {
+func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) {
 	// Get the source dir and project info.
 	sourceDir := pt.opts.Dir
 	projinfo, err := pt.getProjinfo(sourceDir)
@@ -1418,26 +1459,29 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
-	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
-	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
+	stackName := string(pt.opts.GetStackName())
+
+	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must create
+	// a folder structure that adheres to GOPATH requirements
 	var tmpdir, projdir string
 	if projinfo.Proj.Runtime.Name() == "go" {
-		projdir = projinfo.Root
+		targetDir, err := tools.CreateTemporaryGoFolder("stackName")
+		if err != nil {
+			return "", "", errors.Wrap(err, "Couldn't create temporary directory")
+		}
+		tmpdir = targetDir
+		projdir = targetDir
 	} else {
-		stackName := string(pt.opts.GetStackName())
 		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
 		if tempErr != nil {
 			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 		}
-
-		// Copy the source project.
-		if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
-			return "", "", copyErr
-		}
-
-		// Set tmpdir so that the caller will clean up afterwards.
 		tmpdir = targetDir
 		projdir = targetDir
+	}
+	// Copy the source project.
+	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
+		return "", "", copyErr
 	}
 	projinfo.Root = projdir
 
@@ -1450,7 +1494,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) 
 	return tmpdir, projdir, nil
 }
 
-func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
+func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
 	// Load up the package so we know things like what language the project is.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
@@ -1461,7 +1505,7 @@ func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 }
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
@@ -1478,7 +1522,7 @@ func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 }
 
 // prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *programTester) prepareProjectDir(projectDir string) error {
+func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 	projinfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
 		return err
@@ -1487,7 +1531,7 @@ func (pt *programTester) prepareProjectDir(projectDir string) error {
 }
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
-func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	if err := pulumi_testing.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
@@ -1586,7 +1630,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
-func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -1623,7 +1667,8 @@ func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
+// YarnLinkPackageDeps bring in package dependencies via yarn
+func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
 			return err
@@ -1633,7 +1678,8 @@ func (pt *programTester) yarnLinkPackageDeps(cwd string) error {
 	return nil
 }
 
-func (pt *programTester) installPipPackageDeps(cwd string) error {
+// InstallPipPackageDeps brings in package dependencies via pip install
+func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	var err error
 	for _, dep := range pt.opts.Dependencies {
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
@@ -1655,11 +1701,15 @@ func (pt *programTester) installPipPackageDeps(cwd string) error {
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
-func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
 	goBin, err := pt.getGoBin()
 	if err != nil {
 		return errors.Wrap(err, "locating `go` binary")
+	}
+	goDepBin, err := pt.getGoDepBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `dep` binary")
 	}
 
 	// Ensure GOPATH is known.
@@ -1678,17 +1728,56 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// skip building if the 'go run' invocation path is requested.
-	if !pt.opts.RunBuild {
-		return nil
+	// We only need to run dep-ensure if there is a Gopkg.toml file
+	_, err = os.Stat(filepath.Join(cwd, "Gopkg.toml"))
+	if err == nil {
+		err = pt.runCommand("dep-ensure", []string{goDepBin, "ensure", "-v"}, cwd)
+		if err != nil {
+			return fmt.Errorf("error installing go dependencies: %w", err)
+		}
+
+		for _, pkg := range pt.opts.Dependencies {
+			err = pt.runCommand("vendor-rm-dep",
+				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg)}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
+			err = pt.runCommand("vendor-cp-dep",
+				[]string{"/bin/cp", "-r", filepath.Join(gopath, "src", pkg), filepath.Join(".", "vendor", pkg)}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
+			err = pt.runCommand("vendor-rm-dep-vendor",
+				[]string{"/bin/rm", "-rf", filepath.Join(".", "vendor", pkg, "vendor")}, cwd)
+			if err != nil {
+				return fmt.Errorf("error installing go dependencies: %w", err)
+			}
+		}
 	}
 
+	// In our go tests, there seems to be an issue where we *need* to make a build before we
+	// actually run the tests. If a build isn't made, then we get an issue along the lines of
+	// `cannot import absolute path`. We will investigate this and add back in the respect
+	// for the runBuild option
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
-	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if runtime.GOOS == "windows" {
+		outBin = fmt.Sprintf("%s.exe", outBin)
+	}
+	err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(outBin)
+	if err != nil {
+		return fmt.Errorf("error finding built application artifact: %w", err)
+	}
+
+	return nil
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
-func (pt *programTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	dotNetBin, err := pt.getDotNetBin()
 	if err != nil {
 		return errors.Wrap(err, "locating `dotnet` binary")

@@ -22,7 +22,7 @@ namespace Pulumi
         /// this resource depends on, controlling the order in which we perform resource operations.
         /// </summary>
 #pragma warning disable RS0022 // Constructor make noninheritable base class inheritable
-        public ComponentResource(string type, string name, ResourceOptions? options = null)
+        public ComponentResource(string type, string name, ComponentResourceOptions? options = null)
             : base(type, name, custom: false,
                    args: ResourceArgs.Empty,
                    options ?? new ComponentResourceOptions())

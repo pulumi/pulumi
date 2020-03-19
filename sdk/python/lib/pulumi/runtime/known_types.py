@@ -35,6 +35,9 @@ from typing import Any, Optional
 _custom_resource_type: Optional[type] = None
 """The type of CustomResource. Filled-in as the Pulumi package is initializing."""
 
+_custom_timeouts_type: Optional[type] = None
+"""The type of CustomTimeouts. Filled-in as the Pulumi package is initializing."""
+
 _asset_resource_type: Optional[type] = None
 """The type of Asset. Filled-in as the Pulumi package is initializing."""
 
@@ -166,6 +169,16 @@ def custom_resource(class_obj: type) -> type:
     _custom_resource_type = class_obj
     return class_obj
 
+def custom_timeouts(class_obj: type) -> type:
+    """
+    Decorator to annotate the CustomTimeouts class. Registers the decorated class
+    as the CustomTimeouts known type.
+    """
+    assert isinstance(class_obj, type), "class_obj is not a Class"
+    global _custom_timeouts_type
+    _custom_timeouts_type = class_obj
+    return class_obj
+
 def stack(class_obj: type) -> type:
     """
     Decorator to annotate the Stack class. Registers the decorated class
@@ -266,6 +279,12 @@ def is_custom_resource(obj: Any) -> bool:
     Returns true if the given type is a CustomResource, false otherwise.
     """
     return _custom_resource_type is not None and isinstance(obj, _custom_resource_type)
+
+def is_custom_timeouts(obj: Any) -> bool:
+    """
+    Returns true if the given type is a CustomTimeouts, false otherwise.
+    """
+    return _custom_timeouts_type is not None and isinstance(obj, _custom_timeouts_type)
 
 def is_stack(obj: Any) -> bool:
     """

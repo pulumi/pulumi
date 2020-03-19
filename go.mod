@@ -20,12 +20,13 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gofrs/flock v0.7.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20171105060200-01f8541d5372
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-runewidth v0.0.3 // indirect
@@ -53,16 +54,19 @@ require (
 	github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0
+	github.com/zclconf/go-cty v1.2.0
 	gocloud.dev v0.18.0
 	gocloud.dev/secrets/hashivault v0.18.0
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
-	golang.org/x/net v0.0.0-20190619014844-b5b0513f8c1b
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190620070143-6f217b454f45
+	golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5 // indirect
 	google.golang.org/api v0.6.0
-	google.golang.org/genproto v0.0.0-20190620144150-6af8c5fc6601
-	google.golang.org/grpc v1.21.1
+	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
+	google.golang.org/grpc v1.27.1
 	gopkg.in/AlecAivazis/survey.v1 v1.4.1
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect

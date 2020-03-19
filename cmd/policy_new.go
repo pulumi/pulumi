@@ -48,7 +48,7 @@ func newPolicyNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi Policy Pack",
+		Short:      "[PREVIEW] Create a new Pulumi Policy Pack",
 		Long: "Create a new Pulumi Policy Pack from a template.\n" +
 			"\n" +
 			"To create a Policy Pack from a specific template, pass the template name (such as `aws-typescript`\n" +
@@ -196,6 +196,8 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
+
+	cmdutil.EndKeypadTransmitMode()
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
