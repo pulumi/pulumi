@@ -1,6 +1,7 @@
 PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
-VERSION          := $(shell ../../scripts/get-py-version HEAD)
+VERSION          := $(shell ../../scripts/get-version HEAD)
+PYPI_VERSION 	 := $(shell ../../scripts/get-py-version HEAD)
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -13,7 +14,7 @@ ensure::
 
 build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
-	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
