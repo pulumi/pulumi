@@ -167,6 +167,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "PULUMI_PLUGINS=true")
+	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.Output()
 	if err != nil {
