@@ -371,10 +371,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	optionsType := "Pulumi.CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "Pulumi.ResourceOptions"
-	}
-
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
 		{
