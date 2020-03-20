@@ -45,12 +45,12 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
 

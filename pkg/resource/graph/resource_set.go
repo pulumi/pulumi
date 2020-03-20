@@ -14,7 +14,7 @@
 
 package graph
 
-import "github.com/pulumi/pulumi/pkg/resource"
+import "github.com/pulumi/pulumi/sdk/go/common/resource"
 
 // ResourceSet represents a set of Resources.
 type ResourceSet map[*resource.State]bool

@@ -16,7 +16,7 @@ package model
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 // An ExpressionVisitor is a function that visits and optionally replaces a node in an expression tree.

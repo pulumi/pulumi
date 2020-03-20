@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 // ExpressionGenerator is an interface that can be implemented in order to generate code for semantically-analyzed HCL2
