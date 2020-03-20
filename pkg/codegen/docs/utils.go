@@ -22,7 +22,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 func isDotNetTypeNameBoundary(prev rune, next rune) bool {

@@ -12,19 +12,19 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/archive"
+	"github.com/pulumi/pulumi/sdk/go/common/util/archive"
 
 	"github.com/pulumi/pulumi/pkg/npm"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 type cloudRequiredPolicy struct {

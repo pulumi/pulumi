@@ -18,14 +18,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )
 
 // Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.

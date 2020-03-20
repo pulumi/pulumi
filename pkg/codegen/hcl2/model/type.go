@@ -15,7 +15,7 @@
 package model
 
 import (
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type ConversionKind int

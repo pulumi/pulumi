@@ -22,12 +22,12 @@ import (
 
 	"github.com/rjeczalik/notify"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 )
 
 // Watch watches the project's working directory for changes and automatically updates the active

@@ -3,11 +3,34 @@ SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
-PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+PROJECT_PKGS    := $(shell go list ./pkg/... | grep -v /vendor/)
 EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version HEAD)
 
 TESTPARALLELISM := 10
+
+ensure::
+	$(call STEP_MESSAGE)
+ifeq ($(NOPROXY), true)
+	@echo "cd sdk && GO111MODULE=on go mod tidy"; cd sdk && GO111MODULE=on go mod tidy
+	@echo "cd sdk && GO111MODULE=on go mod vendor"; cd sdk && GO111MODULE=on go mod vendor
+	@echo "cd pkg && GO111MODULE=on go mod tidy"; cd pkg && GO111MODULE=on go mod tidy
+	@echo "cd pkg && GO111MODULE=on go mod vendor"; cd pkg && GO111MODULE=on go mod vendor
+	@echo "cd examples && GO111MODULE=on go mod tidy"; cd examples && GO111MODULE=on go mod tidy
+	@echo "cd examples && GO111MODULE=on go mod vendor"; cd examples && GO111MODULE=on go mod vendor
+	@echo "cd tests && GO111MODULE=on go mod tidy"; cd tests && GO111MODULE=on go mod tidy
+	@echo "cd tests && GO111MODULE=on go mod vendor"; cd tests && GO111MODULE=on go mod vendor
+else
+	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
+	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+endif
+
 
 build-proto::
 	cd sdk/proto && ./generate.sh
@@ -28,7 +51,7 @@ dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 lint::
-	for DIR in "cmd" "examples" "pkg" "sdk" "tests" ; do \
+	for DIR in "examples" "pkg" "sdk" "tests" ; do \
 		pushd $$DIR && golangci-lint run -c ../.golangci.yml --deadline 5m && popd ; \
 	done
 

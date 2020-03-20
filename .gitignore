@@ -1,5 +1,5 @@
 *.swp
-/vendor/
+**/vendor/
 **/node_modules/
 **/bin
 **/.vscode/
