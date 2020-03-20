@@ -665,18 +665,18 @@ func validatePolicyPackVersion(s string) error {
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
 // it will enable the PolicyPack on the default PolicyGroup.
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
-	policyPackName, versionTag string) error {
+	policyPackName, versionTag string, policyPackConfig map[string]*json.RawMessage) error {
 
 	// If a Policy Group was not specified, we use the default Policy Group.
 	if policyGroup == "" {
 		policyGroup = apitype.DefaultPolicyGroup
 	}
 
-	// If a Policy Group was specified, enable it for the specific group only.
 	req := apitype.UpdatePolicyGroupRequest{
 		AddPolicyPack: &apitype.PolicyPackMetadata{
 			Name:       policyPackName,
 			VersionTag: versionTag,
+			Config:     policyPackConfig,
 		},
 	}
 

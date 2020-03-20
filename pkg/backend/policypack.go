@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 
@@ -36,6 +37,7 @@ type PolicyPackOperation struct {
 	// If nil, the latest version is assumed.
 	VersionTag *string
 	Scopes     CancellationScopeSource
+	Config     map[string]*json.RawMessage
 }
 
 // PolicyPack is a set of policies associated with a particular backend implementation.

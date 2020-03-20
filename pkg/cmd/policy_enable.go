@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ const latestKeyword = "latest"
 
 type policyEnableArgs struct {
 	policyGroup string
+	configFile  string
 }
 
 func newPolicyEnableCmd() *cobra.Command {
@@ -48,15 +50,32 @@ func newPolicyEnableCmd() *cobra.Command {
 				version = &cliArgs[1]
 			}
 
+			// Load the configuration from the user-specified JSON file into config object.
+			var config map[string]*json.RawMessage
+			if args.configFile != "" {
+				config, err = loadJSONConfigFile(args.configFile)
+				if err != nil {
+					return err
+				}
+			}
+
 			// Attempt to enable the Policy Pack.
-			return policyPack.Enable(commandContext(), args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: version, Scopes: cancellationScopes})
+			return policyPack.Enable(commandContext(), args.policyGroup,
+				backend.PolicyPackOperation{
+					VersionTag: version,
+					Scopes:     cancellationScopes,
+					Config:     config,
+				})
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
 		&args.policyGroup, "policy-group", "",
 		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
+
+	cmd.PersistentFlags().StringVar(
+		&args.configFile, "config-file", "",
+		"The file path for the policy pack configuration file")
 
 	return cmd
 }
