@@ -28,6 +28,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	unitTestTool    = "Pulumi Resource Docs Unit Test"
+	providerPackage = "prov"
+)
+
 var (
 	simpleProperties = map[string]schema.PropertySpec{
 		"stringProp": {
