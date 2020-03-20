@@ -16,6 +16,15 @@ if (!packName) {
                 name: "s3-no-public-read",
                 description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
                 enforcementLevel: "mandatory",
+                configSchema: {
+                    properties: {
+                        message: {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 10,
+                        },
+                   },
+                },
                 validateResource: policy.validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
                     if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
                         reportViolation(

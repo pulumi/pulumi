@@ -59,6 +59,12 @@ func TestPolicy(t *testing.T) {
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "latest")
 	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName))
 
+	// Enable Policy Pack with Configuration.
+	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config-file=configs/valid-config.json", "0.0.1")
+	e.RunCommandExpectError("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config-file=configs/invalid-config.json", "0.0.1")
+
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "all")
 }

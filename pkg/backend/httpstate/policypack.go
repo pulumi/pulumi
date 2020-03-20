@@ -204,7 +204,8 @@ func (pack *cloudPolicyPack) Publish(
 
 func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
 	if op.VersionTag == nil {
-		return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), "" /* versionTag */, op.Config)
+		return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name),
+			"" /* versionTag */, op.Config)
 	}
 	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.VersionTag, op.Config)
 }
