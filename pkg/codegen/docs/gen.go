@@ -22,6 +22,7 @@ package docs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
@@ -59,13 +60,13 @@ func init() {
 	for _, lang := range supportedLanguages {
 		switch lang {
 		case "csharp":
-			docHelpers[lang] = dotnet.DocLanguageHelper{}
+			docHelpers[lang] = &dotnet.DocLanguageHelper{}
 		case "go":
-			docHelpers[lang] = go_gen.DocLanguageHelper{}
+			docHelpers[lang] = &go_gen.DocLanguageHelper{}
 		case "nodejs":
-			docHelpers[lang] = nodejs.DocLanguageHelper{}
+			docHelpers[lang] = &nodejs.DocLanguageHelper{}
 		case "python":
-			docHelpers[lang] = python.DocLanguageHelper{}
+			docHelpers[lang] = &python.DocLanguageHelper{}
 		}
 	}
 
@@ -80,6 +81,8 @@ type header struct {
 
 // property represents an input or an output property.
 type property struct {
+	// DisplayName is the property name with word-breaks.
+	DisplayName        string
 	Name               string
 	Comment            string
 	Type               propertyType
@@ -517,7 +520,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 
 		docProperties = append(docProperties, property{
-			Name:               wbr(propLangName),
+			DisplayName:        wbr(propLangName),
+			Name:               propLangName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
@@ -1050,27 +1054,8 @@ func (mod *modContext) genIndex(exports []string) string {
 	return w.String()
 }
 
-// GeneratePackage generates the docs package with docs for each resource given the Pulumi
-// schema.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	templates = template.New("").Funcs(template.FuncMap{
-		"htmlSafe": func(html string) template.HTML {
-			// Markdown fragments in the templates need to be rendered as-is,
-			// so that html/template package doesn't try to inject data into it,
-			// which will most certainly fail.
-			// nolint gosec
-			return template.HTML(html)
-		},
-		"pyName": func(str string) string {
-			return python.PyName(str)
-		},
-	})
-
-	for name, b := range packagedTemplates {
-		template.Must(templates.New(name).Parse(string(b)))
-	}
-
-	// group resources, types, and functions into modules
+func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
+	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
 	var getMod func(token string) *modContext
@@ -1098,9 +1083,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		return mod
 	}
 
+	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
+	var goInfo go_gen.GoInfo
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			panic(fmt.Errorf("decoding go package info: %v", err))
+		}
+	}
+	// Generate the Go package map info now, so we can use that to get the type string
+	// names later.
+	goLangHelper.GeneratePackagesMap(pkg, tool, goInfo)
+
+	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	types := &modContext{pkg: pkg, mod: "types", tool: tool}
-	docHelper := getLanguageDocHelper("python")
-	pyHelper := docHelper.(python.DocLanguageHelper)
 
 	for _, v := range pkg.Config {
 		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
@@ -1111,13 +1106,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		mod.resources = append(mod.resources, r)
 
 		for _, p := range r.Properties {
-			pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
 
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
 		}
 
 		for _, p := range r.InputProperties {
-			pyHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
 
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
@@ -1153,7 +1148,32 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			})
 		}
 	}
+	return modules
+}
 
+// GeneratePackage generates the docs package with docs for each resource given the Pulumi
+// schema.
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	templates = template.New("").Funcs(template.FuncMap{
+		"htmlSafe": func(html string) template.HTML {
+			// Markdown fragments in the templates need to be rendered as-is,
+			// so that html/template package doesn't try to inject data into it,
+			// which will most certainly fail.
+			// nolint gosec
+			return template.HTML(html)
+		},
+		"pyName": func(str string) string {
+			return python.PyName(str)
+		},
+	})
+
+	for name, b := range packagedTemplates {
+		template.Must(templates.New(name).Parse(string(b)))
+	}
+
+	// Generate the modules from the schema, and for every module
+	// run the generator functions to generate markdown files.
+	modules := generateModulesFromSchemaPackage(tool, pkg)
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {

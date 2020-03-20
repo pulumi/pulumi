@@ -27,7 +27,9 @@ import (
 )
 
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
-type DocLanguageHelper struct{}
+type DocLanguageHelper struct {
+	packages map[string]*pkgContext
+}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
@@ -74,10 +76,13 @@ func GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	mod := &pkgContext{
-		pkg: pkg,
-	}
-	return mod.plainType(t, optional)
+	modPkg := d.packages[moduleName]
+	return modPkg.plainType(t, optional)
+}
+
+// GeneratePackagesMap generates a map of Go packages for resources, functions and types.
+func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoInfo) {
+	d.packages = generatePackageContextMap(tool, pkg, goInfo)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
