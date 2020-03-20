@@ -85,6 +85,11 @@ func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string
 	d.packages = generatePackageContextMap(tool, pkg, goInfo)
 }
 
+// GetPropertyName returns the property name specific to Go.
+func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
+	return strings.Title(p.Name), nil
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {

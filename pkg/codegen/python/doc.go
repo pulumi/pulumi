@@ -19,6 +19,7 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -90,6 +91,12 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 	if err := mod.recordProperty(prop); err != nil {
 		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
 	}
+}
+
+// GetPropertyName is not implemented for Python because property names in Python must use
+// property case maps, which need to be generated at each provider's package-level.
+func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
+	return "", errors.New("this method is not supported for the python language")
 }
 
 // elementTypeToName returns the type name from an element type of the form

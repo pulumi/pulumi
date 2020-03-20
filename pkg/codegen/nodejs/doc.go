@@ -91,3 +91,8 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
 	return "Get" + resourceName + "Result"
 }
+
+// GetPropertyName returns the property name specific to NodeJS.
+func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
+	return p.Name, nil
+}

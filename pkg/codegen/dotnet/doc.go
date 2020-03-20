@@ -63,3 +63,20 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
 	return "Get" + resourceName + "Result"
 }
+
+// GetPropertyName uses the property's csharp-specific language info, if available, to generate
+// the property name. Otherwise, returns the PascalCase as the default.
+func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
+	propLangName := strings.Title(p.Name)
+
+	names := map[*schema.Property]string{}
+	properties := []*schema.Property{p}
+	if err := computePropertyNames(properties, names); err != nil {
+		return "", err
+	}
+
+	if name, ok := names[p]; ok {
+		return name, nil
+	}
+	return propLangName, nil
+}

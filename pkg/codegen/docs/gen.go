@@ -491,7 +491,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			optional: !prop.IsRequired,
 		}
 
-		propLangName := prop.Name
+		langDocHelper := getLanguageDocHelper(lang)
+		var propLangName string
 		switch lang {
 		case "python":
 			pyName := python.PyName(prop.Name)
@@ -511,8 +512,13 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 					propLangName = prop.Name
 				}
 			}
-		case "go", "csharp":
-			propLangName = strings.Title(prop.Name)
+		default:
+			name, err := langDocHelper.GetPropertyName(prop)
+			if err != nil {
+				panic(err)
+			}
+
+			propLangName = name
 		}
 
 		docProperties = append(docProperties, property{
