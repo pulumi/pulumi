@@ -15,8 +15,6 @@ import (
 
 // TestPolicy tests policy related commands work.
 func TestPolicy(t *testing.T) {
-	t.Skip("Temporarily skipping test that is causing unrelated tests to fail - pulumi/pulumi#4149")
-
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -31,16 +29,17 @@ func TestPolicy(t *testing.T) {
 
 	name, _ := e.RunCommand("pulumi", "whoami")
 	orgName := strings.TrimSpace(name)
+	testPolicyDir := "test_policy_pack"
 
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
-	e.ImportDirectory("test_policy_pack")
+	e.ImportDirectory(testPolicyDir)
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
-	e.RunCommand("pulumi", "policy", "publish", orgName)
-	e.RunCommand("pulumi", "policy", "publish", orgName)
+	publishPolicyPackWithVersion(e, orgName, `"0.0.1"`)
+	publishPolicyPackWithVersion(e, orgName, `"0.0.2"`)
 
 	// Check the policy ls commands.
 	packsOutput, _ := e.RunCommand("pulumi", "policy", "ls", "--json")
@@ -52,12 +51,7 @@ func TestPolicy(t *testing.T) {
 	assertJSON(e, groupsOutput, &groups)
 
 	// Enable, Disable and then Delete the Policy Pack.
-	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
-	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName), "--version=1")
-
-	// Enable and Disable without specifying the version number.
-	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "latest")
-	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName))
+	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "0.0.1")
 
 	// Enable Policy Pack with Configuration.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
@@ -65,7 +59,14 @@ func TestPolicy(t *testing.T) {
 	e.RunCommandExpectError("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
 		"--config-file=configs/invalid-config.json", "0.0.1")
 
-	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
+	// Disable Policy Pack specifying version.
+	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName), "--version=0.0.1")
+
+	// Enable and Disable without specifying the version number.
+	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "latest")
+	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName))
+
+	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "0.0.1")
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "all")
 }
 
@@ -86,4 +87,12 @@ func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
 	if err != nil {
 		e.Errorf("unable to unmarshal %v", out)
 	}
+}
+
+// publishPolicyPackWithVersion updates the version in package.json so we can
+// dynamically publish different versions for testing.
+func publishPolicyPackWithVersion(e *ptesting.Environment, orgName, version string) {
+	e.RunCommand(fmt.Sprintf(`sed 's/{ policyVersion }/%s/g'
+		test_policy_pack/package.json.tmpl | tee test_policy_pack/package.json`, version))
+	e.RunCommand("pulumi", "policy", "publish", orgName)
 }

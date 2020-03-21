@@ -1,6 +1,6 @@
 {
-    "s3-no-public-read":{
-        "enforcementLevel":"mandatory",
-        "message":"this message is invalid because it is way more than 10 characters......"
+    "s3-no-public-read": {
+        "enforcementLevel": "mandatory",
+        "message": "this message is invalid because it is way more than 10 characters......"
     }
 }

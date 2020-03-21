@@ -1,10 +1,9 @@
 {
-    "all":{
-        "enforcementLevel":"advisory"
+    "all": {
+        "enforcementLevel": "advisory"
     },
-    "s3-no-public-read":
-    {
-        "enforcementLevel":"mandatory",
-        "message":"test msg"
+    "s3-no-public-read": {
+        "enforcementLevel": "mandatory",
+        "message": "test msg"
     }
 }

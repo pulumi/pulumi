@@ -19,9 +19,9 @@ if (!packName) {
                 configSchema: {
                     properties: {
                         message: {
-                            "type": "string",
-                            "minLength": 2,
-                            "maxLength": 10,
+                            type: "string",
+                            minLength: 2,
+                            maxLength: 10,
                         },
                    },
                 },
