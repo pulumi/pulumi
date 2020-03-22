@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/secrets"
 	"github.com/pulumi/pulumi/pkg/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -51,7 +52,10 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+	return getProjectStackSecretsManager(s, ps)
+}
 
+func getProjectStackSecretsManager(s backend.Stack, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	sm, err := func() (secrets.Manager, error) {
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
