@@ -4,7 +4,6 @@ go 1.13
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.4.2
 	github.com/pulumi/pulumi/pkg => ../pkg
 	github.com/pulumi/pulumi/sdk => ../sdk
 	gocloud.dev => github.com/pulumi/go-cloud v0.18.1-0.20191119155701-6a8381d0793f
