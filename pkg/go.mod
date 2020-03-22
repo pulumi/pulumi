@@ -4,7 +4,6 @@ go 1.13
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.4.2
 	github.com/pulumi/pulumi/sdk => ../sdk
 	gocloud.dev => github.com/pulumi/go-cloud v0.18.1-0.20191119155701-6a8381d0793f
 )
@@ -17,11 +16,11 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.3.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
-	github.com/Sirupsen/logrus v0.0.0-00010101000000-000000000000 // indirect
+	github.com/Sirupsen/logrus v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.29.27
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/djherbis/times v1.2.0
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang/protobuf v1.3.5
 	github.com/google/go-querystring v1.0.0
@@ -32,9 +31,11 @@ require (
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
+	github.com/onsi/ginkgo v1.12.0 // indirect
+	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/sdk v0.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi/sdk v0.0.0-20200321193742-f095e64d0f8e
 	github.com/rjeczalik/notify v0.9.2
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.1.0
@@ -55,6 +56,8 @@ require (
 	google.golang.org/genproto v0.0.0-20200318110522-7735f76e9fa5
 	google.golang.org/grpc v1.28.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.8
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
