@@ -62,13 +62,13 @@ build_script:
 - cmd: >-
     set GO111MODULE=on
 
-    pushd . && cd sdk && go mod tidy && go mod vendor && popd
+    pushd . && cd sdk && go mod tidy && go mod download && popd
 
-    pushd . && cd pkg && go mod tidy && go mod vendor && popd
+    pushd . && cd pkg && go mod tidy && go mod download && popd
 
-    pushd . && cd examples && go mod tidy && go mod vendor && popd
+    pushd . && cd examples && go mod tidy && go mod download && popd
 
-    pushd . && cd tests && go mod tidy && go mod vendor && popd
+    pushd . && cd tests && go mod tidy && go mod download && popd
 
     if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj )
 test: off

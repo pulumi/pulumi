@@ -13,22 +13,22 @@ ensure::
 	$(call STEP_MESSAGE)
 ifeq ($(NOPROXY), true)
 	@echo "cd sdk && GO111MODULE=on go mod tidy"; cd sdk && GO111MODULE=on go mod tidy
-	@echo "cd sdk && GO111MODULE=on go mod vendor"; cd sdk && GO111MODULE=on go mod vendor
+	@echo "cd sdk && GO111MODULE=on go mod download"; cd sdk && GO111MODULE=on go mod download
 	@echo "cd pkg && GO111MODULE=on go mod tidy"; cd pkg && GO111MODULE=on go mod tidy
-	@echo "cd pkg && GO111MODULE=on go mod vendor"; cd pkg && GO111MODULE=on go mod vendor
+	@echo "cd pkg && GO111MODULE=on go mod download"; cd pkg && GO111MODULE=on go mod download
 	@echo "cd examples && GO111MODULE=on go mod tidy"; cd examples && GO111MODULE=on go mod tidy
-	@echo "cd examples && GO111MODULE=on go mod vendor"; cd examples && GO111MODULE=on go mod vendor
+	@echo "cd examples && GO111MODULE=on go mod download"; cd examples && GO111MODULE=on go mod download
 	@echo "cd tests && GO111MODULE=on go mod tidy"; cd tests && GO111MODULE=on go mod tidy
-	@echo "cd tests && GO111MODULE=on go mod vendor"; cd tests && GO111MODULE=on go mod vendor
+	@echo "cd tests && GO111MODULE=on go mod download"; cd tests && GO111MODULE=on go mod download
 else
 	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
 	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
 	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd examples && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
 	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
+	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
 endif
 
 
