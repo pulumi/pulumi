@@ -603,6 +603,16 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 	}
 
+	// Set any defined aliases.
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
+		for _, alias := range r.Aliases {
+			fmt.Fprintf(w, "\t\t{Type: pulumi.String(%q)},\n", *alias.Type)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
+	}
+
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
 	fmt.Fprintf(w, "\terr := ctx.RegisterResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
