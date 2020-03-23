@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -702,21 +701,4 @@ func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOpt
 		AutoApprove: yes,
 		SkipPreview: skipPreview,
 	}, nil
-}
-
-// loadJSONConfigFile loads file with json configuration data and unmarshals into a map[string]*json.RawMessage object.
-func loadJSONConfigFile(filePath string) (map[string]*json.RawMessage, error) {
-	b, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading JSON config file")
-	}
-
-	// Unmarshal the JSON data to config object
-	var config map[string]*json.RawMessage
-	err = json.Unmarshal(b, &config)
-	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling JSON")
-	}
-
-	return config, nil
 }

@@ -16,7 +16,9 @@ package cmd
 
 import (
 	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/backend"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +27,7 @@ const latestKeyword = "latest"
 
 type policyEnableArgs struct {
 	policyGroup string
-	configFile  string
+	config      string
 }
 
 func newPolicyEnableCmd() *cobra.Command {
@@ -52,8 +54,9 @@ func newPolicyEnableCmd() *cobra.Command {
 
 			// Load the configuration from the user-specified JSON file into config object.
 			var config map[string]*json.RawMessage
-			if args.configFile != "" {
-				config, err = loadJSONConfigFile(args.configFile)
+			if args.config != "" {
+				// config, err = loadJSONConfigFile(args.configFile)
+				config, err = loadPolicyConfigFromFile(args.config)
 				if err != nil {
 					return err
 				}
@@ -74,8 +77,27 @@ func newPolicyEnableCmd() *cobra.Command {
 		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
 
 	cmd.PersistentFlags().StringVar(
-		&args.configFile, "config-file", "",
+		&args.config, "config", "",
 		"The file path for the policy pack configuration file")
 
 	return cmd
+}
+
+func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) {
+	analyzerPolicyConfig, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
+	config := map[string]*json.RawMessage{}
+	for k, v := range analyzerPolicyConfig {
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		raw := json.RawMessage(bytes)
+		config[k] = &raw
+	}
+	return config, nil
 }
