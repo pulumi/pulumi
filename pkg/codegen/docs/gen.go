@@ -107,7 +107,8 @@ type docNestedType struct {
 
 // propertyType represents the type of a property.
 type propertyType struct {
-	Name string
+	DisplayName string
+	Name        string
 	// Link can be a link to an anchor tag on the same
 	// page, or to another page/site.
 	Link string
@@ -258,15 +259,31 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		href = "#" + lower(tokenName)
 	}
 
+	// Strip the namespace/module prefix for the type's display name.
+	var parts []string
+	var displayName string
+	if lang == "csharp" {
+		csharpNS := fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
+		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
+	} else {
+		parts = strings.Split(langTypeString, ".")
+		displayName = parts[len(parts)-1]
+	}
+
+	// If word-breaks need to be inserted, then the type string
+	// should be html-encoded first if the language is C# in order
+	//  to avoid confusing the Hugo rendering where the word-break
+	// tags are inserted.
 	if insertWordBreaks {
 		if lang == "csharp" {
-			langTypeString = html.EscapeString(langTypeString)
+			displayName = html.EscapeString(displayName)
 		}
-		langTypeString = wbr(langTypeString)
+		displayName = wbr(displayName)
 	}
 	return propertyType{
-		Link: href,
-		Name: langTypeString,
+		Name:        langTypeString,
+		DisplayName: displayName,
+		Link:        href,
 	}
 }
 
@@ -371,10 +388,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	optionsType := "Pulumi.CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "Pulumi.ResourceOptions"
-	}
-
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
 		{
@@ -495,7 +508,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			optional: !prop.IsRequired,
 		}
 
-		propLangName := prop.Name
+		langDocHelper := getLanguageDocHelper(lang)
+		var propLangName string
 		switch lang {
 		case "python":
 			pyName := python.PyName(prop.Name)
@@ -515,8 +529,13 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 					propLangName = prop.Name
 				}
 			}
-		case "go", "csharp":
-			propLangName = strings.Title(prop.Name)
+		default:
+			name, err := langDocHelper.GetPropertyName(prop)
+			if err != nil {
+				panic(err)
+			}
+
+			propLangName = name
 		}
 
 		docProperties = append(docProperties, property{
@@ -605,9 +624,12 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
+		parts := strings.Split(resourceTypeName, ".")
+		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
-			Name: resourceDisplayName,
-			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
+			Name:        resourceDisplayName,
+			DisplayName: displayName,
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
 		}
 	}
 
