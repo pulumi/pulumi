@@ -259,13 +259,26 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		href = "#" + lower(tokenName)
 	}
 
-	parts := strings.Split(langTypeString, ".")
-	displayName := parts[len(parts)-1]
+	// Strip the namespace/module prefix for the type's display name.
+	var parts []string
+	var displayName string
+	if lang == "csharp" {
+		csharpNS := fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
+		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
+	} else {
+		parts = strings.Split(langTypeString, ".")
+		displayName = parts[len(parts)-1]
+	}
+
+	// If word-breaks need to be inserted, then the type string
+	// should be html-encoded first if the language is C# in order
+	//  to avoid confusing the Hugo rendering where the word-break
+	// tags are inserted.
 	if insertWordBreaks {
 		if lang == "csharp" {
-			langTypeString = html.EscapeString(langTypeString)
+			displayName = html.EscapeString(displayName)
 		}
-		langTypeString = wbr(langTypeString)
+		displayName = wbr(displayName)
 	}
 	return propertyType{
 		Name:        langTypeString,
