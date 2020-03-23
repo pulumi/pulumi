@@ -85,9 +85,12 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
+		parts := strings.Split(resultTypeName, ".")
+		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
-			Name: resultTypeName,
-			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resultTypeName),
+			Name:        resultTypeName,
+			DisplayName: displayName,
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resultTypeName),
 		}
 	}
 

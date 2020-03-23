@@ -107,7 +107,8 @@ type docNestedType struct {
 
 // propertyType represents the type of a property.
 type propertyType struct {
-	Name string
+	DisplayName string
+	Name        string
 	// Link can be a link to an anchor tag on the same
 	// page, or to another page/site.
 	Link string
@@ -258,6 +259,8 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		href = "#" + lower(tokenName)
 	}
 
+	parts := strings.Split(langTypeString, ".")
+	displayName := parts[len(parts)-1]
 	if insertWordBreaks {
 		if lang == "csharp" {
 			langTypeString = html.EscapeString(langTypeString)
@@ -265,8 +268,9 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		langTypeString = wbr(langTypeString)
 	}
 	return propertyType{
-		Link: href,
-		Name: langTypeString,
+		Name:        langTypeString,
+		DisplayName: displayName,
+		Link:        href,
 	}
 }
 
@@ -607,9 +611,12 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
+		parts := strings.Split(resourceTypeName, ".")
+		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
-			Name: resourceDisplayName,
-			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
+			Name:        resourceDisplayName,
+			DisplayName: displayName,
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
 		}
 	}
 
