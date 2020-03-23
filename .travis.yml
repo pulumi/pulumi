@@ -8,7 +8,7 @@ matrix:
     env: NODE_VERSION=v10.15.3
   - if: type = cron
     os: linux
-    env: NODE_VERSION=v8.16.0
+    env: NODE_VERSION=v13.11.0
 language: go
 go: 1.13.x
 sudo: true
