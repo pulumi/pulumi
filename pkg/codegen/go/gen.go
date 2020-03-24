@@ -603,6 +603,27 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 	}
 
+	// Set any defined aliases.
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
+		for _, alias := range r.Aliases {
+			s := "\t\t{\n"
+			if alias.Name != nil {
+				s += fmt.Sprintf("\t\t\tName: pulumi.String(%q),\n", *alias.Name)
+			}
+			if alias.Project != nil {
+				s += fmt.Sprintf("\t\t\tProject: pulumi.String(%q),\n", *alias.Project)
+			}
+			if alias.Type != nil {
+				s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", *alias.Type)
+			}
+			s += "\t\t},\n"
+			fmt.Fprint(w, s)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
+	}
+
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
 	fmt.Fprintf(w, "\terr := ctx.RegisterResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
