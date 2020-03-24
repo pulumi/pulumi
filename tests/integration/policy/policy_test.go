@@ -14,7 +14,7 @@ import (
 )
 
 // TestPolicy tests policy related commands work.
-func TestPolicy(t *testing.T) {
+func TestPolicyVersion0_4_1_dev(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -29,11 +29,9 @@ func TestPolicy(t *testing.T) {
 
 	name, _ := e.RunCommand("pulumi", "whoami")
 	orgName := strings.TrimSpace(name)
-	testPolicyDir := "test_policy_pack"
-
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
-	e.ImportDirectory(testPolicyDir)
+	e.ImportDirectory("test_policy_pack_v0-4-1-dev")
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 
