@@ -13,8 +13,9 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 )
 
-// TestPolicy tests policy related commands work.
-func TestPolicyVersion0_4_1_dev(t *testing.T) {
+// TestPolicyWithConfig runs integration tests against the policy pack in the policy_pack_w_config
+// directory using version 0.4.1-dev of the pulumi/policy sdk.
+func TestPolicyWithConfig(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -31,7 +32,7 @@ func TestPolicyVersion0_4_1_dev(t *testing.T) {
 	orgName := strings.TrimSpace(name)
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
-	e.ImportDirectory("policy_pack_v0-4-1-dev")
+	e.ImportDirectory("policy_pack_w_config")
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 
@@ -68,7 +69,9 @@ func TestPolicyVersion0_4_1_dev(t *testing.T) {
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "all")
 }
 
-func TestPolicyVersion0_2_0(t *testing.T) {
+// TestPolicyWithoutConfig runs integration tests against the policy pack in the policy_pack_w_config
+// directory. This tests against version 0.2.0 of the pulumi/policy sdk, prior to policy config being supported.
+func TestPolicyWithoutConfig(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -86,7 +89,7 @@ func TestPolicyVersion0_2_0(t *testing.T) {
 
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
-	e.ImportDirectory("policy_pack_v0-2-0")
+	e.ImportDirectory("policy_pack_wo_config")
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 

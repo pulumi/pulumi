@@ -56,7 +56,6 @@ func newPolicyEnableCmd() *cobra.Command {
 			// Load the configuration from the user-specified JSON file into config object.
 			var config map[string]*json.RawMessage
 			if args.config != "" {
-				// config, err = loadJSONConfigFile(args.configFile)
 				config, err = loadPolicyConfigFromFile(args.config)
 				if err != nil {
 					return err
@@ -79,7 +78,7 @@ func newPolicyEnableCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&args.config, "config", "",
-		"The file path for the policy pack configuration file")
+		"The file path for the Policy Pack configuration file")
 
 	return cmd
 }
@@ -91,7 +90,7 @@ func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) 
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
-	config := map[string]*json.RawMessage{}
+	config := make(map[string]*json.RawMessage)
 	for k, v := range analyzerPolicyConfigMap {
 		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
