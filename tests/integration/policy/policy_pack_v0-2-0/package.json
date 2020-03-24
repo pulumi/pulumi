@@ -1,0 +1,14 @@
+{
+    "name": "aws-policy",
+    "version": "0.0.1",
+    "dependencies": {
+        "@pulumi/pulumi": "^0.17.28",
+        "@pulumi/aws": "0.18.16",
+        "@pulumi/policy": "^0.2.0"
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^10.12.7",
+        "tslint": "^5.11.0"
+    }
+}

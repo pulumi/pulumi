@@ -31,7 +31,7 @@ func TestPolicyVersion0_4_1_dev(t *testing.T) {
 	orgName := strings.TrimSpace(name)
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
-	e.ImportDirectory("test_policy_pack_v0-4-1-dev")
+	e.ImportDirectory("policy_pack_v0-4-1-dev")
 	e.RunCommand("yarn", "install")
 	os.Setenv("TEST_POLICY_PACK", policyPackName)
 
@@ -68,6 +68,53 @@ func TestPolicyVersion0_4_1_dev(t *testing.T) {
 	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "all")
 }
 
+func TestPolicyVersion0_2_0(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Confirm we have credentials.
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Fatal("PULUMI_ACCESS_TOKEN not found, aborting tests.")
+	}
+
+	name, _ := e.RunCommand("pulumi", "whoami")
+	orgName := strings.TrimSpace(name)
+
+	// Pack and push a Policy Pack for the organization.
+	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
+	e.ImportDirectory("policy_pack_v0-2-0")
+	e.RunCommand("yarn", "install")
+	os.Setenv("TEST_POLICY_PACK", policyPackName)
+
+	// Publish the Policy Pack twice.
+	e.RunCommand("pulumi", "policy", "publish", orgName)
+	e.RunCommand("pulumi", "policy", "publish", orgName)
+
+	// Check the policy ls commands.
+	packsOutput, _ := e.RunCommand("pulumi", "policy", "ls", "--json")
+	var packs []policyPacksJSON
+	assertJSON(e, packsOutput, &packs)
+
+	groupsOutput, _ := e.RunCommand("pulumi", "policy", "group", "ls", "--json")
+	var groups []policyGroupsJSON
+	assertJSON(e, groupsOutput, &groups)
+
+	// Enable, Disable and then Delete the Policy Pack.
+	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
+	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName), "--version=1")
+
+	// Enable and Disable without specifying the version number.
+	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "latest")
+	e.RunCommand("pulumi", "policy", "disable", fmt.Sprintf("%s/%s", orgName, policyPackName))
+
+	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "1")
+	e.RunCommand("pulumi", "policy", "rm", fmt.Sprintf("%s/%s", orgName, policyPackName), "all")
+}
+
 type policyPacksJSON struct {
 	Name     string   `json:"name"`
 	Versions []string `json:"versions"`
@@ -90,11 +137,7 @@ func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
 // publishPolicyPackWithVersion updates the version in package.json so we can
 // dynamically publish different versions for testing.
 func publishPolicyPackWithVersion(e *ptesting.Environment, orgName, version string) {
-	setPolicyPackVersion(e, version)
-	e.RunCommand("pulumi", "policy", "publish", orgName)
-}
-
-func setPolicyPackVersion(e *ptesting.Environment, version string) {
 	cmd := fmt.Sprintf(`sed 's/{ policyVersion }/%s/g' package.json.tmpl | tee package.json`, version)
 	e.RunCommand("bash", "-c", cmd)
+	e.RunCommand("pulumi", "policy", "publish", orgName)
 }
