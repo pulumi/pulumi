@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -84,20 +85,37 @@ func newPolicyEnableCmd() *cobra.Command {
 }
 
 func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) {
-	analyzerPolicyConfig, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
+	analyzerPolicyConfigMap, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
 	config := map[string]*json.RawMessage{}
-	for k, v := range analyzerPolicyConfig {
-		bytes, err := json.Marshal(v)
+	for k, v := range analyzerPolicyConfigMap {
+		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
 			return nil, err
 		}
-		raw := json.RawMessage(bytes)
-		config[k] = &raw
+		config[k] = raw
 	}
 	return config, nil
+}
+
+// marshalAnalyzerPolicyConfig converts type plugin.AnalyzerPolicyConfig to a format
+// that is structured the way the API service is expecting.
+func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessage, error) {
+	m := make(map[string]interface{})
+	for k, v := range c.Properties {
+		m[k] = v
+	}
+	if c.EnforcementLevel != "" {
+		m["enforcementLevel"] = c.EnforcementLevel
+	}
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	raw := json.RawMessage(bytes)
+	return &raw, nil
 }

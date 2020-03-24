@@ -92,7 +92,11 @@ func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
 // publishPolicyPackWithVersion updates the version in package.json so we can
 // dynamically publish different versions for testing.
 func publishPolicyPackWithVersion(e *ptesting.Environment, orgName, version string) {
-	e.RunCommand(fmt.Sprintf(`sed 's/{ policyVersion }/%s/g'
-		test_policy_pack/package.json.tmpl | tee test_policy_pack/package.json`, version))
+	setPolicyPackVersion(e, version)
 	e.RunCommand("pulumi", "policy", "publish", orgName)
+}
+
+func setPolicyPackVersion(e *ptesting.Environment, version string) {
+	cmd := fmt.Sprintf(`sed 's/{ policyVersion }/%s/g' package.json.tmpl | tee package.json`, version)
+	e.RunCommand("bash", "-c", cmd)
 }
