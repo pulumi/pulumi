@@ -30,3 +30,12 @@ type DocLanguageHelper interface {
 	// an existing resource.
 	GetResourceFunctionResultName(resourceName string) string
 }
+
+// StripNonRelevantExamples strips the non-relevant language snippets from a resource's description.
+func StripNonRelevantExamples(resourceDescription string, lang string) string {
+	// Initialize a new string builder with the initial value set to the resourceDescription.
+	// Strip the outer examples short code.
+	// For each example short code, only keep the code snippet for the language that was passed-in.
+	// Return the String() from the string builder.
+	return ""
+}
