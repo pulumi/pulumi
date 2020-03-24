@@ -10,11 +10,15 @@ CHANGELOG
 
 - Add missing builtin `MapArray` to Go SDK.
   [#4144](https://github.com/pulumi/pulumi/pull/4144)
+
 - Add aliases to Go SDK codegen pkg.
   [#4157](https://github.com/pulumi/pulumi/pull/4157)
 
 - Discontinue testing on Node 8 (which has been end-of-life since January 2020), and start testing on Node 13.
   [#4156](https://github.com/pulumi/pulumi/pull/4156)
+
+- Add support for enabling Policy Packs with configuration.
+  [#3756](https://github.com/pulumi/pulumi/pull/4127)
 
 ## 1.13.0 (2020-03-18)
 - Add support for plugin acquisition for Go programs
