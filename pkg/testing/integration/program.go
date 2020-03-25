@@ -1731,7 +1731,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
-		dep := filepath.Join(gopath, "src", pkg)
+		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
+		dep := filepath.Join(depParts...)
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
