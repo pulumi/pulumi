@@ -1728,6 +1728,30 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
+	// initialize a go.mod for dependency resolution
+	err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	pulumiSdkPath := filepath.Join(gopath, "src", "github.com", "pulumi", "pulumi", "sdk")
+	editStr := fmt.Sprintf("github.com/pulumi/pulumi/sdk=%s", pulumiSdkPath)
+
+	err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
+	if err != nil {
+		return err
+	}
+
+	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
+	if err != nil {
+		return err
+	}
+
 	// We only need to run dep-ensure if there is a Gopkg.toml file
 	_, err = os.Stat(filepath.Join(cwd, "Gopkg.toml"))
 	if err == nil {
