@@ -2,8 +2,8 @@
     "name": "aws-policy",
     "version": "0.0.1",
     "dependencies": {
-        "@pulumi/pulumi": "^0.17.28",
-        "@pulumi/aws": "0.18.16",
+        "@pulumi/pulumi": "^1.0.0",
+        "@pulumi/aws": "^1.0.0",
         "@pulumi/policy": "^0.2.0"
     },
     "devDependencies": {
