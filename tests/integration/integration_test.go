@@ -91,7 +91,10 @@ func TestEmptyGo(t *testing.T) {
 // TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
 func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "gorun"),
+		Dir: filepath.Join("empty", "gorun"),
+		Dependencies: []string{
+			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+		},
 		Quick: true,
 	})
 }
@@ -99,7 +102,10 @@ func TestEmptyGoRun(t *testing.T) {
 // TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
 func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "gorun_main"),
+		Dir: filepath.Join("empty", "gorun_main"),
+		Dependencies: []string{
+			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+		},
 		Quick: true,
 	})
 }
