@@ -88,7 +88,7 @@ func TestGoAliases(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(d, "step1"),
 				Dependencies: []string{
-					filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+					"github.com/pulumi/pulumi/sdk",
 				},
 				Quick: true,
 				EditDirs: []integration.EditDir{

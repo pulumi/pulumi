@@ -82,7 +82,7 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
 		Dependencies: []string{
-			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+			"github.com/pulumi/pulumi/sdk",
 		},
 		Quick: true,
 	})
@@ -93,7 +93,7 @@ func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun"),
 		Dependencies: []string{
-			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+			"github.com/pulumi/pulumi/sdk",
 		},
 		Quick: true,
 	})
@@ -104,7 +104,7 @@ func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun_main"),
 		Dependencies: []string{
-			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+			"github.com/pulumi/pulumi/sdk",
 		},
 		Quick: true,
 	})
@@ -995,7 +995,7 @@ func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "go"),
 		Dependencies: []string{
-			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+			"github.com/pulumi/pulumi/sdk",
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -1270,7 +1270,7 @@ func TestStackReferenceGo(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference", "go"),
 		Dependencies: []string{
-			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+			"github.com/pulumi/pulumi/sdk",
 		},
 		Quick: true,
 		Config: map[string]string{
