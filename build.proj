@@ -67,7 +67,8 @@
     <ItemGroup>
       <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" />
     </ItemGroup>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)" />
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)"
+          WorkingDirectory="$(SdkDirectory)"/>/>
   </Target>
 
   <Target Name="DotNetInstallPlugin">
@@ -78,7 +79,8 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)"
-      EnvironmentVariables="GOBIN=$(PulumiBin)"/>
+      EnvironmentVariables="GOBIN=$(PulumiBin)"
+      WorkingDirectory="$(SdkDirectory)"/>/>
   </Target>
   
   <Target Name="CopyNugetPackages">
