@@ -35,7 +35,6 @@ require (
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi v1.13.1-0.20200324203036-d0f5e35b5042
 	github.com/pulumi/pulumi/sdk v0.0.0-20200321193742-f095e64d0f8e
 	github.com/rjeczalik/notify v0.9.2
 	github.com/satori/go.uuid v1.2.0
