@@ -2,7 +2,7 @@ PROJECT_NAME := Pulumi SDK
 SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
-PROJECT         := github.com/pulumi/pulumi
+PROJECT         := github.com/pulumi/pulumi/pkg/cmd/pulumi
 PROJECT_PKGS    := $(shell go list ./pkg/... | grep -v /vendor/)
 EXAMPLES_PKGS   := $(shell go list ./examples/ | grep -v tests/templates | grep -v /vendor/)
 TESTS_PKGS      := $(shell go list ./tests/... | grep -v tests/templates | grep -v /vendor/)
