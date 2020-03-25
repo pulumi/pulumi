@@ -19,13 +19,11 @@ require (
 	github.com/Sirupsen/logrus v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.29.27
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cpuguy83/go-md2man v1.0.8 // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang/protobuf v1.3.5
 	github.com/google/go-querystring v1.0.0
-	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl/v2 v2.3.0
@@ -37,10 +35,9 @@ require (
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi v1.13.1-0.20200324203036-d0f5e35b5042 // indirect
+	github.com/pulumi/pulumi v1.13.1-0.20200324203036-d0f5e35b5042
 	github.com/pulumi/pulumi/sdk v0.0.0-20200321193742-f095e64d0f8e
 	github.com/rjeczalik/notify v0.9.2
-	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.1.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
