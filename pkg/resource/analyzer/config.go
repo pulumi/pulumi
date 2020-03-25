@@ -192,6 +192,38 @@ func validatePolicyConfig(schema plugin.AnalyzerPolicyConfigSchema, config map[s
 	return errors, nil
 }
 
+// ValidatePolicyPackConfig validates a policy pack configuration against the specified config schema.
+func ValidatePolicyPackConfig(schemaMap map[string]apitype.PolicyConfigSchema,
+	config map[string]*json.RawMessage) (err error) {
+	for property, schema := range schemaMap {
+		schemaLoader := gojsonschema.NewGoLoader(schema)
+
+		// If the config for this property is nil, we override it with an empty
+		// json struct to ensure the config is not missing any required properties.
+		propertyConfig := config[property]
+		if propertyConfig == nil {
+			temp := json.RawMessage([]byte(`{}`))
+			propertyConfig = &temp
+		}
+		configLoader := gojsonschema.NewBytesLoader(*propertyConfig)
+		result, err := gojsonschema.Validate(schemaLoader, configLoader)
+		if err != nil {
+			return errors.Wrap(err, "unable to validate schema")
+		}
+
+		// If the result is invalid, we need to gather the errors to return to the user.
+		if !result.Valid() {
+			resultErrs := make([]string, len(result.Errors()))
+			for i, e := range result.Errors() {
+				resultErrs[i] = e.Description()
+			}
+			msg := fmt.Sprintf("policy pack configuration is invalid: %s", strings.Join(resultErrs, ", "))
+			return errors.New(msg)
+		}
+	}
+	return err
+}
+
 func convertSchema(schema plugin.AnalyzerPolicyConfigSchema) plugin.JSONSchema {
 	result := plugin.JSONSchema{}
 	result["type"] = "object"

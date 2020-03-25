@@ -144,6 +144,12 @@ func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag
 		"/api/orgs/%s/policypacks/%s/versions/%s/complete", orgName, policyPackName, versionTag)
 }
 
+// getPolicyPackConfigSchema returns the policy pack configuration schema.
+func getPolicyPackConfigSchema(orgName, policyPackName string, versionTag string) string {
+	return fmt.Sprintf(
+		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
+}
+
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the update root.
 func getUpdatePath(update UpdateIdentifier, components ...string) string {
@@ -685,6 +691,18 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 		return errors.Wrapf(err, "Enable policy pack failed")
 	}
 	return nil
+}
+
+// GetPolicyPackSchema gets Policy Pack config schema.
+func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
+	policyPackName, versionTag string) (*apitype.GetPolicyPackConfigSchemaResponse, error) {
+	var resp apitype.GetPolicyPackConfigSchemaResponse
+	err := pc.restCall(ctx, http.MethodGet,
+		getPolicyPackConfigSchema(orgName, policyPackName, versionTag), nil, nil, &resp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Retrieving policy pack config schema failed")
+	}
+	return &resp, nil
 }
 
 // DisablePolicyPack disables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
