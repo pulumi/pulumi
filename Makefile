@@ -61,8 +61,8 @@ test_fast::
 
 test_all::
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd examples && $(GO_TEST) -v -p=1 ${EXAMPLES_PKGS}
-	cd tests && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
+	cd sdk && $(GO_TEST) -v -p=1 ${EXAMPLES_PKGS}
+	cd sdk && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
