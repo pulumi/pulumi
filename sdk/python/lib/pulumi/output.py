@@ -237,8 +237,8 @@ class Output(Generic[T]):
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
         """
-        Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values as necessary
-        given the type.
+        Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values through nested
+        lists and dicts.  Nested objects of other types (including Resources) are not deeply unwrapped.
 
         :param Input[T] val: An Input to be converted to an Output.
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
