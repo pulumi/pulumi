@@ -67,22 +67,22 @@ jobs:
         pushd .
         cd sdk
         go mod tidy
-        go mod vendor
+        go mod download
         popd
         pushd .
         cd pkg
         go mod tidy
-        go mod vendor
+        go mod download
         popd
         pushd .
         cd examples
         go mod tidy
-        go mod vendor
+        go mod download
         popd
         pushd .
         cd tests
         go mod tidy
-        go mod vendor
+        go mod download
         popd
     - name: Build Pulumi
       run: |

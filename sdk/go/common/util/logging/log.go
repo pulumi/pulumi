@@ -29,7 +29,7 @@ import (
 	"strings"
 	"sync"
 
-	glog "k8s.io/klog"
+	"github.com/golang/glog"
 )
 
 type Filter interface {
@@ -69,9 +69,6 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	LogToStderr = logToStderr
 	Verbose = verbose
 	LogFlow = logFlow
-
-	// TODO: https://github.com/pulumi/pulumi/issues/4121
-	glog.InitFlags(nil)
 
 	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
 	// we use cobra. In order to accommodate this, we call flag.CommandLine.Parse() with an empty array and

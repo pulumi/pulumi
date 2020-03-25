@@ -45,7 +45,7 @@ require (
 	github.com/spf13/cobra v0.0.6
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zclconf/go-cty v1.2.0
+	github.com/zclconf/go-cty v1.3.1
 	gocloud.dev v0.19.0
 	gocloud.dev/secrets/hashivault v0.19.0
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
