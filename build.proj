@@ -3,6 +3,8 @@
   <PropertyGroup>
     <RepoRootDirectory>$(MSBuildThisFileDirectory)</RepoRootDirectory>
     <PkgDirectory>$(RepoRootDirectory)\pkg\</PkgDirectory>
+    <ExamplesDirectory>$(RepoRootDirectory)\examples\</ExamplesDirectory>
+    <TestsDirectory>$(RepoRootDirectory)\tests\</TestsDirectory>
     <SdkDirectory>$(RepoRootDirectory)\sdk\</SdkDirectory>
     <NodeJSSdkDirectory>$(SdkDirectory)\nodejs\</NodeJSSdkDirectory>
     <DotNetSdkDirectory>$(SdkDirectory)\dotnet\</DotNetSdkDirectory>
@@ -288,27 +290,27 @@
 
   <!-- Tests -->
   <Target Name="Tests">
-    <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\pkg\backend\..."
+    <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\backend\..."
           IgnoreExitCode="true"
-          WorkingDirectory="$(RepoRootDirectory)">
+          WorkingDirectory="$(PkgDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
     </Exec>
 
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\examples"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\..."
           IgnoreExitCode="true"
-          WorkingDirectory="$(RepoRootDirectory)">
+          WorkingDirectory="$(ExamplesDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
     </Exec>
 
     <Error Text="examples tests (.\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\tests\integration"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\integration"
           IgnoreExitCode="true"
-          WorkingDirectory="$(RepoRootDirectory)">
+          WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />
     </Exec>
 
