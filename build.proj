@@ -299,7 +299,7 @@
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) ..\examples\..."
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) $(ExamplesDirectory)"
           IgnoreExitCode="true"
           WorkingDirectory="$(SdkDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
