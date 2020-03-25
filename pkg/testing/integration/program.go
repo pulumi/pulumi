@@ -1728,10 +1728,13 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// initialize a go.mod for dependency resolution
-	err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
+	// initialize a go.mod for dependency resolution if one doesn't exist
+	_, err = os.Stat(filepath.Join(cwd, "go.mod"))
 	if err != nil {
-		return err
+		err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
