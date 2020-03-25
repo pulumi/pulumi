@@ -80,7 +80,10 @@ func TestEmptyPython(t *testing.T) {
 // TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "go"),
+		Dir: filepath.Join("empty", "go"),
+		Dependencies: []string{
+			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+		},
 		Quick: true,
 	})
 }
@@ -984,7 +987,10 @@ func TestConfigBasicPython(t *testing.T) {
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "go"),
+		Dir: filepath.Join("config_basic", "go"),
+		Dependencies: []string{
+			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+		},
 		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
@@ -1256,7 +1262,10 @@ func TestStackReferenceGo(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir:   filepath.Join("stack_reference", "go"),
+		Dir: filepath.Join("stack_reference", "go"),
+		Dependencies: []string{
+			filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+		},
 		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),

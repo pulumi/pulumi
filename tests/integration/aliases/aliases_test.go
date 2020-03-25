@@ -86,9 +86,11 @@ func TestGoAliases(t *testing.T) {
 		d := filepath.Join("go", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          filepath.Join(d, "step1"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
+				Dir: filepath.Join(d, "step1"),
+				Dependencies: []string{
+					filepath.Join("github.com", "pulumi", "pulumi", "sdk"),
+				},
+				Quick: true,
 				EditDirs: []integration.EditDir{
 					{
 						Dir:             filepath.Join(d, "step2"),
