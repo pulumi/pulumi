@@ -1740,11 +1740,15 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	pulumiSdkPath := filepath.Join(gopath, "src", "github.com", "pulumi", "pulumi", "sdk")
-	editStr := fmt.Sprintf("github.com/pulumi/pulumi/sdk=%s", pulumiSdkPath)
 
-	err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
-	if err != nil {
-		return err
+	// if we have a local pulumi enlistment, test against that
+	_, err = os.Stat(pulumiSdkPath)
+	if err == nil {
+		editStr := fmt.Sprintf("github.com/pulumi/pulumi/sdk=%s", pulumiSdkPath)
+		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
