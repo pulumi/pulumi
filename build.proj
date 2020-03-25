@@ -299,18 +299,18 @@
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) $(ExamplesDirectory)"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) ."
           IgnoreExitCode="true"
-          WorkingDirectory="$(SdkDirectory)">
+          WorkingDirectory="$(ExamplesDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
     </Exec>
 
     <Error Text="examples tests (.\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) ..\tests\integration"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\integration"
           IgnoreExitCode="true"
-          WorkingDirectory="$(SdkDirectory)">
+          WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />
     </Exec>
 
