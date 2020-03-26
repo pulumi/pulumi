@@ -176,12 +176,19 @@ func StripNonRelevantExamples(description string, lang string) string {
 	// Within the examples section, identify each example.
 	builder := strings.Builder{}
 	examples := getExamplesForLang(*examplesContent, lang)
-	if len(examples) > 0 {
-		builder.WriteString("## Example Usage\n")
+	numExamples := len(examples)
+	if numExamples > 0 {
+		builder.WriteString("## Example Usage\n\n")
 	}
-	for _, ex := range examples {
-		builder.WriteString(ex.Title + "\n")
+	for i, ex := range examples {
+		builder.WriteString(ex.Title + "\n\n")
 		builder.WriteString(ex.Snippet + "\n")
+
+		// Print an extra new-line character as long as this is not
+		// the last example.
+		if i != numExamples-1 {
+			builder.WriteString("\n")
+		}
 	}
 
 	return strings.ReplaceAll(newDescription, "{{ .Examples }}", builder.String())
