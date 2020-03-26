@@ -1,10 +1,5 @@
 on:
-  push:
-    branches:
-      - master
-      - 'feature-.*'
-      - 'features/.*'
-    tags:
+  pull_request:
 
 jobs:
   build:
@@ -94,7 +89,3 @@ jobs:
       run: |
         cd src\github.com\${{ github.repository }}
         dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-    - name: Publish Binary
-      run: |
-        cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
