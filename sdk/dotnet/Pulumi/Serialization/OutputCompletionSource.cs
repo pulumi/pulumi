@@ -63,7 +63,7 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+                        let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
                         select (property, attrName: attr?.Name);
 

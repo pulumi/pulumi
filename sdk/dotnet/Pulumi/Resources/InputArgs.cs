@@ -23,13 +23,13 @@ namespace Pulumi
         {
             var fieldQuery =
                 from field in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                let attr = field.GetCustomAttribute<Pulumi.InputAttribute>()
+                let attr = field.GetCustomAttribute<InputAttribute>()
                 where attr != null
                 select (attr, memberName: field.Name, memberType: field.FieldType, getValue: (Func<object, object?>)field.GetValue);
 
             var propQuery =
                 from prop in this.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                let attr = prop.GetCustomAttribute<Pulumi.InputAttribute>()
+                let attr = prop.GetCustomAttribute<InputAttribute>()
                 where attr != null
                 select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object, object?>)prop.GetValue);
 

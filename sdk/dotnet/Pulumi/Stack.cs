@@ -81,7 +81,7 @@ namespace Pulumi
         internal void RegisterPropertyOutputs()
         {
             var outputs = (from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                           let attr = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+                           let attr = property.GetCustomAttribute<OutputAttribute>()
                            where attr != null
                            let name = attr?.Name ?? property.Name
                            select new KeyValuePair<string, object?>(name, property.GetValue(this))).ToList();

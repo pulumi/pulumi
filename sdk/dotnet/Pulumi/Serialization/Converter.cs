@@ -374,21 +374,21 @@ $@"{context} contains invalid type {targetType.FullName}:
                 }
             }
 
-            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>();
+            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [{nameof(Pulumi.OutputTypeAttribute)}].");
+    a class explicitly marked with the [{nameof(OutputTypeAttribute)}].");
             }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(Pulumi.OutputConstructorAttribute)}].");
+$@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(OutputConstructorAttribute)}].");
             }
 
             foreach (var param in constructor.GetParameters())
@@ -399,6 +399,6 @@ $@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null);
+                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
     }
 }
