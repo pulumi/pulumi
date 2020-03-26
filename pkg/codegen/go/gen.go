@@ -33,6 +33,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
@@ -553,7 +554,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
-	printComment(w, r.Comment, false)
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "go"), false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
 	if r.IsProvider {
@@ -695,7 +696,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	name := pkg.functionNames[f]
 
-	printComment(w, f.Comment, false)
+	printComment(w, codegen.StripNonRelevantExamples(f.Comment, "go"), false)
 
 	// Now, emit the function signature.
 	argsig := "ctx *pulumi.Context"

@@ -33,6 +33,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
@@ -554,7 +555,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, r.Comment, "    ")
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
 	className := name
@@ -771,7 +772,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	}
 
 	// Emit the doc comment, if any.
-	printComment(w, fun.Comment, "        ")
+	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "csharp"), "        ")
 
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)
