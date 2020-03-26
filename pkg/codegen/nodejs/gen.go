@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
@@ -334,7 +335,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, r.Comment, "", "")
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "typescript"), "", "")
 
 	baseType := "CustomResource"
 	if r.IsProvider {

@@ -34,6 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
@@ -879,7 +880,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
-		fmt.Fprintln(b, res.Comment)
+		fmt.Fprintln(b, codegen.StripNonRelevantExamples(res.Comment, "python"))
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
