@@ -40,11 +40,6 @@ jobs:
       run: |
         pip3 install pyenv-win
         pip3 install pipenv
-    - name: Install Go Dep
-      shell: bash
-      run: |
-        echo "::add-path::$(go env GOPATH)/bin"
-        go get -v github.com/golang/dep/cmd/dep
     - name: Set Build Env Vars
       shell: bash
       run: |
