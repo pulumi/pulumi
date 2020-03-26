@@ -68,12 +68,16 @@ func fakeFunc() {
 }
 ` + codeFence
 
+	leadingDescription := "This is a leading description for this resource."
 	exampleShortCode := `{{% example %}}` + tsCodeSnippet + "\n" + goCodeSnippet + `{{% /example %}}`
-	description := `{{% examples %}}` + exampleShortCode + `{{% /examples %}}`
+	description := leadingDescription + `
+{{% examples %}}` + exampleShortCode + `
+{{% /examples %}}`
 
 	t.Run("ContainsRelevantCodeSnippet", func(t *testing.T) {
 		strippedDescription := StripNonRelevantExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
 	})
 
 	// The above description does not contain a Python code snippet and because
@@ -81,7 +85,9 @@ func fakeFunc() {
 	// we should expect an empty string in this test.
 	t.Run("DoesNotContainRelevantSnippet", func(t *testing.T) {
 		strippedDescription := StripNonRelevantExamples(description, "python")
-		assert.Empty(t, strippedDescription, "expected empty description")
+		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
+		// Should not contain any examples sections.
+		assert.NotContains(t, strippedDescription, "### ", "expected to not have any examples but found at least one")
 	})
 }
 

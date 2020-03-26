@@ -26,8 +26,7 @@ var (
 	// It's the `?P<group_name>` where group_name can be any name.
 	// When changing the group names, be sure to change the reference to
 	// the corresponding group name below where they are used as well.
-	surroundingTextRE = regexp.MustCompile(
-		"(?P<leading_description>(.|\n)*?)({{% examples %}}(.|\n)*?{{% /examples %}}(\n))(?P<trailing_description>(.|\n)*)")
+	surroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
 	examplesSectionRE = regexp.MustCompile(
 		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
 	individualExampleRE = regexp.MustCompile(
@@ -114,21 +113,6 @@ func extractExamplesSection(description string) *string {
 	return nil
 }
 
-func extractSurroundingTexts(description string) (*string, *string) {
-	d := getFirstMatchedGroupsFromRegex(surroundingTextRE, description)
-	var (
-		leadingDescription  *string
-		trailingDescription *string
-	)
-	if content, ok := d["leading_description"]; ok && !isEmpty(content) {
-		leadingDescription = &content
-	}
-	if content, ok := d["trailing_description"]; ok && !isEmpty(content) {
-		trailingDescription = &content
-	}
-	return leadingDescription, trailingDescription
-}
-
 func identifyExampleParts(exampleContent string, lang string) *exampleParts {
 	codeFence := "```" + lang
 	langSnippetIndex := strings.Index(exampleContent, codeFence)
@@ -178,23 +162,19 @@ func StripNonRelevantExamples(description string, lang string) string {
 		return ""
 	}
 
-	// Initialize a new string builder with the initial value set to the resourceDescription.
-	builder := strings.Builder{}
-	leadingDescription, trailingDescription := extractSurroundingTexts(description)
-	if leadingDescription != nil {
-		builder.WriteString(*leadingDescription)
-	}
+	// Replace the entire section (including the shortcodes themselves) enclosing the
+	// examples section, with a placeholder, which itself will be replaced appropriately
+	// later.
+	newDescription := surroundingTextRE.ReplaceAllString(description, "{{ .Examples }}")
 
 	// Get the content enclosing the outer examples short code.
 	examplesContent := extractExamplesSection(description)
 	if examplesContent == nil {
-		if trailingDescription != nil {
-			builder.WriteString(*trailingDescription)
-		}
-		return builder.String()
+		return strings.ReplaceAll(newDescription, "{{ .Examples }}", "")
 	}
 
 	// Within the examples section, identify each example.
+	builder := strings.Builder{}
 	examples := getExamplesForLang(*examplesContent, lang)
 	if len(examples) > 0 {
 		builder.WriteString("## Example Usage\n")
@@ -204,10 +184,5 @@ func StripNonRelevantExamples(description string, lang string) string {
 		builder.WriteString(ex.Snippet + "\n")
 	}
 
-	// For each example short code, only keep the code snippet for the language that was passed-in.
-	// Return the String() from the string builder.
-	if trailingDescription != nil {
-		builder.WriteString(*trailingDescription)
-	}
-	return builder.String()
+	return strings.ReplaceAll(newDescription, "{{ .Examples }}", builder.String())
 }
