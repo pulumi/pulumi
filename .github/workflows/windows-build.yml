@@ -58,6 +58,11 @@ jobs:
       with:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - name: Check out scripts repo into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        repository: pulumi/scripts
+        path: ./src/github.com/scripts
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
