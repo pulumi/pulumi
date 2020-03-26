@@ -3,9 +3,9 @@ SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/cmd/pulumi
-PROJECT_PKGS    := $(shell go list ./pkg/... | grep -v /vendor/)
-EXAMPLES_PKGS   := $(shell go list ./examples/ | grep -v tests/templates | grep -v /vendor/)
-TESTS_PKGS      := $(shell go list ./tests/... | grep -v tests/templates | grep -v /vendor/)
+PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
+EXAMPLES_PKGS   := $(shell cd ./examples && go list ./... | grep -v tests/templates | grep -v /vendor/)
+TESTS_PKGS      := $(shell cd ./tests ** go list ./... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version HEAD)
 
 TESTPARALLELISM := 10
