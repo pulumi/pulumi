@@ -55,6 +55,10 @@ func TestPolicyWithConfig(t *testing.T) {
 	// Validate Policy Pack Configuration.
 	e.RunCommand("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName),
 		"--config=configs/valid-config.json", "0.0.1")
+	e.RunCommand("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/empty-config.json", "0.0.1")
+	e.RunCommand("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/empty-object.json", "0.0.1")
 	// Valid config, but no version specified.
 	e.RunCommandExpectError("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName),
 		"--config=configs/config.json")
@@ -62,6 +66,8 @@ func TestPolicyWithConfig(t *testing.T) {
 		"--config=configs/invalid-config.json", "0.0.1")
 	// Required config flag not present.
 	e.RunCommandExpectError("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName))
+	e.RunCommandExpectError("pulumi", "policy", "validate", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config", "0.0.1")
 
 	// Enable Policy Pack with Configuration.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
