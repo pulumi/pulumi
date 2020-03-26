@@ -57,35 +57,9 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: ./src/github.com/${{ github.repository }}
-    - name: Get dependencies
+    - run: |
+        cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow
+    - name: Test Version
       run: |
         cd src\github.com\${{ github.repository }}
-        set GOMODULE111=on
-        pushd .
-        cd sdk
-        go mod tidy
-        go mod download
-        popd
-        pushd .
-        cd pkg
-        go mod tidy
-        go mod download
-        popd
-        pushd .
-        cd examples
-        go mod tidy
-        go mod download
-        popd
-        pushd .
-        cd tests
-        go mod tidy
-        go mod download
-        popd
-    - name: Build Pulumi
-      run: |
-        cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-    - name: Run Pulumi Tests
-      run: |
-        cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+        dotnet msbuild /t:test /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"

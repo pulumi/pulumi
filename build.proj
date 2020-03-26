@@ -327,4 +327,10 @@
 
   <Target Name="CIBuild"
           DependsOnTargets="Build;Tests" />
+
+  <Target Name="test">
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+        </Exec>
+  </Target>
 </Project>
