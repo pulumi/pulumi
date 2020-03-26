@@ -3,7 +3,6 @@
   <PropertyGroup>
     <RepoRootDirectory>$(MSBuildThisFileDirectory)</RepoRootDirectory>
     <PkgDirectory>$(RepoRootDirectory)\pkg\</PkgDirectory>
-    <ExamplesDirectory>$(RepoRootDirectory)\examples\</ExamplesDirectory>
     <TestsDirectory>$(RepoRootDirectory)\tests\</TestsDirectory>
     <SdkDirectory>$(RepoRootDirectory)\sdk\</SdkDirectory>
     <NodeJSSdkDirectory>$(SdkDirectory)\nodejs\</NodeJSSdkDirectory>
@@ -299,16 +298,7 @@
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) ."
-          IgnoreExitCode="true"
-          WorkingDirectory="$(ExamplesDirectory)">
-      <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
-    </Exec>
-
-    <Error Text="examples tests (.\examples) failed"
-           Condition="$(ExamplesTestExitCode) != 0"/>
-
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\integration"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\integration .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />

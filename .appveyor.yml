@@ -66,8 +66,6 @@ build_script:
 
     pushd . && cd pkg && go mod tidy && go mod download && popd
 
-    pushd . && cd examples && go mod tidy && go mod download && popd
-
     pushd . && cd tests && go mod tidy && go mod download && popd
 
     if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj )
