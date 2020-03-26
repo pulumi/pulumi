@@ -27,7 +27,7 @@ func newPolicyValidateCmd() *cobra.Command {
 	var argConfig string
 
 	var cmd = &cobra.Command{
-		Use:   "validate <org-name>/<policy-pack-name> <version>",
+		Use:   "validate-config <org-name>/<policy-pack-name> <version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "[PREVIEW] Validate a Policy Pack configuration",
 		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
