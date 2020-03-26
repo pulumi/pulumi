@@ -20,6 +20,9 @@ CHANGELOG
 - Add support for enabling Policy Packs with configuration.
   [#3756](https://github.com/pulumi/pulumi/pull/4127)
 
+- Remove obsolete .NET serialization attributes.
+  [#4190](https://github.com/pulumi/pulumi/pull/4190)
+
 ## 1.13.0 (2020-03-18)
 - Add support for plugin acquisition for Go programs
   [#4060](https://github.com/pulumi/pulumi/pull/4060)
