@@ -53,6 +53,8 @@ jobs:
         echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
         echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
         echo "::add-path::D:\\Pulumi\\bin"
+    - name: Install AWS CLI Tools
+      uses: chrislennon/action-aws-cli@v1.1
     - name: Set AWS Env Vars
       uses: allenevans/set-env@v1.0.0
       with:
