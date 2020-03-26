@@ -309,7 +309,7 @@
   </Target>
 
   <Target Name="Publish">
-    <Exec Command="&quot;$(RepoRootDirectory)\scripts\publish.cmd" />
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\publish.cmd&quot;" ConsoleToMSBuild="true" />
   </Target>
   
   <Target Name="ReleaseProcess"
