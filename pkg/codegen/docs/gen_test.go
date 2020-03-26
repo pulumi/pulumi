@@ -222,7 +222,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		// itself has a "Language" spec with the `MapCase` value of `false`.
 		t.Run("NonUniqueNestedProperties", func(t *testing.T) {
 			n := nestedTypes[0]
-			assert.Equal(t, "ResourceOptions", n.Name, "got %v instead of ResourceOptions", n.Name)
+			assert.Equal(t, "Resource<wbr>Options", n.Name, "got %v instead of Resource<wbr>Options", n.Name)
 
 			pyProps := n.Properties["python"]
 			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions:ResourceOptions"]
@@ -250,7 +250,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		// camelCase.
 		t.Run("UniqueNestedProperties", func(t *testing.T) {
 			n := nestedTypes[1]
-			assert.Equal(t, "ResourceOptions2", n.Name, "got %v instead of ResourceOptions2", n.Name)
+			assert.Equal(t, "Resource<wbr>Options2", n.Name, "got %v instead of Resource<wbr>Options2", n.Name)
 
 			pyProps := n.Properties["python"]
 			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions2:ResourceOptions2"]
