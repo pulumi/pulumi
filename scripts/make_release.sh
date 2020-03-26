@@ -24,11 +24,11 @@ run_go_build() {
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    pushd "$2" && go build \
+    pushd "$2" > /dev/null && go build \
        -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" \
        -o "${PUBDIR}/bin/${output_name}${bin_suffix}" \
        "$1"
-    popd
+    popd > /dev/null
 }
 
 # usage: copy_package <path-to-module> <module-name>
