@@ -8,7 +8,7 @@
     <NodeJSSdkDirectory>$(SdkDirectory)\nodejs\</NodeJSSdkDirectory>
     <DotNetSdkDirectory>$(SdkDirectory)\dotnet\</DotNetSdkDirectory>
     <PythonSdkDirectory>$(SdkDirectory)\python\</PythonSdkDirectory>
-    <TestParallelism>20</TestParallelism>
+    <TestParallelism>10</TestParallelism>
     <MSVSVersion>2019</MSVSVersion>
     <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
     <PulumiBin>$(PulumiRoot)\bin</PulumiBin>
