@@ -6,6 +6,7 @@ $PublishScript="$(go env GOPATH)\src\github.com\pulumi\scripts\ci\publish.ps1"
 $BuildSdkScript="$(go env GOPATH)\src\github.com\pulumi\pulumi\scripts\build-sdk.ps1"
 
 if (!(Test-Path $PublishScript)) {
+    Get-Item -Path "$(go env GOPATH)\src\github.com\pulumi"
     Write-Error "Missing publish script at $PublishScript"
 }
 
