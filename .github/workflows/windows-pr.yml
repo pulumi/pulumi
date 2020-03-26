@@ -72,11 +72,6 @@ jobs:
         go mod download
         popd
         pushd .
-        cd examples
-        go mod tidy
-        go mod download
-        popd
-        pushd .
         cd tests
         go mod tidy
         go mod download
