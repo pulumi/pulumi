@@ -544,7 +544,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	name := camel(tokenToName(fun.Token))
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, fun.Comment, "", "")
+	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "typescript"), "", "")
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)

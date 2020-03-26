@@ -696,7 +696,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	name := pkg.functionNames[f]
 
-	printComment(w, f.Comment, false)
+	printComment(w, codegen.StripNonRelevantExamples(f.Comment, "go"), false)
 
 	// Now, emit the function signature.
 	argsig := "ctx *pulumi.Context"

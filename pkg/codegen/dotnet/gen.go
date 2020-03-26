@@ -772,7 +772,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	}
 
 	// Emit the doc comment, if any.
-	printComment(w, fun.Comment, "        ")
+	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "csharp"), "        ")
 
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)

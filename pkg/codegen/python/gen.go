@@ -571,7 +571,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
 	if fun.Comment != "" {
-		fmt.Fprintln(docs, fun.Comment)
+		fmt.Fprintln(docs, codegen.StripNonRelevantExamples(fun.Comment, "python"))
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
