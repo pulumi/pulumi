@@ -144,8 +144,8 @@ func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag
 		"/api/orgs/%s/policypacks/%s/versions/%s/complete", orgName, policyPackName, versionTag)
 }
 
-// getPolicyPackConfigSchema returns the policy pack configuration schema.
-func getPolicyPackConfigSchema(orgName, policyPackName string, versionTag string) string {
+// getPolicyPackConfigSchemaPath returns the API path to retrieve the policy pack configuration schema.
+func getPolicyPackConfigSchemaPath(orgName, policyPackName string, versionTag string) string {
 	return fmt.Sprintf(
 		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
 }
@@ -698,9 +698,9 @@ func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
 	policyPackName, versionTag string) (*apitype.GetPolicyPackConfigSchemaResponse, error) {
 	var resp apitype.GetPolicyPackConfigSchemaResponse
 	err := pc.restCall(ctx, http.MethodGet,
-		getPolicyPackConfigSchema(orgName, policyPackName, versionTag), nil, nil, &resp)
+		getPolicyPackConfigSchemaPath(orgName, policyPackName, versionTag), nil, nil, &resp)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Retrieving policy pack config schema failed")
+		return nil, errors.Wrap(err, "Retrieving policy pack config schema failed")
 	}
 	return &resp, nil
 }
