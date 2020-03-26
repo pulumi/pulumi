@@ -113,10 +113,7 @@ namespace Pulumi.Serialization
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
-            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null
-#pragma warning disable 618
-                && targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>() == null)
-#pragma warning restore 618
+            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null)
                 return (null, new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}"));
 
@@ -377,10 +374,7 @@ $@"{context} contains invalid type {targetType.FullName}:
                 }
             }
 
-            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>()
-#pragma warning disable 618
-                                        ?? targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>();
-#pragma warning restore 618
+            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
@@ -405,9 +399,6 @@ $@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null
-#pragma warning disable 618
-                     || c.GetCustomAttributes<Pulumi.Serialization.OutputConstructorAttribute>() != null);
-#pragma warning restore 618
+                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null);
     }
 }

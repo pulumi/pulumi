@@ -63,12 +63,9 @@ namespace Pulumi.Serialization
             var type = resource.GetResourceType();
 
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                        let attr1 = property.GetCustomAttribute<Pulumi.OutputAttribute>()
-#pragma warning disable 618
-                        let attr2 = property.GetCustomAttribute<Pulumi.Serialization.OutputAttribute>()
-#pragma warning restore 618
-                        where attr1 != null || attr2 != null
-                        select (property, attrName: attr1?.Name ?? attr2?.Name);
+                        let attr = property.GetCustomAttribute<Pulumi.OutputAttribute>()
+                        where attr != null
+                        select (property, attrName: attr?.Name);
 
             var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
             foreach (var (prop, attrName) in query.ToList())

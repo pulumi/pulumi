@@ -172,15 +172,6 @@ Pulumi.ResourceTransformationResult
 Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
-Pulumi.Serialization.InputAttribute
-Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
-Pulumi.Serialization.OutputAttribute
-Pulumi.Serialization.OutputAttribute.Name.get -> string
-Pulumi.Serialization.OutputAttribute.OutputAttribute(string name = null) -> void
-Pulumi.Serialization.OutputConstructorAttribute
-Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
-Pulumi.Serialization.OutputTypeAttribute
-Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.Stack
 Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
 Pulumi.StackOptions
