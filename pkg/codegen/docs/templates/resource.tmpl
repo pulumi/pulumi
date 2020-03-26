@@ -79,7 +79,7 @@ The following state arguments are supported:
 
 ## Supporting Types
 {{ range .NestedTypes }}
-#### {{ .Name }}
+<h4>{{ htmlSafe .Name }}</h4>
 {{ htmlSafe "{{% lang nodejs %}}" }}
 > See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.nodejs.InputType "") (ne .APIDocLinks.nodejs.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /lang %}}" }}

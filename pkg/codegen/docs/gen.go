@@ -475,7 +475,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				}
 
 				objs = append(objs, docNestedType{
-					Name:        tokenToName(obj.Token),
+					Name:        wbr(tokenToName(obj.Token)),
 					APIDocLinks: apiDocLinks,
 					Properties:  props,
 				})
