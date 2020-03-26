@@ -820,7 +820,7 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Test, func(t *testing.T) {
-			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.Config)
+			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
 			assert.NoError(t, err)
 			assert.Empty(t, validationErrors)
 			assert.Equal(t, test.Expected, result)
@@ -1057,7 +1057,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Test, func(t *testing.T) {
-			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.Config)
+			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
 			assert.NoError(t, err)
 			assert.Nil(t, result)
 			assert.ElementsMatch(t, test.ExpectedValidationErrors, validationErrors)

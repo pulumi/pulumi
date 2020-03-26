@@ -236,27 +236,49 @@ func createConfigWithDefaults(policies []plugin.AnalyzerPolicyInfo) map[string]p
 // ReconcilePolicyPackConfig takes metadata about each policy containing default values and config schema, and
 // reconciles this with the given config to produce a new config that has all default values filled-in and then sets
 // configured values.
-func ReconcilePolicyPackConfig(policies []plugin.AnalyzerPolicyInfo,
-	config map[string]plugin.AnalyzerPolicyConfig) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
+func ReconcilePolicyPackConfig(
+	policies []plugin.AnalyzerPolicyInfo,
+	initialConfig map[string]plugin.AnalyzerPolicyConfig,
+	config map[string]plugin.AnalyzerPolicyConfig,
+) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
 	// Prepare the resulting config with all defaults from the policy metadata.
 	result := createConfigWithDefaults(policies)
 	contract.Assertf(result != nil, "result != nil")
 
-	// Next, if the given config has "all" and an enforcement level, set it for all
-	// policies.
+	// Apply initial config supplied programmatically.
+	if initialConfig != nil {
+		result = applyConfig(result, initialConfig)
+	}
+
+	// Apply additional config from API or CLI.
 	if config != nil {
-		if all, hasAll := config["all"]; hasAll && all.EnforcementLevel.IsValid() {
-			for k, v := range result {
-				result[k] = plugin.AnalyzerPolicyConfig{
-					EnforcementLevel: all.EnforcementLevel,
-					Properties:       v.Properties,
-				}
+		result = applyConfig(result, config)
+	}
+
+	// Validate the resulting config.
+	validationErrors, err := validatePolicyPackConfig(policies, result)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(validationErrors) > 0 {
+		return nil, validationErrors, nil
+	}
+	return result, nil, nil
+}
+
+func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
+	configToApply map[string]plugin.AnalyzerPolicyConfig) map[string]plugin.AnalyzerPolicyConfig {
+	// Apply anything that applies to "all" policies.
+	if all, hasAll := configToApply["all"]; hasAll && all.EnforcementLevel.IsValid() {
+		for k, v := range result {
+			result[k] = plugin.AnalyzerPolicyConfig{
+				EnforcementLevel: all.EnforcementLevel,
+				Properties:       v.Properties,
 			}
 		}
 	}
-
-	// Next, loop through the given config, and set values.
-	for policy, givenConfig := range config {
+	// Apply policy level config.
+	for policy, givenConfig := range configToApply {
 		var enforcementLevel apitype.EnforcementLevel
 		var properties map[string]interface{}
 
@@ -279,15 +301,5 @@ func ReconcilePolicyPackConfig(policies []plugin.AnalyzerPolicyInfo,
 			Properties:       properties,
 		}
 	}
-
-	// Validate the resulting config.
-	validationErrors, err := validatePolicyPackConfig(policies, result)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(validationErrors) > 0 {
-		return nil, validationErrors, nil
-	}
-
-	return result, nil, nil
+	return result
 }
