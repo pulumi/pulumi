@@ -79,18 +79,22 @@ func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc
 		args = &LogArgs{}
 	}
 
-	resolvedUrn, _, _, err := args.Resource.URN().awaitURN(ctx)
-	if err != nil {
-		return err
+	var urn string
+	if args.Resource != nil {
+		resolvedUrn, _, _, err := args.Resource.URN().awaitURN(ctx)
+		if err != nil {
+			return err
+		}
+		urn = string(resolvedUrn)
 	}
 
 	logRequest := &pulumirpc.LogRequest{
 		Severity:  severity,
 		Message:   message,
-		Urn:       string(resolvedUrn),
+		Urn:       urn,
 		StreamId:  args.StreamID,
 		Ephemeral: args.Ephemeral,
 	}
-	_, err = engine.Log(ctx, logRequest)
+	_, err := engine.Log(ctx, logRequest)
 	return err
 }
