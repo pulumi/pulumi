@@ -401,13 +401,17 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	}
 
 	policies := map[string]string{}
-	for _, p := range opts.RequiredPolicies {
-		policies[p.Name()] = p.Version()
-	}
-	for _, pack := range opts.LocalPolicyPacks {
-		path := abbreviateFilePath(pack.Path)
-		packName := fmt.Sprintf("%s (%s)", pack.Name, path)
-		policies[packName] = "(local)"
+
+	// Refresh does not execute Policy Packs.
+	if !opts.isRefresh {
+		for _, p := range opts.RequiredPolicies {
+			policies[p.Name()] = p.Version()
+		}
+		for _, pack := range opts.LocalPolicyPacks {
+			path := abbreviateFilePath(pack.Path)
+			packName := fmt.Sprintf("%s (%s)", pack.Name, path)
+			policies[packName] = "(local)"
+		}
 	}
 
 	var resourceChanges ResourceChanges
