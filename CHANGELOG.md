@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+_(none)_
+
+## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
   [#4109](https://github.com/pulumi/pulumi/pull/4109)
 
@@ -19,6 +22,12 @@ CHANGELOG
 
 - Add support for enabling Policy Packs with configuration.
   [#3756](https://github.com/pulumi/pulumi/pull/4127)
+
+- Remove obsolete .NET serialization attributes.
+  [#4190](https://github.com/pulumi/pulumi/pull/4190)
+
+- Add support for validating Policy Pack configuration.
+  [#4179](https://github.com/pulumi/pulumi/pull/4186)
 
 ## 1.13.0 (2020-03-18)
 - Add support for plugin acquisition for Go programs
