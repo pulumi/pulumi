@@ -2,7 +2,7 @@
     "all": {
         "enforcementLevel": "advisory"
     },
-    "s3-no-public-read": {
+    "test-policy-w-config": {
         "enforcementLevel": "mandatory",
         "message": "test msg"
     }
