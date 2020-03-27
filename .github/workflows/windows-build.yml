@@ -4,7 +4,6 @@ on:
       - master
       - 'feature-.*'
       - 'features/.*'
-    tags:
 
 jobs:
   build:
