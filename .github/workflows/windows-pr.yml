@@ -52,6 +52,9 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: ./src/github.com/${{ github.repository }}
+    - name: Checkout Repo history to ensure we get correct version
+      run: |
+        cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow
     - name: Get dependencies
       run: |
         cd src\github.com\${{ github.repository }}
