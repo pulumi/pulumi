@@ -52,6 +52,23 @@ func TestPolicyWithConfig(t *testing.T) {
 	// Enable, Disable and then Delete the Policy Pack.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName), "0.0.1")
 
+	// Validate Policy Pack Configuration.
+	e.RunCommand("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/valid-config.json", "0.0.1")
+	// Valid config, but no version specified.
+	e.RunCommandExpectError("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/config.json")
+	// Invalid configs
+	e.RunCommandExpectError("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/invalid-config.json", "0.0.1")
+	// Invalid - missing required property.
+	e.RunCommandExpectError("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config=configs/invalid-required-prop.json", "0.0.1")
+	// Required config flag not present.
+	e.RunCommandExpectError("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName))
+	e.RunCommandExpectError("pulumi", "policy", "validate-config", fmt.Sprintf("%s/%s", orgName, policyPackName),
+		"--config", "0.0.1")
+
 	// Enable Policy Pack with Configuration.
 	e.RunCommand("pulumi", "policy", "enable", fmt.Sprintf("%s/%s", orgName, policyPackName),
 		"--config=configs/valid-config.json", "0.0.1")
