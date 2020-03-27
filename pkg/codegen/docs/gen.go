@@ -233,6 +233,14 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
+func (mod *modContext) getPackageDisplayName() string {
+	displayName := mod.pkg.DisplayName
+	if displayName != "" {
+		return displayName
+	}
+	return mod.pkg.Name
+}
+
 type propertyCharacteristics struct {
 	// input is a flag indicating if the property is an input type.
 	input bool

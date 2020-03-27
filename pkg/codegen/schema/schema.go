@@ -254,6 +254,8 @@ type Package struct {
 
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
 	Name string
+	// DisplayName is the ready-to-display name of the package (e.g. "Microsoft Azure", "Google Cloud").
+	DisplayName string
 	// Version is the version of the package.
 	Version *semver.Version
 	// Description is the description of the package.
@@ -421,6 +423,8 @@ type MetadataSpec struct {
 type PackageSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
 	Name string `json:"name"`
+	// DisplayName is the ready-to-display name of the package (e.g. "Microsoft Azure", "Google Cloud").
+	DisplayName string
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty"`
 	// Description is the description of the package.
@@ -525,6 +529,7 @@ func ImportSpec(spec PackageSpec) (*Package, error) {
 	return &Package{
 		moduleFormat: moduleFormatRegexp,
 		Name:         spec.Name,
+		DisplayName:  spec.DisplayName,
 		Version:      version,
 		Description:  spec.Description,
 		Keywords:     spec.Keywords,
