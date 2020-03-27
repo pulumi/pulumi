@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
-_(none)_
+- Improve codegen for Go SDK provider plugin registration.
+  [#4210](https://github.com/pulumi/pulumi/pull/4210)
 
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
