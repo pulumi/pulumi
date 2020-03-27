@@ -1,9 +1,8 @@
 {
-    "name": "aws-policy",
+    "name": "test-policy-wo-config",
     "version": "0.0.1",
     "dependencies": {
         "@pulumi/pulumi": "^1.0.0",
-        "@pulumi/aws": "^1.0.0",
         "@pulumi/policy": "^0.2.0"
     },
     "devDependencies": {
