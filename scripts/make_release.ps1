@@ -28,11 +28,11 @@ function CopyPackage($pathToModule, $moduleName) {
     }
 }
 
-RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi" "pkg" "pulumi"
-RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" "sdk" "pulumi-language-nodejs"
-RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python" "sdk" "pulumi-language-python"
-RunGoBuild "github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" "sdk" "pulumi-language-dotnet"
-RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go" "sdk" "pulumi-language-go"
+RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi" "pkg" "pulumi.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" "sdk" "pulumi-language-nodejs.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python" "sdk" "pulumi-language-python.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" "sdk" "pulumi-language-dotnet.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go" "sdk" "pulumi-language-go.exe"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
