@@ -17,6 +17,7 @@ if (!packName) {
                 description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
                 enforcementLevel: "mandatory",
                 configSchema: {
+                    required: ["message"],
                     properties: {
                         message: {
                             type: "string",

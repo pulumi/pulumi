@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/engine"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
@@ -208,6 +209,18 @@ func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op 
 			"" /* versionTag */, op.Config)
 	}
 	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.VersionTag, op.Config)
+}
+
+func (pack *cloudPolicyPack) Validate(ctx context.Context, op backend.PolicyPackOperation) error {
+	schema, err := pack.cl.GetPolicyPackSchema(ctx, pack.ref.orgName, string(pack.ref.name), *op.VersionTag)
+	if err != nil {
+		return err
+	}
+	err = resourceanalyzer.ValidatePolicyPackConfig(schema.ConfigSchema, op.Config)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (pack *cloudPolicyPack) Disable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {

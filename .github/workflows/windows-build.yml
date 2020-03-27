@@ -4,7 +4,6 @@ on:
       - master
       - 'feature-.*'
       - 'features/.*'
-    tags:
 
 jobs:
   build:
@@ -78,11 +77,6 @@ jobs:
         popd
         pushd .
         cd pkg
-        go mod tidy
-        go mod download
-        popd
-        pushd .
-        cd examples
         go mod tidy
         go mod download
         popd
