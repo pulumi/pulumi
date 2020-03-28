@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
-_(none)_
+- Fix logout with file backend when state is deleted
+  [#4218](https://github.com/pulumi/pulumi/pull/4218)
 
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
