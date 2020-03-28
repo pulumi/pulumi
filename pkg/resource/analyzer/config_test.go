@@ -820,7 +820,133 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Test, func(t *testing.T) {
-			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.Config)
+			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
+			assert.NoError(t, err)
+			assert.Empty(t, validationErrors)
+			assert.Equal(t, test.Expected, result)
+		})
+	}
+}
+
+func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
+	tests := []struct {
+		Test          string
+		Policies      []plugin.AnalyzerPolicyInfo
+		Config        map[string]plugin.AnalyzerPolicyConfig
+		InitialConfig map[string]plugin.AnalyzerPolicyConfig
+		Expected      map[string]plugin.AnalyzerPolicyConfig
+	}{
+		{
+			Test: "Initial config applied",
+			Policies: []plugin.AnalyzerPolicyInfo{
+				{
+					Name: "policy",
+				},
+			},
+			InitialConfig: map[string]plugin.AnalyzerPolicyConfig{
+				"policy": {
+					EnforcementLevel: "advisory",
+				},
+			},
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
+				"policy": {
+					EnforcementLevel: "advisory",
+				},
+			},
+		},
+		{
+			Test: "Initial config replaced by config",
+			Policies: []plugin.AnalyzerPolicyInfo{
+				{
+					Name: "policy",
+				},
+			},
+			InitialConfig: map[string]plugin.AnalyzerPolicyConfig{
+				"policy": {
+					EnforcementLevel: "mandatory",
+				},
+			},
+			Config: map[string]plugin.AnalyzerPolicyConfig{
+				"policy": {
+					EnforcementLevel: "advisory",
+				},
+			},
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
+				"policy": {
+					EnforcementLevel: "advisory",
+				},
+			},
+		},
+		{
+			Test: "Initial config 'all' used, then replaced for one policy by config",
+			Policies: []plugin.AnalyzerPolicyInfo{
+				{
+					Name: "policy-one",
+				},
+				{
+					Name: "policy-two",
+				},
+				{
+					Name: "policy-three",
+				},
+			},
+			InitialConfig: map[string]plugin.AnalyzerPolicyConfig{
+				"all": {
+					EnforcementLevel: "mandatory",
+				},
+			},
+			Config: map[string]plugin.AnalyzerPolicyConfig{
+				"policy-three": {
+					EnforcementLevel: "advisory",
+				},
+			},
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
+				"all": {
+					EnforcementLevel: "mandatory",
+				},
+				"policy-one": {
+					EnforcementLevel: "mandatory",
+				},
+				"policy-two": {
+					EnforcementLevel: "mandatory",
+				},
+				"policy-three": {
+					EnforcementLevel: "advisory",
+				},
+			},
+		},
+		{
+			Test: "Initial config 'all' used with multiple policies",
+			Policies: []plugin.AnalyzerPolicyInfo{
+				{
+					Name: "policy-one",
+				},
+				{
+					Name: "policy-two",
+				},
+			},
+			InitialConfig: map[string]plugin.AnalyzerPolicyConfig{
+				"all": {
+					EnforcementLevel: "disabled",
+				},
+			},
+			Expected: map[string]plugin.AnalyzerPolicyConfig{
+				"all": {
+					EnforcementLevel: "disabled",
+				},
+				"policy-one": {
+					EnforcementLevel: "disabled",
+				},
+				"policy-two": {
+					EnforcementLevel: "disabled",
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Test, func(t *testing.T) {
+			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.InitialConfig, test.Config)
 			assert.NoError(t, err)
 			assert.Empty(t, validationErrors)
 			assert.Equal(t, test.Expected, result)
@@ -1057,7 +1183,7 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Test, func(t *testing.T) {
-			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.Config)
+			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
 			assert.NoError(t, err)
 			assert.Nil(t, result)
 			assert.ElementsMatch(t, test.ExpectedValidationErrors, validationErrors)
