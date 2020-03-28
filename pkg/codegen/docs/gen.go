@@ -260,19 +260,12 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
-	var parts []string
-	var displayName string
-	if lang == "csharp" {
-		csharpNS := fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
-		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
-	} else {
-		parts = strings.Split(langTypeString, ".")
-		displayName = parts[len(parts)-1]
-	}
+	parts := strings.Split(langTypeString, ".")
+	displayName := parts[len(parts)-1]
 
 	// If word-breaks need to be inserted, then the type string
 	// should be html-encoded first if the language is C# in order
-	//  to avoid confusing the Hugo rendering where the word-break
+	// to avoid confusing the Hugo rendering where the word-break
 	// tags are inserted.
 	if insertWordBreaks {
 		if lang == "csharp" {
@@ -1076,6 +1069,15 @@ func (mod *modContext) genIndex(exports []string) string {
 	return w.String()
 }
 
+func decodeLangSpecificInfo(pkg *schema.Package, lang string, obj interface{}) error {
+	if csharp, ok := pkg.Language[lang]; ok {
+		if err := json.Unmarshal([]byte(csharp), &obj); err != nil {
+			return errors.Wrap(err, "decoding csharp package info")
+		}
+	}
+	return nil
+}
+
 func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
@@ -1105,16 +1107,23 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 		return mod
 	}
 
-	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
+	// Decode Go-specific language info.
 	var goInfo go_gen.GoInfo
-	if golang, ok := pkg.Language["go"]; ok {
-		if err := json.Unmarshal(golang, &goInfo); err != nil {
-			panic(fmt.Errorf("decoding go package info: %v", err))
-		}
+	if err := decodeLangSpecificInfo(pkg, "go", &goInfo); err != nil {
+		panic(errors.Wrap(err, "error decoding go language info"))
 	}
+	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
 	// Generate the Go package map info now, so we can use that to get the type string
 	// names later.
 	goLangHelper.GeneratePackagesMap(pkg, tool, goInfo)
+
+	// Decode C#-specific language info.
+	var csharpInfo dotnet.CSharpPackageInfo
+	if err := decodeLangSpecificInfo(pkg, "csharp", &csharpInfo); err != nil {
+		panic(errors.Wrap(err, "error decoding c# language info"))
+	}
+	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
+	csharpLangHelper.Namespaces = csharpInfo.Namespaces
 
 	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	types := &modContext{pkg: pkg, mod: "types", tool: tool}

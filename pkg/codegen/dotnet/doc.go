@@ -24,7 +24,12 @@ import (
 )
 
 // DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
-type DocLanguageHelper struct{}
+type DocLanguageHelper struct {
+	// Namespaces is a map of Pulumi schema module names to their
+	// C# equivalent names, to be used when creating fully-qualified
+	// property type strings.
+	Namespaces map[string]string
+}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
@@ -53,9 +58,15 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
+		mod:         moduleName,
 		typeDetails: typeDetails,
+		namespaces:  d.Namespaces,
 	}
-	return mod.typeString(t, "", input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
+	qualifier := "Inputs"
+	if !input {
+		qualifier = "Outputs"
+	}
+	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
