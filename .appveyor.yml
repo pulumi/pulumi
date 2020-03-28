@@ -68,5 +68,5 @@ build_script:
 
       pushd . && cd tests && go mod tidy && go mod download && popd
 
-      if defined APPVEYOR_REPO_TAG_NAME ( dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj )
+      .\scripts\release.cmd
 test: off
