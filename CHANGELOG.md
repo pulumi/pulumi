@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
-_(none)_
+- Fix `pulumi up -r -t $URN` not refreshing only the target
+  [#4217](https://github.com/pulumi/pulumi/pull/4217)
 
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
