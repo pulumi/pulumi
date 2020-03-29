@@ -87,7 +87,7 @@ func TestPolicyWithConfig(t *testing.T) {
 }
 
 // TestPolicyWithoutConfig runs integration tests against the policy pack in the policy_pack_w_config
-// directory. This tests against version 0.2.0 of the pulumi/policy sdk, prior to policy config being supported.
+// directory. This tests against version 0.4.0 of the pulumi/policy sdk, prior to policy config being supported.
 func TestPolicyWithoutConfig(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
