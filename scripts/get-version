@@ -38,6 +38,17 @@ else
     TAG="v0.0.0"
 fi
 
+# Check to see if the latest tag is for a submodule and transform to semver tolerant
+# e.g: submodule/submodule/.../v.X.X.X
+# sdk/v1.1.1 -> v1.1.1
+IFS='/'
+read -a tagsplit <<< "$TAG"
+
+if echo "${#tagsplit[@]}" > /dev/null 2>&1 -gt 1; 
+then
+    TAG=${tagsplit[${#tagsplit[@]}-1]}
+fi
+
 # Strip off any pre-release tag we might have (e.g. from doing a -rc build)
 TAG=${TAG%%-*}
 
