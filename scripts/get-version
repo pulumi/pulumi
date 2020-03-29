@@ -44,7 +44,7 @@ then
 fi
 
 # if we found an exact match, return it at this point
-# after we have removed and submodule prefixes.
+# after we have removed any submodule prefixes.
 if [ $EXACT -eq 1 ]
 then
     echo -n "$TAG"
