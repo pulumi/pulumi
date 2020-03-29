@@ -36,7 +36,7 @@ fi
 # e.g: submodule/submodule/.../v.X.X.X
 # sdk/v1.1.1 -> v1.1.1
 IFS='/'
-read -a tagsplit <<< "$TAG"
+read -a tagsplit <<< "${TAG}"
 
 if echo "${#tagsplit[@]}" > /dev/null 2>&1 -gt 1; 
 then
@@ -47,7 +47,7 @@ fi
 # after we have removed any submodule prefixes.
 if [ $EXACT -eq 1 ]
 then
-    echo -n "$TAG"
+    echo -n "${TAG}"
     if [ ! -z "${DIRTY_TAG}" ]; then
         echo -n "+${DIRTY_TAG}"
     fi
