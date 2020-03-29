@@ -8,6 +8,7 @@ fi
 
 COMMITISH=$1
 DIRTY_TAG=""
+EXACT=0
 
 # Figure out if the worktree is dirty, we run update-index first
 # as we've seen cases in Travis where not doing so causes git to
@@ -19,20 +20,13 @@ fi
 
 # If we have an exact tag, just use it.
 if git describe --tags --exact-match "${COMMITISH}" >/dev/null 2>&1; then
-    echo -n "$(git describe --tags --exact-match "${COMMITISH}")"
-    if [ ! -z "${DIRTY_TAG}" ]; then
-        echo -n "+${DIRTY_TAG}"
-    fi
-
-    echo ""
-    exit 0
-fi
-
+    EXACT=1
+    TAG=$(git describe --tags --exact-match "${COMMITISH}")
 # Otherwise, increment the minor version version (if the package is 1.X or later) or the
 # patch version (if the package is pre 1.0), add the -alpha tag and some
 # commit metadata. If there's no existing tag, pretend a v0.0.0 was
 # there so we'll produce v0.0.1-dev builds.
-if git describe --tags --abbrev=0 "${COMMITISH}" > /dev/null 2>&1; then
+elif git describe --tags --abbrev=0 "${COMMITISH}" > /dev/null 2>&1; then
     TAG=$(git describe --tags --abbrev=0 "${COMMITISH}")
 else
     TAG="v0.0.0"
@@ -47,6 +41,19 @@ read -a tagsplit <<< "$TAG"
 if echo "${#tagsplit[@]}" > /dev/null 2>&1 -gt 1; 
 then
     TAG=${tagsplit[${#tagsplit[@]}-1]}
+fi
+
+# if we found an exact match, return it at this point
+# after we have removed and submodule prefixes.
+if [ $EXACT -eq 1 ]
+then
+    echo -n "$TAG"
+    if [ ! -z "${DIRTY_TAG}" ]; then
+        echo -n "+${DIRTY_TAG}"
+    fi
+
+    echo ""
+    exit 0
 fi
 
 # Strip off any pre-release tag we might have (e.g. from doing a -rc build)
