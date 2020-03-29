@@ -44,6 +44,17 @@ if [ ! -z "$PULUMI_CI" ]; then
     # Respect the branch mappings file for stack selection. Note that this is *not* required, but if the file
     # is missing, the caller of this script will need to pass `-s <stack-name>` to specify the stack explicitly.
     if [ ! -z "$BRANCH" ]; then
+        if [ ! -z "$PULUMI_BACKEND" ]; then
+            if [ "$PULUMI_BACKEND" == "azurestorage"]; then
+                pulumi login -c azblob://$AZURE_STORAGE_ACCOUNT
+            else
+                echo -e "Please set the '$PULUMI_BACKEND' variable to 'azurestorage'."
+                exit 1
+            fi
+        else
+            echo "Using Pulumi Service backend."
+        fi
+
         if [ -e $ROOT/.pulumi/ci.json ]; then
             PULUMI_STACK_NAME=$(cat $ROOT/.pulumi/ci.json | jq -r ".\"$BRANCH\"")
         else
