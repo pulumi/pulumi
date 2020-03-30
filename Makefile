@@ -48,7 +48,7 @@ dist::
 
 lint::
 	for DIR in "pkg" "sdk" "tests" ; do \
-		pushd $$DIR && golangci-lint run -c ../.golangci.yml --deadline 5m && popd ; \
+		pushd $$DIR && golangci-lint run -c ../.golangci.yml --timeout 5m && popd ; \
 	done
 
 test_fast::

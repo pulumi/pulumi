@@ -12,11 +12,11 @@ VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${VERSION_DOTNET})) # e.g. featbran
 VERSION_PREFIX       := $(strip ${VERSION_FIRST_WORD})
 
 ifeq ($(strip ${VERSION_SECOND_WORD}),)
-	VERSION_SUFFIX   := preview
+	VERSION_SUFFIX   := ""
 else ifeq ($(strip ${VERSION_THIRD_WORD}),)
-	VERSION_SUFFIX   := preview-$(strip ${VERSION_SECOND_WORD})
+	VERSION_SUFFIX   := $(strip ${VERSION_SECOND_WORD})
 else
-	VERSION_SUFFIX   := preview-$(strip ${VERSION_THIRD_WORD})-$(strip ${VERSION_SECOND_WORD})
+	VERSION_SUFFIX   := $(strip ${VERSION_THIRD_WORD})-$(strip ${VERSION_SECOND_WORD})
 endif
 
 TESTPARALLELISM := 10
@@ -46,9 +46,6 @@ install:: install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
 	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
-
-lint::
-	golangci-lint run
 
 dotnet_test::
 	# include the version prefix/suffix to avoid generating a separate nupkg file

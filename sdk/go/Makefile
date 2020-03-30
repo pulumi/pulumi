@@ -18,9 +18,6 @@ install_plugin::
 
 install:: install_plugin
 
-lint::
-	golangci-lint run
-
 test_all:: test_fast
 
 test_fast::
