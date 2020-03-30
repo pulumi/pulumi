@@ -118,7 +118,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 		OptionalFlag: "?",
 		Type: propertyType{
 			Name: "pulumi.InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "InvokeOptions"),
 		},
 	})
 

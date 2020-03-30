@@ -310,7 +310,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: "pulumi.CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "CustomResourceOptions"),
 			},
 		},
 	}
