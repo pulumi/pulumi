@@ -1203,14 +1203,16 @@ func computePropertyNames(props []*schema.Property, names map[*schema.Property]s
 	return nil
 }
 
-type csharpPackageInfo struct {
+// CSharpPackageInfo represents the C# language-specific info at the root
+// of the schema.
+type CSharpPackageInfo struct {
 	PackageReferences map[string]string `json:"packageReferences,omitempty"`
 	Namespaces        map[string]string `json:"namespaces,omitempty"`
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode csharp-specific info
-	var info csharpPackageInfo
+	var info CSharpPackageInfo
 	if csharp, ok := pkg.Language["csharp"]; ok {
 		if err := json.Unmarshal([]byte(csharp), &info); err != nil {
 			return nil, errors.Wrap(err, "decoding csharp package info")
