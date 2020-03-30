@@ -65,7 +65,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         -exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
 
     echo "Publishing Docker containers to hub.docker.com:"
-    "${ROOT}/scripts/build-docker.sh" "${NPM_VERSION}"
+    "${ROOT}/scripts/build-docker.sh" "${NPM_VERSION}" "--publish"
 
     echo "Building package docs:"
     "$(go env GOPATH)/src/github.com/pulumi/scripts/ci/build-package-docs.sh" pulumi
