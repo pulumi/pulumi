@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
-_(none)_
+- Fix error related to side-by-side versions of `@pulumi/pulumi`.
+  [#4235](https://github.com/pulumi/pulumi/pull/4235)
 
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
