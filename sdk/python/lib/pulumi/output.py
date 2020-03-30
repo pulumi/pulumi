@@ -164,7 +164,7 @@ class Output(Generic[T]):
                         # **not** known and **not** secret
                         result_resources.set_result(resources)
                         result_is_known.set_result(False)
-                        result_is_secret.set_result(False)
+                        result_is_secret.set_result(is_secret)
                         return cast(U, None)
 
                     # If we are running with unknown values and the value is explicitly unknown but does not actually
@@ -190,13 +190,13 @@ class Output(Generic[T]):
                     # Since transformed is not an Output, it is both known and not a secret.
                     result_resources.set_result(resources)
                     result_is_known.set_result(True)
-                    result_is_secret.set_result(False)
+                    result_is_secret.set_result(is_secret)
                     return await cast(Awaitable[U], transformed)
 
                 #  3. transformed is U. It is trivially known.
                 result_resources.set_result(resources)
                 result_is_known.set_result(True)
-                result_is_secret.set_result(False)
+                result_is_secret.set_result(is_secret)
                 return cast(U, transformed)
             finally:
                 # Always resolve the future if it hasn't been done already.
