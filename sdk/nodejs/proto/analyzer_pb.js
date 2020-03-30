@@ -2844,7 +2844,8 @@ proto.pulumirpc.AnalyzerInfo.toObject = function(includeInstance, msg) {
     policiesList: jspb.Message.toObjectList(msg.getPoliciesList(),
     proto.pulumirpc.PolicyInfo.toObject, includeInstance),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    supportsconfig: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+    supportsconfig: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+    initialconfigMap: (f = msg.getInitialconfigMap()) ? f.toObject(includeInstance, proto.pulumirpc.PolicyConfig.toObject) : []
   };
 
   if (includeInstance) {
@@ -2901,6 +2902,12 @@ proto.pulumirpc.AnalyzerInfo.deserializeBinaryFromReader = function(msg, reader)
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportsconfig(value);
+      break;
+    case 6:
+      var value = msg.getInitialconfigMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.PolicyConfig.deserializeBinaryFromReader, "", new proto.pulumirpc.PolicyConfig());
+         });
       break;
     default:
       reader.skipField();
@@ -2966,6 +2973,10 @@ proto.pulumirpc.AnalyzerInfo.serializeBinaryToWriter = function(message, writer)
       5,
       f
     );
+  }
+  f = message.getInitialconfigMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.PolicyConfig.serializeBinaryToWriter);
   }
 };
 
@@ -3078,6 +3089,28 @@ proto.pulumirpc.AnalyzerInfo.prototype.getSupportsconfig = function() {
 proto.pulumirpc.AnalyzerInfo.prototype.setSupportsconfig = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
 };
+
+
+/**
+ * map<string, PolicyConfig> initialConfig = 6;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!proto.pulumirpc.PolicyConfig>}
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.getInitialconfigMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!proto.pulumirpc.PolicyConfig>} */ (
+      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
+      proto.pulumirpc.PolicyConfig));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.AnalyzerInfo} returns this
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.clearInitialconfigMap = function() {
+  this.getInitialconfigMap().clear();
+  return this;};
 
 
 

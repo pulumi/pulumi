@@ -123,11 +123,12 @@ message AnalyzeDiagnostic {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 message AnalyzerInfo {
-    string name = 1;                  // Name of the PolicyPack.
-    string displayName = 2;           // Pretty name for the PolicyPack.
-    repeated PolicyInfo policies = 3; // Metadata about policies contained in PolicyPack.
-    string version = 4;               // Version of the Policy Pack.
-    bool supportsConfig = 5;          // Whether the Policy Pack supports config.
+    string name = 1;                             // Name of the PolicyPack.
+    string displayName = 2;                      // Pretty name for the PolicyPack.
+    repeated PolicyInfo policies = 3;            // Metadata about policies contained in PolicyPack.
+    string version = 4;                          // Version of the Policy Pack.
+    bool supportsConfig = 5;                     // Whether the Policy Pack supports config.
+    map<string, PolicyConfig> initialConfig = 6; // Map of policy name to config.
 }
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.
