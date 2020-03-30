@@ -19,6 +19,7 @@
 package nodejs
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -33,11 +34,18 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
+	if packageName == "" && modName == "" {
+		panic(errors.New("packageName and modName cannot be empty"))
+	}
+
 	var path string
-	if packageName != "" {
+	switch {
+	case packageName != "" && modName != "":
 		path = fmt.Sprintf("%s/%s", packageName, modName)
-	} else {
+	case packageName == "" && modName != "":
 		path = modName
+	case packageName != "" && modName == "":
+		path = packageName
 	}
 	typeName = strings.ReplaceAll(typeName, "?", "")
 	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
