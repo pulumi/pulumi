@@ -14,7 +14,7 @@
     <tbody>
     {{ range . }}
         <tr>
-            <td class="align-top">{{ htmlSafe .Name }}</td>
+            <td class="align-top">{{ htmlSafe .DisplayName }}</td>
             <td class="align-top">
                 {{ if eq .Type.Link "#" "" }}
                 <code>{{ htmlSafe .Type.Name }}</code>
@@ -23,7 +23,7 @@
                 {{- end }}
             </td>
             <td class="align-top">
-            {{- htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- .Comment }} {{ htmlSafe "{{% /md %}}" }}
+            {{- htmlSafe "{{% md %}}" }} {{ if .IsInput }}{{ template "propIsRequired" .IsRequired }}{{- end }} {{- htmlSafe .Comment }} {{ htmlSafe "{{% /md %}}" }}
 
             {{ .DeprecationMessage }}
             </td>

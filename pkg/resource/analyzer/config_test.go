@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 

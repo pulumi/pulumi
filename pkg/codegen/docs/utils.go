@@ -22,8 +22,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/codegen/python"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 func isDotNetTypeNameBoundary(prev rune, next rune) bool {
@@ -63,20 +62,4 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return strings.Title(components[2])
-}
-
-// getLanguagePropertyName returns a language-specific representation of a given
-// property name.
-func getLanguagePropertyName(name string, lang string, insertWordBreak bool) string {
-	switch lang {
-	case "python":
-		name = python.PyName(name)
-	case "go", "csharp":
-		name = strings.Title(name)
-	}
-
-	if !insertWordBreak {
-		return name
-	}
-	return wbr(name)
 }

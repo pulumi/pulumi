@@ -34,8 +34,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -570,7 +571,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
 	if fun.Comment != "" {
-		fmt.Fprintln(docs, fun.Comment)
+		fmt.Fprintln(docs, codegen.StripNonRelevantExamples(fun.Comment, "python"))
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
@@ -879,7 +880,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
-		fmt.Fprintln(b, res.Comment)
+		fmt.Fprintln(b, codegen.StripNonRelevantExamples(res.Comment, "python"))
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}

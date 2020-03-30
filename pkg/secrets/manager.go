@@ -16,7 +16,7 @@ package secrets
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
 )
 
 // Manager provides the interface for providing stack encryption.

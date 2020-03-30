@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.

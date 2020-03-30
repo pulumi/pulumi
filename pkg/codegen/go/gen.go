@@ -33,8 +33,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -553,7 +554,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
-	printComment(w, r.Comment, false)
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "go"), false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
 	if r.IsProvider {
@@ -601,6 +602,27 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", title(p.Name), t, v)
 			fmt.Fprintf(w, "\t}\n")
 		}
+	}
+
+	// Set any defined aliases.
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
+		for _, alias := range r.Aliases {
+			s := "\t\t{\n"
+			if alias.Name != nil {
+				s += fmt.Sprintf("\t\t\tName: pulumi.String(%q),\n", *alias.Name)
+			}
+			if alias.Project != nil {
+				s += fmt.Sprintf("\t\t\tProject: pulumi.String(%q),\n", *alias.Project)
+			}
+			if alias.Type != nil {
+				s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", *alias.Type)
+			}
+			s += "\t\t},\n"
+			fmt.Fprint(w, s)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
 
 	// Finally make the call to registration.
@@ -674,7 +696,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	name := pkg.functionNames[f]
 
-	printComment(w, f.Comment, false)
+	printComment(w, codegen.StripNonRelevantExamples(f.Comment, "go"), false)
 
 	// Now, emit the function signature.
 	argsig := "ctx *pulumi.Context"
@@ -955,15 +977,8 @@ type GoInfo struct {
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	var goInfo GoInfo
-	if golang, ok := pkg.Language["go"]; ok {
-		if err := json.Unmarshal(golang, &goInfo); err != nil {
-			return nil, errors.Wrap(err, "decoding go package info")
-		}
-	}
-
-	// group resources, types, and functions into Go packages
+// generatePackageContextMap groups resources, types, and functions into Go packages.
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
@@ -1066,6 +1081,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.names.add(name + "Result")
 		}
 	}
+
+	return packages
+}
+
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	var goInfo GoInfo
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			return nil, errors.Wrap(err, "decoding go package info")
+		}
+	}
+
+	packages := generatePackageContextMap(tool, pkg, goInfo)
 
 	// emit each package
 	var pkgMods []string

@@ -38,21 +38,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/tools"
-	"github.com/pulumi/pulumi/pkg/util/ciutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
+	pulumi_testing "github.com/pulumi/pulumi/sdk/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const PythonRuntime = "python"
@@ -249,8 +249,6 @@ type ProgramTestOptions struct {
 	PipenvBin string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
 	DotNetBin string
-	// goDepBin is the location of a `dep` executable to be run. Taken from $PATH if missing.
-	GoDepBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -453,9 +451,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PipenvBin != "" {
 		opts.PipenvBin = overrides.PipenvBin
 	}
-	if overrides.GoDepBin != "" {
-		opts.GoDepBin = overrides.GoDepBin
-	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
 	}
@@ -635,7 +630,6 @@ type ProgramTester struct {
 	goBin        string              // the `go` binary we are using.
 	pipenvBin    string              // The `pipenv` binary we are using.
 	dotNetBin    string              // the `dotnet` binary we are using.
-	goDepBin     string              // the `goDep` binary we are using.
 	eventLog     string              // The path to the event log for this test.
 	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
 	tmpdir       string              // the temporary directory we use for our test environment
@@ -681,10 +675,6 @@ func (pt *ProgramTester) getPipenvBin() (string, error) {
 
 func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
-}
-
-func (pt *ProgramTester) getGoDepBin() (string, error) {
-	return getCmdBin(&pt.goDepBin, "dep", pt.opts.GoDepBin)
 }
 
 func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
@@ -1707,10 +1697,6 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if err != nil {
 		return errors.Wrap(err, "locating `go` binary")
 	}
-	goDepBin, err := pt.getGoDepBin()
-	if err != nil {
-		return errors.Wrap(err, "locating `dep` binary")
-	}
 
 	// Ensure GOPATH is known.
 	gopath := os.Getenv("GOPATH")
@@ -1728,28 +1714,42 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// We only need to run dep-ensure if there is a Gopkg.toml file
-	_, err = os.Stat(filepath.Join(cwd, "Gopkg.toml"))
-	if err == nil {
-		err = pt.runCommand("dep-ensure", []string{goDepBin, "ensure", "-v"}, cwd)
+	// initialize a go.mod for dependency resolution if one doesn't exist
+	_, err = os.Stat(filepath.Join(cwd, "go.mod"))
+	if err != nil {
+		err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
 		if err != nil {
-			return fmt.Errorf("error installing go dependencies: %w", err)
+			return err
 		}
+	}
 
-		for _, pkg := range pt.opts.Dependencies {
-			err = os.RemoveAll(filepath.Join(cwd, "vendor", pkg))
-			if err != nil {
-				return fmt.Errorf("error installing go dependencies: %w", err)
-			}
-			err = CopyDir(filepath.Join(gopath, "src", pkg), filepath.Join(cwd, "vendor", pkg))
-			if err != nil {
-				return fmt.Errorf("error installing go dependencies: %w", err)
-			}
-			err = os.RemoveAll(filepath.Join(cwd, "vendor", pkg, "vendor"))
-			if err != nil {
-				return fmt.Errorf("error installing go dependencies: %w", err)
-			}
+	// initial tidy to resolve dependencies
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	// link local dependencies
+	for _, pkg := range pt.opts.Dependencies {
+		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
+		dep := filepath.Join(depParts...)
+		editStr := fmt.Sprintf("%s=%s", pkg, dep)
+		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
+		if err != nil {
+			return err
 		}
+	}
+
+	// tidy again after replacements
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	// resolve dependencies
+	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
+	if err != nil {
+		return err
 	}
 
 	// In our go tests, there seems to be an issue where we *need* to make a build before we

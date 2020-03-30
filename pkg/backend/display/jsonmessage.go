@@ -24,7 +24,7 @@ import (
 
 	gotty "github.com/ijc/Gotty"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 /* Satisfied by gotty.TermInfo as well as noTermInfo from below */

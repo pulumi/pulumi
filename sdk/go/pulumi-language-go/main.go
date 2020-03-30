@@ -29,10 +29,10 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -167,6 +167,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "PULUMI_PLUGINS=true")
+	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.Output()
 	if err != nil {

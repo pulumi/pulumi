@@ -1,0 +1,9 @@
+{
+    "all": {
+        "enforcementLevel": "advisory"
+    },
+    "test-policy-w-config": {
+        "enforcementLevel": "mandatory",
+        "message": "test msg"
+    }
+}

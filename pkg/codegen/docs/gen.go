@@ -22,6 +22,7 @@ package docs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
@@ -38,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/codegen/python"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 var (
@@ -46,6 +47,12 @@ var (
 	templates          *template.Template
 	packagedTemplates  map[string][]byte
 	docHelpers         map[string]codegen.DocLanguageHelper
+
+	// The following property case maps are for rendering property
+	// names of nested properties in Python language with the correct
+	// casing.
+	snakeCaseToCamelCase map[string]string
+	camelCaseToSnakeCase map[string]string
 )
 
 func init() {
@@ -53,15 +60,18 @@ func init() {
 	for _, lang := range supportedLanguages {
 		switch lang {
 		case "csharp":
-			docHelpers[lang] = dotnet.DocLanguageHelper{}
+			docHelpers[lang] = &dotnet.DocLanguageHelper{}
 		case "go":
-			docHelpers[lang] = go_gen.DocLanguageHelper{}
+			docHelpers[lang] = &go_gen.DocLanguageHelper{}
 		case "nodejs":
-			docHelpers[lang] = nodejs.DocLanguageHelper{}
+			docHelpers[lang] = &nodejs.DocLanguageHelper{}
 		case "python":
-			docHelpers[lang] = python.DocLanguageHelper{}
+			docHelpers[lang] = &python.DocLanguageHelper{}
 		}
 	}
+
+	snakeCaseToCamelCase = map[string]string{}
+	camelCaseToSnakeCase = map[string]string{}
 }
 
 // header represents the header of each resource markdown file.
@@ -71,6 +81,8 @@ type header struct {
 
 // property represents an input or an output property.
 type property struct {
+	// DisplayName is the property name with word-breaks.
+	DisplayName        string
 	Name               string
 	Comment            string
 	Type               propertyType
@@ -95,7 +107,8 @@ type docNestedType struct {
 
 // propertyType represents the type of a property.
 type propertyType struct {
-	Name string
+	DisplayName string
+	Name        string
 	// Link can be a link to an anchor tag on the same
 	// page, or to another page/site.
 	Link string
@@ -246,15 +259,31 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		href = "#" + lower(tokenName)
 	}
 
+	// Strip the namespace/module prefix for the type's display name.
+	var parts []string
+	var displayName string
+	if lang == "csharp" {
+		csharpNS := fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
+		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
+	} else {
+		parts = strings.Split(langTypeString, ".")
+		displayName = parts[len(parts)-1]
+	}
+
+	// If word-breaks need to be inserted, then the type string
+	// should be html-encoded first if the language is C# in order
+	//  to avoid confusing the Hugo rendering where the word-break
+	// tags are inserted.
 	if insertWordBreaks {
 		if lang == "csharp" {
-			langTypeString = html.EscapeString(langTypeString)
+			displayName = html.EscapeString(displayName)
 		}
-		langTypeString = wbr(langTypeString)
+		displayName = wbr(displayName)
 	}
 	return propertyType{
-		Link: href,
-		Name: langTypeString,
+		Name:        langTypeString,
+		DisplayName: displayName,
+		Link:        href,
 	}
 }
 
@@ -359,10 +388,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	optionsType := "Pulumi.CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "Pulumi.ResourceOptions"
-	}
-
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
 		{
@@ -446,11 +471,11 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 						InputType:  inputTypeDocLink,
 						OutputType: outputTypeDocLink,
 					}
-					props[lang] = mod.getProperties(obj.Properties, lang, true)
+					props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 				}
 
 				objs = append(objs, docNestedType{
-					Name:        tokenToName(obj.Token),
+					Name:        wbr(tokenToName(obj.Token)),
 					APIDocLinks: apiDocLinks,
 					Properties:  props,
 				})
@@ -467,7 +492,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []property {
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested bool) []property {
 	if len(properties) == 0 {
 		return nil
 	}
@@ -479,15 +504,47 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 
 		characteristics := propertyCharacteristics{
-			input:    isInput,
+			input:    input,
 			optional: !prop.IsRequired,
 		}
+
+		langDocHelper := getLanguageDocHelper(lang)
+		var propLangName string
+		switch lang {
+		case "python":
+			pyName := python.PyName(prop.Name)
+			// The default casing for a Python property name is snake_case unless
+			// it is a property of a nested object, in which case, we should check the property
+			// case maps.
+			propLangName = pyName
+
+			if nested {
+				if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
+					propLangName = snakeCase
+				} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
+					propLangName = camelCase
+				} else {
+					// If neither of the property case maps have the property
+					// then use the default name of the property.
+					propLangName = prop.Name
+				}
+			}
+		default:
+			name, err := langDocHelper.GetPropertyName(prop)
+			if err != nil {
+				panic(err)
+			}
+
+			propLangName = name
+		}
+
 		docProperties = append(docProperties, property{
-			Name:               getLanguagePropertyName(prop.Name, lang, true),
+			DisplayName:        wbr(propLangName),
+			Name:               propLangName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
-			IsInput:            isInput,
+			IsInput:            input,
 			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}
@@ -567,9 +624,12 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
+		parts := strings.Split(resourceTypeName, ".")
+		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
-			Name: resourceDisplayName,
-			Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
+			Name:        resourceDisplayName,
+			DisplayName: displayName,
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
 		}
 	}
 
@@ -765,13 +825,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	outputProps := make(map[string][]property)
 	stateInputs := make(map[string][]property)
 	for _, lang := range supportedLanguages {
-		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false)
 		if r.IsProvider {
 			continue
 		}
-		outputProps[lang] = mod.getProperties(r.Properties, lang, false)
+		outputProps[lang] = mod.getProperties(r.Properties, lang, false, false)
 		if r.StateInputs != nil {
-			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true)
+			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
 		}
 	}
 
@@ -876,6 +936,7 @@ func (mod *modContext) genHeader(w io.Writer, title string) {
 
 	fmt.Fprintf(w, "---\n")
 	fmt.Fprintf(w, "title: %q\n", title)
+	fmt.Fprintf(w, "block_external_search_index: true\n")
 	fmt.Fprintf(w, "---\n\n")
 
 	fmt.Fprintf(w, "<!-- WARNING: this file was generated by %v. -->\n", mod.tool)
@@ -1015,27 +1076,8 @@ func (mod *modContext) genIndex(exports []string) string {
 	return w.String()
 }
 
-// GeneratePackage generates the docs package with docs for each resource given the Pulumi
-// schema.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	templates = template.New("").Funcs(template.FuncMap{
-		"htmlSafe": func(html string) template.HTML {
-			// Markdown fragments in the templates need to be rendered as-is,
-			// so that html/template package doesn't try to inject data into it,
-			// which will most certainly fail.
-			// nolint gosec
-			return template.HTML(html)
-		},
-		"pyName": func(str string) string {
-			return python.PyName(str)
-		},
-	})
-
-	for name, b := range packagedTemplates {
-		template.Must(templates.New(name).Parse(string(b)))
-	}
-
-	// group resources, types, and functions into modules
+func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
+	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
 	var getMod func(token string) *modContext
@@ -1063,6 +1105,18 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		return mod
 	}
 
+	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
+	var goInfo go_gen.GoInfo
+	if golang, ok := pkg.Language["go"]; ok {
+		if err := json.Unmarshal(golang, &goInfo); err != nil {
+			panic(fmt.Errorf("decoding go package info: %v", err))
+		}
+	}
+	// Generate the Go package map info now, so we can use that to get the type string
+	// names later.
+	goLangHelper.GeneratePackagesMap(pkg, tool, goInfo)
+
+	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	types := &modContext{pkg: pkg, mod: "types", tool: tool}
 
 	for _, v := range pkg.Config {
@@ -1072,10 +1126,16 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
+
 		for _, p := range r.Properties {
+			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
 		}
+
 		for _, p := range r.InputProperties {
+			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
 					types.details(t).outputType = true
@@ -1083,6 +1143,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				types.details(t).inputType = true
 			})
 		}
+
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true })
 		}
@@ -1109,7 +1170,32 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			})
 		}
 	}
+	return modules
+}
 
+// GeneratePackage generates the docs package with docs for each resource given the Pulumi
+// schema.
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	templates = template.New("").Funcs(template.FuncMap{
+		"htmlSafe": func(html string) template.HTML {
+			// Markdown fragments in the templates need to be rendered as-is,
+			// so that html/template package doesn't try to inject data into it,
+			// which will most certainly fail.
+			// nolint gosec
+			return template.HTML(html)
+		},
+		"pyName": func(str string) string {
+			return python.PyName(str)
+		},
+	})
+
+	for name, b := range packagedTemplates {
+		template.Must(templates.New(name).Parse(string(b)))
+	}
+
+	// Generate the modules from the schema, and for every module
+	// run the generator functions to generate markdown files.
+	modules := generateModulesFromSchemaPackage(tool, pkg)
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
