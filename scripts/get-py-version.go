@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/util/buildutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/buildutil"
 )
 
 func main() {
