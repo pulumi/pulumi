@@ -2,12 +2,9 @@
     "name": "test-policy-wo-config",
     "version": "0.0.1",
     "dependencies": {
-        "@pulumi/pulumi": "^1.0.0",
-        "@pulumi/policy": "^0.2.0"
+        "@pulumi/policy": "^0.4.0"
     },
     "devDependencies": {
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^10.12.7",
-        "tslint": "^5.11.0"
+        "@types/node": "^10.12.7"
     }
 }
