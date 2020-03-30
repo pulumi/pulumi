@@ -260,8 +260,21 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
-	parts := strings.Split(langTypeString, ".")
-	displayName := parts[len(parts)-1]
+	var parts []string
+	var displayName string
+	if lang == "csharp" {
+		// C# types can be wrapped in enumerable types such as List<> or Dictionary<>, so we have to
+		// only replace the namespace string within the < and the >.
+		qualifier := "Inputs"
+		if !characteristics.input {
+			qualifier = "Outputs"
+		}
+		csharpNS := fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod), qualifier)
+		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
+	} else {
+		parts = strings.Split(langTypeString, ".")
+		displayName = parts[len(parts)-1]
+	}
 
 	// If word-breaks need to be inserted, then the type string
 	// should be html-encoded first if the language is C# in order
