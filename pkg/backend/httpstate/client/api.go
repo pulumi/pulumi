@@ -53,6 +53,10 @@ type StackIdentifier struct {
 	Stack   string
 }
 
+func (s StackIdentifier) String() string {
+	return fmt.Sprintf("%s/%s/%s", s.Owner, s.Project, s.Stack)
+}
+
 // UpdateIdentifier is the set of data needed to identify an update to a Pulumi Cloud stack.
 type UpdateIdentifier struct {
 	StackIdentifier
