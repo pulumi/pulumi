@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi/sdk
 
 go 1.13
 
+replace github.com/pulumi/pulumi/sdk => ../sdk
+
 require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
