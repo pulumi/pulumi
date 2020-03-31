@@ -21,8 +21,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -33,9 +33,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -840,7 +840,7 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 		return
 	}
 
-	imports.add("github.com/pulumi/pulumi/sdk/go/pulumi")
+	imports.add("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
 }
 
 func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackages stringSet) {
@@ -895,7 +895,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 }
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	imports := newStringSet("github.com/pulumi/pulumi/sdk/go/pulumi/config")
+	imports := newStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi/config")
 	pkg.getImports(variables, imports)
 
 	pkg.genHeader(w, nil, imports)
@@ -1199,7 +1199,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		if registerPackage {
 			buffer := &bytes.Buffer{}
 
-			pkg.genHeader(buffer, []string{"github.com/pulumi/pulumi/sdk/go/pulumi"}, nil)
+			pkg.genHeader(buffer, []string{"github.com/pulumi/pulumi/sdk/v2/go/pulumi"}, nil)
 			pkg.genPackageRegistration(buffer)
 
 			setFile(path.Join(mod, "pulumiManifest.go"), buffer.String())

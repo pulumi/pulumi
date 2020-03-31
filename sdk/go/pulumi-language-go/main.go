@@ -29,12 +29,12 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/go/common/version"
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 const unableToFindProgramTemplate = "unable to find program: %s"

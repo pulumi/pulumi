@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 
 	"golang.org/x/oauth2/google"
 

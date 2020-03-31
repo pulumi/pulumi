@@ -26,16 +26,16 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // RequiredPolicy represents a set of policies to apply during an update.

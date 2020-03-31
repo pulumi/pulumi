@@ -15,10 +15,9 @@
 package cmd
 
 import (
-	"github.com/pulumi/pulumi/pkg/secrets/service"
-
-	"github.com/pulumi/pulumi/pkg/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
 )
 
 func newServiceSecretsManager(s httpstate.Stack) (secrets.Manager, error) {

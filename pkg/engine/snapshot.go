@@ -17,7 +17,7 @@ package engine
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 )
 
 // SnapshotManager is responsible for maintaining the in-memory representation

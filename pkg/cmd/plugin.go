@@ -17,11 +17,11 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 func newPluginCmd() *cobra.Command {

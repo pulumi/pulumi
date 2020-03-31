@@ -12,17 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const WindowsOS = "windows"
@@ -82,7 +81,7 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -93,7 +92,7 @@ func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -104,7 +103,7 @@ func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun_main"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -995,7 +994,7 @@ func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -1270,7 +1269,7 @@ func TestStackReferenceGo(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 		Config: map[string]string{

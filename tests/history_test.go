@@ -16,10 +16,9 @@ package tests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"github.com/stretchr/testify/assert"
-
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 )
 
 // deleteIfNotFailed deletes the files in the testing environment if the testcase has

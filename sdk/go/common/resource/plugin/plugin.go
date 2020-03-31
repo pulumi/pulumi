@@ -33,11 +33,11 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 )
 
 type plugin struct {

@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
@@ -48,7 +48,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleN
 	if packageName != "" {
 		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
 	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/%s?tab=doc#%s", path, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/%s?tab=doc#%s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.

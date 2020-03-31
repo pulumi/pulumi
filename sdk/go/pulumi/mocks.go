@@ -4,13 +4,13 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 type MockResourceMonitor interface {

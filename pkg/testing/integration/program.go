@@ -38,21 +38,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/retry"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/operations"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 const PythonRuntime = "python"
@@ -1733,6 +1733,12 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	for _, pkg := range pt.opts.Dependencies {
 		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
 		dep := filepath.Join(depParts...)
+		if strings.Contains(dep, "v2") {
+			// This is something we need to do for a local override. We effectively
+			// map a pkg to a folder location on disk. Local disk doesn't have a v2
+			// in it's path so we need to skip it
+			dep = strings.Replace(dep, "v2", "", -1)
+		}
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {

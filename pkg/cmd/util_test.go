@@ -17,9 +17,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	pul_testing "github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	pul_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
 	"github.com/stretchr/testify/assert"
 )
 

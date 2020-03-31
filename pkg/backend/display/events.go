@@ -2,12 +2,13 @@ package display
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi

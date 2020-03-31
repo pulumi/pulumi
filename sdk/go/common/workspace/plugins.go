@@ -28,18 +28,17 @@ import (
 	"sort"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/archive"
-
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/util/httputil"
-	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/httputil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
 )
 
 const (

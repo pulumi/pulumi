@@ -17,7 +17,7 @@ package model
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
 )

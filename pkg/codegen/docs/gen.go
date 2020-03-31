@@ -33,13 +33,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
-	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
-	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/codegen/python"
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 var (

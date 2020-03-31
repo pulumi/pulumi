@@ -5,7 +5,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 )
 
 // Test that the engine is capable of relinquishing control of a resource without deleting it.

@@ -18,7 +18,7 @@ package dotnet
 import (
 	"text/template"
 
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
 // nolint:lll

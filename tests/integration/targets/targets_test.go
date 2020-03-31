@@ -8,11 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 )
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {

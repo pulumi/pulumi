@@ -19,11 +19,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 var errSecureKeyReserved = errors.New(`"secure" key in maps of length 1 are reserved`)

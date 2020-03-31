@@ -12,20 +12,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
 
-	"github.com/pulumi/pulumi/pkg/npm"
+	"github.com/pulumi/pulumi/pkg/v2/npm"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/engine"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 type cloudRequiredPolicy struct {
