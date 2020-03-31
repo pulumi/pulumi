@@ -313,12 +313,25 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		return policies[i].Name < policies[j].Name
 	})
 
+	initialConfig := make(map[string]AnalyzerPolicyConfig)
+	for k, v := range resp.GetInitialConfig() {
+		enforcementLevel, err := convertEnforcementLevel(v.GetEnforcementLevel())
+		if err != nil {
+			return AnalyzerInfo{}, err
+		}
+		initialConfig[k] = AnalyzerPolicyConfig{
+			EnforcementLevel: enforcementLevel,
+			Properties:       unmarshalMap(v.GetProperties()),
+		}
+	}
+
 	return AnalyzerInfo{
 		Name:           resp.GetName(),
 		DisplayName:    resp.GetDisplayName(),
 		Version:        resp.GetVersion(),
 		SupportsConfig: resp.GetSupportsConfig(),
 		Policies:       policies,
+		InitialConfig:  initialConfig,
 	}, nil
 }
 

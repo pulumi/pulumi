@@ -101,6 +101,7 @@ type AnalyzerInfo struct {
 	Version        string
 	SupportsConfig bool
 	Policies       []AnalyzerPolicyInfo
+	InitialConfig  map[string]AnalyzerPolicyConfig
 }
 
 // AnalyzerPolicyInfo defines the metadata for an individual Policy within a Policy Pack.

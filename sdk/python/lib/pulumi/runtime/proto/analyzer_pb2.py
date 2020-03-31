@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pulumirpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=b'\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xd2\x01\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\x12\x35\n\x08provider\x18\x06 \x01(\x0b\x32#.pulumirpc.AnalyzerProviderResource\"\xb5\x03\n\x10\x41nalyzerResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\x12\x35\n\x08provider\x18\x06 \x01(\x0b\x32#.pulumirpc.AnalyzerProviderResource\x12\x0e\n\x06parent\x18\x07 \x01(\t\x12\x14\n\x0c\x64\x65pendencies\x18\x08 \x03(\t\x12S\n\x14propertyDependencies\x18\t \x03(\x0b\x32\x35.pulumirpc.AnalyzerResource.PropertyDependenciesEntry\x1a\x64\n\x19PropertyDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x36\n\x05value\x18\x02 \x01(\x0b\x32\'.pulumirpc.AnalyzerPropertyDependencies:\x02\x38\x01\"\xc1\x02\n\x17\x41nalyzerResourceOptions\x12\x0f\n\x07protect\x18\x01 \x01(\x08\x12\x15\n\rignoreChanges\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\x12\"\n\x1a\x64\x65leteBeforeReplaceDefined\x18\x04 \x01(\x08\x12\x1f\n\x17\x61\x64\x64itionalSecretOutputs\x18\x05 \x03(\t\x12\x0f\n\x07\x61liases\x18\x06 \x03(\t\x12I\n\x0e\x63ustomTimeouts\x18\x07 \x01(\x0b\x32\x31.pulumirpc.AnalyzerResourceOptions.CustomTimeouts\x1a@\n\x0e\x43ustomTimeouts\x12\x0e\n\x06\x63reate\x18\x01 \x01(\x01\x12\x0e\n\x06update\x18\x02 \x01(\x01\x12\x0e\n\x06\x64\x65lete\x18\x03 \x01(\x01\"p\n\x18\x41nalyzerProviderResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\",\n\x1c\x41nalyzerPropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\"E\n\x13\x41nalyzeStackRequest\x12.\n\tresources\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.AnalyzerResource\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xd2\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x0b\n\x03urn\x18\x08 \x01(\t\"\x83\x01\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x16\n\x0esupportsConfig\x18\x05 \x01(\x08\"\xc1\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x33\n\x0c\x63onfigSchema\x18\x06 \x01(\x0b\x32\x1d.pulumirpc.PolicyConfigSchema\"S\n\x12PolicyConfigSchema\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x10\n\x08required\x18\x02 \x03(\t\"r\n\x0cPolicyConfig\x12\x35\n\x10\x65nforcementLevel\x18\x01 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"\xb5\x01\n\x18\x43onfigureAnalyzerRequest\x12K\n\x0cpolicyConfig\x18\x01 \x03(\x0b\x32\x35.pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry\x1aL\n\x11PolicyConfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.pulumirpc.PolicyConfig:\x02\x38\x01*=\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x12\x0c\n\x08\x44ISABLED\x10\x02\x32\xf0\x02\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x12J\n\tConfigure\x12#.pulumirpc.ConfigureAnalyzerRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xd2\x01\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\x12\x35\n\x08provider\x18\x06 \x01(\x0b\x32#.pulumirpc.AnalyzerProviderResource\"\xb5\x03\n\x10\x41nalyzerResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x33\n\x07options\x18\x05 \x01(\x0b\x32\".pulumirpc.AnalyzerResourceOptions\x12\x35\n\x08provider\x18\x06 \x01(\x0b\x32#.pulumirpc.AnalyzerProviderResource\x12\x0e\n\x06parent\x18\x07 \x01(\t\x12\x14\n\x0c\x64\x65pendencies\x18\x08 \x03(\t\x12S\n\x14propertyDependencies\x18\t \x03(\x0b\x32\x35.pulumirpc.AnalyzerResource.PropertyDependenciesEntry\x1a\x64\n\x19PropertyDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x36\n\x05value\x18\x02 \x01(\x0b\x32\'.pulumirpc.AnalyzerPropertyDependencies:\x02\x38\x01\"\xc1\x02\n\x17\x41nalyzerResourceOptions\x12\x0f\n\x07protect\x18\x01 \x01(\x08\x12\x15\n\rignoreChanges\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\x12\"\n\x1a\x64\x65leteBeforeReplaceDefined\x18\x04 \x01(\x08\x12\x1f\n\x17\x61\x64\x64itionalSecretOutputs\x18\x05 \x03(\t\x12\x0f\n\x07\x61liases\x18\x06 \x03(\t\x12I\n\x0e\x63ustomTimeouts\x18\x07 \x01(\x0b\x32\x31.pulumirpc.AnalyzerResourceOptions.CustomTimeouts\x1a@\n\x0e\x43ustomTimeouts\x12\x0e\n\x06\x63reate\x18\x01 \x01(\x01\x12\x0e\n\x06update\x18\x02 \x01(\x01\x12\x0e\n\x06\x64\x65lete\x18\x03 \x01(\x01\"p\n\x18\x41nalyzerProviderResource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0b\n\x03urn\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\",\n\x1c\x41nalyzerPropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\"E\n\x13\x41nalyzeStackRequest\x12.\n\tresources\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.AnalyzerResource\"D\n\x0f\x41nalyzeResponse\x12\x31\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1c.pulumirpc.AnalyzeDiagnostic\"\xd2\x01\n\x11\x41nalyzeDiagnostic\x12\x12\n\npolicyName\x18\x01 \x01(\t\x12\x16\n\x0epolicyPackName\x18\x02 \x01(\t\x12\x19\n\x11policyPackVersion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x03(\t\x12\x35\n\x10\x65nforcementLevel\x18\x07 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x0b\n\x03urn\x18\x08 \x01(\t\"\x95\x02\n\x0c\x41nalyzerInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\'\n\x08policies\x18\x03 \x03(\x0b\x32\x15.pulumirpc.PolicyInfo\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x16\n\x0esupportsConfig\x18\x05 \x01(\x08\x12\x41\n\rinitialConfig\x18\x06 \x03(\x0b\x32*.pulumirpc.AnalyzerInfo.InitialConfigEntry\x1aM\n\x12InitialConfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.pulumirpc.PolicyConfig:\x02\x38\x01\"\xc1\x01\n\nPolicyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64isplayName\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x35\n\x10\x65nforcementLevel\x18\x05 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12\x33\n\x0c\x63onfigSchema\x18\x06 \x01(\x0b\x32\x1d.pulumirpc.PolicyConfigSchema\"S\n\x12PolicyConfigSchema\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x10\n\x08required\x18\x02 \x03(\t\"r\n\x0cPolicyConfig\x12\x35\n\x10\x65nforcementLevel\x18\x01 \x01(\x0e\x32\x1b.pulumirpc.EnforcementLevel\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"\xb5\x01\n\x18\x43onfigureAnalyzerRequest\x12K\n\x0cpolicyConfig\x18\x01 \x03(\x0b\x32\x35.pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry\x1aL\n\x11PolicyConfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.pulumirpc.PolicyConfig:\x02\x38\x01*=\n\x10\x45nforcementLevel\x12\x0c\n\x08\x41\x44VISORY\x10\x00\x12\r\n\tMANDATORY\x10\x01\x12\x0c\n\x08\x44ISABLED\x10\x02\x32\xf0\x02\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12\x44\n\x0fGetAnalyzerInfo\x12\x16.google.protobuf.Empty\x1a\x17.pulumirpc.AnalyzerInfo\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x12J\n\tConfigure\x12#.pulumirpc.ConfigureAnalyzerRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 
@@ -47,8 +47,8 @@ _ENFORCEMENTLEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=2308,
-  serialized_end=2369,
+  serialized_start=2454,
+  serialized_end=2515,
 )
 _sym_db.RegisterEnumDescriptor(_ENFORCEMENTLEVEL)
 
@@ -591,6 +591,43 @@ _ANALYZEDIAGNOSTIC = _descriptor.Descriptor(
 )
 
 
+_ANALYZERINFO_INITIALCONFIGENTRY = _descriptor.Descriptor(
+  name='InitialConfigEntry',
+  full_name='pulumirpc.AnalyzerInfo.InitialConfigEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.AnalyzerInfo.InitialConfigEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.AnalyzerInfo.InitialConfigEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1794,
+  serialized_end=1871,
+)
+
 _ANALYZERINFO = _descriptor.Descriptor(
   name='AnalyzerInfo',
   full_name='pulumirpc.AnalyzerInfo',
@@ -633,10 +670,17 @@ _ANALYZERINFO = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='initialConfig', full_name='pulumirpc.AnalyzerInfo.initialConfig', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
-  nested_types=[],
+  nested_types=[_ANALYZERINFO_INITIALCONFIGENTRY, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -646,7 +690,7 @@ _ANALYZERINFO = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1594,
-  serialized_end=1725,
+  serialized_end=1871,
 )
 
 
@@ -711,8 +755,8 @@ _POLICYINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1728,
-  serialized_end=1921,
+  serialized_start=1874,
+  serialized_end=2067,
 )
 
 
@@ -749,8 +793,8 @@ _POLICYCONFIGSCHEMA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1923,
-  serialized_end=2006,
+  serialized_start=2069,
+  serialized_end=2152,
 )
 
 
@@ -787,8 +831,8 @@ _POLICYCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2008,
-  serialized_end=2122,
+  serialized_start=2154,
+  serialized_end=2268,
 )
 
 
@@ -825,8 +869,8 @@ _CONFIGUREANALYZERREQUEST_POLICYCONFIGENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2230,
-  serialized_end=2306,
+  serialized_start=2376,
+  serialized_end=2452,
 )
 
 _CONFIGUREANALYZERREQUEST = _descriptor.Descriptor(
@@ -855,8 +899,8 @@ _CONFIGUREANALYZERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2125,
-  serialized_end=2306,
+  serialized_start=2271,
+  serialized_end=2452,
 )
 
 _ANALYZEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
@@ -874,7 +918,10 @@ _ANALYZERPROVIDERRESOURCE.fields_by_name['properties'].message_type = google_dot
 _ANALYZESTACKREQUEST.fields_by_name['resources'].message_type = _ANALYZERRESOURCE
 _ANALYZERESPONSE.fields_by_name['diagnostics'].message_type = _ANALYZEDIAGNOSTIC
 _ANALYZEDIAGNOSTIC.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
+_ANALYZERINFO_INITIALCONFIGENTRY.fields_by_name['value'].message_type = _POLICYCONFIG
+_ANALYZERINFO_INITIALCONFIGENTRY.containing_type = _ANALYZERINFO
 _ANALYZERINFO.fields_by_name['policies'].message_type = _POLICYINFO
+_ANALYZERINFO.fields_by_name['initialConfig'].message_type = _ANALYZERINFO_INITIALCONFIGENTRY
 _POLICYINFO.fields_by_name['enforcementLevel'].enum_type = _ENFORCEMENTLEVEL
 _POLICYINFO.fields_by_name['configSchema'].message_type = _POLICYCONFIGSCHEMA
 _POLICYCONFIGSCHEMA.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
@@ -972,11 +1019,19 @@ AnalyzeDiagnostic = _reflection.GeneratedProtocolMessageType('AnalyzeDiagnostic'
 _sym_db.RegisterMessage(AnalyzeDiagnostic)
 
 AnalyzerInfo = _reflection.GeneratedProtocolMessageType('AnalyzerInfo', (_message.Message,), {
+
+  'InitialConfigEntry' : _reflection.GeneratedProtocolMessageType('InitialConfigEntry', (_message.Message,), {
+    'DESCRIPTOR' : _ANALYZERINFO_INITIALCONFIGENTRY,
+    '__module__' : 'analyzer_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerInfo.InitialConfigEntry)
+    })
+  ,
   'DESCRIPTOR' : _ANALYZERINFO,
   '__module__' : 'analyzer_pb2'
   # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerInfo)
   })
 _sym_db.RegisterMessage(AnalyzerInfo)
+_sym_db.RegisterMessage(AnalyzerInfo.InitialConfigEntry)
 
 PolicyInfo = _reflection.GeneratedProtocolMessageType('PolicyInfo', (_message.Message,), {
   'DESCRIPTOR' : _POLICYINFO,
@@ -1016,6 +1071,7 @@ _sym_db.RegisterMessage(ConfigureAnalyzerRequest.PolicyConfigEntry)
 
 
 _ANALYZERRESOURCE_PROPERTYDEPENDENCIESENTRY._options = None
+_ANALYZERINFO_INITIALCONFIGENTRY._options = None
 _CONFIGUREANALYZERREQUEST_POLICYCONFIGENTRY._options = None
 
 _ANALYZER = _descriptor.ServiceDescriptor(
@@ -1024,8 +1080,8 @@ _ANALYZER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=2372,
-  serialized_end=2740,
+  serialized_start=2518,
+  serialized_end=2886,
   methods=[
   _descriptor.MethodDescriptor(
     name='Analyze',

@@ -275,7 +275,8 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		if err != nil {
 			return err
 		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromAPI)
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
 		if err != nil {
 			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
 		}
@@ -320,7 +321,8 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 				return err
 			}
 		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(analyzerInfo.Policies, configFromFile)
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
 		if err != nil {
 			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
 		}

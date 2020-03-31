@@ -22,7 +22,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg v0.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi/pkg v1.13.1
 	github.com/pulumi/pulumi/sdk v1.13.1
 	github.com/stretchr/testify v1.5.1
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect

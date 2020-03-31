@@ -118,7 +118,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 		OptionalFlag: "?",
 		Type: propertyType{
 			Name: "pulumi.InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "pulumi", "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "InvokeOptions"),
 		},
 	})
 
@@ -193,13 +193,14 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 		})
 	}
 
+	optsType := "Pulumi.InvokeOptions"
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		DefaultValue: " = null",
 		Type: propertyType{
-			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType("", "", "InvokeOptions"),
+			Name: optsType,
+			Link: docLangHelper.GetDocLinkForResourceType("", "", optsType),
 		},
 	})
 	return params
