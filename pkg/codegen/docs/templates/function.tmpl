@@ -26,7 +26,9 @@
 
 <!-- C# -->
 {{ print "{{% choosable language csharp %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">Get{{ .ResourceName }} </span><span class="p">{</span><span class="k">public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span><span class="p">}</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">Get{{ .ResourceName }} </span><span class="p">{</span><span class="k">
+    public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span><span class="p">
+}</span></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 {{ if ne (len .InputProperties) 0 }}
@@ -48,7 +50,7 @@ The following output properties are available:
 
 ## Supporting Types
 {{ range .NestedTypes }}
-#### {{ .Name }}
+<h4>{{ htmlSafe .Name }}</h4>
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
 > See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.nodejs.InputType "") (ne .APIDocLinks.nodejs.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /choosable %}}" }}
