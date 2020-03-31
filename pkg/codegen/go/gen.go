@@ -121,6 +121,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assert(len(components) == 3)
+	if pkg == nil {
+		panic(fmt.Errorf("pkg is nil. token %s", tok))
+	}
+	if pkg.pkg == nil {
+		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
+	}
 
 	mod, name := pkg.pkg.TokenToModule(tok), components[2]
 	if override, ok := pkg.modToPkg[mod]; ok {

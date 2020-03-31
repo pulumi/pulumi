@@ -31,6 +31,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/codegen"
@@ -199,20 +200,18 @@ func (ss nestedTypeUsageInfo) add(s string, input bool) {
 	}
 }
 
-type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	functionType bool
+func (ss nestedTypeUsageInfo) contains(s string) bool {
+	_, ok := ss[s]
+	return ok
 }
 
 type modContext struct {
-	pkg         *schema.Package
-	mod         string
-	resources   []*schema.Resource
-	functions   []*schema.Function
-	typeDetails map[*schema.ObjectType]*typeDetails
-	children    []*modContext
-	tool        string
+	pkg       *schema.Package
+	mod       string
+	resources []*schema.Resource
+	functions []*schema.Function
+	children  []*modContext
+	tool      string
 }
 
 func resourceName(r *schema.Resource) string {
@@ -227,18 +226,6 @@ func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
 		return h
 	}
 	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
-}
-
-func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
-	details, ok := mod.typeDetails[t]
-	if !ok {
-		details = &typeDetails{}
-		if mod.typeDetails == nil {
-			mod.typeDetails = map[*schema.ObjectType]*typeDetails{}
-		}
-		mod.typeDetails[t] = details
-	}
-	return details
 }
 
 type propertyCharacteristics struct {
@@ -889,46 +876,61 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	return data
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		visitObjectTypes(t.ElementType, visitor)
-	case *schema.MapType:
-		visitObjectTypes(t.ElementType, visitor)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			visitObjectTypes(p.Type, visitor)
-		}
-		visitor(t)
-	case *schema.UnionType:
-		for _, e := range t.ElementTypes {
-			visitObjectTypes(e, visitor)
-		}
-	}
-}
-
 func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, input bool) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		mod.getNestedTypes(t.ElementType, types, input)
+		glog.V(3).Infof("visiting array %s\n", t.ElementType.String())
+		skip := false
+		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
+			glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+			skip = true
+		}
+
+		if !skip {
+			mod.getNestedTypes(t.ElementType, types, input)
+		}
 	case *schema.MapType:
-		mod.getNestedTypes(t.ElementType, types, input)
+		glog.V(3).Infof("visiting map %s\n", t.ElementType.String())
+		skip := false
+		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
+			glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+			skip = true
+		}
+
+		if !skip {
+			mod.getNestedTypes(t.ElementType, types, input)
+		}
 	case *schema.ObjectType:
+		glog.V(3).Infof("visiting object %s\n", t.Token)
 		types.add(t.Token, input)
 		for _, p := range t.Properties {
+			if o, ok := p.Type.(*schema.ObjectType); ok && types.contains(o.Token) {
+				glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+				continue
+			}
+			glog.V(3).Infof("visiting object property %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, input)
 		}
 	case *schema.UnionType:
+		glog.V(3).Infof("visiting union type %s\n", t.String())
 		for _, e := range t.ElementTypes {
+			if o, ok := e.(*schema.ObjectType); ok && types.contains(o.Token) {
+				glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+				continue
+			}
+			glog.V(3).Infof("visiting union element type %s\n", e.String())
 			mod.getNestedTypes(e, types, input)
 		}
 	}
 }
 
 func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
+	glog.V(3).Infoln("getTypes")
 	switch t := member.(type) {
 	case *schema.ObjectType:
+		glog.V(3).Infof("visiting object 2 %s\n", t.Token)
 		for _, p := range t.Properties {
+			glog.V(3).Infof("visiting object property 2 %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, false)
 		}
 	case *schema.Resource:
@@ -1175,58 +1177,54 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	csharpLangHelper.Namespaces = csharpInfo.Namespaces
 
 	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
-	types := &modContext{pkg: pkg, mod: "types", tool: tool}
-
-	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
-	}
-
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
 
 		for _, p := range r.Properties {
 			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
-
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
 		}
 
 		for _, p := range r.InputProperties {
 			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+		}
+	}
 
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				if r.IsProvider {
-					types.details(t).outputType = true
-				}
-				types.details(t).inputType = true
-			})
+	scanK8SResource := func(r *schema.Resource) {
+		mod := getMod(r.Token)
+		mod.resources = append(mod.resources, r)
+
+		for _, p := range r.Properties {
+			n := p.Name
+			snakeCase := python.PyName(n)
+			snakeCaseToCamelCase[snakeCase] = n
+			camelCaseToSnakeCase[n] = snakeCase
 		}
 
-		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true })
+		for _, p := range r.InputProperties {
+			n := p.Name
+			snakeCase := python.PyName(n)
+			snakeCaseToCamelCase[snakeCase] = n
+			camelCaseToSnakeCase[n] = snakeCase
 		}
 	}
 
 	scanResource(pkg.Provider)
-	for _, r := range pkg.Resources {
-		scanResource(r)
+	glog.V(3).Infoln("scanning resources")
+	if pkg.Name == "kubernetes" {
+		for _, r := range pkg.Resources {
+			scanK8SResource(r)
+		}
+	} else {
+		for _, r := range pkg.Resources {
+			scanResource(r)
+		}
 	}
+	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
 		mod := getMod(f.Token)
 		mod.functions = append(mod.functions, f)
-		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
-				types.details(t).inputType = true
-				types.details(t).functionType = true
-			})
-		}
-		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
-				types.details(t).outputType = true
-				types.details(t).functionType = true
-			})
-		}
 	}
 	return modules
 }
@@ -1254,12 +1252,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
 	modules := generateModulesFromSchemaPackage(tool, pkg)
+	glog.V(3).Infoln("generating package now...")
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
 			return nil, err
 		}
 	}
+	glog.Flush()
 
 	return files, nil
 }
