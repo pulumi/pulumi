@@ -1087,6 +1087,18 @@ func (mod *modContext) genIndex(exports []string) string {
 		fmt.Fprintf(w, "</ul>\n\n")
 	}
 
+	fmt.Fprintf(w, "<h3>Provider Details</h3>\n")
+	fmt.Fprintf(w, "<dl class=\"provider-details\">\n")
+	fmt.Fprintf(w, "	<dt>Repository</dt>\n")
+	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Repository)
+	fmt.Fprintf(w, "	<dt>Version</dt>\n")
+	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Version)
+	fmt.Fprintf(w, "	<dt>License</dt>\n")
+	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.License)
+	fmt.Fprintf(w, "	<dt>Notes</dt>\n")
+	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Attribution)
+	fmt.Fprintf(w, "</dl>\n\n")
+
 	return w.String()
 }
 

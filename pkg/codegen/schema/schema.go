@@ -264,6 +264,8 @@ type Package struct {
 	Homepage string
 	// License indicates which license is used for the package's contents.
 	License string
+	// Attribution allows freeform text attribution of derived work, if needed.
+	Attribution string
 	// Repository is the URL at which the source for the package can be found.
 	Repository string
 	// LogoURL is the URL for the package's logo, if any.
@@ -431,6 +433,8 @@ type PackageSpec struct {
 	Homepage string `json:"homepage,omitempty"`
 	// License indicates which license is used for the package's contents.
 	License string `json:"license,omitempty"`
+	// Attribution allows freeform text attribution of derived work, if needed.
+	Attribution string `json:"attribution,omitempty"`
 	// Repository is the URL at which the source for the package can be found.
 	Repository string `json:"repository,omitempty"`
 	// LogoURL is the URL for the package's logo, if any.
@@ -530,6 +534,7 @@ func ImportSpec(spec PackageSpec) (*Package, error) {
 		Keywords:     spec.Keywords,
 		Homepage:     spec.Homepage,
 		License:      spec.License,
+		Attribution:  spec.Attribution,
 		Repository:   spec.Repository,
 		Config:       config,
 		Types:        typeList,
