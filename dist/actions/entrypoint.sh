@@ -7,11 +7,7 @@ set -e
 # To use one of the alternate supported backends, set the
 # PULUMI_BACKEND_URL env var according to:
 # https://www.pulumi.com/docs/intro/concepts/state/#to-a-self-managed-backend.
-if [ -n "$PULUMI_BACKEND_URL" ]; then
-    pulumi login -c "$PULUMI_BACKEND_URL"
-else
-    echo "Using Pulumi Managed Service backend"
-fi
+pulumi login $PULUMI_BACKEND_URL
 
 # If the PULUMI_CI variable is set, we'll do some extra things to make common tasks easier.
 if [ ! -z "$PULUMI_CI" ]; then
