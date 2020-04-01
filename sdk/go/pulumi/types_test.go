@@ -393,3 +393,17 @@ func TestSecretApply(t *testing.T) {
 	}
 
 }
+
+func TestNilApply(t *testing.T) {
+	o := ToOutput("").ApplyT(func(v string) interface{} {
+		return nil
+	}).(AnyOutput)
+	bo := o.ApplyBool(func(x interface{}) bool {
+		return x == nil
+	})
+	v, known, secret, err := await(bo)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, true, v)
+}

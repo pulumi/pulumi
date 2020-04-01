@@ -385,7 +385,11 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 
 		// If we have a known value, run the applier to transform it.
-		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(v)})
+		val := reflect.ValueOf(v)
+		if v == nil {
+			val = reflect.Zero(o.elementType())
+		}
+		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
 		if len(results) == 2 && !results[1].IsNil() {
 			result.reject(results[1].Interface().(error))
 			return
