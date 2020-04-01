@@ -137,3 +137,15 @@ The following state arguments are supported:
 {{ end }}
 
 {{ end }}
+
+<h3>Package Details</h3>
+<dl class="package-details">
+	<dt>Repository</dt>
+	<dd><a href="{{ htmlSafe .PackageDetails.Repository }}">{{ htmlSafe .PackageDetails.Repository }}</a></dd>
+	<dt>License</dt>
+	<dd>{{ htmlSafe .PackageDetails.License }}</dd>
+    {{- if ne .PackageDetails.Notes "" -}}
+	<dt>Notes</dt>
+	<dd>{{ htmlSafe .PackageDetails.Notes }}</dd>
+    {{- end -}}
+</dl>

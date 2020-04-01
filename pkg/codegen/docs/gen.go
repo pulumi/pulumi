@@ -128,6 +128,12 @@ type formalParam struct {
 	DefaultValue string
 }
 
+type packageDetails struct {
+	Repository string
+	License    string
+	Notes      string
+}
+
 type resourceDocArgs struct {
 	Header header
 
@@ -162,6 +168,8 @@ type resourceDocArgs struct {
 	// NestedTypes is a slice of the nested types used in the input and
 	// output properties.
 	NestedTypes []docNestedType
+
+	PackageDetails packageDetails
 }
 
 type appearsIn struct {
@@ -850,6 +858,12 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		}
 	}
 
+	packageDetails := packageDetails{
+		Repository: mod.pkg.Repository,
+		License:    mod.pkg.License,
+		Notes:      mod.pkg.Attribution,
+	}
+
 	stateParam := name + "State"
 	data := resourceDocArgs{
 		Header: header{
@@ -868,6 +882,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		StateInputs:      stateInputs,
 		StateParam:       stateParam,
 		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
+
+		PackageDetails: packageDetails,
 	}
 
 	return data
@@ -1087,12 +1103,10 @@ func (mod *modContext) genIndex(exports []string) string {
 		fmt.Fprintf(w, "</ul>\n\n")
 	}
 
-	fmt.Fprintf(w, "<h3>Provider Details</h3>\n")
-	fmt.Fprintf(w, "<dl class=\"provider-details\">\n")
+	fmt.Fprintf(w, "<h3>Package Details</h3>\n")
+	fmt.Fprintf(w, "<dl class=\"package-details\">\n")
 	fmt.Fprintf(w, "	<dt>Repository</dt>\n")
 	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Repository)
-	fmt.Fprintf(w, "	<dt>Version</dt>\n")
-	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Version)
 	fmt.Fprintf(w, "	<dt>License</dt>\n")
 	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.License)
 	fmt.Fprintf(w, "	<dt>Notes</dt>\n")
