@@ -182,15 +182,16 @@ type resourceDocArgs struct {
 	PackageDetails packageDetails
 }
 
-type appearsIn struct {
+// typeUsage represents a nested type's usage.
+type typeUsage struct {
 	Input  bool
 	Output bool
 }
 
 // nestedTypeUsageInfo is a type-alias for a map of Pulumi type-tokens
-// and whether or not the type appears in input and/or output
+// and whether or not the type is used as an input and/or output
 // properties.
-type nestedTypeUsageInfo map[string]appearsIn
+type nestedTypeUsageInfo map[string]typeUsage
 
 func (ss nestedTypeUsageInfo) add(s string, input bool) {
 	if v, ok := ss[s]; ok {
@@ -203,7 +204,7 @@ func (ss nestedTypeUsageInfo) add(s string, input bool) {
 		return
 	}
 
-	ss[s] = appearsIn{
+	ss[s] = typeUsage{
 		Input:  input,
 		Output: !input,
 	}
@@ -472,7 +473,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	mod.getTypes(member, tokens)
 
 	var objs []docNestedType
-	for token, appearsIn := range tokens {
+	for token, tyUsage := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
 				if len(obj.Properties) == 0 {
@@ -511,17 +512,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 					var inputTypeDocLink string
 					var outputTypeDocLink string
 					if resourceType {
-						if appearsIn.Input {
+						if tyUsage.Input {
 							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
 						}
-						if appearsIn.Output {
+						if tyUsage.Output {
 							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
 						}
 					} else {
-						if appearsIn.Input {
+						if tyUsage.Input {
 							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
 						}
-						if appearsIn.Output {
+						if tyUsage.Output {
 							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
 						}
 					}
