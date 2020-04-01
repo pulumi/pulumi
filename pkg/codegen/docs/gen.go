@@ -209,9 +209,20 @@ func (ss nestedTypeUsageInfo) add(s string, input bool) {
 	}
 }
 
-func (ss nestedTypeUsageInfo) contains(s string) bool {
-	_, ok := ss[s]
-	return ok
+// contains returns true if the token already exists and matches the
+// input or output flag of the token.
+func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
+	a, ok := ss[token]
+	if !ok {
+		return false
+	}
+
+	if input && a.Input {
+		return true
+	} else if !input && a.Output {
+		return true
+	}
+	return false
 }
 
 type modContext struct {
@@ -927,7 +938,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 	case *schema.ArrayType:
 		glog.V(4).Infof("visiting array %s\n", t.ElementType.String())
 		skip := false
-		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
+		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token, input) {
 			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 			skip = true
 		}
@@ -938,7 +949,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 	case *schema.MapType:
 		glog.V(4).Infof("visiting map %s\n", t.ElementType.String())
 		skip := false
-		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
+		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token, input) {
 			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 			skip = true
 		}
@@ -950,7 +961,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 		glog.V(4).Infof("visiting object %s\n", t.Token)
 		types.add(t.Token, input)
 		for _, p := range t.Properties {
-			if o, ok := p.Type.(*schema.ObjectType); ok && types.contains(o.Token) {
+			if o, ok := p.Type.(*schema.ObjectType); ok && types.contains(o.Token, input) {
 				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 				continue
 			}
@@ -960,7 +971,7 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 	case *schema.UnionType:
 		glog.V(4).Infof("visiting union type %s\n", t.String())
 		for _, e := range t.ElementTypes {
-			if o, ok := e.(*schema.ObjectType); ok && types.contains(o.Token) {
+			if o, ok := e.(*schema.ObjectType); ok && types.contains(o.Token, input) {
 				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 				continue
 			}

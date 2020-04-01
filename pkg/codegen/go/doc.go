@@ -81,7 +81,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
-		os.Exit(3)
+		os.Exit(1)
 	}
 	return modPkg.plainType(t, optional)
 }
