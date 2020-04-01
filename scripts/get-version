@@ -14,7 +14,7 @@ EXACT=0
 # as we've seen cases in Travis where not doing so causes git to
 # treat the worktree as dirty when it is not.
 git update-index -q --refresh
-if ! git diff-files -- . ':!**/go.mod' ':!**/go.sum' --quiet; then
+if ! git diff-files --quiet -- . ':!**/go.mod' ':!**/go.sum'; then
     DIRTY_TAG="dirty"
 fi
 
