@@ -6,6 +6,7 @@ clone_folder: '%USERPROFILE%\go\src\github.com\pulumi\pulumi'
 branches:
   only:
     - master
+    - 'feature-2.0'
     - /v\d*\.\d*\.\d*/
 environment:
   PULUMI_API: https://api.pulumi-staging.io
