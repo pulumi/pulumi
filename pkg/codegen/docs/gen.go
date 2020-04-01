@@ -54,6 +54,14 @@ var (
 	// casing.
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
+
+	// The language-specific info objects for a certain package (provider).
+	goPkgInfo     go_gen.GoInfo
+	csharpPkgInfo dotnet.CSharpPackageInfo
+
+	// langModuleNameLookup is a map of module name to its language-specific
+	// name.
+	langModuleNameLookup map[string]string
 )
 
 func init() {
@@ -73,6 +81,7 @@ func init() {
 
 	snakeCaseToCamelCase = map[string]string{}
 	camelCaseToSnakeCase = map[string]string{}
+	langModuleNameLookup = map[string]string{}
 }
 
 // header represents the header of each resource markdown file.
@@ -235,11 +244,37 @@ type propertyCharacteristics struct {
 	optional bool
 }
 
+// getLanguageModuleName returns the module name mapped to its language-specific
+// equivalent if the schema for this provider has any overrides for that language.
+// Otherwise, returns the module name as-is.
+func getLanguageModuleName(lang string, mod string) string {
+	modName := mod
+	lookupKey := lang + "_" + modName
+	if v, ok := langModuleNameLookup[lookupKey]; ok {
+		return v
+	}
+
+	switch lang {
+	case "go":
+		if override, ok := goPkgInfo.ModuleToPackage[modName]; ok {
+			modName = override
+		}
+	case "csharp":
+		if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+			modName = override
+		}
+	}
+
+	langModuleNameLookup[lookupKey] = modName
+	return modName
+}
+
 // typeString returns a property type suitable for docs with its display name and the anchor link to
 // a type if the type of the property is an array or an object.
 func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
 	docLanguageHelper := getLanguageDocHelper(lang)
-	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, t, characteristics.input, characteristics.optional)
+	modName := getLanguageModuleName(lang, mod.mod)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input, characteristics.optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
@@ -264,7 +299,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		if !characteristics.input {
 			qualifier = "Outputs"
 		}
-		csharpNS := fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(mod.mod), qualifier)
+		csharpNS := fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
 		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
 	} else {
 		parts = strings.Split(langTypeString, ".")
@@ -438,6 +473,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				props := make(map[string][]property)
 				apiDocLinks := make(map[string]apiTypeDocLinks)
 				for _, lang := range supportedLanguages {
+					// The nested type may be under a different package in a language.
+					// For example, in k8s, common types are in the core/v1 module and can appear in
+					// nested types elsewhere. So we use the appropriate name of that type,
+					// as well as its language-specific name. For example, module name for use as a C# namespace
+					// or as a Go package name.
+					modName := getLanguageModuleName(lang, mod.mod)
+					nestedTypeModName := mod.pkg.TokenToModule(token)
+					if nestedTypeModName != mod.mod {
+						modName = getLanguageModuleName(lang, nestedTypeModName)
+					}
+
 					docLangHelper := getLanguageDocHelper(lang)
 					inputCharacteristics := propertyCharacteristics{
 						input:    true,
@@ -455,17 +501,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 					var outputTypeDocLink string
 					if resourceType {
 						if appearsIn.Input {
-							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, true)
+							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
 						}
 						if appearsIn.Output {
-							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, mod.mod, outputObjLangType.Name, false)
+							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
 						}
 					} else {
 						if appearsIn.Input {
-							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, inputObjLangType.Name, true)
+							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
 						}
 						if appearsIn.Output {
-							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, mod.mod, outputObjLangType.Name, false)
+							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
 						}
 					}
 					apiDocLinks[lang] = apiTypeDocLinks{
@@ -879,10 +925,10 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, input bool) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		glog.V(3).Infof("visiting array %s\n", t.ElementType.String())
+		glog.V(4).Infof("visiting array %s\n", t.ElementType.String())
 		skip := false
 		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
-			glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 			skip = true
 		}
 
@@ -890,10 +936,10 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 			mod.getNestedTypes(t.ElementType, types, input)
 		}
 	case *schema.MapType:
-		glog.V(3).Infof("visiting map %s\n", t.ElementType.String())
+		glog.V(4).Infof("visiting map %s\n", t.ElementType.String())
 		skip := false
 		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token) {
-			glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 			skip = true
 		}
 
@@ -901,36 +947,35 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 			mod.getNestedTypes(t.ElementType, types, input)
 		}
 	case *schema.ObjectType:
-		glog.V(3).Infof("visiting object %s\n", t.Token)
+		glog.V(4).Infof("visiting object %s\n", t.Token)
 		types.add(t.Token, input)
 		for _, p := range t.Properties {
 			if o, ok := p.Type.(*schema.ObjectType); ok && types.contains(o.Token) {
-				glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 				continue
 			}
-			glog.V(3).Infof("visiting object property %s\n", p.Type.String())
+			glog.V(4).Infof("visiting object property %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, input)
 		}
 	case *schema.UnionType:
-		glog.V(3).Infof("visiting union type %s\n", t.String())
+		glog.V(4).Infof("visiting union type %s\n", t.String())
 		for _, e := range t.ElementTypes {
 			if o, ok := e.(*schema.ObjectType); ok && types.contains(o.Token) {
-				glog.V(3).Infof("already added %s. skipping...\n", o.Token)
+				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
 				continue
 			}
-			glog.V(3).Infof("visiting union element type %s\n", e.String())
+			glog.V(4).Infof("visiting union element type %s\n", e.String())
 			mod.getNestedTypes(e, types, input)
 		}
 	}
 }
 
 func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
-	glog.V(3).Infoln("getTypes")
+	glog.V(3).Infoln("getting nested types for module", mod.mod)
+
 	switch t := member.(type) {
 	case *schema.ObjectType:
-		glog.V(3).Infof("visiting object 2 %s\n", t.Token)
 		for _, p := range t.Properties {
-			glog.V(3).Infof("visiting object property 2 %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, false)
 		}
 	case *schema.Resource:
@@ -1159,22 +1204,20 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}
 
 	// Decode Go-specific language info.
-	var goInfo go_gen.GoInfo
-	if err := decodeLangSpecificInfo(pkg, "go", &goInfo); err != nil {
+	if err := decodeLangSpecificInfo(pkg, "go", &goPkgInfo); err != nil {
 		panic(errors.Wrap(err, "error decoding go language info"))
 	}
 	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
 	// Generate the Go package map info now, so we can use that to get the type string
 	// names later.
-	goLangHelper.GeneratePackagesMap(pkg, tool, goInfo)
+	goLangHelper.GeneratePackagesMap(pkg, tool, goPkgInfo)
 
 	// Decode C#-specific language info.
-	var csharpInfo dotnet.CSharpPackageInfo
-	if err := decodeLangSpecificInfo(pkg, "csharp", &csharpInfo); err != nil {
+	if err := decodeLangSpecificInfo(pkg, "csharp", &csharpPkgInfo); err != nil {
 		panic(errors.Wrap(err, "error decoding c# language info"))
 	}
 	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
-	csharpLangHelper.Namespaces = csharpInfo.Namespaces
+	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
 
 	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	scanResource := func(r *schema.Resource) {
@@ -1249,6 +1292,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		template.Must(templates.New(name).Parse(string(b)))
 	}
 
+	defer glog.Flush()
+
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
 	modules := generateModulesFromSchemaPackage(tool, pkg)
@@ -1259,7 +1304,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			return nil, err
 		}
 	}
-	glog.Flush()
 
 	return files, nil
 }
