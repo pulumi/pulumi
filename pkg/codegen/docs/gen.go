@@ -313,10 +313,11 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		}
 
 		var csharpNS string
+		// This type could be at the package-level, so it won't have a module name.
 		if modName != "" {
 			csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
 		} else {
-			csharpNS = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), qualifier)
+			csharpNS = fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), qualifier)
 		}
 		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
 	} else {
@@ -445,7 +446,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		argsFlag = "?"
 	}
 
-	optionsType := "Pulumi.CustomResourceOptions"
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
 		{
@@ -469,8 +469,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			DefaultValue: " = null",
 			Type: propertyType{
-				Name: optionsType,
-				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
+				Name: "CustomResourceOptions",
+				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.CustomResourceOptions"),
 			},
 		},
 	}
