@@ -1249,6 +1249,9 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
 
+		// For k8s, all nested properties will use a snake_case,
+		// so we'll just add them all to the respective property
+		// case maps.
 		for _, p := range r.Properties {
 			n := p.Name
 			snakeCase := python.PyName(n)
@@ -1264,13 +1267,14 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 		}
 	}
 
-	scanResource(pkg.Provider)
 	glog.V(3).Infoln("scanning resources")
 	if pkg.Name == "kubernetes" {
+		scanK8SResource(pkg.Provider)
 		for _, r := range pkg.Resources {
 			scanK8SResource(r)
 		}
 	} else {
+		scanResource(pkg.Provider)
 		for _, r := range pkg.Resources {
 			scanResource(r)
 		}
