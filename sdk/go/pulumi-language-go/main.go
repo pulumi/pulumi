@@ -160,35 +160,7 @@ func newLanguageHost(engineAddress, tracing string) pulumirpc.LanguageRuntimeSer
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	cmd, err := findProgram(req.GetProject())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to find program")
-	}
-
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PULUMI_PLUGINS=true")
-	cmd.Stderr = os.Stderr
-
-	stdout, err := cmd.Output()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute program cmd")
-	}
-
-	var infos map[string][]pulumi.PackageInfo
-	if err := json.Unmarshal(stdout, &infos); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal result")
-	}
-
-	var plugins []*pulumirpc.PluginDependency
-	for _, info := range infos["plugins"] {
-		plugins = append(plugins, &pulumirpc.PluginDependency{
-			Name:    info.Name,
-			Kind:    "resource",
-			Version: info.Version,
-			Server:  info.Server,
-		})
-	}
-	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
+	return &pulumirpc.GetRequiredPluginsResponse{}, nil
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
