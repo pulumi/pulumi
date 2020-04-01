@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/display"
@@ -161,10 +162,15 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	fmt.Println("Created Policy Pack!")
 
+	proj, root, err := readPolicyProject()
+	if err != nil {
+		return err
+	}
+
 	// Install dependencies.
 	if !args.generateOnly {
-		if bin, err := nodeInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "%s install failed; rerun manually to try again.", bin)
+		if err := installPolicyPackDependencies(proj); err != nil {
+			return err
 		}
 	}
 
@@ -174,9 +180,83 @@ func runNewPolicyPack(args newPolicyArgs) error {
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
-	fmt.Println("Once you're done editing your Policy Pack, run `pulumi policy publish [org-name]`" +
-		" to publish the pack.")
+	printPolicyPackNextSteps(proj, root, args.generateOnly, opts)
+
 	return nil
+}
+
+func installPolicyPackDependencies(proj *workspace.PolicyPackProject) error {
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		if bin, err := nodeInstallDependencies(); err != nil {
+			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)
+		}
+	}
+	return nil
+}
+
+func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, generateOnly bool, opts display.Options) {
+	var commands []string
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") && generateOnly {
+		// If we're generating a NodeJS policy pack, and we didn't install dependencies
+		// (generateOnly), instruct the user to do so.
+		commands = append(commands, "npm install")
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		// If we're generating a Python policy pack, instruct the user to set up and
+		// activate a virtual environment.
+		commands = append(commands, pythonCommands()...)
+	}
+
+	if len(commands) == 1 {
+		installMsg := fmt.Sprintf("To install dependencies for the Policy Pack, run `%s`", commands[0])
+		installMsg = colors.Highlight(installMsg, commands[0], colors.BrightBlue+colors.Bold)
+		fmt.Println(opts.Color.Colorize(installMsg))
+		fmt.Println()
+	}
+
+	if len(commands) > 1 {
+		fmt.Println("To install dependencies for the Policy Pack, run the following commands:")
+		fmt.Println()
+		for i, cmd := range commands {
+			cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
+			fmt.Printf("   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
+		}
+		fmt.Println()
+	}
+
+	usageCommandPreambles :=
+		[]string{"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run"}
+	usageCommands := []string{fmt.Sprintf("pulumi up --policy-pack %s", root)}
+
+	// Currently, only Node.js Policy Packs can be published.
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		usageCommandPreambles = append(usageCommandPreambles, "publish the Policy Pack, run")
+		usageCommands = append(usageCommands, "pulumi policy publish [org-name]")
+	}
+
+	contract.Assert(len(usageCommandPreambles) == len(usageCommands))
+
+	if len(usageCommands) == 1 {
+		usageMsg := fmt.Sprintf("Once you're done editing your Policy Pack, to %s `%s`", usageCommandPreambles[0],
+			usageCommands[0])
+		usageMsg = colors.Highlight(usageMsg, usageCommands[0], colors.BrightBlue+colors.Bold)
+		fmt.Println(opts.Color.Colorize(usageMsg))
+		fmt.Println()
+	} else {
+		fmt.Println("Once you're done editing your Policy Pack:")
+		fmt.Println()
+		for i, cmd := range usageCommands {
+			cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
+			fmt.Printf("   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
+		}
+		fmt.Println()
+	}
+
+	// Add special note for Python.
+	if strings.EqualFold(proj.Runtime.Name(), "python") {
+		fmt.Println("Note: When running the Policy Pack against a Pulumi program, if the Pulumi program is " +
+			"also Python, both the Pulumi program and Policy Pack must use the same virtual environment.")
+	}
 }
 
 // choosePolicyPackTemplate will prompt the user to choose amongst the available templates.

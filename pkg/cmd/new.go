@@ -233,7 +233,7 @@ func runNew(args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, _, err := readProject()
+	proj, root, err := readProject()
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func runNew(args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installDependencies(); err != nil {
+		if err := installDependencies(proj, root); err != nil {
 			return err
 		}
 	}
@@ -558,12 +558,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func installDependencies() error {
-	proj, root, err := readProject()
-	if err != nil {
-		return err
-	}
-
+func installDependencies(proj *workspace.Project, root string) error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
@@ -652,26 +647,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		// If we're generating a Python project, instruct the user to set up and activate a virtual
 		// environment.
-
-		// Create the virtual environment.
-		switch runtime.GOOS {
-		case "windows":
-			commands = append(commands, "python -m venv venv")
-		default:
-			commands = append(commands, "python3 -m venv venv")
-		}
-
-		// Activate the virtual environment. Only active in the user's current shell, so we can't
-		// just run it for the user here.
-		switch runtime.GOOS {
-		case "windows":
-			commands = append(commands, "venv\\Scripts\\activate")
-		default:
-			commands = append(commands, "source venv/bin/activate")
-		}
-
-		// Install dependencies within the virtualenv
-		commands = append(commands, "pip3 install -r requirements.txt")
+		commands = append(commands, pythonCommands()...)
 	}
 
 	// If we didn't create a stack, show that as a command to run before `pulumi up`.
@@ -708,6 +684,34 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
+}
+
+// pythonCommands returns the set of Python commands to create a virtual environment, activate it, and
+// install dependencies.
+func pythonCommands() []string {
+	var commands []string
+
+	// Create the virtual environment.
+	switch runtime.GOOS {
+	case "windows":
+		commands = append(commands, "python -m venv venv")
+	default:
+		commands = append(commands, "python3 -m venv venv")
+	}
+
+	// Activate the virtual environment. Only active in the user's current shell, so we can't
+	// just run it for the user here.
+	switch runtime.GOOS {
+	case "windows":
+		commands = append(commands, "venv\\Scripts\\activate")
+	default:
+		commands = append(commands, "source venv/bin/activate")
+	}
+
+	// Install dependencies within the virtualenv
+	commands = append(commands, "pip3 install -r requirements.txt")
+
+	return commands
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
