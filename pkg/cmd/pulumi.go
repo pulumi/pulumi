@@ -131,7 +131,7 @@ func NewPulumiCmd() *cobra.Command {
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			// Before exiting, if there is a new version of the CLI available, print it out.
-			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil {
+			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil && cmdutil.Interactive() {
 				cmdutil.Diag().Warningf(checkVersionMsg)
 			}
 
