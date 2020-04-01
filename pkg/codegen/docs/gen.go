@@ -311,7 +311,13 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		if !characteristics.input {
 			qualifier = "Outputs"
 		}
-		csharpNS := fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
+
+		var csharpNS string
+		if modName != "" {
+			csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
+		} else {
+			csharpNS = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), qualifier)
+		}
 		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
 	} else {
 		parts = strings.Split(langTypeString, ".")
@@ -421,11 +427,15 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	argsSchemaType := &schema.ObjectType{
 		Token: r.Token,
 	}
+	// Get the C#-specific name for the args type, which will be the fully-qualified name.
 	characteristics := propertyCharacteristics{
 		input:    true,
 		optional: argsOptional,
 	}
 	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
+	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
+	// namespace qualifier.
+	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
 
 	var argsFlag string
 	var argsDefault string
@@ -451,7 +461,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangTypeName),
 			},
 		},
 		{
@@ -708,7 +718,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 		{
 			Name: "id",
 			Type: propertyType{
-				Name: "pulumi.Input<pulumi.ID>",
+				Name: "Input<ID>",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ID"),
 			},
 		},
@@ -724,7 +734,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			Name:         "opts",
 			OptionalFlag: "?",
 			Type: propertyType{
-				Name: "pulumi.CustomResourceOptions",
+				Name: "CustomResourceOptions",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "CustomResourceOptions"),
 			},
 		},
@@ -739,7 +749,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
-				Name: "pulumi.Context",
+				Name: "Context",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
 			},
 		},
@@ -753,7 +763,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 		{
 			Name: "id",
 			Type: propertyType{
-				Name: "pulumi.IDInput",
+				Name: "IDInput",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "IDInput"),
 			},
 		},
@@ -769,7 +779,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name:         "opts",
 			OptionalFlag: "...",
 			Type: propertyType{
-				Name: "pulumi.ResourceOption",
+				Name: "ResourceOption",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
 			},
 		},
@@ -779,7 +789,6 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), stateParam)
 
-	optionsType := "Pulumi.CustomResourceOptions"
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
 		{
@@ -792,7 +801,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 		{
 			Name: "id",
 			Type: propertyType{
-				Name: "Pulumi.Input<string>",
+				Name: "Input<string>",
 				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.Input"),
 			},
 		},
@@ -809,8 +818,8 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			DefaultValue: " = null",
 			Type: propertyType{
-				Name: optionsType,
-				Link: docLangHelper.GetDocLinkForResourceType("", "", optionsType),
+				Name: "CustomResourceOptions",
+				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.CustomResourceOptions"),
 			},
 		},
 	}
