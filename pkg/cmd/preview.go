@@ -214,10 +214,10 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
-		"[PREVIEW] Run one or more policy packs as part of this update")
+		"Run one or more policy packs as part of this update")
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackConfigPaths, "policy-pack-config", []string{},
-		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
+		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

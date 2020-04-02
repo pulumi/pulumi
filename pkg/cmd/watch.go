@@ -166,10 +166,10 @@ func newWatchCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
-		"[PREVIEW] Run one or more policy packs as part of each update")
+		"Run one or more policy packs as part of each update")
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackConfigPaths, "policy-pack-config", []string{},
-		`[PREVIEW] Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
+		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
