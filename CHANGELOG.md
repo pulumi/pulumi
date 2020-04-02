@@ -4,6 +4,7 @@ CHANGELOG
 ## HEAD (unreleased)
 - Fix handling of `nil` values in Outputs in Go.
   [#4268](https://github.com/pulumi/pulumi/pull/4268)
+  
 - Include usage hints for Input types in Go SDK
   [#4279](https://github.com/pulumi/pulumi/pull/4279)
 
@@ -12,6 +13,9 @@ CHANGELOG
 
 - Fix the `call` mock in Python.
   [#4274](https://github.com/pulumi/pulumi/pull/4274)
+  
+- Fix handling of secret values in mock-based tests.
+  [#4272](https://github.com/pulumi/pulumi/pull/4272)
 
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.

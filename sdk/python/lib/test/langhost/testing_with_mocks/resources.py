@@ -11,12 +11,13 @@ class MyComponent(pulumi.ComponentResource):
 
 class Instance(pulumi.CustomResource):
     public_ip: pulumi.Output[str]
-    def __init__(self, resource_name, name: pulumi.Input[str] = None, opts = None):
+    def __init__(self, resource_name, name: pulumi.Input[str] = None, value: pulumi.Input[str] = None, opts = None):
         if name is None:
                 raise TypeError("Missing required property 'name'")
         __props__: dict = dict()
         __props__["public_ip"] = None
         __props__["name"] = name
+        __props__["value"] = value
         super(Instance, self).__init__('aws:ec2/instance:Instance', resource_name, __props__, opts)
 
 def do_invoke():
@@ -24,5 +25,7 @@ def do_invoke():
     return value["out_value"]
 
 mycomponent = MyComponent("mycomponent", inprop="hello")
-myinstance = Instance("instance", name="myvm")
+myinstance = Instance("instance",
+                      name="myvm",
+                      value=pulumi.Output.secret("secret_value"))
 invoke_result = do_invoke()
