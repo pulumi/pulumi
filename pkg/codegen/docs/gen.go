@@ -1109,8 +1109,10 @@ func (mod *modContext) genIndex(exports []string) string {
 	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Repository)
 	fmt.Fprintf(w, "	<dt>License</dt>\n")
 	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.License)
-	fmt.Fprintf(w, "	<dt>Notes</dt>\n")
-	fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Attribution)
+	if mod.pkg.Attribution != "" {
+		fmt.Fprintf(w, "	<dt>Notes</dt>\n")
+		fmt.Fprintf(w, "	<dd>%s</dd>\n", mod.pkg.Attribution)
+	}
 	fmt.Fprintf(w, "</dl>\n\n")
 
 	return w.String()
