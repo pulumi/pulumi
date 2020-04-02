@@ -19,5 +19,10 @@ class Instance(pulumi.CustomResource):
         __props__["name"] = name
         super(Instance, self).__init__('aws:ec2/instance:Instance', resource_name, __props__, opts)
 
+def do_invoke():
+    value = pulumi.runtime.invoke("test:index:MyFunction", props={"value": 41}).value
+    return value["out_value"]
+
 mycomponent = MyComponent("mycomponent", inprop="hello")
 myinstance = Instance("instance", name="myvm")
+invoke_result = do_invoke()
