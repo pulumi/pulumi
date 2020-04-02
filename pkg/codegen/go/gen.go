@@ -311,11 +311,31 @@ func printComment(w io.Writer, comment string, indent bool) {
 }
 
 func genInputInterface(w io.Writer, name string) {
+	printComment(w, getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", title(name), name)
 	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", title(name), name)
 	fmt.Fprintf(w, "}\n\n")
+}
+
+func getInputUsage(name string) string {
+	if strings.HasSuffix(name, "Array") {
+		baseTypeName := name[:strings.LastIndex(name, "Array")]
+		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%s{ %sArgs{...} }", name, name, baseTypeName)
+	}
+
+	if strings.HasSuffix(name, "Map") {
+		baseTypeName := name[:strings.LastIndex(name, "Map")]
+		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%s{ \"key\": %sArgs{...} }", name, name, baseTypeName)
+	}
+
+	if strings.HasSuffix(name, "Ptr") {
+		baseTypeName := name[:strings.LastIndex(name, "Ptr")]
+		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%sArgs{...}.To%sOutput()", name, baseTypeName, name)
+	}
+
+	return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%sArgs{...}", name, name)
 }
 
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods bool) {
