@@ -5,6 +5,9 @@ CHANGELOG
 - Fix handling of `nil` values in Outputs in Go.
   [#4268](https://github.com/pulumi/pulumi/pull/4268)
 
+- Fix secretness propagation in Python `apply`.
+  [#4273](https://github.com/pulumi/pulumi/pull/4273)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
