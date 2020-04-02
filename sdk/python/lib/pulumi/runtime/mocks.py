@@ -89,7 +89,7 @@ class MockMonitor:
 
         ret = self.mocks.call(request.tok, args, request.provider)
 
-        ret_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(ret, {})))
+        ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
         fields = {"failures": None, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
@@ -99,7 +99,7 @@ class MockMonitor:
 
         _, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
 
-        props_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(state, {})))
+        props_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         urn = self.make_urn(request.parent, request.type, request.name)
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
