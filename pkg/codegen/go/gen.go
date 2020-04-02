@@ -854,7 +854,6 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 		pkgName = path.Base(pkg.mod)
 	}
 
-	fmt.Fprintf(w, "// nolint: lll\n")
 	fmt.Fprintf(w, "package %s\n\n", pkgName)
 
 	var imports []string
@@ -1126,13 +1125,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		switch mod {
 		case "":
 			buffer := &bytes.Buffer{}
-			fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.", pkg.pkg.Name)
-			fmt.Fprintf(buffer, "//\n")
 			if pkg.pkg.Description != "" {
 				printComment(buffer, pkg.pkg.Description, false)
 				fmt.Fprintf(buffer, "//\n")
+			} else {
+				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", pkg.pkg.Name)
+				fmt.Fprintf(buffer, "//\n")
 			}
-			fmt.Fprintf(buffer, "// nolint: lll\n")
 			fmt.Fprintf(buffer, "package %s\n", name)
 
 			setFile(path.Join(mod, "doc.go"), buffer.String())
