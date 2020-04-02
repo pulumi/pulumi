@@ -14,7 +14,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/pkg/v2 v2.0.0-20200331213456-7c48f4556c4f
-	github.com/pulumi/pulumi/sdk/v2 v2.0.0-beta.1
+	github.com/pulumi/pulumi/pkg/v2 v2.0.0-beta.2
+	github.com/pulumi/pulumi/sdk/v2 v2.0.0-beta.2
 	github.com/stretchr/testify v1.5.1
 )
