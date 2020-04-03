@@ -10,6 +10,9 @@ CHANGELOG
 - Fix secretness propagation in Python `apply`.
   [#4273](https://github.com/pulumi/pulumi/pull/4273)
 
+- Fix the `call` mock in Python.
+  [#4274](https://github.com/pulumi/pulumi/pull/4274)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
