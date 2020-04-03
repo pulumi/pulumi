@@ -15,6 +15,9 @@
 package model
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
@@ -39,6 +42,60 @@ type Block struct {
 // SyntaxNode returns the syntax node of the block, and will either return an *hclsyntax.Block or syntax.None.
 func (b *Block) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(b.Syntax)
+}
+
+func (b *Block) hasLeadingTrivia() bool {
+	return b.Tokens != nil
+}
+
+func (b *Block) hasTrailingTrivia() bool {
+	return b.Tokens != nil
+}
+
+func (b *Block) Format(f fmt.State, c rune) {
+	b.print(f, &printer{})
+}
+
+func (b *Block) print(w io.Writer, p *printer) {
+	// Print the type.
+	p.fprintf(w, "%v", b.Tokens.GetType().Or(hclsyntax.TokenIdent, b.Type))
+
+	// Print the labels with leading and trailing trivia.
+	labelTokens := b.Tokens.GetLabels()
+	for i, l := range b.Labels {
+		var t syntax.Token
+		if i < len(labelTokens) {
+			t = labelTokens[i]
+		}
+		if hclsyntax.ValidIdentifier(l) {
+			t = t.Or(hclsyntax.TokenIdent, l)
+		} else {
+			t = t.Or(hclsyntax.TokenQuotedLit, fmt.Sprintf("%q", l))
+		}
+		p.fprintf(w, "% v", t)
+	}
+	if len(b.Labels) < len(b.Tokens.Labels) {
+		for _, l := range b.Tokens.Labels[len(b.Labels):] {
+			p.fprintf(w, "%v", syntax.Token{
+				LeadingTrivia:  l.LeadingTrivia,
+				TrailingTrivia: l.TrailingTrivia,
+			})
+		}
+	}
+
+	// Print the opening brace.
+	p.fprintf(w, "% v", b.Tokens.GetOpenBrace().Or(hclsyntax.TokenOBrace))
+
+	// Print the block contents.
+	p.indented(func() {
+		b.Body.print(w, p)
+	})
+
+	if b.Tokens != nil {
+		p.fprintf(w, "%v", b.Tokens.GetCloseBrace().Or(hclsyntax.TokenCBrace))
+	} else {
+		p.fprintf(w, "\n%s}", p.indent)
+	}
 }
 
 func (*Block) isBodyItem() {}
