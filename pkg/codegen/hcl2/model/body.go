@@ -34,7 +34,7 @@ type Body struct {
 	// The syntax node for the body, if any.
 	Syntax *hclsyntax.Body
 	// The tokens for the body.
-	Tokens syntax.BodyTokens
+	Tokens *syntax.BodyTokens
 
 	// The items that make up the body's contents.
 	Items []BodyItem
@@ -70,7 +70,7 @@ func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap) (*Bod
 		diagnostics = append(diagnostics, itemDiags...)
 	}
 
-	bodyTokens, _ := tokens.ForNode(body).(syntax.BodyTokens)
+	bodyTokens, _ := tokens.ForNode(body).(*syntax.BodyTokens)
 	return &Body{
 		Syntax: body,
 		Tokens: bodyTokens,

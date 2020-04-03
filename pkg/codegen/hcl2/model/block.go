@@ -25,7 +25,7 @@ type Block struct {
 	// The syntax node for the block, if any.
 	Syntax *hclsyntax.Block
 	// The tokens for the block.
-	Tokens syntax.BlockTokens
+	Tokens *syntax.BlockTokens
 
 	// The block's type.
 	Type string
@@ -46,7 +46,7 @@ func (*Block) isBodyItem() {}
 // BindBlock binds an HCL2 block using the given scopes and token map.
 func BindBlock(block *hclsyntax.Block, scopes Scopes, tokens syntax.TokenMap) (*Block, hcl.Diagnostics) {
 	body, diagnostics := BindBody(block.Body, scopes, tokens)
-	blockTokens, _ := tokens.ForNode(block).(syntax.BlockTokens)
+	blockTokens, _ := tokens.ForNode(block).(*syntax.BlockTokens)
 	return &Block{
 		Syntax: block,
 		Tokens: blockTokens,

@@ -25,7 +25,7 @@ type Attribute struct {
 	// The syntax node for the attribute, if any.
 	Syntax *hclsyntax.Attribute
 	// The tokens for the attribute.
-	Tokens syntax.AttributeTokens
+	Tokens *syntax.AttributeTokens
 
 	// The attribute's name.
 	Name string
@@ -43,7 +43,7 @@ func (*Attribute) isBodyItem() {}
 // BindAttribute binds an HCL2 attribute using the given scope and token map.
 func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.TokenMap) (*Attribute, hcl.Diagnostics) {
 	value, diagnostics := BindExpression(attribute.Expr, scope, tokens)
-	attributeTokens, _ := tokens.ForNode(attribute).(syntax.AttributeTokens)
+	attributeTokens, _ := tokens.ForNode(attribute).(*syntax.AttributeTokens)
 	return &Attribute{
 		Syntax: attribute,
 		Tokens: attributeTokens,
