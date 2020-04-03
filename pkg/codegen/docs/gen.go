@@ -1036,10 +1036,6 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-func isKubernetesPackage(pkg *schema.Package) bool {
-	return pkg.Name == "kubernetes"
-}
-
 func (mod *modContext) gen(fs fs) error {
 	modName := mod.getModuleFileName()
 	var files []string
@@ -1054,7 +1050,7 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	addFile := func(name, contents string) {
-		p := path.Join(mod.getModuleFileName(), name)
+		p := path.Join(modName, name)
 		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
@@ -1235,55 +1231,34 @@ func decodeLangSpecificInfo(pkg *schema.Package, lang string, obj interface{}) e
 	return nil
 }
 
+func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
+	modName := pkg.TokenToModule(token)
+	mod, ok := modules[modName]
+	if !ok {
+		mod = &modContext{
+			pkg:  pkg,
+			mod:  modName,
+			tool: tool,
+		}
+
+		if modName != "" {
+			parentName := path.Dir(modName)
+			// If the parent name is blank, it means this is the package-level.
+			if parentName == "." || parentName == "" {
+				parentName = ":index:"
+			}
+			parent := getMod(pkg, parentName, modules, tool)
+			parent.children = append(parent.children, mod)
+		}
+
+		modules[modName] = mod
+	}
+	return mod
+}
+
 func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
-
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
-		modName := pkg.TokenToModule(token)
-		isK8SPkg := isKubernetesPackage(pkg)
-		// Kubernetes' moduleFormat in the schema will match everything
-		// in the token. This prevents us from adding the "Provider"
-		// resource as a child module of the package level :index: module.
-		if isK8SPkg && modName == "providers" {
-			modName = ""
-		}
-
-		mod, ok := modules[modName]
-		if !ok {
-			mod = &modContext{
-				pkg:  pkg,
-				mod:  modName,
-				tool: tool,
-			}
-
-			if modName != "" {
-				// For the Kubernetes package, use the package name
-				// for a module in the Go-language override available in
-				// the schema until a more neutral facility is available.
-				if isK8SPkg {
-					override, ok := goPkgInfo.ModuleToPackage[modName]
-					if ok {
-						modName = override
-					}
-				}
-				parentName := path.Dir(modName)
-				// If the parent name is blank, it means this is the package-level.
-				if parentName == "." || parentName == "" {
-					parentName = ":index:"
-				}
-				if isK8SPkg && parentName != ":index:" {
-					parentName = ":" + parentName + ":"
-				}
-				parent := getMod(parentName)
-				parent.children = append(parent.children, mod)
-			}
-
-			modules[modName] = mod
-		}
-		return mod
-	}
 
 	// Decode Go-specific language info.
 	if err := decodeLangSpecificInfo(pkg, "go", &goPkgInfo); err != nil {
@@ -1303,7 +1278,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 
 	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
 		for _, p := range r.Properties {
@@ -1316,7 +1291,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}
 
 	scanK8SResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getK8SMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
 		// For k8s, all nested properties will use a snake_case,
@@ -1352,7 +1327,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
-		mod := getMod(f.Token)
+		mod := getMod(pkg, f.Token, modules, tool)
 		mod.functions = append(mod.functions, f)
 	}
 	return modules
