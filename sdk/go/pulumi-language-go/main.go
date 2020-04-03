@@ -15,14 +15,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -157,10 +160,71 @@ func newLanguageHost(engineAddress, tracing string) pulumirpc.LanguageRuntimeSer
 	}
 }
 
+// modInfo is the useful portion of the output from `go list -m -json all`
+// with respect to plugin acquisition
+type modInfo struct {
+	Path    string
+	Version string
+}
+
+func getPluginName(modName string) string {
+	// github.com/pulumi/pulumi-aws/sdk/... => aws
+	pluginPart := strings.Split(modName, "/")[2]
+	return strings.SplitN(pluginPart, "-", 2)[1]
+}
+
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+// We're lenient here as this relies on the `go list` command and the use of modules.
+// If the consumer insists on using some other form of dependency management tool like
+// dep or glide, the list command fails with "go list -m: not using modules"
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
+
+	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
+
+	gobin, err := findExecutable("go")
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't find go binary")
+	}
+
+	// don't wire up stderr so non-module users don't see error output from list
+	cmd := exec.Command(gobin, "list", "-m", "-json", "all")
+	cmd.Env = os.Environ()
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		// will err if the project isn't using modules
+		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements: %s", err.Error())
+		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+	}
+
+	plugins := []*pulumirpc.PluginDependency{}
+
+	dec := json.NewDecoder(bytes.NewReader(stdout))
+	for {
+		var m modInfo
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			logging.V(5).Infof("GetRequiredPlugins: Error parsing list output: %s", err.Error())
+			return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		}
+
+		if strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
+			plugin := &pulumirpc.PluginDependency{
+				Name:    getPluginName(m.Path),
+				Version: m.Version,
+				Kind:    "resource",
+			}
+			logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
+			plugins = append(plugins, plugin)
+		}
+	}
+
+	return &pulumirpc.GetRequiredPluginsResponse{
+		Plugins: plugins,
+	}, nil
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
