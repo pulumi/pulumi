@@ -23,13 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
-func leadingTriviaOrSpace(trivia syntax.TriviaList) syntax.TriviaList {
-	if len(trivia) > 0 {
-		return trivia
-	}
-	return syntax.TriviaList{syntax.NewWhitespace(' ')}
-}
-
 func syntaxOrNone(node hclsyntax.Node) hclsyntax.Node {
 	if node == nil {
 		return syntax.None

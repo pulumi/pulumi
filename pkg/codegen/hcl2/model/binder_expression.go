@@ -593,7 +593,12 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 	for _, item := range items {
 		types = append(types, item.Value.Type())
 
-		keyLit, ok := item.Key.(*LiteralValueExpression)
+		key := item.Key
+		if template, ok := key.(*TemplateExpression); ok && len(template.Parts) == 1 {
+			key = template.Parts[0]
+		}
+
+		keyLit, ok := key.(*LiteralValueExpression)
 		if ok {
 			key, err := convert.Convert(keyLit.Value, cty.String)
 			if err == nil {
