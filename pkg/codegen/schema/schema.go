@@ -171,15 +171,6 @@ func (t *TokenType) String() string {
 
 func (*TokenType) isType() {}
 
-// ConstValue describes a constant value for a property.
-type ConstValue struct {
-	// Value specifies a static constant value, if any. This value must be representable in the Pulumi schema type
-	// system, and its type must be assignable to that of the property to which the constant applies.
-	Value interface{}
-
-	// TODO: Add Language if needed
-}
-
 // DefaultValue describes a default value for a property.
 type DefaultValue struct {
 	// Value specifies a static default value, if any. This value must be representable in the Pulumi schema type
@@ -200,7 +191,7 @@ type Property struct {
 	// Type is the type of the property.
 	Type Type
 	// ConstValue is the constant value for the property, if any.
-	ConstValue *ConstValue
+	ConstValue interface{}
 	// DefaultValue is the default value for the property, if any.
 	DefaultValue *DefaultValue
 	// IsRequired is true if the property must always be populated.
@@ -330,13 +321,6 @@ type TypeSpec struct {
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
 
-// ConstSpec is the serializable form of extra information about the constant value for a property.
-type ConstSpec struct {
-	// TODO: add Language if needed
-	//// Language specifies additional language-specific data about the default value.
-	//Language map[string]json.RawMessage `json:"language,omitempty"`
-}
-
 // DefaultSpec is the serializable form of extra information about the default value for a property.
 type DefaultSpec struct {
 	// Environment specifies a set of environment variables to probe for a default value.
@@ -354,8 +338,6 @@ type PropertySpec struct {
 	// Const is the constant value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
 	Const interface{} `json:"const,omitempty"`
-	// ConstInfo contains additional information about the property's constant value, if any.
-	ConstInfo *ConstSpec `json:"constInfo,omitempty"`
 	// Default is the default value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
 	Default interface{} `json:"default,omitempty"`
@@ -679,45 +661,38 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 	}
 }
 
-func bindConstValue(value interface{}, spec *ConstSpec, typ Type) (*ConstValue, error) {
-	if value == nil && spec == nil {
+func bindConstValue(value interface{}, typ Type) (interface{}, error) {
+	if value == nil {
 		return nil, nil
 	}
 
-	if value != nil {
-		switch typ {
-		case BoolType:
-			if _, ok := value.(bool); !ok {
-				return nil, errors.Errorf("invalid constant of type %T for boolean property", value)
-			}
-		case IntType:
-			v, ok := value.(float64)
-			if !ok {
-				return nil, errors.Errorf("invalid constant of type %T for integer property", value)
-			}
-			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-				return nil, errors.Errorf("invalid constant of type number for integer property")
-			}
-			value = int32(v)
-		case NumberType:
-			if _, ok := value.(float64); !ok {
-				return nil, errors.Errorf("invalid constant of type %T for number property", value)
-			}
-		case StringType:
-			if _, ok := value.(string); !ok {
-				return nil, errors.Errorf("invalid constant of type %T for string property", value)
-			}
-		default:
-			return nil, errors.Errorf("constant values may only be provided for boolean, integer, number, and string properties")
+	switch typ {
+	case BoolType:
+		if _, ok := value.(bool); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for boolean property", value)
 		}
+	case IntType:
+		v, ok := value.(float64)
+		if !ok {
+			return nil, errors.Errorf("invalid constant of type %T for integer property", value)
+		}
+		if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+			return nil, errors.Errorf("invalid constant of type number for integer property")
+		}
+		value = int32(v)
+	case NumberType:
+		if _, ok := value.(float64); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for number property", value)
+		}
+	case StringType:
+		if _, ok := value.(string); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for string property", value)
+		}
+	default:
+		return nil, errors.Errorf("constant values may only be provided for boolean, integer, number, and string properties")
 	}
 
-	cv := &ConstValue{Value: value}
-	if spec != nil {
-		// TODO: add if needed
-		//cv.Language = spec.Language
-	}
-	return cv, nil
+	return value, nil
 }
 
 func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, error) {
@@ -770,7 +745,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 			return nil, errors.Wrapf(err, "error binding type for property %s", name)
 		}
 
-		cv, err := bindConstValue(spec.Const, spec.ConstInfo, typ)
+		cv, err := bindConstValue(spec.Const, typ)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error binding constant value for property %s", name)
 		}
