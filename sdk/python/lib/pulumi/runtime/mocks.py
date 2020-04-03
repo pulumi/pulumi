@@ -118,6 +118,10 @@ class MockMonitor:
         #pylint: disable=unused-argument
         return empty_pb2.Empty()
 
+    def SupportsFeature(self, request):
+        #pylint: disable=unused-argument
+        return type('SupportsFeatureResponse', (object,), {'hasSupport' : True})
+
 
 class MockEngine:
     logger: logging.Logger
