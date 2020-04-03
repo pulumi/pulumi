@@ -1150,7 +1150,7 @@ func sortIndexEntries(entries []indexEntry) {
 
 // genIndex emits an _index.md file for the module.
 func (mod *modContext) genIndex() indexData {
-	glog.V(4).Infoln("genIndex")
+	glog.V(4).Infoln("genIndex for", mod.mod)
 	var modules []indexEntry
 	var resources []indexEntry
 	var functions []indexEntry
@@ -1212,7 +1212,7 @@ func (mod *modContext) genIndex() indexData {
 		}
 
 		modules = append(modules, indexEntry{
-			Link:        path,
+			Link:        path + "/",
 			DisplayName: path,
 		})
 	}
