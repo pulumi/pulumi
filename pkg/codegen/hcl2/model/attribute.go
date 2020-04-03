@@ -15,6 +15,9 @@
 package model
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
@@ -36,6 +39,25 @@ type Attribute struct {
 // SyntaxNode returns the syntax node of the attribute, and will either return an *hclsyntax.Attribute or syntax.None.
 func (a *Attribute) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(a.Syntax)
+}
+
+func (a *Attribute) hasLeadingTrivia() bool {
+	return a.Tokens != nil
+}
+
+func (a *Attribute) hasTrailingTrivia() bool {
+	return a.Value.hasTrailingTrivia()
+}
+
+func (a *Attribute) Format(f fmt.State, c rune) {
+	a.print(f, &printer{})
+}
+
+func (a *Attribute) print(w io.Writer, p *printer) {
+	p.fprintf(w, "%v% v% v",
+		a.Tokens.GetName().Or(hclsyntax.TokenIdent, a.Name),
+		a.Tokens.GetEquals().Or(hclsyntax.TokenEqual),
+		a.Value)
 }
 
 func (*Attribute) isBodyItem() {}

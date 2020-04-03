@@ -17,44 +17,48 @@ package model
 import (
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
 )
 
 func TestBindLiteral(t *testing.T) {
-	expr, diags := BindExpressionText("false", nil)
+	expr, diags := BindExpressionText("false", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
 	assert.Equal(t, BoolType, expr.Type())
 	lit, ok := expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.False, lit.Value)
 
-	expr, diags = BindExpressionText("true", nil)
+	expr, diags = BindExpressionText("true", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
 	assert.Equal(t, BoolType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.True, lit.Value)
 
-	expr, diags = BindExpressionText("0", nil)
+	expr, diags = BindExpressionText("0", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
 	assert.Equal(t, NumberType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.True(t, cty.NumberIntVal(0).RawEquals(lit.Value))
 
-	expr, diags = BindExpressionText("3.14", nil)
+	expr, diags = BindExpressionText("3.14", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
 	assert.Equal(t, NumberType, expr.Type())
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.True(t, cty.MustParseNumberVal("3.14").RawEquals(lit.Value))
 
-	expr, diags = BindExpressionText(`"foo"`, nil)
+	expr, diags = BindExpressionText(`"foo"`, nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
 	assert.Equal(t, StringType, expr.Type())
-	lit, ok = expr.(*LiteralValueExpression)
+	template, ok := expr.(*TemplateExpression)
+	assert.True(t, ok)
+	assert.Len(t, template.Parts, 1)
+	lit, ok = template.Parts[0].(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.StringVal("foo"), lit.Value)
 }
@@ -119,7 +123,7 @@ func TestBindBinaryOp(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*BinaryOpExpression)
@@ -150,7 +154,7 @@ func TestBindConditional(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ConditionalExpression)
@@ -210,7 +214,7 @@ func TestBindFor(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ForExpression)
@@ -265,7 +269,7 @@ func TestBindFunctionCall(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*FunctionCallExpression)
@@ -331,7 +335,7 @@ func TestBindIndex(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*IndexExpression)
@@ -371,7 +375,7 @@ func TestBindObjectCons(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ObjectConsExpression)
@@ -423,7 +427,7 @@ func TestBindRelativeTraversal(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*RelativeTraversalExpression)
@@ -492,7 +496,7 @@ func TestBindScopeTraversal(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ScopeTraversalExpression)
@@ -555,7 +559,7 @@ func TestBindSplat(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*SplatExpression)
@@ -583,8 +587,6 @@ func TestBindTemplate(t *testing.T) {
 
 	cases := []exprTestCase{
 		// Unwrapped interpolations
-		{x: `"foo"`, t: StringType, xt: &LiteralValueExpression{}},
-		{x: `"${"foo"}"`, t: StringType, xt: &LiteralValueExpression{}},
 		{x: `"${0}"`, t: NumberType, xt: &LiteralValueExpression{}},
 		{x: `"${true}"`, t: BoolType, xt: &LiteralValueExpression{}},
 		{x: `"${d}"`, t: NewListType(StringType), xt: &ScopeTraversalExpression{}},
@@ -617,7 +619,7 @@ func TestBindTemplate(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 
@@ -651,7 +653,7 @@ func TestBindTupleCons(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*TupleConsExpression)
@@ -684,7 +686,7 @@ func TestBindUnaryOp(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.x, func(t *testing.T) {
-			expr, diags := BindExpressionText(c.x, scope)
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*UnaryOpExpression)

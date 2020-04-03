@@ -15,6 +15,9 @@
 package model
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
@@ -23,6 +26,8 @@ import (
 
 // BodyItem represents either an *Attribute or a *Block that is part of an HCL2 Body.
 type BodyItem interface {
+	printable
+
 	// SyntaxNode returns syntax node of the item.
 	SyntaxNode() hclsyntax.Node
 
@@ -43,6 +48,54 @@ type Body struct {
 // SyntaxNode returns the syntax node of the body, and will either return an *hclsyntax.Body or syntax.None.
 func (b *Body) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(b.Syntax)
+}
+
+func (b *Body) hasLeadingTrivia() bool {
+	return len(b.Items) > 0 && b.Items[0].hasLeadingTrivia()
+}
+
+func (b *Body) hasTrailingTrivia() bool {
+	if eof := b.Tokens.GetEndOfFile(); eof != nil {
+		return true
+	}
+	return len(b.Items) > 0 && b.Items[len(b.Items)-1].hasTrailingTrivia()
+}
+
+func (b *Body) Format(f fmt.State, c rune) {
+	b.print(f, &printer{})
+}
+
+func (b *Body) print(w io.Writer, p *printer) {
+	// Print the items, separated by newlines.
+	for _, item := range b.Items {
+		p.fprintf(w, "% v", item)
+	}
+
+	// If the body has an end-of-file token, print it.
+	if b.Tokens.GetEndOfFile() != nil {
+		p.fprintf(w, "%v", b.Tokens.EndOfFile)
+	}
+}
+
+// Attribute returns the attribute with the givne in the body if any exists.
+func (b *Body) Attribute(name string) (*Attribute, bool) {
+	for _, item := range b.Items {
+		if attr, ok := item.(*Attribute); ok && attr.Name == name {
+			return attr, true
+		}
+	}
+	return nil, false
+}
+
+// Blocks returns all blocks in the body with the given type.
+func (b *Body) Blocks(typ string) []*Block {
+	var blocks []*Block
+	for _, item := range b.Items {
+		if block, ok := item.(*Block); ok && block.Type == typ {
+			blocks = append(blocks, block)
+		}
+	}
+	return blocks
 }
 
 // BindBody binds an HCL2 body using the given scopes and token map.

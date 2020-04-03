@@ -19,6 +19,52 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
+// A BodyItemVisitor is a function that visits and optionally replaces the contents of a body item.
+type BodyItemVisitor func(n BodyItem) (BodyItem, hcl.Diagnostics)
+
+func IdentityBodyItemVisitor(n BodyItem) (BodyItem, hcl.Diagnostics) {
+	return n, nil
+}
+
+func visitBlock(n *Block, pre, post BodyItemVisitor) (BodyItem, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	var items []BodyItem
+	for _, item := range n.Body.Items {
+		newItem, diags := VisitBodyItem(item, pre, post)
+		diagnostics = append(diagnostics, diags...)
+
+		if newItem != nil {
+			items = append(items, newItem)
+		}
+	}
+	n.Body.Items = items
+
+	block, diags := post(n)
+	return block, append(diagnostics, diags...)
+}
+
+func VisitBodyItem(n BodyItem, pre, post BodyItemVisitor) (BodyItem, hcl.Diagnostics) {
+	if n == nil {
+		return nil, nil
+	}
+
+	nn, preDiags := pre(n)
+
+	var postDiags hcl.Diagnostics
+	switch n := nn.(type) {
+	case *Attribute:
+		nn, postDiags = post(n)
+	case *Block:
+		nn, postDiags = visitBlock(n, pre, post)
+	default:
+		contract.Failf("unexpected node type in visitExpression: %T", n)
+		return nil, nil
+	}
+
+	return nn, append(preDiags, postDiags...)
+}
+
 // An ExpressionVisitor is a function that visits and optionally replaces a node in an expression tree.
 type ExpressionVisitor func(n Expression) (Expression, hcl.Diagnostics)
 
