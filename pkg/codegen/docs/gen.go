@@ -1024,7 +1024,7 @@ func (fs fs) add(path string, contents []byte) {
 }
 
 func (mod *modContext) getModuleFileName() string {
-	if isKubernetesPackage(mod.pkg) {
+	if !isKubernetesPackage(mod.pkg) {
 		return mod.mod
 	}
 
@@ -1065,8 +1065,9 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
-			panic(err)
+			return err
 		}
+
 		addFile(lower(title)+".md", buffer.String())
 	}
 
@@ -1077,19 +1078,14 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		err := templates.ExecuteTemplate(buffer, "function.tmpl", data)
 		if err != nil {
-			panic(err)
+			return err
 		}
+
 		addFile(lower(tokenToName(f.Token))+".md", buffer.String())
 	}
 
-	// Index
-	var idxData indexData
-	if isKubernetesPackage(mod.pkg) {
-		idxData = mod.genK8SIndex()
-	} else {
-		idxData = mod.genIndex()
-	}
-
+	// Generate the index files.
+	idxData := mod.genIndex()
 	buffer := &bytes.Buffer{}
 	err := templates.ExecuteTemplate(buffer, "index.tmpl", idxData)
 	if err != nil {
@@ -1144,10 +1140,6 @@ func (s *indexEntrySorter) Less(i, j int) bool {
 	return s.entries[i].DisplayName < s.entries[j].DisplayName
 }
 
-func (mod *modContext) genK8SIndex() indexData {
-	return mod.genIndex()
-}
-
 func sortIndexEntries(entries []indexEntry) {
 	sorter := &indexEntrySorter{
 		entries: entries,
@@ -1158,6 +1150,7 @@ func sortIndexEntries(entries []indexEntry) {
 
 // genIndex emits an _index.md file for the module.
 func (mod *modContext) genIndex() indexData {
+	glog.V(4).Infoln("genIndex")
 	var modules []indexEntry
 	var resources []indexEntry
 	var functions []indexEntry
@@ -1167,7 +1160,6 @@ func (mod *modContext) genIndex() indexData {
 	menu := false
 	if title == "" {
 		title = mod.pkg.Name
-
 		// Flag top-level entries for inclusion in the table-of-contents menu.
 		menu = true
 	}
@@ -1177,11 +1169,51 @@ func (mod *modContext) genIndex() indexData {
 	if numChildren > 0 {
 		modules = make([]indexEntry, 0, numChildren)
 	}
+
+	// Use a set to keep track of unique module names.
+	// The `mod` property of the current modContext contains the
+	// normalized module name.
+	// For example, in a resource token such as:
+	// aws:s3/bucket:Bucket, `s3` is the module name.
+	//
+	// In Kubernetes, the module names contain versions.
+	// For example, kubernetes:apps/v1:DaemonSet.
+	// The module format for Kubernetes is current (.*)
+	// which matches everything in `apps/v1`. So we end up
+	// generating resource with the following directory structure:
+	//
+	// apps
+	//     v1
+	//     v1alpha1
+	//     v1beta2
+	//     ...
+	// We use the same pattern here to ensure that we only generate
+	// a "module" once even though there may be multiple versions of
+	// the same "module".
+	moduleMap := map[string]struct{}{}
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
+		path := path.Dir(modName)
+		// path will be "." if the module name
+		// does not follow a directory-like pattern.
+		// In that case, we would just use the module name
+		// as-is.
+		if path != "." {
+			glog.V(5).Infoln("checking if", path, "exists")
+			if _, ok := moduleMap[path]; ok {
+				glog.V(5).Infoln("module", modName, "exists")
+				continue
+			}
+
+			glog.V(5).Infoln("adding module", path)
+			moduleMap[path] = struct{}{}
+		} else {
+			path = modName
+		}
+
 		modules = append(modules, indexEntry{
-			Link:        modName,
-			DisplayName: modName,
+			Link:        path,
+			DisplayName: path,
 		})
 	}
 
