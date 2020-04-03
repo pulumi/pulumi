@@ -311,11 +311,60 @@ func printComment(w io.Writer, comment string, indent bool) {
 }
 
 func genInputInterface(w io.Writer, name string) {
+	printComment(w, getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", title(name), name)
 	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", title(name), name)
 	fmt.Fprintf(w, "}\n\n")
+}
+
+func getInputUsage(name string) string {
+	if strings.HasSuffix(name, "Array") {
+		baseTypeName := name[:strings.LastIndex(name, "Array")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
+
+	}
+
+	if strings.HasSuffix(name, "Map") {
+		baseTypeName := name[:strings.LastIndex(name, "Map")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ \"key\": %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
+	}
+
+	if strings.HasSuffix(name, "Ptr") {
+		baseTypeName := name[:strings.LastIndex(name, "Ptr")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
+			"",
+			" or:",
+			"",
+			"\t\t nil",
+			" ",
+		}, "\n")
+	}
+
+	return strings.Join([]string{
+		fmt.Sprintf("%sInput is an input type that accepts %sArgs and %sOutput values.", name, name, name),
+		fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+		"",
+		fmt.Sprintf("\t\t %sArgs{...}", name),
+		" ",
+	}, "\n")
 }
 
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods bool) {

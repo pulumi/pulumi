@@ -4,6 +4,8 @@ CHANGELOG
 ## HEAD (unreleased)
 - Fix handling of `nil` values in Outputs in Go.
   [#4268](https://github.com/pulumi/pulumi/pull/4268)
+- Include usage hints for Input types in Go SDK
+  [#4279](https://github.com/pulumi/pulumi/pull/4279)
 
 - Fix secretness propagation in Python `apply`.
   [#4273](https://github.com/pulumi/pulumi/pull/4273)
