@@ -12,8 +12,9 @@ namespace Pulumi
     public partial class Deployment
     {
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
+        /// <param name="action">Callback that creates stack resources.</param>
         public static Task<int> RunAsync(Action action)
             => RunAsync(() =>
             {
@@ -22,15 +23,26 @@ namespace Pulumi
             });
 
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
-        /// <param name="func"></param>
-        /// <returns></returns>
+        /// <param name="func">Callback that creates stack resources.</param>
+        /// <returns>A dictionary of stack outputs.</returns>
         public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
+        
+        /// <summary>
+        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
+        /// </summary>
+        /// <param name="func">Callback that creates stack resources.</param>
+        public static Task<int> RunAsync(Func<Task> func)
+            => RunAsync(async () =>
+            {
+                await func();
+                return ImmutableDictionary<string, object?>.Empty;
+            });
 
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/> is an
+        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> is an
         /// entry-point to a Pulumi application. .NET applications should perform all startup logic
         /// they need in their <c>Main</c> method and then end with:
         /// <para>
@@ -53,12 +65,14 @@ namespace Pulumi
         /// the running of the program are properly reported.  Failure to do this may lead to the
         /// program ending early before all resources are properly registered.
         /// <para/>
-        /// The function passed to <see cref="RunAsync(Func{Task{IDictionary{string, object}}})"/>
+        /// The function passed to <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/>
         /// can optionally return an <see cref="IDictionary{TKey, TValue}"/>.  The keys and values
         /// in this dictionary will become the outputs for the Pulumi Stack that is created.
         /// </summary>
-        public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
-            => CreateRunner().RunAsync(func);
+        /// <param name="func">Callback that creates stack resources.</param>
+        /// <param name="options">Stack options.</param>
+        public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options = null)
+            => CreateRunner().RunAsync(func, options);
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
