@@ -322,20 +322,49 @@ func genInputInterface(w io.Writer, name string) {
 func getInputUsage(name string) string {
 	if strings.HasSuffix(name, "Array") {
 		baseTypeName := name[:strings.LastIndex(name, "Array")]
-		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%s{ %sArgs{...} }", name, name, baseTypeName)
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
+
 	}
 
 	if strings.HasSuffix(name, "Map") {
 		baseTypeName := name[:strings.LastIndex(name, "Map")]
-		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%s{ \"key\": %sArgs{...} }", name, name, baseTypeName)
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ \"key\": %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
 	}
 
 	if strings.HasSuffix(name, "Ptr") {
 		baseTypeName := name[:strings.LastIndex(name, "Ptr")]
-		return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%sArgs{...}.To%sOutput()", name, baseTypeName, name)
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
+			"",
+			" or:",
+			"",
+			"\t\t nil",
+			" ",
+		}, "\n")
 	}
 
-	return fmt.Sprintf("Construct a concrete instance of %sInput via:\n\t%sArgs{...}", name, name)
+	return strings.Join([]string{
+		fmt.Sprintf("%sInput is an input type that accepts %sArgs and %sOutput values.", name, name, name),
+		fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+		"",
+		fmt.Sprintf("\t\t %sArgs{...}", name),
+		" ",
+	}, "\n")
 }
 
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods bool) {
