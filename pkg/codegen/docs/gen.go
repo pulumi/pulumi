@@ -1240,6 +1240,14 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	var getMod func(token string) *modContext
 	getMod = func(token string) *modContext {
 		modName := pkg.TokenToModule(token)
+		isK8SPkg := isKubernetesPackage(pkg)
+		// Kubernetes' moduleFormat in the schema will match everything
+		// in the token. This prevents us from adding the "Provider"
+		// resource as a child module of the package level :index: module.
+		if isK8SPkg && modName == "providers" {
+			modName = ""
+		}
+
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
@@ -1249,7 +1257,10 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 			}
 
 			if modName != "" {
-				if isKubernetesPackage(pkg) {
+				// For the Kubernetes package, use the package name
+				// for a module in the Go-language override available in
+				// the schema until a more neutral facility is available.
+				if isK8SPkg {
 					override, ok := goPkgInfo.ModuleToPackage[modName]
 					if ok {
 						modName = override
@@ -1260,7 +1271,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 				if parentName == "." || parentName == "" {
 					parentName = ":index:"
 				}
-				if isKubernetesPackage(pkg) {
+				if isK8SPkg && parentName != ":index:" {
 					parentName = ":" + parentName + ":"
 				}
 				parent := getMod(parentName)
