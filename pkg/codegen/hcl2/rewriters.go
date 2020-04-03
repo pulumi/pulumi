@@ -16,12 +16,17 @@ package hcl2
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+type NameInfo interface {
+	IsReservedWord(name string) bool
+}
 
 func isEventualType(t model.Type) (model.Type, bool) {
 	switch t := t.(type) {
@@ -47,9 +52,73 @@ func isEventualType(t model.Type) (model.Type, bool) {
 // The applyRewriter is responsible for transforming expressions involving Pulumi output properties into a call to the
 // __apply intrinsic and replacing the output properties with appropriate calls to the __applyArg intrinsic.
 type applyRewriter struct {
-	root           model.Expression
-	applyArgs      []*model.ScopeTraversalExpression
-	callbackParams []*model.Variable
+	nameInfo NameInfo
+
+	root            model.Expression
+	applyArgs       []*model.ScopeTraversalExpression
+	callbackParams  []*model.Variable
+	paramReferences []*model.ScopeTraversalExpression
+
+	assignedNames codegen.StringSet
+	nameCounts    map[string]int
+}
+
+// disambiguateName ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
+func (r *applyRewriter) disambiguateName(name string) string {
+	if name == "" {
+		name = "arg"
+	} else if r.nameInfo.IsReservedWord(name) {
+		name = "_" + name
+	}
+
+	if !r.assignedNames.Has(name) {
+		return name
+	}
+
+	root := name
+	for i := 1; r.nameCounts[name] != 0; i++ {
+		name = fmt.Sprintf("%s%d", root, i)
+	}
+	return name
+}
+
+// bestArgName computes the "best" name for a given apply argument. If this name is unambiguous after all best names
+// have been calculated, it will be assigned to the argument. Otherwise, it will go through the disambiguation process
+// in disambiguateArgName.
+func (r *applyRewriter) bestArgName(x *model.ScopeTraversalExpression) string {
+	switch n := x.Parts[0].(type) {
+	case *ConfigVariable, *LocalVariable, *OutputVariable:
+		return n.(Node).Name()
+	case *Resource:
+		// If dealing with a broken access, use the resource's variable name. Otherwise, use the name
+		// of the traversal's first field.
+		if len(x.Traversal) == 1 {
+			return n.Name()
+		}
+		switch t := x.Traversal[1].(type) {
+		case hcl.TraverseAttr:
+			return t.Name
+		case hcl.TraverseIndex:
+			return t.Key.AsString()
+		default:
+			return n.Name()
+		}
+	default:
+		panic(fmt.Errorf("unexpected definition in assignApplyArgName: %T", n))
+	}
+}
+
+// disambiguateArgName applies type-specific disambiguation to an argument name.
+func (r *applyRewriter) disambiguateArgName(x *model.ScopeTraversalExpression, bestName string) string {
+	if n, ok := x.Parts[0].(*Resource); ok {
+		// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
+		// by prepending the resource's variable name.
+		if len(x.Traversal) > 1 {
+			return r.disambiguateName(n.Name() + titleCase(bestName))
+		}
+	}
+	// Hand off to the generic disambiguator.
+	return r.disambiguateName(bestName)
 }
 
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with a call to
@@ -62,6 +131,11 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	// If the access is not an output() or a promise(), return the node as-is.
 	_, isEventual := isEventualType(expr.Type())
 	if !isEventual {
+		// If this is a reference to a named variable, put the name in scope.
+		if definition, ok := expr.Traversal[0].(Node); ok {
+			r.assignedNames.Add(definition.Name())
+			r.nameCounts[definition.Name()] = 1
+		}
 		return expr
 	}
 
@@ -78,11 +152,9 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	splitTraversal := expr.Syntax.Traversal.SimpleSplit()
 	if rootResolvedType, rootIsEventual := isEventualType(model.GetTraversableType(expr.Parts[0])); rootIsEventual {
 		applyArg = &model.ScopeTraversalExpression{
-			Syntax: &hclsyntax.ScopeTraversalExpr{
-				Traversal: splitTraversal.Abs,
-				SrcRange:  splitTraversal.Abs.SourceRange(),
-			},
-			Parts: expr.Parts[:1],
+			Parts:     expr.Parts[:1],
+			RootName:  splitTraversal.Abs.RootName(),
+			Traversal: splitTraversal.Abs,
 		}
 		paramType, traversal, parts = rootResolvedType, expr.Syntax.Traversal.SimpleSplit().Rel, expr.Parts[1:]
 	} else {
@@ -91,11 +163,9 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 				absTraversal, relTraversal := expr.Syntax.Traversal[:i+2], expr.Syntax.Traversal[i+2:]
 
 				applyArg = &model.ScopeTraversalExpression{
-					Syntax: &hclsyntax.ScopeTraversalExpr{
-						Traversal: absTraversal,
-						SrcRange:  absTraversal.SourceRange(),
-					},
-					Parts: expr.Parts[:i+2],
+					Parts:     expr.Parts[:i+2],
+					RootName:  absTraversal.RootName(),
+					Traversal: absTraversal,
 				}
 				paramType, traversal, parts = resolvedType, relTraversal, expr.Parts[i+2:]
 				break
@@ -108,7 +178,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	}
 
 	callbackParam := &model.Variable{
-		Name:         fmt.Sprintf("arg%d", len(r.callbackParams)),
+		Name:         fmt.Sprintf("<arg%d>", len(r.callbackParams)),
 		VariableType: paramType,
 	}
 
@@ -124,13 +194,13 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 		resolvedParts[i+1] = resolved
 	}
 
-	return &model.ScopeTraversalExpression{
-		Syntax: &hclsyntax.ScopeTraversalExpr{
-			Traversal: hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
-			SrcRange:  traversal.SourceRange(),
-		},
-		Parts: resolvedParts,
+	result := &model.ScopeTraversalExpression{
+		Parts:     resolvedParts,
+		RootName:  callbackParam.Name,
+		Traversal: hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
 	}
+	r.paramReferences = append(r.paramReferences, result)
+	return result
 }
 
 // rewriteRoot replaces the root node in a bound expression with a call to the __apply intrinsic if necessary.
@@ -141,6 +211,30 @@ func (r *applyRewriter) rewriteRoot(expr model.Expression) model.Expression {
 	r.root = nil
 	if len(r.applyArgs) == 0 {
 		return expr
+	}
+
+	// Assign argument names.
+	log.Printf("assigning %v arg names", len(r.applyArgs))
+	for i, arg := range r.applyArgs {
+		bestName := r.bestArgName(arg)
+		r.callbackParams[i].Name, r.nameCounts[bestName] = bestName, r.nameCounts[bestName]+1
+	}
+	for i, param := range r.callbackParams {
+		if r.nameCounts[param.Name] > 1 {
+			param.Name = r.disambiguateArgName(r.applyArgs[i], param.Name)
+			if r.nameCounts[param.Name] == 0 {
+				r.nameCounts[param.Name] = 1
+			}
+			r.assignedNames.Add(param.Name)
+		}
+	}
+
+	// Update parameter references with the assigned names.
+	for _, x := range r.paramReferences {
+		v := x.Parts[0].(*model.Variable)
+		rootTraversal := x.Traversal[0].(hcl.TraverseRoot)
+		x.RootName, rootTraversal.Name = v.Name, v.Name
+		x.Traversal[0] = rootTraversal
 	}
 
 	// Create a new anonymous function definition.
@@ -181,7 +275,8 @@ func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression
 	if r.root == nil {
 		_, isEventual := isEventualType(expr.Type())
 		if isEventual {
-			r.root, r.applyArgs = expr, nil
+			r.root, r.applyArgs, r.callbackParams, r.paramReferences = expr, nil, nil, nil
+			r.assignedNames, r.nameCounts = codegen.StringSet{}, map[string]int{}
 		}
 	}
 	return expr, nil
@@ -249,7 +344,7 @@ func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression
 //
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).
-func RewriteApplies(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	rewriter := &applyRewriter{}
+func RewriteApplies(expr model.Expression, nameInfo NameInfo) (model.Expression, hcl.Diagnostics) {
+	rewriter := &applyRewriter{nameInfo: nameInfo}
 	return model.VisitExpression(expr, rewriter.enterExpression, rewriter.rewriteExpression)
 }

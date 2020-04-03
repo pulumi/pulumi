@@ -33,6 +33,7 @@ type binder struct {
 
 	tokens syntax.TokenMap
 	nodes  []Node
+	stack  []hclsyntax.Node
 	root   *model.Scope
 }
 
@@ -105,29 +106,34 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 		case *hclsyntax.Block:
 			switch item.Type {
 			case "config":
-				if len(item.Labels) != 0 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "config items do not support labels"))
+				name, typ := "<unnamed>", model.Type(model.DynamicType)
+				switch len(item.Labels) {
+				case 1:
+					name = item.Labels[0]
+				case 2:
+					name = item.Labels[0]
+
+					typeExpr, diags := model.BindExpressionText(item.Labels[1], model.TypeScope, item.LabelRanges[1].Start)
+					diagnostics = append(diagnostics, diags...)
+					typ = typeExpr.Type()
+				default:
+					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}
 
-				for _, item := range model.SourceOrderBody(item.Body) {
-					switch item := item.(type) {
-					case *hclsyntax.Attribute:
-						diagnostics = append(diagnostics, errorf(item.Range(), "unsupported attribute %q in config item", item.Name))
-					case *hclsyntax.Block:
-						if len(item.Labels) > 1 {
-							diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have no more than one label"))
-						}
+				// TODO(pdg): check body for valid contents
 
-						configDiags := b.declareNode(item.Type, &ConfigVariable{Syntax: item})
-						diagnostics = append(diagnostics, configDiags...)
-					}
-				}
+				diags := b.declareNode(name, &ConfigVariable{
+					typ:          typ,
+					Syntax:       item,
+					VariableName: name,
+				})
+				diagnostics = append(diagnostics, diags...)
 			case "resource":
 				if len(item.Labels) != 2 {
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
 
-				tokens, _ := b.tokens.ForNode(item).(syntax.BlockTokens)
+				tokens, _ := b.tokens.ForNode(item).(*syntax.BlockTokens)
 				resource := &Resource{
 					Syntax: item,
 					Tokens: tokens,
@@ -139,26 +145,31 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					return nil, err
 				}
 
-				resourceDiags := b.bindResourceTypes(resource)
-				diagnostics = append(diagnostics, resourceDiags...)
-			case "outputs":
-				if len(item.Labels) != 0 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "outputs items do not support labels"))
+				diags := b.bindResourceTypes(resource)
+				diagnostics = append(diagnostics, diags...)
+			case "output":
+				name, typ := "<unnamed>", model.Type(model.DynamicType)
+				switch len(item.Labels) {
+				case 1:
+					name = item.Labels[0]
+				case 2:
+					name = item.Labels[0]
+
+					typeExpr, diags := model.BindExpressionText(item.Labels[1], model.TypeScope, item.LabelRanges[1].Start)
+					diagnostics = append(diagnostics, diags...)
+					typ = typeExpr.Type()
+				default:
+					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}
 
-				for _, item := range model.SourceOrderBody(item.Body) {
-					switch item := item.(type) {
-					case *hclsyntax.Attribute:
-						diagnostics = append(diagnostics, errorf(item.Range(), "unsupported attribute %q in outputs item", item.Name))
-					case *hclsyntax.Block:
-						if len(item.Labels) > 1 {
-							diagnostics = append(diagnostics, labelsErrorf(item, "output variables must have no more than one label"))
-						}
+				// TODO(pdg): check body for valid contents
 
-						outputDiags := b.declareNode(item.Type, &OutputVariable{Syntax: item})
-						diagnostics = append(diagnostics, outputDiags...)
-					}
-				}
+				diags := b.declareNode(name, &OutputVariable{
+					typ:          typ,
+					Syntax:       item,
+					VariableName: name,
+				})
+				diagnostics = append(diagnostics, diags...)
 			}
 		}
 	}

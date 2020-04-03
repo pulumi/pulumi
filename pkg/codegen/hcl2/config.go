@@ -30,6 +30,8 @@ type ConfigVariable struct {
 
 	typ model.Type
 
+	// The name of the config variable.
+	VariableName string
 	// The default value for the config variable, if any.
 	DefaultValue model.Expression
 }
@@ -41,6 +43,10 @@ func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
 
 func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return cv.typ.Traverse(traverser)
+}
+
+func (cv *ConfigVariable) Name() string {
+	return cv.VariableName
 }
 
 // Type returns the type of the config variable.

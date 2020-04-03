@@ -18,17 +18,20 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
 // LocalVariable represents a program- or component-scoped local variable.
 type LocalVariable struct {
 	node
 
-	// The syntax node associated with the local variable.
+	// The syntax node associated with the local variable, if any.
 	Syntax *hclsyntax.Attribute
+	// The syntax tokens associated with the local variable, if any.
+	Tokens *syntax.AttributeTokens
 
 	// The name of the local variable.
-	Name string
+	VariableName string
 	// The type of the local variable.
 	VariableType model.Type
 	// The value of the local variable.
@@ -42,6 +45,10 @@ func (lv *LocalVariable) SyntaxNode() hclsyntax.Node {
 
 func (lv *LocalVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return lv.VariableType.Traverse(traverser)
+}
+
+func (lv *LocalVariable) Name() string {
+	return lv.VariableName
 }
 
 // Type returns the type of the local variable.

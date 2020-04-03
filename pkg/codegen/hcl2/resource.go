@@ -27,8 +27,8 @@ type Resource struct {
 
 	// The syntax node associated with the resource instantiation.
 	Syntax *hclsyntax.Block
-	// The syntax tokens associated with the resource instantiation.
-	Tokens syntax.BlockTokens
+	// The syntax tokens associated with the resource instantiation, if any.
+	Tokens *syntax.BlockTokens
 
 	// Token is the type token for this resource.
 	Token string

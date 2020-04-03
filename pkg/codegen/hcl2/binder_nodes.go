@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -26,19 +27,32 @@ import (
 func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	//TODO(pdg): detect circular references
 
+	var diagnostics hcl.Diagnostics
+
 	deps := b.getDependencies(node)
 	node.setDependencies(deps)
 
-	var diagnostics hcl.Diagnostics
+	// Bind any locals that depend on this node: local types are not known until they are bound.
+	for _, dep := range deps {
+		if local, ok := dep.(*LocalVariable); ok {
+			diags := b.bindLocalVariable(local)
+			diagnostics = append(diagnostics, diags...)
+		}
+	}
+
 	switch node := node.(type) {
 	case *ConfigVariable:
-		diagnostics = append(diagnostics, b.bindConfigVariable(node)...)
+		diags := b.bindConfigVariable(node)
+		diagnostics = append(diagnostics, diags...)
 	case *LocalVariable:
-		diagnostics = append(diagnostics, b.bindLocalVariable(node)...)
+		diags := b.bindLocalVariable(node)
+		diagnostics = append(diagnostics, diags...)
 	case *Resource:
-		diagnostics = append(diagnostics, b.bindResource(node)...)
+		diags := b.bindResource(node)
+		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
-		diagnostics = append(diagnostics, b.bindOutputVariable(node)...)
+		diags := b.bindOutputVariable(node)
+		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}
@@ -74,13 +88,34 @@ func (b *binder) getDependencies(node Node) []Node {
 }
 
 func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
-	return notYetImplemented(node)
+	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens)
+	if defaultValue, ok := block.Body.Attribute("default"); ok {
+		node.DefaultValue = defaultValue.Value
+		if node.typ.ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(node.typ, node.DefaultValue))
+		}
+	}
+	return diagnostics
 }
 
 func (b *binder) bindLocalVariable(node *LocalVariable) hcl.Diagnostics {
-	return notYetImplemented(node)
+	if node.VariableType != nil {
+		return nil
+	}
+
+	attr, diagnostics := model.BindAttribute(node.Syntax, b.root, b.tokens)
+	node.VariableType = attr.Value.Type()
+	node.Value = attr.Value
+	return diagnostics
 }
 
 func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
-	return notYetImplemented(node)
+	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens)
+	if value, ok := block.Body.Attribute("value"); ok {
+		node.Value = value.Value
+		if node.typ.ConversionFrom(node.Value.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(node.typ, node.Value))
+		}
+	}
+	return diagnostics
 }

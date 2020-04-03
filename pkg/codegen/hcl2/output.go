@@ -26,8 +26,10 @@ type OutputVariable struct {
 
 	Syntax *hclsyntax.Block
 
-	typ   model.Type
-	Value model.Expression
+	typ model.Type
+
+	VariableName string
+	Value        model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the output variable.
@@ -37,6 +39,10 @@ func (ov *OutputVariable) SyntaxNode() hclsyntax.Node {
 
 func (ov *OutputVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return ov.typ.Traverse(traverser)
+}
+
+func (ov *OutputVariable) Name() string {
+	return ov.VariableName
 }
 
 // Type returns the type of the output variable.

@@ -56,6 +56,11 @@ func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
 }
 
+func circularReference(stack []hclsyntax.Node, referent hclsyntax.Node) *hcl.Diagnostic {
+	// TODO(pdg): stack trace
+	return errorf(referent.Range(), "circular reference to node")
+}
+
 func unsupportedBlock(blockType string, typeRange hcl.Range) *hcl.Diagnostic {
 	return errorf(typeRange, "unsupported block of type '%v'", blockType)
 }

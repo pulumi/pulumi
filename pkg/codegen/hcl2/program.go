@@ -27,6 +27,8 @@ import (
 type Node interface {
 	model.Definition
 
+	// Name returns the name of the node.
+	Name() string
 	// Type returns the type of the node.
 	Type() model.Type
 

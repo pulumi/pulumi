@@ -17,11 +17,22 @@ package hcl2
 import (
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 )
+
+// titleCase replaces the first character in the given string with its upper-case equivalent.
+func titleCase(s string) string {
+	c, sz := utf8.DecodeRuneInString(s)
+	if sz == 0 || unicode.IsUpper(c) {
+		return s
+	}
+	return string([]rune{unicode.ToUpper(c)}) + s[sz:]
+}
 
 func SourceOrderNodes(nodes []Node) []Node {
 	sort.Slice(nodes, func(i, j int) bool {
