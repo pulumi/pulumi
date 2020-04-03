@@ -605,9 +605,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	optionsType := "CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "ResourceOptions"
-	}
 
 	tok := r.Token
 	if r.IsProvider {
@@ -738,19 +735,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
-	methodName := tokenToName(fun.Token)
+	className := tokenToName(fun.Token)
 
 	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token))
 	fmt.Fprintf(w, "{\n")
 
-	// Open the partial class we'll use for datasources.
-	// TODO(pdg): this needs a better name that is guaranteed to be unique.
-	fmt.Fprintf(w, "    public static partial class Invokes\n")
-	fmt.Fprintf(w, "    {\n")
-
 	var typeParameter string
 	if fun.Outputs != nil {
-		typeParameter = fmt.Sprintf("<%sResult>", methodName)
+		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
 	var argsParamDef string
@@ -767,16 +759,22 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			argsDefault, sigil = " = null", "?"
 		}
 
-		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", methodName, sigil, argsDefault)
+		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
 		argsParamRef = "args ?? InvokeArgs.Empty"
 	}
 
+	// Open the class we'll use for datasources.
+	fmt.Fprintf(w, "    public static class %s\n", className)
+	fmt.Fprintf(w, "    {\n")
+
 	// Emit the doc comment, if any.
-	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "csharp"), "        ")
+	printComment(w, fun.Comment, "        ")
 
 	// Emit the datasource method.
-	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n", typeParameter, fun.Token, argsParamRef)
+	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
+		typeParameter, argsParamDef)
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
+		typeParameter, fun.Token, argsParamRef)
 
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
@@ -787,7 +785,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 		args := &plainType{
 			mod:                   mod,
-			name:                  methodName + "Args",
+			name:                  className + "Args",
 			baseClass:             "InvokeArgs",
 			propertyTypeQualifier: "Inputs",
 			properties:            fun.Inputs.Properties,
@@ -801,7 +799,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 		res := &plainType{
 			mod:                   mod,
-			name:                  methodName + "Result",
+			name:                  className + "Result",
 			propertyTypeQualifier: "Outputs",
 			properties:            fun.Outputs.Properties,
 		}
@@ -1057,6 +1055,7 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			addFile("Config.cs", config)
+			return nil
 		}
 	}
 
