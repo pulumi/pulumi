@@ -1169,6 +1169,8 @@ func (mod *modContext) genIndex() indexData {
 	// If there are submodules, list them.
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
+		parts := strings.Split(modName, "/")
+		modName = parts[len(parts)-1]
 		modules = append(modules, indexEntry{
 			Link:        modName + "/",
 			DisplayName: modName,

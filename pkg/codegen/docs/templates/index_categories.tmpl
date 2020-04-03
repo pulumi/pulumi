@@ -2,7 +2,7 @@
 <h3>Modules</h3>
 <ul class="api">
 {{- range . }}
-    <li><a href="{{ .Link }}"><span class="symbol module"></span>{{ .DisplayName }}</a></li>
+    <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol module"></span>{{ .DisplayName }}</a></li>
 {{- end }}
 </ul>
 {{- end }}
@@ -11,7 +11,7 @@
 <h3>Resources</h3>
 <ul class="api">
 {{- range . }}
-    <li><a href="{{ .Link }}"><span class="symbol resource"></span>{{ .DisplayName }}</a></li>
+    <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol resource"></span>{{ .DisplayName }}</a></li>
 {{- end }}
 </ul>
 {{- end }}
@@ -20,7 +20,7 @@
 <h3>Functions</h3>
 <ul class="api">
 {{- range . }}
-    <li><a href="{{ .Link }}"><span class="symbol datasource"></span>{{ .DisplayName }}</a></li>
+    <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol function"></span>{{ .DisplayName }}</a></li>
 {{- end }}
 </ul>
 {{- end }}
