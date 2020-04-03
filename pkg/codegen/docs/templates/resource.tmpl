@@ -1,5 +1,7 @@
 {{ template "header" .Header }}
 
+{{- htmlSafe .DeprecationMessage }}
+
 {{ htmlSafe .Comment }}
 
 <!-- Create resource -->

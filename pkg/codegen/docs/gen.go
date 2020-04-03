@@ -147,7 +147,8 @@ type resourceDocArgs struct {
 	Header header
 
 	// Comment represents the introductory resource comment.
-	Comment string
+	Comment            string
+	DeprecationMessage string
 
 	ConstructorParams map[string]string
 	// ConstructorResource is the resource that is being constructed or
@@ -923,7 +924,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			Title: name,
 		},
 
-		Comment: r.Comment,
+		Comment:            r.Comment,
+		DeprecationMessage: r.DeprecationMessage,
 
 		ConstructorParams:   mod.genConstructors(r, allOptionalInputs),
 		ConstructorResource: mod.getConstructorResourceInfo(name),
