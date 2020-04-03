@@ -190,6 +190,8 @@ type Property struct {
 	Comment string
 	// Type is the type of the property.
 	Type Type
+	// ConstValue is the constant value for the property, if any.
+	ConstValue interface{}
 	// DefaultValue is the default value for the property, if any.
 	DefaultValue *DefaultValue
 	// IsRequired is true if the property must always be populated.
@@ -333,10 +335,13 @@ type PropertySpec struct {
 
 	// Description is the description of the property, if any.
 	Description string `json:"description,omitempty"`
+	// Const is the constant value for the property, if any. The type of the value must be assignable to the type of
+	// the property.
+	Const interface{} `json:"const,omitempty"`
 	// Default is the default value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
 	Default interface{} `json:"default,omitempty"`
-	// DefautSpec contains additional information aboout the property's default value, if any.
+	// DefaultInfo contains additional information about the property's default value, if any.
 	DefaultInfo *DefaultSpec `json:"defaultInfo,omitempty"`
 	// DeprecationMessage indicates whether or not the property is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
@@ -656,6 +661,40 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 	}
 }
 
+func bindConstValue(value interface{}, typ Type) (interface{}, error) {
+	if value == nil {
+		return nil, nil
+	}
+
+	switch typ {
+	case BoolType:
+		if _, ok := value.(bool); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for boolean property", value)
+		}
+	case IntType:
+		v, ok := value.(float64)
+		if !ok {
+			return nil, errors.Errorf("invalid constant of type %T for integer property", value)
+		}
+		if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+			return nil, errors.Errorf("invalid constant of type number for integer property")
+		}
+		value = int32(v)
+	case NumberType:
+		if _, ok := value.(float64); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for number property", value)
+		}
+	case StringType:
+		if _, ok := value.(string); !ok {
+			return nil, errors.Errorf("invalid constant of type %T for string property", value)
+		}
+	default:
+		return nil, errors.Errorf("constant values may only be provided for boolean, integer, number, and string properties")
+	}
+
+	return value, nil
+}
+
 func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, error) {
 	if value == nil && spec == nil {
 		return nil, nil
@@ -697,13 +736,18 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 }
 
 func (t *types) bindProperties(properties map[string]PropertySpec, required []string) ([]*Property, error) {
-	// Bind property types and default values.
+	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property
 	for name, spec := range properties {
 		typ, err := t.bindType(spec.TypeSpec)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error binding type for property %s", name)
+		}
+
+		cv, err := bindConstValue(spec.Const, typ)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error binding constant value for property %s", name)
 		}
 
 		dv, err := bindDefaultValue(spec.Default, spec.DefaultInfo, typ)
@@ -715,6 +759,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 			Name:               name,
 			Comment:            spec.Description,
 			Type:               typ,
+			ConstValue:         cv,
 			DefaultValue:       dv,
 			DeprecationMessage: spec.DeprecationMessage,
 			Language:           spec.Language,
