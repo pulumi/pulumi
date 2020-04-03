@@ -1170,50 +1170,11 @@ func (mod *modContext) genIndex() indexData {
 		modules = make([]indexEntry, 0, numChildren)
 	}
 
-	// Use a set to keep track of unique module names.
-	// The `mod` property of the current modContext contains the
-	// normalized module name.
-	// For example, in a resource token such as:
-	// aws:s3/bucket:Bucket, `s3` is the module name.
-	//
-	// In Kubernetes, the module names contain versions.
-	// For example, kubernetes:apps/v1:DaemonSet.
-	// The module format for Kubernetes is current (.*)
-	// which matches everything in `apps/v1`. So we end up
-	// generating resource with the following directory structure:
-	//
-	// apps
-	//     v1
-	//     v1alpha1
-	//     v1beta2
-	//     ...
-	// We use the same pattern here to ensure that we only generate
-	// a "module" once even though there may be multiple versions of
-	// the same "module".
-	moduleMap := map[string]struct{}{}
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
-		path := path.Dir(modName)
-		// path will be "." if the module name
-		// does not follow a directory-like pattern.
-		// In that case, we would just use the module name
-		// as-is.
-		if path != "." {
-			glog.V(5).Infoln("checking if", path, "exists")
-			if _, ok := moduleMap[path]; ok {
-				glog.V(5).Infoln("module", modName, "exists")
-				continue
-			}
-
-			glog.V(5).Infoln("adding module", path)
-			moduleMap[path] = struct{}{}
-		} else {
-			path = modName
-		}
-
 		modules = append(modules, indexEntry{
-			Link:        path + "/",
-			DisplayName: path,
+			Link:        modName + "/",
+			DisplayName: modName,
 		})
 	}
 
@@ -1296,9 +1257,19 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 			}
 
 			if modName != "" {
+				if isKubernetesPackage(pkg) {
+					override, ok := goPkgInfo.ModuleToPackage[modName]
+					if ok {
+						modName = override
+					}
+				}
 				parentName := path.Dir(modName)
+				// If the parent name is blank, it means this is the package-level.
 				if parentName == "." || parentName == "" {
 					parentName = ":index:"
+				}
+				if isKubernetesPackage(pkg) {
+					parentName = ":" + parentName + ":"
 				}
 				parent := getMod(parentName)
 				parent.children = append(parent.children, mod)

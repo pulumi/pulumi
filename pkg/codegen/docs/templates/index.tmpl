@@ -13,31 +13,16 @@ menu:
 
 {{ htmlSafe .PackageDescription }}
 
-{{ if ne (len .Modules) 0 -}}
-<h3>Modules</h3>
-<ul class="api">
-{{ range .Modules }}
-    <li><a href="{{ .Link }}"><span class="symbol module"></span>{{ .DisplayName }}</a></li>
-{{- end }}
-</ul>
+{{- if ne (len .Modules) 0 -}}
+{{ template "index_modules" .Modules }}
 {{ end }}
 
-{{ if ne (len .Resources) 0 }}
-<h3>Resources</h3>
-<ul class="api">
-{{ range .Resources -}}
-    <li><a href="{{ .Link }}"><span class="symbol resource"></span>{{ .DisplayName }}</a></li>
-{{- end }}
-</ul>
+{{- if ne (len .Resources) 0 -}}
+{{ template "index_resources" .Resources }}
 {{ end }}
 
-{{ if ne (len .Functions) 0 }}
-<h3>Functions</h3>
-<ul class="api">
-{{ range .Functions -}}
-    <li><a href="{{ .Link }}"><span class="symbol datasource"></span>{{ .DisplayName }}</a></li>
-{{- end }}
-</ul>
+{{- if ne (len .Functions) 0 -}}
+{{ template "index_functions" .Functions }}
 {{ end }}
 
-{{ template "package_details" .PackageDetails }}
+{{- template "package_details" .PackageDetails }}
