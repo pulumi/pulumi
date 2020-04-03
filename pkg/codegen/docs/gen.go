@@ -1141,6 +1141,10 @@ func (s *indexEntrySorter) Less(i, j int) bool {
 }
 
 func sortIndexEntries(entries []indexEntry) {
+	if len(entries) == 0 {
+		return
+	}
+
 	sorter := &indexEntrySorter{
 		entries: entries,
 	}
@@ -1151,9 +1155,9 @@ func sortIndexEntries(entries []indexEntry) {
 // genIndex emits an _index.md file for the module.
 func (mod *modContext) genIndex() indexData {
 	glog.V(4).Infoln("genIndex for", mod.mod)
-	var modules []indexEntry
-	var resources []indexEntry
-	var functions []indexEntry
+	modules := make([]indexEntry, 0, len(mod.children))
+	resources := make([]indexEntry, 0, len(mod.resources))
+	functions := make([]indexEntry, 0, len(mod.functions))
 
 	modName := mod.getModuleFileName()
 	title := modName
@@ -1165,11 +1169,6 @@ func (mod *modContext) genIndex() indexData {
 	}
 
 	// If there are submodules, list them.
-	numChildren := len(mod.children)
-	if numChildren > 0 {
-		modules = make([]indexEntry, 0, numChildren)
-	}
-
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
 		modules = append(modules, indexEntry{
@@ -1177,10 +1176,7 @@ func (mod *modContext) genIndex() indexData {
 			DisplayName: modName,
 		})
 	}
-
-	if numChildren > 0 {
-		sortIndexEntries(modules)
-	}
+	sortIndexEntries(modules)
 
 	// If there are resources in the root, list them.
 	for _, r := range mod.resources {
@@ -1193,10 +1189,6 @@ func (mod *modContext) genIndex() indexData {
 	sortIndexEntries(resources)
 
 	// If there are functions in the root, list them.
-	numFunctions := len(functions)
-	if numFunctions > 0 {
-		functions = make([]indexEntry, 0, numFunctions)
-	}
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
