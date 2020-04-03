@@ -14,10 +14,9 @@
 package python
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -27,41 +26,38 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program         *hcl2.Program
-	outputDirectory string
-	diagnostics     hcl.Diagnostics
+	program     *hcl2.Program
+	diagnostics hcl.Diagnostics
+
+	anonymousVariables codegen.Set
 }
 
-func GenerateProgram(program *hcl2.Program, outputDirectory string) (hcl.Diagnostics, error) {
+func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program:         program,
-		outputDirectory: outputDirectory,
+		program:            program,
+		anonymousVariables: codegen.Set{},
 	}
 	g.Formatter = format.NewFormatter(g)
 
-	index, err := os.Create(filepath.Join(outputDirectory, "__main__.py"))
-	if err != nil {
-		return nil, err
-	}
-	defer contract.IgnoreClose(index)
-
-	g.genPreamble(index, program)
-
+	var main bytes.Buffer
+	g.genPreamble(&main, program)
 	for _, n := range nodes {
-		g.genNode(index, n)
+		g.genNode(&main, n)
 	}
 
-	return g.diagnostics, nil
+	files := map[string][]byte{
+		"__main__.py": main.Bytes(),
+	}
+	return files, g.diagnostics, nil
 }
 
 func pyName(pulumiName string, isObjectKey bool) string {
@@ -240,7 +236,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(%s, %s)\n", g.Indent, v.Name(), g.genExpression(v.Value))
+	g.Fgenf(w, "%spulumi.export(\"%s\", %s)\n", g.Indent, v.Name(), g.genExpression(v.Value))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

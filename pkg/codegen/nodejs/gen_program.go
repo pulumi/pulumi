@@ -15,10 +15,9 @@
 package nodejs
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -28,44 +27,38 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program         *hcl2.Program
-	outputDirectory string
-	diagnostics     hcl.Diagnostics
+	program     *hcl2.Program
+	diagnostics hcl.Diagnostics
 
 	anonymousVariables codegen.Set
 }
 
-func GenerateProgram(program *hcl2.Program, outputDirectory string) (hcl.Diagnostics, error) {
+func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
 		program:            program,
-		outputDirectory:    outputDirectory,
 		anonymousVariables: codegen.Set{},
 	}
 	g.Formatter = format.NewFormatter(g)
 
-	index, err := os.Create(filepath.Join(outputDirectory, "index.ts"))
-	if err != nil {
-		return nil, err
-	}
-	defer contract.IgnoreClose(index)
-
-	g.genPreamble(index, program)
-
+	var index bytes.Buffer
+	g.genPreamble(&index, program)
 	for _, n := range nodes {
-		g.genNode(index, n)
+		g.genNode(&index, n)
 	}
 
-	return g.diagnostics, nil
+	files := map[string][]byte{
+		"index.ts": index.Bytes(),
+	}
+	return files, g.diagnostics, nil
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
@@ -107,7 +100,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	var imports []string
-	importSet := codegen.StringSet{}
+	importSet := codegen.NewStringSet("pulumi")
 	for _, n := range program.Nodes {
 		// TODO: invokes
 		if r, isResource := n.(*hcl2.Resource); isResource {
@@ -146,6 +139,9 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
+	if pkg == "pulumi" && module == "providers" {
+		pkg, module, member = member, "", "Provider"
+	}
 	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
@@ -172,36 +168,58 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	optionsBag := ""
 
 	name := r.Name()
-	resName := g.makeResourceName(name, "")
 
 	g.genTrivia(w, r.Tokens.Type)
 	for _, l := range r.Tokens.Labels {
 		g.genTrivia(w, l)
 	}
 	g.genTrivia(w, r.Tokens.OpenBrace)
-	g.Fgenf(w, "%sconst %s = new %s(%s, {", g.Indent, name, qualifiedMemberName, resName)
-	indenter := func(f func()) { f() }
-	if len(r.Inputs) > 1 {
-		indenter = g.Indented
-	}
-	indenter(func() {
-		for _, attr := range r.Inputs {
-			propertyName := attr.Name
-			if !isLegalIdentifier(propertyName) {
-				propertyName = fmt.Sprintf("%q", propertyName)
-			}
 
-			if len(r.Inputs) == 1 {
-				g.Fgenf(w, "%s: %v", propertyName, g.genExpression(attr.Value))
-			} else {
-				g.Fgenf(w, "\n%s%s: %v,", g.Indent, propertyName, g.genExpression(attr.Value))
-			}
+	instantiate := func(resName string) {
+		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
+		indenter := func(f func()) { f() }
+		if len(r.Inputs) > 1 {
+			indenter = g.Indented
 		}
-	})
-	if len(r.Inputs) > 1 {
-		g.Fgenf(w, "\n")
+		indenter(func() {
+			for _, attr := range r.Inputs {
+				propertyName := attr.Name
+				if !isLegalIdentifier(propertyName) {
+					propertyName = fmt.Sprintf("%q", propertyName)
+				}
+
+				if len(r.Inputs) == 1 {
+					g.Fgenf(w, "%s: %v", propertyName, g.genExpression(attr.Value))
+				} else {
+					g.Fgenf(w, "\n%s%s: %v,", g.Indent, propertyName, g.genExpression(attr.Value))
+				}
+			}
+		})
+		if len(r.Inputs) > 1 {
+			g.Fgenf(w, "\n%s", g.Indent)
+		}
+		g.Fgenf(w, "}%s)", optionsBag)
 	}
-	g.Fgenf(w, "}%s);\n", optionsBag)
+
+	if r.Options != nil && r.Options.Range != nil {
+		rangeExpr := newAwaitCall(r.Options.Range)
+
+		resName := g.makeResourceName(name, "range.key")
+		g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, name, qualifiedMemberName)
+		g.Fgenf(w, "%sfor (const [__key, __value] of %v) {\n", g.Indent, rangeExpr)
+		g.Indented(func() {
+			g.Fgenf(w, "%sconst range = {key: __key, value: __value};\n", g.Indent)
+			g.Fgenf(w, "%s%s.push(", g.Indent, name)
+			instantiate(resName)
+			g.Fgenf(w, ");\n")
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
+	} else {
+		g.Fgenf(w, "%sconst %s = ", g.Indent, name)
+		instantiate(g.makeResourceName(name, ""))
+		g.Fgenf(w, ";\n")
+	}
+
 	g.genTrivia(w, r.Tokens.CloseBrace)
 }
 

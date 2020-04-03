@@ -35,7 +35,7 @@ type packageSchema struct {
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
 func canonicalizeToken(tok string, pkg *schema.Package) string {
-	_, _, member, _ := decomposeToken(tok, hcl.Range{})
+	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
 	return fmt.Sprintf("%s:%s:%s", pkg.Name, pkg.TokenToModule(tok), member)
 }
 
@@ -46,8 +46,10 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 	if r, ok := n.(*Resource); ok {
 		token, tokenRange := getResourceToken(r)
-		packageName, _, _, _ := decomposeToken(token, tokenRange)
-		packageNames.Add(packageName)
+		packageName, _, _, _ := DecomposeToken(token, tokenRange)
+		if packageName != "pulumi" {
+			packageNames.Add(packageName)
+		}
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
@@ -59,8 +61,10 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if !ok {
 			return nil
 		}
-		packageName, _, _, _ := decomposeToken(token, tokenRange)
-		packageNames.Add(packageName)
+		packageName, _, _, _ := DecomposeToken(token, tokenRange)
+		if packageName != "pulumi" {
+			packageNames.Add(packageName)
+		}
 		return nil
 	})
 	contract.Assert(len(diags) == 0)
