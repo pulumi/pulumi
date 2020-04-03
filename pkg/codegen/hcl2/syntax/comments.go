@@ -323,6 +323,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		nodeTokens = &FunctionCallTokens{
 			Name:       m.tokens.atPos(n.NameRange.Start),
 			OpenParen:  m.tokens.atPos(n.OpenParenRange.Start),
+			Commas:     commas,
 			CloseParen: m.tokens.atPos(n.CloseParenRange.Start),
 		}
 	case *hclsyntax.IndexExpr:
@@ -420,7 +421,9 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 
 // mapTokens builds a mapping from the syntax nodes in the given source file to their tokens. The mapping is recorded
 // in the map passed in to the function.
-func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap, initialPos hcl.Pos) {
+func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap,
+	initialPos hcl.Pos) {
+
 	// Turn the list of raw tokens into a list of trivia-carrying tokens.
 	lastEndPos := initialPos
 	var tokens tokenList
