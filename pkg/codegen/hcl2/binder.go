@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
@@ -33,7 +33,6 @@ type binder struct {
 
 	tokens syntax.TokenMap
 	nodes  []Node
-	stack  []hclsyntax.Node
 	root   *model.Scope
 }
 

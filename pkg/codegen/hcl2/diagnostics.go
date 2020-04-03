@@ -33,17 +33,6 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Di
 	return errorf(diagRange, f, args...)
 }
 
-func notYetImplemented(v interface{}) hcl.Diagnostics {
-	var subject hcl.Range
-	switch v := v.(type) {
-	case model.Definition:
-		subject = v.SyntaxNode().Range()
-	case interface{ Range() hcl.Range }:
-		subject = v.Range()
-	}
-	return hcl.Diagnostics{errorf(subject, "NYI: %v", v)}
-}
-
 func malformedToken(token string, sourceRange hcl.Range) *hcl.Diagnostic {
 	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member'", token)
 }
@@ -54,11 +43,6 @@ func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {
 
 func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
-}
-
-func circularReference(stack []hclsyntax.Node, referent hclsyntax.Node) *hcl.Diagnostic {
-	// TODO(pdg): stack trace
-	return errorf(referent.Range(), "circular reference to node")
 }
 
 func unsupportedBlock(blockType string, typeRange hcl.Range) *hcl.Diagnostic {
