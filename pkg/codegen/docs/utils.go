@@ -53,10 +53,6 @@ func wbr(s string) string {
 	return string(runes)
 }
 
-func lower(s string) string {
-	return strings.ToLower(s)
-}
-
 // tokenToName returns the resource name from a Pulumi token.
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")

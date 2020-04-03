@@ -297,7 +297,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	case *schema.ObjectType:
 		tokenName := tokenToName(t.Token)
 		// Links to anchor targs on the same page must be lower-cased.
-		href = "#" + lower(tokenName)
+		href = "#" + strings.ToLower(tokenName)
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
@@ -1068,7 +1068,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(lower(title)+".md", buffer.String())
+		addFile(strings.ToLower(title)+".md", buffer.String())
 	}
 
 	// Functions
@@ -1081,7 +1081,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(lower(tokenToName(f.Token))+".md", buffer.String())
+		addFile(strings.ToLower(tokenToName(f.Token))+".md", buffer.String())
 	}
 
 	// Generate the index files.
@@ -1225,7 +1225,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        lower(name),
+			Link:        strings.ToLower(name),
 			DisplayName: name,
 		})
 	}
@@ -1239,7 +1239,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        lower(name),
+			Link:        strings.ToLower(name),
 			DisplayName: name,
 		})
 	}
