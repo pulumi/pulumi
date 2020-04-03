@@ -1100,17 +1100,20 @@ func (mod *modContext) gen(fs fs) error {
 	return nil
 }
 
+// indexEntry represents an individual entry on an index page.
 type indexEntry struct {
 	Link        string
 	DisplayName string
 }
 
+// indexData represents the index file data to be rendered as _index.md.
 type indexData struct {
 	Tool string
 
 	Title              string
 	PackageDescription string
-	Menu               bool
+	// Menu indicates if an index page should be part of the TOC menu.
+	Menu bool
 
 	Functions      []indexEntry
 	Resources      []indexEntry
@@ -1118,11 +1121,14 @@ type indexData struct {
 	PackageDetails packageDetails
 }
 
+// indexEntrySorter implements the sort.Interface for sorting
+// a slice of indexEntry struct types.
 type indexEntrySorter struct {
 	entries []indexEntry
 }
 
-// Len is part of sort.Interface.
+// Len is part of sort.Interface. Returns the length of the
+// entries slice.
 func (s *indexEntrySorter) Len() int {
 	return len(s.entries)
 }
@@ -1132,7 +1138,8 @@ func (s *indexEntrySorter) Swap(i, j int) {
 	s.entries[i], s.entries[j] = s.entries[j], s.entries[i]
 }
 
-// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
+// Less is part of sort.Interface. It sorts the entries by their
+// display name in an ascending order.
 func (s *indexEntrySorter) Less(i, j int) bool {
 	return s.entries[i].DisplayName < s.entries[j].DisplayName
 }
