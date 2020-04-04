@@ -28,6 +28,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -167,10 +168,32 @@ type modInfo struct {
 	Version string
 }
 
-func getPluginName(modName string) string {
+func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	if !strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
+		return nil, errors.New("module is not a pulumi provider")
+	}
+
 	// github.com/pulumi/pulumi-aws/sdk/... => aws
-	pluginPart := strings.Split(modName, "/")[2]
-	return strings.SplitN(pluginPart, "-", 2)[1]
+	pluginPart := strings.Split(m.Path, "/")[2]
+	name := strings.SplitN(pluginPart, "-", 2)[1]
+
+	v, err := semver.ParseTolerant(m.Version)
+	if err != nil {
+		return nil, errors.New("module does not have semver compatible version")
+	}
+	// downgrade to zero for the patch
+	// pinning to a specific commit can result in a minor version that doesn't exist
+	// v1.29.1-0.20200403140640-efb5e2a48a86 (first commit after 1.29.0 release)
+	version := fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, 0)
+
+	plugin := &pulumirpc.PluginDependency{
+		Name:    name,
+		Version: version,
+		Kind:    "resource",
+	}
+	logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
+
+	return plugin, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
@@ -211,12 +234,8 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 			return &pulumirpc.GetRequiredPluginsResponse{}, nil
 		}
 
-		if strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
-			plugin := &pulumirpc.PluginDependency{
-				Name:    getPluginName(m.Path),
-				Version: m.Version,
-				Kind:    "resource",
-			}
+		plugin, err := m.getPlugin()
+		if err == nil {
 			logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
 			plugins = append(plugins, plugin)
 		}
