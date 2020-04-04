@@ -803,6 +803,7 @@ export class ComponentResource<TData = any> extends Resource {
      * Can be overridden by a subclass to asynchronously initialize data for this Component
      * automatically when constructed.  The data will be available immediately for subclass
      * constructors to use.  To access the data use `.getData`.
+     * @internal
      */
     protected async initialize(args: Inputs): Promise<TData> {
         return <TData>undefined!;
@@ -811,6 +812,7 @@ export class ComponentResource<TData = any> extends Resource {
     /**
      * Retrieves the data produces by [initialize].  The data is immediately available in a
      * derived class's constructor after the `super(...)` call to `ComponentResource`.
+     * @internal
      */
     protected getData(): Promise<TData> {
         return this.__data;
@@ -823,6 +825,7 @@ export class ComponentResource<TData = any> extends Resource {
      * ComponentResources can call this at the end of their constructor to indicate that they are
      * done creating child resources.  This is not strictly necessary as this will automatically be
      * called after the `initialize` method completes.
+     * @internal
      */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         if (this.__registered) {
