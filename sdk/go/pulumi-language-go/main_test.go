@@ -16,14 +16,14 @@ func TestGetPlugin(t *testing.T) {
 	assert.Equal(t, validPlugin.Name, "aws")
 	assert.Equal(t, validPlugin.Version, "v1.29.0")
 
-	pulumiPinnedModule := &modInfo{
+	pulumiPseudoVersionModule := &modInfo{
 		Path:    "github.com/pulumi/pulumi-aws/sdk",
 		Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
 	}
-	pulumiPinnedPlugin, err := pulumiPinnedModule.getPlugin()
+	pulumiPseduoVersionPlugin, err := pulumiPseudoVersionModule.getPlugin()
 	assert.Nil(t, err)
-	assert.Equal(t, pulumiPinnedPlugin.Name, "aws")
-	assert.Equal(t, pulumiPinnedPlugin.Version, "v1.29.0")
+	assert.Equal(t, pulumiPseduoVersionPlugin.Name, "aws")
+	assert.Equal(t, pulumiPseduoVersionPlugin.Version, "v1.29.0")
 
 	nonPulumiMod := &modInfo{
 		Path:    "github.com/moolumi/pulumi-aws/sdk",
@@ -45,4 +45,22 @@ func TestGetPlugin(t *testing.T) {
 	}
 	_, err = pulumiPulumiMod.getPlugin()
 	assert.NotNil(t, err)
+
+	betaPulumiModule := &modInfo{
+		Path:    "github.com/pulumi/pulumi-aws/sdk",
+		Version: "v2.0.0-beta.1",
+	}
+	betaPulumiPlugin, err := betaPulumiModule.getPlugin()
+	assert.Nil(t, err)
+	assert.Equal(t, betaPulumiPlugin.Name, "aws")
+	assert.Equal(t, betaPulumiPlugin.Version, "v2.0.0-beta.1")
+
+	nonZeroPatchModule := &modInfo{
+		Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
+		Version: "v1.5.8",
+	}
+	nonZeroPatchPlugin, err := nonZeroPatchModule.getPlugin()
+	assert.Nil(t, err)
+	assert.Equal(t, nonZeroPatchPlugin.Name, "kubernetes")
+	assert.Equal(t, nonZeroPatchPlugin.Version, "v1.5.8")
 }

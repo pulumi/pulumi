@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
@@ -181,17 +182,30 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	if err != nil {
 		return nil, errors.New("module does not have semver compatible version")
 	}
-	// downgrade to zero for the patch
-	// pinning to a specific commit can result in a minor version that doesn't exist
-	// v1.29.1-0.20200403140640-efb5e2a48a86 (first commit after 1.29.0 release)
-	version := fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, 0)
+	version := m.Version
+
+	// psuedoversions are commits that don't have a corresponding tag at the specified git hash
+	// https://golang.org/cmd/go/#hdr-Pseudo_versions
+	// pulumi-aws v1.29.1-0.20200403140640-efb5e2a48a86 (first commit after 1.29.0 release)
+	if buildutil.IsPseudoVersion(version) {
+		// no prior tag means there was never a release build
+		if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
+			return nil, errors.New("invalid pseduoversion with no prior tag")
+		}
+		// patch is typically bumped from the previous tag when using pseudo version
+		// downgrade the patch by 1 to make sure we match a release that exists
+		patch := v.Patch
+		if patch > 0 {
+			patch--
+		}
+		version = fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, patch)
+	}
 
 	plugin := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
 	}
-	logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
 
 	return plugin, nil
 }
@@ -238,6 +252,13 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		if err == nil {
 			logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
 			plugins = append(plugins, plugin)
+		} else {
+			logging.V(5).Infof(
+				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
+				m.Path,
+				m.Version,
+				err.Error(),
+			)
 		}
 	}
 

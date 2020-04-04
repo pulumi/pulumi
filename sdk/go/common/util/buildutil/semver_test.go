@@ -36,3 +36,14 @@ func TestVersions(t *testing.T) {
 		assert.Equal(t, expected, p, "failed parsing '%s'", ver)
 	}
 }
+
+func TestPseduoVersion(t *testing.T) {
+	pseudoVersion := "v1.29.1-0.20200403140640-efb5e2a48a86"
+	assert.True(t, IsPseudoVersion(pseudoVersion))
+
+	tagVersion := "v1.29.0"
+	assert.False(t, IsPseudoVersion(tagVersion))
+
+	betaVersion := "v.1.29.0-beta.1"
+	assert.False(t, IsPseudoVersion(betaVersion))
+}
