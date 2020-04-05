@@ -1164,9 +1164,7 @@ func (mod *modContext) genIndex(exports []string) string {
 		fmt.Fprintf(w, "<h3>Functions</h3>\n")
 		fmt.Fprintf(w, "<ul class=\"api\">\n")
 		for _, f := range functions {
-			// TODO: We want to use "function" rather than "data source" terminology. Need to add a
-			// "function" class in the docs repo to replace "datasource".
-			fmt.Fprintf(w, "    <li><a href=\"%s\"><span class=\"symbol datasource\"></span>%s</a></li>\n", lower(f), f)
+			fmt.Fprintf(w, "    <li><a href=\"%s\"><span class=\"symbol function\"></span>%s</a></li>\n", lower(f), f)
 		}
 		fmt.Fprintf(w, "</ul>\n\n")
 	}
