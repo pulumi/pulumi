@@ -283,7 +283,7 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 
 // cleanTypeString removes any namespaces from the generated type string for all languages.
 // The result of this function should be used display purposes only.
-func (mod *modContext) cleanTypeString(langTypeString, lang, modName string, isInput bool) string {
+func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
 	if lang != "csharp" {
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
@@ -296,14 +296,40 @@ func (mod *modContext) cleanTypeString(langTypeString, lang, modName string, isI
 		qualifier = "Outputs"
 	}
 
-	var csharpNS string
-	// This type could be at the package-level, so it won't have a module name.
-	if modName != "" {
-		csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
-	} else {
-		csharpNS = fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), qualifier)
+	cleanCSharpName := func(pkgName, objModName string) string {
+		var csharpNS string
+		// This type could be at the package-level, so it won't have a module name.
+		if objModName != "" {
+			csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", title(pkgName, lang), title(objModName, lang), qualifier)
+		} else {
+			csharpNS = fmt.Sprintf("Pulumi.%s.%s.", title(pkgName, lang), qualifier)
+		}
+		return strings.ReplaceAll(langTypeString, csharpNS, "")
 	}
-	return strings.ReplaceAll(langTypeString, csharpNS, "")
+
+	if isKubernetesPackage(mod.pkg) {
+		switch t := t.(type) {
+		case *schema.ArrayType:
+			if schema.IsPrimitiveType(t.ElementType) {
+				break
+			}
+			objType := t.ElementType.(*schema.ObjectType)
+			return mod.cleanTypeString(objType, langTypeString, lang, modName, isInput)
+		case *schema.UnionType:
+			for _, e := range t.ElementTypes {
+				if schema.IsPrimitiveType(e) {
+					continue
+				}
+				return mod.cleanTypeString(e.(*schema.ObjectType), langTypeString, lang, modName, isInput)
+			}
+		case *schema.ObjectType:
+			objTypeModName := mod.pkg.TokenToModule(t.Token)
+			if objTypeModName != mod.mod {
+				modName = getLanguageModuleName(mod.pkg, objTypeModName, lang)
+			}
+		}
+	}
+	return cleanCSharpName(mod.pkg.Name, modName)
 }
 
 // typeString returns a property type suitable for docs with its display name and the anchor link to
@@ -329,7 +355,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	// Strip the namespace/module prefix for the type's display name.
 	displayName := langTypeString
 	if !schema.IsPrimitiveType(t) {
-		displayName = mod.cleanTypeString(langTypeString, lang, modName, characteristics.input)
+		displayName = mod.cleanTypeString(t, langTypeString, lang, modName, characteristics.input)
 	}
 
 	// If word-breaks need to be inserted, then the type string
@@ -694,7 +720,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
-			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resourceTypeName)
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), title(mod.mod, "csharp"), resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
 			continue
@@ -796,7 +822,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), stateParam)
+	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), title(mod.mod, "csharp"), stateParam)
 
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
