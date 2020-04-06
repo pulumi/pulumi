@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
+- Propagate `additionalSecretOutputs` opt to Read in NodeJS.
+  [#4307](https://github.com/pulumi/pulumi/pull/4307)
+  
 - Fix handling of `nil` values in Outputs in Go.
   [#4268](https://github.com/pulumi/pulumi/pull/4268)
   
