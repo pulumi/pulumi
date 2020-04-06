@@ -135,4 +135,8 @@ $(cat $OUTPUT_FILE)
     fi
 fi
 
+if [ "$INPUT_MAP_OUTPUT" = "all" ]; then
+  pulumi stack output -j | jq --raw-output 'to_entries | map("::set-output name=" + .key+"::" + (.value | tostring)+"^") | .[]' | xargs -d '^' echo 
+fi
+
 exit $EXIT_CODE
