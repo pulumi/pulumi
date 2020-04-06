@@ -594,21 +594,24 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	return objs
 }
 
+// skipInputProperty returns true if a property has a constant value defined
+// and should not be shown to the user as an input property.
+func skipInputProperty(p *schema.Property) bool {
+	return p.ConstValue != nil
+}
+
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
 func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested bool) []property {
 	if len(properties) == 0 {
 		return nil
 	}
-	isK8s := isKubernetesPackage(mod.pkg)
 	docProperties := make([]property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
 			continue
 		}
-		// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-		// user-provided input properties, so skip them.
-		if isK8s && (prop.Name == "apiVersion" || prop.Name == "kind") {
+		if skipInputProperty(prop) {
 			continue
 		}
 
@@ -686,13 +689,11 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// The input properties for a resource needs to be exploded as
 			// individual constructor params.
 			params = make([]formalParam, 0, len(r.InputProperties))
-			isK8s := isKubernetesPackage(mod.pkg)
 			for _, p := range r.InputProperties {
-				// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-				// user-provided input properties, so skip them.
-				if isK8s && (p.Name == "apiVersion" || p.Name == "kind") {
+				if skipInputProperty(p) {
 					continue
 				}
+
 				params = append(params, formalParam{
 					Name:         python.PyName(p.Name),
 					DefaultValue: "=None",
