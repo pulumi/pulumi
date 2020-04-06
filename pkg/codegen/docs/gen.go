@@ -272,13 +272,6 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 			modName = override
 		}
 	case "csharp":
-		// For k8s, we need to first get the normalized package name,
-		// then find its C# equivalent from the C# language info.
-		if isKubernetesPackage(pkg) {
-			if override, ok := goPkgInfo.ModuleToPackage[modName]; ok {
-				modName = override
-			}
-		}
 		if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
 			modName = override
 		}
@@ -286,6 +279,31 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 
 	langModuleNameLookup[lookupKey] = modName
 	return modName
+}
+
+// cleanTypeString removes any namespaces from the generated type string for all languages.
+// The result of this function should be used display purposes only.
+func (mod *modContext) cleanTypeString(langTypeString, lang, modName string, isInput bool) string {
+	if lang != "csharp" {
+		parts := strings.Split(langTypeString, ".")
+		return parts[len(parts)-1]
+	}
+
+	// C# types can be wrapped in enumerable types such as List<> or Dictionary<>, so we have to
+	// only replace the namespace between the < and the > characters.
+	qualifier := "Inputs"
+	if !isInput {
+		qualifier = "Outputs"
+	}
+
+	var csharpNS string
+	// This type could be at the package-level, so it won't have a module name.
+	if modName != "" {
+		csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
+	} else {
+		csharpNS = fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), qualifier)
+	}
+	return strings.ReplaceAll(langTypeString, csharpNS, "")
 }
 
 // typeString returns a property type suitable for docs with its display name and the anchor link to
@@ -304,32 +322,14 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		href = elementLangType.Link
 	case *schema.ObjectType:
 		tokenName := tokenToName(t.Token)
-		// Links to anchor targs on the same page must be lower-cased.
+		// Links to anchor tags on the same page must be lower-cased.
 		href = "#" + strings.ToLower(tokenName)
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
-	var parts []string
-	var displayName string
-	if lang == "csharp" {
-		// C# types can be wrapped in enumerable types such as List<> or Dictionary<>, so we have to
-		// only replace the namespace string within the < and the >.
-		qualifier := "Inputs"
-		if !characteristics.input {
-			qualifier = "Outputs"
-		}
-
-		var csharpNS string
-		// This type could be at the package-level, so it won't have a module name.
-		if modName != "" {
-			csharpNS = fmt.Sprintf("Pulumi.%s.%s.%s.", strings.Title(mod.pkg.Name), strings.Title(modName), qualifier)
-		} else {
-			csharpNS = fmt.Sprintf("Pulumi.%s.%s.", strings.Title(mod.pkg.Name), qualifier)
-		}
-		displayName = strings.ReplaceAll(langTypeString, csharpNS, "")
-	} else {
-		parts = strings.Split(langTypeString, ".")
-		displayName = parts[len(parts)-1]
+	displayName := langTypeString
+	if !schema.IsPrimitiveType(t) {
+		displayName = mod.cleanTypeString(langTypeString, lang, modName, characteristics.input)
 	}
 
 	// If word-breaks need to be inserted, then the type string
