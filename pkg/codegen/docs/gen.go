@@ -600,10 +600,15 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 	if len(properties) == 0 {
 		return nil
 	}
-
+	isK8s := isKubernetesPackage(mod.pkg)
 	docProperties := make([]property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
+			continue
+		}
+		// In k8s, apiVersion and kind are hard-coded in the SDK and not really
+		// user-provided input properties, so skip them.
+		if isK8s && (prop.Name == "apiVersion" || prop.Name == "kind") {
 			continue
 		}
 
@@ -681,7 +686,13 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// The input properties for a resource needs to be exploded as
 			// individual constructor params.
 			params = make([]formalParam, 0, len(r.InputProperties))
+			isK8s := isKubernetesPackage(mod.pkg)
 			for _, p := range r.InputProperties {
+				// In k8s, apiVersion and kind are hard-coded in the SDK and not really
+				// user-provided input properties, so skip them.
+				if isK8s && (p.Name == "apiVersion" || p.Name == "kind") {
+					continue
+				}
 				params = append(params, formalParam{
 					Name:         python.PyName(p.Name),
 					DefaultValue: "=None",
