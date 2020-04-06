@@ -825,6 +825,7 @@ export class ComponentResource<TData = any> extends Resource {
      * ComponentResources can call this at the end of their constructor to indicate that they are
      * done creating child resources.  This is not strictly necessary as this will automatically be
      * called after the `initialize` method completes.
+     * @internal
      */
     protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
         if (this.__registered) {

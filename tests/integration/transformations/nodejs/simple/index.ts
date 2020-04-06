@@ -32,6 +32,7 @@ class MyComponent extends pulumi.ComponentResource {
             parent: this,
             additionalSecretOutputs: ["output2"],
         });
+        //@ts-ignore
         this.registerOutputs({});
     }
 }
