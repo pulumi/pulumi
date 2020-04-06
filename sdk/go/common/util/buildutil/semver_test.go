@@ -44,6 +44,6 @@ func TestPseduoVersion(t *testing.T) {
 	tagVersion := "v1.29.0"
 	assert.False(t, IsPseudoVersion(tagVersion))
 
-	betaVersion := "v.1.29.0-beta.1"
+	betaVersion := "v1.29.0-beta.1"
 	assert.False(t, IsPseudoVersion(betaVersion))
 }
