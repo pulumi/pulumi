@@ -91,8 +91,8 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens)
 	if defaultValue, ok := block.Body.Attribute("default"); ok {
 		node.DefaultValue = defaultValue.Value
-		if node.typ.ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(node.typ, node.DefaultValue))
+		if model.InputType(node.typ).ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.DefaultValue))
 		}
 	}
 	return diagnostics
@@ -113,8 +113,8 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens)
 	if value, ok := block.Body.Attribute("value"); ok {
 		node.Value = value.Value
-		if node.typ.ConversionFrom(node.Value.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(node.typ, node.Value))
+		if model.InputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
 	return diagnostics

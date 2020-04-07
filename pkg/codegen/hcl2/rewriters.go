@@ -16,7 +16,6 @@ package hcl2
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen"
@@ -28,16 +27,33 @@ type NameInfo interface {
 	IsReservedWord(name string) bool
 }
 
-func isEventualType(t model.Type) (model.Type, bool) {
+// The applyRewriter is responsible for transforming expressions involving Pulumi output properties into a call to the
+// __apply intrinsic and replacing the output properties with appropriate calls to the __applyArg intrinsic.
+type applyRewriter struct {
+	nameInfo      NameInfo
+	applyPromises bool
+
+	root            model.Expression
+	applyArgs       []*model.ScopeTraversalExpression
+	callbackParams  []*model.Variable
+	paramReferences []*model.ScopeTraversalExpression
+
+	assignedNames codegen.StringSet
+	nameCounts    map[string]int
+}
+
+func (r *applyRewriter) isEventualType(t model.Type) (model.Type, bool) {
 	switch t := t.(type) {
 	case *model.OutputType:
 		return t.ElementType, true
 	case *model.PromiseType:
-		return t.ElementType, true
+		if r.applyPromises {
+			return t.ElementType, true
+		}
 	case *model.UnionType:
 		types, isEventual := make([]model.Type, len(t.ElementTypes)), false
 		for i, t := range t.ElementTypes {
-			if element, elementIsEventual := isEventualType(t); elementIsEventual {
+			if element, elementIsEventual := r.isEventualType(t); elementIsEventual {
 				t, isEventual = element, true
 			}
 			types[i] = t
@@ -47,20 +63,6 @@ func isEventualType(t model.Type) (model.Type, bool) {
 		}
 	}
 	return nil, false
-}
-
-// The applyRewriter is responsible for transforming expressions involving Pulumi output properties into a call to the
-// __apply intrinsic and replacing the output properties with appropriate calls to the __applyArg intrinsic.
-type applyRewriter struct {
-	nameInfo NameInfo
-
-	root            model.Expression
-	applyArgs       []*model.ScopeTraversalExpression
-	callbackParams  []*model.Variable
-	paramReferences []*model.ScopeTraversalExpression
-
-	assignedNames codegen.StringSet
-	nameCounts    map[string]int
 }
 
 // disambiguateName ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
@@ -129,7 +131,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	// TODO(pdg): arrays of outputs, for expressions, etc.
 
 	// If the access is not an output() or a promise(), return the node as-is.
-	_, isEventual := isEventualType(expr.Type())
+	_, isEventual := r.isEventualType(expr.Type())
 	if !isEventual {
 		// If this is a reference to a named variable, put the name in scope.
 		if definition, ok := expr.Traversal[0].(Node); ok {
@@ -150,7 +152,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	var traversal hcl.Traversal
 
 	splitTraversal := expr.Syntax.Traversal.SimpleSplit()
-	if rootResolvedType, rootIsEventual := isEventualType(model.GetTraversableType(expr.Parts[0])); rootIsEventual {
+	if rootResolvedType, rootIsEventual := r.isEventualType(model.GetTraversableType(expr.Parts[0])); rootIsEventual {
 		applyArg = &model.ScopeTraversalExpression{
 			Parts:     expr.Parts[:1],
 			RootName:  splitTraversal.Abs.RootName(),
@@ -159,7 +161,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 		paramType, traversal, parts = rootResolvedType, expr.Syntax.Traversal.SimpleSplit().Rel, expr.Parts[1:]
 	} else {
 		for i := range splitTraversal.Rel {
-			if resolvedType, isEventual := isEventualType(model.GetTraversableType(expr.Parts[i+1])); isEventual {
+			if resolvedType, isEventual := r.isEventualType(model.GetTraversableType(expr.Parts[i+1])); isEventual {
 				absTraversal, relTraversal := expr.Syntax.Traversal[:i+2], expr.Syntax.Traversal[i+2:]
 
 				applyArg = &model.ScopeTraversalExpression{
@@ -189,7 +191,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	resolvedParts := make([]model.Traversable, len(parts)+1)
 	resolvedParts[0] = callbackParam
 	for i, p := range parts {
-		resolved, isEventual := isEventualType(model.GetTraversableType(p))
+		resolved, isEventual := r.isEventualType(model.GetTraversableType(p))
 		contract.Assert(isEventual)
 		resolvedParts[i+1] = resolved
 	}
@@ -214,7 +216,6 @@ func (r *applyRewriter) rewriteRoot(expr model.Expression) model.Expression {
 	}
 
 	// Assign argument names.
-	log.Printf("assigning %v arg names", len(r.applyArgs))
 	for i, arg := range r.applyArgs {
 		bestName := r.bestArgName(arg)
 		r.callbackParams[i].Name, r.nameCounts[bestName] = bestName, r.nameCounts[bestName]+1
@@ -262,6 +263,7 @@ func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expressi
 		expr = r.rewriteScopeTraversalExpression(traversal, isRoot)
 	}
 	if isRoot {
+		r.root = expr
 		expr = r.rewriteRoot(expr)
 	}
 	return expr, nil
@@ -273,7 +275,7 @@ func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expressi
 // individually.
 func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	if r.root == nil {
-		_, isEventual := isEventualType(expr.Type())
+		_, isEventual := r.isEventualType(expr.Type())
 		if isEventual {
 			r.root, r.applyArgs, r.callbackParams, r.paramReferences = expr, nil, nil, nil
 			r.assignedNames, r.nameCounts = codegen.StringSet{}, map[string]int{}
@@ -344,7 +346,7 @@ func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression
 //
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).
-func RewriteApplies(expr model.Expression, nameInfo NameInfo) (model.Expression, hcl.Diagnostics) {
-	rewriter := &applyRewriter{nameInfo: nameInfo}
+func RewriteApplies(expr model.Expression, nameInfo NameInfo, applyPromises bool) (model.Expression, hcl.Diagnostics) {
+	rewriter := &applyRewriter{nameInfo: nameInfo, applyPromises: applyPromises}
 	return model.VisitExpression(expr, rewriter.enterExpression, rewriter.rewriteExpression)
 }

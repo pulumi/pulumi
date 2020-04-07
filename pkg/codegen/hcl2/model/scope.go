@@ -87,13 +87,14 @@ func NewRootScope(syntax hclsyntax.Node) *Scope {
 func (s *Scope) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	name, nameType := GetTraverserKey(traverser)
 	if nameType != StringType {
-		return DynamicType, hcl.Diagnostics{undefinedVariable(traverser.SourceRange())}
+		// TODO(pdg): return a better error here
+		return DynamicType, hcl.Diagnostics{undefinedVariable("", traverser.SourceRange())}
 	}
 
 	memberName := name.AsString()
 	member, hasMember := s.BindReference(memberName)
 	if !hasMember {
-		return DynamicType, hcl.Diagnostics{undefinedVariable(traverser.SourceRange())}
+		return DynamicType, hcl.Diagnostics{undefinedVariable(memberName, traverser.SourceRange())}
 	}
 	return member, nil
 }

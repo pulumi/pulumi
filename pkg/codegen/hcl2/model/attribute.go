@@ -60,6 +60,10 @@ func (a *Attribute) print(w io.Writer, p *printer) {
 		a.Value)
 }
 
+func (a *Attribute) Type() Type {
+	return a.Value.Type()
+}
+
 func (*Attribute) isBodyItem() {}
 
 // BindAttribute binds an HCL2 attribute using the given scope and token map.

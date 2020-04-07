@@ -41,7 +41,7 @@ func SourceOrderNodes(nodes []Node) []Node {
 	return nodes
 }
 
-func decomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
+func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
 	if len(components) != 3 {
 		// If we don't have a valid type token, return the invalid token as the type name.
