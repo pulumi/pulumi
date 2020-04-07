@@ -23,6 +23,9 @@ CHANGELOG
 - Automatic plugin acquisition for Go
   [#4297](https://github.com/pulumi/pulumi/pull/4297)
 
+- Define merge behavior for resource options in Go SDK
+  [#4316](https://github.com/pulumi/pulumi/pull/4316)
+
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 

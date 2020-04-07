@@ -276,10 +276,7 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -405,10 +402,7 @@ func (ctx *Context) RegisterResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -672,6 +666,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
 		contract.Assert(rs != nil)
+		state.providers = providers
 		rs.providers = providers
 		rs.urn = URNOutput{newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
