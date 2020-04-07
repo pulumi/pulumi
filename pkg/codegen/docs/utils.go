@@ -22,6 +22,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
@@ -53,13 +55,20 @@ func wbr(s string) string {
 	return string(runes)
 }
 
-func lower(s string) string {
-	return strings.ToLower(s)
-}
-
 // tokenToName returns the resource name from a Pulumi token.
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return strings.Title(components[2])
+}
+
+func title(s, lang string) string {
+	switch lang {
+	case "go":
+		return go_gen.Title(s)
+	case "csharp":
+		return dotnet.Title(s)
+	default:
+		return strings.Title(s)
+	}
 }
