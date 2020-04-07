@@ -132,18 +132,16 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 
 	// If all of the arguments are promises, use promise methods. If any argument is an output, convert all other args
 	// to outputs and use output methods.
-	//
-	// TODO(pdg): unions
-	isPromise := make([]bool, len(applyArgs))
-	allPromises := true
+	isOutput := make([]bool, len(applyArgs))
+	anyOutputs := false
 	for i, arg := range applyArgs {
-		_, isPromise[i] = arg.Type().(*model.PromiseType)
-		allPromises = allPromises && isPromise[i]
+		isOutput[i] = isOutputType(arg.Type())
+		anyOutputs = anyOutputs || isOutput[i]
 	}
 
-	apply, all := "apply", "pulumi.all"
-	if allPromises {
-		apply, all = "then", "Promise.all"
+	apply, all := "then", "Promise.all"
+	if anyOutputs {
+		apply, all = "apply", "pulumi.all"
 	}
 
 	if len(applyArgs) == 1 {
@@ -156,7 +154,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
-			if isPromise[i] {
+			if anyOutputs && !isOutput[i] {
 				g.Fgenf(w, "pulumi.output(%v)", o)
 			} else {
 				g.Fgenf(w, "%v", o)
