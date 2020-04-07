@@ -23,6 +23,9 @@ CHANGELOG
 - Automatic plugin acquisition for Go
   [#4297](https://github.com/pulumi/pulumi/pull/4297)
 
+- Define merge behavior for resource options in Go SDK
+  [#4316](https://github.com/pulumi/pulumi/pull/4316)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
