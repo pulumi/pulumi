@@ -41,7 +41,7 @@ func TestBindProgram(t *testing.T) {
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			_, diags, err := BindProgram(parser.Files, test.NewHost(nil))
+			_, diags, err := BindProgram(parser.Files, test.NewHost(testdataPath))
 			assert.NoError(t, err)
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)

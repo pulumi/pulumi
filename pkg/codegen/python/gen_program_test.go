@@ -46,7 +46,7 @@ func TestGenProgram(t *testing.T) {
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := hcl2.BindProgram(parser.Files, test.NewHost(nil))
+			program, diags, err := hcl2.BindProgram(parser.Files, test.NewHost(testdataPath))
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
