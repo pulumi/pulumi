@@ -184,11 +184,11 @@ func TestResourceOptionMergingIgnoreChanges(t *testing.T) {
 	opts := merge(IgnoreChanges([]string{i1}), IgnoreChanges([]string{i2}))
 	assert.Equal(t, []string{i1, i2}, opts.IgnoreChanges)
 
-	// nil d1
+	// nil i1
 	opts = merge(IgnoreChanges(nil), IgnoreChanges([]string{i2}))
 	assert.Equal(t, []string{i2}, opts.IgnoreChanges)
 
-	// nil d2
+	// nil i2
 	opts = merge(IgnoreChanges([]string{i1}), IgnoreChanges(nil))
 	assert.Equal(t, []string{i1}, opts.IgnoreChanges)
 
@@ -207,11 +207,11 @@ func TestResourceOptionMergingAdditionalSecretOutputs(t *testing.T) {
 	opts := merge(AdditionalSecretOutputs([]string{a1}), AdditionalSecretOutputs([]string{a2}))
 	assert.Equal(t, []string{a1, a2}, opts.AdditionalSecretOutputs)
 
-	// nil d1
+	// nil a1
 	opts = merge(AdditionalSecretOutputs(nil), AdditionalSecretOutputs([]string{a2}))
 	assert.Equal(t, []string{a2}, opts.AdditionalSecretOutputs)
 
-	// nil d2
+	// nil a2
 	opts = merge(AdditionalSecretOutputs([]string{a1}), AdditionalSecretOutputs(nil))
 	assert.Equal(t, []string{a1}, opts.AdditionalSecretOutputs)
 
@@ -230,11 +230,11 @@ func TestResourceOptionMergingAliases(t *testing.T) {
 	opts := merge(Aliases([]Alias{a1}), Aliases([]Alias{a2}))
 	assert.Equal(t, []Alias{a1, a2}, opts.Aliases)
 
-	// nil d1
+	// nil a1
 	opts = merge(Aliases(nil), Aliases([]Alias{a2}))
 	assert.Equal(t, []Alias{a2}, opts.Aliases)
 
-	// nil d2
+	// nil a2
 	opts = merge(Aliases([]Alias{a1}), Aliases(nil))
 	assert.Equal(t, []Alias{a1}, opts.Aliases)
 
@@ -259,11 +259,11 @@ func TestResourceOptionMergingTransformations(t *testing.T) {
 	opts := merge(Transformations([]ResourceTransformation{t1}), Transformations([]ResourceTransformation{t2}))
 	assertTransformations(t, []ResourceTransformation{t1, t2}, opts.Transformations)
 
-	// nil d1
+	// nil t1
 	opts = merge(Transformations(nil), Transformations([]ResourceTransformation{t2}))
 	assertTransformations(t, []ResourceTransformation{t2}, opts.Transformations)
 
-	// nil d2
+	// nil t2
 	opts = merge(Transformations([]ResourceTransformation{t1}), Transformations(nil))
 	assertTransformations(t, []ResourceTransformation{t1}, opts.Transformations)
 
