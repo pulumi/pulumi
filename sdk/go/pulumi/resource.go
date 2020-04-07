@@ -234,7 +234,7 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			ro.Provider = r
+			Providers(r).applyResourceOption(ro)
 		case io != nil:
 			io.Provider = r
 		}
@@ -305,27 +305,27 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 // Ignore changes to any of the specified properties.
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.IgnoreChanges = o
+		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
 	})
 }
 
 // Aliases applies a list of identifiers to find and use existing resources.
 func Aliases(o []Alias) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Aliases = o
+		ro.Aliases = append(ro.Aliases, o...)
 	})
 }
 
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
 func AdditionalSecretOutputs(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.AdditionalSecretOutputs = o
+		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, o...)
 	})
 }
 
 // Transformations is an optional list of transformations to be applied to the resource.
 func Transformations(o []ResourceTransformation) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Transformations = o
+		ro.Transformations = append(ro.Transformations, o...)
 	})
 }
