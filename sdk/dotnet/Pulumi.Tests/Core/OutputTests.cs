@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 using Xunit;
@@ -245,6 +246,52 @@ namespace Pulumi.Tests.Core
                     Assert.False(data.IsKnown);
                     Assert.False(data.IsSecret);
                     Assert.Null(data.Value);
+                });
+            
+            [Fact]
+            public Task AllParamsOutputs()
+                => RunInPreview(async () =>
+                {
+                    var o1 = CreateOutput(1, isKnown: true);
+                    var o2 = CreateOutput(2, isKnown: true);
+                    var o3 = Output.All(o1, o2);
+                    var data = await o3.DataTask.ConfigureAwait(false);
+                    Assert.Equal(new[] { 1, 2 }, data.Value);
+                });
+            
+            [Fact]
+            public Task AllEnumerableOutputs()
+                => RunInPreview(async () =>
+                {
+                    var o1 = CreateOutput(1, isKnown: true);
+                    var o2 = CreateOutput(2, isKnown: true);
+                    var outputs = new[] {o1, o2}.AsEnumerable();
+                    var o3 = Output.All(outputs);
+                    var data = await o3.DataTask.ConfigureAwait(false);
+                    Assert.Equal(new[] { 1, 2 }, data.Value);
+                });
+
+            [Fact]
+            public Task AllParamsInputs()
+                => RunInPreview(async () =>
+                {
+                    var i1 = (Input<int>)CreateOutput(1, isKnown: true);
+                    var i2 = (Input<int>)CreateOutput(2, isKnown: true);
+                    var o = Output.All(i1, i2);
+                    var data = await o.DataTask.ConfigureAwait(false);
+                    Assert.Equal(new[] { 1, 2 }, data.Value);
+                });
+            
+            [Fact]
+            public Task AllEnumerableInputs()
+                => RunInPreview(async () =>
+                {
+                    var i1 = (Input<int>)CreateOutput(1, isKnown: true);
+                    var i2 = (Input<int>)CreateOutput(2, isKnown: true);
+                    var inputs = new[] {i1, i2}.AsEnumerable();
+                    var o = Output.All(inputs);
+                    var data = await o.DataTask.ConfigureAwait(false);
+                    Assert.Equal(new[] { 1, 2 }, data.Value);
                 });
         }
 
