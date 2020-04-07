@@ -221,7 +221,7 @@ func TestResourceOptionMergingAdditionalSecretOutputs(t *testing.T) {
 }
 
 func TestResourceOptionMergingAliases(t *testing.T) {
-	// IgnoreChanges arrays are always appended together
+	// Aliases arrays are always appended together
 	a1 := Alias{Name: String("a")}
 	a2 := Alias{Name: String("b")}
 	a3 := Alias{Name: String("c")}
@@ -244,6 +244,7 @@ func TestResourceOptionMergingAliases(t *testing.T) {
 }
 
 func TestResourceOptionMergingTransformations(t *testing.T) {
+	// Transormations arrays are always appended together
 	t1 := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
 		return &ResourceTransformationResult{}
 	}
