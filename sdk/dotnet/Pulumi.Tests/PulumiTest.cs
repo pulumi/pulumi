@@ -20,7 +20,7 @@ namespace Pulumi.Tests
             var mock = new Mock<IDeployment>(MockBehavior.Strict);
             mock.Setup(d => d.IsDryRun).Returns(dryRun);
 
-            Deployment.Instance = mock.Object;
+            Deployment.Instance = new DeploymentInstance(mock.Object);
             await func().ConfigureAwait(false);
             Deployment.Instance = null!;
         }
