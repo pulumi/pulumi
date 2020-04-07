@@ -28,20 +28,36 @@ namespace Pulumi
             => Output<T>.CreateSecret(value);
 
         /// <summary>
-        /// Combines all the <see cref="Input{T}"/> values in <paramref name="inputs"/> and combines
-        /// them all into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
+        /// Combines all the <see cref="Input{T}"/> values in <paramref name="inputs"/>
+        /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
         /// containing all their underlying values.  If any of the <see cref="Input{T}"/>s are not
         /// known, the final result will be not known.  Similarly, if any of the <see
         /// cref="Input{T}"/>s are secrets, then the final result will be a secret.
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(params Input<T>[] inputs)
-            => All(ImmutableArray.CreateRange(inputs));
+            => Output<T>.All(ImmutableArray.CreateRange(inputs));
 
         /// <summary>
         /// <see cref="All{T}(Input{T}[])"/> for more details.
         /// </summary>
-        public static Output<ImmutableArray<T>> All<T>(ImmutableArray<Input<T>> inputs)
-            => Output<T>.All(inputs);
+        public static Output<ImmutableArray<T>> All<T>(IEnumerable<Input<T>> inputs)
+            => Output<T>.All(ImmutableArray.CreateRange(inputs));
+        
+        /// <summary>
+        /// Combines all the <see cref="Output{T}"/> values in <paramref name="outputs"/>
+        /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
+        /// containing all their underlying values.  If any of the <see cref="Output{T}"/>s are not
+        /// known, the final result will be not known.  Similarly, if any of the <see
+        /// cref="Output{T}"/>s are secrets, then the final result will be a secret.
+        /// </summary>
+        public static Output<ImmutableArray<T>> All<T>(params Output<T>[] outputs)
+            => All(outputs.AsEnumerable());
+
+        /// <summary>
+        /// <see cref="All{T}(Output{T}[])"/> for more details.
+        /// </summary>
+        public static Output<ImmutableArray<T>> All<T>(IEnumerable<Output<T>> outputs)
+            => Output<T>.All(ImmutableArray.CreateRange(outputs.Select(o => (Input<T>)o)));
 
         /// <summary>
         /// Takes in a <see cref="FormattableString"/> with potential <see cref="Input{T}"/>s or
