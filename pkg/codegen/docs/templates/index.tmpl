@@ -12,6 +12,11 @@ menu:
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{ htmlSafe .PackageDescription }}
+<!--
+    This comment ensures that there is always a new-line between the
+    package description and the start of the headers. This comment
+    will not be included in the generated markdown.
+-->
 
 {{- if ne (len .Modules) 0 -}}
 {{ template "index_modules" .Modules }}
