@@ -15,10 +15,32 @@
 package hcl2
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 )
 
+func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	keyType, valueType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+	signature := model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "collection",
+			Type: model.DynamicType,
+		}},
+	}
+
+	if len(args) == 1 {
+		keyT, valueT, diags := model.GetCollectionTypes(args[0].Type(), args[0].SyntaxNode().Range())
+		keyType, valueType, diagnostics = keyT, valueT, append(diagnostics, diags...)
+	}
+
+	signature.ReturnType = model.NewListType(model.NewTupleType(keyType, valueType))
+	return signature, diagnostics
+}
+
 var pulumiBuiltins = map[string]*model.Function{
+	"entries": model.NewFunction(model.GenericFunctionSignature(getEntriesSignature)),
 	"fileAsset": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "path",
@@ -32,6 +54,26 @@ var pulumiBuiltins = map[string]*model.Function{
 			Type: model.StringType,
 		}},
 		ReturnType: model.StringType,
+	}),
+	"range": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{
+			{
+				Name: "fromOrTo",
+				Type: model.NumberType,
+			},
+			{
+				Name: "to",
+				Type: model.NewOptionalType(model.NumberType),
+			},
+		},
+		ReturnType: model.NewListType(model.IntType),
+	}),
+	"readDir": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "path",
+			Type: model.StringType,
+		}},
+		ReturnType: model.NewListType(model.StringType),
 	}),
 	"toJSON": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{

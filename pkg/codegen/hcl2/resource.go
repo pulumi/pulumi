@@ -21,6 +21,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
+// ResourceOptions represents a resource instantiation's options.
+type ResourceOptions struct {
+	// The syntax node associated with the resource options.
+	Syntax *hclsyntax.Block
+	// The syntax tokens associated with the resource options, if any.
+	Tokens *syntax.BlockTokens
+
+	// An expression to range over when instantiating the resource.
+	Range model.Expression
+	// The provider to use.
+	Provider model.Expression
+	// The explicit dependencies of the resource.
+	DependsOn model.Expression
+	// Whether or not the resource is protected.
+	Protect model.Expression
+	// A list of properties that are not considered when diffing the resource.
+	IgnoreChanges model.Expression
+}
+
 // Resource represents a resource instantiation inside of a program or component.
 type Resource struct {
 	node
@@ -38,6 +57,9 @@ type Resource struct {
 	// The type of the resource's outputs. This will always be either Any or an object type.
 	OutputType model.Type
 
+	// The type of the resource variable.
+	VariableType model.Type
+
 	// The body of this resource.
 	Body *model.Body
 
@@ -45,7 +67,10 @@ type Resource struct {
 	Inputs []*model.Attribute
 
 	// The resource's options, if any.
-	Options *model.Block
+	Options *ResourceOptions
+
+	// range tracks the syntax node for the range option, if any.
+	rangeNode hclsyntax.Node
 }
 
 // SyntaxNode returns the syntax node associated with the resource.
@@ -55,11 +80,11 @@ func (r *Resource) SyntaxNode() hclsyntax.Node {
 
 // Type returns the type of the resource.
 func (r *Resource) Type() model.Type {
-	return r.OutputType
+	return ResourceType
 }
 
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
-	return r.OutputType.Traverse(traverser)
+	return r.VariableType.Traverse(traverser)
 }
 
 // Name returns the name of the resource.
@@ -71,5 +96,27 @@ func (r *Resource) Name() string {
 // fails, a description of the failure is returned in the diagnostics.
 func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
 	_, tokenRange := getResourceToken(r)
-	return decomposeToken(r.Token, tokenRange)
+	return DecomposeToken(r.Token, tokenRange)
+}
+
+// ResourceProperty represents a resource property.
+type ResourceProperty struct {
+	Path         hcl.Traversal
+	PropertyType model.Type
+}
+
+func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
+func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	propertyType, diagnostics := p.PropertyType.Traverse(traverser)
+	return &ResourceProperty{
+		Path:         append(p.Path, traverser),
+		PropertyType: propertyType.(model.Type),
+	}, diagnostics
+}
+
+func (p *ResourceProperty) Type() model.Type {
+	return ResourcePropertyType
 }

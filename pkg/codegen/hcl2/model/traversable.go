@@ -81,8 +81,8 @@ func (b *expressionBinder) bindTraversalParts(receiver Traversable,
 	case TypedTraversable, Type:
 		// OK
 	default:
-		// TODO(pdg): improve this diagnostic?
-		diagnostics = append(diagnostics, undefinedVariable(traversal.SourceRange()))
+		// TODO(pdg): improve this diagnostic
+		diagnostics = append(diagnostics, undefinedVariable("", traversal.SourceRange()))
 	}
 
 	return parts, diagnostics

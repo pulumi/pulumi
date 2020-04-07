@@ -93,8 +93,8 @@ func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hc
 	return errorf(iteratorRange, "cannot iterator over a value of type %v", collectionType)
 }
 
-func undefinedVariable(variableRange hcl.Range) *hcl.Diagnostic {
-	return errorf(variableRange, "undefined variable")
+func undefinedVariable(variableName string, variableRange hcl.Range) *hcl.Diagnostic {
+	return errorf(variableRange, fmt.Sprintf("undefined variable %v", variableName))
 }
 
 func internalError(rng hcl.Range, fmt string, args ...interface{}) *hcl.Diagnostic {

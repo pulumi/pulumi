@@ -17,44 +17,32 @@ package nodejs
 import "github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 
 const (
-	// intrinsicDataSource is the name of the data source intrinsic.
-	//	intrinsicDataSource = "__dataSource"
-	// inttrinsicInterpolate is the name of the interpolate intrinsic.
+	// intrinsicAwait is the name of the await intrinsic.
+	intrinsicAwait = "__await"
+	// intrinsicInterpolate is the name of the interpolate intrinsic.
 	intrinsicInterpolate = "__interpolate"
 )
 
-//// newDataSourceCall creates a new call to the data source intrinsic that represents an invocation of the specified
-//// data source function with the given input properties.
-//func newDataSourceCall(functionName string, inputs il.BoundNode, optionsBag string) *il.BoundCall {
-//	return &il.BoundCall{
-//		Func:     intrinsicDataSource,
-//		ExprType: il.TypeMap,
-//		Args: []il.BoundExpr{
-//			&il.BoundLiteral{
-//				ExprType: il.TypeString,
-//				Value:    functionName,
-//			},
-//			&il.BoundPropertyValue{
-//				NodeType: il.TypeMap,
-//				Value:    inputs,
-//			},
-//			&il.BoundLiteral{
-//				ExprType: il.TypeString,
-//				Value:    optionsBag,
-//			},
-//		},
-//	}
-//}
-//
-//// parseDataSourceCall extracts the name of the data source function and the input properties for its invocation from
-//// a call to the data source intrinsic.
-//func parseDataSourceCall(c *il.BoundCall) (function string, inputs il.BoundNode, optionsBag string) {
-//	contract.Assert(c.Func == intrinsicDataSource)
-//	function = c.Args[0].(*il.BoundLiteral).Value.(string)
-//	inputs = c.Args[1].(*il.BoundPropertyValue).Value
-//	optionsBag = c.Args[2].(*il.BoundLiteral).Value.(string)
-//	return
-//}
+// newAwaitCall creates a new call to the await intrinsic.
+func newAwaitCall(promise model.Expression) model.Expression {
+	// TODO(pdg): unions
+	promiseType, ok := promise.Type().(*model.PromiseType)
+	if !ok {
+		return promise
+	}
+
+	return &model.FunctionCallExpression{
+		Name: intrinsicAwait,
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "promise",
+				Type: promiseType,
+			}},
+			ReturnType: promiseType.ElementType,
+		},
+		Args: []model.Expression{promise},
+	}
+}
 
 // newInterpolateCall creates a new call to the interpolate intrinsic that represents a template literal that uses the
 // pulumi.interpolate function.
