@@ -276,10 +276,7 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -405,10 +402,7 @@ func (ctx *Context) RegisterResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}

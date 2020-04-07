@@ -217,6 +217,17 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(nil, opts)
 }
 
+// merging is handled by each functional options call
+// properties that are arrays/maps are always appened/merged together
+// last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
+func merge(opts ...ResourceOption) *resourceOptions {
+	options := &resourceOptions{}
+	for _, o := range opts {
+		o.applyResourceOption(options)
+	}
+	return options
+}
+
 // Parent sets the parent resource to which this resource or invoke belongs.
 func Parent(r Resource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
