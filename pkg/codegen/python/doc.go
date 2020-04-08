@@ -60,12 +60,27 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		elType := arrTy.ElementType.String()
 		return getListWithTypeName(elementTypeToName(elType))
 	case "dict":
-		switch dictionaryTy := t.(type) {
+		switch dTy := t.(type) {
+		case *schema.UnionType:
+			types := make([]string, 0, len(dTy.ElementTypes))
+			for _, e := range dTy.ElementTypes {
+				if schema.IsPrimitiveType(e) {
+					types = append(types, e.String())
+					continue
+				}
+				t := d.GetLanguageTypeString(pkg, moduleName, e, input, optional)
+				types = append(types, t)
+			}
+			return strings.Join(types, " | ")
 		case *schema.MapType:
-			elType := dictionaryTy.ElementType.String()
+			if uTy, ok := dTy.ElementType.(*schema.UnionType); ok {
+				return d.GetLanguageTypeString(pkg, moduleName, uTy, input, optional)
+			}
+
+			elType := dTy.ElementType.String()
 			return getMapWithTypeName(elementTypeToName(elType))
 		case *schema.ObjectType:
-			return getDictWithTypeName(tokenToName(dictionaryTy.Token))
+			return getDictWithTypeName(tokenToName(dTy.Token))
 		default:
 			return "Dict[str, Any]"
 		}
