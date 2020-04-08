@@ -668,7 +668,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 				t = "pulumi.Any"
 			}
 
-			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", title(p.Name), t, v)
+			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, v)
 		}
 		if p.DefaultValue != nil {
 			v, err := pkg.getDefaultValue(p.DefaultValue, p.Type)
