@@ -1347,6 +1347,17 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 	return mod
 }
 
+func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource) {
+	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
+	for _, p := range r.Properties {
+		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+	}
+
+	for _, p := range r.InputProperties {
+		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+	}
+}
+
 func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
@@ -1367,40 +1378,18 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
 
-	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
-		for _, p := range r.Properties {
-			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
-		}
-
-		for _, p := range r.InputProperties {
-			pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
-		}
+		generatePythonPropertyCaseMaps(mod, r)
 	}
 
 	scanK8SResource := func(r *schema.Resource) {
 		mod := getK8SMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
-		// For k8s, all nested properties will use a snake_case,
-		// so we'll just add them all to the respective property
-		// case maps.
-		for _, p := range r.Properties {
-			n := p.Name
-			snakeCase := python.PyName(n)
-			snakeCaseToCamelCase[snakeCase] = n
-			camelCaseToSnakeCase[n] = snakeCase
-		}
-
-		for _, p := range r.InputProperties {
-			n := p.Name
-			snakeCase := python.PyName(n)
-			snakeCaseToCamelCase[snakeCase] = n
-			camelCaseToSnakeCase[n] = snakeCase
-		}
+		generatePythonPropertyCaseMaps(mod, r)
 	}
 
 	glog.V(3).Infoln("scanning resources")
