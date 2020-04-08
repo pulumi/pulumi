@@ -7,7 +7,7 @@ namespace Pulumi
     /// </summary>
     public sealed class DeploymentInstance : IDeployment
     {
-        private IDeployment _deployment;
+        private readonly IDeployment _deployment;
         
         internal DeploymentInstance(IDeployment deployment)
         {
