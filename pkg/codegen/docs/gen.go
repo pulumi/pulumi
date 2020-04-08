@@ -353,7 +353,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 				if schema.IsPrimitiveType(e) {
 					continue
 				}
-				return mod.cleanTypeString(e.(*schema.ObjectType), langTypeString, lang, modName, isInput)
+				return mod.cleanTypeString(e, langTypeString, lang, modName, isInput)
 			}
 		case *schema.ObjectType:
 			objTypeModName := mod.pkg.TokenToModule(t.Token)

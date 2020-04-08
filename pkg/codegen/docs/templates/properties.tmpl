@@ -8,7 +8,7 @@
             title="{{ if .IsInput -}}{{- if .IsRequired -}}Required{{- else -}}Optional{{- end -}}{{- end -}}{{- if .DeprecationMessage -}}, Deprecated{{- end -}}">
         <span>{{- htmlSafe .DisplayName -}}</span>
         <span class="property-indicator"></span>
-        <span class="property-type">{{- if eq .Type.Link "#" "" -}}{{- htmlSafe .Type.Name -}}{{- else -}}{{ template "linkify" .Type }}{{- end -}}</span>
+        <span class="property-type">{{- if eq .Type.Link "#" "" -}}{{- htmlSafe .Type.DisplayName -}}{{- else -}}{{ template "linkify" .Type }}{{- end -}}</span>
     </dt>
     <dd>
         {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
