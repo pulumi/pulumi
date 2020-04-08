@@ -769,7 +769,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
-			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), title(mod.mod, "csharp"), resourceTypeName)
+			modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, lang), title(modName, lang), resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
 			continue
