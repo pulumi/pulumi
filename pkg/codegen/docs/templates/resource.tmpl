@@ -1,8 +1,10 @@
 {{ template "header" .Header }}
 
-{{- htmlSafe .DeprecationMessage }}
-
 {{ htmlSafe .Comment }}
+
+{{- if .DeprecationMessage }}
+<p class="resource-deprecated">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>
+{{- end -}}
 
 <!-- Create resource -->
 ## Create a {{ .Header.Title }} Resource
