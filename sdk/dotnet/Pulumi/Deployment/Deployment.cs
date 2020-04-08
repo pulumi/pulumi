@@ -32,21 +32,21 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
-        private static IDeployment? _instance;
+        private static DeploymentInstance? _instance;
         private static readonly object _instanceLock = new object();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function
         /// passed to <see cref="Deployment.RunAsync(Action)"/> (or its overloads).
         /// </summary>
-        public static IDeployment Instance
+        public static DeploymentInstance Instance
         {
             get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
             internal set => _instance = value;
         }
 
         internal static IDeploymentInternal InternalInstance
-            => (IDeploymentInternal)Instance;
+            => Instance.Internal;
 
         private readonly string _projectName;
         private readonly string _stackName;

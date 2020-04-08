@@ -20,6 +20,8 @@ CHANGELOG
 
 - C# code generation switched to schema.
 
+- .NET API: replace `IDeployment` interface with `DeploymentInstance` class.
+
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK
   [#4109](https://github.com/pulumi/pulumi/pull/4109)
