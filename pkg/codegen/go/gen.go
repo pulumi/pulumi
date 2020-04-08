@@ -571,6 +571,19 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
+func (pkg *pkgContext) getConstValue(cv interface{}) (string, error) {
+	var val string
+	if cv != nil {
+		v, err := goPrimitiveValue(cv)
+		if err != nil {
+			return "", err
+		}
+		val = v
+	}
+
+	return val, nil
+}
+
 func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
@@ -644,6 +657,19 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\t\targs = &%sArgs{}\n", name)
 	fmt.Fprintf(w, "\t}\n")
 	for _, p := range r.InputProperties {
+		if p.ConstValue != nil {
+			v, err := pkg.getConstValue(p.ConstValue)
+			if err != nil {
+				return err
+			}
+
+			t := strings.TrimSuffix(pkg.inputType(p.Type, !p.IsRequired), "Input")
+			if t == "pulumi." {
+				t = "pulumi.Any"
+			}
+
+			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+		}
 		if p.DefaultValue != nil {
 			v, err := pkg.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
