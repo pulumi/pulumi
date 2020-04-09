@@ -29,6 +29,9 @@ CHANGELOG
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
+- Make prebuilt executables opt-in only for the Go SDK
+ [#4338](https://github.com/pulumi/pulumi/pull/4338)
+ 
 - Add helper methods for stack outputs in the Go SDK
   [#4341](https://github.com/pulumi/pulumi/pull/4341)
 
