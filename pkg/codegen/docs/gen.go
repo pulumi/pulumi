@@ -61,6 +61,39 @@ var (
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
+	// titleLookup is a map to map module package name to the desired display name
+	// for display in the TOC menu under API Reference.
+	titleLookup = map[string]string{
+		"alicloud":     "AliCloud",
+		"aws":          "AWS",
+		"azure":        "Azure",
+		"azuread":      "Azure AD",
+		"cloudamqp":    "CloudAMQP",
+		"cloudflare":   "Cloudflare",
+		"consul":       "Consul",
+		"datadog":      "Datadog",
+		"digitalocean": "Digital Ocean",
+		"dnsimple":     "DNSimple",
+		"f5bigip":      "f5 BIG-IP",
+		"fastly":       "Fastly",
+		"gcp":          "GCP",
+		"kafka":        "Kafka",
+		"keycloak":     "Keycloak",
+		"linode":       "Linode",
+		"mysql":        "MySQL",
+		"newrelic":     "New Relic",
+		"okta":         "Okta",
+		"openstack":    "Open Stack",
+		"packet":       "Packet",
+		"postgresql":   "PostgreSQL",
+		"rabbitmq":     "RabbitMQ",
+		"rancher2":     "Rancher 2",
+		"signalfx":     "SignalFx",
+		"spotinst":     "Spotinst",
+		"tls":          "TLS",
+		"vault":        "Vault",
+		"vsphere":      "vSphere",
+	}
 )
 
 func init() {
@@ -1207,7 +1240,12 @@ func (mod *modContext) genIndex() indexData {
 	title := modName
 	menu := false
 	if title == "" {
-		title = mod.pkg.Name
+		// If title not found in titleLookup map, default back to mod.pkg.Name.
+		if val, ok := titleLookup[mod.pkg.Name]; ok {
+			title = val
+		} else {
+			title = mod.pkg.Name
+		}
 		// Flag top-level entries for inclusion in the table-of-contents menu.
 		menu = true
 	}
