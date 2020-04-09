@@ -691,6 +691,11 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		})
 	}
 
+	// Sort required props to move them to the top of the properties list.
+	sort.SliceStable(docProperties, func(i, j int) bool {
+		return docProperties[i].IsRequired && !docProperties[j].IsRequired
+	})
+
 	return docProperties
 }
 
