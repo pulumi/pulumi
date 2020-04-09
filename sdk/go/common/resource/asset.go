@@ -1037,7 +1037,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 		Name:           file,
 		Method:         zip.Deflate,
 		CreatorVersion: 3 << 8,      // indicates Unix
-		ExternalAttrs:  33261 << 16, // -rwxr-xr-x file permissions
+		ExternalAttrs:  33279 << 16, // -rwxr-xr-x file permissions
 	}
 
 	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure
