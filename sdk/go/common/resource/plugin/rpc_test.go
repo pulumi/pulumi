@@ -78,7 +78,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
 	default:
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
+		assert.Equal(t, "44b7275bb0f7c65d310991d9969889b20a80d428a7e42c2cbdb8ab403eb47ca1", arch.Hash)
 	}
 	archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
 	assert.Nil(t, err)
@@ -95,7 +95,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
 	default:
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", archDes.Hash)
+		assert.Equal(t, "44b7275bb0f7c65d310991d9969889b20a80d428a7e42c2cbdb8ab403eb47ca1", archDes.Hash)
 	}
 
 	// Ensure that an invalid archive produces an error.
