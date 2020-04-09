@@ -621,7 +621,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
-	fmt.Fprintf(w, "            : base(\"%s\", name, args ?? ResourceArgs.Empty, MakeResourceOptions(options, \"\"))\n", tok)
+	fmt.Fprintf(w, "            : base(\"%s\", name, args ?? new %sArgs(), MakeResourceOptions(options, \"\"))\n", tok, className)
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
@@ -760,7 +760,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		}
 
 		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
-		argsParamRef = "args ?? InvokeArgs.Empty"
+		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
 	// Open the class we'll use for datasources.
