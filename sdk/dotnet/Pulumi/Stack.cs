@@ -63,7 +63,7 @@ namespace Pulumi
         /// An instance of this will be automatically created when any <see
         /// cref="Deployment.RunAsync(Action)"/> overload is called.
         /// </summary>
-        internal Stack(Func<Task<IDictionary<string, object?>>> init) : this()
+        internal Stack(Func<Task<IDictionary<string, object?>>> init, StackOptions? options) : this(options)
         {
             try
             {

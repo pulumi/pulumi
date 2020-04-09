@@ -227,7 +227,8 @@ static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1,
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
-static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func, Pulumi.StackOptions options = null) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.IMocks mocks, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
