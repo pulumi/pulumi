@@ -29,6 +29,9 @@ CHANGELOG
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
+- Change default format of FileArchive to be zip instead of tar
+  [#4018](https://github.com/pulumi/pulumi/pull/4018)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
