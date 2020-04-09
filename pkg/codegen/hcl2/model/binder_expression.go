@@ -219,15 +219,12 @@ func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbol
 		return &ErrorExpression{Syntax: syntax, exprType: DynamicType}, diagnostics
 	}
 
-	traversal := hcl.Traversal{hcl.TraverseRoot{Name: "", SrcRange: syntax.SrcRange}}
 	return &ScopeTraversalExpression{
 		Syntax: &hclsyntax.ScopeTraversalExpr{
-			Traversal: traversal,
+			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "<anonymous>", SrcRange: syntax.SrcRange}},
 			SrcRange:  syntax.SrcRange,
 		},
-		RootName:  "",
-		Parts:     []Traversable{lv},
-		Traversal: traversal,
+		Parts: []Traversable{lv},
 	}, diagnostics
 }
 
@@ -671,8 +668,8 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 		}
 	}
 
-	item = &Variable{
-		Name:         "",
+	item := &Variable{
+		Name:         "<anonymous>",
 		VariableType: elementType,
 	}
 	b.anonSymbols[syntax.Item] = item
