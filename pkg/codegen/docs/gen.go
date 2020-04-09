@@ -317,19 +317,22 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 // cleanTypeString removes any namespaces from the generated type string for all languages.
 // The result of this function should be used display purposes only.
 func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
-	if lang != "csharp" {
+	switch lang {
+	case "go":
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
-	}
-
-	// C# types can be wrapped in enumerable types such as List<> or Dictionary<>, so we have to
-	// only replace the namespace between the < and the > characters.
-	qualifier := "Inputs"
-	if !isInput {
-		qualifier = "Outputs"
+	case "python":
+		return langTypeString
 	}
 
 	cleanCSharpName := func(pkgName, objModName string) string {
+		// C# types can be wrapped in enumerable types such as List<> or Dictionary<>, so we have to
+		// only replace the namespace between the < and the > characters.
+		qualifier := "Inputs"
+		if !isInput {
+			qualifier = "Outputs"
+		}
+
 		var csharpNS string
 		// This type could be at the package-level, so it won't have a module name.
 		if objModName != "" {
@@ -340,29 +343,37 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 		return strings.ReplaceAll(langTypeString, csharpNS, "")
 	}
 
-	if isKubernetesPackage(mod.pkg) {
-		switch t := t.(type) {
-		case *schema.ArrayType:
-			if schema.IsPrimitiveType(t.ElementType) {
-				break
+	cleanNodeJSName := func(objModName string) string {
+		objModName = strings.ReplaceAll(objModName, "/", ".") + "."
+		return strings.ReplaceAll(langTypeString, objModName, "")
+	}
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		if schema.IsPrimitiveType(t.ElementType) {
+			break
+		}
+		return mod.cleanTypeString(t.ElementType, langTypeString, lang, modName, isInput)
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			if schema.IsPrimitiveType(e) {
+				continue
 			}
-			objType := t.ElementType.(*schema.ObjectType)
-			return mod.cleanTypeString(objType, langTypeString, lang, modName, isInput)
-		case *schema.UnionType:
-			for _, e := range t.ElementTypes {
-				if schema.IsPrimitiveType(e) {
-					continue
-				}
-				return mod.cleanTypeString(e, langTypeString, lang, modName, isInput)
-			}
-		case *schema.ObjectType:
-			objTypeModName := mod.pkg.TokenToModule(t.Token)
-			if objTypeModName != mod.mod {
-				modName = getLanguageModuleName(mod.pkg, objTypeModName, lang)
-			}
+			return mod.cleanTypeString(e, langTypeString, lang, modName, isInput)
+		}
+	case *schema.ObjectType:
+		objTypeModName := mod.pkg.TokenToModule(t.Token)
+		if objTypeModName != mod.mod {
+			modName = getLanguageModuleName(mod.pkg, objTypeModName, lang)
 		}
 	}
-	return cleanCSharpName(mod.pkg.Name, modName)
+
+	if lang == "nodejs" {
+		return cleanNodeJSName(modName)
+	} else if lang == "csharp" {
+		return cleanCSharpName(mod.pkg.Name, modName)
+	}
+	return strings.ReplaceAll(langTypeString, modName, "")
 }
 
 // typeString returns a property type suitable for docs with its display name and the anchor link to
@@ -1110,6 +1121,8 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
+// getModuleFileName returns the normalized package name to use
+// for k8s. Otherwise, returns the current module's name as-is.
 func (mod *modContext) getModuleFileName() string {
 	if !isKubernetesPackage(mod.pkg) {
 		return mod.mod
