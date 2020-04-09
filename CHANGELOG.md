@@ -29,6 +29,9 @@ CHANGELOG
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
+- Change default format of FileArchive to be zip instead of tar
+  [#4018](https://github.com/pulumi/pulumi/pull/4018)
+  
 - Add helper methods for stack outputs in the Go SDK
   [#4341](https://github.com/pulumi/pulumi/pull/4341)
 
