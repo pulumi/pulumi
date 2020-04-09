@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/go/common/version"
+	"github.com/pulumi/pulumi/sdk/go/nodejs"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
 
@@ -87,7 +88,14 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
-	nodePath, err := exec.LookPath("node")
+	var cmd string = "node"
+	if nodejs.PreferYarn() {
+		cmd = "yarn"
+	}
+	nodePath, err := exec.LookPath(cmd)
+	if nodejs.PreferYarn() {
+		nodePath = nodePath + " node"
+	}
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
 	}

@@ -13,8 +13,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/nodejs"
 )
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a
@@ -76,9 +76,15 @@ func Install(dir string, stdout, stderr io.Writer) (string, error) {
 	}
 
 	// Ensure the "node_modules" directory exists.
-	nodeModulesPath := filepath.Join(dir, "node_modules")
-	if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
-		return bin, errors.Errorf("%s install reported success, but node_modules directory is missing", bin)
+	if nodejs.PreferYarn() {
+		// TODO check correct installation via Yarn
+		// In a workspace, only top-level node_modules folder
+		// with yarn v2, can only be PnP zip files, no node_modules whatsoever.
+	} else {
+		nodeModulesPath := filepath.Join(dir, "node_modules")
+		if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
+			return bin, errors.Errorf("%s install reported success, but node_modules directory is missing", bin)
+		}
 	}
 
 	return bin, nil
@@ -88,7 +94,7 @@ func Install(dir string, stdout, stderr io.Writer) (string, error) {
 // on what is available on the current path, and if `PULUMI_PREFER_YARN` is truthy.
 // The boolean return parameter indicates if `npm` is chosen or not (instead of `yarn`).
 func getCmd(command string) (*exec.Cmd, bool, string, error) {
-	if preferYarn() {
+	if nodejs.PreferYarn() {
 		const file = "yarn"
 		yarnPath, err := exec.LookPath(file)
 		if err == nil {
@@ -131,9 +137,4 @@ func runCmd(c *exec.Cmd, npm bool, stdout, stderr io.Writer) error {
 	}
 
 	return nil
-}
-
-// preferYarn returns true if the `PULUMI_PREFER_YARN` environment variable is set.
-func preferYarn() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_YARN"))
 }
