@@ -29,6 +29,9 @@ CHANGELOG
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
+- Add additional overloads to Deployment.RunAsync in .NET API.
+  [#4286](https://github.com/pulumi/pulumi/pull/4286)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
