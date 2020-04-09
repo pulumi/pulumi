@@ -135,7 +135,22 @@ func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 
 func (t *OpaqueType) String() string {
 	if t.s == "" {
-		t.s = fmt.Sprintf("opaque(%s)", t.Name)
+		switch t {
+		case NumberType:
+			t.s = "number"
+		case IntType:
+			t.s = "int"
+		case BoolType:
+			t.s = "bool"
+		case StringType:
+			t.s = "string"
+		default:
+			if hclsyntax.ValidIdentifier(t.Name) {
+				t.s = t.Name
+			} else {
+				t.s = fmt.Sprintf("type(%s)", t.Name)
+			}
+		}
 	}
 	return t.s
 }

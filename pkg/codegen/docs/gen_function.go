@@ -1,5 +1,3 @@
-//go:generate go run bundler.go
-
 // Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,7 +115,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 		Name:         "opts",
 		OptionalFlag: "?",
 		Type: propertyType{
-			Name: "pulumi.InvokeOptions",
+			Name: "InvokeOptions",
 			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "InvokeOptions"),
 		},
 	})
@@ -178,6 +176,9 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 		optional: false,
 	}
 	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false /* insertWordBreaks */)
+	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
+	// namespace qualifier.
+	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
 
 	docLangHelper := getLanguageDocHelper("csharp")
 	var params []formalParam
@@ -188,19 +189,18 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 			DefaultValue: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangType.Name),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangTypeName),
 			},
 		})
 	}
 
-	optsType := "Pulumi.InvokeOptions"
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		DefaultValue: " = null",
 		Type: propertyType{
-			Name: optsType,
-			Link: docLangHelper.GetDocLinkForResourceType("", "", optsType),
+			Name: "InvokeOptions",
+			Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.InvokeOptions"),
 		},
 	})
 	return params

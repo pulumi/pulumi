@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	_syntax "github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
@@ -28,21 +28,23 @@ import (
 type expressionBinder struct {
 	anonSymbols map[*hclsyntax.AnonSymbolExpr]Definition
 	scope       *Scope
+	tokens      _syntax.TokenMap
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
-func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens syntax.TokenMap) (Expression, hcl.Diagnostics) {
+func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap) (Expression, hcl.Diagnostics) {
 	b := &expressionBinder{
 		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Definition{},
 		scope:       scope,
+		tokens:      tokens,
 	}
 
 	return b.bindExpression(syntax)
 }
 
 // BindExpressionText parses and binds an HCL2 expression using the given scope.
-func BindExpressionText(source string, scope *Scope) (Expression, hcl.Diagnostics) {
-	syntax, tokens, diagnostics := syntax.ParseExpression(source, "<anonymous>", hcl.InitialPos)
+func BindExpressionText(source string, scope *Scope, initialPos hcl.Pos) (Expression, hcl.Diagnostics) {
+	syntax, tokens, diagnostics := _syntax.ParseExpression(source, "<anonymous>", initialPos)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
 	}
@@ -245,9 +247,12 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, leftOperand, rightOperand)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.BinaryOpTokens)
 	return &BinaryOpExpression{
 		Syntax:       syntax,
+		Tokens:       tokens,
 		LeftOperand:  leftOperand,
+		Operation:    syntax.Op,
 		RightOperand: rightOperand,
 		exprType:     liftOperationType(signature.ReturnType, leftOperand, rightOperand),
 	}, diagnostics
@@ -279,42 +284,12 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 
 	return &ConditionalExpression{
 		Syntax:      syntax,
+		Tokens:      b.tokens.ForNode(syntax),
 		Condition:   condition,
 		TrueResult:  trueResult,
 		FalseResult: falseResult,
 		exprType:    liftOperationType(resultType, condition),
 	}, diagnostics
-}
-
-// unwrapIterableSourceType removes any eventual types that wrap a type intended for iteration.
-func unwrapIterableSourceType(t Type) Type {
-	// TODO(pdg): unions
-	for {
-		switch tt := t.(type) {
-		case *OutputType:
-			t = tt.ElementType
-		case *PromiseType:
-			t = tt.ElementType
-		default:
-			return t
-		}
-	}
-}
-
-// wrapIterableSourceType adds optional or eventual types to a type intended for iteration per the structure of the
-// source type.
-func wrapIterableResultType(sourceType, iterableType Type) Type {
-	// TODO(pdg): unions
-	for {
-		switch t := sourceType.(type) {
-		case *OutputType:
-			sourceType, iterableType = t.ElementType, NewOutputType(iterableType)
-		case *PromiseType:
-			sourceType, iterableType = t.ElementType, NewPromiseType(iterableType)
-		default:
-			return iterableType
-		}
-	}
 }
 
 // bindForExpression binds a for expression. The value being iterated must be an list, map, or object.  The type of
@@ -332,40 +307,21 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	collectionType := unwrapIterableSourceType(collection.Type())
 
 	// TODO(pdg): handle union types.
-
-	var keyType, valueType Type
-	switch collectionType := collectionType.(type) {
-	case *ListType:
-		keyType, valueType = NumberType, collectionType.ElementType
-	case *MapType:
-		keyType, valueType = StringType, collectionType.ElementType
-	case *TupleType:
-		keyType = NumberType
-		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
-	case *ObjectType:
-		keyType = StringType
-
-		types := make([]Type, 0, len(collectionType.Properties))
-		for _, t := range collectionType.Properties {
-			types = append(types, t)
-		}
-		valueType, _ = UnifyTypes(types...)
-	default:
-		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic). Otherwise, issue an error.
-		if collectionType != DynamicType {
-			diagnostics = append(diagnostics, unsupportedCollectionType(collectionType, syntax.CollExpr.Range()))
-		}
-		keyType, valueType = DynamicType, DynamicType
-	}
+	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, syntax.CollExpr.Range())
+	diagnostics = append(diagnostics, kvDiags...)
 
 	// Push a scope for the key and value variables and define these vars.
 	b.scope = b.scope.Push(syntax)
 	defer func() { b.scope = b.scope.Pop() }()
+
+	var keyVariable *Variable
 	if syntax.KeyVar != "" {
-		ok := b.scope.Define(syntax.KeyVar, &Variable{Name: syntax.KeyVar, VariableType: keyType})
+		keyVariable = &Variable{Name: syntax.KeyVar, VariableType: keyType}
+		ok := b.scope.Define(syntax.KeyVar, keyVariable)
 		contract.Assert(ok)
 	}
-	if ok := b.scope.Define(syntax.ValVar, &Variable{Name: syntax.ValVar, VariableType: valueType}); !ok {
+	valueVariable := &Variable{Name: syntax.ValVar, VariableType: valueType}
+	if ok := b.scope.Define(syntax.ValVar, valueVariable); !ok {
 		diagnostics = append(diagnostics, nameAlreadyDefined(syntax.ValVar, syntax.Range()))
 	}
 
@@ -417,11 +373,16 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	}
 
 	return &ForExpression{
-		Syntax:     syntax,
-		Collection: collection,
-		Key:        key,
-		Value:      value,
-		exprType:   liftOperationType(resultType, liftArgs...),
+		Syntax:        syntax,
+		Tokens:        b.tokens.ForNode(syntax),
+		KeyVariable:   keyVariable,
+		ValueVariable: valueVariable,
+		Collection:    collection,
+		Key:           key,
+		Value:         value,
+		Condition:     condition,
+		Group:         syntax.Group,
+		exprType:      liftOperationType(resultType, liftArgs...),
 	}, diagnostics
 }
 
@@ -433,6 +394,8 @@ func (b *expressionBinder) bindFunctionCallExpression(
 	syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
 
 	var diagnostics hcl.Diagnostics
+
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.FunctionCallTokens)
 
 	// Bind the function's arguments.
 	args := make([]Expression, len(syntax.Args))
@@ -448,6 +411,7 @@ func (b *expressionBinder) bindFunctionCallExpression(
 
 		return &FunctionCallExpression{
 			Syntax: syntax,
+			Tokens: tokens,
 			Name:   syntax.Name,
 			Signature: StaticFunctionSignature{
 				VarargsParameter: &Parameter{Name: "args", Type: DynamicType},
@@ -477,6 +441,7 @@ func (b *expressionBinder) bindFunctionCallExpression(
 
 	return &FunctionCallExpression{
 		Syntax:    syntax,
+		Tokens:    tokens,
 		Name:      syntax.Name,
 		Signature: signature,
 		Args:      args,
@@ -508,8 +473,10 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 
 	diagnostics = append(diagnostics, partDiags...)
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.IndexTokens)
 	return &IndexExpression{
 		Syntax:     syntax,
+		Tokens:     tokens,
 		Collection: collection,
 		Key:        key,
 		exprType:   liftOperationType(part.(Type), collection, key),
@@ -533,8 +500,10 @@ func (b *expressionBinder) bindLiteralValueExpression(
 		typ, diagnostics = DynamicType, hcl.Diagnostics{unsupportedLiteralValue(syntax)}
 	}
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
 	return &LiteralValueExpression{
 		Syntax:   syntax,
+		Tokens:   tokens,
 		Value:    v,
 		exprType: typ,
 	}, diagnostics
@@ -570,7 +539,12 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 	for _, item := range items {
 		types = append(types, item.Value.Type())
 
-		keyLit, ok := item.Key.(*LiteralValueExpression)
+		key := item.Key
+		if template, ok := key.(*TemplateExpression); ok && len(template.Parts) == 1 {
+			key = template.Parts[0]
+		}
+
+		keyLit, ok := key.(*LiteralValueExpression)
 		if ok {
 			key, err := convert.Convert(keyLit.Value, cty.String)
 			if err == nil {
@@ -588,8 +562,10 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 		typ = NewObjectType(properties)
 	}
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ObjectConsTokens)
 	return &ObjectConsExpression{
 		Syntax:   syntax,
+		Tokens:   tokens,
 		Items:    items,
 		exprType: liftOperationType(typ, keys...),
 	}, diagnostics
@@ -599,10 +575,13 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 func (b *expressionBinder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKeyExpr) (Expression, hcl.Diagnostics) {
 	if !syntax.ForceNonLiteral {
 		if name := hcl.ExprAsKeyword(syntax); name != "" {
-			return b.bindExpression(&hclsyntax.LiteralValueExpr{
+			expr, diags := b.bindExpression(&hclsyntax.LiteralValueExpr{
 				Val:      cty.StringVal(name),
 				SrcRange: syntax.Range(),
 			})
+			lit := expr.(*LiteralValueExpression)
+			lit.Tokens, _ = b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
+			return lit, diags
 		}
 	}
 	return b.bindExpression(syntax.Wrapped)
@@ -618,10 +597,13 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	parts, partDiags := b.bindTraversalParts(source.Type(), syntax.Traversal)
 	diagnostics = append(diagnostics, partDiags...)
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.RelativeTraversalTokens)
 	return &RelativeTraversalExpression{
-		Syntax: syntax,
-		Source: source,
-		Parts:  parts,
+		Syntax:    syntax,
+		Tokens:    tokens,
+		Source:    source,
+		Parts:     parts,
+		Traversal: syntax.Traversal,
 	}, diagnostics
 }
 
@@ -631,22 +613,31 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 func (b *expressionBinder) bindScopeTraversalExpression(
 	syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
 
-	def, ok := b.scope.BindReference(syntax.Traversal.RootName())
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ScopeTraversalTokens)
+
+	rootName := syntax.Traversal.RootName()
+	def, ok := b.scope.BindReference(rootName)
 	if !ok {
 		parts := make([]Traversable, len(syntax.Traversal))
 		for i := range parts {
 			parts[i] = DynamicType
 		}
 		return &ScopeTraversalExpression{
-			Syntax: syntax,
-			Parts:  parts,
-		}, hcl.Diagnostics{undefinedVariable(syntax.Traversal.SimpleSplit().Abs.SourceRange())}
+			Syntax:    syntax,
+			Tokens:    tokens,
+			Parts:     parts,
+			RootName:  syntax.Traversal.RootName(),
+			Traversal: syntax.Traversal,
+		}, hcl.Diagnostics{undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange())}
 	}
 
 	parts, diagnostics := b.bindTraversalParts(def, syntax.Traversal.SimpleSplit().Rel)
 	return &ScopeTraversalExpression{
-		Syntax: syntax,
-		Parts:  parts,
+		Syntax:    syntax,
+		Tokens:    tokens,
+		Parts:     parts,
+		RootName:  syntax.Traversal.RootName(),
+		Traversal: syntax.Traversal,
 	}, diagnostics
 }
 
@@ -686,8 +677,10 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	each, eachDiags := b.bindExpression(syntax.Each)
 	diagnostics = append(diagnostics, eachDiags...)
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.SplatTokens)
 	return &SplatExpression{
 		Syntax:   syntax,
+		Tokens:   tokens,
 		Source:   source,
 		Each:     each,
 		Item:     item,
@@ -698,10 +691,6 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 // bindTemplateExpression binds a template expression. The result is always a string. If any of the parts of the
 // expression are eventual, the result is eventual.
 func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr) (Expression, hcl.Diagnostics) {
-	if syntax.IsStringLiteral() {
-		return b.bindExpression(syntax.Parts[0])
-	}
-
 	var diagnostics hcl.Diagnostics
 	parts := make([]Expression, len(syntax.Parts))
 	for i, syntax := range syntax.Parts {
@@ -709,8 +698,10 @@ func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr
 		parts[i], diagnostics = part, append(diagnostics, partDiags...)
 	}
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.TemplateTokens)
 	return &TemplateExpression{
 		Syntax:   syntax,
+		Tokens:   tokens,
 		Parts:    parts,
 		exprType: liftOperationType(StringType, parts...),
 	}, diagnostics
@@ -751,8 +742,10 @@ func (b *expressionBinder) bindTupleConsExpression(syntax *hclsyntax.TupleConsEx
 		elementTypes[i] = expr.Type()
 	}
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.TupleConsTokens)
 	return &TupleConsExpression{
 		Syntax:      syntax,
+		Tokens:      tokens,
 		Expressions: exprs,
 		exprType:    NewTupleType(elementTypes...),
 	}, diagnostics
@@ -774,9 +767,12 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, operand)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
+	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.UnaryOpTokens)
 	return &UnaryOpExpression{
-		Syntax:   syntax,
-		Operand:  operand,
-		exprType: liftOperationType(signature.ReturnType, operand),
+		Syntax:    syntax,
+		Tokens:    tokens,
+		Operation: syntax.Op,
+		Operand:   operand,
+		exprType:  liftOperationType(signature.ReturnType, operand),
 	}, diagnostics
 }

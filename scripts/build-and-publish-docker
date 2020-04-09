@@ -43,7 +43,9 @@ for container in pulumi actions; do
 done
 
 echo "Running container runtime tests..."
+pushd ${ROOT}/tests
 GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+popd
 docker run -e RUN_CONTAINER_TESTS=true \
 	-e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
 	--volume /tmp:/src \

@@ -1,5 +1,7 @@
 {{ template "header" .Header }}
 
+{{- htmlSafe .DeprecationMessage }}
+
 {{ htmlSafe .Comment }}
 
 <!-- Create resource -->
@@ -137,3 +139,5 @@ The following state arguments are supported:
 {{ end }}
 
 {{ end }}
+
+{{ template "package_details" .PackageDetails }}

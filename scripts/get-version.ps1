@@ -2,7 +2,7 @@
 $ErrorActionPreference="Stop"
 
 git update-index -q --refresh
-git diff-files -- . ':!**/go.mod' ':!**/go.sum' --quiet | Out-Null
+git diff-files --quiet -- . ':!**/go.mod' ':!**/go.sum' | Out-Null
 
 $dirty=($LASTEXITCODE -ne 0)
 

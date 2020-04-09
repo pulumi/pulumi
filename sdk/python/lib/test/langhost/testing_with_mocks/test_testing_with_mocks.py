@@ -16,7 +16,12 @@ import pulumi
 
 class MyMocks(pulumi.runtime.Mocks):
     def call(self, token, args, provider):
-        return {}
+        if token == 'test:index:MyFunction':
+            return {
+                'out_value': 59,
+            }
+        else:
+            return {}
 
     def new_resource(self, type_, name, inputs, provider, id_):
         if type_ == 'aws:ec2/securityGroup:SecurityGroup':
@@ -55,3 +60,7 @@ class TestingWithMocks(unittest.TestCase):
         def check_ip(ip):
             self.assertEqual(ip, '203.0.113.12')
         return resources.myinstance.public_ip.apply(check_ip)
+
+    @pulumi.runtime.test
+    def test_invoke(self):
+        return self.assertEqual(resources.invoke_result, 59)

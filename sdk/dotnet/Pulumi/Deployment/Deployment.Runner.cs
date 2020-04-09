@@ -45,9 +45,9 @@ namespace Pulumi
                 return WhileRunningAsync();
             }
 
-            public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func)
+            public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options)
             {
-                var stack = new Stack(func);
+                var stack = new Stack(func, options);
                 RegisterTask("User program code.", stack.Outputs.DataTask);
                 return WhileRunningAsync();
             }

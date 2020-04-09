@@ -2,7 +2,7 @@ CHANGELOG
 =========
 
 ## 2.0.0 (Unreleased)
-
+=======
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
@@ -21,6 +21,13 @@ CHANGELOG
 - C# code generation switched to schema.
 
 - .NET API: replace `IDeployment` interface with `DeploymentInstance` class.
+
+## 1.14.0 (2020-04-01)
+- Fix error related to side-by-side versions of `@pulumi/pulumi`.
+  [#4235](https://github.com/pulumi/pulumi/pull/4235)
+  
+- Allow users to specify an alternate backend URL when using the GitHub Actions container with the env var `PULUMI_BACKEND_URL`.
+  [#4243](https://github.com/pulumi/pulumi/pull/4243)
 
 ## 1.13.1 (2020-03-27)
 - Move to a multi-module repo to enable modules for the Go SDK

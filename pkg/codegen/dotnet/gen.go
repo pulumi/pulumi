@@ -56,7 +56,9 @@ type typeDetails struct {
 	functionType bool
 }
 
-func title(s string) string {
+// Title converts the input string to a title case
+// where only the initial letter is upper-cased.
+func Title(s string) string {
 	if s == "" {
 		return ""
 	}
@@ -105,7 +107,7 @@ func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
-	return title(name)
+	return Title(name)
 }
 
 type modContext struct {
@@ -126,7 +128,7 @@ func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
 	}
-	return title(p.Name)
+	return Title(p.Name)
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -144,7 +146,7 @@ func tokenToName(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
+	return Title(components[2])
 }
 
 func resourceName(r *schema.Resource) string {
@@ -158,7 +160,7 @@ func (mod *modContext) tokenToNamespace(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	pkg, nsName := "Pulumi."+title(components[0]), mod.pkg.TokenToModule(tok)
+	pkg, nsName := "Pulumi."+Title(components[0]), mod.pkg.TokenToModule(tok)
 	if nsName == "" {
 		return pkg
 	}

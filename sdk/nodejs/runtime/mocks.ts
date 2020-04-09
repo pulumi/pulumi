@@ -112,6 +112,12 @@ export class MockMonitor {
     public registerResourceOutputs(req: any, callback: (err: any, innerResponse: any) => void) {
         callback(null, {});
     }
+
+    public supportsFeature(req: any, callback: (err: any, innerResponse: any) => void) {
+        callback(null, {
+            getHassupport: () => true,
+        });
+    }
 }
 
 /**

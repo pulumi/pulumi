@@ -15,6 +15,9 @@
 package model
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
@@ -25,7 +28,7 @@ type Attribute struct {
 	// The syntax node for the attribute, if any.
 	Syntax *hclsyntax.Attribute
 	// The tokens for the attribute.
-	Tokens syntax.AttributeTokens
+	Tokens *syntax.AttributeTokens
 
 	// The attribute's name.
 	Name string
@@ -38,12 +41,35 @@ func (a *Attribute) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(a.Syntax)
 }
 
+func (a *Attribute) hasLeadingTrivia() bool {
+	return a.Tokens != nil
+}
+
+func (a *Attribute) hasTrailingTrivia() bool {
+	return a.Value.hasTrailingTrivia()
+}
+
+func (a *Attribute) Format(f fmt.State, c rune) {
+	a.print(f, &printer{})
+}
+
+func (a *Attribute) print(w io.Writer, p *printer) {
+	p.fprintf(w, "%v% v% v",
+		a.Tokens.GetName().Or(hclsyntax.TokenIdent, a.Name),
+		a.Tokens.GetEquals().Or(hclsyntax.TokenEqual),
+		a.Value)
+}
+
+func (a *Attribute) Type() Type {
+	return a.Value.Type()
+}
+
 func (*Attribute) isBodyItem() {}
 
 // BindAttribute binds an HCL2 attribute using the given scope and token map.
 func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.TokenMap) (*Attribute, hcl.Diagnostics) {
 	value, diagnostics := BindExpression(attribute.Expr, scope, tokens)
-	attributeTokens, _ := tokens.ForNode(attribute).(syntax.AttributeTokens)
+	attributeTokens, _ := tokens.ForNode(attribute).(*syntax.AttributeTokens)
 	return &Attribute{
 		Syntax: attribute,
 		Tokens: attributeTokens,
