@@ -34,23 +34,23 @@ type DocLanguageHelper struct {
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
-func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, _, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
 	var packageNamespace string
-	if packageName != "" {
-		packageNamespace = "." + Title(packageName)
+	if pkg.Name != "" {
+		packageNamespace = "." + Title(pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
-func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
-	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
+	return d.GetDocLinkForResourceType(pkg, moduleName, typeName)
 }
 
 // GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
-func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
-	return d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
+	return d.GetDocLinkForResourceType(pkg, moduleName, typeName)
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.

@@ -44,9 +44,9 @@ var (
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
 	GetPropertyName(p *schema.Property) (string, error)
-	GetDocLinkForResourceType(packageName, moduleName, typeName string) string
-	GetDocLinkForResourceInputOrOutputType(packageName, moduleName, typeName string, input bool) string
-	GetDocLinkForFunctionInputOrOutputType(packageName, moduleName, typeName string, input bool) string
+	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
+	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
+	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
