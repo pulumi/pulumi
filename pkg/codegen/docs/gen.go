@@ -64,6 +64,7 @@ var (
 	// titleLookup is a map to map module package name to the desired display name
 	// for display in the TOC menu under API Reference.
 	titleLookup = map[string]string{
+		"aiven":        "Aiven",
 		"alicloud":     "AliCloud",
 		"aws":          "AWS",
 		"azure":        "Azure",
@@ -77,9 +78,11 @@ var (
 		"f5bigip":      "f5 BIG-IP",
 		"fastly":       "Fastly",
 		"gcp":          "GCP",
+		"gitlab":       "GitLab",
 		"kafka":        "Kafka",
 		"keycloak":     "Keycloak",
 		"linode":       "Linode",
+		"mailgun":      "Mailgun",
 		"mysql":        "MySQL",
 		"newrelic":     "New Relic",
 		"okta":         "Okta",
