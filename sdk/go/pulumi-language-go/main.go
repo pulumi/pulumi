@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 
@@ -35,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/go/common/version"
@@ -42,48 +42,12 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
-// findExecutable attempts to find the needed executable in various locations on the
-// filesystem, eventually resorting to searching in $PATH.
-func findExecutable(program string) (string, error) {
-	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
-		program = fmt.Sprintf("%s.exe", program)
-	}
-	// look in the same directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", errors.Wrap(err, "unable to get current working directory")
-	}
-
-	cwdProgram := filepath.Join(cwd, program)
-	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-		logging.V(5).Infof("program %s found in CWD", program)
-		return cwdProgram, nil
-	}
-
-	// look in $GOPATH/bin
-	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		goPathProgram := filepath.Join(goPath, "bin", program)
-		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
-			return goPathProgram, nil
-		}
-	}
-
-	// look in the $PATH somewhere
-	if fullPath, err := exec.LookPath(program); err == nil {
-		logging.V(5).Infof("program %s found in $PATH", program)
-		return fullPath, nil
-	}
-
-	return "", errors.Errorf("unable to find program: %s", program)
-}
-
 func findProgram(binary string) (*exec.Cmd, error) {
 	// we default to execution via `go run`
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
 	if binary != "" {
-		program, err := findExecutable(binary)
+		program, err := executable.FindExecutable(binary)
 		if err != nil {
 			return nil, errors.Wrap(err, "expected to find prebuilt executable")
 		}
@@ -92,7 +56,7 @@ func findProgram(binary string) (*exec.Cmd, error) {
 
 	// Fall back to 'go run' style executions
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via 'go run'")
-	program, err := findExecutable("go")
+	program, err := executable.FindExecutable("go")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
 	}
@@ -221,7 +185,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-	gobin, err := findExecutable("go")
+	gobin, err := executable.FindExecutable("go")
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't find go binary")
 	}

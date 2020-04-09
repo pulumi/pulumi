@@ -38,6 +38,9 @@ CHANGELOG
 - Add additional overloads to Deployment.RunAsync in .NET API.
   [#4286](https://github.com/pulumi/pulumi/pull/4286)
 
+- Automate execution of `go mod download` for `pulumi new` Go templates
+  [#4353](https://github.com/pulumi/pulumi/pull/4353)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
