@@ -41,12 +41,12 @@ func (a *Attribute) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(a.Syntax)
 }
 
-func (a *Attribute) hasLeadingTrivia() bool {
+func (a *Attribute) HasLeadingTrivia() bool {
 	return a.Tokens != nil
 }
 
-func (a *Attribute) hasTrailingTrivia() bool {
-	return a.Value.hasTrailingTrivia()
+func (a *Attribute) HasTrailingTrivia() bool {
+	return a.Value.HasTrailingTrivia()
 }
 
 func (a *Attribute) Format(f fmt.State, c rune) {

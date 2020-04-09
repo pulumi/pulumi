@@ -21,8 +21,11 @@ import (
 
 type printable interface {
 	print(w io.Writer, p *printer)
-	hasLeadingTrivia() bool
-	hasTrailingTrivia() bool
+
+	// HasLeadingTrivia returns true if the value has associated leading trivia.
+	HasLeadingTrivia() bool
+	// HasTrailingTrivia returns true if the value has associated trailing trivia.
+	HasTrailingTrivia() bool
 }
 
 type printer struct {
@@ -42,7 +45,7 @@ func (p *printer) indented(f func()) {
 }
 
 func (p *printer) format(f fmt.State, c rune, pp printable) {
-	if f.Flag(' ') && !pp.hasLeadingTrivia() {
+	if f.Flag(' ') && !pp.HasLeadingTrivia() {
 		switch pp.(type) {
 		case BodyItem:
 			p.fprintf(f, "\n%s", p.indent)
