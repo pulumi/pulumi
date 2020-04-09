@@ -45,7 +45,7 @@ import (
 // findExecutable attempts to find the needed executable in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func findExecutable(program string) (string, error) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
 		program = fmt.Sprintf("%s.exe", program)
 	}
 	// look in the same directory
