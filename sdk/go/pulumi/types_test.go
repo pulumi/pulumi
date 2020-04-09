@@ -393,3 +393,44 @@ func TestSecretApply(t *testing.T) {
 	}
 
 }
+
+func TestNil(t *testing.T) {
+	ao := Any(nil)
+	v, known, secret, err := await(ao)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, v)
+
+	o := ToOutput(nil)
+	v, known, secret, err = await(o)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, v)
+
+	o = ToOutput(ao)
+	v, known, secret, err = await(o)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, v)
+
+	ao = ToOutput("").ApplyT(func(v string) interface{} {
+		return nil
+	}).(AnyOutput)
+	v, known, secret, err = await(ao)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, nil, v)
+
+	bo := ao.ApplyBool(func(x interface{}) bool {
+		return x == nil
+	})
+	v, known, secret, err = await(bo)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, true, v)
+}

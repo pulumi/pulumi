@@ -29,10 +29,10 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
@@ -50,6 +50,8 @@ type Context struct {
 	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
 	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
 	rpcError    error       // the first error (if any) encountered during an RPC.
+
+	Log Log // the logging interface for the Pulumi log stream.
 }
 
 // NewContext creates a fresh run context out of the given metadata.
@@ -83,6 +85,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	mutex := &sync.Mutex{}
+	log := &logState{
+		engine: engine,
+		ctx:    ctx,
+	}
 	return &Context{
 		ctx:         ctx,
 		info:        info,
@@ -94,6 +100,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		rpcs:        0,
 		rpcsLock:    mutex,
 		rpcsDone:    sync.NewCond(mutex),
+		Log:         log,
 	}, nil
 }
 
@@ -269,10 +276,7 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -398,10 +402,7 @@ func (ctx *Context) RegisterResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -662,17 +663,21 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		state.outputs["id"] = crs.id
 	}
 
-	// Populate ResourceState resolvers.
-	contract.Assert(rs != nil)
-	rs.providers = providers
-	rs.urn = URNOutput{newOutputState(urnType, resourceV)}
-	state.outputs["urn"] = rs.urn
-	state.name = name
-	rs.name = name
-	state.aliases = aliases
-	rs.aliases = aliases
-	state.transformations = transformations
-	rs.transformations = transformations
+	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
+	populateResourceStateResolvers := func() {
+		contract.Assert(rs != nil)
+		state.providers = providers
+		rs.providers = providers
+		rs.urn = URNOutput{newOutputState(urnType, resourceV)}
+		state.outputs["urn"] = rs.urn
+		state.name = name
+		rs.name = name
+		state.aliases = aliases
+		rs.aliases = aliases
+		state.transformations = transformations
+		rs.transformations = transformations
+	}
+	populateResourceStateResolvers()
 
 	return state
 }

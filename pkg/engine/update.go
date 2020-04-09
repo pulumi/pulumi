@@ -16,23 +16,26 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // RequiredPolicy represents a set of policies to apply during an update.
@@ -43,6 +46,8 @@ type RequiredPolicy interface {
 	Version() string
 	// Install will install the PolicyPack locally, returning the path it was installed to.
 	Install(ctx context.Context) (string, error)
+	// Config returns the PolicyPack's configuration.
+	Config() map[string]*json.RawMessage
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -51,16 +56,27 @@ type LocalPolicyPack struct {
 	Name string
 	// Path of the local Policy Pack.
 	Path string
+	// Path of the local Policy Pack's JSON config file.
+	Config string
 }
 
 // MakeLocalPolicyPacks is a helper function for converting the list of local Policy
 // Pack paths to list of LocalPolicyPack. The name of the Local Policy Pack is not set
 // since we must load up the Policy Pack plugin to determine its name.
-func MakeLocalPolicyPacks(localPaths []string) []LocalPolicyPack {
+func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPolicyPack {
+	// If we have any configPaths, we should have already validated that the length of
+	// the localPaths and configPaths are the same.
+	contract.Assert(len(configPaths) == 0 || len(configPaths) == len(localPaths))
+
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
+		var config string
+		if len(configPaths) > 0 {
+			config = configPaths[i]
+		}
 		r[i] = LocalPolicyPack{
-			Path: p,
+			Path:   p,
+			Config: config,
 		}
 	}
 	return r
@@ -219,8 +235,17 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPolicy, localPolicyPacks []LocalPolicyPack,
-	opts *plugin.PolicyAnalyzerOptions) error {
+func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
+	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions) error {
+
+	var allValidationErrors []string
+	appendValidationErrors := func(policyPackName, policyPackVersion string, validationErrors []string) {
+		for _, validationError := range validationErrors {
+			allValidationErrors = append(allValidationErrors,
+				fmt.Sprintf("validating policy config: %s %s  %s",
+					policyPackName, policyPackVersion, validationError))
+		}
+	}
 
 	// Install and load required policy packs.
 	for _, policy := range policies {
@@ -229,9 +254,35 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return err
 		}
 
-		_, err = plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
 		if err != nil {
 			return err
+		}
+
+		analyzerInfo, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return err
+		}
+
+		// Parse the config, reconcile & validate it, and pass it to the policy pack.
+		if !analyzerInfo.SupportsConfig {
+			if len(policy.Config()) > 0 {
+				logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+			}
+			continue
+		}
+		configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
+		if err != nil {
+			return err
+		}
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
+		if err != nil {
+			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
+		}
+		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+		if err = analyzer.Configure(config); err != nil {
+			return errors.Wrapf(err, "configuring policy pack %q", analyzerInfo.Name)
 		}
 	}
 
@@ -246,7 +297,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 		if err != nil {
 			return err
 		} else if analyzer == nil {
-			return errors.Errorf("analyzer could not be loaded from path %q", pack.Path)
+			return errors.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
 		}
 
 		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
@@ -255,7 +306,41 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, policies []RequiredPol
 			return err
 		}
 		localPolicyPacks[i].Name = analyzerInfo.Name
+
+		// Load config, reconcile & validate it, and pass it to the policy pack.
+		if !analyzerInfo.SupportsConfig {
+			if pack.Config != "" {
+				return errors.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
+			}
+			continue
+		}
+		var configFromFile map[string]plugin.AnalyzerPolicyConfig
+		if pack.Config != "" {
+			configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+			if err != nil {
+				return err
+			}
+		}
+		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
+		if err != nil {
+			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
+		}
+		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+		if err = analyzer.Configure(config); err != nil {
+			return errors.Wrapf(err, "configuring policy pack %q at %q", analyzerInfo.Name, pack.Path)
+		}
 	}
+
+	// Report any policy config validation errors and return an error.
+	if len(allValidationErrors) > 0 {
+		sort.Strings(allValidationErrors)
+		for _, validationError := range allValidationErrors {
+			plugctx.Diag.Errorf(diag.Message("", validationError))
+		}
+		return errors.New("validating policy config")
+	}
+
 	return nil
 }
 
@@ -296,7 +381,7 @@ func newUpdateSource(
 		Config:  config,
 		DryRun:  dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts.RequiredPolicies, opts.LocalPolicyPacks,
+	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}
@@ -318,13 +403,17 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	}
 
 	policies := map[string]string{}
-	for _, p := range opts.RequiredPolicies {
-		policies[p.Name()] = p.Version()
-	}
-	for _, pack := range opts.LocalPolicyPacks {
-		path := abbreviateFilePath(pack.Path)
-		packName := fmt.Sprintf("%s (%s)", pack.Name, path)
-		policies[packName] = "(local)"
+
+	// Refresh does not execute Policy Packs.
+	if !opts.isRefresh {
+		for _, p := range opts.RequiredPolicies {
+			policies[p.Name()] = p.Version()
+		}
+		for _, pack := range opts.LocalPolicyPacks {
+			path := abbreviateFilePath(pack.Path)
+			packName := fmt.Sprintf("%s (%s)", pack.Name, path)
+			policies[packName] = "(local)"
+		}
 	}
 
 	var resourceChanges ResourceChanges

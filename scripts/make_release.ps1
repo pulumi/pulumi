@@ -10,10 +10,11 @@ $Version = $( & "$PSScriptRoot\get-version.cmd")
 $Branch = $(if (Test-Path env:APPVEYOR_REPO_BRANCH) { $env:APPVEYOR_REPO_BRANCH } else { $(git rev-parse --abbrev-ref HEAD) })
 $PublishTargets = @($GitHash, $Version, $Branch)
 
-function RunGoBuild($goPackage) {
+function RunGoBuild($goPackage, $dir, $outputName) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
-    $outputName = Split-Path -Leaf $(go list -f "{{.Target}}" $goPackage)
+    Push-Location $dir
     go build -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=$Version" -o "$binRoot\$outputName" $goPackage
+    Pop-Location
 }
 
 function CopyPackage($pathToModule, $moduleName) {
@@ -27,16 +28,17 @@ function CopyPackage($pathToModule, $moduleName) {
     }
 }
 
-RunGoBuild "github.com/pulumi/pulumi"
-RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
-RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python"
-RunGoBuild "github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet"
-RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go"
+RunGoBuild "github.com/pulumi/pulumi/pkg/cmd/pulumi" "pkg" "pulumi.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" "sdk" "pulumi-language-nodejs.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python" "sdk" "pulumi-language-python.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/dotnet/cmd/pulumi-language-dotnet" "sdk" "pulumi-language-dotnet.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go" "sdk" "pulumi-language-go.exe"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\python\dist\pulumi-resource-pulumi-python.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-analyzer-policy.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\python\dist\pulumi-analyzer-policy-python.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\python\cmd\pulumi-language-python-exec" "$PublishDir\bin"
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing

@@ -22,12 +22,12 @@ import (
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
@@ -294,6 +294,13 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	diff, err := provider.DiffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
+	}
+	if diff.Changes == plugin.DiffUnknown {
+		if olds.DeepEquals(news) {
+			diff.Changes = plugin.DiffNone
+		} else {
+			diff.Changes = plugin.DiffSome
+		}
 	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.

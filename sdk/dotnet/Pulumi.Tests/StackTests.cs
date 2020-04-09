@@ -15,10 +15,10 @@ namespace Pulumi.Tests
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> ExplicitName { get; }
+            public Output<string> ExplicitName { get; set; }
 
             [Output]
-            public Output<string> ImplicitName { get; }
+            public Output<string> ImplicitName { get; set; }
 
             public ValidStack()
             {
@@ -51,7 +51,7 @@ namespace Pulumi.Tests
             }
             catch (RunException ex)
             {
-                Assert.Contains("foo", ex.Message);
+                Assert.Contains("Output(s) 'foo' have no value assigned", ex.ToString());
                 return;
             }
 
@@ -61,7 +61,7 @@ namespace Pulumi.Tests
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]
-            public string Foo { get; }
+            public string Foo { get; set; }
 
             public InvalidOutputTypeStack()
             {
@@ -78,7 +78,7 @@ namespace Pulumi.Tests
             }
             catch (RunException ex)
             {
-                Assert.Contains("foo", ex.Message);
+                Assert.Contains("Output(s) 'foo' have incorrect type", ex.ToString());
                 return;
             }
 

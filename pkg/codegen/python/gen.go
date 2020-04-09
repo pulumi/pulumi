@@ -34,8 +34,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -136,7 +137,7 @@ func (mod *modContext) gen(fs fs) error {
 			d = ""
 		}
 		if d == dir {
-			exports = append(exports, p[:len(p)-len(".py")])
+			exports = append(exports, strings.TrimSuffix(path.Base(p), ".py"))
 		}
 	}
 
@@ -170,21 +171,6 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			addFile("vars.py", vars)
-		}
-	}
-
-	// Calculate casing tables. We do this up front because our docstring generator (which is run during
-	// genResource) requires them.
-	for _, r := range mod.resources {
-		for _, prop := range r.Properties {
-			if err := mod.recordProperty(prop); err != nil {
-				return err
-			}
-		}
-		for _, prop := range r.InputProperties {
-			if err := mod.recordProperty(prop); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -585,7 +571,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
 	if fun.Comment != "" {
-		fmt.Fprintln(docs, fun.Comment)
+		fmt.Fprintln(docs, codegen.StripNonRelevantExamples(fun.Comment, "python"))
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
@@ -650,6 +636,14 @@ var oldestAllowedPulumi = semver.Version{
 	Patch: 28,
 }
 
+func sanitizePackageDescription(description string) string {
+	lines := strings.SplitN(description, "\n", 2)
+	if len(lines) > 0 {
+		return lines[0]
+	}
+	return ""
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
 	w := &bytes.Buffer{}
@@ -692,7 +686,7 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPack(pkg.Name))
 	fmt.Fprintf(w, "      version='${VERSION}',\n")
 	if pkg.Description != "" {
-		fmt.Fprintf(w, "      description=\"\"\"%s\"\"\",\n", pkg.Description)
+		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")
@@ -836,19 +830,20 @@ type propertyInfo struct {
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
 func (mod *modContext) recordProperty(prop *schema.Property) error {
+	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
 		var info propertyInfo
 		if err := json.Unmarshal([]byte(python), &info); err != nil {
 			return errors.Wrap(err, "decoding python property info")
 		}
-		if !info.MapCase {
-			return nil
-		}
+		mapCase = info.MapCase
 	}
 
-	snakeCaseName := PyName(prop.Name)
-	mod.snakeCaseToCamelCase[snakeCaseName] = prop.Name
-	mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
+	if mapCase {
+		snakeCaseName := PyName(prop.Name)
+		mod.snakeCaseToCamelCase[snakeCaseName] = prop.Name
+		mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
+	}
 
 	if obj, ok := prop.Type.(*schema.ObjectType); ok {
 		for _, p := range obj.Properties {
@@ -885,7 +880,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
-		fmt.Fprintln(b, res.Comment)
+		fmt.Fprintln(b, codegen.StripNonRelevantExamples(res.Comment, "python"))
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
@@ -1199,14 +1194,32 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		_ = getMod(":config/config:")
 	}
 
-	scanResource := func(r *schema.Resource) {
+	scanResource := func(r *schema.Resource) error {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
+
+		// Calculate casing tables. We do this up front because our docstring generator (which is run during
+		// genResource) requires them.
+		for _, prop := range r.Properties {
+			if err := mod.recordProperty(prop); err != nil {
+				return err
+			}
+		}
+		for _, prop := range r.InputProperties {
+			if err := mod.recordProperty(prop); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
-	scanResource(pkg.Provider)
+	if err := scanResource(pkg.Provider); err != nil {
+		return nil, err
+	}
 	for _, r := range pkg.Resources {
-		scanResource(r)
+		if err := scanResource(r); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, f := range pkg.Functions {

@@ -1,0 +1,6 @@
+<!-- linkify_param is used to wrap constructor/function params in an anchor tag. -->
+{{ define "linkify_param" }}<span class="nx"><a href="{{ .Link }}">{{ if ne .DisplayName "" }}{{ .DisplayName }}{{ else }}{{ .Name }}{{ end }}</a></span>{{ end }}
+
+<!-- linkify wraps any propertyType instance in an anchor tag. The display name/name is rendered as-is by passing it through the htmlSafe function
+to avoid double-encoding html characters, which is typical of properties type names. -->
+{{ define "linkify" }}<a href="{{ .Link }}">{{ if ne .DisplayName "" }}{{ htmlSafe .DisplayName }}{{ else }}{{ htmlSafe .Name }}{{ end }}</a>{{ end }}

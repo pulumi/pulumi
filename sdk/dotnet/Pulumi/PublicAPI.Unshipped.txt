@@ -172,17 +172,12 @@ Pulumi.ResourceTransformationResult
 Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
-Pulumi.Serialization.InputAttribute
-Pulumi.Serialization.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
-Pulumi.Serialization.OutputAttribute
-Pulumi.Serialization.OutputAttribute.Name.get -> string
-Pulumi.Serialization.OutputAttribute.OutputAttribute(string name = null) -> void
-Pulumi.Serialization.OutputConstructorAttribute
-Pulumi.Serialization.OutputConstructorAttribute.OutputConstructorAttribute() -> void
-Pulumi.Serialization.OutputTypeAttribute
-Pulumi.Serialization.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.Stack
-Pulumi.Stack.Stack() -> void
+Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
+Pulumi.StackOptions
+Pulumi.StackOptions.StackOptions() -> void
+Pulumi.StackOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
+Pulumi.StackOptions.ResourceTransformations.set -> void
 Pulumi.StackReference
 Pulumi.StackReference.GetOutput(Pulumi.Input<string> name) -> Pulumi.Output<object>
 Pulumi.StackReference.GetValueAsync(Pulumi.Input<string> name) -> System.Threading.Tasks.Task<object>
@@ -198,6 +193,17 @@ Pulumi.StackReferenceArgs.Name.set -> void
 Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
+Pulumi.Testing.IMocks
+Pulumi.Testing.IMocks.CallAsync(string token, System.Collections.Immutable.ImmutableDictionary<string, object> args, string provider) -> System.Threading.Tasks.Task<object>
+Pulumi.Testing.IMocks.NewResourceAsync(string type, string name, System.Collections.Immutable.ImmutableDictionary<string, object> inputs, string provider, string id) -> System.Threading.Tasks.Task<(string id, object state)>
+Pulumi.Testing.TestOptions
+Pulumi.Testing.TestOptions.TestOptions() -> void
+Pulumi.Testing.TestOptions.ProjectName.get -> string
+Pulumi.Testing.TestOptions.ProjectName.set -> void
+Pulumi.Testing.TestOptions.StackName.get -> string
+Pulumi.Testing.TestOptions.StackName.set -> void
+Pulumi.Testing.TestOptions.IsPreview.get -> bool?
+Pulumi.Testing.TestOptions.IsPreview.set -> void
 Pulumi.Union<T0, T1>
 Pulumi.Union<T0, T1>.AsT0.get -> T0
 Pulumi.Union<T0, T1>.AsT1.get -> T1
@@ -223,6 +229,7 @@ static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Task
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.IMocks mocks, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
@@ -268,8 +275,10 @@ static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? st
 static Pulumi.Log.Exception(System.Exception exception, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
-static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Output<T>> outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(params Pulumi.Output<T>[] outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>

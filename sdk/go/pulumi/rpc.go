@@ -22,8 +22,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -267,7 +267,10 @@ func marshalInputAndDetermineSecret(v interface{},
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, secret, nil
 			}
-			v, destType = rv.Elem().Interface(), destType.Elem()
+			if destType.Kind() == reflect.Ptr {
+				destType = destType.Elem()
+			}
+			v = rv.Elem().Interface()
 			continue
 		case reflect.String:
 			return resource.NewStringProperty(rv.String()), deps, secret, nil

@@ -50,8 +50,10 @@ namespace Pulumi
         /// <summary>
         /// Create a Stack with stack resources defined in derived class constructor.
         /// </summary>
-        public Stack()
-            : base(_rootPulumiStackTypeName, $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}")
+        public Stack(StackOptions? options = null)
+            : base(_rootPulumiStackTypeName, 
+                $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}",
+                ConvertOptions(options))
         {
             Deployment.InternalInstance.Stack = this;
         }
@@ -79,12 +81,9 @@ namespace Pulumi
         internal void RegisterPropertyOutputs()
         {
             var outputs = (from property in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                           let attr1 = property.GetCustomAttribute<Pulumi.OutputAttribute>()
-#pragma warning disable 618
-                           let attr2 = property.GetCustomAttribute<Pulumi.Serialization.OutputAttribute>()
-#pragma warning restore 618
-                           where attr1 != null || attr2 != null
-                           let name = attr1?.Name ?? attr2?.Name ?? property.Name
+                           let attr = property.GetCustomAttribute<OutputAttribute>()
+                           where attr != null
+                           let name = attr?.Name ?? property.Name
                            select new KeyValuePair<string, object?>(name, property.GetValue(this))).ToList();
 
             // Check that none of the values are null: catch unassigned outputs
@@ -120,6 +119,17 @@ namespace Pulumi
             return dictionary == null
                 ? ImmutableDictionary<string, object?>.Empty
                 : dictionary.ToImmutableDictionary();
+        }
+        
+        private static ComponentResourceOptions? ConvertOptions(StackOptions? options)
+        {
+            if (options == null)
+                return null;
+            
+            return new ComponentResourceOptions
+            {
+                ResourceTransformations = options.ResourceTransformations
+            };
         }
     }
 }

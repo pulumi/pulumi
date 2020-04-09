@@ -29,9 +29,13 @@ if sys.version_info[0] == 3 and sys.version_info[1] < 7:
 
     _enter_task = enter_task
     _leave_task = leave_task
+    _all_tasks = asyncio.Task.all_tasks
+    _get_current_task = asyncio.Task.current_task
 else:
     _enter_task = asyncio.tasks._enter_task # type: ignore
     _leave_task = asyncio.tasks._leave_task # type: ignore
+    _all_tasks = asyncio.all_tasks # type: ignore
+    _get_current_task = asyncio.current_task # type: ignore
 
 
 def _sync_await(awaitable: Awaitable[Any]) -> Any:
@@ -41,7 +45,15 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     """
 
     # Fetch the current event loop and ensure a future.
-    loop = asyncio.get_event_loop()
+    loop = None
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        pass
+    if loop is None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     fut = asyncio.ensure_future(awaitable)
 
     # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
@@ -51,7 +63,7 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # If we are executing inside a task, pretend we've returned from its current callback--effectively yielding to
     # the event loop--by calling _leave_task.
-    task = asyncio.Task.current_task(loop)
+    task = _get_current_task(loop)
     if task is not None:
         _leave_task(loop, task)
 

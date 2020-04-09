@@ -33,8 +33,9 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -55,7 +56,9 @@ type typeDetails struct {
 	functionType bool
 }
 
-func title(s string) string {
+// Title converts the input string to a title case
+// where only the initial letter is upper-cased.
+func Title(s string) string {
 	if s == "" {
 		return ""
 	}
@@ -104,7 +107,7 @@ func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
-	return title(name)
+	return Title(name)
 }
 
 type modContext struct {
@@ -125,7 +128,7 @@ func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
 	}
-	return title(p.Name)
+	return Title(p.Name)
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -143,7 +146,7 @@ func tokenToName(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
+	return Title(components[2])
 }
 
 func resourceName(r *schema.Resource) string {
@@ -157,7 +160,7 @@ func (mod *modContext) tokenToNamespace(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	pkg, nsName := "Pulumi."+title(components[0]), mod.pkg.TokenToModule(tok)
+	pkg, nsName := "Pulumi."+Title(components[0]), mod.pkg.TokenToModule(tok)
 	if nsName == "" {
 		return pkg
 	}
@@ -554,7 +557,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, r.Comment, "    ")
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
 	className := name
@@ -771,7 +774,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	}
 
 	// Emit the doc comment, if any.
-	printComment(w, fun.Comment, "        ")
+	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "csharp"), "        ")
 
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)
@@ -1202,14 +1205,16 @@ func computePropertyNames(props []*schema.Property, names map[*schema.Property]s
 	return nil
 }
 
-type csharpPackageInfo struct {
+// CSharpPackageInfo represents the C# language-specific info at the root
+// of the schema.
+type CSharpPackageInfo struct {
 	PackageReferences map[string]string `json:"packageReferences,omitempty"`
 	Namespaces        map[string]string `json:"namespaces,omitempty"`
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode csharp-specific info
-	var info csharpPackageInfo
+	var info CSharpPackageInfo
 	if csharp, ok := pkg.Language["csharp"]; ok {
 		if err := json.Unmarshal([]byte(csharp), &info); err != nil {
 			return nil, errors.Wrap(err, "decoding csharp package info")

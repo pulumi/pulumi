@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
 // Output helps encode the relationship between resources in a Pulumi application. Specifically an output property
@@ -385,7 +385,11 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 
 		// If we have a known value, run the applier to transform it.
-		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(v)})
+		val := reflect.ValueOf(v)
+		if !val.IsValid() {
+			val = reflect.Zero(o.elementType())
+		}
+		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
 		if len(results) == 2 && !results[1].IsNil() {
 			result.reject(results[1].Interface().(error))
 			return
@@ -432,6 +436,10 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 }
 
 func gatherDependencies(v interface{}) []Resource {
+	if v == nil {
+		return nil
+	}
+
 	depSet := make(map[Resource]struct{})
 	gatherDependencySet(reflect.ValueOf(v), depSet)
 
@@ -557,7 +565,11 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 				return known, secret, err
 			}
 			if !assignInput {
-				resolved.Set(reflect.ValueOf(e))
+				val := reflect.ValueOf(e)
+				if !val.IsValid() {
+					val = reflect.Zero(output.ElementType())
+				}
+				resolved.Set(val)
 			} else {
 				resolved.Set(reflect.ValueOf(input))
 			}
@@ -706,6 +718,11 @@ func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) O
 
 	result := newOutput(resultType, gatherDependencies(v)...)
 	go func() {
+		if v == nil {
+			result.fulfill(nil, true, false, nil)
+			return
+		}
+
 		element := reflect.New(resolvedType).Elem()
 
 		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), element)
@@ -794,6 +811,10 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	// Return an output that resolves when all nested inputs have resolved.
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
+		if v == nil {
+			out.fulfill(nil, true, false, nil)
+			return
+		}
 		var result interface{}
 		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
 		out.fulfill(result, known, secret, err)

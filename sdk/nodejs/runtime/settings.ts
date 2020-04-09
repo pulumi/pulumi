@@ -139,7 +139,7 @@ export function getProject(): string {
     requireTestModeEnabled();
 
     // And now an error if test mode is enabled, instructing how to manually configure the project:
-    throw new Error("Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT");
+    throw new Error("Missing project name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 
 /** @internal Used only for testing purposes. */

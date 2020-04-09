@@ -33,12 +33,8 @@ if TYPE_CHECKING:
     from ..resource import Resource
 
 
-loop = None
-
-
 def test(fn):
     def wrapper(*args, **kwargs):
-        asyncio.set_event_loop(loop)
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
@@ -93,8 +89,7 @@ class MockMonitor:
 
         ret = self.mocks.call(request.tok, args, request.provider)
 
-        asyncio.set_event_loop(loop)
-        ret_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(ret, {})))
+        ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
         fields = {"failures": None, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
@@ -104,8 +99,7 @@ class MockMonitor:
 
         _, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
 
-        asyncio.set_event_loop(loop)
-        props_proto = _sync_await(asyncio.ensure_future(rpc.serialize_properties(state, {})))
+        props_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         urn = self.make_urn(request.parent, request.type, request.name)
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
@@ -115,7 +109,6 @@ class MockMonitor:
 
         id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
 
-        asyncio.set_event_loop(loop)
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         urn = self.make_urn(request.parent, request.type, request.name)
@@ -124,6 +117,10 @@ class MockMonitor:
     def RegisterResourceOutputs(self, request):
         #pylint: disable=unused-argument
         return empty_pb2.Empty()
+
+    def SupportsFeature(self, request):
+        #pylint: disable=unused-argument
+        return type('SupportsFeatureResponse', (object,), {'hasSupport' : True})
 
 
 class MockEngine:
@@ -158,7 +155,3 @@ def set_mocks(mocks: Mocks,
                         dry_run=preview,
                         test_mode_enabled=True)
     configure(settings)
-
-    # Make sure we have an event loop.
-    global loop
-    loop = asyncio.get_event_loop()

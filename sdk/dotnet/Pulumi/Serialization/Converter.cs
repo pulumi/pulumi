@@ -113,10 +113,7 @@ namespace Pulumi.Serialization
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
-            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null
-#pragma warning disable 618
-                && targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>() == null)
-#pragma warning restore 618
+            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null)
                 return (null, new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}"));
 
@@ -324,8 +321,17 @@ namespace Pulumi.Serialization
             if (targetType == typeof(ImmutableDictionary<string, object>))
             {
                 // This type is what is generated for things like azure/aws tags.  It's an untyped
-                // map in our original schema.  This is the only place that `object` should appear
-                // as a legal value.
+                // map in our original schema.  This is the 1st out of 2 places that `object` should
+                // appear as a legal value.
+                return;
+            }
+
+            if (targetType == typeof(ImmutableArray<object>))
+            {
+                // This type is what is generated for things like YAML decode invocation response
+                // in the Kubernetes provider. The elements of the array would typically be
+                // immutable dictionaries.  This is the 2nd out of 2 places that `object` should
+                // appear as a legal value.
                 return;
             }
 
@@ -368,24 +374,21 @@ $@"{context} contains invalid type {targetType.FullName}:
                 }
             }
 
-            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>()
-#pragma warning disable 618
-                                        ?? targetType.GetCustomAttribute<Pulumi.Serialization.OutputTypeAttribute>();
-#pragma warning restore 618
+            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
 $@"{context} contains invalid type {targetType.FullName}. Allowed types are:
     String, Boolean, Int32, Double,
     Nullable<...>, ImmutableArray<...> and ImmutableDictionary<string, ...> or
-    a class explicitly marked with the [{nameof(Pulumi.OutputTypeAttribute)}].");
+    a class explicitly marked with the [{nameof(OutputTypeAttribute)}].");
             }
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
-$@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(Pulumi.OutputConstructorAttribute)}].");
+$@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contain constructor marked with [{nameof(OutputConstructorAttribute)}].");
             }
 
             foreach (var param in constructor.GetParameters())
@@ -396,9 +399,6 @@ $@"{targetType.FullName} had [{nameof(Pulumi.OutputTypeAttribute)}], but did not
 
         private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<Pulumi.OutputConstructorAttribute>() != null
-#pragma warning disable 618
-                     || c.GetCustomAttributes<Pulumi.Serialization.OutputConstructorAttribute>() != null);
-#pragma warning restore 618
+                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
     }
 }

@@ -21,251 +21,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
-
-// Trivia represents bytes in a source file that are not syntactically meaningful. This includes whitespace and
-// comments.
-type Trivia interface {
-	// Range returns the range of the trivia in the source file.
-	Range() hcl.Range
-	// Bytes returns the raw bytes that comprise the trivia.
-	Bytes() []byte
-
-	isTrivia()
-}
-
-// Comment is a piece of trivia that represents a line or block comment in a source file.
-type Comment struct {
-	// Lines contains the lines of the comment without leading comment characters or trailing newlines.
-	Lines []string
-
-	rng   hcl.Range
-	bytes []byte
-}
-
-// Range returns the range of the comment in the source file.
-func (c Comment) Range() hcl.Range {
-	return c.rng
-}
-
-// Bytes returns the raw bytes that comprise the comment.
-func (c Comment) Bytes() []byte {
-	return c.bytes
-}
-
-func (Comment) isTrivia() {}
-
-// Whitespace is a piece of trivia that represents a sequence of whitespace characters in a source file.
-type Whitespace struct {
-	rng   hcl.Range
-	bytes []byte
-}
-
-// Range returns the range of the whitespace in the source file.
-func (w Whitespace) Range() hcl.Range {
-	return w.rng
-}
-
-// Bytes returns the raw bytes that comprise the whitespace.
-func (w Whitespace) Bytes() []byte {
-	return w.bytes
-}
-
-func (Whitespace) isTrivia() {}
-
-// Token represents an HCL2 syntax token with attached leading trivia.
-type Token struct {
-	Raw            hclsyntax.Token
-	LeadingTrivia  []Trivia
-	TrailingTrivia []Trivia
-}
-
-// Range returns the total range covered by this token and any leading trivia.
-func (t Token) Range() hcl.Range {
-	start := t.Raw.Range.Start
-	if len(t.LeadingTrivia) > 0 {
-		start = t.LeadingTrivia[0].Range().Start
-	}
-	end := t.Raw.Range.End
-	if len(t.TrailingTrivia) > 0 {
-		end = t.TrailingTrivia[len(t.TrailingTrivia)-1].Range().End
-	}
-	return hcl.Range{Filename: t.Raw.Range.Filename, Start: start, End: end}
-}
-
-// NodeTokens is a closed interface that is used to represent arbitrary *Tokens types in this package.
-type NodeTokens interface {
-	isNodeTokens()
-}
-
-// AttributeTokens records the tokens associated with an *hclsyntax.Attribute.
-type AttributeTokens struct {
-	Name   Token
-	Equals Token
-}
-
-func (AttributeTokens) isNodeTokens() {}
-
-// BinaryOpTokens records the tokens associated with an *hclsyntax.BinaryOpExpr.
-type BinaryOpTokens struct {
-	Operator Token
-}
-
-func (BinaryOpTokens) isNodeTokens() {}
-
-// BlockTokens records the tokens associated with an *hclsyntax.Block.
-type BlockTokens struct {
-	Type       Token
-	Labels     []Token
-	OpenBrace  Token
-	CloseBrace Token
-}
-
-func (BlockTokens) isNodeTokens() {}
-
-// BodyTokens records the tokens associated with an *hclsyntax.Body.
-type BodyTokens struct {
-	EndOfFile Token
-}
-
-func (BodyTokens) isNodeTokens() {}
-
-// ConditionalTokens records the tokens associated with an *hclsyntax.ConditionalExpr.
-type ConditionalTokens struct {
-	QuestionMark Token
-	Colon        Token
-}
-
-func (ConditionalTokens) isNodeTokens() {}
-
-// ForTokens records the tokens associated with an *hclsyntax.ForExpr.
-type ForTokens struct {
-	Open  Token
-	For   Token
-	Key   *Token
-	Comma *Token
-	Value Token
-	In    Token
-	Colon Token
-	Arrow *Token
-	Group *Token
-	If    *Token
-	Close Token
-}
-
-func (ForTokens) isNodeTokens() {}
-
-// FunctionCallTokens records the tokens associated with an *hclsyntax.FunctionCallExpr.
-type FunctionCallTokens struct {
-	Name       Token
-	OpenParen  Token
-	CloseParen Token
-}
-
-func (FunctionCallTokens) isNodeTokens() {}
-
-// IndexTokens records the tokens associated with an *hclsyntax.IndexExpr.
-type IndexTokens struct {
-	OpenBracket  Token
-	CloseBracket Token
-}
-
-func (IndexTokens) isNodeTokens() {}
-
-// LiteralValueTokens records the tokens associated with an *hclsyntax.LiteralValueExpr.
-type LiteralValueTokens struct {
-	Value []Token
-}
-
-func (LiteralValueTokens) isNodeTokens() {}
-
-// ObjectConsItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
-type ObjectConsItemTokens struct {
-	Equals Token
-	Comma  *Token
-}
-
-// ObjectConsTokens records the tokens associated with an *hclsyntax.ObjectConsExpr.
-type ObjectConsTokens struct {
-	OpenBrace  Token
-	Items      []ObjectConsItemTokens
-	CloseBrace Token
-}
-
-func (ObjectConsTokens) isNodeTokens() {}
-
-// TraverserTokens is a closed interface implemented by DotTraverserTokens and BracketTraverserTokens
-type TraverserTokens interface {
-	isTraverserTokens()
-}
-
-// DotTraverserTokens records the tokens associated with dotted traverser (i.e. '.' <attr>).
-type DotTraverserTokens struct {
-	Dot   Token
-	Index Token
-}
-
-func (DotTraverserTokens) isTraverserTokens() {}
-
-// BracketTraverserTokens records the tokens associated with a bracketed traverser (i.e. '[' <index> ']').
-type BracketTraverserTokens struct {
-	OpenBracket  Token
-	Index        Token
-	CloseBracket Token
-}
-
-func (BracketTraverserTokens) isTraverserTokens() {}
-
-// RelativeTraversalTokens records the tokens associated with an *hclsyntax.RelativeTraversalExpr.
-type RelativeTraversalTokens struct {
-	Traversal []TraverserTokens
-}
-
-func (RelativeTraversalTokens) isNodeTokens() {}
-
-// ScopeTraversalTokens records the tokens associated with an *hclsyntax.ScopeTraversalExpr.
-type ScopeTraversalTokens struct {
-	Root      Token
-	Traversal []TraverserTokens
-}
-
-func (ScopeTraversalTokens) isNodeTokens() {}
-
-// SplatTokens records the tokens associated with an *hclsyntax.SplatExpr.
-type SplatTokens struct {
-	Open  Token
-	Star  Token
-	Close *Token
-}
-
-func (SplatTokens) isNodeTokens() {}
-
-// TemplateTokens records the tokens associated with an *hclsyntax.TemplateExpr.
-type TemplateTokens struct {
-	// TODO(pdg): tokens for template parts
-
-	Open  Token
-	Close Token
-}
-
-func (TemplateTokens) isNodeTokens() {}
-
-// TupleConsTokens records the tokens associated with an *hclsyntax.TupleConsExpr.
-type TupleConsTokens struct {
-	OpenBracket  Token
-	Commas       []Token
-	CloseBracket Token
-}
-
-func (TupleConsTokens) isNodeTokens() {}
-
-// UnaryOpTokens records the tokens associated with an *hclsyntax.UnaryOpExpr.
-type UnaryOpTokens struct {
-	Operator Token
-}
-
-func (UnaryOpTokens) isNodeTokens() {}
 
 // tokenList is a list of Tokens with methods to aid in mapping source positions to tokens.
 type tokenList []Token
@@ -282,7 +39,7 @@ func (l tokenList) offsetIndex(offset int) int {
 		case r.Start.Byte <= offset && offset < r.End.Byte:
 			return base + i
 		case r.End.Byte <= offset:
-			l, base = l[i:], base+i
+			l, base = l[i+1:], base+i+1
 		default:
 			contract.Failf("unexpected index condition: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
 		}
@@ -316,7 +73,7 @@ func (l tokenList) inRange(r hcl.Range) []Token {
 
 // A TokenMap is used to map from syntax nodes to information about their tokens and leading whitespace/comments.
 type TokenMap interface {
-	ForNode(n hclsyntax.Node) (NodeTokens, bool)
+	ForNode(n hclsyntax.Node) NodeTokens
 
 	isTokenMap()
 }
@@ -324,9 +81,8 @@ type TokenMap interface {
 type tokenMap map[hclsyntax.Node]NodeTokens
 
 // ForNode returns the token information for the given node, if any.
-func (m tokenMap) ForNode(n hclsyntax.Node) (NodeTokens, bool) {
-	tokens, ok := m[n]
-	return tokens, ok
+func (m tokenMap) ForNode(n hclsyntax.Node) NodeTokens {
+	return m[n]
 }
 
 func (tokenMap) isTokenMap() {}
@@ -342,26 +98,354 @@ func NewTokenMapForFiles(files []*File) TokenMap {
 	return tokens
 }
 
+type tokenMapper struct {
+	tokenMap tokenMap
+	tokens   tokenList
+	stack    []hclsyntax.Node
+}
+
+func (m *tokenMapper) inTemplate() bool {
+	if len(m.stack) < 2 {
+		return false
+	}
+	parent := m.stack[len(m.stack)-2]
+	switch parent.(type) {
+	case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
+		return true
+	}
+	return false
+}
+
+func (m *tokenMapper) inTemplateControl() bool {
+	if len(m.stack) < 3 {
+		return false
+	}
+	parent, grandparent := m.stack[len(m.stack)-2], m.stack[len(m.stack)-3]
+	switch parent.(type) {
+	case *hclsyntax.ConditionalExpr, *hclsyntax.ForExpr:
+		switch grandparent.(type) {
+		case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
+			return true
+		}
+	}
+	return false
+}
+
+func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
+	tokens := m.tokens.inRange(r)
+	if len(tokens) != 3 {
+		return m.tokens.atPos(r.Start)
+	}
+	open := tokens[0]
+	if open.Raw.Type != hclsyntax.TokenOQuote || len(open.TrailingTrivia) != 0 {
+		return m.tokens.atPos(r.Start)
+	}
+	str := tokens[1]
+	if str.Raw.Type != hclsyntax.TokenQuotedLit || len(str.LeadingTrivia) != 0 || len(str.TrailingTrivia) != 0 {
+		return m.tokens.atPos(r.Start)
+	}
+	close := tokens[2]
+	if close.Raw.Type != hclsyntax.TokenCQuote || len(close.LeadingTrivia) != 0 {
+		return m.tokens.atPos(r.Start)
+	}
+	return Token{
+		Raw: hclsyntax.Token{
+			Type:  hclsyntax.TokenQuotedLit,
+			Bytes: append(append(open.Raw.Bytes, str.Raw.Bytes...), close.Raw.Bytes...),
+			Range: hcl.Range{
+				Filename: open.Raw.Range.Filename,
+				Start:    open.Raw.Range.Start,
+				End:      close.Raw.Range.End,
+			},
+		},
+		LeadingTrivia:  open.LeadingTrivia,
+		TrailingTrivia: close.TrailingTrivia,
+	}
+}
+
+func (m *tokenMapper) Enter(n hclsyntax.Node) hcl.Diagnostics {
+	switch n := n.(type) {
+	case hclsyntax.Attributes, hclsyntax.Blocks, hclsyntax.ChildScope:
+		// Do nothing
+	default:
+		m.stack = append(m.stack, n)
+	}
+	return nil
+}
+
+func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
+	var nodeTokens NodeTokens
+	switch n := n.(type) {
+	case *hclsyntax.Attribute:
+		nodeTokens = &AttributeTokens{
+			Name:   m.tokens.atPos(n.NameRange.Start),
+			Equals: m.tokens.atPos(n.EqualsRange.Start),
+		}
+	case *hclsyntax.BinaryOpExpr:
+		nodeTokens = &BinaryOpTokens{
+			Operator: m.tokens.atPos(n.LHS.Range().End),
+		}
+	case *hclsyntax.Block:
+		labels := make([]Token, len(n.Labels))
+		for i, r := range n.LabelRanges {
+			labels[i] = m.collectLabelTokens(r)
+		}
+		nodeTokens = &BlockTokens{
+			Type:       m.tokens.atPos(n.TypeRange.Start),
+			Labels:     labels,
+			OpenBrace:  m.tokens.atPos(n.OpenBraceRange.Start),
+			CloseBrace: m.tokens.atPos(n.CloseBraceRange.Start),
+		}
+	case *hclsyntax.ConditionalExpr:
+		if m.inTemplate() {
+			condition := m.tokens.atPos(n.Condition.Range().Start)
+
+			ift := m.tokens.atOffset(condition.Range().Start.Byte - 1)
+			openIf := m.tokens.atOffset(ift.Range().Start.Byte - 1)
+			closeIf := m.tokens.atPos(n.Condition.Range().End)
+
+			openEndifOrElse := m.tokens.atPos(n.TrueResult.Range().End)
+			endifOrElse := m.tokens.atPos(openEndifOrElse.Range().End)
+			closeEndifOrElse := m.tokens.atPos(endifOrElse.Range().End)
+
+			var openElse, elset, closeElse *Token
+			if endifOrElse.Raw.Type == hclsyntax.TokenIdent && string(endifOrElse.Raw.Bytes) == "else" {
+				open, t, close := openEndifOrElse, endifOrElse, closeEndifOrElse
+				openElse, elset, closeElse = &open, &t, &close
+
+				openEndifOrElse = m.tokens.atPos(n.FalseResult.Range().End)
+				endifOrElse = m.tokens.atPos(openEndifOrElse.Range().End)
+				closeEndifOrElse = m.tokens.atPos(endifOrElse.Range().End)
+			}
+
+			nodeTokens = &TemplateConditionalTokens{
+				OpenIf:     openIf,
+				If:         ift,
+				CloseIf:    closeIf,
+				OpenElse:   openElse,
+				Else:       elset,
+				CloseElse:  closeElse,
+				OpenEndif:  openEndifOrElse,
+				Endif:      endifOrElse,
+				CloseEndif: closeEndifOrElse,
+			}
+		} else {
+			nodeTokens = &ConditionalTokens{
+				QuestionMark: m.tokens.atPos(n.Condition.Range().End),
+				Colon:        m.tokens.atPos(n.TrueResult.Range().End),
+			}
+		}
+	case *hclsyntax.ForExpr:
+		inTemplate := m.inTemplate()
+
+		openToken := m.tokens.atPos(n.OpenRange.Start)
+		forToken := m.tokens.atPos(openToken.Range().End)
+
+		var keyToken, commaToken *Token
+		var valueToken Token
+		if n.KeyVar != "" {
+			key := m.tokens.atPos(forToken.Range().End)
+			comma := m.tokens.atPos(key.Range().End)
+			value := m.tokens.atPos(comma.Range().End)
+
+			keyToken, commaToken, valueToken = &key, &comma, value
+		} else {
+			valueToken = m.tokens.atPos(forToken.Range().End)
+		}
+
+		var arrowToken *Token
+		if n.KeyExpr != nil {
+			arrow := m.tokens.atPos(n.KeyExpr.Range().End)
+			arrowToken = &arrow
+		}
+
+		var groupToken *Token
+		if n.Group {
+			group := m.tokens.atPos(n.ValExpr.Range().End)
+			groupToken = &group
+		}
+
+		var ifToken *Token
+		if n.CondExpr != nil {
+			pos := n.ValExpr.Range().End
+			if groupToken != nil {
+				pos = groupToken.Range().End
+			}
+			ift := m.tokens.atPos(pos)
+			ifToken = &ift
+		}
+
+		if inTemplate {
+			closeFor := m.tokens.atPos(n.CollExpr.Range().End)
+
+			openEndfor := m.tokens.atPos(n.ValExpr.Range().End)
+			endfor := m.tokens.atPos(openEndfor.Range().End)
+			closeEndfor := m.tokens.atPos(endfor.Range().End)
+
+			nodeTokens = &TemplateForTokens{
+				OpenFor:     openToken,
+				For:         forToken,
+				Key:         keyToken,
+				Comma:       commaToken,
+				Value:       valueToken,
+				In:          m.tokens.atPos(valueToken.Range().End),
+				CloseFor:    closeFor,
+				OpenEndfor:  openEndfor,
+				Endfor:      endfor,
+				CloseEndfor: closeEndfor,
+			}
+		} else {
+			nodeTokens = &ForTokens{
+				Open:  openToken,
+				For:   forToken,
+				Key:   keyToken,
+				Comma: commaToken,
+				Value: valueToken,
+				In:    m.tokens.atPos(valueToken.Range().End),
+				Colon: m.tokens.atPos(n.CollExpr.Range().End),
+				Arrow: arrowToken,
+				Group: groupToken,
+				If:    ifToken,
+				Close: m.tokens.atPos(n.CloseRange.Start),
+			}
+		}
+	case *hclsyntax.FunctionCallExpr:
+		args := n.Args
+		commas := make([]Token, 0, len(args))
+		if len(args) > 0 {
+			for _, ex := range args[:len(args)-1] {
+				commas = append(commas, m.tokens.atPos(ex.Range().End))
+			}
+			if trailing := m.tokens.atPos(args[len(args)-1].Range().End); trailing.Raw.Type == hclsyntax.TokenComma {
+				commas = append(commas, trailing)
+			}
+		}
+		nodeTokens = &FunctionCallTokens{
+			Name:       m.tokens.atPos(n.NameRange.Start),
+			OpenParen:  m.tokens.atPos(n.OpenParenRange.Start),
+			Commas:     commas,
+			CloseParen: m.tokens.atPos(n.CloseParenRange.Start),
+		}
+	case *hclsyntax.IndexExpr:
+		nodeTokens = &IndexTokens{
+			OpenBracket:  m.tokens.atPos(n.OpenRange.Start),
+			CloseBracket: m.tokens.atOffset(n.BracketRange.End.Byte - 1),
+		}
+	case *hclsyntax.LiteralValueExpr:
+		nodeTokens = &LiteralValueTokens{
+			Value: m.tokens.inRange(n.Range()),
+		}
+	case *hclsyntax.ObjectConsKeyExpr:
+		nodeTokens = &LiteralValueTokens{
+			Value: m.tokens.inRange(n.Range()),
+		}
+	case *hclsyntax.ObjectConsExpr:
+		items := make([]ObjectConsItemTokens, len(n.Items))
+		for i, item := range n.Items {
+			var comma *Token
+			if t := m.tokens.atPos(item.ValueExpr.Range().End); t.Raw.Type == hclsyntax.TokenComma {
+				comma = &t
+			}
+			items[i] = ObjectConsItemTokens{
+				Equals: m.tokens.atPos(item.KeyExpr.Range().End),
+				Comma:  comma,
+			}
+		}
+		nodeTokens = &ObjectConsTokens{
+			OpenBrace:  m.tokens.atPos(n.OpenRange.Start),
+			CloseBrace: m.tokens.atOffset(n.SrcRange.End.Byte - 1),
+		}
+	case *hclsyntax.RelativeTraversalExpr:
+		nodeTokens = &RelativeTraversalTokens{
+			Traversal: mapRelativeTraversalTokens(m.tokens, n.Traversal),
+		}
+	case *hclsyntax.ScopeTraversalExpr:
+		nodeTokens = &ScopeTraversalTokens{
+			Root:      m.tokens.atPos(n.Traversal[0].SourceRange().Start),
+			Traversal: mapRelativeTraversalTokens(m.tokens, n.Traversal[1:]),
+		}
+	case *hclsyntax.SplatExpr:
+		openToken := m.tokens.atOffset(n.MarkerRange.Start.Byte - 1)
+		starToken := m.tokens.atPos(n.MarkerRange.Start)
+		var closeToken *Token
+		if openToken.Raw.Type == hclsyntax.TokenOBrack {
+			cbrack := m.tokens.atPos(n.MarkerRange.End)
+			closeToken = &cbrack
+		}
+		nodeTokens = &SplatTokens{
+			Open:  openToken,
+			Star:  starToken,
+			Close: closeToken,
+		}
+	case *hclsyntax.TemplateExpr:
+		// NOTE: the HCL parser lifts control sequences into if or for expressions. This is handled in the correspoding
+		// mappers.
+		if !m.inTemplateControl() {
+			// If we're inside the body of a template if or for, there cannot be any delimiting tokens.
+			nodeTokens = &TemplateTokens{
+				Open:  m.tokens.atPos(n.SrcRange.Start),
+				Close: m.tokens.atOffset(n.SrcRange.End.Byte - 1),
+			}
+		}
+	case *hclsyntax.TupleConsExpr:
+		exprs := n.Exprs
+		commas := make([]Token, 0, len(exprs))
+		if len(exprs) > 0 {
+			for _, ex := range exprs[:len(exprs)-1] {
+				commas = append(commas, m.tokens.atPos(ex.Range().End))
+			}
+			if trailing := m.tokens.atPos(exprs[len(exprs)-1].Range().End); trailing.Raw.Type == hclsyntax.TokenComma {
+				commas = append(commas, trailing)
+			}
+		}
+		nodeTokens = &TupleConsTokens{
+			OpenBracket:  m.tokens.atPos(n.OpenRange.Start),
+			Commas:       commas,
+			CloseBracket: m.tokens.atOffset(n.SrcRange.End.Byte - 1),
+		}
+	case *hclsyntax.UnaryOpExpr:
+		nodeTokens = &UnaryOpTokens{
+			Operator: m.tokens.atPos(n.SymbolRange.Start),
+		}
+	}
+	if nodeTokens != nil {
+		m.tokenMap[n] = nodeTokens
+	}
+
+	if n == m.stack[len(m.stack)-1] {
+		m.stack = m.stack[:len(m.stack)-1]
+	}
+
+	return nil
+}
+
 // mapTokens builds a mapping from the syntax nodes in the given source file to their tokens. The mapping is recorded
 // in the map passed in to the function.
-func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, tokenMap tokenMap) {
+func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap,
+	initialPos hcl.Pos) {
+
 	// Turn the list of raw tokens into a list of trivia-carrying tokens.
-	var lastEndPos hcl.Pos
+	lastEndPos := initialPos
 	var tokens tokenList
-	var trivia []Trivia
+	var trivia TriviaList
+	inControlSeq := false
 	for _, raw := range rawTokens {
 		// Snip whitespace out of the body and turn it in to trivia.
 		if startPos := raw.Range.Start; startPos.Byte != lastEndPos.Byte {
-			triviaBytes := file.Bytes[lastEndPos.Byte:startPos.Byte]
+			triviaBytes := contents[lastEndPos.Byte-initialPos.Byte : startPos.Byte-initialPos.Byte]
 
 			// If this trivia begins a new line, attach the current trivia to the last processed token, if any.
 			if len(tokens) > 0 {
 				if nl := bytes.IndexByte(triviaBytes, '\n'); nl != -1 {
 					trailingTriviaBytes := triviaBytes[:nl+1]
-					triviaBytes = trailingTriviaBytes[nl+1:]
-					lastEndPos = hcl.Pos{Line: lastEndPos.Line + 1, Column: 0, Byte: lastEndPos.Byte + nl + 1}
+					triviaBytes = triviaBytes[nl+1:]
 
+					endPos := hcl.Pos{Line: lastEndPos.Line + 1, Column: 0, Byte: lastEndPos.Byte + nl + 1}
+					rng := hcl.Range{Filename: filename, Start: lastEndPos, End: endPos}
+					trivia = append(trivia, Whitespace{rng: rng, bytes: trailingTriviaBytes})
 					tokens[len(tokens)-1].TrailingTrivia, trivia = trivia, nil
+
+					lastEndPos = endPos
 				}
 			}
 
@@ -372,17 +456,35 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 		switch raw.Type {
 		case hclsyntax.TokenComment:
 			trivia = append(trivia, Comment{Lines: processComment(raw.Bytes), rng: raw.Range, bytes: raw.Bytes})
-			lastEndPos = raw.Range.End
+		case hclsyntax.TokenTemplateInterp:
+			// Treat these as trailing trivia.
+			trivia = append(trivia, TemplateDelimiter{Type: raw.Type, rng: raw.Range, bytes: raw.Bytes})
+			if len(tokens) > 0 {
+				tokens[len(tokens)-1].TrailingTrivia, trivia = trivia, nil
+			}
+		case hclsyntax.TokenTemplateControl:
+			tokens, trivia = append(tokens, Token{Raw: raw, LeadingTrivia: trivia}), nil
+			inControlSeq = true
+		case hclsyntax.TokenTemplateSeqEnd:
+			// If this terminates a template control sequence, it is a proper token. Otherwise, it is treated as leading
+			// trivia.
+			if !inControlSeq {
+				trivia = append(trivia, TemplateDelimiter{Type: raw.Type, rng: raw.Range, bytes: raw.Bytes})
+			} else {
+				tokens, trivia = append(tokens, Token{Raw: raw, LeadingTrivia: trivia}), nil
+			}
+			inControlSeq = false
 		case hclsyntax.TokenNewline, hclsyntax.TokenBitwiseAnd, hclsyntax.TokenBitwiseOr,
 			hclsyntax.TokenBitwiseNot, hclsyntax.TokenBitwiseXor, hclsyntax.TokenStarStar, hclsyntax.TokenApostrophe,
 			hclsyntax.TokenBacktick, hclsyntax.TokenSemicolon, hclsyntax.TokenTabs, hclsyntax.TokenInvalid,
 			hclsyntax.TokenBadUTF8, hclsyntax.TokenQuotedNewline:
-			// Treat them as whitespace. We cannot omit their bytes from the list entirely, as the algorithm below
+			// Treat these as whitespace. We cannot omit their bytes from the list entirely, as the algorithm below
 			// that maps positions to tokens requires that every byte in the source file is covered by the token list.
+			continue
 		default:
 			tokens, trivia = append(tokens, Token{Raw: raw, LeadingTrivia: trivia}), nil
-			lastEndPos = raw.Range.End
 		}
+		lastEndPos = raw.Range.End
 	}
 
 	// If we had any tokens, we should have attached all trivia to something.
@@ -397,174 +499,16 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, file *hcl.File, toke
 	// expression or a token) is used to find the token.
 	//
 	// TODO(pdg): handle parenthesized expressions
-	body := file.Body.(*hclsyntax.Body)
-	diags := hclsyntax.VisitAll(body, func(n hclsyntax.Node) hcl.Diagnostics {
-		var nodeTokens NodeTokens
-		switch n := n.(type) {
-		case *hclsyntax.Attribute:
-			nodeTokens = AttributeTokens{
-				Name:   tokens.atPos(n.NameRange.Start),
-				Equals: tokens.atPos(n.EqualsRange.Start),
-			}
-		case *hclsyntax.BinaryOpExpr:
-			nodeTokens = BinaryOpTokens{
-				Operator: tokens.atPos(n.LHS.Range().End),
-			}
-		case *hclsyntax.Block:
-			labels := make([]Token, len(n.Labels))
-			for i, r := range n.LabelRanges {
-				labels[i] = tokens.atPos(r.Start)
-			}
-			nodeTokens = BlockTokens{
-				Type:       tokens.atPos(n.TypeRange.Start),
-				Labels:     labels,
-				OpenBrace:  tokens.atPos(n.OpenBraceRange.Start),
-				CloseBrace: tokens.atPos(n.CloseBraceRange.Start),
-			}
-		case *hclsyntax.ConditionalExpr:
-			nodeTokens = ConditionalTokens{
-				QuestionMark: tokens.atPos(n.Condition.Range().End),
-				Colon:        tokens.atPos(n.TrueResult.Range().End),
-			}
-		case *hclsyntax.ForExpr:
-			forToken := tokens.atPos(n.OpenRange.End)
-
-			var keyToken, commaToken *Token
-			var valueToken Token
-			if n.KeyVar != "" {
-				key := tokens.atPos(forToken.Range().End)
-				comma := tokens.atPos(key.Range().End)
-				value := tokens.atPos(comma.Range().End)
-
-				keyToken, commaToken, valueToken = &key, &comma, value
-			} else {
-				valueToken = tokens.atPos(forToken.Range().End)
-			}
-
-			var arrowToken *Token
-			if n.KeyExpr != nil {
-				arrow := tokens.atPos(n.KeyExpr.Range().End)
-				arrowToken = &arrow
-			}
-
-			var groupToken *Token
-			if n.Group {
-				group := tokens.atPos(n.ValExpr.Range().End)
-				groupToken = &group
-			}
-
-			var ifToken *Token
-			if n.CondExpr != nil {
-				pos := n.ValExpr.Range().End
-				if groupToken != nil {
-					pos = groupToken.Range().End
-				}
-				ift := tokens.atPos(pos)
-				ifToken = &ift
-			}
-
-			nodeTokens = ForTokens{
-				Open:  tokens.atPos(n.OpenRange.Start),
-				For:   forToken,
-				Key:   keyToken,
-				Comma: commaToken,
-				Value: valueToken,
-				In:    tokens.atPos(valueToken.Range().End),
-				Colon: tokens.atPos(n.CollExpr.Range().End),
-				Arrow: arrowToken,
-				Group: groupToken,
-				If:    ifToken,
-				Close: tokens.atPos(n.CloseRange.Start),
-			}
-		case *hclsyntax.FunctionCallExpr:
-			nodeTokens = FunctionCallTokens{
-				Name:       tokens.atPos(n.NameRange.Start),
-				OpenParen:  tokens.atPos(n.OpenParenRange.Start),
-				CloseParen: tokens.atPos(n.CloseParenRange.Start),
-			}
-		case *hclsyntax.IndexExpr:
-			nodeTokens = IndexTokens{
-				OpenBracket:  tokens.atPos(n.OpenRange.Start),
-				CloseBracket: tokens.atOffset(n.BracketRange.End.Byte - 1),
-			}
-		case *hclsyntax.LiteralValueExpr:
-			nodeTokens = LiteralValueTokens{
-				Value: tokens.inRange(n.Range()),
-			}
-		case *hclsyntax.ObjectConsExpr:
-			items := make([]ObjectConsItemTokens, len(n.Items))
-			for i, item := range n.Items {
-				var comma *Token
-				if t := tokens.atPos(item.ValueExpr.Range().End); t.Raw.Type == hclsyntax.TokenComma {
-					comma = &t
-				}
-				items[i] = ObjectConsItemTokens{
-					Equals: tokens.atPos(item.KeyExpr.Range().End),
-					Comma:  comma,
-				}
-			}
-			nodeTokens = ObjectConsTokens{
-				OpenBrace:  tokens.atPos(n.OpenRange.Start),
-				CloseBrace: tokens.atOffset(n.SrcRange.End.Byte - 1),
-			}
-		case *hclsyntax.RelativeTraversalExpr:
-			nodeTokens = RelativeTraversalTokens{
-				Traversal: mapRelativeTraversalTokens(tokens, n.Traversal),
-			}
-		case *hclsyntax.ScopeTraversalExpr:
-			nodeTokens = ScopeTraversalTokens{
-				Root:      tokens.atPos(n.Traversal[0].SourceRange().Start),
-				Traversal: mapRelativeTraversalTokens(tokens, n.Traversal[1:]),
-			}
-		case *hclsyntax.SplatExpr:
-			openToken := tokens.atOffset(n.MarkerRange.Start.Byte - 1)
-			starToken := tokens.atPos(n.MarkerRange.Start)
-			var closeToken *Token
-			if openToken.Raw.Type == hclsyntax.TokenOBrack {
-				cbrack := tokens.atPos(n.MarkerRange.End)
-				closeToken = &cbrack
-			}
-			nodeTokens = SplatTokens{
-				Open:  openToken,
-				Star:  starToken,
-				Close: closeToken,
-			}
-		case *hclsyntax.TemplateExpr:
-			// TODO(pdg): interpolations, control, etc.
-			nodeTokens = TemplateTokens{
-				Open:  tokens.atPos(n.SrcRange.Start),
-				Close: tokens.atOffset(n.SrcRange.End.Byte - 1),
-			}
-		case *hclsyntax.TupleConsExpr:
-			exprs := n.Exprs
-			commas := make([]Token, 0, len(exprs))
-			for _, ex := range exprs[:len(exprs)-1] {
-				commas = append(commas, tokens.atPos(ex.Range().End))
-			}
-			if trailing := tokens.atPos(exprs[len(exprs)-1].Range().End); trailing.Raw.Type == hclsyntax.TokenComma {
-				commas = append(commas, trailing)
-			}
-			nodeTokens = TupleConsTokens{
-				OpenBracket:  tokens.atPos(n.OpenRange.Start),
-				Commas:       commas,
-				CloseBracket: tokens.atOffset(n.SrcRange.End.Byte - 1),
-			}
-		case *hclsyntax.UnaryOpExpr:
-			nodeTokens = UnaryOpTokens{
-				Operator: tokens.atPos(n.SymbolRange.Start),
-			}
-		}
-		if nodeTokens != nil {
-			tokenMap[n] = nodeTokens
-		}
-
-		return nil
+	diags := hclsyntax.Walk(root, &tokenMapper{
+		tokenMap: tokenMap,
+		tokens:   tokens,
 	})
 	contract.Assert(diags == nil)
 
-	// If there is a trailing end-of-file token (and there should be), attach it to the top-level body.
-	if len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
-		tokenMap[body] = BodyTokens{EndOfFile: tokens[len(tokens)-1]}
+	// If the root was a Body and there is a trailing end-of-file token, attach it to the body.
+	body, isBody := root.(*hclsyntax.Body)
+	if isBody && len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
+		tokenMap[body] = &BodyTokens{EndOfFile: &tokens[len(tokens)-1]}
 	}
 }
 
@@ -580,13 +524,13 @@ func mapRelativeTraversalTokens(tokens tokenList, traversal hcl.Traversal) []Tra
 		leadingToken := tokens.atPos(rng.Start)
 		indexToken := tokens.atOffset(rng.Start.Byte + 1)
 		if leadingToken.Raw.Type == hclsyntax.TokenOBrack {
-			items[i] = BracketTraverserTokens{
+			items[i] = &BracketTraverserTokens{
 				OpenBracket:  leadingToken,
 				Index:        indexToken,
 				CloseBracket: tokens.atOffset(rng.End.Byte - 1),
 			}
 		} else {
-			items[i] = DotTraverserTokens{
+			items[i] = &DotTraverserTokens{
 				Dot:   leadingToken,
 				Index: indexToken,
 			}

@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
 
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 

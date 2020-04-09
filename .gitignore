@@ -1,10 +1,11 @@
 *.swp
-/vendor/
+**/vendor/
 **/node_modules/
 **/bin
 **/.vscode/
 **/.vs/
 **/.ionide/
+**/.idea/
 coverage.cov
 *.coverprofile
 
@@ -20,3 +21,5 @@ coverage.cov
 
 # By default, we don't check in yarn.lock files
 **/yarn.lock
+
+.mypy_cache

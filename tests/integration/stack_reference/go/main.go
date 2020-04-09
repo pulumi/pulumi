@@ -5,8 +5,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
 )
@@ -20,7 +18,7 @@ func main() {
 		_, err := pulumi.NewStackReference(ctx, slug, nil)
 
 		if err != nil {
-			return errors.Wrap(err, "Error reading stack reference.")
+			return fmt.Errorf("error reading stack reference: %v", err)
 		}
 		ctx.Export("val",
 			pulumi.StringArray([]pulumi.StringInput{pulumi.String("a"), pulumi.String("b")}))

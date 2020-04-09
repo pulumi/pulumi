@@ -26,20 +26,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/validation"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
@@ -142,6 +142,12 @@ func deletePolicyPackVersionPath(orgName, policyPackName, versionTag string) str
 func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag string) string {
 	return fmt.Sprintf(
 		"/api/orgs/%s/policypacks/%s/versions/%s/complete", orgName, policyPackName, versionTag)
+}
+
+// getPolicyPackConfigSchemaPath returns the API path to retrieve the policy pack configuration schema.
+func getPolicyPackConfigSchemaPath(orgName, policyPackName string, versionTag string) string {
+	return fmt.Sprintf(
+		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -552,11 +558,28 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
+	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	for i, policy := range analyzerInfo.Policies {
+		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
+		if err != nil {
+			return "", err
+		}
+
+		policies[i] = apitype.Policy{
+			Name:             policy.Name,
+			DisplayName:      policy.DisplayName,
+			Description:      policy.Description,
+			EnforcementLevel: policy.EnforcementLevel,
+			Message:          policy.Message,
+			ConfigSchema:     configSchema,
+		}
+	}
+
 	req := apitype.CreatePolicyPackRequest{
 		Name:        analyzerInfo.Name,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
-		Policies:    analyzerInfo.Policies,
+		Policies:    policies,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -608,6 +631,27 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	return version, nil
 }
 
+// convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.
+func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apitype.PolicyConfigSchema, error) {
+	if schema == nil {
+		return nil, nil
+	}
+	properties := map[string]*json.RawMessage{}
+	for k, v := range schema.Properties {
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		raw := json.RawMessage(bytes)
+		properties[k] = &raw
+	}
+	return &apitype.PolicyConfigSchema{
+		Type:       apitype.Object,
+		Properties: properties,
+		Required:   schema.Required,
+	}, nil
+}
+
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
 // as it is likely an older version of pulumi/policy that does not gather the version.
 func validatePolicyPackVersion(s string) error {
@@ -627,18 +671,18 @@ func validatePolicyPackVersion(s string) error {
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
 // it will enable the PolicyPack on the default PolicyGroup.
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
-	policyPackName, versionTag string) error {
+	policyPackName, versionTag string, policyPackConfig map[string]*json.RawMessage) error {
 
 	// If a Policy Group was not specified, we use the default Policy Group.
 	if policyGroup == "" {
 		policyGroup = apitype.DefaultPolicyGroup
 	}
 
-	// If a Policy Group was specified, enable it for the specific group only.
 	req := apitype.UpdatePolicyGroupRequest{
 		AddPolicyPack: &apitype.PolicyPackMetadata{
 			Name:       policyPackName,
 			VersionTag: versionTag,
+			Config:     policyPackConfig,
 		},
 	}
 
@@ -647,6 +691,18 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 		return errors.Wrapf(err, "Enable policy pack failed")
 	}
 	return nil
+}
+
+// GetPolicyPackSchema gets Policy Pack config schema.
+func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
+	policyPackName, versionTag string) (*apitype.GetPolicyPackConfigSchemaResponse, error) {
+	var resp apitype.GetPolicyPackConfigSchemaResponse
+	err := pc.restCall(ctx, http.MethodGet,
+		getPolicyPackConfigSchemaPath(orgName, policyPackName, versionTag), nil, nil, &resp)
+	if err != nil {
+		return nil, errors.Wrap(err, "Retrieving policy pack config schema failed")
+	}
+	return &resp, nil
 }
 
 // DisablePolicyPack disables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,

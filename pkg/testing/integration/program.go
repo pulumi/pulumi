@@ -38,20 +38,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	pulumi_testing "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/ciutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
+	pulumi_testing "github.com/pulumi/pulumi/sdk/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const PythonRuntime = "python"
@@ -894,7 +895,7 @@ func (pt *ProgramTester) TestCleanUp() {
 func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	err := pt.TestLifeCyclePrepare()
 	if err != nil {
-		return errors.Wrap(err, "copying test to temp dir")
+		return errors.Wrapf(err, "copying test to temp dir %s", pt.tmpdir)
 	}
 
 	pt.TestFinished = false
@@ -1448,26 +1449,29 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
-	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
-	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
+	stackName := string(pt.opts.GetStackName())
+
+	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must create
+	// a folder structure that adheres to GOPATH requirements
 	var tmpdir, projdir string
 	if projinfo.Proj.Runtime.Name() == "go" {
-		projdir = projinfo.Root
+		targetDir, err := tools.CreateTemporaryGoFolder("stackName")
+		if err != nil {
+			return "", "", errors.Wrap(err, "Couldn't create temporary directory")
+		}
+		tmpdir = targetDir
+		projdir = targetDir
 	} else {
-		stackName := string(pt.opts.GetStackName())
 		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
 		if tempErr != nil {
 			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 		}
-
-		// Copy the source project.
-		if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
-			return "", "", copyErr
-		}
-
-		// Set tmpdir so that the caller will clean up afterwards.
 		tmpdir = targetDir
 		projdir = targetDir
+	}
+	// Copy the source project.
+	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
+		return "", "", copyErr
 	}
 	projinfo.Root = projdir
 
@@ -1710,13 +1714,63 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// skip building if the 'go run' invocation path is requested.
-	if !pt.opts.RunBuild {
-		return nil
+	// initialize a go.mod for dependency resolution if one doesn't exist
+	_, err = os.Stat(filepath.Join(cwd, "go.mod"))
+	if err != nil {
+		err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
+		if err != nil {
+			return err
+		}
 	}
 
+	// initial tidy to resolve dependencies
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	// link local dependencies
+	for _, pkg := range pt.opts.Dependencies {
+		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
+		dep := filepath.Join(depParts...)
+		editStr := fmt.Sprintf("%s=%s", pkg, dep)
+		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// tidy again after replacements
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	// resolve dependencies
+	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
+	if err != nil {
+		return err
+	}
+
+	// In our go tests, there seems to be an issue where we *need* to make a build before we
+	// actually run the tests. If a build isn't made, then we get an issue along the lines of
+	// `cannot import absolute path`. We will investigate this and add back in the respect
+	// for the runBuild option
 	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
-	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if runtime.GOOS == "windows" {
+		outBin = fmt.Sprintf("%s.exe", outBin)
+	}
+	err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(outBin)
+	if err != nil {
+		return fmt.Errorf("error finding built application artifact: %w", err)
+	}
+
+	return nil
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.

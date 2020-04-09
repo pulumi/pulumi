@@ -53,7 +53,7 @@ func (p *Parser) ParseFile(r io.Reader, filename string) error {
 	hclFile, diags := hclsyntax.ParseConfig(src, filename, hcl.Pos{})
 	if !diags.HasErrors() {
 		tokens, _ := hclsyntax.LexConfig(src, filename, hcl.Pos{})
-		mapTokens(tokens, filename, hclFile, p.tokens)
+		mapTokens(tokens, filename, hclFile.Body.(*hclsyntax.Body), hclFile.Bytes, p.tokens, hcl.Pos{})
 	}
 
 	p.Files = append(p.Files, &File{
@@ -78,4 +78,17 @@ func NewDiagnosticWriter(w io.Writer, files []*File, width uint, color bool) hcl
 		fileMap[f.Name] = &hcl.File{Body: f.Body, Bytes: f.Bytes}
 	}
 	return hcl.NewDiagnosticTextWriter(w, fileMap, width, color)
+}
+
+// ParseExpression attempts to parse the given string as an HCL2 expression.
+func ParseExpression(expression, filename string, start hcl.Pos) (hclsyntax.Expression, TokenMap, hcl.Diagnostics) {
+	source := []byte(expression)
+	hclExpression, diagnostics := hclsyntax.ParseExpression(source, filename, start)
+	if diagnostics.HasErrors() {
+		return nil, nil, diagnostics
+	}
+	tokens := tokenMap{}
+	hclTokens, _ := hclsyntax.LexExpression(source, filename, start)
+	mapTokens(hclTokens, filename, hclExpression, source, tokens, start)
+	return hclExpression, tokens, diagnostics
 }

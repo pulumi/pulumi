@@ -83,7 +83,7 @@ namespace Pulumi.Serialization
                         // These don't actually contribute to the exposed shape of the object, do
                         // not need to be passed back to the engine, and often will not match the
                         // expected type we are deserializing into.
-                        if (key.StartsWith("__"))
+                        if (key.StartsWith("__", StringComparison.Ordinal))
                             continue;
 
                         var elementData = Deserialize(element);

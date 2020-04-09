@@ -45,12 +45,12 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
 
@@ -170,8 +170,11 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 			return false, "Differing major or minor versions are not supported."
 		}
 
-	case a.Major >= 1 && b.Major >= 1:
-		// If both major versions are post-1.0, we require that the major versions match.
+	case a.Major >= 1 && a.Major <= 2 && b.Major >= 1 && b.Major <= 2:
+		// If both versions are 1.0<=v<=2.0, they are compatible.
+
+	case a.Major > 2 || b.Major > 2:
+		// If either version is post-2.0, we require that the major versions match.
 		if a.Major != b.Major {
 			return false, "Differing major versions are not supported."
 		}

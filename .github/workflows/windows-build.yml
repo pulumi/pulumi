@@ -2,7 +2,8 @@ on:
   push:
     branches:
       - master
-  pull_request:
+      - 'feature-.*'
+      - 'features/.*'
 
 jobs:
   build:
@@ -15,6 +16,8 @@ jobs:
         python-version: [3.7]
         dotnet: ['3.1.100']
     runs-on: ${{ matrix.platform }}
+    env:
+      GOPATH: ${{ github.workspace }}
     steps:
     - name: Install DotNet ${{ matrix.dotnet }}
       uses: actions/setup-dotnet@v1
@@ -28,8 +31,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Install Pulumi CLI
-      uses: pulumi/action-install-pulumi-cli@releases/v1
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
@@ -39,27 +40,60 @@ jobs:
         pip3 install pyenv-win
         pip3 install pipenv
     - name: Set Build Env Vars
+      shell: bash
+      run: |
+        echo "::set-env name=PULUMI_TEST_OWNER::moolumi"
+        echo "::set-env name=PULUMI_LOCAL_NUGET::D:\\Pulumi\\nuget"
+        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::add-path::D:\\Pulumi\\bin"
+    - name: Install AWS CLI Tools
+      uses: chrislennon/action-aws-cli@v1.1
+    - name: Set AWS Env Vars
       uses: allenevans/set-env@v1.0.0
       with:
-        PULUMI_TEST_OWNER: "moolumi"
-        PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-        PULUMI_ROOT: "D:\\Pulumi"
-        PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - name: Check out scripts repo into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        repository: pulumi/scripts
+        path: ./src/github.com/pulumi/scripts
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        path: ./src/github.com/${{ github.repository }}
+    - name: Checkout Repo history to ensure we get correct version
+      run: |
+        cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow
     - name: Get dependencies
       run: |
-        set GOMODULE111=on
+        cd src\github.com\${{ github.repository }}
+        set GO111MODULE=on
+        pushd .
+        cd sdk
         go mod tidy
-        go mod vendor
+        go mod download
+        popd
+        pushd .
+        cd pkg
+        go mod tidy
+        go mod download
+        popd
+        pushd .
+        cd tests
+        go mod tidy
+        go mod download
+        popd
     - name: Build Pulumi
       run: |
+        cd src\github.com\${{ github.repository }}
         dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
     - name: Run Pulumi Tests
       run: |
+        cd src\github.com\${{ github.repository }}
         dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+    - name: Publish Binary
+      run: |
+        cd src\github.com\${{ github.repository }}
+        dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
