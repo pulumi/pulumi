@@ -57,7 +57,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 
 	var args []string
 	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%t", k, v))
+		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
 	args = append(args, host.ServerAddr())
 

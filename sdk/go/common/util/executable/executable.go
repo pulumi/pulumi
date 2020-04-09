@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
@@ -16,7 +17,7 @@ const unableToFindProgramTemplate = "unable to find program: %s"
 // FindExecutable attempts to find the needed executable in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func FindExecutable(program string) (string, error) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
 		program = fmt.Sprintf("%s.exe", program)
 	}
 	// look in the same directory

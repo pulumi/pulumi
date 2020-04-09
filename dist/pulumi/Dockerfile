@@ -25,7 +25,7 @@ RUN apt-get update -y && \
   curl -fsSLo /usr/bin/aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator && \
   chmod +x /usr/bin/aws-iam-authenticator && \
   # Add additional apt repos all at once
-  echo "deb https://deb.nodesource.com/node_11.x $(lsb_release -cs) main"                         | tee /etc/apt/sources.list.d/node.list             && \
+  echo "deb https://deb.nodesource.com/node_12.x $(lsb_release -cs) main"                         | tee /etc/apt/sources.list.d/node.list             && \
   echo "deb https://dl.yarnpkg.com/debian/ stable main"                                           | tee /etc/apt/sources.list.d/yarn.list             && \
   echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"      | tee /etc/apt/sources.list.d/docker.list           && \
   echo "deb http://packages.cloud.google.com/apt cloud-sdk-$(lsb_release -cs) main"               | tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
