@@ -88,7 +88,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "44b7275bb0f7c65d310991d9969889b20a80d428a7e42c2cbdb8ab403eb47ca1", arch.Hash)
+			assert.Equal(t, "a2ab3787a392db8da781000b544cf5d84f49108000bf938dcb75183e510c1871", arch.Hash)
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
@@ -103,7 +103,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "44b7275bb0f7c65d310991d9969889b20a80d428a7e42c2cbdb8ab403eb47ca1", archDes.Hash)
+			assert.Equal(t, "a2ab3787a392db8da781000b544cf5d84f49108000bf938dcb75183e510c1871", archDes.Hash)
 		}
 	}
 	{
@@ -126,7 +126,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "3165137d407e34781a7e1c5181489d93f70f698a87cbd83d6bf5ead577ff49ec", arch.Hash)
+			assert.Equal(t, "f5df7a2bf6bb11ba941b0d01845cf4fb7eb053186288ef75f4b9a583ddd25a16", arch.Hash)
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
@@ -141,7 +141,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "3165137d407e34781a7e1c5181489d93f70f698a87cbd83d6bf5ead577ff49ec", archDes.Hash)
+			assert.Equal(t, "f5df7a2bf6bb11ba941b0d01845cf4fb7eb053186288ef75f4b9a583ddd25a16", archDes.Hash)
 		}
 	}
 	{
@@ -164,7 +164,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", arch.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "3165137d407e34781a7e1c5181489d93f70f698a87cbd83d6bf5ead577ff49ec", arch.Hash)
+			assert.Equal(t, "f5df7a2bf6bb11ba941b0d01845cf4fb7eb053186288ef75f4b9a583ddd25a16", arch.Hash)
 		}
 		archSer := arch.Serialize()
 		archDes, isarch, err := DeserializeArchive(archSer)
@@ -179,7 +179,7 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
 		default:
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-			assert.Equal(t, "3165137d407e34781a7e1c5181489d93f70f698a87cbd83d6bf5ead577ff49ec", archDes.Hash)
+			assert.Equal(t, "f5df7a2bf6bb11ba941b0d01845cf4fb7eb053186288ef75f4b9a583ddd25a16", archDes.Hash)
 		}
 	}
 	{
@@ -310,7 +310,7 @@ func TestArchiveDir(t *testing.T) {
 		assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
 	default:
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
-		assert.Equal(t, "070e392d56e5750fe60bf0a26e312924589f3c249ef3650acdcb28f384bc5629", arch.Hash)
+		assert.Equal(t, "210b1be2839cbe60157a18b6aeffb6cf8e1b052d230925fe794637c94b128744", arch.Hash)
 	}
 	validateTestDirArchive(t, arch)
 }
