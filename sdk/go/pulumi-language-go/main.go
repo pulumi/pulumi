@@ -78,12 +78,12 @@ func findExecutable(program string) (string, error) {
 	return "", errors.Errorf("unable to find program: %s", program)
 }
 
-func findProgram(prebuilt string) (*exec.Cmd, error) {
+func findProgram(binary string) (*exec.Cmd, error) {
 	// we default to execution via `go run`
-	// the user can explicitly opt in to using a prebuilt executable by specifying
-	// runtime.options.prebuilt in the Pulumi.yaml
-	if prebuilt != "" {
-		program, err := findExecutable(prebuilt)
+	// the user can explicitly opt in to using a binary executable by specifying
+	// runtime.options.binary in the Pulumi.yaml
+	if binary != "" {
+		program, err := findExecutable(binary)
 		if err != nil {
 			return nil, errors.Wrap(err, "expected to find prebuilt executable")
 		}
@@ -113,9 +113,9 @@ func findProgram(prebuilt string) (*exec.Cmd, error) {
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
 	var tracing string
-	var prebuilt string
+	var binary string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.StringVar(&prebuilt, "prebuilt", "", "Look on path for a prebuilt executable matching this sting")
+	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
 
 	flag.Parse()
 	args := flag.Args()
@@ -131,7 +131,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, prebuilt)
+			host := newLanguageHost(engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -153,14 +153,14 @@ func main() {
 type goLanguageHost struct {
 	engineAddress string
 	tracing       string
-	prebuilt      string
+	binary        string
 }
 
-func newLanguageHost(engineAddress, tracing, prebuilt string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
-		prebuilt:      prebuilt,
+		binary:        binary,
 	}
 }
 
@@ -278,7 +278,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
-	cmd, err := findProgram(host.prebuilt)
+	cmd, err := findProgram(host.binary)
 	if err != nil {
 		return nil, err
 	}
