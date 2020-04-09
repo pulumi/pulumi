@@ -345,8 +345,9 @@ func (a *Asset) readPath() (*Blob, error) {
 	}
 
 	blob := &Blob{
-		rd: file,
-		sz: info.Size(),
+		rd:   file,
+		sz:   info.Size(),
+		mode: info.Mode(),
 	}
 	return blob, nil
 }
@@ -402,19 +403,22 @@ func (a *Asset) EnsureHash() error {
 
 // Blob is a blob that implements ReadCloser and offers Len functionality.
 type Blob struct {
-	rd io.ReadCloser // an underlying reader.
-	sz int64         // the size of the blob.
+	rd   io.ReadCloser // an underlying reader.
+	mode os.FileMode   // the file mode for the blob.
+	sz   int64         // the size of the blob.
 }
 
 func (blob *Blob) Close() error               { return blob.rd.Close() }
 func (blob *Blob) Read(p []byte) (int, error) { return blob.rd.Read(p) }
 func (blob *Blob) Size() int64                { return blob.sz }
+func (blob *Blob) Mode() os.FileMode          { return blob.mode }
 
 // NewByteBlob creates a new byte blob.
 func NewByteBlob(data []byte) *Blob {
 	return &Blob{
-		rd: ioutil.NopCloser(bytes.NewReader(data)),
-		sz: int64(len(data)),
+		rd:   ioutil.NopCloser(bytes.NewReader(data)),
+		sz:   int64(len(data)),
+		mode: 0600,
 	}
 }
 
@@ -425,8 +429,9 @@ func NewFileBlob(f *os.File) (*Blob, error) {
 		return nil, err
 	}
 	return &Blob{
-		rd: f,
-		sz: stat.Size(),
+		rd:   f,
+		sz:   stat.Size(),
+		mode: stat.Mode(),
 	}, nil
 }
 
@@ -977,7 +982,7 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool
 	sz := data.Size()
 	if err = tw.WriteHeader(&tar.Header{
 		Name: file,
-		Mode: 0600,
+		Mode: int64(data.Mode()),
 		Size: sz,
 	}); err != nil {
 		return err
@@ -1034,8 +1039,10 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
-		Name:   file,
-		Method: zip.Deflate,
+		Name:           file,
+		Method:         zip.Deflate,
+		CreatorVersion: 3 << 8, // indicates Unix
+		ExternalAttrs:  uint32(data.Mode()),
 	}
 
 	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure
@@ -1203,8 +1210,9 @@ func (r *tarArchiveReader) Next() (string, *Blob, error) {
 		case tar.TypeReg:
 			// Return the tar reader for this file's contents.
 			data := &Blob{
-				rd: ioutil.NopCloser(r.tr),
-				sz: file.Size,
+				rd:   ioutil.NopCloser(r.tr),
+				sz:   file.Size,
+				mode: os.FileMode(file.Mode),
 			}
 			name := filepath.Clean(file.Name)
 			return name, data, nil
@@ -1259,9 +1267,16 @@ func (r *zipArchiveReader) Next() (string, *Blob, error) {
 		if err != nil {
 			return "", nil, errors.Wrapf(err, "failed to read ZIP inner file %v", file.Name)
 		}
+
+		mode := os.FileMode(0600)
+		if file.CreatorVersion&(3<<8) != 0 {
+			mode = os.FileMode(file.ExternalAttrs & 0777)
+		}
+
 		blob := &Blob{
-			rd: body,
-			sz: int64(file.UncompressedSize64),
+			rd:   body,
+			sz:   int64(file.UncompressedSize64),
+			mode: mode,
 		}
 		name := filepath.Clean(file.Name)
 		return name, blob, nil
