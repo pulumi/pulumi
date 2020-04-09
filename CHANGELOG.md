@@ -29,6 +29,9 @@ CHANGELOG
 - Add overloads to Output.All in .NET
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
+- Add helper methods for stack outputs in the Go SDK
+  [#4341](https://github.com/pulumi/pulumi/pull/4341)
+
 - Add additional overloads to Deployment.RunAsync in .NET API.
   [#4286](https://github.com/pulumi/pulumi/pull/4286)
 
