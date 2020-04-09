@@ -822,15 +822,29 @@ func NewObjectConsTokens(itemCount int) *ObjectConsTokens {
 	for i := 0; i < len(items); i++ {
 		var comma *Token
 		if i < len(items)-1 {
-			comma = &Token{Raw: newRawToken(hclsyntax.TokenComma)}
+			comma = &Token{
+				Raw:            newRawToken(hclsyntax.TokenComma),
+				TrailingTrivia: TriviaList{NewWhitespace('\n')},
+			}
 		}
 		items[i] = ObjectConsItemTokens{
-			Equals: Token{Raw: newRawToken(hclsyntax.TokenEqual)},
-			Comma:  comma,
+			Equals: Token{
+				Raw:           newRawToken(hclsyntax.TokenEqual),
+				LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			},
+			Comma: comma,
 		}
 	}
+
+	var openBraceTrailingTrivia TriviaList
+	if itemCount > 0 {
+		openBraceTrailingTrivia = TriviaList{NewWhitespace('\n')}
+	}
 	return &ObjectConsTokens{
-		OpenBrace:  Token{Raw: newRawToken(hclsyntax.TokenOBrace)},
+		OpenBrace: Token{
+			Raw:            newRawToken(hclsyntax.TokenOBrace),
+			TrailingTrivia: openBraceTrailingTrivia,
+		},
 		Items:      items,
 		CloseBrace: Token{Raw: newRawToken(hclsyntax.TokenCBrace)},
 	}

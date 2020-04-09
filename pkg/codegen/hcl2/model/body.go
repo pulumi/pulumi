@@ -50,15 +50,15 @@ func (b *Body) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(b.Syntax)
 }
 
-func (b *Body) hasLeadingTrivia() bool {
-	return len(b.Items) > 0 && b.Items[0].hasLeadingTrivia()
+func (b *Body) HasLeadingTrivia() bool {
+	return len(b.Items) > 0 && b.Items[0].HasLeadingTrivia()
 }
 
-func (b *Body) hasTrailingTrivia() bool {
+func (b *Body) HasTrailingTrivia() bool {
 	if eof := b.Tokens.GetEndOfFile(); eof != nil {
 		return true
 	}
-	return len(b.Items) > 0 && b.Items[len(b.Items)-1].hasTrailingTrivia()
+	return len(b.Items) > 0 && b.Items[len(b.Items)-1].HasTrailingTrivia()
 }
 
 func (b *Body) Format(f fmt.State, c rune) {

@@ -387,6 +387,11 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 				Close: m.tokens.atOffset(n.SrcRange.End.Byte - 1),
 			}
 		}
+	case *hclsyntax.TemplateWrapExpr:
+		nodeTokens = &TemplateTokens{
+			Open:  m.tokens.atPos(n.SrcRange.Start),
+			Close: m.tokens.atOffset(n.SrcRange.End.Byte - 1),
+		}
 	case *hclsyntax.TupleConsExpr:
 		exprs := n.Exprs
 		commas := make([]Token, 0, len(exprs))
@@ -469,7 +474,8 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 			// If this terminates a template control sequence, it is a proper token. Otherwise, it is treated as leading
 			// trivia.
 			if !inControlSeq {
-				trivia = append(trivia, TemplateDelimiter{Type: raw.Type, rng: raw.Range, bytes: raw.Bytes})
+				tokens[len(tokens)-1].TrailingTrivia = trivia
+				trivia = TriviaList{TemplateDelimiter{Type: raw.Type, rng: raw.Range, bytes: raw.Bytes}}
 			} else {
 				tokens, trivia = append(tokens, Token{Raw: raw, LeadingTrivia: trivia}), nil
 			}

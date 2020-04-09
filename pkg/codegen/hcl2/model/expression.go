@@ -80,12 +80,12 @@ func (x *AnonymousFunctionExpression) Type() Type {
 	return DynamicType
 }
 
-func (x *AnonymousFunctionExpression) hasLeadingTrivia() bool {
-	return x.Body.hasLeadingTrivia()
+func (x *AnonymousFunctionExpression) HasLeadingTrivia() bool {
+	return x.Body.HasLeadingTrivia()
 }
 
-func (x *AnonymousFunctionExpression) hasTrailingTrivia() bool {
-	return x.Body.hasTrailingTrivia()
+func (x *AnonymousFunctionExpression) HasTrailingTrivia() bool {
+	return x.Body.HasTrailingTrivia()
 }
 
 func (x *AnonymousFunctionExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -157,12 +157,12 @@ func (x *BinaryOpExpression) Type() Type {
 	return x.exprType
 }
 
-func (x *BinaryOpExpression) hasLeadingTrivia() bool {
-	return x.LeftOperand.hasLeadingTrivia()
+func (x *BinaryOpExpression) HasLeadingTrivia() bool {
+	return x.LeftOperand.HasLeadingTrivia()
 }
 
-func (x *BinaryOpExpression) hasTrailingTrivia() bool {
-	return x.RightOperand.hasTrailingTrivia()
+func (x *BinaryOpExpression) HasTrailingTrivia() bool {
+	return x.RightOperand.HasTrailingTrivia()
 }
 
 func (x *BinaryOpExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -227,18 +227,18 @@ func (x *ConditionalExpression) Type() Type {
 	return x.exprType
 }
 
-func (x *ConditionalExpression) hasLeadingTrivia() bool {
+func (x *ConditionalExpression) HasLeadingTrivia() bool {
 	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
 		return len(tokens.OpenIf.LeadingTrivia) != 0
 	}
-	return x.Condition.hasLeadingTrivia()
+	return x.Condition.HasLeadingTrivia()
 }
 
-func (x *ConditionalExpression) hasTrailingTrivia() bool {
+func (x *ConditionalExpression) HasTrailingTrivia() bool {
 	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
 		return len(tokens.CloseEndif.TrailingTrivia) != 0
 	}
-	return x.FalseResult.hasTrailingTrivia()
+	return x.FalseResult.HasTrailingTrivia()
 }
 
 func (x *ConditionalExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -345,11 +345,11 @@ func (x *ErrorExpression) Type() Type {
 	return x.exprType
 }
 
-func (x *ErrorExpression) hasLeadingTrivia() bool {
+func (x *ErrorExpression) HasLeadingTrivia() bool {
 	return false
 }
 
-func (x *ErrorExpression) hasTrailingTrivia() bool {
+func (x *ErrorExpression) HasTrailingTrivia() bool {
 	return false
 }
 
@@ -419,11 +419,11 @@ func (x *ForExpression) Type() Type {
 	return x.exprType
 }
 
-func (x *ForExpression) hasLeadingTrivia() bool {
+func (x *ForExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *ForExpression) hasTrailingTrivia() bool {
+func (x *ForExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -595,11 +595,11 @@ func (x *FunctionCallExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *FunctionCallExpression) hasLeadingTrivia() bool {
+func (x *FunctionCallExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *FunctionCallExpression) hasTrailingTrivia() bool {
+func (x *FunctionCallExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -696,11 +696,11 @@ func (x *IndexExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *IndexExpression) hasLeadingTrivia() bool {
+func (x *IndexExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *IndexExpression) hasTrailingTrivia() bool {
+func (x *IndexExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -799,11 +799,11 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *LiteralValueExpression) hasLeadingTrivia() bool {
+func (x *LiteralValueExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *LiteralValueExpression) hasTrailingTrivia() bool {
+func (x *LiteralValueExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -914,11 +914,11 @@ func (x *ObjectConsExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *ObjectConsExpression) hasLeadingTrivia() bool {
+func (x *ObjectConsExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *ObjectConsExpression) hasTrailingTrivia() bool {
+func (x *ObjectConsExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -962,7 +962,7 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 				equals, comma = items[i].Equals, items[i].Comma
 			}
 
-			if !item.Key.hasLeadingTrivia() {
+			if !item.Key.HasLeadingTrivia() {
 				p.fprintf(w, "\n%s", p.indent)
 			}
 			p.fprintf(w, "%v% v% v",
@@ -1125,11 +1125,11 @@ func (x *RelativeTraversalExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *RelativeTraversalExpression) hasLeadingTrivia() bool {
-	return x.Source.hasLeadingTrivia()
+func (x *RelativeTraversalExpression) HasLeadingTrivia() bool {
+	return x.Source.HasLeadingTrivia()
 }
 
-func (x *RelativeTraversalExpression) hasTrailingTrivia() bool {
+func (x *RelativeTraversalExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -1209,11 +1209,11 @@ func (x *ScopeTraversalExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *ScopeTraversalExpression) hasLeadingTrivia() bool {
+func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *ScopeTraversalExpression) hasTrailingTrivia() bool {
+func (x *ScopeTraversalExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -1302,11 +1302,11 @@ func (x *SplatExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *SplatExpression) hasLeadingTrivia() bool {
+func (x *SplatExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *SplatExpression) hasTrailingTrivia() bool {
+func (x *SplatExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -1390,11 +1390,11 @@ func (x *TemplateExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *TemplateExpression) hasLeadingTrivia() bool {
+func (x *TemplateExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *TemplateExpression) hasTrailingTrivia() bool {
+func (x *TemplateExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -1465,12 +1465,12 @@ func (x *TemplateJoinExpression) NodeTokens() syntax.NodeTokens {
 	return nil
 }
 
-func (x *TemplateJoinExpression) hasLeadingTrivia() bool {
-	return x.Tuple.hasLeadingTrivia()
+func (x *TemplateJoinExpression) HasLeadingTrivia() bool {
+	return x.Tuple.HasLeadingTrivia()
 }
 
-func (x *TemplateJoinExpression) hasTrailingTrivia() bool {
-	return x.Tuple.hasTrailingTrivia()
+func (x *TemplateJoinExpression) HasTrailingTrivia() bool {
+	return x.Tuple.HasTrailingTrivia()
 }
 
 func (x *TemplateJoinExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -1527,11 +1527,11 @@ func (x *TupleConsExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *TupleConsExpression) hasLeadingTrivia() bool {
+func (x *TupleConsExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *TupleConsExpression) hasTrailingTrivia() bool {
+func (x *TupleConsExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
@@ -1569,7 +1569,7 @@ func (x *TupleConsExpression) print(w io.Writer, p *printer) {
 	commas := x.Tokens.GetCommas()
 	p.indented(func() {
 		for i, expr := range x.Expressions {
-			if !expr.hasLeadingTrivia() {
+			if !expr.HasLeadingTrivia() {
 				p.fprintf(w, "\n%s", p.indent)
 			}
 			p.fprintf(w, "%v", expr)
@@ -1633,11 +1633,11 @@ func (x *UnaryOpExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
-func (x *UnaryOpExpression) hasLeadingTrivia() bool {
+func (x *UnaryOpExpression) HasLeadingTrivia() bool {
 	return x.Tokens != nil
 }
 
-func (x *UnaryOpExpression) hasTrailingTrivia() bool {
+func (x *UnaryOpExpression) HasTrailingTrivia() bool {
 	return x.Tokens != nil
 }
 
