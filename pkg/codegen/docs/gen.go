@@ -964,12 +964,13 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 	return lookupParams
 }
 
-// filterOutputProperties removes the input properties from the properties list, returning only output props. 
+// filterOutputProperties removes the input properties from the properties list
+// (since input props are implicitly output props), returning only "output" props.
 func filterOutputProperties(inputProps []property, props []property) []property {
 	var outputProps []property
 	inputMap := make(map[string]bool, len(inputProps))
-	for _, prop := range inputProps {
-		inputMap[prop.Name] = true
+	for _, p := range inputProps {
+		inputMap[p.Name] = true
 	}
 	for _, p := range props {
 		if _, found := inputMap[p.Name]; !found {
