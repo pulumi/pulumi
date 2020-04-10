@@ -288,6 +288,8 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 					return readerr
 				}
 				value = cmdutil.RemoveTrailingNewline(string(b))
+			case !cmdutil.Interactive():
+				return errors.New("config value must be specified in non-interactive mode")
 			case secret:
 				value, err = cmdutil.ReadConsoleNoEcho("value")
 				if err != nil {
