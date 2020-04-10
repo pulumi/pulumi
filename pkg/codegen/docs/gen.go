@@ -979,6 +979,22 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 	return lookupParams
 }
 
+// filterOutputProperties removes the input properties from the properties list
+// (since input props are implicitly output props), returning only "output" props.
+func filterOutputProperties(inputProps []*schema.Property, props []*schema.Property) []*schema.Property {
+	var outputProps []*schema.Property
+	inputMap := make(map[string]bool, len(inputProps))
+	for _, p := range inputProps {
+		inputMap[p.Name] = true
+	}
+	for _, p := range props {
+		if _, found := inputMap[p.Name]; !found {
+			outputProps = append(outputProps, p)
+		}
+	}
+	return outputProps
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -996,7 +1012,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		if r.IsProvider {
 			continue
 		}
-		outputProps[lang] = mod.getProperties(r.Properties, lang, false, false)
+		filteredOutputProps := filterOutputProperties(r.InputProperties, r.Properties)
+		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
 		if r.StateInputs != nil {
 			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
 		}
