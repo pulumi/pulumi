@@ -31,7 +31,10 @@ CHANGELOG
 
 - Make prebuilt executables opt-in only for the Go SDK
  [#4338](https://github.com/pulumi/pulumi/pull/4338)
- 
+
+- Support the `binary` option (prebuilt executables) for the .NET SDK
+ [#4355](https://github.com/pulumi/pulumi/pull/4355)
+
 - Add helper methods for stack outputs in the Go SDK
   [#4341](https://github.com/pulumi/pulumi/pull/4341)
 
