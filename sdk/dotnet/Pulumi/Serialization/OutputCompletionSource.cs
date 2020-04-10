@@ -61,7 +61,7 @@ namespace Pulumi.Serialization
         {
             var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
 
-            // Stack outputs are registered and checked separately in Deployment.RegisterPropertyOutputs.
+            // Stack outputs are registered and checked separately in Stack.RegisterPropertyOutputs.
             if (resource is Stack)
                 return result.ToImmutableDictionary();
 
