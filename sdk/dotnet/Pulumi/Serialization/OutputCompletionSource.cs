@@ -59,6 +59,12 @@ namespace Pulumi.Serialization
     {
         public static ImmutableDictionary<string, IOutputCompletionSource> InitializeOutputs(Resource resource)
         {
+            var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
+
+            // Stack outputs are registered and checked separately in Deployment.RegisterPropertyOutputs.
+            if (resource is Stack)
+                return result.ToImmutableDictionary();
+
             var name = resource.GetResourceName();
             var type = resource.GetResourceType();
 
@@ -67,7 +73,6 @@ namespace Pulumi.Serialization
                         where attr != null
                         select (property, attrName: attr?.Name);
 
-            var result = ImmutableDictionary.CreateBuilder<string, IOutputCompletionSource>();
             foreach (var (prop, attrName) in query.ToList())
             {
                 var propType = prop.PropertyType;

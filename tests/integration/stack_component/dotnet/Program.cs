@@ -7,13 +7,13 @@ using Pulumi;
 class MyStack : Stack
 {
     [Output("abc")]
-    public Output<string> Abc { get; private set; }
+    public Output<string> Abc { get; }
 
     [Output]
-    public Output<int> Foo { get; private set; }
+    public Output<int> Foo { get; }
 
     // This should NOT be exported as stack output due to the missing attribute
-    public Output<string> Bar { get; private set; }
+    public Output<string> Bar { get; }
 
     public MyStack()
     {

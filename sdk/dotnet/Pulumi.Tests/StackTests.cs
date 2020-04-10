@@ -15,10 +15,10 @@ namespace Pulumi.Tests
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> ExplicitName { get; set; }
+            public Output<string> ExplicitName { get; }
 
             [Output]
-            public Output<string> ImplicitName { get; set; }
+            public Output<string> ImplicitName { get; }
 
             public ValidStack()
             {
@@ -61,7 +61,7 @@ namespace Pulumi.Tests
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]
-            public string Foo { get; set; }
+            public string Foo { get; }
 
             public InvalidOutputTypeStack()
             {
