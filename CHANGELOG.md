@@ -41,6 +41,9 @@ CHANGELOG
 - Automate execution of `go mod download` for `pulumi new` Go templates
   [#4353](https://github.com/pulumi/pulumi/pull/4353)
 
+- Do not require setters on stack output properties in .NET 
+  [#4356](https://github.com/pulumi/pulumi/pull/4356)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
