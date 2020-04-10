@@ -69,9 +69,9 @@ func newLogoutCmd() *cobra.Command {
 			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
 				return workspace.DeleteAccount(cloudURL)
-			} else {
-				be, err = httpstate.New(cmdutil.Diag(), cloudURL)
 			}
+
+			be, err = httpstate.New(cmdutil.Diag(), cloudURL)
 			if err != nil {
 				return err
 			}

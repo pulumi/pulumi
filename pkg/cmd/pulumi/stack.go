@@ -154,11 +154,11 @@ func newStackCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVarP(
+	cmd.Flags().BoolVarP(
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
-	cmd.PersistentFlags().BoolVarP(
+	cmd.Flags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
-	cmd.PersistentFlags().BoolVar(
+	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 
 	cmd.AddCommand(newStackExportCmd())
