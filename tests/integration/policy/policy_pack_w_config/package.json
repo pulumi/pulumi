@@ -2,7 +2,7 @@
     "name": "test-policy-w-config",
     "version": "0.0.1",
     "dependencies": {
-        "@pulumi/policy": "0.4.1-dev.1584625475"
+        "@pulumi/policy": "^1.0.0"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
