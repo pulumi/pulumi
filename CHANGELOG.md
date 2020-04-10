@@ -40,6 +40,9 @@ CHANGELOG
 
 - Automate execution of `go mod download` for `pulumi new` Go templates
   [#4353](https://github.com/pulumi/pulumi/pull/4353)
+  
+- Fix `pulumi up -r -t $URN` not refreshing only the target
+  [#4217](https://github.com/pulumi/pulumi/pull/4217)
 
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
