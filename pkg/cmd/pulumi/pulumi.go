@@ -81,7 +81,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -128,7 +128,7 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
