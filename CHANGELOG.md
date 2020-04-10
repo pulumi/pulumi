@@ -48,7 +48,10 @@ CHANGELOG
   [#4218](https://github.com/pulumi/pulumi/pull/4218)
   
 - Fix specific flags for `pulumi stack` being global
-  [#4218](https://github.com/pulumi/pulumi/pull/4218)
+  [#4294](https://github.com/pulumi/pulumi/pull/4294)
+  
+- Fix error when setting config without value in non-interactive mode
+  [#4358](https://github.com/pulumi/pulumi/pull/4358)
 
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
