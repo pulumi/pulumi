@@ -14,8 +14,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/common/util/archive"
 
-	"github.com/pulumi/pulumi/pkg/npm"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
@@ -26,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/go/nodejs"
 )
 
 type cloudRequiredPolicy struct {
@@ -180,8 +179,12 @@ func (pack *cloudPolicyPack) Publish(
 			runtime)
 	}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	packTarball, err := npm.Pack(op.PlugCtx.Pwd, os.Stderr)
+	nodeJsRuntime, err := nodejs.GetRuntime()
+	if err != nil {
+		return result.FromError(
+			errors.Wrapf(err, "could not find a valid NodeJS runtime"))
+	}
+	packTarball, err := nodeJsRuntime.Pack(op.PlugCtx.Pwd, os.Stderr)
 	if err != nil {
 		return result.FromError(
 			errors.Wrapf(err, "could not publish policies because of error running npm pack"))
@@ -291,7 +294,11 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	fmt.Println()
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
+	nodeJsRuntime, err := nodejs.GetRuntime()
+	if err != nil {
+		return errors.Wrapf(err, "could not find a valid NodeJS runtime environment")
+	}
+	if bin, err := nodeJsRuntime.Install(finalDir, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
 			"failed to install dependencies of policy pack; you may need to re-run `%s install` "+

@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/npm"
 	"github.com/pulumi/pulumi/sdk/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
@@ -44,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/go/nodejs"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -578,7 +578,11 @@ func nodeInstallDependencies() (string, error) {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	bin, err := npm.Install("", os.Stdout, os.Stderr)
+	runtime, err := nodejs.GetRuntime()
+	if err != nil {
+		return nil, err
+	}
+	bin, err := runtime.Install("", os.Stdout, os.Stderr)
 	if err != nil {
 		return bin, err
 	}
