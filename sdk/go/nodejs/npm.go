@@ -14,8 +14,25 @@ import (
 )
 
 type npm struct {
-	path string
-	args string
+	nodePath string
+	path     string
+	args     string
+}
+
+func getNpm() (NodeRuntime, error) {
+	const file = "npm"
+	npmPath, err := exec.LookPath(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not find npm on the $PATH; npm is installed with Node.js "+
+			"available at https://nodejs.org/")
+	}
+	nodePath, err := getNodePath()
+	if err != nil {
+		return nil, err
+	}
+	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
+	// `description`, `repository`, and `license` fields in the package.json file.
+	return &npm{nodePath: nodePath, path: npmPath, args: "--loglevel=error"}, nil
 }
 
 func (r npm) Install(dir string, stdout, stderr io.Writer) (string, error) {
@@ -62,6 +79,6 @@ func (r npm) Pack(dir string, stderr io.Writer) ([]byte, error) {
 	return packTarball, nil
 }
 
-func (r npm) Run(dir string, stdout, stderr io.Writer) (string, error) {
-	return "", nil
+func (r npm) GetNodePath() string {
+	return r.nodePath
 }

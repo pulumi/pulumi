@@ -23,15 +23,14 @@ type NodeRuntime interface {
 	// `stdout` is ignored for the command, as it does not generate useful data.
 	Pack(dir string, stderr io.Writer) ([]byte, error)
 
-	// Runs a NodeJS environment with the correct dependencies configured. This is
-	// either `node` for an single project based on `node_modules`, or
-	// `yarn node` for a multi-project workspace setup or Yarn v2 Plug'n'Play
-	Run(dir string, stdout, stderr io.Writer) (string, error)
+	// GetNodePath returns the command to run to start NodeJS correctly under the respective
+	// package manager.
+	GetNodePath() string
 }
 
 // GetRuntime decides which runtime structure to return: npm, yarn v1 or yarn v2
 func GetRuntime() (NodeRuntime, error) {
-	if PreferYarn() {
+	if preferYarn() {
 		r, err := getYarn()
 		if err == nil {
 			return r, err
@@ -39,53 +38,6 @@ func GetRuntime() (NodeRuntime, error) {
 		logging.Warningf("&v", err)
 	}
 	return getNpm()
-}
-
-func getYarn() (NodeRuntime, error) {
-	// if EXPERIMENTAL, check for a V2
-	const file = "yarn"
-	yarnPath, err := exec.LookPath(file)
-	if err == nil {
-		return nil, errors.Wrapf(err, "could not find yarn on the $PATH; yarn is available at https://yarnpkg.com/")
-	}
-	logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
-	return &yarn1{path: yarnPath}, nil
-}
-
-func getNpm() (NodeRuntime, error) {
-	const file = "npm"
-	npmPath, err := exec.LookPath(file)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not find npm on the $PATH; npm is installed with Node.js "+
-			"available at https://nodejs.org/")
-	}
-	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
-	// `description`, `repository`, and `license` fields in the package.json file.
-	return &npm{path: npmPath, args: "--loglevel=error"}, nil
-}
-
-// getCmd returns the exec.Cmd used to install NPM dependencies. It will either use `npm` or `yarn` depending
-// on what is available on the current path, and if `PULUMI_PREFER_YARN` is truthy.
-// The boolean return parameter indicates if `npm` is chosen or not (instead of `yarn`).
-func getCmd(command string) (*exec.Cmd, bool, string, error) {
-	if PreferYarn() {
-		const file = "yarn"
-		yarnPath, err := exec.LookPath(file)
-		if err == nil {
-			return exec.Command(yarnPath, command), false, file, nil
-		}
-		logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
-	}
-
-	const file = "npm"
-	npmPath, err := exec.LookPath(file)
-	if err != nil {
-		return nil, false, file, errors.Wrapf(err, "could not find npm on the $PATH; npm is installed with Node.js "+
-			"available at https://nodejs.org/")
-	}
-	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
-	// `description`, `repository`, and `license` fields in the package.json file.
-	return exec.Command(npmPath, command, "--loglevel=error"), true, file, nil
 }
 
 // runCmd handles hooking up `stdout` and `stderr` and then runs the command.
@@ -113,7 +65,14 @@ func runCmd(c *exec.Cmd, npm bool, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// PreferYarn returns true if the `PULUMI_PREFER_YARN` environment variable is set.
-func PreferYarn() bool {
+func preferYarn() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_YARN"))
+}
+
+func getNodePath() (string, error) {
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		return "", errors.Wrapf(err, "could not find node on the $PATH; Node.js is available at https://nodejs.org/")
+	}
+	return nodePath, nil
 }

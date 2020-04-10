@@ -88,17 +88,12 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
-	var cmd string = "node"
-	if nodejs.PreferYarn() {
-		cmd = "yarn"
-	}
-	nodePath, err := exec.LookPath(cmd)
-	if nodejs.PreferYarn() {
-		nodePath = nodePath + " node"
-	}
+	nodeRuntime, err := nodejs.GetRuntime()
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+		cmdutil.ExitError(
+			"It looks like no NodeJS environment is installed?")
 	}
+	nodePath := nodeRuntime.GetNodePath()
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {

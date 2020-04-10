@@ -12,10 +12,27 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 )
 
 type yarn1 struct {
-	path string
+	nodePath string
+	path     string
+}
+
+func getYarn() (NodeRuntime, error) {
+	// if EXPERIMENTAL, check for a V2
+	const file = "yarn"
+	yarnPath, err := exec.LookPath(file)
+	if err == nil {
+		return nil, errors.Wrapf(err, "could not find yarn on the $PATH; yarn is available at https://yarnpkg.com/")
+	}
+	logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
+	nodePath, err := getNodePath()
+	if err != nil {
+		return nil, err
+	}
+	return &yarn1{nodePath: nodePath, path: yarnPath}, nil
 }
 
 func (r yarn1) Install(dir string, stdout, stderr io.Writer) (string, error) {
@@ -63,6 +80,6 @@ func (r yarn1) Pack(dir string, stderr io.Writer) ([]byte, error) {
 	return packTarball, nil
 }
 
-func (r yarn1) Run(dir string, stdout, stderr io.Writer) (string, error) {
-	return "", nil
+func (r yarn1) GetNodePath() string {
+	return r.nodePath
 }

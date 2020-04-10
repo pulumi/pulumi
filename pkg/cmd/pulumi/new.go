@@ -580,7 +580,7 @@ func nodeInstallDependencies() (string, error) {
 
 	runtime, err := nodejs.GetRuntime()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	bin, err := runtime.Install("", os.Stdout, os.Stderr)
 	if err != nil {

@@ -15,7 +15,8 @@ import (
 )
 
 type yarn2 struct {
-	path string
+	nodePath string
+	path     string
 }
 
 func (r yarn2) Install(dir string, stdout, stderr io.Writer) (string, error) {
@@ -63,6 +64,6 @@ func (r yarn2) Pack(dir string, stderr io.Writer) ([]byte, error) {
 	return packTarball, nil
 }
 
-func (r yarn2) Run(dir string, stdout, stderr io.Writer) (string, error) {
-	return "", nil
+func (r yarn2) GetNodePath() string {
+	return r.path + " node"
 }
