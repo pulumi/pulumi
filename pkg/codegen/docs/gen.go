@@ -57,6 +57,7 @@ var (
 	// The language-specific info objects for a certain package (provider).
 	goPkgInfo     go_gen.GoInfo
 	csharpPkgInfo dotnet.CSharpPackageInfo
+	nodePkgInfo   nodejs.NodePackageInfo
 
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
@@ -308,7 +309,15 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 			modName = override
 		}
 	case "csharp":
+		// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
+		// Despite that being the case, we don't apply that correction here since the schema-based
+		// codegen for dotnet languages is not aware of this "issue" and will cause other issues in
+		// the docs generator.
 		if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+			modName = override
+		}
+	case "nodejs":
+		if override, ok := nodePkgInfo.ModuleToPackage[modName]; ok {
 			modName = override
 		}
 	}
@@ -347,6 +356,17 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	}
 
 	cleanNodeJSName := func(objModName string) string {
+		// The nodejs codegen currently doesn't use the ModuleToPackage override available
+		// in the k8s package's schema. So we'll manually strip some known module names for k8s.
+		// TODO[pulumi/pulumi#4325]: Remove this block once the nodejs code gen is able to use the
+		// package name overrides for modules.
+		if isKubernetesPackage(mod.pkg) {
+			langTypeString = strings.ReplaceAll(langTypeString, "k8s.io.", "")
+			langTypeString = strings.ReplaceAll(langTypeString, "apiserver.", "")
+			langTypeString = strings.ReplaceAll(langTypeString, "rbac.authorization.v1.", "")
+			langTypeString = strings.ReplaceAll(langTypeString, "rbac.authorization.v1alpha1.", "")
+			langTypeString = strings.ReplaceAll(langTypeString, "rbac.authorization.v1beta1.", "")
+		}
 		objModName = strings.ReplaceAll(objModName, "/", ".") + "."
 		return strings.ReplaceAll(langTypeString, objModName, "")
 	}
@@ -431,6 +451,8 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("nodejs")
+	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
 	return []formalParam{
 		{
 			Name: "name",
@@ -444,14 +466,14 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType),
 			},
 		},
 		{
 			Name:         "opts",
 			OptionalFlag: "?",
 			Type: propertyType{
-				Name: "pulumi.CustomResourceOptions",
+				Name: "CustomResourceOptions",
 				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "CustomResourceOptions"),
 			},
 		},
@@ -467,7 +489,8 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("go")
-	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	// Use the Go module to package lookup to transform the module name to its normalized package name.
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -489,7 +512,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType),
 			},
 		},
 		{
@@ -775,6 +798,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 	resourceDisplayName := resourceTypeName
 
 	for _, lang := range supportedLanguages {
+		// Use the module to package lookup to transform the module name to its normalized package name.
+		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
 		// Reset the type name back to the display name.
 		resourceTypeName = resourceDisplayName
 
@@ -783,8 +808,13 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
-			modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
-			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, lang), title(modName, lang), resourceTypeName)
+			// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
+			// So we first lookup that name and then use that to lookup the C# namespace.
+			if isKubernetesPackage(mod.pkg) {
+				goPkgName := getLanguageModuleName(mod.pkg, mod.mod, "go")
+				modName = getLanguageModuleName(mod.pkg, goPkgName, "csharp")
+			}
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, lang), modName, resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
 			continue
@@ -797,7 +827,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		resourceMap[lang] = propertyType{
 			Name:        resourceDisplayName,
 			DisplayName: displayName,
-			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resourceTypeName),
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, resourceTypeName),
 		}
 	}
 
@@ -806,6 +836,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("nodejs")
+	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
 	return []formalParam{
 		{
 			Name: "name",
@@ -826,7 +858,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, stateParam),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, stateParam),
 			},
 		},
 		{
@@ -842,7 +874,8 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 
 func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("go")
-	// return fmt.Sprintf("func New%s(ctx *pulumi.Context, name string, args *%s, opts ...pulumi.ResourceOption) (*%s, error)\n", name, argsType, name)
+	// Use the Go module to package lookup to transform the module name to its normalized package name.
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -871,7 +904,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, stateParam),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, stateParam),
 			},
 		},
 		{
@@ -886,7 +919,8 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), title(mod.mod, "csharp"), stateParam)
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "csharp")
+	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), modName, stateParam)
 
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
@@ -1411,6 +1445,11 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}
 	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
+
+	// Decode NodeJS-specific language info.
+	if err := decodeLangSpecificInfo(pkg, "nodejs", &nodePkgInfo); err != nil {
+		panic(errors.Wrap(err, "error decoding nodejs language info"))
+	}
 
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(pkg, r.Token, modules, tool)
