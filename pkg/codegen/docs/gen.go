@@ -1048,7 +1048,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			continue
 		}
 		filteredOutputProps := filterOutputProperties(r.InputProperties, r.Properties)
-		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
+		if len(filteredOutputProps) > 0 {
+			outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
+		}
 		if r.StateInputs != nil {
 			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
 		}
