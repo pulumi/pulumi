@@ -82,6 +82,7 @@ var (
 		"gitlab":       "GitLab",
 		"kafka":        "Kafka",
 		"keycloak":     "Keycloak",
+		"kubernetes":   "Kubernetes",
 		"linode":       "Linode",
 		"mailgun":      "Mailgun",
 		"mysql":        "MySQL",
