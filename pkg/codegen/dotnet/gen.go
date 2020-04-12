@@ -867,6 +867,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 
 func (mod *modContext) genPulumiHeader(w io.Writer) {
 	mod.genHeader(w, []string{
+		"System",
 		"System.Collections.Generic",
 		"System.Collections.Immutable",
 		"System.Threading.Tasks",
