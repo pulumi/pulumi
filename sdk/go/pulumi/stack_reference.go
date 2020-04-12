@@ -23,30 +23,20 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 
 // GetStringOutput returns a stack output keyed by the given name as an StringOutput
 func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
-	return All(name, s.Outputs).
-		ApplyString(func(args []interface{}) string {
-			n, outs := args[0].(string), args[1].(map[string]interface{})
-			out := outs[n]
-			var res string
-			if out != nil {
-				res = out.(string)
-			}
-			return res
-		})
+	return s.GetOutput(name).ApplyString(func(out interface{}) string {
+		var res string
+		if out != nil {
+			res = out.(string)
+		}
+		return res
+	})
 }
 
 // GetIDOutput returns a stack output keyed by the given name as an IDOutput
 func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
-	return All(name, s.Outputs).
-		ApplyID(func(args []interface{}) ID {
-			n, outs := args[0].(string), args[1].(map[string]interface{})
-			out := outs[n]
-			var res string
-			if out != nil {
-				res = out.(string)
-			}
-			return ID(res)
-		})
+	return s.GetStringOutput(name).ApplyID(func(out string) ID {
+		return ID(out)
+	})
 }
 
 type stackReferenceArgs struct {
