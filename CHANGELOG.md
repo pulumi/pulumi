@@ -53,6 +53,9 @@ CHANGELOG
 - Fix error when setting config without value in non-interactive mode
   [#4358](https://github.com/pulumi/pulumi/pull/4358)
 
+- Propagate unknowns in Go SDK during marshal operations
+  [#4369](https://github.com/pulumi/pulumi/pull/4369/files)
+
 - Fix Go SDK stack reference helpers to handle nil values
   [#4370](https://github.com/pulumi/pulumi/pull/4370)
 
