@@ -53,6 +53,9 @@ CHANGELOG
 - Fix error when setting config without value in non-interactive mode
   [#4358](https://github.com/pulumi/pulumi/pull/4358)
 
+- Propagate unknowns in Go SDK during marshal operations
+  [#4369](https://github.com/pulumi/pulumi/pull/4369/files)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
