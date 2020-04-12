@@ -53,6 +53,9 @@ CHANGELOG
 - Fix error when setting config without value in non-interactive mode
   [#4358](https://github.com/pulumi/pulumi/pull/4358)
 
+- Fix Go SDK stack reference helpers to handle nil values
+  [#4370](https://github.com/pulumi/pulumi/pull/4370)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
