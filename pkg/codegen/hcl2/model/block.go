@@ -73,7 +73,7 @@ func (b *Block) print(w io.Writer, p *printer) {
 			l = fmt.Sprintf("%q", l)
 			if t.Raw.Type != hclsyntax.TokenQuotedLit || string(t.Raw.Bytes) != l {
 				t.Raw.Type = hclsyntax.TokenQuotedLit
-				t.Raw.Bytes = []byte(t.Raw.Bytes)
+				t.Raw.Bytes = []byte(l)
 			}
 		}
 		p.fprintf(w, "% v", t)

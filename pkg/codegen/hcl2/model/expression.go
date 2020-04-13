@@ -1091,17 +1091,6 @@ func getTraverserTrivia(tokens syntax.TraverserTokens) (syntax.TriviaList, synta
 	return leading, trailing
 }
 
-func setTraverserLeadingTrivia(tokens syntax.TraverserTokens, t syntax.TriviaList) {
-	switch tokens := tokens.(type) {
-	case *syntax.DotTraverserTokens:
-		setExprLeadingTrivia(tokens.Parentheses, &tokens.Dot, t)
-	case *syntax.BracketTraverserTokens:
-		setExprLeadingTrivia(tokens.Parentheses, &tokens.OpenBracket, t)
-	default:
-		panic(fmt.Errorf("unexpected traverser of type %T", tokens))
-	}
-}
-
 func setTraverserTrailingTrivia(tokens syntax.TraverserTokens, t syntax.TriviaList) {
 	switch tokens := tokens.(type) {
 	case *syntax.DotTraverserTokens:

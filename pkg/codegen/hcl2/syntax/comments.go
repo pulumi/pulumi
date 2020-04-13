@@ -280,7 +280,7 @@ func (m *tokenMapper) Enter(n hclsyntax.Node) hcl.Diagnostics {
 	// descend into its wrapped expression if the wrapped expression can be interpreted as a keyword even if the
 	// syntactical form that _forces_ the wrapped expression to be a non-literal is used.
 	if x, ok := n.(*hclsyntax.ObjectConsKeyExpr); ok && x.ForceNonLiteral && hcl.ExprAsKeyword(x.Wrapped) != "" {
-		hclsyntax.Walk(x.Wrapped, m)
+		return hclsyntax.Walk(x.Wrapped, m)
 	}
 	return nil
 }
