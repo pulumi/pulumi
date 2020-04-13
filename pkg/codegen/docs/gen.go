@@ -508,7 +508,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
-				Name: "pulumi.Context",
+				Name: "Context",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
 			},
 		},
@@ -531,7 +531,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name:         "opts",
 			OptionalFlag: "...",
 			Type: propertyType{
-				Name: "pulumi.ResourceOption",
+				Name: "ResourceOption",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
 			},
 		},
@@ -548,11 +548,21 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		input:    true,
 		optional: argsOptional,
 	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
-	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
+
+	var argLangTypeName string
 	if isKubernetesPackage(mod.pkg) {
-		// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
-		argLangTypeName = strings.ReplaceAll(argLangTypeName, "Pulumi.Kubernetes.", "Pulumi.Kubernetes.Types.Inputs.")
+		if mod.mod != "" {
+			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
+			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
+			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
+			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
+			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+		} else {
+			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
+		}
+	} else {
+		argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
+		argLangTypeName = strings.ReplaceAll(argLangType.Name, "Inputs.", "")
 	}
 
 	var argsFlag string
@@ -824,6 +834,11 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
+			if mod.mod == "" {
+				resourceTypeName = fmt.Sprintf("Pulumi.%s.%s", title(mod.pkg.Name, lang), resourceTypeName)
+				break
+			}
+
 			// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
 			// So we first lookup that name and then use that to lookup the C# namespace.
 			if isKubernetesPackage(mod.pkg) {
