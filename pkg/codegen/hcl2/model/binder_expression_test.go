@@ -15,6 +15,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -30,6 +31,7 @@ func TestBindLiteral(t *testing.T) {
 	lit, ok := expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.False, lit.Value)
+	assert.Equal(t, "false", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("true", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
@@ -37,6 +39,7 @@ func TestBindLiteral(t *testing.T) {
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.True, lit.Value)
+	assert.Equal(t, "true", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("0", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
@@ -44,6 +47,7 @@ func TestBindLiteral(t *testing.T) {
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.True(t, cty.NumberIntVal(0).RawEquals(lit.Value))
+	assert.Equal(t, "0", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText("3.14", nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
@@ -51,6 +55,7 @@ func TestBindLiteral(t *testing.T) {
 	lit, ok = expr.(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.True(t, cty.MustParseNumberVal("3.14").RawEquals(lit.Value))
+	assert.Equal(t, "3.14", fmt.Sprintf("%v", expr))
 
 	expr, diags = BindExpressionText(`"foo"`, nil, hcl.Pos{})
 	assert.Len(t, diags, 0)
@@ -61,6 +66,7 @@ func TestBindLiteral(t *testing.T) {
 	lit, ok = template.Parts[0].(*LiteralValueExpression)
 	assert.True(t, ok)
 	assert.Equal(t, cty.StringVal("foo"), lit.Value)
+	assert.Equal(t, "\"foo\"", fmt.Sprintf("%v", expr))
 }
 
 type environment map[string]interface{}
@@ -128,6 +134,7 @@ func TestBindBinaryOp(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*BinaryOpExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -159,6 +166,7 @@ func TestBindConditional(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ConditionalExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -187,9 +195,9 @@ func TestBindFor(t *testing.T) {
 	cases := []exprTestCase{
 		// Object for
 		{x: `{for k, v in {}: k => v}`, t: NewMapType(NoneType)},
-		{x: `{for k, v in {foo: "bar"}: k => v}`, t: NewMapType(StringType)},
-		{x: `{for k, v in {foo: "bar"}: k => 0}`, t: NewMapType(NumberType)},
-		{x: `{for k, v in {foo: 0}: k => v}`, t: NewMapType(NumberType)},
+		{x: `{for k, v in {foo = "bar"}: k => v}`, t: NewMapType(StringType)},
+		{x: `{for k, v in {foo = "bar"}: k => 0}`, t: NewMapType(NumberType)},
+		{x: `{for k, v in {foo = 0}: k => v}`, t: NewMapType(NumberType)},
 		{x: `{for k, v in a: k => v}`, t: NewMapType(StringType)},
 		{x: `{for k, v in aa: k => v}`, t: NewMapType(NewOutputType(StringType))},
 		{x: `{for k, v in a: k => 0}`, t: NewMapType(NumberType)},
@@ -219,6 +227,7 @@ func TestBindFor(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ForExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -274,6 +283,7 @@ func TestBindFunctionCall(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*FunctionCallExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -340,6 +350,7 @@ func TestBindIndex(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*IndexExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -380,6 +391,7 @@ func TestBindObjectCons(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ObjectConsExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -432,6 +444,7 @@ func TestBindRelativeTraversal(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*RelativeTraversalExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -501,6 +514,7 @@ func TestBindScopeTraversal(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*ScopeTraversalExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -538,6 +552,7 @@ func TestBindSplat(t *testing.T) {
 		// Standard operations
 		{x: `a[*][0]`, t: NewListType(StringType)},
 		{x: `b[*].bar.baz`, t: NewListType(StringType)},
+		{x: `b.*.bar.baz`, t: NewListType(StringType)},
 		//		{x: `c[*][0]`, t: NewSetType(StringType)},
 		//		{x: `d[*].bar.baz`, t: NewSetType(StringType)},
 		//		{x: `e[*][0]`, t: NewTupleType(StringType)},
@@ -552,6 +567,8 @@ func TestBindSplat(t *testing.T) {
 		// Lifted operations
 		{x: `m[*].bar.baz`, t: NewOutputType(NewListType(StringType))},
 		{x: `n[*].bar.baz`, t: NewPromiseType(NewListType(StringType))},
+		{x: `m.*.bar.baz`, t: NewOutputType(NewListType(StringType))},
+		{x: `n.*.bar.baz`, t: NewPromiseType(NewListType(StringType))},
 		//		{x: `o[*].bar.baz`, t: NewOutputType(NewListType(StringType))},
 		//		{x: `p[*].bar.baz`, t: NewPromiseType(NewListType(StringType))},
 		//		{x: `q[*].bar.baz`, t: NewOutputType(NewTupleType(StringType))},
@@ -564,6 +581,7 @@ func TestBindSplat(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*SplatExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -631,6 +649,7 @@ func TestBindTemplate(t *testing.T) {
 				_, ok = expr.(*ScopeTraversalExpression)
 			default:
 				_, ok = expr.(*TemplateExpression)
+				assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 			}
 			assert.True(t, ok)
 		})
@@ -658,6 +677,7 @@ func TestBindTupleCons(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*TupleConsExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
 }
@@ -691,7 +711,7 @@ func TestBindUnaryOp(t *testing.T) {
 			assert.Equal(t, c.t, expr.Type())
 			_, ok := expr.(*UnaryOpExpression)
 			assert.True(t, ok)
+			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
 		})
 	}
-
 }

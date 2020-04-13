@@ -58,19 +58,23 @@ func (b *Block) Format(f fmt.State, c rune) {
 
 func (b *Block) print(w io.Writer, p *printer) {
 	// Print the type.
-	p.fprintf(w, "%v", b.Tokens.GetType().Or(hclsyntax.TokenIdent, b.Type))
+	p.fprintf(w, "%v", b.Tokens.GetType(b.Type))
 
 	// Print the labels with leading and trailing trivia.
-	labelTokens := b.Tokens.GetLabels()
+	labelTokens := b.Tokens.GetLabels(b.Labels)
 	for i, l := range b.Labels {
 		var t syntax.Token
 		if i < len(labelTokens) {
 			t = labelTokens[i]
 		}
 		if hclsyntax.ValidIdentifier(l) {
-			t = t.Or(hclsyntax.TokenIdent, l)
+			t = identToken(t, l)
 		} else {
-			t = t.Or(hclsyntax.TokenQuotedLit, fmt.Sprintf("%q", l))
+			l = fmt.Sprintf("%q", l)
+			if t.Raw.Type != hclsyntax.TokenQuotedLit || string(t.Raw.Bytes) != l {
+				t.Raw.Type = hclsyntax.TokenQuotedLit
+				t.Raw.Bytes = []byte(t.Raw.Bytes)
+			}
 		}
 		p.fprintf(w, "% v", t)
 	}
@@ -84,7 +88,7 @@ func (b *Block) print(w io.Writer, p *printer) {
 	}
 
 	// Print the opening brace.
-	p.fprintf(w, "% v", b.Tokens.GetOpenBrace().Or(hclsyntax.TokenOBrace))
+	p.fprintf(w, "% v", b.Tokens.GetOpenBrace())
 
 	// Print the block contents.
 	p.indented(func() {
@@ -95,7 +99,7 @@ func (b *Block) print(w io.Writer, p *printer) {
 	}
 
 	if b.Tokens != nil {
-		p.fprintf(w, "%v", b.Tokens.GetCloseBrace().Or(hclsyntax.TokenCBrace))
+		p.fprintf(w, "%v", b.Tokens.GetCloseBrace())
 	} else {
 		p.fprintf(w, "%s}", p.indent)
 	}

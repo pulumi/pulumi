@@ -49,6 +49,91 @@ type Expression interface {
 	isExpression()
 }
 
+func identToken(token syntax.Token, ident string) syntax.Token {
+	if string(token.Raw.Bytes) != ident {
+		token.Raw.Bytes = []byte(ident)
+	}
+	return token
+}
+
+func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
+	if parens.Any() {
+		return true
+	}
+	switch first := first.(type) {
+	case Expression:
+		return first.HasLeadingTrivia()
+	case syntax.NodeTokens:
+		return true
+	}
+	return false
+}
+
+func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
+	if parens.Any() {
+		return true
+	}
+	switch last := last.(type) {
+	case Expression:
+		return last.HasTrailingTrivia()
+	case syntax.NodeTokens:
+		return true
+	}
+	return false
+}
+
+func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.TriviaList {
+	if parens.Any() {
+		return parens.GetLeadingTrivia()
+	}
+	switch first := first.(type) {
+	case Expression:
+		return first.GetLeadingTrivia()
+	case syntax.Token:
+		return first.LeadingTrivia
+	}
+	return nil
+}
+
+func setExprLeadingTrivia(parens syntax.Parentheses, first interface{}, trivia syntax.TriviaList) {
+	if parens.Any() {
+		parens.SetLeadingTrivia(trivia)
+		return
+	}
+	switch first := first.(type) {
+	case Expression:
+		first.SetLeadingTrivia(trivia)
+	case *syntax.Token:
+		first.LeadingTrivia = trivia
+	}
+}
+
+func getExprTrailingTrivia(parens syntax.Parentheses, last interface{}) syntax.TriviaList {
+	if parens.Any() {
+		return parens.GetTrailingTrivia()
+	}
+	switch last := last.(type) {
+	case Expression:
+		return last.GetTrailingTrivia()
+	case syntax.Token:
+		return last.TrailingTrivia
+	}
+	return nil
+}
+
+func setExprTrailingTrivia(parens syntax.Parentheses, last interface{}, trivia syntax.TriviaList) {
+	if parens.Any() {
+		parens.SetTrailingTrivia(trivia)
+		return
+	}
+	switch last := last.(type) {
+	case Expression:
+		last.SetTrailingTrivia(trivia)
+	case *syntax.Token:
+		last.TrailingTrivia = trivia
+	}
+}
+
 // AnonymousFunctionExpression represents a semantically-analyzed anonymous function expression.
 //
 // These expressions are not the result of semantically analyzing syntax nodes. Instead, they may be synthesized by
@@ -118,8 +203,6 @@ func (x *AnonymousFunctionExpression) print(w io.Writer, p *printer) {
 	}
 
 	// Print the body and closing paren.
-	//
-	// TODO(pdg): pull leading and trailing trivia out and prepend/append to the overall result
 	p.fprintf(w, "%v)", x.Body)
 }
 
@@ -158,27 +241,30 @@ func (x *BinaryOpExpression) Type() Type {
 }
 
 func (x *BinaryOpExpression) HasLeadingTrivia() bool {
-	return x.LeftOperand.HasLeadingTrivia()
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.LeftOperand)
 }
 
 func (x *BinaryOpExpression) HasTrailingTrivia() bool {
-	return x.RightOperand.HasTrailingTrivia()
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.RightOperand)
 }
 
 func (x *BinaryOpExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.LeftOperand.GetLeadingTrivia()
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.LeftOperand)
 }
 
 func (x *BinaryOpExpression) SetLeadingTrivia(t syntax.TriviaList) {
-	x.LeftOperand.SetLeadingTrivia(t)
+	setExprLeadingTrivia(x.Tokens.GetParentheses(), x.LeftOperand, t)
 }
 
 func (x *BinaryOpExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.RightOperand.GetTrailingTrivia()
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.RightOperand)
 }
 
 func (x *BinaryOpExpression) SetTrailingTrivia(t syntax.TriviaList) {
-	x.RightOperand.SetTrailingTrivia(t)
+	if x.Tokens == nil {
+		x.Tokens = syntax.NewBinaryOpTokens(x.Operation)
+	}
+	setExprTrailingTrivia(x.Tokens.GetParentheses(), x.RightOperand, t)
 }
 
 func (x *BinaryOpExpression) Format(f fmt.State, c rune) {
@@ -186,10 +272,10 @@ func (x *BinaryOpExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *BinaryOpExpression) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%v% v% v",
-		x.LeftOperand,
-		x.Tokens.GetOperator().Or(syntax.OperationTokenType(x.Operation)),
-		x.RightOperand)
+	p.fprintf(w, "%(%v% v% v%)",
+		x.Tokens.Parentheses,
+		x.LeftOperand, x.Tokens.GetOperator(x.Operation), x.RightOperand,
+		x.Tokens.Parentheses)
 }
 
 func (*BinaryOpExpression) isExpression() {}
@@ -228,31 +314,49 @@ func (x *ConditionalExpression) Type() Type {
 }
 
 func (x *ConditionalExpression) HasLeadingTrivia() bool {
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			return true
+		}
+	case *syntax.TemplateConditionalTokens:
 		return len(tokens.OpenIf.LeadingTrivia) != 0
 	}
 	return x.Condition.HasLeadingTrivia()
 }
 
 func (x *ConditionalExpression) HasTrailingTrivia() bool {
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			return true
+		}
+	case *syntax.TemplateConditionalTokens:
 		return len(tokens.CloseEndif.TrailingTrivia) != 0
 	}
 	return x.FalseResult.HasTrailingTrivia()
 }
 
 func (x *ConditionalExpression) GetLeadingTrivia() syntax.TriviaList {
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			return tokens.Parentheses.GetLeadingTrivia()
+		}
+	case *syntax.TemplateConditionalTokens:
 		return tokens.OpenIf.LeadingTrivia
 	}
 	return x.Condition.GetLeadingTrivia()
 }
 
 func (x *ConditionalExpression) SetLeadingTrivia(t syntax.TriviaList) {
-	if x.Tokens == nil {
-		x.Tokens = syntax.NewConditionalTokens()
-	}
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			tokens.Parentheses.SetLeadingTrivia(t)
+			return
+		}
+	case *syntax.TemplateConditionalTokens:
 		tokens.OpenIf.LeadingTrivia = t
 		return
 	}
@@ -260,7 +364,12 @@ func (x *ConditionalExpression) SetLeadingTrivia(t syntax.TriviaList) {
 }
 
 func (x *ConditionalExpression) GetTrailingTrivia() syntax.TriviaList {
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			return tokens.Parentheses.GetTrailingTrivia()
+		}
+	case *syntax.TemplateConditionalTokens:
 		return tokens.CloseEndif.TrailingTrivia
 	}
 	return x.FalseResult.GetTrailingTrivia()
@@ -270,7 +379,13 @@ func (x *ConditionalExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewConditionalTokens()
 	}
-	if tokens, ok := x.Tokens.(*syntax.TemplateConditionalTokens); ok {
+	switch tokens := x.Tokens.(type) {
+	case *syntax.ConditionalTokens:
+		if tokens.Parentheses.Any() {
+			tokens.Parentheses.SetTrailingTrivia(t)
+			return
+		}
+	case *syntax.TemplateConditionalTokens:
 		tokens.CloseEndif.TrailingTrivia = t
 		return
 	}
@@ -284,35 +399,21 @@ func (x *ConditionalExpression) Format(f fmt.State, c rune) {
 func (x *ConditionalExpression) print(w io.Writer, p *printer) {
 	tokens := x.Tokens
 	if tokens == nil {
-		tokens = &syntax.ConditionalTokens{}
+		tokens = syntax.NewConditionalTokens()
 	}
 
 	switch tokens := tokens.(type) {
 	case *syntax.ConditionalTokens:
-		p.fprintf(w, "%v% v% v% v% v",
-			x.Condition,
-			tokens.QuestionMark.Or(hclsyntax.TokenQuestion),
-			x.TrueResult,
-			tokens.Colon.Or(hclsyntax.TokenColon),
-			x.FalseResult)
+		p.fprintf(w, "%(%v% v% v% v% v%)",
+			tokens.Parentheses,
+			x.Condition, tokens.QuestionMark, x.TrueResult, tokens.Colon, x.FalseResult,
+			tokens.Parentheses)
 	case *syntax.TemplateConditionalTokens:
-		p.fprintf(w, "%v%v% v%v%v",
-			tokens.OpenIf.Or(hclsyntax.TokenTemplateControl),
-			tokens.If.Or(hclsyntax.TokenIdent, "if"),
-			x.Condition,
-			tokens.CloseIf.Or(hclsyntax.TokenTemplateSeqEnd),
-			x.TrueResult)
+		p.fprintf(w, "%v%v% v%v%v", tokens.OpenIf, tokens.If, x.Condition, tokens.CloseIf, x.TrueResult)
 		if tokens.Else != nil {
-			p.fprintf(w, "%v%v%v%v",
-				tokens.OpenElse.Or(hclsyntax.TokenTemplateControl),
-				tokens.Else.Or(hclsyntax.TokenIdent, "else"),
-				tokens.CloseElse.Or(hclsyntax.TokenTemplateSeqEnd),
-				x.FalseResult)
+			p.fprintf(w, "%v%v%v%v", tokens.OpenElse, tokens.Else, tokens.CloseElse, x.FalseResult)
 		}
-		p.fprintf(w, "%v%v%v",
-			tokens.OpenEndif.Or(hclsyntax.TokenTemplateControl),
-			tokens.Endif.Or(hclsyntax.TokenIdent, "endif"),
-			tokens.CloseEndif.Or(hclsyntax.TokenTemplateSeqEnd))
+		p.fprintf(w, "%v%v%v", tokens.OpenEndif, tokens.Endif, tokens.CloseEndif)
 	}
 }
 
@@ -430,7 +531,7 @@ func (x *ForExpression) HasTrailingTrivia() bool {
 func (x *ForExpression) GetLeadingTrivia() syntax.TriviaList {
 	switch tokens := x.Tokens.(type) {
 	case *syntax.ForTokens:
-		return tokens.Open.LeadingTrivia
+		return getExprLeadingTrivia(tokens.Parentheses, tokens.Open)
 	case *syntax.TemplateForTokens:
 		return tokens.OpenFor.LeadingTrivia
 	default:
@@ -448,7 +549,7 @@ func (x *ForExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	}
 	switch tokens := x.Tokens.(type) {
 	case *syntax.ForTokens:
-		tokens.Open.LeadingTrivia = t
+		setExprLeadingTrivia(tokens.Parentheses, &tokens.Open, t)
 	case *syntax.TemplateForTokens:
 		tokens.OpenFor.LeadingTrivia = t
 	}
@@ -457,7 +558,7 @@ func (x *ForExpression) SetLeadingTrivia(t syntax.TriviaList) {
 func (x *ForExpression) GetTrailingTrivia() syntax.TriviaList {
 	switch tokens := x.Tokens.(type) {
 	case *syntax.ForTokens:
-		return tokens.Close.TrailingTrivia
+		return getExprTrailingTrivia(tokens.Parentheses, tokens.Close)
 	case *syntax.TemplateForTokens:
 		return tokens.CloseEndfor.TrailingTrivia
 	default:
@@ -475,7 +576,7 @@ func (x *ForExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	}
 	switch tokens := x.Tokens.(type) {
 	case *syntax.ForTokens:
-		tokens.Close.TrailingTrivia = t
+		setExprTrailingTrivia(tokens.Parentheses, &tokens.Close, t)
 	case *syntax.TemplateForTokens:
 		tokens.CloseEndfor.TrailingTrivia = t
 	}
@@ -488,40 +589,36 @@ func (x *ForExpression) Format(f fmt.State, c rune) {
 func (x *ForExpression) print(w io.Writer, p *printer) {
 	tokens := x.Tokens
 	if tokens == nil {
-		tokens = &syntax.ForTokens{}
+		keyVariable := ""
+		if x.KeyVariable != nil {
+			keyVariable = x.KeyVariable.Name
+		}
+		syntax.NewForTokens(keyVariable, x.ValueVariable.Name, x.Key != nil, x.Group, x.Condition != nil)
 	}
 
 	switch tokens := tokens.(type) {
 	case *syntax.ForTokens:
-		open, close := hclsyntax.TokenOBrack, hclsyntax.TokenCBrack
-		if x.Key != nil {
-			open, close = hclsyntax.TokenOBrace, hclsyntax.TokenCBrace
-		}
-
 		// Print the opening rune and the for token.
-		p.fprintf(w, "%v%v",
-			tokens.Open.Or(open),
-			tokens.For.Or(hclsyntax.TokenIdent, "for"))
+		p.fprintf(w, "%(%v%v", tokens.Parentheses, tokens.Open, tokens.For)
 
 		// Print the key variable, if any.
 		if x.KeyVariable != nil {
-			p.fprintf(w, "% v%v",
-				tokens.Key.Or(hclsyntax.TokenIdent, x.KeyVariable.Name),
-				tokens.Comma.Or(hclsyntax.TokenComma))
+			keyToken := tokens.Key
+			if x.KeyVariable != nil && keyToken == nil {
+				keyToken = &syntax.Token{Raw: hclsyntax.Token{Type: hclsyntax.TokenIdent}}
+			}
+
+			key := identToken(*keyToken, x.KeyVariable.Name)
+			p.fprintf(w, "% v%v", key, tokens.Comma)
 		}
 
 		// Print the value variable, the in token, the collection expression, and the colon.
-		p.fprintf(w, "% v% v% v%v",
-			tokens.Value.Or(hclsyntax.TokenIdent, x.ValueVariable.Name),
-			tokens.In.Or(hclsyntax.TokenIdent, "in"),
-			x.Collection,
-			tokens.Colon.Or(hclsyntax.TokenColon))
+		value := identToken(tokens.Value, x.ValueVariable.Name)
+		p.fprintf(w, "% v% v% v%v", value, tokens.In, x.Collection, tokens.Colon)
 
 		// Print the key expression and arrow token, if any.
 		if x.Key != nil {
-			p.fprintf(w, "% v% v",
-				x.Key,
-				tokens.Arrow.Or(hclsyntax.TokenFatArrow))
+			p.fprintf(w, "% v% v", x.Key, tokens.Arrow)
 		}
 
 		// Print the value expression.
@@ -529,42 +626,37 @@ func (x *ForExpression) print(w io.Writer, p *printer) {
 
 		// Print the group token, if any.
 		if x.Group {
-			p.fprintf(w, "%v", tokens.Group.Or(hclsyntax.TokenEllipsis))
+			p.fprintf(w, "%v", tokens.Group)
 		}
 
 		// Print the if token and the condition, if any.
 		if x.Condition != nil {
-			p.fprintf(w, "% v% v",
-				tokens.If.Or(hclsyntax.TokenIdent, "if"),
-				x.Condition)
+			p.fprintf(w, "% v% v", tokens.If, x.Condition)
 		}
 
 		// Print the closing rune.
-		p.fprintf(w, "%v", tokens.Close.Or(close))
+		p.fprintf(w, "%v%)", tokens.Close, tokens.Parentheses)
 	case *syntax.TemplateForTokens:
 		// Print the opening sequence.
-		p.fprintf(w, "%v%v",
-			tokens.OpenFor.Or(hclsyntax.TokenTemplateControl),
-			tokens.For.Or(hclsyntax.TokenIdent, "for"))
+		p.fprintf(w, "%v%v", tokens.OpenFor, tokens.For)
 
 		// Print the key variable, if any.
 		if x.KeyVariable != nil {
-			p.fprintf(w, "% v%v",
-				tokens.Key.Or(hclsyntax.TokenIdent, x.KeyVariable.Name),
-				tokens.Comma.Or(hclsyntax.TokenComma))
+			keyToken := tokens.Key
+			if x.KeyVariable != nil && keyToken == nil {
+				keyToken = &syntax.Token{Raw: hclsyntax.Token{Type: hclsyntax.TokenIdent}}
+			}
+
+			key := identToken(*keyToken, x.KeyVariable.Name)
+			p.fprintf(w, "% v%v", key, tokens.Comma)
 		}
 
 		// Print the value variable, the in token, the collection expression, the control sequence terminator, the
 		// value expression, and the closing sequence.
 		p.fprintf(w, "% v% v% v%v%v%v%v%v",
-			tokens.Value.Or(hclsyntax.TokenIdent, x.ValueVariable.Name),
-			tokens.In.Or(hclsyntax.TokenIdent, "in"),
-			x.Collection,
-			tokens.CloseFor.Or(hclsyntax.TokenTemplateSeqEnd),
+			identToken(tokens.Value, x.ValueVariable.Name), tokens.In, x.Collection, tokens.CloseFor,
 			x.Value,
-			tokens.OpenEndfor.Or(hclsyntax.TokenTemplateControl),
-			tokens.Endfor.Or(hclsyntax.TokenIdent, "endfor"),
-			tokens.CloseEndfor.Or(hclsyntax.TokenTemplateSeqEnd))
+			tokens.OpenEndfor, tokens.Endfor, tokens.CloseEndfor)
 	}
 }
 
@@ -596,33 +688,33 @@ func (x *FunctionCallExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *FunctionCallExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *FunctionCallExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *FunctionCallExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetName().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetName(x.Name))
 }
 
 func (x *FunctionCallExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewFunctionCallTokens(x.Name, len(x.Args))
 	}
-	x.Tokens.Name.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.Name, t)
 }
 
 func (x *FunctionCallExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Tokens.GetCloseParen().TrailingTrivia
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetCloseParen())
 }
 
 func (x *FunctionCallExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewFunctionCallTokens(x.Name, len(x.Args))
 	}
-	x.Tokens.CloseParen.TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.CloseParen, t)
 }
 
 func (x *FunctionCallExpression) Format(f fmt.State, c rune) {
@@ -631,12 +723,10 @@ func (x *FunctionCallExpression) Format(f fmt.State, c rune) {
 
 func (x *FunctionCallExpression) print(w io.Writer, p *printer) {
 	// Print the name and opening parenthesis.
-	p.fprintf(w, "%v%v",
-		x.Tokens.GetName().Or(hclsyntax.TokenIdent, x.Name),
-		x.Tokens.GetOpenParen().Or(hclsyntax.TokenOParen))
+	p.fprintf(w, "%(%v%v", x.Tokens.GetParentheses(), x.Tokens.GetName(x.Name), x.Tokens.GetOpenParen())
 
 	// Print each argument and its comma.
-	commas := x.Tokens.GetCommas()
+	commas := x.Tokens.GetCommas(len(x.Args))
 	for i, arg := range x.Args {
 		if i == 0 {
 			p.fprintf(w, "%v", arg)
@@ -649,19 +739,19 @@ func (x *FunctionCallExpression) print(w io.Writer, p *printer) {
 			if i < len(commas) {
 				comma = commas[i]
 			}
-			p.fprintf(w, "%v", comma.Or(hclsyntax.TokenComma))
+			p.fprintf(w, "%v", comma)
 		}
 	}
 
 	// If there were commas left over, print the trivia for each.
-	if len(x.Args)-1 <= len(commas) {
+	if len(x.Args) > 0 && len(x.Args)-1 <= len(commas) {
 		for _, comma := range commas[len(x.Args)-1:] {
 			p.fprintf(w, "%v", comma.AllTrivia().CollapseWhitespace())
 		}
 	}
 
 	// Print the closing parenthesis.
-	p.fprintf(w, "%v", x.Tokens.GetCloseParen().Or(hclsyntax.TokenCParen))
+	p.fprintf(w, "%v%)", x.Tokens.GetCloseParen(), x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the function call expression.
@@ -697,33 +787,33 @@ func (x *IndexExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *IndexExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Collection)
 }
 
 func (x *IndexExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *IndexExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOpenBracket().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOpenBracket())
 }
 
 func (x *IndexExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewIndexTokens()
 	}
-	x.Tokens.OpenBracket.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.OpenBracket, t)
 }
 
 func (x *IndexExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Tokens.GetCloseBracket().TrailingTrivia
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetCloseBracket())
 }
 
 func (x *IndexExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewIndexTokens()
 	}
-	x.Tokens.CloseBracket.TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.CloseBracket, t)
 }
 
 func (x *IndexExpression) Format(f fmt.State, c rune) {
@@ -731,11 +821,10 @@ func (x *IndexExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *IndexExpression) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%v%v%v%v",
-		x.Collection,
-		x.Tokens.GetOpenBracket().Or(hclsyntax.TokenOBrack),
-		x.Key,
-		x.Tokens.GetCloseBracket().Or(hclsyntax.TokenCBrack))
+	p.fprintf(w, "%(%v%v%v%v%)",
+		x.Tokens.GetParentheses(),
+		x.Collection, x.Tokens.GetOpenBracket(), x.Key, x.Tokens.GetCloseBracket(),
+		x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the index expression.
@@ -800,59 +889,39 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *LiteralValueExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *LiteralValueExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
-}
-
-func newLiteralValueTokens(value cty.Value) *syntax.LiteralValueTokens {
-	text, typ := literalText(value, nil), hclsyntax.TokenIdent
-	switch value.Type() {
-	case cty.Bool:
-		// OK
-	case cty.Number:
-		typ = hclsyntax.TokenNumberLit
-	case cty.String:
-		typ = hclsyntax.TokenStringLit
-	default:
-		panic(fmt.Errorf("unexpected literal type %v", value.Type().FriendlyName()))
-	}
-	return syntax.NewLiteralValueTokens(syntax.Token{
-		Raw: hclsyntax.Token{
-			Type:  typ,
-			Bytes: []byte(text),
-		},
-	})
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *LiteralValueExpression) GetLeadingTrivia() syntax.TriviaList {
-	if v := x.Tokens.GetValue(); len(v) > 0 {
-		return v[0].LeadingTrivia
+	if v := x.Tokens.GetValue(x.Value); len(v) > 0 {
+		return getExprLeadingTrivia(x.Tokens.GetParentheses(), v[0])
 	}
-	return nil
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), nil)
 }
 
 func (x *LiteralValueExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
-		x.Tokens = newLiteralValueTokens(x.Value)
+		x.Tokens = syntax.NewLiteralValueTokens(x.Value)
 	}
-	x.Tokens.Value[0].LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.Value[0], t)
 }
 
 func (x *LiteralValueExpression) GetTrailingTrivia() syntax.TriviaList {
-	if v := x.Tokens.GetValue(); len(v) > 0 {
-		return v[len(v)-1].TrailingTrivia
+	if v := x.Tokens.GetValue(x.Value); len(v) > 0 {
+		return getExprTrailingTrivia(x.Tokens.GetParentheses(), v[len(v)-1])
 	}
-	return nil
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), nil)
 }
 
 func (x *LiteralValueExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
-		x.Tokens = newLiteralValueTokens(x.Value)
+		x.Tokens = syntax.NewLiteralValueTokens(x.Value)
 	}
-	x.Tokens.Value[len(x.Tokens.Value)-1].TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.Value[len(x.Tokens.Value)-1], t)
 }
 
 func (x *LiteralValueExpression) Format(f fmt.State, c rune) {
@@ -865,7 +934,7 @@ func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
 
 	var leading, trailing syntax.TriviaList
 	var rawBytes []byte
-	if toks := x.Tokens.GetValue(); len(toks) > 0 {
+	if toks := x.Tokens.GetValue(x.Value); len(toks) > 0 {
 		leading, trailing = toks[0].LeadingTrivia, toks[len(toks)-1].TrailingTrivia
 
 		for _, t := range toks {
@@ -873,7 +942,10 @@ func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
 		}
 	}
 
-	p.fprintf(w, "%v%v%v", leading, literalText(x.Value, rawBytes), trailing)
+	p.fprintf(w, "%(%v%v%v%)",
+		x.Tokens.GetParentheses(),
+		leading, literalText(x.Value, rawBytes), trailing,
+		x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the literal value expression.
@@ -915,33 +987,33 @@ func (x *ObjectConsExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *ObjectConsExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *ObjectConsExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *ObjectConsExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOpenBrace().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOpenBrace(len(x.Items)))
 }
 
 func (x *ObjectConsExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewObjectConsTokens(len(x.Items))
 	}
-	x.Tokens.OpenBrace.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.OpenBrace, t)
 }
 
 func (x *ObjectConsExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Tokens.GetCloseBrace().TrailingTrivia
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetCloseBrace())
 }
 
 func (x *ObjectConsExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewObjectConsTokens(len(x.Items))
 	}
-	x.Tokens.CloseBrace.TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.CloseBrace, t)
 }
 
 func (x *ObjectConsExpression) Format(f fmt.State, c rune) {
@@ -950,28 +1022,24 @@ func (x *ObjectConsExpression) Format(f fmt.State, c rune) {
 
 func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	// Print the opening brace.
-	p.fprintf(w, "%v", x.Tokens.GetOpenBrace().Or(hclsyntax.TokenOBrace))
+	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpenBrace(len(x.Items)))
 
 	// Print the items.
 	p.indented(func() {
-		items := x.Tokens.GetItems()
+		items := x.Tokens.GetItems(len(x.Items))
 		for i, item := range x.Items {
-			var equals syntax.Token
-			var comma *syntax.Token
+			tokens := syntax.NewObjectConsItemTokens(i == len(x.Items)-1)
 			if i < len(items) {
-				equals, comma = items[i].Equals, items[i].Comma
+				tokens = items[i]
 			}
 
 			if !item.Key.HasLeadingTrivia() {
 				p.fprintf(w, "\n%s", p.indent)
 			}
-			p.fprintf(w, "%v% v% v",
-				item.Key,
-				equals.Or(hclsyntax.TokenEqual),
-				item.Value)
+			p.fprintf(w, "%v% v% v", item.Key, tokens.Equals, item.Value)
 
-			if comma != nil {
-				p.fprintf(w, "%v", comma.Or(hclsyntax.TokenComma))
+			if tokens.Comma != nil {
+				p.fprintf(w, "%v", tokens.Comma)
 			}
 		}
 
@@ -986,7 +1054,7 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	})
 
 	if x.Tokens != nil {
-		p.fprintf(w, "%v", x.Tokens.CloseBrace.Or(hclsyntax.TokenCBrace))
+		p.fprintf(w, "%v%)", x.Tokens.CloseBrace, x.Tokens.Parentheses)
 	} else {
 		p.fprintf(w, "\n%s}", p.indent)
 	}
@@ -999,33 +1067,47 @@ func (x *ObjectConsExpression) Type() Type {
 
 func (*ObjectConsExpression) isExpression() {}
 
-func newTraverserTokens(traverser hcl.Traverser) syntax.TraverserTokens {
-	switch traverser := traverser.(type) {
-	case hcl.TraverseAttr:
-		return syntax.NewDotTraverserTokens(traverser.Name)
-	case hcl.TraverseIndex:
-		return syntax.NewBracketTraverserTokens(literalText(traverser.Key, nil))
+func traverserHasTrailingTrivia(tokens syntax.TraverserTokens) bool {
+	switch tokens := tokens.(type) {
+	case *syntax.DotTraverserTokens:
+		return exprHasTrailingTrivia(tokens.Parentheses, tokens.Index)
+	case *syntax.BracketTraverserTokens:
+		return exprHasTrailingTrivia(tokens.Parentheses, tokens.CloseBracket)
 	default:
-		panic(fmt.Errorf("unexpected traverser of type %T", traverser))
+		panic(fmt.Errorf("unexpected traverser of type %T", tokens))
 	}
 }
 
 func getTraverserTrivia(tokens syntax.TraverserTokens) (syntax.TriviaList, syntax.TriviaList) {
+	var leading, trailing syntax.TriviaList
 	switch tokens := tokens.(type) {
 	case *syntax.DotTraverserTokens:
-		return tokens.GetDot().LeadingTrivia, tokens.GetIndex().TrailingTrivia
+		leading = getExprLeadingTrivia(tokens.Parentheses, tokens.Dot)
+		trailing = getExprTrailingTrivia(tokens.Parentheses, tokens.Index)
 	case *syntax.BracketTraverserTokens:
-		return tokens.GetOpenBracket().LeadingTrivia, tokens.GetCloseBracket().TrailingTrivia
+		leading = getExprLeadingTrivia(tokens.Parentheses, tokens.OpenBracket)
+		trailing = getExprTrailingTrivia(tokens.Parentheses, tokens.CloseBracket)
 	}
-	return nil, nil
+	return leading, trailing
+}
+
+func setTraverserLeadingTrivia(tokens syntax.TraverserTokens, t syntax.TriviaList) {
+	switch tokens := tokens.(type) {
+	case *syntax.DotTraverserTokens:
+		setExprLeadingTrivia(tokens.Parentheses, &tokens.Dot, t)
+	case *syntax.BracketTraverserTokens:
+		setExprLeadingTrivia(tokens.Parentheses, &tokens.OpenBracket, t)
+	default:
+		panic(fmt.Errorf("unexpected traverser of type %T", tokens))
+	}
 }
 
 func setTraverserTrailingTrivia(tokens syntax.TraverserTokens, t syntax.TriviaList) {
 	switch tokens := tokens.(type) {
 	case *syntax.DotTraverserTokens:
-		tokens.Index.TrailingTrivia = t
+		setExprTrailingTrivia(tokens.Parentheses, &tokens.Index, t)
 	case *syntax.BracketTraverserTokens:
-		tokens.CloseBracket.TrailingTrivia = t
+		setExprTrailingTrivia(tokens.Parentheses, &tokens.CloseBracket, t)
 	default:
 		panic(fmt.Errorf("unexpected traverser of type %T", tokens))
 	}
@@ -1036,31 +1118,23 @@ func printTraverser(w io.Writer, p *printer, t hcl.Traverser, tokens syntax.Trav
 	switch t := t.(type) {
 	case hcl.TraverseAttr:
 		index = t.Name
-		if tokens == nil {
-			tokens = &syntax.DotTraverserTokens{}
-		}
 	case hcl.TraverseIndex:
-		var rawBytes []byte
-		if tokens == nil {
-			tokens = &syntax.BracketTraverserTokens{}
-		} else {
-			rawBytes = tokens.GetIndex().Raw.Bytes
-		}
-		index = literalText(t.Key, rawBytes)
+		index = literalText(t.Key, nil)
 	default:
 		panic(fmt.Errorf("unexpected traverser of type %T", t))
 	}
 
 	switch tokens := tokens.(type) {
 	case *syntax.DotTraverserTokens:
-		p.fprintf(w, "%v%v",
-			tokens.Dot.Or(hclsyntax.TokenDot),
-			tokens.Index.Or(hclsyntax.TokenIdent, index))
+		p.fprintf(w, "%(%v%v%)",
+			tokens.Parentheses,
+			tokens.Dot, identToken(tokens.Index, index),
+			tokens.Parentheses)
 	case *syntax.BracketTraverserTokens:
-		p.fprintf(w, "%v%v%v",
-			tokens.OpenBracket.Or(hclsyntax.TokenOBrack),
-			tokens.Index.Or(hclsyntax.TokenIdent, index),
-			tokens.CloseBracket.Or(hclsyntax.TokenCBrack))
+		p.fprintf(w, "%(%v%v%v%)",
+			tokens.Parentheses,
+			tokens.OpenBracket, identToken(tokens.Index, index), tokens.CloseBracket,
+			tokens.Parentheses)
 	default:
 		panic(fmt.Errorf("unexpected traverser tokens of type %T", tokens))
 	}
@@ -1126,23 +1200,35 @@ func (x *RelativeTraversalExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *RelativeTraversalExpression) HasLeadingTrivia() bool {
-	return x.Source.HasLeadingTrivia()
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
 
 func (x *RelativeTraversalExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		return true
+	}
+	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
+		return traverserHasTrailingTrivia(traversal[len(traversal)-1])
+	}
+	return x.Source.HasTrailingTrivia()
 }
 
 func (x *RelativeTraversalExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Source.GetLeadingTrivia()
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
 
 func (x *RelativeTraversalExpression) SetLeadingTrivia(t syntax.TriviaList) {
-	x.Source.SetLeadingTrivia(t)
+	if x.Tokens == nil {
+		x.Tokens = syntax.NewRelativeTraversalTokens(x.Traversal)
+	}
+	setExprLeadingTrivia(x.Tokens.Parentheses, x.Source, t)
 }
 
 func (x *RelativeTraversalExpression) GetTrailingTrivia() syntax.TriviaList {
-	if traversal := x.Tokens.GetTraversal(); len(traversal) > 0 {
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		return parens.GetTrailingTrivia()
+	}
+	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
 		_, trailingTrivia := getTraverserTrivia(traversal[len(traversal)-1])
 		return trailingTrivia
 	}
@@ -1151,11 +1237,11 @@ func (x *RelativeTraversalExpression) GetTrailingTrivia() syntax.TriviaList {
 
 func (x *RelativeTraversalExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
-		traversers := make([]syntax.TraverserTokens, len(x.Traversal))
-		for i := 0; i < len(traversers); i++ {
-			traversers[i] = newTraverserTokens(x.Traversal[i])
-		}
-		x.Tokens = syntax.NewRelativeTraversalTokens(traversers...)
+		x.Tokens = syntax.NewRelativeTraversalTokens(x.Traversal)
+	}
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		parens.SetTrailingTrivia(t)
+		return
 	}
 	if len(x.Tokens.Traversal) > 0 {
 		setTraverserTrailingTrivia(x.Tokens.Traversal[len(x.Tokens.Traversal)-1], t)
@@ -1170,10 +1256,13 @@ func (x *RelativeTraversalExpression) Format(f fmt.State, c rune) {
 
 func (x *RelativeTraversalExpression) print(w io.Writer, p *printer) {
 	// Print the source expression.
-	p.fprintf(w, "%v", x.Source)
+	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Source)
 
 	// Print the traversal.
-	printRelativeTraversal(w, p, x.Traversal, x.Tokens.GetTraversal())
+	printRelativeTraversal(w, p, x.Traversal, x.Tokens.GetTraversal(x.Traversal))
+
+	// Print the closing parentheses, if any.
+	p.fprintf(w, "%)", x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the relative traversal expression.
@@ -1210,43 +1299,48 @@ func (x *ScopeTraversalExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *ScopeTraversalExpression) HasTrailingTrivia() bool {
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		return true
+	}
+	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
+		return traverserHasTrailingTrivia(traversal[len(traversal)-1])
+	}
 	return x.Tokens != nil
 }
 
 func (x *ScopeTraversalExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetRoot().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetRoot(x.Traversal))
 }
 
 func (x *ScopeTraversalExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
-		traversers := make([]syntax.TraverserTokens, len(x.Traversal))
-		for i := 0; i < len(traversers); i++ {
-			traversers[i] = newTraverserTokens(x.Traversal[i])
-		}
-		x.Tokens = syntax.NewScopeTraversalTokens(x.RootName, traversers...)
+		x.Tokens = syntax.NewScopeTraversalTokens(x.Traversal)
 	}
 	x.Tokens.Root.LeadingTrivia = t
 }
 
 func (x *ScopeTraversalExpression) GetTrailingTrivia() syntax.TriviaList {
-	if traversal := x.Tokens.GetTraversal(); len(traversal) > 0 {
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		return parens.GetTrailingTrivia()
+	}
+	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
 		_, trailingTrivia := getTraverserTrivia(traversal[len(traversal)-1])
 		return trailingTrivia
 	}
-	return x.Tokens.GetRoot().TrailingTrivia
+	return x.Tokens.GetRoot(x.Traversal).TrailingTrivia
 }
 
 func (x *ScopeTraversalExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
-		traversers := make([]syntax.TraverserTokens, len(x.Traversal))
-		for i := 0; i < len(traversers); i++ {
-			traversers[i] = newTraverserTokens(x.Traversal[i])
-		}
-		x.Tokens = syntax.NewScopeTraversalTokens(x.RootName, traversers...)
+		x.Tokens = syntax.NewScopeTraversalTokens(x.Traversal)
+	}
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		parens.SetTrailingTrivia(t)
+		return
 	}
 	if len(x.Tokens.Traversal) > 0 {
 		setTraverserTrailingTrivia(x.Tokens.Traversal[len(x.Tokens.Traversal)-1], t)
@@ -1261,10 +1355,13 @@ func (x *ScopeTraversalExpression) Format(f fmt.State, c rune) {
 
 func (x *ScopeTraversalExpression) print(w io.Writer, p *printer) {
 	// Print the root name.
-	p.fprintf(w, "%v", x.Tokens.GetRoot().Or(hclsyntax.TokenIdent, x.RootName))
+	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetRoot(x.Traversal))
 
 	// Print the traversal.
-	printRelativeTraversal(w, p, x.Traversal[1:], x.Tokens.GetTraversal())
+	printRelativeTraversal(w, p, x.Traversal[1:], x.Tokens.GetTraversal(x.Traversal))
+
+	// Print the closing parentheses, if any.
+	p.fprintf(w, "%)", x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the scope traversal expression.
@@ -1303,25 +1400,28 @@ func (x *SplatExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *SplatExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
 
 func (x *SplatExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Each)
 }
 
 func (x *SplatExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOpen().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
 
 func (x *SplatExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewSplatTokens(false)
 	}
-	x.Tokens.Open.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.Open, t)
 }
 
 func (x *SplatExpression) GetTrailingTrivia() syntax.TriviaList {
+	if parens := x.Tokens.GetParentheses(); parens.Any() {
+		return parens.GetTrailingTrivia()
+	}
 	if close := x.Tokens.GetClose(); close != nil {
 		return close.TrailingTrivia
 	}
@@ -1331,6 +1431,10 @@ func (x *SplatExpression) GetTrailingTrivia() syntax.TriviaList {
 func (x *SplatExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewSplatTokens(false)
+	}
+	if x.Tokens.Parentheses.Any() {
+		x.Tokens.Parentheses.SetTrailingTrivia(t)
+		return
 	}
 	if x.Tokens.Close == nil {
 		x.Tokens.Star.TrailingTrivia = t
@@ -1344,20 +1448,13 @@ func (x *SplatExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *SplatExpression) print(w io.Writer, p *printer) {
-	isDot := x.Tokens != nil && x.Tokens.Close == nil
+	isDot := x.Tokens.GetClose() == nil
 
-	open := hclsyntax.TokenOBrack
-	if isDot {
-		open = hclsyntax.TokenDot
-	}
-	p.fprintf(w, "%v%v%v",
-		x.Source,
-		x.Tokens.GetOpen().Or(open),
-		x.Tokens.GetStar().Or(hclsyntax.TokenStar))
+	p.fprintf(w, "%(%v%v%v", x.Tokens.GetParentheses(), x.Source, x.Tokens.GetOpen(), x.Tokens.GetStar())
 	if !isDot {
-		p.fprintf(w, "%v", x.Tokens.GetClose().Or(hclsyntax.TokenCBrack))
+		p.fprintf(w, "%v", x.Tokens.GetClose())
 	}
-	p.fprintf(w, "%v", x.Each)
+	p.fprintf(w, "%v%)", x.Each, x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the splat expression.
@@ -1391,33 +1488,33 @@ func (x *TemplateExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *TemplateExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *TemplateExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *TemplateExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOpen().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOpen())
 }
 
 func (x *TemplateExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewTemplateTokens()
 	}
-	x.Tokens.Open.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.Open, t)
 }
 
 func (x *TemplateExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Tokens.GetClose().TrailingTrivia
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetClose())
 }
 
 func (x *TemplateExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewTemplateTokens()
 	}
-	x.Tokens.Close.TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.Close, t)
 }
 
 func (x *TemplateExpression) Format(f fmt.State, c rune) {
@@ -1426,7 +1523,7 @@ func (x *TemplateExpression) Format(f fmt.State, c rune) {
 
 func (x *TemplateExpression) print(w io.Writer, p *printer) {
 	// Print the opening quote.
-	p.fprintf(w, "%v", x.Tokens.GetOpen().Or(hclsyntax.TokenOQuote))
+	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpen())
 
 	// Print the expressions.
 	for _, part := range x.Parts {
@@ -1434,7 +1531,7 @@ func (x *TemplateExpression) print(w io.Writer, p *printer) {
 	}
 
 	// Print the closing quote
-	p.fprintf(w, "%v", x.Tokens.GetClose().Or(hclsyntax.TokenCQuote))
+	p.fprintf(w, "%v%)", x.Tokens.GetClose(), x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the template expression.
@@ -1528,33 +1625,33 @@ func (x *TupleConsExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *TupleConsExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *TupleConsExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
 }
 
 func (x *TupleConsExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOpenBracket().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOpenBracket())
 }
 
 func (x *TupleConsExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewTupleConsTokens(len(x.Expressions))
 	}
-	x.Tokens.OpenBracket.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.OpenBracket, t)
 }
 
 func (x *TupleConsExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Tokens.GetCloseBracket().TrailingTrivia
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetCloseBracket())
 }
 
 func (x *TupleConsExpression) SetTrailingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewTupleConsTokens(len(x.Expressions))
 	}
-	x.Tokens.CloseBracket.TrailingTrivia = t
+	setExprTrailingTrivia(x.Tokens.Parentheses, &x.Tokens.CloseBracket, t)
 }
 
 func (x *TupleConsExpression) Format(f fmt.State, c rune) {
@@ -1563,10 +1660,10 @@ func (x *TupleConsExpression) Format(f fmt.State, c rune) {
 
 func (x *TupleConsExpression) print(w io.Writer, p *printer) {
 	// Print the opening bracket.
-	p.fprintf(w, "%v", x.Tokens.GetOpenBracket().Or(hclsyntax.TokenOBrack))
+	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpenBracket())
 
 	// Print each element and its comma.
-	commas := x.Tokens.GetCommas()
+	commas := x.Tokens.GetCommas(len(x.Expressions))
 	p.indented(func() {
 		for i, expr := range x.Expressions {
 			if !expr.HasLeadingTrivia() {
@@ -1579,14 +1676,14 @@ func (x *TupleConsExpression) print(w io.Writer, p *printer) {
 				if i < len(commas) {
 					comma = commas[i]
 				}
-				p.fprintf(w, "%v", comma.Or(hclsyntax.TokenComma))
+				p.fprintf(w, "%v", comma)
 			}
 		}
 
 		// If there were commas left over, print the trivia for each.
 		//
 		// TODO(pdg): filter to only comments?
-		if len(x.Expressions)-1 <= len(commas) {
+		if len(x.Expressions) > 0 && len(x.Expressions)-1 <= len(commas) {
 			for _, comma := range commas[len(x.Expressions)-1:] {
 				p.fprintf(w, "%v", comma.AllTrivia().CollapseWhitespace())
 			}
@@ -1595,7 +1692,7 @@ func (x *TupleConsExpression) print(w io.Writer, p *printer) {
 
 	// Print the closing bracket.
 	if x.Tokens != nil {
-		p.fprintf(w, "%v", x.Tokens.CloseBracket.Or(hclsyntax.TokenCBrack))
+		p.fprintf(w, "%v%)", x.Tokens.CloseBracket, x.Tokens.GetParentheses())
 	} else {
 		p.fprintf(w, "\n%s]", p.indent)
 	}
@@ -1634,30 +1731,33 @@ func (x *UnaryOpExpression) NodeTokens() syntax.NodeTokens {
 }
 
 func (x *UnaryOpExpression) HasLeadingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOperator(x.Operation))
 }
 
 func (x *UnaryOpExpression) HasTrailingTrivia() bool {
-	return x.Tokens != nil
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Operand)
 }
 
 func (x *UnaryOpExpression) GetLeadingTrivia() syntax.TriviaList {
-	return x.Tokens.GetOperator().LeadingTrivia
+	return getExprLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOperator(x.Operation))
 }
 
 func (x *UnaryOpExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewUnaryOpTokens(x.Operation)
 	}
-	x.Tokens.Operator.LeadingTrivia = t
+	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.Operator, t)
 }
 
 func (x *UnaryOpExpression) GetTrailingTrivia() syntax.TriviaList {
-	return x.Operand.GetTrailingTrivia()
+	return getExprTrailingTrivia(x.Tokens.GetParentheses(), x.Operand)
 }
 
 func (x *UnaryOpExpression) SetTrailingTrivia(t syntax.TriviaList) {
-	x.Operand.SetTrailingTrivia(t)
+	if x.Tokens == nil {
+		x.Tokens = syntax.NewUnaryOpTokens(x.Operation)
+	}
+	setExprTrailingTrivia(x.Tokens.Parentheses, x.Operand, t)
 }
 
 func (x *UnaryOpExpression) Format(f fmt.State, c rune) {
@@ -1665,7 +1765,10 @@ func (x *UnaryOpExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *UnaryOpExpression) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%v%v", x.Tokens.GetOperator().Or(syntax.OperationTokenType(x.Operation)), x.Operand)
+	p.fprintf(w, "%(%v%v%)",
+		x.Tokens.GetParentheses(),
+		x.Tokens.GetOperator(x.Operation), x.Operand,
+		x.Tokens.GetParentheses())
 }
 
 // Type returns the type of the unary operation.
