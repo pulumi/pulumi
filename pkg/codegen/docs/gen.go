@@ -711,7 +711,9 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			// case maps.
 			propLangName = pyName
 
-			if nested {
+			// We don't use the property-case maps for k8s since input properties are accessible
+			// using either case, where output properties are only accessible using snake_case.
+			if nested && !isK8s {
 				if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
 					propLangName = snakeCase
 				} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
@@ -1445,24 +1447,6 @@ func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource) {
 	}
 }
 
-// generateK8SPythonPropertyCaseMaps generates the Python case maps specific to the Kubernetes provider.
-// The case maps are such that every nested type's property uses snake_case. This is because the current
-// k8s code gen allows properties to be referenced using both snake_case and cameCase, whereas output
-// properties are only accessible using snake_case.
-func generateK8SPythonPropertyCaseMaps(mod *modContext, r *schema.Resource) {
-	for _, p := range r.InputProperties {
-		snakeCase := python.PyName(p.Name)
-		camelCaseToSnakeCase[p.Name] = snakeCase
-		snakeCaseToCamelCase[snakeCase] = p.Name
-	}
-
-	for _, p := range r.Properties {
-		snakeCase := python.PyName(p.Name)
-		camelCaseToSnakeCase[p.Name] = snakeCase
-		snakeCaseToCamelCase[snakeCase] = p.Name
-	}
-}
-
 func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
@@ -1498,8 +1482,6 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	scanK8SResource := func(r *schema.Resource) {
 		mod := getK8SMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
-
-		generateK8SPythonPropertyCaseMaps(mod, r)
 	}
 
 	glog.V(3).Infoln("scanning resources")
