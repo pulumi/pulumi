@@ -161,10 +161,12 @@ func TestCopy(t *testing.T) {
 }
 
 func TestSecretUnknown(t *testing.T) {
-	o := NewOutputProperty(Output{
-		Element: NewNumberProperty(46),
-	})
-	s := MakeSecret((o))
+	o := NewOutputProperty(Output{Element: NewNumberProperty(46)})
+	so := MakeSecret(o)
 	assert.True(t, o.ContainsUnknowns())
-	assert.True(t, s.ContainsUnknowns())
+	assert.True(t, so.ContainsUnknowns())
+	c := NewComputedProperty(Computed{Element: NewStringProperty("X")})
+	co := MakeSecret(so)
+	assert.True(t, c.ContainsUnknowns())
+	assert.True(t, co.ContainsUnknowns())
 }
