@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/go/common/version"
+	"github.com/pulumi/pulumi/sdk/go/nodejs"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
 
@@ -87,10 +88,12 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
-	nodePath, err := exec.LookPath("node")
+	nodeRuntime, err := nodejs.GetRuntime()
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+		cmdutil.ExitError(
+			"It looks like no NodeJS environment is installed?")
 	}
+	nodePath := nodeRuntime.GetNodePath()
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {
