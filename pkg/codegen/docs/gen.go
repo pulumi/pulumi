@@ -1332,7 +1332,7 @@ func (mod *modContext) genIndex() indexData {
 		parts := strings.Split(modName, "/")
 		modName = parts[len(parts)-1]
 		modules = append(modules, indexEntry{
-			Link:        modName + "/",
+			Link:        strings.ToLower(modName) + "/",
 			DisplayName: modName,
 		})
 	}
