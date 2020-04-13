@@ -94,6 +94,11 @@ func csharpIdentifier(s string) string {
 	}
 }
 
+func isImmutableArrayType(t schema.Type, wrapInput bool) bool {
+	_, isArray := t.(*schema.ArrayType)
+	return isArray && !wrapInput
+}
+
 func isValueType(t schema.Type) bool {
 	switch t {
 	case schema.BoolType, schema.IntType, schema.NumberType:
@@ -959,7 +964,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 				typ := mod.typeString(prop.Type, "Types", false, false, false /*wrapInput*/, false, !prop.IsRequired)
 
 				initializer := ""
-				if !prop.IsRequired {
+				if !prop.IsRequired && !isValueType(prop.Type) && !isImmutableArrayType(prop.Type, false) {
 					initializer = " = null!;"
 				}
 
