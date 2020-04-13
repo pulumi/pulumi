@@ -159,3 +159,12 @@ func TestCopy(t *testing.T) {
 	src["c"] = NewNumberProperty(99.99)
 	assert.Equal(t, 2, len(dst))
 }
+
+func TestSecretUnknown(t *testing.T) {
+	o := NewOutputProperty(Output{
+		Element: NewNumberProperty(46),
+	})
+	s := MakeSecret((o))
+	assert.True(t, o.ContainsUnknowns())
+	assert.True(t, s.ContainsUnknowns())
+}

@@ -326,6 +326,8 @@ func (v PropertyValue) ContainsUnknowns() bool {
 		}
 	} else if v.IsObject() {
 		return v.ObjectValue().ContainsUnknowns()
+	} else if v.IsSecret() {
+		return v.SecretValue().Element.ContainsUnknowns()
 	}
 	return false
 }
