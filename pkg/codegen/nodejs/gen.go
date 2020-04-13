@@ -1027,7 +1027,7 @@ func (mod *modContext) genIndex(exports []string) string {
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info nodePackageInfo, files fs) {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
 	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
@@ -1054,7 +1054,7 @@ type npmPulumiManifest struct {
 	Resource bool `json:"resource,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info nodePackageInfo) string {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = fmt.Sprintf("@pulumi/%s", pkg.Name)
@@ -1124,7 +1124,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info nodePackageInfo) string {
 	return string(npmjson)
 }
 
-func genTypeScriptProjectFile(info nodePackageInfo, files fs) string {
+func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 	w := &bytes.Buffer{}
 
 	fmt.Fprintf(w, `{
@@ -1165,18 +1165,20 @@ func genTypeScriptProjectFile(info nodePackageInfo, files fs) string {
 	return w.String()
 }
 
-type nodePackageInfo struct {
+// NodePackageInfo contains NodeJS specific overrides for a package.
+type NodePackageInfo struct {
 	PackageName        string            `json:"packageName,omitempty"`        // Custom name for the NPM package.
 	PackageDescription string            `json:"packageDescription,omitempty"` // Description for the NPM package.
 	Dependencies       map[string]string `json:"dependencies,omitempty"`       // NPM dependencies to add to package.json.
 	DevDependencies    map[string]string `json:"devDependencies,omitempty"`    // NPM dev-dependencies to add to package.json.
 	PeerDependencies   map[string]string `json:"peerDependencies,omitempty"`   // NPM peer-dependencies to add to package.json.
 	TypeScriptVersion  string            `json:"typescriptVersion,omitempty"`  // A specific version of TypeScript to include in package.json.
+	ModuleToPackage    map[string]string `json:"moduleToPackage,omitempty"`    // A map containing overrides for module names to package names.
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode node-specific info
-	var info nodePackageInfo
+	var info NodePackageInfo
 	if node, ok := pkg.Language["nodejs"]; ok {
 		if err := json.Unmarshal([]byte(node), &info); err != nil {
 			return nil, errors.Wrap(err, "decoding nodejs package info")

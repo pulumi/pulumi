@@ -845,8 +845,17 @@ func (mod *modContext) recordProperty(prop *schema.Property) error {
 		mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
 	}
 
+	propType := prop.Type.String()
 	if obj, ok := prop.Type.(*schema.ObjectType); ok {
 		for _, p := range obj.Properties {
+			// Skip the nested type's property if the property's type is the same
+			// as that of the nested type itself.
+			// For example, the JSONSchemaProps type in Kubernetes has properties whose
+			// type is itself. This can lead to infinite recursion.
+			if p.Type.String() == propType {
+				continue
+			}
+
 			if err := mod.recordProperty(p); err != nil {
 				return err
 			}

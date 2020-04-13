@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+  "github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -567,6 +569,11 @@ func installDependencies(proj *workspace.Project, root string) error {
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
 		return dotnetInstallDependenciesAndBuild(proj, root)
+	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
+		if err := goInstallDependencies(); err != nil {
+			return errors.Wrapf(err, "`go mod download` failed to install dependencies; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment")
+		}
 	}
 
 	return nil
@@ -607,6 +614,30 @@ func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) err
 	// restore dependencies, install any plugins, and build the project so it will be
 	// prepped and ready to go for a faster initial `pulumi up`.
 	if err = engine.RunInstallPlugins(proj, pwd, main, nil, plugctx); err != nil {
+		return err
+	}
+
+	fmt.Println("Finished installing dependencies")
+	fmt.Println()
+
+	return nil
+}
+
+// goInstallDependencies will install dependencies for the project by running `go mod download`
+func goInstallDependencies() error {
+	fmt.Println("Installing dependencies...")
+	fmt.Println()
+
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(gobin, "mod", "download")
+	cmd.Env = os.Environ()
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 

@@ -44,11 +44,11 @@ func (b *Block) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(b.Syntax)
 }
 
-func (b *Block) hasLeadingTrivia() bool {
+func (b *Block) HasLeadingTrivia() bool {
 	return b.Tokens != nil
 }
 
-func (b *Block) hasTrailingTrivia() bool {
+func (b *Block) HasTrailingTrivia() bool {
 	return b.Tokens != nil
 }
 
@@ -90,7 +90,7 @@ func (b *Block) print(w io.Writer, p *printer) {
 	p.indented(func() {
 		b.Body.print(w, p)
 	})
-	if !b.Body.hasTrailingTrivia() {
+	if !b.Body.HasTrailingTrivia() {
 		p.fprintf(w, "\n")
 	}
 

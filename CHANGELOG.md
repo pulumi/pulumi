@@ -22,6 +22,70 @@ CHANGELOG
 
 - .NET API: replace `IDeployment` interface with `DeploymentInstance` class.
 
+## 1.14.1 (2020-04-13)
+- Propagate `additionalSecretOutputs` opt to Read in NodeJS.
+  [#4307](https://github.com/pulumi/pulumi/pull/4307)
+  
+- Fix handling of `nil` values in Outputs in Go.
+  [#4268](https://github.com/pulumi/pulumi/pull/4268)
+  
+- Include usage hints for Input types in Go SDK
+  [#4279](https://github.com/pulumi/pulumi/pull/4279)
+
+- Fix secretness propagation in Python `apply`.
+  [#4273](https://github.com/pulumi/pulumi/pull/4273)
+
+- Fix the `call` mock in Python.
+  [#4274](https://github.com/pulumi/pulumi/pull/4274)
+  
+- Fix handling of secret values in mock-based tests.
+  [#4272](https://github.com/pulumi/pulumi/pull/4272)
+
+- Automatic plugin acquisition for Go
+  [#4297](https://github.com/pulumi/pulumi/pull/4297)
+
+- Define merge behavior for resource options in Go SDK
+  [#4316](https://github.com/pulumi/pulumi/pull/4316)
+
+- Add overloads to Output.All in .NET
+  [#4321](https://github.com/pulumi/pulumi/pull/4321)
+
+- Make prebuilt executables opt-in only for the Go SDK
+  [#4338](https://github.com/pulumi/pulumi/pull/4338)
+
+- Support the `binary` option (prebuilt executables) for the .NET SDK
+  [#4355](https://github.com/pulumi/pulumi/pull/4355)
+
+- Add helper methods for stack outputs in the Go SDK
+  [#4341](https://github.com/pulumi/pulumi/pull/4341)
+
+- Add additional overloads to Deployment.RunAsync in .NET API.
+  [#4286](https://github.com/pulumi/pulumi/pull/4286)
+
+- Automate execution of `go mod download` for `pulumi new` Go templates
+  [#4353](https://github.com/pulumi/pulumi/pull/4353)
+  
+- Fix `pulumi up -r -t $URN` not refreshing only the target
+  [#4217](https://github.com/pulumi/pulumi/pull/4217)
+  
+- Fix logout with file backend when state is deleted
+  [#4218](https://github.com/pulumi/pulumi/pull/4218)
+  
+- Fix specific flags for `pulumi stack` being global
+  [#4294](https://github.com/pulumi/pulumi/pull/4294)
+  
+- Fix error when setting config without value in non-interactive mode
+  [#4358](https://github.com/pulumi/pulumi/pull/4358)
+
+- Propagate unknowns in Go SDK during marshal operations
+  [#4369](https://github.com/pulumi/pulumi/pull/4369/files)
+
+- Fix Go SDK stack reference helpers to handle nil values
+  [#4370](https://github.com/pulumi/pulumi/pull/4370)
+
+- Fix propagation of unknown status for secrets
+  [#4377](https://github.com/pulumi/pulumi/pull/4377)
+
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)

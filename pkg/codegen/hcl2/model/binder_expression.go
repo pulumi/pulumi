@@ -725,7 +725,12 @@ func (b *expressionBinder) bindTemplateJoinExpression(
 func (b *expressionBinder) bindTemplateWrapExpression(
 	syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
 
-	return b.bindExpression(syntax.Wrapped)
+	wrapped, diagnostics := b.bindExpression(syntax.Wrapped)
+	if tokens, hasTokens := b.tokens.ForNode(syntax).(*_syntax.TemplateTokens); hasTokens {
+		wrapped.SetLeadingTrivia(append(wrapped.GetLeadingTrivia(), tokens.Open.LeadingTrivia...))
+		wrapped.SetTrailingTrivia(append(wrapped.GetTrailingTrivia(), tokens.Close.TrailingTrivia...))
+	}
+	return wrapped, diagnostics
 }
 
 // bindTupleConsExpression binds a tuple construction expression. The result is a tuple(T_0, ..., T_N).
