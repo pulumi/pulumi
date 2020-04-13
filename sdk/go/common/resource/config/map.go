@@ -511,6 +511,13 @@ func adjustObjectValue(v Value, path bool) interface{} {
 		return true
 	}
 
+	// If the value has more than one character and starts with "0", return the value as-is
+	// so values like "0123456" are saved as a string (without stripping any leading zeros)
+	// rather than as the integer 123456.
+	if len(v.value) > 1 && v.value[0] == '0' {
+		return v.value
+	}
+
 	// If it's convertible to an int, return the int.
 	i, err := strconv.Atoi(v.value)
 	if err == nil {
