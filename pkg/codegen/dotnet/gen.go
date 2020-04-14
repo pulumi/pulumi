@@ -165,7 +165,7 @@ func (mod *modContext) tokenToNamespace(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	pkg, nsName := "Pulumi."+Title(components[0]), mod.pkg.TokenToModule(tok)
+	pkg, nsName := "Pulumi."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 	if nsName == "" {
 		return pkg
 	}
