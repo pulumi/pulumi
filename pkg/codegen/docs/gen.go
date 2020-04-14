@@ -445,15 +445,26 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	argsType := name + "Args"
+	docLangHelper := getLanguageDocHelper("nodejs")
+	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
+	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
+
+	var argsType string
+	var argsDocLink string
+	// The non-schema-based k8s codegen does not apply a suffix to the input types.
+	if isKubernetesPackage(mod.pkg) {
+		argsType = name
+		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, argsType, true)
+	} else {
+		argsType = name + "Args"
+		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType)
+	}
+
 	argsFlag := ""
 	if argsOptional {
 		argsFlag = "?"
 	}
 
-	docLangHelper := getLanguageDocHelper("nodejs")
-	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
 	return []formalParam{
 		{
 			Name: "name",
@@ -467,7 +478,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType),
+				Link: argsDocLink,
 			},
 		},
 		{
@@ -497,7 +508,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
-				Name: "pulumi.Context",
+				Name: "Context",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
 			},
 		},
@@ -520,7 +531,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name:         "opts",
 			OptionalFlag: "...",
 			Type: propertyType{
-				Name: "pulumi.ResourceOption",
+				Name: "ResourceOption",
 				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
 			},
 		},
@@ -537,10 +548,22 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		input:    true,
 		optional: argsOptional,
 	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
-	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
-	// namespace qualifier.
-	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
+
+	var argLangTypeName string
+	if isKubernetesPackage(mod.pkg) {
+		if mod.mod != "" {
+			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
+			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
+			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
+			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
+			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+		} else {
+			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
+		}
+	} else {
+		argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
+		argLangTypeName = strings.ReplaceAll(argLangType.Name, "Inputs.", "")
+	}
 
 	var argsFlag string
 	var argsDefault string
@@ -698,7 +721,9 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			// case maps.
 			propLangName = pyName
 
-			if nested {
+			// We don't use the property-case maps for k8s since input properties are accessible
+			// using either case, where output properties are only accessible using snake_case.
+			if nested && !isK8s {
 				if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
 					propLangName = snakeCase
 				} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
@@ -809,6 +834,11 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
+			if mod.mod == "" {
+				resourceTypeName = fmt.Sprintf("Pulumi.%s.%s", title(mod.pkg.Name, lang), resourceTypeName)
+				break
+			}
+
 			// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
 			// So we first lookup that name and then use that to lookup the C# namespace.
 			if isKubernetesPackage(mod.pkg) {
@@ -1014,7 +1044,7 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 	return lookupParams
 }
 
-// filterOutputProperties removes the input properties from the properties list
+// filterOutputProperties removes the input properties from the output properties list
 // (since input props are implicitly output props), returning only "output" props.
 func filterOutputProperties(inputProps []*schema.Property, props []*schema.Property) []*schema.Property {
 	var outputProps []*schema.Property
@@ -1036,19 +1066,22 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
-	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
-	// The args are all just named parameters of the constructor. Consider injecting
-	// `resource_name` and `opts` as the first two items in the table of properties.
 	inputProps := make(map[string][]property)
 	outputProps := make(map[string][]property)
 	stateInputs := make(map[string][]property)
+
+	var filteredOutputProps []*schema.Property
+	// Provider resources do not have output properties, so there won't be anything to filter.
+	if !r.IsProvider {
+		filteredOutputProps = filterOutputProperties(r.InputProperties, r.Properties)
+	}
+	hasFilteredOutputProps := len(filteredOutputProps) > 0
 	for _, lang := range supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false)
 		if r.IsProvider {
 			continue
 		}
-		filteredOutputProps := filterOutputProperties(r.InputProperties, r.Properties)
-		if len(filteredOutputProps) > 0 {
+		if hasFilteredOutputProps {
 			outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
 		}
 		if r.StateInputs != nil {
@@ -1464,8 +1497,6 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	scanK8SResource := func(r *schema.Resource) {
 		mod := getK8SMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
-
-		generatePythonPropertyCaseMaps(mod, r)
 	}
 
 	glog.V(3).Infoln("scanning resources")
