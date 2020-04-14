@@ -1081,6 +1081,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 		return pack
 	}
 
+	if len(pkg.Config) > 0 {
+		_ = getPkg(":config/config:")
+	}
+
 	for _, t := range pkg.Types {
 		switch t := t.(type) {
 		case *schema.ArrayType:
