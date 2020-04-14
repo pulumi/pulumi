@@ -169,7 +169,7 @@ func marshalInputAndDetermineSecret(v interface{},
 			// If the element type of the input is not identical to the type of the destination and the destination is
 			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
 			if valueType != destType && destType != anyType {
-				if newOutput, ok := callToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
+				if newOutput, ok := callToOutputMethod(reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {

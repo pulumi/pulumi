@@ -16,7 +16,6 @@
 package pulumi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -135,11 +134,6 @@ func TestOutputApply(t *testing.T) {
 		t.Run("Apply{{.Name}}", func(t *testing.T) {
 			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -299,18 +293,6 @@ func TestTo{{.Name}}Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.To{{.Name}}Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.To{{.Name}}OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.To{{.Name}}OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)

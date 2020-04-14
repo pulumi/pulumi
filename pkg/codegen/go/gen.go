@@ -323,7 +323,6 @@ func genInputInterface(w io.Writer, name string) {
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
-	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", Title(name), name)
 	fmt.Fprintf(w, "}\n\n")
 }
 
@@ -381,20 +380,12 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	fmt.Fprintf(w, "\treturn pulumi.ToOutput(i).(%sOutput)\n", Title(name))
 	fmt.Fprintf(w, "}\n\n")
 
 	if ptrMethods {
 		fmt.Fprintf(w, "func (i %s) To%sPtrOutput() %sPtrOutput {\n", receiverType, Title(name), name)
-		fmt.Fprintf(w, "\treturn i.To%sPtrOutputWithContext(context.Background())\n", Title(name))
-		fmt.Fprintf(w, "}\n\n")
-
-		fmt.Fprintf(w, "func (i %s) To%sPtrOutputWithContext(ctx context.Context) %sPtrOutput {\n", receiverType, Title(name), name)
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%[1]sOutput).To%[1]sPtrOutputWithContext(ctx)\n", name)
+		fmt.Fprintf(w, "\treturn pulumi.ToOutput(i).(%[1]sOutput).To%[1]sPtrOutput()\n", name)
 		fmt.Fprintf(w, "}\n\n")
 	}
 }
@@ -467,10 +458,6 @@ func genOutputMethods(w io.Writer, name, elementType string) {
 	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[1]sOutput {\n", name, Title(name))
 	fmt.Fprintf(w, "\treturn o\n")
 	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutputWithContext(ctx context.Context) %[1]sOutput {\n", name, Title(name))
-	fmt.Fprintf(w, "\treturn o\n")
-	fmt.Fprintf(w, "}\n\n")
 }
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) {
@@ -483,10 +470,6 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 
 	if details.ptrElement {
 		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
-		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
-		fmt.Fprintf(w, "}\n\n")
-
-		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, Title(name))
 		fmt.Fprintf(w, "\treturn o.ApplyT(func(v %[1]s) *%[1]s {\n", name)
 		fmt.Fprintf(w, "\t\treturn &v\n")
 		fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", name)
@@ -1264,7 +1247,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"reflect"}, imports)
 
 			for _, t := range pkg.types {
 				pkg.genType(buffer, t)

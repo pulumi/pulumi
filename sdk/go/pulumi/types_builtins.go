@@ -16,7 +16,6 @@
 package pulumi
 
 import (
-	"context"
 	"reflect"
 )
 
@@ -25,19 +24,9 @@ func (o *OutputState) ApplyArchive(applier interface{}) ArchiveOutput {
 	return o.ApplyT(applier).(ArchiveOutput)
 }
 
-// ApplyArchiveWithContext is like ApplyTWithContext, but returns a ArchiveOutput.
-func (o *OutputState) ApplyArchiveWithContext(ctx context.Context, applier interface{}) ArchiveOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArchiveOutput)
-}
-
 // ApplyArchiveArray is like ApplyT, but returns a ArchiveArrayOutput.
 func (o *OutputState) ApplyArchiveArray(applier interface{}) ArchiveArrayOutput {
 	return o.ApplyT(applier).(ArchiveArrayOutput)
-}
-
-// ApplyArchiveArrayWithContext is like ApplyTWithContext, but returns a ArchiveArrayOutput.
-func (o *OutputState) ApplyArchiveArrayWithContext(ctx context.Context, applier interface{}) ArchiveArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayOutput)
 }
 
 // ApplyArchiveMap is like ApplyT, but returns a ArchiveMapOutput.
@@ -45,19 +34,9 @@ func (o *OutputState) ApplyArchiveMap(applier interface{}) ArchiveMapOutput {
 	return o.ApplyT(applier).(ArchiveMapOutput)
 }
 
-// ApplyArchiveMapWithContext is like ApplyTWithContext, but returns a ArchiveMapOutput.
-func (o *OutputState) ApplyArchiveMapWithContext(ctx context.Context, applier interface{}) ArchiveMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArchiveMapOutput)
-}
-
 // ApplyArchiveArrayMap is like ApplyT, but returns a ArchiveArrayMapOutput.
 func (o *OutputState) ApplyArchiveArrayMap(applier interface{}) ArchiveArrayMapOutput {
 	return o.ApplyT(applier).(ArchiveArrayMapOutput)
-}
-
-// ApplyArchiveArrayMapWithContext is like ApplyTWithContext, but returns a ArchiveArrayMapOutput.
-func (o *OutputState) ApplyArchiveArrayMapWithContext(ctx context.Context, applier interface{}) ArchiveArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayMapOutput)
 }
 
 // ApplyArchiveMapArray is like ApplyT, but returns a ArchiveMapArrayOutput.
@@ -65,19 +44,9 @@ func (o *OutputState) ApplyArchiveMapArray(applier interface{}) ArchiveMapArrayO
 	return o.ApplyT(applier).(ArchiveMapArrayOutput)
 }
 
-// ApplyArchiveMapArrayWithContext is like ApplyTWithContext, but returns a ArchiveMapArrayOutput.
-func (o *OutputState) ApplyArchiveMapArrayWithContext(ctx context.Context, applier interface{}) ArchiveMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArchiveMapArrayOutput)
-}
-
 // ApplyAsset is like ApplyT, but returns a AssetOutput.
 func (o *OutputState) ApplyAsset(applier interface{}) AssetOutput {
 	return o.ApplyT(applier).(AssetOutput)
-}
-
-// ApplyAssetWithContext is like ApplyTWithContext, but returns a AssetOutput.
-func (o *OutputState) ApplyAssetWithContext(ctx context.Context, applier interface{}) AssetOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOutput)
 }
 
 // ApplyAssetArray is like ApplyT, but returns a AssetArrayOutput.
@@ -85,19 +54,9 @@ func (o *OutputState) ApplyAssetArray(applier interface{}) AssetArrayOutput {
 	return o.ApplyT(applier).(AssetArrayOutput)
 }
 
-// ApplyAssetArrayWithContext is like ApplyTWithContext, but returns a AssetArrayOutput.
-func (o *OutputState) ApplyAssetArrayWithContext(ctx context.Context, applier interface{}) AssetArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetArrayOutput)
-}
-
 // ApplyAssetMap is like ApplyT, but returns a AssetMapOutput.
 func (o *OutputState) ApplyAssetMap(applier interface{}) AssetMapOutput {
 	return o.ApplyT(applier).(AssetMapOutput)
-}
-
-// ApplyAssetMapWithContext is like ApplyTWithContext, but returns a AssetMapOutput.
-func (o *OutputState) ApplyAssetMapWithContext(ctx context.Context, applier interface{}) AssetMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetMapOutput)
 }
 
 // ApplyAssetArrayMap is like ApplyT, but returns a AssetArrayMapOutput.
@@ -105,19 +64,9 @@ func (o *OutputState) ApplyAssetArrayMap(applier interface{}) AssetArrayMapOutpu
 	return o.ApplyT(applier).(AssetArrayMapOutput)
 }
 
-// ApplyAssetArrayMapWithContext is like ApplyTWithContext, but returns a AssetArrayMapOutput.
-func (o *OutputState) ApplyAssetArrayMapWithContext(ctx context.Context, applier interface{}) AssetArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetArrayMapOutput)
-}
-
 // ApplyAssetMapArray is like ApplyT, but returns a AssetMapArrayOutput.
 func (o *OutputState) ApplyAssetMapArray(applier interface{}) AssetMapArrayOutput {
 	return o.ApplyT(applier).(AssetMapArrayOutput)
-}
-
-// ApplyAssetMapArrayWithContext is like ApplyTWithContext, but returns a AssetMapArrayOutput.
-func (o *OutputState) ApplyAssetMapArrayWithContext(ctx context.Context, applier interface{}) AssetMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetMapArrayOutput)
 }
 
 // ApplyAssetOrArchive is like ApplyT, but returns a AssetOrArchiveOutput.
@@ -125,19 +74,9 @@ func (o *OutputState) ApplyAssetOrArchive(applier interface{}) AssetOrArchiveOut
 	return o.ApplyT(applier).(AssetOrArchiveOutput)
 }
 
-// ApplyAssetOrArchiveWithContext is like ApplyTWithContext, but returns a AssetOrArchiveOutput.
-func (o *OutputState) ApplyAssetOrArchiveWithContext(ctx context.Context, applier interface{}) AssetOrArchiveOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveOutput)
-}
-
 // ApplyAssetOrArchiveArray is like ApplyT, but returns a AssetOrArchiveArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveArray(applier interface{}) AssetOrArchiveArrayOutput {
 	return o.ApplyT(applier).(AssetOrArchiveArrayOutput)
-}
-
-// ApplyAssetOrArchiveArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayOutput.
-func (o *OutputState) ApplyAssetOrArchiveArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayOutput)
 }
 
 // ApplyAssetOrArchiveMap is like ApplyT, but returns a AssetOrArchiveMapOutput.
@@ -145,19 +84,9 @@ func (o *OutputState) ApplyAssetOrArchiveMap(applier interface{}) AssetOrArchive
 	return o.ApplyT(applier).(AssetOrArchiveMapOutput)
 }
 
-// ApplyAssetOrArchiveMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapOutput.
-func (o *OutputState) ApplyAssetOrArchiveMapWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapOutput)
-}
-
 // ApplyAssetOrArchiveArrayMap is like ApplyT, but returns a AssetOrArchiveArrayMapOutput.
 func (o *OutputState) ApplyAssetOrArchiveArrayMap(applier interface{}) AssetOrArchiveArrayMapOutput {
 	return o.ApplyT(applier).(AssetOrArchiveArrayMapOutput)
-}
-
-// ApplyAssetOrArchiveArrayMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayMapOutput.
-func (o *OutputState) ApplyAssetOrArchiveArrayMapWithContext(ctx context.Context, applier interface{}) AssetOrArchiveArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayMapOutput)
 }
 
 // ApplyAssetOrArchiveMapArray is like ApplyT, but returns a AssetOrArchiveMapArrayOutput.
@@ -165,19 +94,9 @@ func (o *OutputState) ApplyAssetOrArchiveMapArray(applier interface{}) AssetOrAr
 	return o.ApplyT(applier).(AssetOrArchiveMapArrayOutput)
 }
 
-// ApplyAssetOrArchiveMapArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapArrayOutput.
-func (o *OutputState) ApplyAssetOrArchiveMapArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapArrayOutput)
-}
-
 // ApplyBool is like ApplyT, but returns a BoolOutput.
 func (o *OutputState) ApplyBool(applier interface{}) BoolOutput {
 	return o.ApplyT(applier).(BoolOutput)
-}
-
-// ApplyBoolWithContext is like ApplyTWithContext, but returns a BoolOutput.
-func (o *OutputState) ApplyBoolWithContext(ctx context.Context, applier interface{}) BoolOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolOutput)
 }
 
 // ApplyBoolPtr is like ApplyT, but returns a BoolPtrOutput.
@@ -185,19 +104,9 @@ func (o *OutputState) ApplyBoolPtr(applier interface{}) BoolPtrOutput {
 	return o.ApplyT(applier).(BoolPtrOutput)
 }
 
-// ApplyBoolPtrWithContext is like ApplyTWithContext, but returns a BoolPtrOutput.
-func (o *OutputState) ApplyBoolPtrWithContext(ctx context.Context, applier interface{}) BoolPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolPtrOutput)
-}
-
 // ApplyBoolArray is like ApplyT, but returns a BoolArrayOutput.
 func (o *OutputState) ApplyBoolArray(applier interface{}) BoolArrayOutput {
 	return o.ApplyT(applier).(BoolArrayOutput)
-}
-
-// ApplyBoolArrayWithContext is like ApplyTWithContext, but returns a BoolArrayOutput.
-func (o *OutputState) ApplyBoolArrayWithContext(ctx context.Context, applier interface{}) BoolArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolArrayOutput)
 }
 
 // ApplyBoolMap is like ApplyT, but returns a BoolMapOutput.
@@ -205,19 +114,9 @@ func (o *OutputState) ApplyBoolMap(applier interface{}) BoolMapOutput {
 	return o.ApplyT(applier).(BoolMapOutput)
 }
 
-// ApplyBoolMapWithContext is like ApplyTWithContext, but returns a BoolMapOutput.
-func (o *OutputState) ApplyBoolMapWithContext(ctx context.Context, applier interface{}) BoolMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolMapOutput)
-}
-
 // ApplyBoolArrayMap is like ApplyT, but returns a BoolArrayMapOutput.
 func (o *OutputState) ApplyBoolArrayMap(applier interface{}) BoolArrayMapOutput {
 	return o.ApplyT(applier).(BoolArrayMapOutput)
-}
-
-// ApplyBoolArrayMapWithContext is like ApplyTWithContext, but returns a BoolArrayMapOutput.
-func (o *OutputState) ApplyBoolArrayMapWithContext(ctx context.Context, applier interface{}) BoolArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolArrayMapOutput)
 }
 
 // ApplyBoolMapArray is like ApplyT, but returns a BoolMapArrayOutput.
@@ -225,19 +124,9 @@ func (o *OutputState) ApplyBoolMapArray(applier interface{}) BoolMapArrayOutput 
 	return o.ApplyT(applier).(BoolMapArrayOutput)
 }
 
-// ApplyBoolMapArrayWithContext is like ApplyTWithContext, but returns a BoolMapArrayOutput.
-func (o *OutputState) ApplyBoolMapArrayWithContext(ctx context.Context, applier interface{}) BoolMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(BoolMapArrayOutput)
-}
-
 // ApplyFloat32 is like ApplyT, but returns a Float32Output.
 func (o *OutputState) ApplyFloat32(applier interface{}) Float32Output {
 	return o.ApplyT(applier).(Float32Output)
-}
-
-// ApplyFloat32WithContext is like ApplyTWithContext, but returns a Float32Output.
-func (o *OutputState) ApplyFloat32WithContext(ctx context.Context, applier interface{}) Float32Output {
-	return o.ApplyTWithContext(ctx, applier).(Float32Output)
 }
 
 // ApplyFloat32Ptr is like ApplyT, but returns a Float32PtrOutput.
@@ -245,19 +134,9 @@ func (o *OutputState) ApplyFloat32Ptr(applier interface{}) Float32PtrOutput {
 	return o.ApplyT(applier).(Float32PtrOutput)
 }
 
-// ApplyFloat32PtrWithContext is like ApplyTWithContext, but returns a Float32PtrOutput.
-func (o *OutputState) ApplyFloat32PtrWithContext(ctx context.Context, applier interface{}) Float32PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float32PtrOutput)
-}
-
 // ApplyFloat32Array is like ApplyT, but returns a Float32ArrayOutput.
 func (o *OutputState) ApplyFloat32Array(applier interface{}) Float32ArrayOutput {
 	return o.ApplyT(applier).(Float32ArrayOutput)
-}
-
-// ApplyFloat32ArrayWithContext is like ApplyTWithContext, but returns a Float32ArrayOutput.
-func (o *OutputState) ApplyFloat32ArrayWithContext(ctx context.Context, applier interface{}) Float32ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float32ArrayOutput)
 }
 
 // ApplyFloat32Map is like ApplyT, but returns a Float32MapOutput.
@@ -265,19 +144,9 @@ func (o *OutputState) ApplyFloat32Map(applier interface{}) Float32MapOutput {
 	return o.ApplyT(applier).(Float32MapOutput)
 }
 
-// ApplyFloat32MapWithContext is like ApplyTWithContext, but returns a Float32MapOutput.
-func (o *OutputState) ApplyFloat32MapWithContext(ctx context.Context, applier interface{}) Float32MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float32MapOutput)
-}
-
 // ApplyFloat32ArrayMap is like ApplyT, but returns a Float32ArrayMapOutput.
 func (o *OutputState) ApplyFloat32ArrayMap(applier interface{}) Float32ArrayMapOutput {
 	return o.ApplyT(applier).(Float32ArrayMapOutput)
-}
-
-// ApplyFloat32ArrayMapWithContext is like ApplyTWithContext, but returns a Float32ArrayMapOutput.
-func (o *OutputState) ApplyFloat32ArrayMapWithContext(ctx context.Context, applier interface{}) Float32ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float32ArrayMapOutput)
 }
 
 // ApplyFloat32MapArray is like ApplyT, but returns a Float32MapArrayOutput.
@@ -285,19 +154,9 @@ func (o *OutputState) ApplyFloat32MapArray(applier interface{}) Float32MapArrayO
 	return o.ApplyT(applier).(Float32MapArrayOutput)
 }
 
-// ApplyFloat32MapArrayWithContext is like ApplyTWithContext, but returns a Float32MapArrayOutput.
-func (o *OutputState) ApplyFloat32MapArrayWithContext(ctx context.Context, applier interface{}) Float32MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float32MapArrayOutput)
-}
-
 // ApplyFloat64 is like ApplyT, but returns a Float64Output.
 func (o *OutputState) ApplyFloat64(applier interface{}) Float64Output {
 	return o.ApplyT(applier).(Float64Output)
-}
-
-// ApplyFloat64WithContext is like ApplyTWithContext, but returns a Float64Output.
-func (o *OutputState) ApplyFloat64WithContext(ctx context.Context, applier interface{}) Float64Output {
-	return o.ApplyTWithContext(ctx, applier).(Float64Output)
 }
 
 // ApplyFloat64Ptr is like ApplyT, but returns a Float64PtrOutput.
@@ -305,19 +164,9 @@ func (o *OutputState) ApplyFloat64Ptr(applier interface{}) Float64PtrOutput {
 	return o.ApplyT(applier).(Float64PtrOutput)
 }
 
-// ApplyFloat64PtrWithContext is like ApplyTWithContext, but returns a Float64PtrOutput.
-func (o *OutputState) ApplyFloat64PtrWithContext(ctx context.Context, applier interface{}) Float64PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float64PtrOutput)
-}
-
 // ApplyFloat64Array is like ApplyT, but returns a Float64ArrayOutput.
 func (o *OutputState) ApplyFloat64Array(applier interface{}) Float64ArrayOutput {
 	return o.ApplyT(applier).(Float64ArrayOutput)
-}
-
-// ApplyFloat64ArrayWithContext is like ApplyTWithContext, but returns a Float64ArrayOutput.
-func (o *OutputState) ApplyFloat64ArrayWithContext(ctx context.Context, applier interface{}) Float64ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float64ArrayOutput)
 }
 
 // ApplyFloat64Map is like ApplyT, but returns a Float64MapOutput.
@@ -325,19 +174,9 @@ func (o *OutputState) ApplyFloat64Map(applier interface{}) Float64MapOutput {
 	return o.ApplyT(applier).(Float64MapOutput)
 }
 
-// ApplyFloat64MapWithContext is like ApplyTWithContext, but returns a Float64MapOutput.
-func (o *OutputState) ApplyFloat64MapWithContext(ctx context.Context, applier interface{}) Float64MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float64MapOutput)
-}
-
 // ApplyFloat64ArrayMap is like ApplyT, but returns a Float64ArrayMapOutput.
 func (o *OutputState) ApplyFloat64ArrayMap(applier interface{}) Float64ArrayMapOutput {
 	return o.ApplyT(applier).(Float64ArrayMapOutput)
-}
-
-// ApplyFloat64ArrayMapWithContext is like ApplyTWithContext, but returns a Float64ArrayMapOutput.
-func (o *OutputState) ApplyFloat64ArrayMapWithContext(ctx context.Context, applier interface{}) Float64ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float64ArrayMapOutput)
 }
 
 // ApplyFloat64MapArray is like ApplyT, but returns a Float64MapArrayOutput.
@@ -345,19 +184,9 @@ func (o *OutputState) ApplyFloat64MapArray(applier interface{}) Float64MapArrayO
 	return o.ApplyT(applier).(Float64MapArrayOutput)
 }
 
-// ApplyFloat64MapArrayWithContext is like ApplyTWithContext, but returns a Float64MapArrayOutput.
-func (o *OutputState) ApplyFloat64MapArrayWithContext(ctx context.Context, applier interface{}) Float64MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Float64MapArrayOutput)
-}
-
 // ApplyID is like ApplyT, but returns a IDOutput.
 func (o *OutputState) ApplyID(applier interface{}) IDOutput {
 	return o.ApplyT(applier).(IDOutput)
-}
-
-// ApplyIDWithContext is like ApplyTWithContext, but returns a IDOutput.
-func (o *OutputState) ApplyIDWithContext(ctx context.Context, applier interface{}) IDOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDOutput)
 }
 
 // ApplyIDPtr is like ApplyT, but returns a IDPtrOutput.
@@ -365,19 +194,9 @@ func (o *OutputState) ApplyIDPtr(applier interface{}) IDPtrOutput {
 	return o.ApplyT(applier).(IDPtrOutput)
 }
 
-// ApplyIDPtrWithContext is like ApplyTWithContext, but returns a IDPtrOutput.
-func (o *OutputState) ApplyIDPtrWithContext(ctx context.Context, applier interface{}) IDPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDPtrOutput)
-}
-
 // ApplyIDArray is like ApplyT, but returns a IDArrayOutput.
 func (o *OutputState) ApplyIDArray(applier interface{}) IDArrayOutput {
 	return o.ApplyT(applier).(IDArrayOutput)
-}
-
-// ApplyIDArrayWithContext is like ApplyTWithContext, but returns a IDArrayOutput.
-func (o *OutputState) ApplyIDArrayWithContext(ctx context.Context, applier interface{}) IDArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDArrayOutput)
 }
 
 // ApplyIDMap is like ApplyT, but returns a IDMapOutput.
@@ -385,19 +204,9 @@ func (o *OutputState) ApplyIDMap(applier interface{}) IDMapOutput {
 	return o.ApplyT(applier).(IDMapOutput)
 }
 
-// ApplyIDMapWithContext is like ApplyTWithContext, but returns a IDMapOutput.
-func (o *OutputState) ApplyIDMapWithContext(ctx context.Context, applier interface{}) IDMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDMapOutput)
-}
-
 // ApplyIDArrayMap is like ApplyT, but returns a IDArrayMapOutput.
 func (o *OutputState) ApplyIDArrayMap(applier interface{}) IDArrayMapOutput {
 	return o.ApplyT(applier).(IDArrayMapOutput)
-}
-
-// ApplyIDArrayMapWithContext is like ApplyTWithContext, but returns a IDArrayMapOutput.
-func (o *OutputState) ApplyIDArrayMapWithContext(ctx context.Context, applier interface{}) IDArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDArrayMapOutput)
 }
 
 // ApplyIDMapArray is like ApplyT, but returns a IDMapArrayOutput.
@@ -405,19 +214,9 @@ func (o *OutputState) ApplyIDMapArray(applier interface{}) IDMapArrayOutput {
 	return o.ApplyT(applier).(IDMapArrayOutput)
 }
 
-// ApplyIDMapArrayWithContext is like ApplyTWithContext, but returns a IDMapArrayOutput.
-func (o *OutputState) ApplyIDMapArrayWithContext(ctx context.Context, applier interface{}) IDMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(IDMapArrayOutput)
-}
-
 // ApplyArray is like ApplyT, but returns a ArrayOutput.
 func (o *OutputState) ApplyArray(applier interface{}) ArrayOutput {
 	return o.ApplyT(applier).(ArrayOutput)
-}
-
-// ApplyArrayWithContext is like ApplyTWithContext, but returns a ArrayOutput.
-func (o *OutputState) ApplyArrayWithContext(ctx context.Context, applier interface{}) ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArrayOutput)
 }
 
 // ApplyMap is like ApplyT, but returns a MapOutput.
@@ -425,19 +224,9 @@ func (o *OutputState) ApplyMap(applier interface{}) MapOutput {
 	return o.ApplyT(applier).(MapOutput)
 }
 
-// ApplyMapWithContext is like ApplyTWithContext, but returns a MapOutput.
-func (o *OutputState) ApplyMapWithContext(ctx context.Context, applier interface{}) MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(MapOutput)
-}
-
 // ApplyArrayMap is like ApplyT, but returns a ArrayMapOutput.
 func (o *OutputState) ApplyArrayMap(applier interface{}) ArrayMapOutput {
 	return o.ApplyT(applier).(ArrayMapOutput)
-}
-
-// ApplyArrayMapWithContext is like ApplyTWithContext, but returns a ArrayMapOutput.
-func (o *OutputState) ApplyArrayMapWithContext(ctx context.Context, applier interface{}) ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(ArrayMapOutput)
 }
 
 // ApplyMapArray is like ApplyT, but returns a MapArrayOutput.
@@ -445,19 +234,9 @@ func (o *OutputState) ApplyMapArray(applier interface{}) MapArrayOutput {
 	return o.ApplyT(applier).(MapArrayOutput)
 }
 
-// ApplyMapArrayWithContext is like ApplyTWithContext, but returns a MapArrayOutput.
-func (o *OutputState) ApplyMapArrayWithContext(ctx context.Context, applier interface{}) MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(MapArrayOutput)
-}
-
 // ApplyInt is like ApplyT, but returns a IntOutput.
 func (o *OutputState) ApplyInt(applier interface{}) IntOutput {
 	return o.ApplyT(applier).(IntOutput)
-}
-
-// ApplyIntWithContext is like ApplyTWithContext, but returns a IntOutput.
-func (o *OutputState) ApplyIntWithContext(ctx context.Context, applier interface{}) IntOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntOutput)
 }
 
 // ApplyIntPtr is like ApplyT, but returns a IntPtrOutput.
@@ -465,19 +244,9 @@ func (o *OutputState) ApplyIntPtr(applier interface{}) IntPtrOutput {
 	return o.ApplyT(applier).(IntPtrOutput)
 }
 
-// ApplyIntPtrWithContext is like ApplyTWithContext, but returns a IntPtrOutput.
-func (o *OutputState) ApplyIntPtrWithContext(ctx context.Context, applier interface{}) IntPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntPtrOutput)
-}
-
 // ApplyIntArray is like ApplyT, but returns a IntArrayOutput.
 func (o *OutputState) ApplyIntArray(applier interface{}) IntArrayOutput {
 	return o.ApplyT(applier).(IntArrayOutput)
-}
-
-// ApplyIntArrayWithContext is like ApplyTWithContext, but returns a IntArrayOutput.
-func (o *OutputState) ApplyIntArrayWithContext(ctx context.Context, applier interface{}) IntArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntArrayOutput)
 }
 
 // ApplyIntMap is like ApplyT, but returns a IntMapOutput.
@@ -485,19 +254,9 @@ func (o *OutputState) ApplyIntMap(applier interface{}) IntMapOutput {
 	return o.ApplyT(applier).(IntMapOutput)
 }
 
-// ApplyIntMapWithContext is like ApplyTWithContext, but returns a IntMapOutput.
-func (o *OutputState) ApplyIntMapWithContext(ctx context.Context, applier interface{}) IntMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntMapOutput)
-}
-
 // ApplyIntArrayMap is like ApplyT, but returns a IntArrayMapOutput.
 func (o *OutputState) ApplyIntArrayMap(applier interface{}) IntArrayMapOutput {
 	return o.ApplyT(applier).(IntArrayMapOutput)
-}
-
-// ApplyIntArrayMapWithContext is like ApplyTWithContext, but returns a IntArrayMapOutput.
-func (o *OutputState) ApplyIntArrayMapWithContext(ctx context.Context, applier interface{}) IntArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntArrayMapOutput)
 }
 
 // ApplyIntMapArray is like ApplyT, but returns a IntMapArrayOutput.
@@ -505,19 +264,9 @@ func (o *OutputState) ApplyIntMapArray(applier interface{}) IntMapArrayOutput {
 	return o.ApplyT(applier).(IntMapArrayOutput)
 }
 
-// ApplyIntMapArrayWithContext is like ApplyTWithContext, but returns a IntMapArrayOutput.
-func (o *OutputState) ApplyIntMapArrayWithContext(ctx context.Context, applier interface{}) IntMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(IntMapArrayOutput)
-}
-
 // ApplyInt16 is like ApplyT, but returns a Int16Output.
 func (o *OutputState) ApplyInt16(applier interface{}) Int16Output {
 	return o.ApplyT(applier).(Int16Output)
-}
-
-// ApplyInt16WithContext is like ApplyTWithContext, but returns a Int16Output.
-func (o *OutputState) ApplyInt16WithContext(ctx context.Context, applier interface{}) Int16Output {
-	return o.ApplyTWithContext(ctx, applier).(Int16Output)
 }
 
 // ApplyInt16Ptr is like ApplyT, but returns a Int16PtrOutput.
@@ -525,19 +274,9 @@ func (o *OutputState) ApplyInt16Ptr(applier interface{}) Int16PtrOutput {
 	return o.ApplyT(applier).(Int16PtrOutput)
 }
 
-// ApplyInt16PtrWithContext is like ApplyTWithContext, but returns a Int16PtrOutput.
-func (o *OutputState) ApplyInt16PtrWithContext(ctx context.Context, applier interface{}) Int16PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int16PtrOutput)
-}
-
 // ApplyInt16Array is like ApplyT, but returns a Int16ArrayOutput.
 func (o *OutputState) ApplyInt16Array(applier interface{}) Int16ArrayOutput {
 	return o.ApplyT(applier).(Int16ArrayOutput)
-}
-
-// ApplyInt16ArrayWithContext is like ApplyTWithContext, but returns a Int16ArrayOutput.
-func (o *OutputState) ApplyInt16ArrayWithContext(ctx context.Context, applier interface{}) Int16ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int16ArrayOutput)
 }
 
 // ApplyInt16Map is like ApplyT, but returns a Int16MapOutput.
@@ -545,19 +284,9 @@ func (o *OutputState) ApplyInt16Map(applier interface{}) Int16MapOutput {
 	return o.ApplyT(applier).(Int16MapOutput)
 }
 
-// ApplyInt16MapWithContext is like ApplyTWithContext, but returns a Int16MapOutput.
-func (o *OutputState) ApplyInt16MapWithContext(ctx context.Context, applier interface{}) Int16MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int16MapOutput)
-}
-
 // ApplyInt16ArrayMap is like ApplyT, but returns a Int16ArrayMapOutput.
 func (o *OutputState) ApplyInt16ArrayMap(applier interface{}) Int16ArrayMapOutput {
 	return o.ApplyT(applier).(Int16ArrayMapOutput)
-}
-
-// ApplyInt16ArrayMapWithContext is like ApplyTWithContext, but returns a Int16ArrayMapOutput.
-func (o *OutputState) ApplyInt16ArrayMapWithContext(ctx context.Context, applier interface{}) Int16ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int16ArrayMapOutput)
 }
 
 // ApplyInt16MapArray is like ApplyT, but returns a Int16MapArrayOutput.
@@ -565,19 +294,9 @@ func (o *OutputState) ApplyInt16MapArray(applier interface{}) Int16MapArrayOutpu
 	return o.ApplyT(applier).(Int16MapArrayOutput)
 }
 
-// ApplyInt16MapArrayWithContext is like ApplyTWithContext, but returns a Int16MapArrayOutput.
-func (o *OutputState) ApplyInt16MapArrayWithContext(ctx context.Context, applier interface{}) Int16MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int16MapArrayOutput)
-}
-
 // ApplyInt32 is like ApplyT, but returns a Int32Output.
 func (o *OutputState) ApplyInt32(applier interface{}) Int32Output {
 	return o.ApplyT(applier).(Int32Output)
-}
-
-// ApplyInt32WithContext is like ApplyTWithContext, but returns a Int32Output.
-func (o *OutputState) ApplyInt32WithContext(ctx context.Context, applier interface{}) Int32Output {
-	return o.ApplyTWithContext(ctx, applier).(Int32Output)
 }
 
 // ApplyInt32Ptr is like ApplyT, but returns a Int32PtrOutput.
@@ -585,19 +304,9 @@ func (o *OutputState) ApplyInt32Ptr(applier interface{}) Int32PtrOutput {
 	return o.ApplyT(applier).(Int32PtrOutput)
 }
 
-// ApplyInt32PtrWithContext is like ApplyTWithContext, but returns a Int32PtrOutput.
-func (o *OutputState) ApplyInt32PtrWithContext(ctx context.Context, applier interface{}) Int32PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int32PtrOutput)
-}
-
 // ApplyInt32Array is like ApplyT, but returns a Int32ArrayOutput.
 func (o *OutputState) ApplyInt32Array(applier interface{}) Int32ArrayOutput {
 	return o.ApplyT(applier).(Int32ArrayOutput)
-}
-
-// ApplyInt32ArrayWithContext is like ApplyTWithContext, but returns a Int32ArrayOutput.
-func (o *OutputState) ApplyInt32ArrayWithContext(ctx context.Context, applier interface{}) Int32ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int32ArrayOutput)
 }
 
 // ApplyInt32Map is like ApplyT, but returns a Int32MapOutput.
@@ -605,19 +314,9 @@ func (o *OutputState) ApplyInt32Map(applier interface{}) Int32MapOutput {
 	return o.ApplyT(applier).(Int32MapOutput)
 }
 
-// ApplyInt32MapWithContext is like ApplyTWithContext, but returns a Int32MapOutput.
-func (o *OutputState) ApplyInt32MapWithContext(ctx context.Context, applier interface{}) Int32MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int32MapOutput)
-}
-
 // ApplyInt32ArrayMap is like ApplyT, but returns a Int32ArrayMapOutput.
 func (o *OutputState) ApplyInt32ArrayMap(applier interface{}) Int32ArrayMapOutput {
 	return o.ApplyT(applier).(Int32ArrayMapOutput)
-}
-
-// ApplyInt32ArrayMapWithContext is like ApplyTWithContext, but returns a Int32ArrayMapOutput.
-func (o *OutputState) ApplyInt32ArrayMapWithContext(ctx context.Context, applier interface{}) Int32ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int32ArrayMapOutput)
 }
 
 // ApplyInt32MapArray is like ApplyT, but returns a Int32MapArrayOutput.
@@ -625,19 +324,9 @@ func (o *OutputState) ApplyInt32MapArray(applier interface{}) Int32MapArrayOutpu
 	return o.ApplyT(applier).(Int32MapArrayOutput)
 }
 
-// ApplyInt32MapArrayWithContext is like ApplyTWithContext, but returns a Int32MapArrayOutput.
-func (o *OutputState) ApplyInt32MapArrayWithContext(ctx context.Context, applier interface{}) Int32MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int32MapArrayOutput)
-}
-
 // ApplyInt64 is like ApplyT, but returns a Int64Output.
 func (o *OutputState) ApplyInt64(applier interface{}) Int64Output {
 	return o.ApplyT(applier).(Int64Output)
-}
-
-// ApplyInt64WithContext is like ApplyTWithContext, but returns a Int64Output.
-func (o *OutputState) ApplyInt64WithContext(ctx context.Context, applier interface{}) Int64Output {
-	return o.ApplyTWithContext(ctx, applier).(Int64Output)
 }
 
 // ApplyInt64Ptr is like ApplyT, but returns a Int64PtrOutput.
@@ -645,19 +334,9 @@ func (o *OutputState) ApplyInt64Ptr(applier interface{}) Int64PtrOutput {
 	return o.ApplyT(applier).(Int64PtrOutput)
 }
 
-// ApplyInt64PtrWithContext is like ApplyTWithContext, but returns a Int64PtrOutput.
-func (o *OutputState) ApplyInt64PtrWithContext(ctx context.Context, applier interface{}) Int64PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int64PtrOutput)
-}
-
 // ApplyInt64Array is like ApplyT, but returns a Int64ArrayOutput.
 func (o *OutputState) ApplyInt64Array(applier interface{}) Int64ArrayOutput {
 	return o.ApplyT(applier).(Int64ArrayOutput)
-}
-
-// ApplyInt64ArrayWithContext is like ApplyTWithContext, but returns a Int64ArrayOutput.
-func (o *OutputState) ApplyInt64ArrayWithContext(ctx context.Context, applier interface{}) Int64ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int64ArrayOutput)
 }
 
 // ApplyInt64Map is like ApplyT, but returns a Int64MapOutput.
@@ -665,19 +344,9 @@ func (o *OutputState) ApplyInt64Map(applier interface{}) Int64MapOutput {
 	return o.ApplyT(applier).(Int64MapOutput)
 }
 
-// ApplyInt64MapWithContext is like ApplyTWithContext, but returns a Int64MapOutput.
-func (o *OutputState) ApplyInt64MapWithContext(ctx context.Context, applier interface{}) Int64MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int64MapOutput)
-}
-
 // ApplyInt64ArrayMap is like ApplyT, but returns a Int64ArrayMapOutput.
 func (o *OutputState) ApplyInt64ArrayMap(applier interface{}) Int64ArrayMapOutput {
 	return o.ApplyT(applier).(Int64ArrayMapOutput)
-}
-
-// ApplyInt64ArrayMapWithContext is like ApplyTWithContext, but returns a Int64ArrayMapOutput.
-func (o *OutputState) ApplyInt64ArrayMapWithContext(ctx context.Context, applier interface{}) Int64ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int64ArrayMapOutput)
 }
 
 // ApplyInt64MapArray is like ApplyT, but returns a Int64MapArrayOutput.
@@ -685,19 +354,9 @@ func (o *OutputState) ApplyInt64MapArray(applier interface{}) Int64MapArrayOutpu
 	return o.ApplyT(applier).(Int64MapArrayOutput)
 }
 
-// ApplyInt64MapArrayWithContext is like ApplyTWithContext, but returns a Int64MapArrayOutput.
-func (o *OutputState) ApplyInt64MapArrayWithContext(ctx context.Context, applier interface{}) Int64MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int64MapArrayOutput)
-}
-
 // ApplyInt8 is like ApplyT, but returns a Int8Output.
 func (o *OutputState) ApplyInt8(applier interface{}) Int8Output {
 	return o.ApplyT(applier).(Int8Output)
-}
-
-// ApplyInt8WithContext is like ApplyTWithContext, but returns a Int8Output.
-func (o *OutputState) ApplyInt8WithContext(ctx context.Context, applier interface{}) Int8Output {
-	return o.ApplyTWithContext(ctx, applier).(Int8Output)
 }
 
 // ApplyInt8Ptr is like ApplyT, but returns a Int8PtrOutput.
@@ -705,19 +364,9 @@ func (o *OutputState) ApplyInt8Ptr(applier interface{}) Int8PtrOutput {
 	return o.ApplyT(applier).(Int8PtrOutput)
 }
 
-// ApplyInt8PtrWithContext is like ApplyTWithContext, but returns a Int8PtrOutput.
-func (o *OutputState) ApplyInt8PtrWithContext(ctx context.Context, applier interface{}) Int8PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int8PtrOutput)
-}
-
 // ApplyInt8Array is like ApplyT, but returns a Int8ArrayOutput.
 func (o *OutputState) ApplyInt8Array(applier interface{}) Int8ArrayOutput {
 	return o.ApplyT(applier).(Int8ArrayOutput)
-}
-
-// ApplyInt8ArrayWithContext is like ApplyTWithContext, but returns a Int8ArrayOutput.
-func (o *OutputState) ApplyInt8ArrayWithContext(ctx context.Context, applier interface{}) Int8ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int8ArrayOutput)
 }
 
 // ApplyInt8Map is like ApplyT, but returns a Int8MapOutput.
@@ -725,19 +374,9 @@ func (o *OutputState) ApplyInt8Map(applier interface{}) Int8MapOutput {
 	return o.ApplyT(applier).(Int8MapOutput)
 }
 
-// ApplyInt8MapWithContext is like ApplyTWithContext, but returns a Int8MapOutput.
-func (o *OutputState) ApplyInt8MapWithContext(ctx context.Context, applier interface{}) Int8MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int8MapOutput)
-}
-
 // ApplyInt8ArrayMap is like ApplyT, but returns a Int8ArrayMapOutput.
 func (o *OutputState) ApplyInt8ArrayMap(applier interface{}) Int8ArrayMapOutput {
 	return o.ApplyT(applier).(Int8ArrayMapOutput)
-}
-
-// ApplyInt8ArrayMapWithContext is like ApplyTWithContext, but returns a Int8ArrayMapOutput.
-func (o *OutputState) ApplyInt8ArrayMapWithContext(ctx context.Context, applier interface{}) Int8ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int8ArrayMapOutput)
 }
 
 // ApplyInt8MapArray is like ApplyT, but returns a Int8MapArrayOutput.
@@ -745,19 +384,9 @@ func (o *OutputState) ApplyInt8MapArray(applier interface{}) Int8MapArrayOutput 
 	return o.ApplyT(applier).(Int8MapArrayOutput)
 }
 
-// ApplyInt8MapArrayWithContext is like ApplyTWithContext, but returns a Int8MapArrayOutput.
-func (o *OutputState) ApplyInt8MapArrayWithContext(ctx context.Context, applier interface{}) Int8MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Int8MapArrayOutput)
-}
-
 // ApplyString is like ApplyT, but returns a StringOutput.
 func (o *OutputState) ApplyString(applier interface{}) StringOutput {
 	return o.ApplyT(applier).(StringOutput)
-}
-
-// ApplyStringWithContext is like ApplyTWithContext, but returns a StringOutput.
-func (o *OutputState) ApplyStringWithContext(ctx context.Context, applier interface{}) StringOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringOutput)
 }
 
 // ApplyStringPtr is like ApplyT, but returns a StringPtrOutput.
@@ -765,19 +394,9 @@ func (o *OutputState) ApplyStringPtr(applier interface{}) StringPtrOutput {
 	return o.ApplyT(applier).(StringPtrOutput)
 }
 
-// ApplyStringPtrWithContext is like ApplyTWithContext, but returns a StringPtrOutput.
-func (o *OutputState) ApplyStringPtrWithContext(ctx context.Context, applier interface{}) StringPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringPtrOutput)
-}
-
 // ApplyStringArray is like ApplyT, but returns a StringArrayOutput.
 func (o *OutputState) ApplyStringArray(applier interface{}) StringArrayOutput {
 	return o.ApplyT(applier).(StringArrayOutput)
-}
-
-// ApplyStringArrayWithContext is like ApplyTWithContext, but returns a StringArrayOutput.
-func (o *OutputState) ApplyStringArrayWithContext(ctx context.Context, applier interface{}) StringArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringArrayOutput)
 }
 
 // ApplyStringMap is like ApplyT, but returns a StringMapOutput.
@@ -785,19 +404,9 @@ func (o *OutputState) ApplyStringMap(applier interface{}) StringMapOutput {
 	return o.ApplyT(applier).(StringMapOutput)
 }
 
-// ApplyStringMapWithContext is like ApplyTWithContext, but returns a StringMapOutput.
-func (o *OutputState) ApplyStringMapWithContext(ctx context.Context, applier interface{}) StringMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringMapOutput)
-}
-
 // ApplyStringArrayMap is like ApplyT, but returns a StringArrayMapOutput.
 func (o *OutputState) ApplyStringArrayMap(applier interface{}) StringArrayMapOutput {
 	return o.ApplyT(applier).(StringArrayMapOutput)
-}
-
-// ApplyStringArrayMapWithContext is like ApplyTWithContext, but returns a StringArrayMapOutput.
-func (o *OutputState) ApplyStringArrayMapWithContext(ctx context.Context, applier interface{}) StringArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringArrayMapOutput)
 }
 
 // ApplyStringMapArray is like ApplyT, but returns a StringMapArrayOutput.
@@ -805,19 +414,9 @@ func (o *OutputState) ApplyStringMapArray(applier interface{}) StringMapArrayOut
 	return o.ApplyT(applier).(StringMapArrayOutput)
 }
 
-// ApplyStringMapArrayWithContext is like ApplyTWithContext, but returns a StringMapArrayOutput.
-func (o *OutputState) ApplyStringMapArrayWithContext(ctx context.Context, applier interface{}) StringMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(StringMapArrayOutput)
-}
-
 // ApplyURN is like ApplyT, but returns a URNOutput.
 func (o *OutputState) ApplyURN(applier interface{}) URNOutput {
 	return o.ApplyT(applier).(URNOutput)
-}
-
-// ApplyURNWithContext is like ApplyTWithContext, but returns a URNOutput.
-func (o *OutputState) ApplyURNWithContext(ctx context.Context, applier interface{}) URNOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNOutput)
 }
 
 // ApplyURNPtr is like ApplyT, but returns a URNPtrOutput.
@@ -825,19 +424,9 @@ func (o *OutputState) ApplyURNPtr(applier interface{}) URNPtrOutput {
 	return o.ApplyT(applier).(URNPtrOutput)
 }
 
-// ApplyURNPtrWithContext is like ApplyTWithContext, but returns a URNPtrOutput.
-func (o *OutputState) ApplyURNPtrWithContext(ctx context.Context, applier interface{}) URNPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNPtrOutput)
-}
-
 // ApplyURNArray is like ApplyT, but returns a URNArrayOutput.
 func (o *OutputState) ApplyURNArray(applier interface{}) URNArrayOutput {
 	return o.ApplyT(applier).(URNArrayOutput)
-}
-
-// ApplyURNArrayWithContext is like ApplyTWithContext, but returns a URNArrayOutput.
-func (o *OutputState) ApplyURNArrayWithContext(ctx context.Context, applier interface{}) URNArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNArrayOutput)
 }
 
 // ApplyURNMap is like ApplyT, but returns a URNMapOutput.
@@ -845,19 +434,9 @@ func (o *OutputState) ApplyURNMap(applier interface{}) URNMapOutput {
 	return o.ApplyT(applier).(URNMapOutput)
 }
 
-// ApplyURNMapWithContext is like ApplyTWithContext, but returns a URNMapOutput.
-func (o *OutputState) ApplyURNMapWithContext(ctx context.Context, applier interface{}) URNMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNMapOutput)
-}
-
 // ApplyURNArrayMap is like ApplyT, but returns a URNArrayMapOutput.
 func (o *OutputState) ApplyURNArrayMap(applier interface{}) URNArrayMapOutput {
 	return o.ApplyT(applier).(URNArrayMapOutput)
-}
-
-// ApplyURNArrayMapWithContext is like ApplyTWithContext, but returns a URNArrayMapOutput.
-func (o *OutputState) ApplyURNArrayMapWithContext(ctx context.Context, applier interface{}) URNArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNArrayMapOutput)
 }
 
 // ApplyURNMapArray is like ApplyT, but returns a URNMapArrayOutput.
@@ -865,19 +444,9 @@ func (o *OutputState) ApplyURNMapArray(applier interface{}) URNMapArrayOutput {
 	return o.ApplyT(applier).(URNMapArrayOutput)
 }
 
-// ApplyURNMapArrayWithContext is like ApplyTWithContext, but returns a URNMapArrayOutput.
-func (o *OutputState) ApplyURNMapArrayWithContext(ctx context.Context, applier interface{}) URNMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(URNMapArrayOutput)
-}
-
 // ApplyUint is like ApplyT, but returns a UintOutput.
 func (o *OutputState) ApplyUint(applier interface{}) UintOutput {
 	return o.ApplyT(applier).(UintOutput)
-}
-
-// ApplyUintWithContext is like ApplyTWithContext, but returns a UintOutput.
-func (o *OutputState) ApplyUintWithContext(ctx context.Context, applier interface{}) UintOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintOutput)
 }
 
 // ApplyUintPtr is like ApplyT, but returns a UintPtrOutput.
@@ -885,19 +454,9 @@ func (o *OutputState) ApplyUintPtr(applier interface{}) UintPtrOutput {
 	return o.ApplyT(applier).(UintPtrOutput)
 }
 
-// ApplyUintPtrWithContext is like ApplyTWithContext, but returns a UintPtrOutput.
-func (o *OutputState) ApplyUintPtrWithContext(ctx context.Context, applier interface{}) UintPtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintPtrOutput)
-}
-
 // ApplyUintArray is like ApplyT, but returns a UintArrayOutput.
 func (o *OutputState) ApplyUintArray(applier interface{}) UintArrayOutput {
 	return o.ApplyT(applier).(UintArrayOutput)
-}
-
-// ApplyUintArrayWithContext is like ApplyTWithContext, but returns a UintArrayOutput.
-func (o *OutputState) ApplyUintArrayWithContext(ctx context.Context, applier interface{}) UintArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintArrayOutput)
 }
 
 // ApplyUintMap is like ApplyT, but returns a UintMapOutput.
@@ -905,19 +464,9 @@ func (o *OutputState) ApplyUintMap(applier interface{}) UintMapOutput {
 	return o.ApplyT(applier).(UintMapOutput)
 }
 
-// ApplyUintMapWithContext is like ApplyTWithContext, but returns a UintMapOutput.
-func (o *OutputState) ApplyUintMapWithContext(ctx context.Context, applier interface{}) UintMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintMapOutput)
-}
-
 // ApplyUintArrayMap is like ApplyT, but returns a UintArrayMapOutput.
 func (o *OutputState) ApplyUintArrayMap(applier interface{}) UintArrayMapOutput {
 	return o.ApplyT(applier).(UintArrayMapOutput)
-}
-
-// ApplyUintArrayMapWithContext is like ApplyTWithContext, but returns a UintArrayMapOutput.
-func (o *OutputState) ApplyUintArrayMapWithContext(ctx context.Context, applier interface{}) UintArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintArrayMapOutput)
 }
 
 // ApplyUintMapArray is like ApplyT, but returns a UintMapArrayOutput.
@@ -925,19 +474,9 @@ func (o *OutputState) ApplyUintMapArray(applier interface{}) UintMapArrayOutput 
 	return o.ApplyT(applier).(UintMapArrayOutput)
 }
 
-// ApplyUintMapArrayWithContext is like ApplyTWithContext, but returns a UintMapArrayOutput.
-func (o *OutputState) ApplyUintMapArrayWithContext(ctx context.Context, applier interface{}) UintMapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(UintMapArrayOutput)
-}
-
 // ApplyUint16 is like ApplyT, but returns a Uint16Output.
 func (o *OutputState) ApplyUint16(applier interface{}) Uint16Output {
 	return o.ApplyT(applier).(Uint16Output)
-}
-
-// ApplyUint16WithContext is like ApplyTWithContext, but returns a Uint16Output.
-func (o *OutputState) ApplyUint16WithContext(ctx context.Context, applier interface{}) Uint16Output {
-	return o.ApplyTWithContext(ctx, applier).(Uint16Output)
 }
 
 // ApplyUint16Ptr is like ApplyT, but returns a Uint16PtrOutput.
@@ -945,19 +484,9 @@ func (o *OutputState) ApplyUint16Ptr(applier interface{}) Uint16PtrOutput {
 	return o.ApplyT(applier).(Uint16PtrOutput)
 }
 
-// ApplyUint16PtrWithContext is like ApplyTWithContext, but returns a Uint16PtrOutput.
-func (o *OutputState) ApplyUint16PtrWithContext(ctx context.Context, applier interface{}) Uint16PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint16PtrOutput)
-}
-
 // ApplyUint16Array is like ApplyT, but returns a Uint16ArrayOutput.
 func (o *OutputState) ApplyUint16Array(applier interface{}) Uint16ArrayOutput {
 	return o.ApplyT(applier).(Uint16ArrayOutput)
-}
-
-// ApplyUint16ArrayWithContext is like ApplyTWithContext, but returns a Uint16ArrayOutput.
-func (o *OutputState) ApplyUint16ArrayWithContext(ctx context.Context, applier interface{}) Uint16ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint16ArrayOutput)
 }
 
 // ApplyUint16Map is like ApplyT, but returns a Uint16MapOutput.
@@ -965,19 +494,9 @@ func (o *OutputState) ApplyUint16Map(applier interface{}) Uint16MapOutput {
 	return o.ApplyT(applier).(Uint16MapOutput)
 }
 
-// ApplyUint16MapWithContext is like ApplyTWithContext, but returns a Uint16MapOutput.
-func (o *OutputState) ApplyUint16MapWithContext(ctx context.Context, applier interface{}) Uint16MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint16MapOutput)
-}
-
 // ApplyUint16ArrayMap is like ApplyT, but returns a Uint16ArrayMapOutput.
 func (o *OutputState) ApplyUint16ArrayMap(applier interface{}) Uint16ArrayMapOutput {
 	return o.ApplyT(applier).(Uint16ArrayMapOutput)
-}
-
-// ApplyUint16ArrayMapWithContext is like ApplyTWithContext, but returns a Uint16ArrayMapOutput.
-func (o *OutputState) ApplyUint16ArrayMapWithContext(ctx context.Context, applier interface{}) Uint16ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint16ArrayMapOutput)
 }
 
 // ApplyUint16MapArray is like ApplyT, but returns a Uint16MapArrayOutput.
@@ -985,19 +504,9 @@ func (o *OutputState) ApplyUint16MapArray(applier interface{}) Uint16MapArrayOut
 	return o.ApplyT(applier).(Uint16MapArrayOutput)
 }
 
-// ApplyUint16MapArrayWithContext is like ApplyTWithContext, but returns a Uint16MapArrayOutput.
-func (o *OutputState) ApplyUint16MapArrayWithContext(ctx context.Context, applier interface{}) Uint16MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint16MapArrayOutput)
-}
-
 // ApplyUint32 is like ApplyT, but returns a Uint32Output.
 func (o *OutputState) ApplyUint32(applier interface{}) Uint32Output {
 	return o.ApplyT(applier).(Uint32Output)
-}
-
-// ApplyUint32WithContext is like ApplyTWithContext, but returns a Uint32Output.
-func (o *OutputState) ApplyUint32WithContext(ctx context.Context, applier interface{}) Uint32Output {
-	return o.ApplyTWithContext(ctx, applier).(Uint32Output)
 }
 
 // ApplyUint32Ptr is like ApplyT, but returns a Uint32PtrOutput.
@@ -1005,19 +514,9 @@ func (o *OutputState) ApplyUint32Ptr(applier interface{}) Uint32PtrOutput {
 	return o.ApplyT(applier).(Uint32PtrOutput)
 }
 
-// ApplyUint32PtrWithContext is like ApplyTWithContext, but returns a Uint32PtrOutput.
-func (o *OutputState) ApplyUint32PtrWithContext(ctx context.Context, applier interface{}) Uint32PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint32PtrOutput)
-}
-
 // ApplyUint32Array is like ApplyT, but returns a Uint32ArrayOutput.
 func (o *OutputState) ApplyUint32Array(applier interface{}) Uint32ArrayOutput {
 	return o.ApplyT(applier).(Uint32ArrayOutput)
-}
-
-// ApplyUint32ArrayWithContext is like ApplyTWithContext, but returns a Uint32ArrayOutput.
-func (o *OutputState) ApplyUint32ArrayWithContext(ctx context.Context, applier interface{}) Uint32ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint32ArrayOutput)
 }
 
 // ApplyUint32Map is like ApplyT, but returns a Uint32MapOutput.
@@ -1025,19 +524,9 @@ func (o *OutputState) ApplyUint32Map(applier interface{}) Uint32MapOutput {
 	return o.ApplyT(applier).(Uint32MapOutput)
 }
 
-// ApplyUint32MapWithContext is like ApplyTWithContext, but returns a Uint32MapOutput.
-func (o *OutputState) ApplyUint32MapWithContext(ctx context.Context, applier interface{}) Uint32MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint32MapOutput)
-}
-
 // ApplyUint32ArrayMap is like ApplyT, but returns a Uint32ArrayMapOutput.
 func (o *OutputState) ApplyUint32ArrayMap(applier interface{}) Uint32ArrayMapOutput {
 	return o.ApplyT(applier).(Uint32ArrayMapOutput)
-}
-
-// ApplyUint32ArrayMapWithContext is like ApplyTWithContext, but returns a Uint32ArrayMapOutput.
-func (o *OutputState) ApplyUint32ArrayMapWithContext(ctx context.Context, applier interface{}) Uint32ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint32ArrayMapOutput)
 }
 
 // ApplyUint32MapArray is like ApplyT, but returns a Uint32MapArrayOutput.
@@ -1045,19 +534,9 @@ func (o *OutputState) ApplyUint32MapArray(applier interface{}) Uint32MapArrayOut
 	return o.ApplyT(applier).(Uint32MapArrayOutput)
 }
 
-// ApplyUint32MapArrayWithContext is like ApplyTWithContext, but returns a Uint32MapArrayOutput.
-func (o *OutputState) ApplyUint32MapArrayWithContext(ctx context.Context, applier interface{}) Uint32MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint32MapArrayOutput)
-}
-
 // ApplyUint64 is like ApplyT, but returns a Uint64Output.
 func (o *OutputState) ApplyUint64(applier interface{}) Uint64Output {
 	return o.ApplyT(applier).(Uint64Output)
-}
-
-// ApplyUint64WithContext is like ApplyTWithContext, but returns a Uint64Output.
-func (o *OutputState) ApplyUint64WithContext(ctx context.Context, applier interface{}) Uint64Output {
-	return o.ApplyTWithContext(ctx, applier).(Uint64Output)
 }
 
 // ApplyUint64Ptr is like ApplyT, but returns a Uint64PtrOutput.
@@ -1065,19 +544,9 @@ func (o *OutputState) ApplyUint64Ptr(applier interface{}) Uint64PtrOutput {
 	return o.ApplyT(applier).(Uint64PtrOutput)
 }
 
-// ApplyUint64PtrWithContext is like ApplyTWithContext, but returns a Uint64PtrOutput.
-func (o *OutputState) ApplyUint64PtrWithContext(ctx context.Context, applier interface{}) Uint64PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint64PtrOutput)
-}
-
 // ApplyUint64Array is like ApplyT, but returns a Uint64ArrayOutput.
 func (o *OutputState) ApplyUint64Array(applier interface{}) Uint64ArrayOutput {
 	return o.ApplyT(applier).(Uint64ArrayOutput)
-}
-
-// ApplyUint64ArrayWithContext is like ApplyTWithContext, but returns a Uint64ArrayOutput.
-func (o *OutputState) ApplyUint64ArrayWithContext(ctx context.Context, applier interface{}) Uint64ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint64ArrayOutput)
 }
 
 // ApplyUint64Map is like ApplyT, but returns a Uint64MapOutput.
@@ -1085,19 +554,9 @@ func (o *OutputState) ApplyUint64Map(applier interface{}) Uint64MapOutput {
 	return o.ApplyT(applier).(Uint64MapOutput)
 }
 
-// ApplyUint64MapWithContext is like ApplyTWithContext, but returns a Uint64MapOutput.
-func (o *OutputState) ApplyUint64MapWithContext(ctx context.Context, applier interface{}) Uint64MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint64MapOutput)
-}
-
 // ApplyUint64ArrayMap is like ApplyT, but returns a Uint64ArrayMapOutput.
 func (o *OutputState) ApplyUint64ArrayMap(applier interface{}) Uint64ArrayMapOutput {
 	return o.ApplyT(applier).(Uint64ArrayMapOutput)
-}
-
-// ApplyUint64ArrayMapWithContext is like ApplyTWithContext, but returns a Uint64ArrayMapOutput.
-func (o *OutputState) ApplyUint64ArrayMapWithContext(ctx context.Context, applier interface{}) Uint64ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint64ArrayMapOutput)
 }
 
 // ApplyUint64MapArray is like ApplyT, but returns a Uint64MapArrayOutput.
@@ -1105,19 +564,9 @@ func (o *OutputState) ApplyUint64MapArray(applier interface{}) Uint64MapArrayOut
 	return o.ApplyT(applier).(Uint64MapArrayOutput)
 }
 
-// ApplyUint64MapArrayWithContext is like ApplyTWithContext, but returns a Uint64MapArrayOutput.
-func (o *OutputState) ApplyUint64MapArrayWithContext(ctx context.Context, applier interface{}) Uint64MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint64MapArrayOutput)
-}
-
 // ApplyUint8 is like ApplyT, but returns a Uint8Output.
 func (o *OutputState) ApplyUint8(applier interface{}) Uint8Output {
 	return o.ApplyT(applier).(Uint8Output)
-}
-
-// ApplyUint8WithContext is like ApplyTWithContext, but returns a Uint8Output.
-func (o *OutputState) ApplyUint8WithContext(ctx context.Context, applier interface{}) Uint8Output {
-	return o.ApplyTWithContext(ctx, applier).(Uint8Output)
 }
 
 // ApplyUint8Ptr is like ApplyT, but returns a Uint8PtrOutput.
@@ -1125,19 +574,9 @@ func (o *OutputState) ApplyUint8Ptr(applier interface{}) Uint8PtrOutput {
 	return o.ApplyT(applier).(Uint8PtrOutput)
 }
 
-// ApplyUint8PtrWithContext is like ApplyTWithContext, but returns a Uint8PtrOutput.
-func (o *OutputState) ApplyUint8PtrWithContext(ctx context.Context, applier interface{}) Uint8PtrOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint8PtrOutput)
-}
-
 // ApplyUint8Array is like ApplyT, but returns a Uint8ArrayOutput.
 func (o *OutputState) ApplyUint8Array(applier interface{}) Uint8ArrayOutput {
 	return o.ApplyT(applier).(Uint8ArrayOutput)
-}
-
-// ApplyUint8ArrayWithContext is like ApplyTWithContext, but returns a Uint8ArrayOutput.
-func (o *OutputState) ApplyUint8ArrayWithContext(ctx context.Context, applier interface{}) Uint8ArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint8ArrayOutput)
 }
 
 // ApplyUint8Map is like ApplyT, but returns a Uint8MapOutput.
@@ -1145,29 +584,14 @@ func (o *OutputState) ApplyUint8Map(applier interface{}) Uint8MapOutput {
 	return o.ApplyT(applier).(Uint8MapOutput)
 }
 
-// ApplyUint8MapWithContext is like ApplyTWithContext, but returns a Uint8MapOutput.
-func (o *OutputState) ApplyUint8MapWithContext(ctx context.Context, applier interface{}) Uint8MapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint8MapOutput)
-}
-
 // ApplyUint8ArrayMap is like ApplyT, but returns a Uint8ArrayMapOutput.
 func (o *OutputState) ApplyUint8ArrayMap(applier interface{}) Uint8ArrayMapOutput {
 	return o.ApplyT(applier).(Uint8ArrayMapOutput)
 }
 
-// ApplyUint8ArrayMapWithContext is like ApplyTWithContext, but returns a Uint8ArrayMapOutput.
-func (o *OutputState) ApplyUint8ArrayMapWithContext(ctx context.Context, applier interface{}) Uint8ArrayMapOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint8ArrayMapOutput)
-}
-
 // ApplyUint8MapArray is like ApplyT, but returns a Uint8MapArrayOutput.
 func (o *OutputState) ApplyUint8MapArray(applier interface{}) Uint8MapArrayOutput {
 	return o.ApplyT(applier).(Uint8MapArrayOutput)
-}
-
-// ApplyUint8MapArrayWithContext is like ApplyTWithContext, but returns a Uint8MapArrayOutput.
-func (o *OutputState) ApplyUint8MapArrayWithContext(ctx context.Context, applier interface{}) Uint8MapArrayOutput {
-	return o.ApplyTWithContext(ctx, applier).(Uint8MapArrayOutput)
 }
 
 var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
@@ -1177,7 +601,6 @@ type ArchiveInput interface {
 	Input
 
 	ToArchiveOutput() ArchiveOutput
-	ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput
 }
 
 // ElementType returns the element type of this Input (Archive).
@@ -1189,16 +612,8 @@ func (in *archive) ToArchiveOutput() ArchiveOutput {
 	return ToOutput(in).(ArchiveOutput)
 }
 
-func (in *archive) ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput {
-	return ToOutputWithContext(ctx, in).(ArchiveOutput)
-}
-
 func (in *archive) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return in.ToAssetOrArchiveOutputWithContext(context.Background())
-}
-
-func (in *archive) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return in.ToArchiveOutputWithContext(ctx).ToAssetOrArchiveOutputWithContext(ctx)
+	return in.ToArchiveOutput().ToAssetOrArchiveOutput()
 }
 
 // ArchiveOutput is an Output that returns Archive values.
@@ -1213,16 +628,8 @@ func (o ArchiveOutput) ToArchiveOutput() ArchiveOutput {
 	return o
 }
 
-func (o ArchiveOutput) ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput {
-	return o
-}
-
 func (o ArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return o.ToAssetOrArchiveOutputWithContext(context.Background())
-}
-
-func (o ArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Archive) AssetOrArchive {
+	return o.ApplyT(func(v Archive) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
 }
@@ -1234,7 +641,6 @@ type ArchiveArrayInput interface {
 	Input
 
 	ToArchiveArrayOutput() ArchiveArrayOutput
-	ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput
 }
 
 // ArchiveArray is an input type for []ArchiveInput values.
@@ -1249,10 +655,6 @@ func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
 	return ToOutput(in).(ArchiveArrayOutput)
 }
 
-func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput {
-	return ToOutputWithContext(ctx, in).(ArchiveArrayOutput)
-}
-
 // ArchiveArrayOutput is an Output that returns []Archive values.
 type ArchiveArrayOutput struct{ *OutputState }
 
@@ -1262,10 +664,6 @@ func (ArchiveArrayOutput) ElementType() reflect.Type {
 }
 
 func (o ArchiveArrayOutput) ToArchiveArrayOutput() ArchiveArrayOutput {
-	return o
-}
-
-func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput {
 	return o
 }
 
@@ -1282,7 +680,6 @@ type ArchiveMapInput interface {
 	Input
 
 	ToArchiveMapOutput() ArchiveMapOutput
-	ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput
 }
 
 // ArchiveMap is an input type for map[string]ArchiveInput values.
@@ -1297,10 +694,6 @@ func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
 	return ToOutput(in).(ArchiveMapOutput)
 }
 
-func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput {
-	return ToOutputWithContext(ctx, in).(ArchiveMapOutput)
-}
-
 // ArchiveMapOutput is an Output that returns map[string]Archive values.
 type ArchiveMapOutput struct{ *OutputState }
 
@@ -1310,10 +703,6 @@ func (ArchiveMapOutput) ElementType() reflect.Type {
 }
 
 func (o ArchiveMapOutput) ToArchiveMapOutput() ArchiveMapOutput {
-	return o
-}
-
-func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput {
 	return o
 }
 
@@ -1330,7 +719,6 @@ type ArchiveArrayMapInput interface {
 	Input
 
 	ToArchiveArrayMapOutput() ArchiveArrayMapOutput
-	ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput
 }
 
 // ArchiveArrayMap is an input type for map[string]ArchiveArrayInput values.
@@ -1345,10 +733,6 @@ func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
 	return ToOutput(in).(ArchiveArrayMapOutput)
 }
 
-func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(ArchiveArrayMapOutput)
-}
-
 // ArchiveArrayMapOutput is an Output that returns map[string][]Archive values.
 type ArchiveArrayMapOutput struct{ *OutputState }
 
@@ -1358,10 +742,6 @@ func (ArchiveArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
-	return o
-}
-
-func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput {
 	return o
 }
 
@@ -1378,7 +758,6 @@ type ArchiveMapArrayInput interface {
 	Input
 
 	ToArchiveMapArrayOutput() ArchiveMapArrayOutput
-	ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput
 }
 
 // ArchiveMapArray is an input type for []ArchiveMapInput values.
@@ -1393,10 +772,6 @@ func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
 	return ToOutput(in).(ArchiveMapArrayOutput)
 }
 
-func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(ArchiveMapArrayOutput)
-}
-
 // ArchiveMapArrayOutput is an Output that returns []map[string]Archive values.
 type ArchiveMapArrayOutput struct{ *OutputState }
 
@@ -1406,10 +781,6 @@ func (ArchiveMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
-	return o
-}
-
-func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput {
 	return o
 }
 
@@ -1426,7 +797,6 @@ type AssetInput interface {
 	Input
 
 	ToAssetOutput() AssetOutput
-	ToAssetOutputWithContext(ctx context.Context) AssetOutput
 }
 
 // ElementType returns the element type of this Input (Asset).
@@ -1438,16 +808,8 @@ func (in *asset) ToAssetOutput() AssetOutput {
 	return ToOutput(in).(AssetOutput)
 }
 
-func (in *asset) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
-	return ToOutputWithContext(ctx, in).(AssetOutput)
-}
-
 func (in *asset) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return in.ToAssetOrArchiveOutputWithContext(context.Background())
-}
-
-func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return in.ToAssetOutputWithContext(ctx).ToAssetOrArchiveOutputWithContext(ctx)
+	return in.ToAssetOutput().ToAssetOrArchiveOutput()
 }
 
 // AssetOutput is an Output that returns Asset values.
@@ -1462,16 +824,8 @@ func (o AssetOutput) ToAssetOutput() AssetOutput {
 	return o
 }
 
-func (o AssetOutput) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
-	return o
-}
-
 func (o AssetOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return o.ToAssetOrArchiveOutputWithContext(context.Background())
-}
-
-func (o AssetOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Asset) AssetOrArchive {
+	return o.ApplyT(func(v Asset) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
 }
@@ -1483,7 +837,6 @@ type AssetArrayInput interface {
 	Input
 
 	ToAssetArrayOutput() AssetArrayOutput
-	ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput
 }
 
 // AssetArray is an input type for []AssetInput values.
@@ -1498,10 +851,6 @@ func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
 	return ToOutput(in).(AssetArrayOutput)
 }
 
-func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput {
-	return ToOutputWithContext(ctx, in).(AssetArrayOutput)
-}
-
 // AssetArrayOutput is an Output that returns []Asset values.
 type AssetArrayOutput struct{ *OutputState }
 
@@ -1511,10 +860,6 @@ func (AssetArrayOutput) ElementType() reflect.Type {
 }
 
 func (o AssetArrayOutput) ToAssetArrayOutput() AssetArrayOutput {
-	return o
-}
-
-func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput {
 	return o
 }
 
@@ -1531,7 +876,6 @@ type AssetMapInput interface {
 	Input
 
 	ToAssetMapOutput() AssetMapOutput
-	ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput
 }
 
 // AssetMap is an input type for map[string]AssetInput values.
@@ -1546,10 +890,6 @@ func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
 	return ToOutput(in).(AssetMapOutput)
 }
 
-func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput {
-	return ToOutputWithContext(ctx, in).(AssetMapOutput)
-}
-
 // AssetMapOutput is an Output that returns map[string]Asset values.
 type AssetMapOutput struct{ *OutputState }
 
@@ -1559,10 +899,6 @@ func (AssetMapOutput) ElementType() reflect.Type {
 }
 
 func (o AssetMapOutput) ToAssetMapOutput() AssetMapOutput {
-	return o
-}
-
-func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput {
 	return o
 }
 
@@ -1579,7 +915,6 @@ type AssetArrayMapInput interface {
 	Input
 
 	ToAssetArrayMapOutput() AssetArrayMapOutput
-	ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput
 }
 
 // AssetArrayMap is an input type for map[string]AssetArrayInput values.
@@ -1594,10 +929,6 @@ func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
 	return ToOutput(in).(AssetArrayMapOutput)
 }
 
-func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(AssetArrayMapOutput)
-}
-
 // AssetArrayMapOutput is an Output that returns map[string][]Asset values.
 type AssetArrayMapOutput struct{ *OutputState }
 
@@ -1607,10 +938,6 @@ func (AssetArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o AssetArrayMapOutput) ToAssetArrayMapOutput() AssetArrayMapOutput {
-	return o
-}
-
-func (o AssetArrayMapOutput) ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput {
 	return o
 }
 
@@ -1627,7 +954,6 @@ type AssetMapArrayInput interface {
 	Input
 
 	ToAssetMapArrayOutput() AssetMapArrayOutput
-	ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput
 }
 
 // AssetMapArray is an input type for []AssetMapInput values.
@@ -1642,10 +968,6 @@ func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
 	return ToOutput(in).(AssetMapArrayOutput)
 }
 
-func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(AssetMapArrayOutput)
-}
-
 // AssetMapArrayOutput is an Output that returns []map[string]Asset values.
 type AssetMapArrayOutput struct{ *OutputState }
 
@@ -1655,10 +977,6 @@ func (AssetMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o AssetMapArrayOutput) ToAssetMapArrayOutput() AssetMapArrayOutput {
-	return o
-}
-
-func (o AssetMapArrayOutput) ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput {
 	return o
 }
 
@@ -1675,7 +993,6 @@ type AssetOrArchiveInput interface {
 	Input
 
 	ToAssetOrArchiveOutput() AssetOrArchiveOutput
-	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 }
 
 // AssetOrArchiveOutput is an Output that returns AssetOrArchive values.
@@ -1690,10 +1007,6 @@ func (o AssetOrArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
 	return o
 }
 
-func (o AssetOrArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return o
-}
-
 var assetOrArchiveArrayType = reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem()
 
 // AssetOrArchiveArrayInput is an input type that accepts AssetOrArchiveArray and AssetOrArchiveArrayOutput values.
@@ -1701,7 +1014,6 @@ type AssetOrArchiveArrayInput interface {
 	Input
 
 	ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput
-	ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput
 }
 
 // AssetOrArchiveArray is an input type for []AssetOrArchiveInput values.
@@ -1716,10 +1028,6 @@ func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayO
 	return ToOutput(in).(AssetOrArchiveArrayOutput)
 }
 
-func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
-	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayOutput)
-}
-
 // AssetOrArchiveArrayOutput is an Output that returns []AssetOrArchive values.
 type AssetOrArchiveArrayOutput struct{ *OutputState }
 
@@ -1729,10 +1037,6 @@ func (AssetOrArchiveArrayOutput) ElementType() reflect.Type {
 }
 
 func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
-	return o
-}
-
-func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
 	return o
 }
 
@@ -1749,7 +1053,6 @@ type AssetOrArchiveMapInput interface {
 	Input
 
 	ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput
-	ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput
 }
 
 // AssetOrArchiveMap is an input type for map[string]AssetOrArchiveInput values.
@@ -1764,10 +1067,6 @@ func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput 
 	return ToOutput(in).(AssetOrArchiveMapOutput)
 }
 
-func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
-	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapOutput)
-}
-
 // AssetOrArchiveMapOutput is an Output that returns map[string]AssetOrArchive values.
 type AssetOrArchiveMapOutput struct{ *OutputState }
 
@@ -1777,10 +1076,6 @@ func (AssetOrArchiveMapOutput) ElementType() reflect.Type {
 }
 
 func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
-	return o
-}
-
-func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
 	return o
 }
 
@@ -1797,7 +1092,6 @@ type AssetOrArchiveArrayMapInput interface {
 	Input
 
 	ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput
-	ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput
 }
 
 // AssetOrArchiveArrayMap is an input type for map[string]AssetOrArchiveArrayInput values.
@@ -1812,10 +1106,6 @@ func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchive
 	return ToOutput(in).(AssetOrArchiveArrayMapOutput)
 }
 
-func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayMapOutput)
-}
-
 // AssetOrArchiveArrayMapOutput is an Output that returns map[string][]AssetOrArchive values.
 type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
@@ -1825,10 +1115,6 @@ func (AssetOrArchiveArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
-	return o
-}
-
-func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
 	return o
 }
 
@@ -1845,7 +1131,6 @@ type AssetOrArchiveMapArrayInput interface {
 	Input
 
 	ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput
-	ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput
 }
 
 // AssetOrArchiveMapArray is an input type for []AssetOrArchiveMapInput values.
@@ -1860,10 +1145,6 @@ func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchive
 	return ToOutput(in).(AssetOrArchiveMapArrayOutput)
 }
 
-func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapArrayOutput)
-}
-
 // AssetOrArchiveMapArrayOutput is an Output that returns []map[string]AssetOrArchive values.
 type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
@@ -1873,10 +1154,6 @@ func (AssetOrArchiveMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
-	return o
-}
-
-func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
 	return o
 }
 
@@ -1893,7 +1170,6 @@ type BoolInput interface {
 	Input
 
 	ToBoolOutput() BoolOutput
-	ToBoolOutputWithContext(ctx context.Context) BoolOutput
 }
 
 // Bool is an input type for bool values.
@@ -1908,16 +1184,8 @@ func (in Bool) ToBoolOutput() BoolOutput {
 	return ToOutput(in).(BoolOutput)
 }
 
-func (in Bool) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
-	return ToOutputWithContext(ctx, in).(BoolOutput)
-}
-
 func (in Bool) ToBoolPtrOutput() BoolPtrOutput {
-	return in.ToBoolPtrOutputWithContext(context.Background())
-}
-
-func (in Bool) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
-	return in.ToBoolOutputWithContext(ctx).ToBoolPtrOutputWithContext(ctx)
+	return in.ToBoolOutput().ToBoolPtrOutput()
 }
 
 // BoolOutput is an Output that returns bool values.
@@ -1932,16 +1200,8 @@ func (o BoolOutput) ToBoolOutput() BoolOutput {
 	return o
 }
 
-func (o BoolOutput) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
-	return o
-}
-
 func (o BoolOutput) ToBoolPtrOutput() BoolPtrOutput {
-	return o.ToBoolPtrOutputWithContext(context.Background())
-}
-
-func (o BoolOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v bool) *bool {
+	return o.ApplyT(func(v bool) *bool {
 		return &v
 	}).(BoolPtrOutput)
 }
@@ -1953,7 +1213,6 @@ type BoolPtrInput interface {
 	Input
 
 	ToBoolPtrOutput() BoolPtrOutput
-	ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 }
 
 type boolPtr bool
@@ -1972,10 +1231,6 @@ func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
 	return ToOutput(in).(BoolPtrOutput)
 }
 
-func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
-	return ToOutputWithContext(ctx, in).(BoolPtrOutput)
-}
-
 // BoolPtrOutput is an Output that returns *bool values.
 type BoolPtrOutput struct{ *OutputState }
 
@@ -1985,10 +1240,6 @@ func (BoolPtrOutput) ElementType() reflect.Type {
 }
 
 func (o BoolPtrOutput) ToBoolPtrOutput() BoolPtrOutput {
-	return o
-}
-
-func (o BoolPtrOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
 	return o
 }
 
@@ -2005,7 +1256,6 @@ type BoolArrayInput interface {
 	Input
 
 	ToBoolArrayOutput() BoolArrayOutput
-	ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput
 }
 
 // BoolArray is an input type for []BoolInput values.
@@ -2020,10 +1270,6 @@ func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
 	return ToOutput(in).(BoolArrayOutput)
 }
 
-func (in BoolArray) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput {
-	return ToOutputWithContext(ctx, in).(BoolArrayOutput)
-}
-
 // BoolArrayOutput is an Output that returns []bool values.
 type BoolArrayOutput struct{ *OutputState }
 
@@ -2033,10 +1279,6 @@ func (BoolArrayOutput) ElementType() reflect.Type {
 }
 
 func (o BoolArrayOutput) ToBoolArrayOutput() BoolArrayOutput {
-	return o
-}
-
-func (o BoolArrayOutput) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput {
 	return o
 }
 
@@ -2053,7 +1295,6 @@ type BoolMapInput interface {
 	Input
 
 	ToBoolMapOutput() BoolMapOutput
-	ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput
 }
 
 // BoolMap is an input type for map[string]BoolInput values.
@@ -2068,10 +1309,6 @@ func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
 	return ToOutput(in).(BoolMapOutput)
 }
 
-func (in BoolMap) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput {
-	return ToOutputWithContext(ctx, in).(BoolMapOutput)
-}
-
 // BoolMapOutput is an Output that returns map[string]bool values.
 type BoolMapOutput struct{ *OutputState }
 
@@ -2081,10 +1318,6 @@ func (BoolMapOutput) ElementType() reflect.Type {
 }
 
 func (o BoolMapOutput) ToBoolMapOutput() BoolMapOutput {
-	return o
-}
-
-func (o BoolMapOutput) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput {
 	return o
 }
 
@@ -2101,7 +1334,6 @@ type BoolArrayMapInput interface {
 	Input
 
 	ToBoolArrayMapOutput() BoolArrayMapOutput
-	ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput
 }
 
 // BoolArrayMap is an input type for map[string]BoolArrayInput values.
@@ -2116,10 +1348,6 @@ func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
 	return ToOutput(in).(BoolArrayMapOutput)
 }
 
-func (in BoolArrayMap) ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(BoolArrayMapOutput)
-}
-
 // BoolArrayMapOutput is an Output that returns map[string][]bool values.
 type BoolArrayMapOutput struct{ *OutputState }
 
@@ -2129,10 +1357,6 @@ func (BoolArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o BoolArrayMapOutput) ToBoolArrayMapOutput() BoolArrayMapOutput {
-	return o
-}
-
-func (o BoolArrayMapOutput) ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput {
 	return o
 }
 
@@ -2149,7 +1373,6 @@ type BoolMapArrayInput interface {
 	Input
 
 	ToBoolMapArrayOutput() BoolMapArrayOutput
-	ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput
 }
 
 // BoolMapArray is an input type for []BoolMapInput values.
@@ -2164,10 +1387,6 @@ func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
 	return ToOutput(in).(BoolMapArrayOutput)
 }
 
-func (in BoolMapArray) ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(BoolMapArrayOutput)
-}
-
 // BoolMapArrayOutput is an Output that returns []map[string]bool values.
 type BoolMapArrayOutput struct{ *OutputState }
 
@@ -2177,10 +1396,6 @@ func (BoolMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o BoolMapArrayOutput) ToBoolMapArrayOutput() BoolMapArrayOutput {
-	return o
-}
-
-func (o BoolMapArrayOutput) ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput {
 	return o
 }
 
@@ -2197,7 +1412,6 @@ type Float32Input interface {
 	Input
 
 	ToFloat32Output() Float32Output
-	ToFloat32OutputWithContext(ctx context.Context) Float32Output
 }
 
 // Float32 is an input type for float32 values.
@@ -2212,16 +1426,8 @@ func (in Float32) ToFloat32Output() Float32Output {
 	return ToOutput(in).(Float32Output)
 }
 
-func (in Float32) ToFloat32OutputWithContext(ctx context.Context) Float32Output {
-	return ToOutputWithContext(ctx, in).(Float32Output)
-}
-
 func (in Float32) ToFloat32PtrOutput() Float32PtrOutput {
-	return in.ToFloat32PtrOutputWithContext(context.Background())
-}
-
-func (in Float32) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
-	return in.ToFloat32OutputWithContext(ctx).ToFloat32PtrOutputWithContext(ctx)
+	return in.ToFloat32Output().ToFloat32PtrOutput()
 }
 
 // Float32Output is an Output that returns float32 values.
@@ -2236,16 +1442,8 @@ func (o Float32Output) ToFloat32Output() Float32Output {
 	return o
 }
 
-func (o Float32Output) ToFloat32OutputWithContext(ctx context.Context) Float32Output {
-	return o
-}
-
 func (o Float32Output) ToFloat32PtrOutput() Float32PtrOutput {
-	return o.ToFloat32PtrOutputWithContext(context.Background())
-}
-
-func (o Float32Output) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v float32) *float32 {
+	return o.ApplyT(func(v float32) *float32 {
 		return &v
 	}).(Float32PtrOutput)
 }
@@ -2257,7 +1455,6 @@ type Float32PtrInput interface {
 	Input
 
 	ToFloat32PtrOutput() Float32PtrOutput
-	ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput
 }
 
 type float32Ptr float32
@@ -2276,10 +1473,6 @@ func (in *float32Ptr) ToFloat32PtrOutput() Float32PtrOutput {
 	return ToOutput(in).(Float32PtrOutput)
 }
 
-func (in *float32Ptr) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
-	return ToOutputWithContext(ctx, in).(Float32PtrOutput)
-}
-
 // Float32PtrOutput is an Output that returns *float32 values.
 type Float32PtrOutput struct{ *OutputState }
 
@@ -2289,10 +1482,6 @@ func (Float32PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Float32PtrOutput) ToFloat32PtrOutput() Float32PtrOutput {
-	return o
-}
-
-func (o Float32PtrOutput) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
 	return o
 }
 
@@ -2309,7 +1498,6 @@ type Float32ArrayInput interface {
 	Input
 
 	ToFloat32ArrayOutput() Float32ArrayOutput
-	ToFloat32ArrayOutputWithContext(ctx context.Context) Float32ArrayOutput
 }
 
 // Float32Array is an input type for []Float32Input values.
@@ -2324,10 +1512,6 @@ func (in Float32Array) ToFloat32ArrayOutput() Float32ArrayOutput {
 	return ToOutput(in).(Float32ArrayOutput)
 }
 
-func (in Float32Array) ToFloat32ArrayOutputWithContext(ctx context.Context) Float32ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Float32ArrayOutput)
-}
-
 // Float32ArrayOutput is an Output that returns []float32 values.
 type Float32ArrayOutput struct{ *OutputState }
 
@@ -2337,10 +1521,6 @@ func (Float32ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Float32ArrayOutput) ToFloat32ArrayOutput() Float32ArrayOutput {
-	return o
-}
-
-func (o Float32ArrayOutput) ToFloat32ArrayOutputWithContext(ctx context.Context) Float32ArrayOutput {
 	return o
 }
 
@@ -2357,7 +1537,6 @@ type Float32MapInput interface {
 	Input
 
 	ToFloat32MapOutput() Float32MapOutput
-	ToFloat32MapOutputWithContext(ctx context.Context) Float32MapOutput
 }
 
 // Float32Map is an input type for map[string]Float32Input values.
@@ -2372,10 +1551,6 @@ func (in Float32Map) ToFloat32MapOutput() Float32MapOutput {
 	return ToOutput(in).(Float32MapOutput)
 }
 
-func (in Float32Map) ToFloat32MapOutputWithContext(ctx context.Context) Float32MapOutput {
-	return ToOutputWithContext(ctx, in).(Float32MapOutput)
-}
-
 // Float32MapOutput is an Output that returns map[string]float32 values.
 type Float32MapOutput struct{ *OutputState }
 
@@ -2385,10 +1560,6 @@ func (Float32MapOutput) ElementType() reflect.Type {
 }
 
 func (o Float32MapOutput) ToFloat32MapOutput() Float32MapOutput {
-	return o
-}
-
-func (o Float32MapOutput) ToFloat32MapOutputWithContext(ctx context.Context) Float32MapOutput {
 	return o
 }
 
@@ -2405,7 +1576,6 @@ type Float32ArrayMapInput interface {
 	Input
 
 	ToFloat32ArrayMapOutput() Float32ArrayMapOutput
-	ToFloat32ArrayMapOutputWithContext(ctx context.Context) Float32ArrayMapOutput
 }
 
 // Float32ArrayMap is an input type for map[string]Float32ArrayInput values.
@@ -2420,10 +1590,6 @@ func (in Float32ArrayMap) ToFloat32ArrayMapOutput() Float32ArrayMapOutput {
 	return ToOutput(in).(Float32ArrayMapOutput)
 }
 
-func (in Float32ArrayMap) ToFloat32ArrayMapOutputWithContext(ctx context.Context) Float32ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Float32ArrayMapOutput)
-}
-
 // Float32ArrayMapOutput is an Output that returns map[string][]float32 values.
 type Float32ArrayMapOutput struct{ *OutputState }
 
@@ -2433,10 +1599,6 @@ func (Float32ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Float32ArrayMapOutput) ToFloat32ArrayMapOutput() Float32ArrayMapOutput {
-	return o
-}
-
-func (o Float32ArrayMapOutput) ToFloat32ArrayMapOutputWithContext(ctx context.Context) Float32ArrayMapOutput {
 	return o
 }
 
@@ -2453,7 +1615,6 @@ type Float32MapArrayInput interface {
 	Input
 
 	ToFloat32MapArrayOutput() Float32MapArrayOutput
-	ToFloat32MapArrayOutputWithContext(ctx context.Context) Float32MapArrayOutput
 }
 
 // Float32MapArray is an input type for []Float32MapInput values.
@@ -2468,10 +1629,6 @@ func (in Float32MapArray) ToFloat32MapArrayOutput() Float32MapArrayOutput {
 	return ToOutput(in).(Float32MapArrayOutput)
 }
 
-func (in Float32MapArray) ToFloat32MapArrayOutputWithContext(ctx context.Context) Float32MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Float32MapArrayOutput)
-}
-
 // Float32MapArrayOutput is an Output that returns []map[string]float32 values.
 type Float32MapArrayOutput struct{ *OutputState }
 
@@ -2481,10 +1638,6 @@ func (Float32MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Float32MapArrayOutput) ToFloat32MapArrayOutput() Float32MapArrayOutput {
-	return o
-}
-
-func (o Float32MapArrayOutput) ToFloat32MapArrayOutputWithContext(ctx context.Context) Float32MapArrayOutput {
 	return o
 }
 
@@ -2501,7 +1654,6 @@ type Float64Input interface {
 	Input
 
 	ToFloat64Output() Float64Output
-	ToFloat64OutputWithContext(ctx context.Context) Float64Output
 }
 
 // Float64 is an input type for float64 values.
@@ -2516,16 +1668,8 @@ func (in Float64) ToFloat64Output() Float64Output {
 	return ToOutput(in).(Float64Output)
 }
 
-func (in Float64) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
-	return ToOutputWithContext(ctx, in).(Float64Output)
-}
-
 func (in Float64) ToFloat64PtrOutput() Float64PtrOutput {
-	return in.ToFloat64PtrOutputWithContext(context.Background())
-}
-
-func (in Float64) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
-	return in.ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+	return in.ToFloat64Output().ToFloat64PtrOutput()
 }
 
 // Float64Output is an Output that returns float64 values.
@@ -2540,16 +1684,8 @@ func (o Float64Output) ToFloat64Output() Float64Output {
 	return o
 }
 
-func (o Float64Output) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
-	return o
-}
-
 func (o Float64Output) ToFloat64PtrOutput() Float64PtrOutput {
-	return o.ToFloat64PtrOutputWithContext(context.Background())
-}
-
-func (o Float64Output) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v float64) *float64 {
+	return o.ApplyT(func(v float64) *float64 {
 		return &v
 	}).(Float64PtrOutput)
 }
@@ -2561,7 +1697,6 @@ type Float64PtrInput interface {
 	Input
 
 	ToFloat64PtrOutput() Float64PtrOutput
-	ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput
 }
 
 type float64Ptr float64
@@ -2580,10 +1715,6 @@ func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
 	return ToOutput(in).(Float64PtrOutput)
 }
 
-func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
-	return ToOutputWithContext(ctx, in).(Float64PtrOutput)
-}
-
 // Float64PtrOutput is an Output that returns *float64 values.
 type Float64PtrOutput struct{ *OutputState }
 
@@ -2593,10 +1724,6 @@ func (Float64PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Float64PtrOutput) ToFloat64PtrOutput() Float64PtrOutput {
-	return o
-}
-
-func (o Float64PtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
 	return o
 }
 
@@ -2613,7 +1740,6 @@ type Float64ArrayInput interface {
 	Input
 
 	ToFloat64ArrayOutput() Float64ArrayOutput
-	ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput
 }
 
 // Float64Array is an input type for []Float64Input values.
@@ -2628,10 +1754,6 @@ func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
 	return ToOutput(in).(Float64ArrayOutput)
 }
 
-func (in Float64Array) ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Float64ArrayOutput)
-}
-
 // Float64ArrayOutput is an Output that returns []float64 values.
 type Float64ArrayOutput struct{ *OutputState }
 
@@ -2641,10 +1763,6 @@ func (Float64ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Float64ArrayOutput) ToFloat64ArrayOutput() Float64ArrayOutput {
-	return o
-}
-
-func (o Float64ArrayOutput) ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput {
 	return o
 }
 
@@ -2661,7 +1779,6 @@ type Float64MapInput interface {
 	Input
 
 	ToFloat64MapOutput() Float64MapOutput
-	ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput
 }
 
 // Float64Map is an input type for map[string]Float64Input values.
@@ -2676,10 +1793,6 @@ func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
 	return ToOutput(in).(Float64MapOutput)
 }
 
-func (in Float64Map) ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput {
-	return ToOutputWithContext(ctx, in).(Float64MapOutput)
-}
-
 // Float64MapOutput is an Output that returns map[string]float64 values.
 type Float64MapOutput struct{ *OutputState }
 
@@ -2689,10 +1802,6 @@ func (Float64MapOutput) ElementType() reflect.Type {
 }
 
 func (o Float64MapOutput) ToFloat64MapOutput() Float64MapOutput {
-	return o
-}
-
-func (o Float64MapOutput) ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput {
 	return o
 }
 
@@ -2709,7 +1818,6 @@ type Float64ArrayMapInput interface {
 	Input
 
 	ToFloat64ArrayMapOutput() Float64ArrayMapOutput
-	ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput
 }
 
 // Float64ArrayMap is an input type for map[string]Float64ArrayInput values.
@@ -2724,10 +1832,6 @@ func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
 	return ToOutput(in).(Float64ArrayMapOutput)
 }
 
-func (in Float64ArrayMap) ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Float64ArrayMapOutput)
-}
-
 // Float64ArrayMapOutput is an Output that returns map[string][]float64 values.
 type Float64ArrayMapOutput struct{ *OutputState }
 
@@ -2737,10 +1841,6 @@ func (Float64ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
-	return o
-}
-
-func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput {
 	return o
 }
 
@@ -2757,7 +1857,6 @@ type Float64MapArrayInput interface {
 	Input
 
 	ToFloat64MapArrayOutput() Float64MapArrayOutput
-	ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput
 }
 
 // Float64MapArray is an input type for []Float64MapInput values.
@@ -2772,10 +1871,6 @@ func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
 	return ToOutput(in).(Float64MapArrayOutput)
 }
 
-func (in Float64MapArray) ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Float64MapArrayOutput)
-}
-
 // Float64MapArrayOutput is an Output that returns []map[string]float64 values.
 type Float64MapArrayOutput struct{ *OutputState }
 
@@ -2785,10 +1880,6 @@ func (Float64MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Float64MapArrayOutput) ToFloat64MapArrayOutput() Float64MapArrayOutput {
-	return o
-}
-
-func (o Float64MapArrayOutput) ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput {
 	return o
 }
 
@@ -2805,7 +1896,6 @@ type IDInput interface {
 	Input
 
 	ToIDOutput() IDOutput
-	ToIDOutputWithContext(ctx context.Context) IDOutput
 }
 
 // ElementType returns the element type of this Input (ID).
@@ -2817,24 +1907,12 @@ func (in ID) ToIDOutput() IDOutput {
 	return ToOutput(in).(IDOutput)
 }
 
-func (in ID) ToIDOutputWithContext(ctx context.Context) IDOutput {
-	return ToOutputWithContext(ctx, in).(IDOutput)
-}
-
 func (in ID) ToStringOutput() StringOutput {
-	return in.ToStringOutputWithContext(context.Background())
-}
-
-func (in ID) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return in.ToIDOutputWithContext(ctx).ToStringOutputWithContext(ctx)
+	return in.ToIDOutput().ToStringOutput()
 }
 
 func (in ID) ToIDPtrOutput() IDPtrOutput {
-	return in.ToIDPtrOutputWithContext(context.Background())
-}
-
-func (in ID) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
-	return in.ToIDOutputWithContext(ctx).ToIDPtrOutputWithContext(ctx)
+	return in.ToIDOutput().ToIDPtrOutput()
 }
 
 // IDOutput is an Output that returns ID values.
@@ -2849,26 +1927,14 @@ func (o IDOutput) ToIDOutput() IDOutput {
 	return o
 }
 
-func (o IDOutput) ToIDOutputWithContext(ctx context.Context) IDOutput {
-	return o
-}
-
 func (o IDOutput) ToStringOutput() StringOutput {
-	return o.ToStringOutputWithContext(context.Background())
-}
-
-func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
+	return o.ApplyT(func(v ID) string {
 		return (string)(v)
 	}).(StringOutput)
 }
 
 func (o IDOutput) ToIDPtrOutput() IDPtrOutput {
-	return o.ToIDPtrOutputWithContext(context.Background())
-}
-
-func (o IDOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) *ID {
+	return o.ApplyT(func(v ID) *ID {
 		return &v
 	}).(IDPtrOutput)
 }
@@ -2880,7 +1946,6 @@ type IDPtrInput interface {
 	Input
 
 	ToIDPtrOutput() IDPtrOutput
-	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
 }
 
 type idPtr ID
@@ -2899,10 +1964,6 @@ func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
 	return ToOutput(in).(IDPtrOutput)
 }
 
-func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
-	return ToOutputWithContext(ctx, in).(IDPtrOutput)
-}
-
 // IDPtrOutput is an Output that returns *ID values.
 type IDPtrOutput struct{ *OutputState }
 
@@ -2912,10 +1973,6 @@ func (IDPtrOutput) ElementType() reflect.Type {
 }
 
 func (o IDPtrOutput) ToIDPtrOutput() IDPtrOutput {
-	return o
-}
-
-func (o IDPtrOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 	return o
 }
 
@@ -2932,7 +1989,6 @@ type IDArrayInput interface {
 	Input
 
 	ToIDArrayOutput() IDArrayOutput
-	ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput
 }
 
 // IDArray is an input type for []IDInput values.
@@ -2947,10 +2003,6 @@ func (in IDArray) ToIDArrayOutput() IDArrayOutput {
 	return ToOutput(in).(IDArrayOutput)
 }
 
-func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput {
-	return ToOutputWithContext(ctx, in).(IDArrayOutput)
-}
-
 // IDArrayOutput is an Output that returns []ID values.
 type IDArrayOutput struct{ *OutputState }
 
@@ -2960,10 +2012,6 @@ func (IDArrayOutput) ElementType() reflect.Type {
 }
 
 func (o IDArrayOutput) ToIDArrayOutput() IDArrayOutput {
-	return o
-}
-
-func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput {
 	return o
 }
 
@@ -2980,7 +2028,6 @@ type IDMapInput interface {
 	Input
 
 	ToIDMapOutput() IDMapOutput
-	ToIDMapOutputWithContext(ctx context.Context) IDMapOutput
 }
 
 // IDMap is an input type for map[string]IDInput values.
@@ -2995,10 +2042,6 @@ func (in IDMap) ToIDMapOutput() IDMapOutput {
 	return ToOutput(in).(IDMapOutput)
 }
 
-func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
-	return ToOutputWithContext(ctx, in).(IDMapOutput)
-}
-
 // IDMapOutput is an Output that returns map[string]ID values.
 type IDMapOutput struct{ *OutputState }
 
@@ -3008,10 +2051,6 @@ func (IDMapOutput) ElementType() reflect.Type {
 }
 
 func (o IDMapOutput) ToIDMapOutput() IDMapOutput {
-	return o
-}
-
-func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 	return o
 }
 
@@ -3028,7 +2067,6 @@ type IDArrayMapInput interface {
 	Input
 
 	ToIDArrayMapOutput() IDArrayMapOutput
-	ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput
 }
 
 // IDArrayMap is an input type for map[string]IDArrayInput values.
@@ -3043,10 +2081,6 @@ func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
 	return ToOutput(in).(IDArrayMapOutput)
 }
 
-func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(IDArrayMapOutput)
-}
-
 // IDArrayMapOutput is an Output that returns map[string][]ID values.
 type IDArrayMapOutput struct{ *OutputState }
 
@@ -3056,10 +2090,6 @@ func (IDArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o IDArrayMapOutput) ToIDArrayMapOutput() IDArrayMapOutput {
-	return o
-}
-
-func (o IDArrayMapOutput) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput {
 	return o
 }
 
@@ -3076,7 +2106,6 @@ type IDMapArrayInput interface {
 	Input
 
 	ToIDMapArrayOutput() IDMapArrayOutput
-	ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput
 }
 
 // IDMapArray is an input type for []IDMapInput values.
@@ -3091,10 +2120,6 @@ func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
 	return ToOutput(in).(IDMapArrayOutput)
 }
 
-func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(IDMapArrayOutput)
-}
-
 // IDMapArrayOutput is an Output that returns []map[string]ID values.
 type IDMapArrayOutput struct{ *OutputState }
 
@@ -3104,10 +2129,6 @@ func (IDMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o IDMapArrayOutput) ToIDMapArrayOutput() IDMapArrayOutput {
-	return o
-}
-
-func (o IDMapArrayOutput) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput {
 	return o
 }
 
@@ -3124,7 +2145,6 @@ type ArrayInput interface {
 	Input
 
 	ToArrayOutput() ArrayOutput
-	ToArrayOutputWithContext(ctx context.Context) ArrayOutput
 }
 
 // Array is an input type for []Input values.
@@ -3139,10 +2159,6 @@ func (in Array) ToArrayOutput() ArrayOutput {
 	return ToOutput(in).(ArrayOutput)
 }
 
-func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
-	return ToOutputWithContext(ctx, in).(ArrayOutput)
-}
-
 // ArrayOutput is an Output that returns []interface{} values.
 type ArrayOutput struct{ *OutputState }
 
@@ -3152,10 +2168,6 @@ func (ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o ArrayOutput) ToArrayOutput() ArrayOutput {
-	return o
-}
-
-func (o ArrayOutput) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 	return o
 }
 
@@ -3172,7 +2184,6 @@ type MapInput interface {
 	Input
 
 	ToMapOutput() MapOutput
-	ToMapOutputWithContext(ctx context.Context) MapOutput
 }
 
 // Map is an input type for map[string]Input values.
@@ -3187,10 +2198,6 @@ func (in Map) ToMapOutput() MapOutput {
 	return ToOutput(in).(MapOutput)
 }
 
-func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
-	return ToOutputWithContext(ctx, in).(MapOutput)
-}
-
 // MapOutput is an Output that returns map[string]interface{} values.
 type MapOutput struct{ *OutputState }
 
@@ -3200,10 +2207,6 @@ func (MapOutput) ElementType() reflect.Type {
 }
 
 func (o MapOutput) ToMapOutput() MapOutput {
-	return o
-}
-
-func (o MapOutput) ToMapOutputWithContext(ctx context.Context) MapOutput {
 	return o
 }
 
@@ -3220,7 +2223,6 @@ type ArrayMapInput interface {
 	Input
 
 	ToArrayMapOutput() ArrayMapOutput
-	ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput
 }
 
 // ArrayMap is an input type for map[string]ArrayInput values.
@@ -3235,10 +2237,6 @@ func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
 	return ToOutput(in).(ArrayMapOutput)
 }
 
-func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(ArrayMapOutput)
-}
-
 // ArrayMapOutput is an Output that returns map[string][]interface{} values.
 type ArrayMapOutput struct{ *OutputState }
 
@@ -3248,10 +2246,6 @@ func (ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o ArrayMapOutput) ToArrayMapOutput() ArrayMapOutput {
-	return o
-}
-
-func (o ArrayMapOutput) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput {
 	return o
 }
 
@@ -3268,7 +2262,6 @@ type MapArrayInput interface {
 	Input
 
 	ToMapArrayOutput() MapArrayOutput
-	ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput
 }
 
 // MapArray is an input type for []MapInput values.
@@ -3283,10 +2276,6 @@ func (in MapArray) ToMapArrayOutput() MapArrayOutput {
 	return ToOutput(in).(MapArrayOutput)
 }
 
-func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(MapArrayOutput)
-}
-
 // MapArrayOutput is an Output that returns []map[string]interface{} values.
 type MapArrayOutput struct{ *OutputState }
 
@@ -3296,10 +2285,6 @@ func (MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o MapArrayOutput) ToMapArrayOutput() MapArrayOutput {
-	return o
-}
-
-func (o MapArrayOutput) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput {
 	return o
 }
 
@@ -3316,7 +2301,6 @@ type IntInput interface {
 	Input
 
 	ToIntOutput() IntOutput
-	ToIntOutputWithContext(ctx context.Context) IntOutput
 }
 
 // Int is an input type for int values.
@@ -3331,16 +2315,8 @@ func (in Int) ToIntOutput() IntOutput {
 	return ToOutput(in).(IntOutput)
 }
 
-func (in Int) ToIntOutputWithContext(ctx context.Context) IntOutput {
-	return ToOutputWithContext(ctx, in).(IntOutput)
-}
-
 func (in Int) ToIntPtrOutput() IntPtrOutput {
-	return in.ToIntPtrOutputWithContext(context.Background())
-}
-
-func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
-	return in.ToIntOutputWithContext(ctx).ToIntPtrOutputWithContext(ctx)
+	return in.ToIntOutput().ToIntPtrOutput()
 }
 
 // IntOutput is an Output that returns int values.
@@ -3355,16 +2331,8 @@ func (o IntOutput) ToIntOutput() IntOutput {
 	return o
 }
 
-func (o IntOutput) ToIntOutputWithContext(ctx context.Context) IntOutput {
-	return o
-}
-
 func (o IntOutput) ToIntPtrOutput() IntPtrOutput {
-	return o.ToIntPtrOutputWithContext(context.Background())
-}
-
-func (o IntOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int) *int {
+	return o.ApplyT(func(v int) *int {
 		return &v
 	}).(IntPtrOutput)
 }
@@ -3376,7 +2344,6 @@ type IntPtrInput interface {
 	Input
 
 	ToIntPtrOutput() IntPtrOutput
-	ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput
 }
 
 type intPtr int
@@ -3395,10 +2362,6 @@ func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
 	return ToOutput(in).(IntPtrOutput)
 }
 
-func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
-	return ToOutputWithContext(ctx, in).(IntPtrOutput)
-}
-
 // IntPtrOutput is an Output that returns *int values.
 type IntPtrOutput struct{ *OutputState }
 
@@ -3408,10 +2371,6 @@ func (IntPtrOutput) ElementType() reflect.Type {
 }
 
 func (o IntPtrOutput) ToIntPtrOutput() IntPtrOutput {
-	return o
-}
-
-func (o IntPtrOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 	return o
 }
 
@@ -3428,7 +2387,6 @@ type IntArrayInput interface {
 	Input
 
 	ToIntArrayOutput() IntArrayOutput
-	ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput
 }
 
 // IntArray is an input type for []IntInput values.
@@ -3443,10 +2401,6 @@ func (in IntArray) ToIntArrayOutput() IntArrayOutput {
 	return ToOutput(in).(IntArrayOutput)
 }
 
-func (in IntArray) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput {
-	return ToOutputWithContext(ctx, in).(IntArrayOutput)
-}
-
 // IntArrayOutput is an Output that returns []int values.
 type IntArrayOutput struct{ *OutputState }
 
@@ -3456,10 +2410,6 @@ func (IntArrayOutput) ElementType() reflect.Type {
 }
 
 func (o IntArrayOutput) ToIntArrayOutput() IntArrayOutput {
-	return o
-}
-
-func (o IntArrayOutput) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput {
 	return o
 }
 
@@ -3476,7 +2426,6 @@ type IntMapInput interface {
 	Input
 
 	ToIntMapOutput() IntMapOutput
-	ToIntMapOutputWithContext(ctx context.Context) IntMapOutput
 }
 
 // IntMap is an input type for map[string]IntInput values.
@@ -3491,10 +2440,6 @@ func (in IntMap) ToIntMapOutput() IntMapOutput {
 	return ToOutput(in).(IntMapOutput)
 }
 
-func (in IntMap) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
-	return ToOutputWithContext(ctx, in).(IntMapOutput)
-}
-
 // IntMapOutput is an Output that returns map[string]int values.
 type IntMapOutput struct{ *OutputState }
 
@@ -3504,10 +2449,6 @@ func (IntMapOutput) ElementType() reflect.Type {
 }
 
 func (o IntMapOutput) ToIntMapOutput() IntMapOutput {
-	return o
-}
-
-func (o IntMapOutput) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
 	return o
 }
 
@@ -3524,7 +2465,6 @@ type IntArrayMapInput interface {
 	Input
 
 	ToIntArrayMapOutput() IntArrayMapOutput
-	ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput
 }
 
 // IntArrayMap is an input type for map[string]IntArrayInput values.
@@ -3539,10 +2479,6 @@ func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
 	return ToOutput(in).(IntArrayMapOutput)
 }
 
-func (in IntArrayMap) ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(IntArrayMapOutput)
-}
-
 // IntArrayMapOutput is an Output that returns map[string][]int values.
 type IntArrayMapOutput struct{ *OutputState }
 
@@ -3552,10 +2488,6 @@ func (IntArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o IntArrayMapOutput) ToIntArrayMapOutput() IntArrayMapOutput {
-	return o
-}
-
-func (o IntArrayMapOutput) ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput {
 	return o
 }
 
@@ -3572,7 +2504,6 @@ type IntMapArrayInput interface {
 	Input
 
 	ToIntMapArrayOutput() IntMapArrayOutput
-	ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput
 }
 
 // IntMapArray is an input type for []IntMapInput values.
@@ -3587,10 +2518,6 @@ func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
 	return ToOutput(in).(IntMapArrayOutput)
 }
 
-func (in IntMapArray) ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(IntMapArrayOutput)
-}
-
 // IntMapArrayOutput is an Output that returns []map[string]int values.
 type IntMapArrayOutput struct{ *OutputState }
 
@@ -3600,10 +2527,6 @@ func (IntMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o IntMapArrayOutput) ToIntMapArrayOutput() IntMapArrayOutput {
-	return o
-}
-
-func (o IntMapArrayOutput) ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput {
 	return o
 }
 
@@ -3620,7 +2543,6 @@ type Int16Input interface {
 	Input
 
 	ToInt16Output() Int16Output
-	ToInt16OutputWithContext(ctx context.Context) Int16Output
 }
 
 // Int16 is an input type for int16 values.
@@ -3635,16 +2557,8 @@ func (in Int16) ToInt16Output() Int16Output {
 	return ToOutput(in).(Int16Output)
 }
 
-func (in Int16) ToInt16OutputWithContext(ctx context.Context) Int16Output {
-	return ToOutputWithContext(ctx, in).(Int16Output)
-}
-
 func (in Int16) ToInt16PtrOutput() Int16PtrOutput {
-	return in.ToInt16PtrOutputWithContext(context.Background())
-}
-
-func (in Int16) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
-	return in.ToInt16OutputWithContext(ctx).ToInt16PtrOutputWithContext(ctx)
+	return in.ToInt16Output().ToInt16PtrOutput()
 }
 
 // Int16Output is an Output that returns int16 values.
@@ -3659,16 +2573,8 @@ func (o Int16Output) ToInt16Output() Int16Output {
 	return o
 }
 
-func (o Int16Output) ToInt16OutputWithContext(ctx context.Context) Int16Output {
-	return o
-}
-
 func (o Int16Output) ToInt16PtrOutput() Int16PtrOutput {
-	return o.ToInt16PtrOutputWithContext(context.Background())
-}
-
-func (o Int16Output) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int16) *int16 {
+	return o.ApplyT(func(v int16) *int16 {
 		return &v
 	}).(Int16PtrOutput)
 }
@@ -3680,7 +2586,6 @@ type Int16PtrInput interface {
 	Input
 
 	ToInt16PtrOutput() Int16PtrOutput
-	ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput
 }
 
 type int16Ptr int16
@@ -3699,10 +2604,6 @@ func (in *int16Ptr) ToInt16PtrOutput() Int16PtrOutput {
 	return ToOutput(in).(Int16PtrOutput)
 }
 
-func (in *int16Ptr) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
-	return ToOutputWithContext(ctx, in).(Int16PtrOutput)
-}
-
 // Int16PtrOutput is an Output that returns *int16 values.
 type Int16PtrOutput struct{ *OutputState }
 
@@ -3712,10 +2613,6 @@ func (Int16PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Int16PtrOutput) ToInt16PtrOutput() Int16PtrOutput {
-	return o
-}
-
-func (o Int16PtrOutput) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
 	return o
 }
 
@@ -3732,7 +2629,6 @@ type Int16ArrayInput interface {
 	Input
 
 	ToInt16ArrayOutput() Int16ArrayOutput
-	ToInt16ArrayOutputWithContext(ctx context.Context) Int16ArrayOutput
 }
 
 // Int16Array is an input type for []Int16Input values.
@@ -3747,10 +2643,6 @@ func (in Int16Array) ToInt16ArrayOutput() Int16ArrayOutput {
 	return ToOutput(in).(Int16ArrayOutput)
 }
 
-func (in Int16Array) ToInt16ArrayOutputWithContext(ctx context.Context) Int16ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int16ArrayOutput)
-}
-
 // Int16ArrayOutput is an Output that returns []int16 values.
 type Int16ArrayOutput struct{ *OutputState }
 
@@ -3760,10 +2652,6 @@ func (Int16ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int16ArrayOutput) ToInt16ArrayOutput() Int16ArrayOutput {
-	return o
-}
-
-func (o Int16ArrayOutput) ToInt16ArrayOutputWithContext(ctx context.Context) Int16ArrayOutput {
 	return o
 }
 
@@ -3780,7 +2668,6 @@ type Int16MapInput interface {
 	Input
 
 	ToInt16MapOutput() Int16MapOutput
-	ToInt16MapOutputWithContext(ctx context.Context) Int16MapOutput
 }
 
 // Int16Map is an input type for map[string]Int16Input values.
@@ -3795,10 +2682,6 @@ func (in Int16Map) ToInt16MapOutput() Int16MapOutput {
 	return ToOutput(in).(Int16MapOutput)
 }
 
-func (in Int16Map) ToInt16MapOutputWithContext(ctx context.Context) Int16MapOutput {
-	return ToOutputWithContext(ctx, in).(Int16MapOutput)
-}
-
 // Int16MapOutput is an Output that returns map[string]int16 values.
 type Int16MapOutput struct{ *OutputState }
 
@@ -3808,10 +2691,6 @@ func (Int16MapOutput) ElementType() reflect.Type {
 }
 
 func (o Int16MapOutput) ToInt16MapOutput() Int16MapOutput {
-	return o
-}
-
-func (o Int16MapOutput) ToInt16MapOutputWithContext(ctx context.Context) Int16MapOutput {
 	return o
 }
 
@@ -3828,7 +2707,6 @@ type Int16ArrayMapInput interface {
 	Input
 
 	ToInt16ArrayMapOutput() Int16ArrayMapOutput
-	ToInt16ArrayMapOutputWithContext(ctx context.Context) Int16ArrayMapOutput
 }
 
 // Int16ArrayMap is an input type for map[string]Int16ArrayInput values.
@@ -3843,10 +2721,6 @@ func (in Int16ArrayMap) ToInt16ArrayMapOutput() Int16ArrayMapOutput {
 	return ToOutput(in).(Int16ArrayMapOutput)
 }
 
-func (in Int16ArrayMap) ToInt16ArrayMapOutputWithContext(ctx context.Context) Int16ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Int16ArrayMapOutput)
-}
-
 // Int16ArrayMapOutput is an Output that returns map[string][]int16 values.
 type Int16ArrayMapOutput struct{ *OutputState }
 
@@ -3856,10 +2730,6 @@ func (Int16ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Int16ArrayMapOutput) ToInt16ArrayMapOutput() Int16ArrayMapOutput {
-	return o
-}
-
-func (o Int16ArrayMapOutput) ToInt16ArrayMapOutputWithContext(ctx context.Context) Int16ArrayMapOutput {
 	return o
 }
 
@@ -3876,7 +2746,6 @@ type Int16MapArrayInput interface {
 	Input
 
 	ToInt16MapArrayOutput() Int16MapArrayOutput
-	ToInt16MapArrayOutputWithContext(ctx context.Context) Int16MapArrayOutput
 }
 
 // Int16MapArray is an input type for []Int16MapInput values.
@@ -3891,10 +2760,6 @@ func (in Int16MapArray) ToInt16MapArrayOutput() Int16MapArrayOutput {
 	return ToOutput(in).(Int16MapArrayOutput)
 }
 
-func (in Int16MapArray) ToInt16MapArrayOutputWithContext(ctx context.Context) Int16MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int16MapArrayOutput)
-}
-
 // Int16MapArrayOutput is an Output that returns []map[string]int16 values.
 type Int16MapArrayOutput struct{ *OutputState }
 
@@ -3904,10 +2769,6 @@ func (Int16MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int16MapArrayOutput) ToInt16MapArrayOutput() Int16MapArrayOutput {
-	return o
-}
-
-func (o Int16MapArrayOutput) ToInt16MapArrayOutputWithContext(ctx context.Context) Int16MapArrayOutput {
 	return o
 }
 
@@ -3924,7 +2785,6 @@ type Int32Input interface {
 	Input
 
 	ToInt32Output() Int32Output
-	ToInt32OutputWithContext(ctx context.Context) Int32Output
 }
 
 // Int32 is an input type for int32 values.
@@ -3939,16 +2799,8 @@ func (in Int32) ToInt32Output() Int32Output {
 	return ToOutput(in).(Int32Output)
 }
 
-func (in Int32) ToInt32OutputWithContext(ctx context.Context) Int32Output {
-	return ToOutputWithContext(ctx, in).(Int32Output)
-}
-
 func (in Int32) ToInt32PtrOutput() Int32PtrOutput {
-	return in.ToInt32PtrOutputWithContext(context.Background())
-}
-
-func (in Int32) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
-	return in.ToInt32OutputWithContext(ctx).ToInt32PtrOutputWithContext(ctx)
+	return in.ToInt32Output().ToInt32PtrOutput()
 }
 
 // Int32Output is an Output that returns int32 values.
@@ -3963,16 +2815,8 @@ func (o Int32Output) ToInt32Output() Int32Output {
 	return o
 }
 
-func (o Int32Output) ToInt32OutputWithContext(ctx context.Context) Int32Output {
-	return o
-}
-
 func (o Int32Output) ToInt32PtrOutput() Int32PtrOutput {
-	return o.ToInt32PtrOutputWithContext(context.Background())
-}
-
-func (o Int32Output) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int32) *int32 {
+	return o.ApplyT(func(v int32) *int32 {
 		return &v
 	}).(Int32PtrOutput)
 }
@@ -3984,7 +2828,6 @@ type Int32PtrInput interface {
 	Input
 
 	ToInt32PtrOutput() Int32PtrOutput
-	ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput
 }
 
 type int32Ptr int32
@@ -4003,10 +2846,6 @@ func (in *int32Ptr) ToInt32PtrOutput() Int32PtrOutput {
 	return ToOutput(in).(Int32PtrOutput)
 }
 
-func (in *int32Ptr) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
-	return ToOutputWithContext(ctx, in).(Int32PtrOutput)
-}
-
 // Int32PtrOutput is an Output that returns *int32 values.
 type Int32PtrOutput struct{ *OutputState }
 
@@ -4016,10 +2855,6 @@ func (Int32PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Int32PtrOutput) ToInt32PtrOutput() Int32PtrOutput {
-	return o
-}
-
-func (o Int32PtrOutput) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
 	return o
 }
 
@@ -4036,7 +2871,6 @@ type Int32ArrayInput interface {
 	Input
 
 	ToInt32ArrayOutput() Int32ArrayOutput
-	ToInt32ArrayOutputWithContext(ctx context.Context) Int32ArrayOutput
 }
 
 // Int32Array is an input type for []Int32Input values.
@@ -4051,10 +2885,6 @@ func (in Int32Array) ToInt32ArrayOutput() Int32ArrayOutput {
 	return ToOutput(in).(Int32ArrayOutput)
 }
 
-func (in Int32Array) ToInt32ArrayOutputWithContext(ctx context.Context) Int32ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int32ArrayOutput)
-}
-
 // Int32ArrayOutput is an Output that returns []int32 values.
 type Int32ArrayOutput struct{ *OutputState }
 
@@ -4064,10 +2894,6 @@ func (Int32ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int32ArrayOutput) ToInt32ArrayOutput() Int32ArrayOutput {
-	return o
-}
-
-func (o Int32ArrayOutput) ToInt32ArrayOutputWithContext(ctx context.Context) Int32ArrayOutput {
 	return o
 }
 
@@ -4084,7 +2910,6 @@ type Int32MapInput interface {
 	Input
 
 	ToInt32MapOutput() Int32MapOutput
-	ToInt32MapOutputWithContext(ctx context.Context) Int32MapOutput
 }
 
 // Int32Map is an input type for map[string]Int32Input values.
@@ -4099,10 +2924,6 @@ func (in Int32Map) ToInt32MapOutput() Int32MapOutput {
 	return ToOutput(in).(Int32MapOutput)
 }
 
-func (in Int32Map) ToInt32MapOutputWithContext(ctx context.Context) Int32MapOutput {
-	return ToOutputWithContext(ctx, in).(Int32MapOutput)
-}
-
 // Int32MapOutput is an Output that returns map[string]int32 values.
 type Int32MapOutput struct{ *OutputState }
 
@@ -4112,10 +2933,6 @@ func (Int32MapOutput) ElementType() reflect.Type {
 }
 
 func (o Int32MapOutput) ToInt32MapOutput() Int32MapOutput {
-	return o
-}
-
-func (o Int32MapOutput) ToInt32MapOutputWithContext(ctx context.Context) Int32MapOutput {
 	return o
 }
 
@@ -4132,7 +2949,6 @@ type Int32ArrayMapInput interface {
 	Input
 
 	ToInt32ArrayMapOutput() Int32ArrayMapOutput
-	ToInt32ArrayMapOutputWithContext(ctx context.Context) Int32ArrayMapOutput
 }
 
 // Int32ArrayMap is an input type for map[string]Int32ArrayInput values.
@@ -4147,10 +2963,6 @@ func (in Int32ArrayMap) ToInt32ArrayMapOutput() Int32ArrayMapOutput {
 	return ToOutput(in).(Int32ArrayMapOutput)
 }
 
-func (in Int32ArrayMap) ToInt32ArrayMapOutputWithContext(ctx context.Context) Int32ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Int32ArrayMapOutput)
-}
-
 // Int32ArrayMapOutput is an Output that returns map[string][]int32 values.
 type Int32ArrayMapOutput struct{ *OutputState }
 
@@ -4160,10 +2972,6 @@ func (Int32ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Int32ArrayMapOutput) ToInt32ArrayMapOutput() Int32ArrayMapOutput {
-	return o
-}
-
-func (o Int32ArrayMapOutput) ToInt32ArrayMapOutputWithContext(ctx context.Context) Int32ArrayMapOutput {
 	return o
 }
 
@@ -4180,7 +2988,6 @@ type Int32MapArrayInput interface {
 	Input
 
 	ToInt32MapArrayOutput() Int32MapArrayOutput
-	ToInt32MapArrayOutputWithContext(ctx context.Context) Int32MapArrayOutput
 }
 
 // Int32MapArray is an input type for []Int32MapInput values.
@@ -4195,10 +3002,6 @@ func (in Int32MapArray) ToInt32MapArrayOutput() Int32MapArrayOutput {
 	return ToOutput(in).(Int32MapArrayOutput)
 }
 
-func (in Int32MapArray) ToInt32MapArrayOutputWithContext(ctx context.Context) Int32MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int32MapArrayOutput)
-}
-
 // Int32MapArrayOutput is an Output that returns []map[string]int32 values.
 type Int32MapArrayOutput struct{ *OutputState }
 
@@ -4208,10 +3011,6 @@ func (Int32MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int32MapArrayOutput) ToInt32MapArrayOutput() Int32MapArrayOutput {
-	return o
-}
-
-func (o Int32MapArrayOutput) ToInt32MapArrayOutputWithContext(ctx context.Context) Int32MapArrayOutput {
 	return o
 }
 
@@ -4228,7 +3027,6 @@ type Int64Input interface {
 	Input
 
 	ToInt64Output() Int64Output
-	ToInt64OutputWithContext(ctx context.Context) Int64Output
 }
 
 // Int64 is an input type for int64 values.
@@ -4243,16 +3041,8 @@ func (in Int64) ToInt64Output() Int64Output {
 	return ToOutput(in).(Int64Output)
 }
 
-func (in Int64) ToInt64OutputWithContext(ctx context.Context) Int64Output {
-	return ToOutputWithContext(ctx, in).(Int64Output)
-}
-
 func (in Int64) ToInt64PtrOutput() Int64PtrOutput {
-	return in.ToInt64PtrOutputWithContext(context.Background())
-}
-
-func (in Int64) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
-	return in.ToInt64OutputWithContext(ctx).ToInt64PtrOutputWithContext(ctx)
+	return in.ToInt64Output().ToInt64PtrOutput()
 }
 
 // Int64Output is an Output that returns int64 values.
@@ -4267,16 +3057,8 @@ func (o Int64Output) ToInt64Output() Int64Output {
 	return o
 }
 
-func (o Int64Output) ToInt64OutputWithContext(ctx context.Context) Int64Output {
-	return o
-}
-
 func (o Int64Output) ToInt64PtrOutput() Int64PtrOutput {
-	return o.ToInt64PtrOutputWithContext(context.Background())
-}
-
-func (o Int64Output) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int64) *int64 {
+	return o.ApplyT(func(v int64) *int64 {
 		return &v
 	}).(Int64PtrOutput)
 }
@@ -4288,7 +3070,6 @@ type Int64PtrInput interface {
 	Input
 
 	ToInt64PtrOutput() Int64PtrOutput
-	ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput
 }
 
 type int64Ptr int64
@@ -4307,10 +3088,6 @@ func (in *int64Ptr) ToInt64PtrOutput() Int64PtrOutput {
 	return ToOutput(in).(Int64PtrOutput)
 }
 
-func (in *int64Ptr) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
-	return ToOutputWithContext(ctx, in).(Int64PtrOutput)
-}
-
 // Int64PtrOutput is an Output that returns *int64 values.
 type Int64PtrOutput struct{ *OutputState }
 
@@ -4320,10 +3097,6 @@ func (Int64PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Int64PtrOutput) ToInt64PtrOutput() Int64PtrOutput {
-	return o
-}
-
-func (o Int64PtrOutput) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
 	return o
 }
 
@@ -4340,7 +3113,6 @@ type Int64ArrayInput interface {
 	Input
 
 	ToInt64ArrayOutput() Int64ArrayOutput
-	ToInt64ArrayOutputWithContext(ctx context.Context) Int64ArrayOutput
 }
 
 // Int64Array is an input type for []Int64Input values.
@@ -4355,10 +3127,6 @@ func (in Int64Array) ToInt64ArrayOutput() Int64ArrayOutput {
 	return ToOutput(in).(Int64ArrayOutput)
 }
 
-func (in Int64Array) ToInt64ArrayOutputWithContext(ctx context.Context) Int64ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int64ArrayOutput)
-}
-
 // Int64ArrayOutput is an Output that returns []int64 values.
 type Int64ArrayOutput struct{ *OutputState }
 
@@ -4368,10 +3136,6 @@ func (Int64ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int64ArrayOutput) ToInt64ArrayOutput() Int64ArrayOutput {
-	return o
-}
-
-func (o Int64ArrayOutput) ToInt64ArrayOutputWithContext(ctx context.Context) Int64ArrayOutput {
 	return o
 }
 
@@ -4388,7 +3152,6 @@ type Int64MapInput interface {
 	Input
 
 	ToInt64MapOutput() Int64MapOutput
-	ToInt64MapOutputWithContext(ctx context.Context) Int64MapOutput
 }
 
 // Int64Map is an input type for map[string]Int64Input values.
@@ -4403,10 +3166,6 @@ func (in Int64Map) ToInt64MapOutput() Int64MapOutput {
 	return ToOutput(in).(Int64MapOutput)
 }
 
-func (in Int64Map) ToInt64MapOutputWithContext(ctx context.Context) Int64MapOutput {
-	return ToOutputWithContext(ctx, in).(Int64MapOutput)
-}
-
 // Int64MapOutput is an Output that returns map[string]int64 values.
 type Int64MapOutput struct{ *OutputState }
 
@@ -4416,10 +3175,6 @@ func (Int64MapOutput) ElementType() reflect.Type {
 }
 
 func (o Int64MapOutput) ToInt64MapOutput() Int64MapOutput {
-	return o
-}
-
-func (o Int64MapOutput) ToInt64MapOutputWithContext(ctx context.Context) Int64MapOutput {
 	return o
 }
 
@@ -4436,7 +3191,6 @@ type Int64ArrayMapInput interface {
 	Input
 
 	ToInt64ArrayMapOutput() Int64ArrayMapOutput
-	ToInt64ArrayMapOutputWithContext(ctx context.Context) Int64ArrayMapOutput
 }
 
 // Int64ArrayMap is an input type for map[string]Int64ArrayInput values.
@@ -4451,10 +3205,6 @@ func (in Int64ArrayMap) ToInt64ArrayMapOutput() Int64ArrayMapOutput {
 	return ToOutput(in).(Int64ArrayMapOutput)
 }
 
-func (in Int64ArrayMap) ToInt64ArrayMapOutputWithContext(ctx context.Context) Int64ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Int64ArrayMapOutput)
-}
-
 // Int64ArrayMapOutput is an Output that returns map[string][]int64 values.
 type Int64ArrayMapOutput struct{ *OutputState }
 
@@ -4464,10 +3214,6 @@ func (Int64ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Int64ArrayMapOutput) ToInt64ArrayMapOutput() Int64ArrayMapOutput {
-	return o
-}
-
-func (o Int64ArrayMapOutput) ToInt64ArrayMapOutputWithContext(ctx context.Context) Int64ArrayMapOutput {
 	return o
 }
 
@@ -4484,7 +3230,6 @@ type Int64MapArrayInput interface {
 	Input
 
 	ToInt64MapArrayOutput() Int64MapArrayOutput
-	ToInt64MapArrayOutputWithContext(ctx context.Context) Int64MapArrayOutput
 }
 
 // Int64MapArray is an input type for []Int64MapInput values.
@@ -4499,10 +3244,6 @@ func (in Int64MapArray) ToInt64MapArrayOutput() Int64MapArrayOutput {
 	return ToOutput(in).(Int64MapArrayOutput)
 }
 
-func (in Int64MapArray) ToInt64MapArrayOutputWithContext(ctx context.Context) Int64MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int64MapArrayOutput)
-}
-
 // Int64MapArrayOutput is an Output that returns []map[string]int64 values.
 type Int64MapArrayOutput struct{ *OutputState }
 
@@ -4512,10 +3253,6 @@ func (Int64MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int64MapArrayOutput) ToInt64MapArrayOutput() Int64MapArrayOutput {
-	return o
-}
-
-func (o Int64MapArrayOutput) ToInt64MapArrayOutputWithContext(ctx context.Context) Int64MapArrayOutput {
 	return o
 }
 
@@ -4532,7 +3269,6 @@ type Int8Input interface {
 	Input
 
 	ToInt8Output() Int8Output
-	ToInt8OutputWithContext(ctx context.Context) Int8Output
 }
 
 // Int8 is an input type for int8 values.
@@ -4547,16 +3283,8 @@ func (in Int8) ToInt8Output() Int8Output {
 	return ToOutput(in).(Int8Output)
 }
 
-func (in Int8) ToInt8OutputWithContext(ctx context.Context) Int8Output {
-	return ToOutputWithContext(ctx, in).(Int8Output)
-}
-
 func (in Int8) ToInt8PtrOutput() Int8PtrOutput {
-	return in.ToInt8PtrOutputWithContext(context.Background())
-}
-
-func (in Int8) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
-	return in.ToInt8OutputWithContext(ctx).ToInt8PtrOutputWithContext(ctx)
+	return in.ToInt8Output().ToInt8PtrOutput()
 }
 
 // Int8Output is an Output that returns int8 values.
@@ -4571,16 +3299,8 @@ func (o Int8Output) ToInt8Output() Int8Output {
 	return o
 }
 
-func (o Int8Output) ToInt8OutputWithContext(ctx context.Context) Int8Output {
-	return o
-}
-
 func (o Int8Output) ToInt8PtrOutput() Int8PtrOutput {
-	return o.ToInt8PtrOutputWithContext(context.Background())
-}
-
-func (o Int8Output) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int8) *int8 {
+	return o.ApplyT(func(v int8) *int8 {
 		return &v
 	}).(Int8PtrOutput)
 }
@@ -4592,7 +3312,6 @@ type Int8PtrInput interface {
 	Input
 
 	ToInt8PtrOutput() Int8PtrOutput
-	ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput
 }
 
 type int8Ptr int8
@@ -4611,10 +3330,6 @@ func (in *int8Ptr) ToInt8PtrOutput() Int8PtrOutput {
 	return ToOutput(in).(Int8PtrOutput)
 }
 
-func (in *int8Ptr) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
-	return ToOutputWithContext(ctx, in).(Int8PtrOutput)
-}
-
 // Int8PtrOutput is an Output that returns *int8 values.
 type Int8PtrOutput struct{ *OutputState }
 
@@ -4624,10 +3339,6 @@ func (Int8PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Int8PtrOutput) ToInt8PtrOutput() Int8PtrOutput {
-	return o
-}
-
-func (o Int8PtrOutput) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
 	return o
 }
 
@@ -4644,7 +3355,6 @@ type Int8ArrayInput interface {
 	Input
 
 	ToInt8ArrayOutput() Int8ArrayOutput
-	ToInt8ArrayOutputWithContext(ctx context.Context) Int8ArrayOutput
 }
 
 // Int8Array is an input type for []Int8Input values.
@@ -4659,10 +3369,6 @@ func (in Int8Array) ToInt8ArrayOutput() Int8ArrayOutput {
 	return ToOutput(in).(Int8ArrayOutput)
 }
 
-func (in Int8Array) ToInt8ArrayOutputWithContext(ctx context.Context) Int8ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int8ArrayOutput)
-}
-
 // Int8ArrayOutput is an Output that returns []int8 values.
 type Int8ArrayOutput struct{ *OutputState }
 
@@ -4672,10 +3378,6 @@ func (Int8ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int8ArrayOutput) ToInt8ArrayOutput() Int8ArrayOutput {
-	return o
-}
-
-func (o Int8ArrayOutput) ToInt8ArrayOutputWithContext(ctx context.Context) Int8ArrayOutput {
 	return o
 }
 
@@ -4692,7 +3394,6 @@ type Int8MapInput interface {
 	Input
 
 	ToInt8MapOutput() Int8MapOutput
-	ToInt8MapOutputWithContext(ctx context.Context) Int8MapOutput
 }
 
 // Int8Map is an input type for map[string]Int8Input values.
@@ -4707,10 +3408,6 @@ func (in Int8Map) ToInt8MapOutput() Int8MapOutput {
 	return ToOutput(in).(Int8MapOutput)
 }
 
-func (in Int8Map) ToInt8MapOutputWithContext(ctx context.Context) Int8MapOutput {
-	return ToOutputWithContext(ctx, in).(Int8MapOutput)
-}
-
 // Int8MapOutput is an Output that returns map[string]int8 values.
 type Int8MapOutput struct{ *OutputState }
 
@@ -4720,10 +3417,6 @@ func (Int8MapOutput) ElementType() reflect.Type {
 }
 
 func (o Int8MapOutput) ToInt8MapOutput() Int8MapOutput {
-	return o
-}
-
-func (o Int8MapOutput) ToInt8MapOutputWithContext(ctx context.Context) Int8MapOutput {
 	return o
 }
 
@@ -4740,7 +3433,6 @@ type Int8ArrayMapInput interface {
 	Input
 
 	ToInt8ArrayMapOutput() Int8ArrayMapOutput
-	ToInt8ArrayMapOutputWithContext(ctx context.Context) Int8ArrayMapOutput
 }
 
 // Int8ArrayMap is an input type for map[string]Int8ArrayInput values.
@@ -4755,10 +3447,6 @@ func (in Int8ArrayMap) ToInt8ArrayMapOutput() Int8ArrayMapOutput {
 	return ToOutput(in).(Int8ArrayMapOutput)
 }
 
-func (in Int8ArrayMap) ToInt8ArrayMapOutputWithContext(ctx context.Context) Int8ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Int8ArrayMapOutput)
-}
-
 // Int8ArrayMapOutput is an Output that returns map[string][]int8 values.
 type Int8ArrayMapOutput struct{ *OutputState }
 
@@ -4768,10 +3456,6 @@ func (Int8ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Int8ArrayMapOutput) ToInt8ArrayMapOutput() Int8ArrayMapOutput {
-	return o
-}
-
-func (o Int8ArrayMapOutput) ToInt8ArrayMapOutputWithContext(ctx context.Context) Int8ArrayMapOutput {
 	return o
 }
 
@@ -4788,7 +3472,6 @@ type Int8MapArrayInput interface {
 	Input
 
 	ToInt8MapArrayOutput() Int8MapArrayOutput
-	ToInt8MapArrayOutputWithContext(ctx context.Context) Int8MapArrayOutput
 }
 
 // Int8MapArray is an input type for []Int8MapInput values.
@@ -4803,10 +3486,6 @@ func (in Int8MapArray) ToInt8MapArrayOutput() Int8MapArrayOutput {
 	return ToOutput(in).(Int8MapArrayOutput)
 }
 
-func (in Int8MapArray) ToInt8MapArrayOutputWithContext(ctx context.Context) Int8MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Int8MapArrayOutput)
-}
-
 // Int8MapArrayOutput is an Output that returns []map[string]int8 values.
 type Int8MapArrayOutput struct{ *OutputState }
 
@@ -4816,10 +3495,6 @@ func (Int8MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Int8MapArrayOutput) ToInt8MapArrayOutput() Int8MapArrayOutput {
-	return o
-}
-
-func (o Int8MapArrayOutput) ToInt8MapArrayOutputWithContext(ctx context.Context) Int8MapArrayOutput {
 	return o
 }
 
@@ -4836,7 +3511,6 @@ type StringInput interface {
 	Input
 
 	ToStringOutput() StringOutput
-	ToStringOutputWithContext(ctx context.Context) StringOutput
 }
 
 // String is an input type for string values.
@@ -4851,16 +3525,8 @@ func (in String) ToStringOutput() StringOutput {
 	return ToOutput(in).(StringOutput)
 }
 
-func (in String) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return ToOutputWithContext(ctx, in).(StringOutput)
-}
-
 func (in String) ToStringPtrOutput() StringPtrOutput {
-	return in.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (in String) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+	return in.ToStringOutput().ToStringPtrOutput()
 }
 
 // StringOutput is an Output that returns string values.
@@ -4875,16 +3541,8 @@ func (o StringOutput) ToStringOutput() StringOutput {
 	return o
 }
 
-func (o StringOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return o
-}
-
 func (o StringOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (o StringOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v string) *string {
+	return o.ApplyT(func(v string) *string {
 		return &v
 	}).(StringPtrOutput)
 }
@@ -4896,7 +3554,6 @@ type StringPtrInput interface {
 	Input
 
 	ToStringPtrOutput() StringPtrOutput
-	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
 type stringPtr string
@@ -4915,10 +3572,6 @@ func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
 	return ToOutput(in).(StringPtrOutput)
 }
 
-func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return ToOutputWithContext(ctx, in).(StringPtrOutput)
-}
-
 // StringPtrOutput is an Output that returns *string values.
 type StringPtrOutput struct{ *OutputState }
 
@@ -4928,10 +3581,6 @@ func (StringPtrOutput) ElementType() reflect.Type {
 }
 
 func (o StringPtrOutput) ToStringPtrOutput() StringPtrOutput {
-	return o
-}
-
-func (o StringPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
 	return o
 }
 
@@ -4948,7 +3597,6 @@ type StringArrayInput interface {
 	Input
 
 	ToStringArrayOutput() StringArrayOutput
-	ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput
 }
 
 // StringArray is an input type for []StringInput values.
@@ -4963,10 +3611,6 @@ func (in StringArray) ToStringArrayOutput() StringArrayOutput {
 	return ToOutput(in).(StringArrayOutput)
 }
 
-func (in StringArray) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
-	return ToOutputWithContext(ctx, in).(StringArrayOutput)
-}
-
 // StringArrayOutput is an Output that returns []string values.
 type StringArrayOutput struct{ *OutputState }
 
@@ -4976,10 +3620,6 @@ func (StringArrayOutput) ElementType() reflect.Type {
 }
 
 func (o StringArrayOutput) ToStringArrayOutput() StringArrayOutput {
-	return o
-}
-
-func (o StringArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
 	return o
 }
 
@@ -4996,7 +3636,6 @@ type StringMapInput interface {
 	Input
 
 	ToStringMapOutput() StringMapOutput
-	ToStringMapOutputWithContext(ctx context.Context) StringMapOutput
 }
 
 // StringMap is an input type for map[string]StringInput values.
@@ -5011,10 +3650,6 @@ func (in StringMap) ToStringMapOutput() StringMapOutput {
 	return ToOutput(in).(StringMapOutput)
 }
 
-func (in StringMap) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
-	return ToOutputWithContext(ctx, in).(StringMapOutput)
-}
-
 // StringMapOutput is an Output that returns map[string]string values.
 type StringMapOutput struct{ *OutputState }
 
@@ -5024,10 +3659,6 @@ func (StringMapOutput) ElementType() reflect.Type {
 }
 
 func (o StringMapOutput) ToStringMapOutput() StringMapOutput {
-	return o
-}
-
-func (o StringMapOutput) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
 	return o
 }
 
@@ -5044,7 +3675,6 @@ type StringArrayMapInput interface {
 	Input
 
 	ToStringArrayMapOutput() StringArrayMapOutput
-	ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput
 }
 
 // StringArrayMap is an input type for map[string]StringArrayInput values.
@@ -5059,10 +3689,6 @@ func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
 	return ToOutput(in).(StringArrayMapOutput)
 }
 
-func (in StringArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(StringArrayMapOutput)
-}
-
 // StringArrayMapOutput is an Output that returns map[string][]string values.
 type StringArrayMapOutput struct{ *OutputState }
 
@@ -5072,10 +3698,6 @@ func (StringArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o StringArrayMapOutput) ToStringArrayMapOutput() StringArrayMapOutput {
-	return o
-}
-
-func (o StringArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
 	return o
 }
 
@@ -5092,7 +3714,6 @@ type StringMapArrayInput interface {
 	Input
 
 	ToStringMapArrayOutput() StringMapArrayOutput
-	ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput
 }
 
 // StringMapArray is an input type for []StringMapInput values.
@@ -5107,10 +3728,6 @@ func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
 	return ToOutput(in).(StringMapArrayOutput)
 }
 
-func (in StringMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(StringMapArrayOutput)
-}
-
 // StringMapArrayOutput is an Output that returns []map[string]string values.
 type StringMapArrayOutput struct{ *OutputState }
 
@@ -5120,10 +3737,6 @@ func (StringMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o StringMapArrayOutput) ToStringMapArrayOutput() StringMapArrayOutput {
-	return o
-}
-
-func (o StringMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
 	return o
 }
 
@@ -5140,7 +3753,6 @@ type URNInput interface {
 	Input
 
 	ToURNOutput() URNOutput
-	ToURNOutputWithContext(ctx context.Context) URNOutput
 }
 
 // ElementType returns the element type of this Input (URN).
@@ -5152,24 +3764,12 @@ func (in URN) ToURNOutput() URNOutput {
 	return ToOutput(in).(URNOutput)
 }
 
-func (in URN) ToURNOutputWithContext(ctx context.Context) URNOutput {
-	return ToOutputWithContext(ctx, in).(URNOutput)
-}
-
 func (in URN) ToStringOutput() StringOutput {
-	return in.ToStringOutputWithContext(context.Background())
-}
-
-func (in URN) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return in.ToURNOutputWithContext(ctx).ToStringOutputWithContext(ctx)
+	return in.ToURNOutput().ToStringOutput()
 }
 
 func (in URN) ToURNPtrOutput() URNPtrOutput {
-	return in.ToURNPtrOutputWithContext(context.Background())
-}
-
-func (in URN) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
-	return in.ToURNOutputWithContext(ctx).ToURNPtrOutputWithContext(ctx)
+	return in.ToURNOutput().ToURNPtrOutput()
 }
 
 // URNOutput is an Output that returns URN values.
@@ -5184,26 +3784,14 @@ func (o URNOutput) ToURNOutput() URNOutput {
 	return o
 }
 
-func (o URNOutput) ToURNOutputWithContext(ctx context.Context) URNOutput {
-	return o
-}
-
 func (o URNOutput) ToStringOutput() StringOutput {
-	return o.ToStringOutputWithContext(context.Background())
-}
-
-func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
+	return o.ApplyT(func(v URN) string {
 		return (string)(v)
 	}).(StringOutput)
 }
 
 func (o URNOutput) ToURNPtrOutput() URNPtrOutput {
-	return o.ToURNPtrOutputWithContext(context.Background())
-}
-
-func (o URNOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) *URN {
+	return o.ApplyT(func(v URN) *URN {
 		return &v
 	}).(URNPtrOutput)
 }
@@ -5215,7 +3803,6 @@ type URNPtrInput interface {
 	Input
 
 	ToURNPtrOutput() URNPtrOutput
-	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
 }
 
 type urnPtr URN
@@ -5234,10 +3821,6 @@ func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
 	return ToOutput(in).(URNPtrOutput)
 }
 
-func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
-	return ToOutputWithContext(ctx, in).(URNPtrOutput)
-}
-
 // URNPtrOutput is an Output that returns *URN values.
 type URNPtrOutput struct{ *OutputState }
 
@@ -5247,10 +3830,6 @@ func (URNPtrOutput) ElementType() reflect.Type {
 }
 
 func (o URNPtrOutput) ToURNPtrOutput() URNPtrOutput {
-	return o
-}
-
-func (o URNPtrOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 	return o
 }
 
@@ -5267,7 +3846,6 @@ type URNArrayInput interface {
 	Input
 
 	ToURNArrayOutput() URNArrayOutput
-	ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput
 }
 
 // URNArray is an input type for []URNInput values.
@@ -5282,10 +3860,6 @@ func (in URNArray) ToURNArrayOutput() URNArrayOutput {
 	return ToOutput(in).(URNArrayOutput)
 }
 
-func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput {
-	return ToOutputWithContext(ctx, in).(URNArrayOutput)
-}
-
 // URNArrayOutput is an Output that returns []URN values.
 type URNArrayOutput struct{ *OutputState }
 
@@ -5295,10 +3869,6 @@ func (URNArrayOutput) ElementType() reflect.Type {
 }
 
 func (o URNArrayOutput) ToURNArrayOutput() URNArrayOutput {
-	return o
-}
-
-func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput {
 	return o
 }
 
@@ -5315,7 +3885,6 @@ type URNMapInput interface {
 	Input
 
 	ToURNMapOutput() URNMapOutput
-	ToURNMapOutputWithContext(ctx context.Context) URNMapOutput
 }
 
 // URNMap is an input type for map[string]URNInput values.
@@ -5330,10 +3899,6 @@ func (in URNMap) ToURNMapOutput() URNMapOutput {
 	return ToOutput(in).(URNMapOutput)
 }
 
-func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
-	return ToOutputWithContext(ctx, in).(URNMapOutput)
-}
-
 // URNMapOutput is an Output that returns map[string]URN values.
 type URNMapOutput struct{ *OutputState }
 
@@ -5343,10 +3908,6 @@ func (URNMapOutput) ElementType() reflect.Type {
 }
 
 func (o URNMapOutput) ToURNMapOutput() URNMapOutput {
-	return o
-}
-
-func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 	return o
 }
 
@@ -5363,7 +3924,6 @@ type URNArrayMapInput interface {
 	Input
 
 	ToURNArrayMapOutput() URNArrayMapOutput
-	ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput
 }
 
 // URNArrayMap is an input type for map[string]URNArrayInput values.
@@ -5378,10 +3938,6 @@ func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
 	return ToOutput(in).(URNArrayMapOutput)
 }
 
-func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(URNArrayMapOutput)
-}
-
 // URNArrayMapOutput is an Output that returns map[string][]URN values.
 type URNArrayMapOutput struct{ *OutputState }
 
@@ -5391,10 +3947,6 @@ func (URNArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o URNArrayMapOutput) ToURNArrayMapOutput() URNArrayMapOutput {
-	return o
-}
-
-func (o URNArrayMapOutput) ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput {
 	return o
 }
 
@@ -5411,7 +3963,6 @@ type URNMapArrayInput interface {
 	Input
 
 	ToURNMapArrayOutput() URNMapArrayOutput
-	ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput
 }
 
 // URNMapArray is an input type for []URNMapInput values.
@@ -5426,10 +3977,6 @@ func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
 	return ToOutput(in).(URNMapArrayOutput)
 }
 
-func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(URNMapArrayOutput)
-}
-
 // URNMapArrayOutput is an Output that returns []map[string]URN values.
 type URNMapArrayOutput struct{ *OutputState }
 
@@ -5439,10 +3986,6 @@ func (URNMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o URNMapArrayOutput) ToURNMapArrayOutput() URNMapArrayOutput {
-	return o
-}
-
-func (o URNMapArrayOutput) ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput {
 	return o
 }
 
@@ -5459,7 +4002,6 @@ type UintInput interface {
 	Input
 
 	ToUintOutput() UintOutput
-	ToUintOutputWithContext(ctx context.Context) UintOutput
 }
 
 // Uint is an input type for uint values.
@@ -5474,16 +4016,8 @@ func (in Uint) ToUintOutput() UintOutput {
 	return ToOutput(in).(UintOutput)
 }
 
-func (in Uint) ToUintOutputWithContext(ctx context.Context) UintOutput {
-	return ToOutputWithContext(ctx, in).(UintOutput)
-}
-
 func (in Uint) ToUintPtrOutput() UintPtrOutput {
-	return in.ToUintPtrOutputWithContext(context.Background())
-}
-
-func (in Uint) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
-	return in.ToUintOutputWithContext(ctx).ToUintPtrOutputWithContext(ctx)
+	return in.ToUintOutput().ToUintPtrOutput()
 }
 
 // UintOutput is an Output that returns uint values.
@@ -5498,16 +4032,8 @@ func (o UintOutput) ToUintOutput() UintOutput {
 	return o
 }
 
-func (o UintOutput) ToUintOutputWithContext(ctx context.Context) UintOutput {
-	return o
-}
-
 func (o UintOutput) ToUintPtrOutput() UintPtrOutput {
-	return o.ToUintPtrOutputWithContext(context.Background())
-}
-
-func (o UintOutput) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint) *uint {
+	return o.ApplyT(func(v uint) *uint {
 		return &v
 	}).(UintPtrOutput)
 }
@@ -5519,7 +4045,6 @@ type UintPtrInput interface {
 	Input
 
 	ToUintPtrOutput() UintPtrOutput
-	ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput
 }
 
 type uintPtr uint
@@ -5538,10 +4063,6 @@ func (in *uintPtr) ToUintPtrOutput() UintPtrOutput {
 	return ToOutput(in).(UintPtrOutput)
 }
 
-func (in *uintPtr) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
-	return ToOutputWithContext(ctx, in).(UintPtrOutput)
-}
-
 // UintPtrOutput is an Output that returns *uint values.
 type UintPtrOutput struct{ *OutputState }
 
@@ -5551,10 +4072,6 @@ func (UintPtrOutput) ElementType() reflect.Type {
 }
 
 func (o UintPtrOutput) ToUintPtrOutput() UintPtrOutput {
-	return o
-}
-
-func (o UintPtrOutput) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
 	return o
 }
 
@@ -5571,7 +4088,6 @@ type UintArrayInput interface {
 	Input
 
 	ToUintArrayOutput() UintArrayOutput
-	ToUintArrayOutputWithContext(ctx context.Context) UintArrayOutput
 }
 
 // UintArray is an input type for []UintInput values.
@@ -5586,10 +4102,6 @@ func (in UintArray) ToUintArrayOutput() UintArrayOutput {
 	return ToOutput(in).(UintArrayOutput)
 }
 
-func (in UintArray) ToUintArrayOutputWithContext(ctx context.Context) UintArrayOutput {
-	return ToOutputWithContext(ctx, in).(UintArrayOutput)
-}
-
 // UintArrayOutput is an Output that returns []uint values.
 type UintArrayOutput struct{ *OutputState }
 
@@ -5599,10 +4111,6 @@ func (UintArrayOutput) ElementType() reflect.Type {
 }
 
 func (o UintArrayOutput) ToUintArrayOutput() UintArrayOutput {
-	return o
-}
-
-func (o UintArrayOutput) ToUintArrayOutputWithContext(ctx context.Context) UintArrayOutput {
 	return o
 }
 
@@ -5619,7 +4127,6 @@ type UintMapInput interface {
 	Input
 
 	ToUintMapOutput() UintMapOutput
-	ToUintMapOutputWithContext(ctx context.Context) UintMapOutput
 }
 
 // UintMap is an input type for map[string]UintInput values.
@@ -5634,10 +4141,6 @@ func (in UintMap) ToUintMapOutput() UintMapOutput {
 	return ToOutput(in).(UintMapOutput)
 }
 
-func (in UintMap) ToUintMapOutputWithContext(ctx context.Context) UintMapOutput {
-	return ToOutputWithContext(ctx, in).(UintMapOutput)
-}
-
 // UintMapOutput is an Output that returns map[string]uint values.
 type UintMapOutput struct{ *OutputState }
 
@@ -5647,10 +4150,6 @@ func (UintMapOutput) ElementType() reflect.Type {
 }
 
 func (o UintMapOutput) ToUintMapOutput() UintMapOutput {
-	return o
-}
-
-func (o UintMapOutput) ToUintMapOutputWithContext(ctx context.Context) UintMapOutput {
 	return o
 }
 
@@ -5667,7 +4166,6 @@ type UintArrayMapInput interface {
 	Input
 
 	ToUintArrayMapOutput() UintArrayMapOutput
-	ToUintArrayMapOutputWithContext(ctx context.Context) UintArrayMapOutput
 }
 
 // UintArrayMap is an input type for map[string]UintArrayInput values.
@@ -5682,10 +4180,6 @@ func (in UintArrayMap) ToUintArrayMapOutput() UintArrayMapOutput {
 	return ToOutput(in).(UintArrayMapOutput)
 }
 
-func (in UintArrayMap) ToUintArrayMapOutputWithContext(ctx context.Context) UintArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(UintArrayMapOutput)
-}
-
 // UintArrayMapOutput is an Output that returns map[string][]uint values.
 type UintArrayMapOutput struct{ *OutputState }
 
@@ -5695,10 +4189,6 @@ func (UintArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o UintArrayMapOutput) ToUintArrayMapOutput() UintArrayMapOutput {
-	return o
-}
-
-func (o UintArrayMapOutput) ToUintArrayMapOutputWithContext(ctx context.Context) UintArrayMapOutput {
 	return o
 }
 
@@ -5715,7 +4205,6 @@ type UintMapArrayInput interface {
 	Input
 
 	ToUintMapArrayOutput() UintMapArrayOutput
-	ToUintMapArrayOutputWithContext(ctx context.Context) UintMapArrayOutput
 }
 
 // UintMapArray is an input type for []UintMapInput values.
@@ -5730,10 +4219,6 @@ func (in UintMapArray) ToUintMapArrayOutput() UintMapArrayOutput {
 	return ToOutput(in).(UintMapArrayOutput)
 }
 
-func (in UintMapArray) ToUintMapArrayOutputWithContext(ctx context.Context) UintMapArrayOutput {
-	return ToOutputWithContext(ctx, in).(UintMapArrayOutput)
-}
-
 // UintMapArrayOutput is an Output that returns []map[string]uint values.
 type UintMapArrayOutput struct{ *OutputState }
 
@@ -5743,10 +4228,6 @@ func (UintMapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o UintMapArrayOutput) ToUintMapArrayOutput() UintMapArrayOutput {
-	return o
-}
-
-func (o UintMapArrayOutput) ToUintMapArrayOutputWithContext(ctx context.Context) UintMapArrayOutput {
 	return o
 }
 
@@ -5763,7 +4244,6 @@ type Uint16Input interface {
 	Input
 
 	ToUint16Output() Uint16Output
-	ToUint16OutputWithContext(ctx context.Context) Uint16Output
 }
 
 // Uint16 is an input type for uint16 values.
@@ -5778,16 +4258,8 @@ func (in Uint16) ToUint16Output() Uint16Output {
 	return ToOutput(in).(Uint16Output)
 }
 
-func (in Uint16) ToUint16OutputWithContext(ctx context.Context) Uint16Output {
-	return ToOutputWithContext(ctx, in).(Uint16Output)
-}
-
 func (in Uint16) ToUint16PtrOutput() Uint16PtrOutput {
-	return in.ToUint16PtrOutputWithContext(context.Background())
-}
-
-func (in Uint16) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
-	return in.ToUint16OutputWithContext(ctx).ToUint16PtrOutputWithContext(ctx)
+	return in.ToUint16Output().ToUint16PtrOutput()
 }
 
 // Uint16Output is an Output that returns uint16 values.
@@ -5802,16 +4274,8 @@ func (o Uint16Output) ToUint16Output() Uint16Output {
 	return o
 }
 
-func (o Uint16Output) ToUint16OutputWithContext(ctx context.Context) Uint16Output {
-	return o
-}
-
 func (o Uint16Output) ToUint16PtrOutput() Uint16PtrOutput {
-	return o.ToUint16PtrOutputWithContext(context.Background())
-}
-
-func (o Uint16Output) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint16) *uint16 {
+	return o.ApplyT(func(v uint16) *uint16 {
 		return &v
 	}).(Uint16PtrOutput)
 }
@@ -5823,7 +4287,6 @@ type Uint16PtrInput interface {
 	Input
 
 	ToUint16PtrOutput() Uint16PtrOutput
-	ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput
 }
 
 type uint16Ptr uint16
@@ -5842,10 +4305,6 @@ func (in *uint16Ptr) ToUint16PtrOutput() Uint16PtrOutput {
 	return ToOutput(in).(Uint16PtrOutput)
 }
 
-func (in *uint16Ptr) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
-	return ToOutputWithContext(ctx, in).(Uint16PtrOutput)
-}
-
 // Uint16PtrOutput is an Output that returns *uint16 values.
 type Uint16PtrOutput struct{ *OutputState }
 
@@ -5855,10 +4314,6 @@ func (Uint16PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Uint16PtrOutput) ToUint16PtrOutput() Uint16PtrOutput {
-	return o
-}
-
-func (o Uint16PtrOutput) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
 	return o
 }
 
@@ -5875,7 +4330,6 @@ type Uint16ArrayInput interface {
 	Input
 
 	ToUint16ArrayOutput() Uint16ArrayOutput
-	ToUint16ArrayOutputWithContext(ctx context.Context) Uint16ArrayOutput
 }
 
 // Uint16Array is an input type for []Uint16Input values.
@@ -5890,10 +4344,6 @@ func (in Uint16Array) ToUint16ArrayOutput() Uint16ArrayOutput {
 	return ToOutput(in).(Uint16ArrayOutput)
 }
 
-func (in Uint16Array) ToUint16ArrayOutputWithContext(ctx context.Context) Uint16ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint16ArrayOutput)
-}
-
 // Uint16ArrayOutput is an Output that returns []uint16 values.
 type Uint16ArrayOutput struct{ *OutputState }
 
@@ -5903,10 +4353,6 @@ func (Uint16ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint16ArrayOutput) ToUint16ArrayOutput() Uint16ArrayOutput {
-	return o
-}
-
-func (o Uint16ArrayOutput) ToUint16ArrayOutputWithContext(ctx context.Context) Uint16ArrayOutput {
 	return o
 }
 
@@ -5923,7 +4369,6 @@ type Uint16MapInput interface {
 	Input
 
 	ToUint16MapOutput() Uint16MapOutput
-	ToUint16MapOutputWithContext(ctx context.Context) Uint16MapOutput
 }
 
 // Uint16Map is an input type for map[string]Uint16Input values.
@@ -5938,10 +4383,6 @@ func (in Uint16Map) ToUint16MapOutput() Uint16MapOutput {
 	return ToOutput(in).(Uint16MapOutput)
 }
 
-func (in Uint16Map) ToUint16MapOutputWithContext(ctx context.Context) Uint16MapOutput {
-	return ToOutputWithContext(ctx, in).(Uint16MapOutput)
-}
-
 // Uint16MapOutput is an Output that returns map[string]uint16 values.
 type Uint16MapOutput struct{ *OutputState }
 
@@ -5951,10 +4392,6 @@ func (Uint16MapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint16MapOutput) ToUint16MapOutput() Uint16MapOutput {
-	return o
-}
-
-func (o Uint16MapOutput) ToUint16MapOutputWithContext(ctx context.Context) Uint16MapOutput {
 	return o
 }
 
@@ -5971,7 +4408,6 @@ type Uint16ArrayMapInput interface {
 	Input
 
 	ToUint16ArrayMapOutput() Uint16ArrayMapOutput
-	ToUint16ArrayMapOutputWithContext(ctx context.Context) Uint16ArrayMapOutput
 }
 
 // Uint16ArrayMap is an input type for map[string]Uint16ArrayInput values.
@@ -5986,10 +4422,6 @@ func (in Uint16ArrayMap) ToUint16ArrayMapOutput() Uint16ArrayMapOutput {
 	return ToOutput(in).(Uint16ArrayMapOutput)
 }
 
-func (in Uint16ArrayMap) ToUint16ArrayMapOutputWithContext(ctx context.Context) Uint16ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Uint16ArrayMapOutput)
-}
-
 // Uint16ArrayMapOutput is an Output that returns map[string][]uint16 values.
 type Uint16ArrayMapOutput struct{ *OutputState }
 
@@ -5999,10 +4431,6 @@ func (Uint16ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint16ArrayMapOutput) ToUint16ArrayMapOutput() Uint16ArrayMapOutput {
-	return o
-}
-
-func (o Uint16ArrayMapOutput) ToUint16ArrayMapOutputWithContext(ctx context.Context) Uint16ArrayMapOutput {
 	return o
 }
 
@@ -6019,7 +4447,6 @@ type Uint16MapArrayInput interface {
 	Input
 
 	ToUint16MapArrayOutput() Uint16MapArrayOutput
-	ToUint16MapArrayOutputWithContext(ctx context.Context) Uint16MapArrayOutput
 }
 
 // Uint16MapArray is an input type for []Uint16MapInput values.
@@ -6034,10 +4461,6 @@ func (in Uint16MapArray) ToUint16MapArrayOutput() Uint16MapArrayOutput {
 	return ToOutput(in).(Uint16MapArrayOutput)
 }
 
-func (in Uint16MapArray) ToUint16MapArrayOutputWithContext(ctx context.Context) Uint16MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint16MapArrayOutput)
-}
-
 // Uint16MapArrayOutput is an Output that returns []map[string]uint16 values.
 type Uint16MapArrayOutput struct{ *OutputState }
 
@@ -6047,10 +4470,6 @@ func (Uint16MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint16MapArrayOutput) ToUint16MapArrayOutput() Uint16MapArrayOutput {
-	return o
-}
-
-func (o Uint16MapArrayOutput) ToUint16MapArrayOutputWithContext(ctx context.Context) Uint16MapArrayOutput {
 	return o
 }
 
@@ -6067,7 +4486,6 @@ type Uint32Input interface {
 	Input
 
 	ToUint32Output() Uint32Output
-	ToUint32OutputWithContext(ctx context.Context) Uint32Output
 }
 
 // Uint32 is an input type for uint32 values.
@@ -6082,16 +4500,8 @@ func (in Uint32) ToUint32Output() Uint32Output {
 	return ToOutput(in).(Uint32Output)
 }
 
-func (in Uint32) ToUint32OutputWithContext(ctx context.Context) Uint32Output {
-	return ToOutputWithContext(ctx, in).(Uint32Output)
-}
-
 func (in Uint32) ToUint32PtrOutput() Uint32PtrOutput {
-	return in.ToUint32PtrOutputWithContext(context.Background())
-}
-
-func (in Uint32) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
-	return in.ToUint32OutputWithContext(ctx).ToUint32PtrOutputWithContext(ctx)
+	return in.ToUint32Output().ToUint32PtrOutput()
 }
 
 // Uint32Output is an Output that returns uint32 values.
@@ -6106,16 +4516,8 @@ func (o Uint32Output) ToUint32Output() Uint32Output {
 	return o
 }
 
-func (o Uint32Output) ToUint32OutputWithContext(ctx context.Context) Uint32Output {
-	return o
-}
-
 func (o Uint32Output) ToUint32PtrOutput() Uint32PtrOutput {
-	return o.ToUint32PtrOutputWithContext(context.Background())
-}
-
-func (o Uint32Output) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint32) *uint32 {
+	return o.ApplyT(func(v uint32) *uint32 {
 		return &v
 	}).(Uint32PtrOutput)
 }
@@ -6127,7 +4529,6 @@ type Uint32PtrInput interface {
 	Input
 
 	ToUint32PtrOutput() Uint32PtrOutput
-	ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput
 }
 
 type uint32Ptr uint32
@@ -6146,10 +4547,6 @@ func (in *uint32Ptr) ToUint32PtrOutput() Uint32PtrOutput {
 	return ToOutput(in).(Uint32PtrOutput)
 }
 
-func (in *uint32Ptr) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
-	return ToOutputWithContext(ctx, in).(Uint32PtrOutput)
-}
-
 // Uint32PtrOutput is an Output that returns *uint32 values.
 type Uint32PtrOutput struct{ *OutputState }
 
@@ -6159,10 +4556,6 @@ func (Uint32PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Uint32PtrOutput) ToUint32PtrOutput() Uint32PtrOutput {
-	return o
-}
-
-func (o Uint32PtrOutput) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
 	return o
 }
 
@@ -6179,7 +4572,6 @@ type Uint32ArrayInput interface {
 	Input
 
 	ToUint32ArrayOutput() Uint32ArrayOutput
-	ToUint32ArrayOutputWithContext(ctx context.Context) Uint32ArrayOutput
 }
 
 // Uint32Array is an input type for []Uint32Input values.
@@ -6194,10 +4586,6 @@ func (in Uint32Array) ToUint32ArrayOutput() Uint32ArrayOutput {
 	return ToOutput(in).(Uint32ArrayOutput)
 }
 
-func (in Uint32Array) ToUint32ArrayOutputWithContext(ctx context.Context) Uint32ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint32ArrayOutput)
-}
-
 // Uint32ArrayOutput is an Output that returns []uint32 values.
 type Uint32ArrayOutput struct{ *OutputState }
 
@@ -6207,10 +4595,6 @@ func (Uint32ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint32ArrayOutput) ToUint32ArrayOutput() Uint32ArrayOutput {
-	return o
-}
-
-func (o Uint32ArrayOutput) ToUint32ArrayOutputWithContext(ctx context.Context) Uint32ArrayOutput {
 	return o
 }
 
@@ -6227,7 +4611,6 @@ type Uint32MapInput interface {
 	Input
 
 	ToUint32MapOutput() Uint32MapOutput
-	ToUint32MapOutputWithContext(ctx context.Context) Uint32MapOutput
 }
 
 // Uint32Map is an input type for map[string]Uint32Input values.
@@ -6242,10 +4625,6 @@ func (in Uint32Map) ToUint32MapOutput() Uint32MapOutput {
 	return ToOutput(in).(Uint32MapOutput)
 }
 
-func (in Uint32Map) ToUint32MapOutputWithContext(ctx context.Context) Uint32MapOutput {
-	return ToOutputWithContext(ctx, in).(Uint32MapOutput)
-}
-
 // Uint32MapOutput is an Output that returns map[string]uint32 values.
 type Uint32MapOutput struct{ *OutputState }
 
@@ -6255,10 +4634,6 @@ func (Uint32MapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint32MapOutput) ToUint32MapOutput() Uint32MapOutput {
-	return o
-}
-
-func (o Uint32MapOutput) ToUint32MapOutputWithContext(ctx context.Context) Uint32MapOutput {
 	return o
 }
 
@@ -6275,7 +4650,6 @@ type Uint32ArrayMapInput interface {
 	Input
 
 	ToUint32ArrayMapOutput() Uint32ArrayMapOutput
-	ToUint32ArrayMapOutputWithContext(ctx context.Context) Uint32ArrayMapOutput
 }
 
 // Uint32ArrayMap is an input type for map[string]Uint32ArrayInput values.
@@ -6290,10 +4664,6 @@ func (in Uint32ArrayMap) ToUint32ArrayMapOutput() Uint32ArrayMapOutput {
 	return ToOutput(in).(Uint32ArrayMapOutput)
 }
 
-func (in Uint32ArrayMap) ToUint32ArrayMapOutputWithContext(ctx context.Context) Uint32ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Uint32ArrayMapOutput)
-}
-
 // Uint32ArrayMapOutput is an Output that returns map[string][]uint32 values.
 type Uint32ArrayMapOutput struct{ *OutputState }
 
@@ -6303,10 +4673,6 @@ func (Uint32ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint32ArrayMapOutput) ToUint32ArrayMapOutput() Uint32ArrayMapOutput {
-	return o
-}
-
-func (o Uint32ArrayMapOutput) ToUint32ArrayMapOutputWithContext(ctx context.Context) Uint32ArrayMapOutput {
 	return o
 }
 
@@ -6323,7 +4689,6 @@ type Uint32MapArrayInput interface {
 	Input
 
 	ToUint32MapArrayOutput() Uint32MapArrayOutput
-	ToUint32MapArrayOutputWithContext(ctx context.Context) Uint32MapArrayOutput
 }
 
 // Uint32MapArray is an input type for []Uint32MapInput values.
@@ -6338,10 +4703,6 @@ func (in Uint32MapArray) ToUint32MapArrayOutput() Uint32MapArrayOutput {
 	return ToOutput(in).(Uint32MapArrayOutput)
 }
 
-func (in Uint32MapArray) ToUint32MapArrayOutputWithContext(ctx context.Context) Uint32MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint32MapArrayOutput)
-}
-
 // Uint32MapArrayOutput is an Output that returns []map[string]uint32 values.
 type Uint32MapArrayOutput struct{ *OutputState }
 
@@ -6351,10 +4712,6 @@ func (Uint32MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint32MapArrayOutput) ToUint32MapArrayOutput() Uint32MapArrayOutput {
-	return o
-}
-
-func (o Uint32MapArrayOutput) ToUint32MapArrayOutputWithContext(ctx context.Context) Uint32MapArrayOutput {
 	return o
 }
 
@@ -6371,7 +4728,6 @@ type Uint64Input interface {
 	Input
 
 	ToUint64Output() Uint64Output
-	ToUint64OutputWithContext(ctx context.Context) Uint64Output
 }
 
 // Uint64 is an input type for uint64 values.
@@ -6386,16 +4742,8 @@ func (in Uint64) ToUint64Output() Uint64Output {
 	return ToOutput(in).(Uint64Output)
 }
 
-func (in Uint64) ToUint64OutputWithContext(ctx context.Context) Uint64Output {
-	return ToOutputWithContext(ctx, in).(Uint64Output)
-}
-
 func (in Uint64) ToUint64PtrOutput() Uint64PtrOutput {
-	return in.ToUint64PtrOutputWithContext(context.Background())
-}
-
-func (in Uint64) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
-	return in.ToUint64OutputWithContext(ctx).ToUint64PtrOutputWithContext(ctx)
+	return in.ToUint64Output().ToUint64PtrOutput()
 }
 
 // Uint64Output is an Output that returns uint64 values.
@@ -6410,16 +4758,8 @@ func (o Uint64Output) ToUint64Output() Uint64Output {
 	return o
 }
 
-func (o Uint64Output) ToUint64OutputWithContext(ctx context.Context) Uint64Output {
-	return o
-}
-
 func (o Uint64Output) ToUint64PtrOutput() Uint64PtrOutput {
-	return o.ToUint64PtrOutputWithContext(context.Background())
-}
-
-func (o Uint64Output) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint64) *uint64 {
+	return o.ApplyT(func(v uint64) *uint64 {
 		return &v
 	}).(Uint64PtrOutput)
 }
@@ -6431,7 +4771,6 @@ type Uint64PtrInput interface {
 	Input
 
 	ToUint64PtrOutput() Uint64PtrOutput
-	ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput
 }
 
 type uint64Ptr uint64
@@ -6450,10 +4789,6 @@ func (in *uint64Ptr) ToUint64PtrOutput() Uint64PtrOutput {
 	return ToOutput(in).(Uint64PtrOutput)
 }
 
-func (in *uint64Ptr) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
-	return ToOutputWithContext(ctx, in).(Uint64PtrOutput)
-}
-
 // Uint64PtrOutput is an Output that returns *uint64 values.
 type Uint64PtrOutput struct{ *OutputState }
 
@@ -6463,10 +4798,6 @@ func (Uint64PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Uint64PtrOutput) ToUint64PtrOutput() Uint64PtrOutput {
-	return o
-}
-
-func (o Uint64PtrOutput) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
 	return o
 }
 
@@ -6483,7 +4814,6 @@ type Uint64ArrayInput interface {
 	Input
 
 	ToUint64ArrayOutput() Uint64ArrayOutput
-	ToUint64ArrayOutputWithContext(ctx context.Context) Uint64ArrayOutput
 }
 
 // Uint64Array is an input type for []Uint64Input values.
@@ -6498,10 +4828,6 @@ func (in Uint64Array) ToUint64ArrayOutput() Uint64ArrayOutput {
 	return ToOutput(in).(Uint64ArrayOutput)
 }
 
-func (in Uint64Array) ToUint64ArrayOutputWithContext(ctx context.Context) Uint64ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint64ArrayOutput)
-}
-
 // Uint64ArrayOutput is an Output that returns []uint64 values.
 type Uint64ArrayOutput struct{ *OutputState }
 
@@ -6511,10 +4837,6 @@ func (Uint64ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint64ArrayOutput) ToUint64ArrayOutput() Uint64ArrayOutput {
-	return o
-}
-
-func (o Uint64ArrayOutput) ToUint64ArrayOutputWithContext(ctx context.Context) Uint64ArrayOutput {
 	return o
 }
 
@@ -6531,7 +4853,6 @@ type Uint64MapInput interface {
 	Input
 
 	ToUint64MapOutput() Uint64MapOutput
-	ToUint64MapOutputWithContext(ctx context.Context) Uint64MapOutput
 }
 
 // Uint64Map is an input type for map[string]Uint64Input values.
@@ -6546,10 +4867,6 @@ func (in Uint64Map) ToUint64MapOutput() Uint64MapOutput {
 	return ToOutput(in).(Uint64MapOutput)
 }
 
-func (in Uint64Map) ToUint64MapOutputWithContext(ctx context.Context) Uint64MapOutput {
-	return ToOutputWithContext(ctx, in).(Uint64MapOutput)
-}
-
 // Uint64MapOutput is an Output that returns map[string]uint64 values.
 type Uint64MapOutput struct{ *OutputState }
 
@@ -6559,10 +4876,6 @@ func (Uint64MapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint64MapOutput) ToUint64MapOutput() Uint64MapOutput {
-	return o
-}
-
-func (o Uint64MapOutput) ToUint64MapOutputWithContext(ctx context.Context) Uint64MapOutput {
 	return o
 }
 
@@ -6579,7 +4892,6 @@ type Uint64ArrayMapInput interface {
 	Input
 
 	ToUint64ArrayMapOutput() Uint64ArrayMapOutput
-	ToUint64ArrayMapOutputWithContext(ctx context.Context) Uint64ArrayMapOutput
 }
 
 // Uint64ArrayMap is an input type for map[string]Uint64ArrayInput values.
@@ -6594,10 +4906,6 @@ func (in Uint64ArrayMap) ToUint64ArrayMapOutput() Uint64ArrayMapOutput {
 	return ToOutput(in).(Uint64ArrayMapOutput)
 }
 
-func (in Uint64ArrayMap) ToUint64ArrayMapOutputWithContext(ctx context.Context) Uint64ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Uint64ArrayMapOutput)
-}
-
 // Uint64ArrayMapOutput is an Output that returns map[string][]uint64 values.
 type Uint64ArrayMapOutput struct{ *OutputState }
 
@@ -6607,10 +4915,6 @@ func (Uint64ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint64ArrayMapOutput) ToUint64ArrayMapOutput() Uint64ArrayMapOutput {
-	return o
-}
-
-func (o Uint64ArrayMapOutput) ToUint64ArrayMapOutputWithContext(ctx context.Context) Uint64ArrayMapOutput {
 	return o
 }
 
@@ -6627,7 +4931,6 @@ type Uint64MapArrayInput interface {
 	Input
 
 	ToUint64MapArrayOutput() Uint64MapArrayOutput
-	ToUint64MapArrayOutputWithContext(ctx context.Context) Uint64MapArrayOutput
 }
 
 // Uint64MapArray is an input type for []Uint64MapInput values.
@@ -6642,10 +4945,6 @@ func (in Uint64MapArray) ToUint64MapArrayOutput() Uint64MapArrayOutput {
 	return ToOutput(in).(Uint64MapArrayOutput)
 }
 
-func (in Uint64MapArray) ToUint64MapArrayOutputWithContext(ctx context.Context) Uint64MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint64MapArrayOutput)
-}
-
 // Uint64MapArrayOutput is an Output that returns []map[string]uint64 values.
 type Uint64MapArrayOutput struct{ *OutputState }
 
@@ -6655,10 +4954,6 @@ func (Uint64MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint64MapArrayOutput) ToUint64MapArrayOutput() Uint64MapArrayOutput {
-	return o
-}
-
-func (o Uint64MapArrayOutput) ToUint64MapArrayOutputWithContext(ctx context.Context) Uint64MapArrayOutput {
 	return o
 }
 
@@ -6675,7 +4970,6 @@ type Uint8Input interface {
 	Input
 
 	ToUint8Output() Uint8Output
-	ToUint8OutputWithContext(ctx context.Context) Uint8Output
 }
 
 // Uint8 is an input type for uint8 values.
@@ -6690,16 +4984,8 @@ func (in Uint8) ToUint8Output() Uint8Output {
 	return ToOutput(in).(Uint8Output)
 }
 
-func (in Uint8) ToUint8OutputWithContext(ctx context.Context) Uint8Output {
-	return ToOutputWithContext(ctx, in).(Uint8Output)
-}
-
 func (in Uint8) ToUint8PtrOutput() Uint8PtrOutput {
-	return in.ToUint8PtrOutputWithContext(context.Background())
-}
-
-func (in Uint8) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
-	return in.ToUint8OutputWithContext(ctx).ToUint8PtrOutputWithContext(ctx)
+	return in.ToUint8Output().ToUint8PtrOutput()
 }
 
 // Uint8Output is an Output that returns uint8 values.
@@ -6714,16 +5000,8 @@ func (o Uint8Output) ToUint8Output() Uint8Output {
 	return o
 }
 
-func (o Uint8Output) ToUint8OutputWithContext(ctx context.Context) Uint8Output {
-	return o
-}
-
 func (o Uint8Output) ToUint8PtrOutput() Uint8PtrOutput {
-	return o.ToUint8PtrOutputWithContext(context.Background())
-}
-
-func (o Uint8Output) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v uint8) *uint8 {
+	return o.ApplyT(func(v uint8) *uint8 {
 		return &v
 	}).(Uint8PtrOutput)
 }
@@ -6735,7 +5013,6 @@ type Uint8PtrInput interface {
 	Input
 
 	ToUint8PtrOutput() Uint8PtrOutput
-	ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput
 }
 
 type uint8Ptr uint8
@@ -6754,10 +5031,6 @@ func (in *uint8Ptr) ToUint8PtrOutput() Uint8PtrOutput {
 	return ToOutput(in).(Uint8PtrOutput)
 }
 
-func (in *uint8Ptr) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
-	return ToOutputWithContext(ctx, in).(Uint8PtrOutput)
-}
-
 // Uint8PtrOutput is an Output that returns *uint8 values.
 type Uint8PtrOutput struct{ *OutputState }
 
@@ -6767,10 +5040,6 @@ func (Uint8PtrOutput) ElementType() reflect.Type {
 }
 
 func (o Uint8PtrOutput) ToUint8PtrOutput() Uint8PtrOutput {
-	return o
-}
-
-func (o Uint8PtrOutput) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
 	return o
 }
 
@@ -6787,7 +5056,6 @@ type Uint8ArrayInput interface {
 	Input
 
 	ToUint8ArrayOutput() Uint8ArrayOutput
-	ToUint8ArrayOutputWithContext(ctx context.Context) Uint8ArrayOutput
 }
 
 // Uint8Array is an input type for []Uint8Input values.
@@ -6802,10 +5070,6 @@ func (in Uint8Array) ToUint8ArrayOutput() Uint8ArrayOutput {
 	return ToOutput(in).(Uint8ArrayOutput)
 }
 
-func (in Uint8Array) ToUint8ArrayOutputWithContext(ctx context.Context) Uint8ArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint8ArrayOutput)
-}
-
 // Uint8ArrayOutput is an Output that returns []uint8 values.
 type Uint8ArrayOutput struct{ *OutputState }
 
@@ -6815,10 +5079,6 @@ func (Uint8ArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint8ArrayOutput) ToUint8ArrayOutput() Uint8ArrayOutput {
-	return o
-}
-
-func (o Uint8ArrayOutput) ToUint8ArrayOutputWithContext(ctx context.Context) Uint8ArrayOutput {
 	return o
 }
 
@@ -6835,7 +5095,6 @@ type Uint8MapInput interface {
 	Input
 
 	ToUint8MapOutput() Uint8MapOutput
-	ToUint8MapOutputWithContext(ctx context.Context) Uint8MapOutput
 }
 
 // Uint8Map is an input type for map[string]Uint8Input values.
@@ -6850,10 +5109,6 @@ func (in Uint8Map) ToUint8MapOutput() Uint8MapOutput {
 	return ToOutput(in).(Uint8MapOutput)
 }
 
-func (in Uint8Map) ToUint8MapOutputWithContext(ctx context.Context) Uint8MapOutput {
-	return ToOutputWithContext(ctx, in).(Uint8MapOutput)
-}
-
 // Uint8MapOutput is an Output that returns map[string]uint8 values.
 type Uint8MapOutput struct{ *OutputState }
 
@@ -6863,10 +5118,6 @@ func (Uint8MapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint8MapOutput) ToUint8MapOutput() Uint8MapOutput {
-	return o
-}
-
-func (o Uint8MapOutput) ToUint8MapOutputWithContext(ctx context.Context) Uint8MapOutput {
 	return o
 }
 
@@ -6883,7 +5134,6 @@ type Uint8ArrayMapInput interface {
 	Input
 
 	ToUint8ArrayMapOutput() Uint8ArrayMapOutput
-	ToUint8ArrayMapOutputWithContext(ctx context.Context) Uint8ArrayMapOutput
 }
 
 // Uint8ArrayMap is an input type for map[string]Uint8ArrayInput values.
@@ -6898,10 +5148,6 @@ func (in Uint8ArrayMap) ToUint8ArrayMapOutput() Uint8ArrayMapOutput {
 	return ToOutput(in).(Uint8ArrayMapOutput)
 }
 
-func (in Uint8ArrayMap) ToUint8ArrayMapOutputWithContext(ctx context.Context) Uint8ArrayMapOutput {
-	return ToOutputWithContext(ctx, in).(Uint8ArrayMapOutput)
-}
-
 // Uint8ArrayMapOutput is an Output that returns map[string][]uint8 values.
 type Uint8ArrayMapOutput struct{ *OutputState }
 
@@ -6911,10 +5157,6 @@ func (Uint8ArrayMapOutput) ElementType() reflect.Type {
 }
 
 func (o Uint8ArrayMapOutput) ToUint8ArrayMapOutput() Uint8ArrayMapOutput {
-	return o
-}
-
-func (o Uint8ArrayMapOutput) ToUint8ArrayMapOutputWithContext(ctx context.Context) Uint8ArrayMapOutput {
 	return o
 }
 
@@ -6931,7 +5173,6 @@ type Uint8MapArrayInput interface {
 	Input
 
 	ToUint8MapArrayOutput() Uint8MapArrayOutput
-	ToUint8MapArrayOutputWithContext(ctx context.Context) Uint8MapArrayOutput
 }
 
 // Uint8MapArray is an input type for []Uint8MapInput values.
@@ -6946,10 +5187,6 @@ func (in Uint8MapArray) ToUint8MapArrayOutput() Uint8MapArrayOutput {
 	return ToOutput(in).(Uint8MapArrayOutput)
 }
 
-func (in Uint8MapArray) ToUint8MapArrayOutputWithContext(ctx context.Context) Uint8MapArrayOutput {
-	return ToOutputWithContext(ctx, in).(Uint8MapArrayOutput)
-}
-
 // Uint8MapArrayOutput is an Output that returns []map[string]uint8 values.
 type Uint8MapArrayOutput struct{ *OutputState }
 
@@ -6959,10 +5196,6 @@ func (Uint8MapArrayOutput) ElementType() reflect.Type {
 }
 
 func (o Uint8MapArrayOutput) ToUint8MapArrayOutput() Uint8MapArrayOutput {
-	return o
-}
-
-func (o Uint8MapArrayOutput) ToUint8MapArrayOutputWithContext(ctx context.Context) Uint8MapArrayOutput {
 	return o
 }
 
