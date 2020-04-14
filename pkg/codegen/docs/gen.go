@@ -436,11 +436,30 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		}
 		displayName = wbr(displayName)
 	}
+
+	displayName = cleanOptionalIdentifier(displayName, lang)
+	langTypeString = cleanOptionalIdentifier(langTypeString, lang)
+
 	return propertyType{
 		Name:        langTypeString,
 		DisplayName: displayName,
 		Link:        href,
 	}
+}
+
+// cleanOptionalIdentifier removes the type identifier (i.e. "?" in "string?").
+func cleanOptionalIdentifier(s, lang string) string {
+	switch lang {
+	case "nodejs":
+		return strings.TrimSuffix(s, "?")
+	case "go":
+		return strings.TrimPrefix(s, "*")
+	case "csharp":
+		return strings.TrimSuffix(s, "?")
+	case "python":
+		return s
+	}
+	return s
 }
 
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
