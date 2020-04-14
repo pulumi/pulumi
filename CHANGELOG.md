@@ -28,6 +28,9 @@ CHANGELOG
 - Fix Go codegen to emit config packages
   [#4388](https://github.com/pulumi/pulumi/pull/4388)
 
+- Treat config values set with `--path` that start with '0' as strings rather than numbers.
+  [#4393](https://github.com/pulumi/pulumi/pull/4393)
+
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
   [#4307](https://github.com/pulumi/pulumi/pull/4307)

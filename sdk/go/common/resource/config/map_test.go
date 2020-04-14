@@ -742,6 +742,70 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("true"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":true}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("false"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":false}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("10"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":10}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("0"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":0}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("-1"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":-1}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("00"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"00"}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("01"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"01"}`),
+			},
+		},
+		{
+			Key:   `my:outer.inner`,
+			Path:  true,
+			Value: NewValue("0123456"),
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"0123456"}`),
+			},
+		},
+		{
 			Key:   `my:array[0]`,
 			Path:  true,
 			Value: NewValue("value"),
@@ -968,9 +1032,41 @@ func TestSetSuccess(t *testing.T) {
 		{
 			Key:   `my:testKey[0]`,
 			Path:  true,
+			Value: NewValue("0"),
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`[0]`),
+			},
+		},
+		{
+			Key:   `my:testKey[0]`,
+			Path:  true,
 			Value: NewValue("-1"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[-1]`),
+			},
+		},
+		{
+			Key:   `my:testKey[0]`,
+			Path:  true,
+			Value: NewValue("00"),
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`["00"]`),
+			},
+		},
+		{
+			Key:   `my:testKey[0]`,
+			Path:  true,
+			Value: NewValue("01"),
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`["01"]`),
+			},
+		},
+		{
+			Key:   `my:testKey[0]`,
+			Path:  true,
+			Value: NewValue("0123456"),
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`["0123456"]`),
 			},
 		},
 		{
