@@ -272,23 +272,24 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
 //
-// The applier function must have the following signature:
+// The applier function must have one of the following signatures:
 //
+//    func (v U) T
 //    func (v U) (T, error)
 //
 // U must be assignable from the ElementType of the Output. If T is a type that has a registered Output type, the
 // result of ApplyT will be of the registered Output type, and can be used in an appropriate type assertion:
 //
 //    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyT(func(v string) (int, error) {
-//        return len(v), nil
+//    intOutput := stringOutput.ApplyT(func(v string) int {
+//        return len(v)
 //    }).(pulumi.IntOutput)
 //
 // Otherwise, the result will be of type AnyOutput:
 //
 //    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyT(func(v string) ([]rune, error) {
-//        return []rune(v), nil
+//    intOutput := stringOutput.ApplyT(func(v string) []rune {
+//        return []rune(v)
 //    }).(pulumi.AnyOutput)
 //
 func (o *OutputState) ApplyT(applier interface{}) Output {
