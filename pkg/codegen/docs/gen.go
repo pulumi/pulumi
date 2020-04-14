@@ -419,8 +419,10 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		// Links to anchor tags on the same page must be lower-cased.
 		href = "#" + strings.ToLower(tokenName)
 	default:
-		// Assume primitive/built-in type if no match for cases listed above.
-		href = docLanguageHelper.GetDocLinkForBuiltInType(t.String())
+		// Check if type is primitive/built-in type if no match for cases listed above.
+		if schema.IsPrimitiveType(t) {
+			href = docLanguageHelper.GetDocLinkForBuiltInType(t.String())
+		}
 	}
 
 	// Strip the namespace/module prefix for the type's display name.

@@ -50,11 +50,9 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
-// GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
-// Currently not using the typeName parameter because the returned link takes to a general page
-// containing info for all built in types. We could link deeper but the routes are
-// not easily decipherable just based on infering type so will need to create a map to map
-// the typeName to the url route. I figure we can do this at a later date if needed.
+// GetDocLinkForBuiltInType returns the C# URL for a built-in type.
+// Currently not using the typeName parameter because the returned link takes to a general
+// top -level page containing info for all built in types.
 func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 	return "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types"
 }

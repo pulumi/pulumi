@@ -52,9 +52,11 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return ""
 }
 
-// GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
+// GetDocLinkForBuiltInType returns the Python URL for a built-in type.
+// Currently not using the typeName parameter because the returned link takes to a general
+// top-level page containing info for all built in types.
 func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return ""
+	return "https://docs.python.org/3/library/stdtypes.html"
 }
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
