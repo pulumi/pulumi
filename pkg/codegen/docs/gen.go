@@ -1169,7 +1169,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		DeprecationMessage: r.DeprecationMessage,
 
 		ConstructorParams:      renderedCtorParams,
-		ConstructorParamsTyped: typedCtorPArams,
+		ConstructorParamsTyped: typedCtorParams,
 
 		ConstructorResource: mod.getConstructorResourceInfo(name),
 		ArgsRequired:        !allOptionalInputs,
