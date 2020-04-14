@@ -1157,7 +1157,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Notes:      mod.pkg.Attribution,
 	}
 
-	renderedCtorParams, typedCtorPArams := mod.genConstructors(r, allOptionalInputs)
+	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
 
 	stateParam := name + "State"
 	data := resourceDocArgs{
