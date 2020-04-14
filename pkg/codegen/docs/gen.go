@@ -418,6 +418,9 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		tokenName := tokenToName(t.Token)
 		// Links to anchor tags on the same page must be lower-cased.
 		href = "#" + strings.ToLower(tokenName)
+	default:
+		// Assume primitive/built-in type if no match for cases listed above.
+		href = docLanguageHelper.GetDocLinkForBuiltInType(t.String())
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
@@ -489,7 +492,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: nodejs.GetDocLinkForBuiltInType("string"),
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -535,7 +538,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: go_gen.GetDocLinkForBuiltInType("string"),
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -598,7 +601,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -891,9 +894,10 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 	return []formalParam{
 		{
 			Name: "name",
+
 			Type: propertyType{
 				Name: "string",
-				Link: nodejs.GetDocLinkForBuiltInType("string"),
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -939,7 +943,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: go_gen.GetDocLinkForBuiltInType("string"),
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -978,7 +982,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types",
+				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
