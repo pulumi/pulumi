@@ -66,7 +66,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
 
     "${ROOT}/scripts/build-and-publish-docker" "${NPM_VERSION}"
 
-    #"$(go env GOPATH)/src/github.com/pulumi/scripts/ci/build-package-docs.sh" pulumi
+    "$(go env GOPATH)/src/github.com/pulumi/scripts/ci/build-package-docs.sh" pulumi
 fi
 
 exit 0

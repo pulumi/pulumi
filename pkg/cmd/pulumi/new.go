@@ -43,7 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-  "github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
