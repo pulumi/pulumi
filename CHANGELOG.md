@@ -19,7 +19,7 @@ CHANGELOG
   
 - Fix handling of secret values in mock-based tests.
   [#4272](https://github.com/pulumi/pulumi/pull/4272)
-
+  
 - Automatic plugin acquisition for Go
   [#4297](https://github.com/pulumi/pulumi/pull/4297)
 
@@ -61,6 +61,9 @@ CHANGELOG
 
 - Fix Go SDK stack reference helpers to handle nil values
   [#4370](https://github.com/pulumi/pulumi/pull/4370)
+    
+- Add support for stack output to Github Action step output
+  [#4383](https://github.com/pulumi/pulumi/pull/4383)
 
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
