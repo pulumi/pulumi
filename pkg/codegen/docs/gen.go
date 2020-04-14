@@ -473,10 +473,10 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	// The non-schema-based k8s codegen does not apply a suffix to the input types.
 	if isKubernetesPackage(mod.pkg) {
 		argsType = name
-		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, argsType, true)
+		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
 	} else {
 		argsType = name + "Args"
-		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType)
+		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 	}
 
 	argsFlag := ""
@@ -505,7 +505,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "", "CustomResourceOptions"),
 			},
 		},
 	}
@@ -528,7 +528,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "Context"),
 			},
 		},
 		{
@@ -543,7 +543,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, argsType),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType),
 			},
 		},
 		{
@@ -551,7 +551,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "...",
 			Type: propertyType{
 				Name: "ResourceOption",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "ResourceOption"),
 			},
 		},
 	}
@@ -607,7 +607,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangTypeName),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName),
 			},
 		},
 		{
@@ -616,7 +616,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: " = null",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "", "Pulumi.CustomResourceOptions"),
 			},
 		},
 	}
@@ -672,17 +672,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				var outputTypeDocLink string
 				if resourceType {
 					if tyUsage.Input {
-						inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
+						inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
 					}
 					if tyUsage.Output {
-						outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
+						outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
 					}
 				} else {
 					if tyUsage.Input {
-						inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, inputObjLangType.Name, true)
+						inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
 					}
 					if tyUsage.Output {
-						outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg.Name, modName, outputObjLangType.Name, false)
+						outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
 					}
 				}
 				apiDocLinks[lang] = apiTypeDocLinks{
@@ -877,7 +877,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		resourceMap[lang] = propertyType{
 			Name:        resourceDisplayName,
 			DisplayName: displayName,
-			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, resourceTypeName),
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, resourceTypeName),
 		}
 	}
 
@@ -900,7 +900,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "Input<ID>",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ID"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "ID"),
 			},
 		},
 		{
@@ -908,7 +908,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, stateParam),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam),
 			},
 		},
 		{
@@ -916,7 +916,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "CustomResourceOptions"),
 			},
 		},
 	}
@@ -932,7 +932,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "Context"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "Context"),
 			},
 		},
 		{
@@ -946,7 +946,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "IDInput",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "IDInput"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "IDInput"),
 			},
 		},
 		{
@@ -954,7 +954,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, modName, stateParam),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam),
 			},
 		},
 		{
@@ -962,7 +962,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "...",
 			Type: propertyType{
 				Name: "ResourceOption",
-				Link: docLangHelper.GetDocLinkForResourceType("", "pulumi", "ResourceOption"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "pulumi", "ResourceOption"),
 			},
 		},
 	}
@@ -985,7 +985,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "Input<string>",
-				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.Input"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "", "Pulumi.Input"),
 			},
 		},
 		{
@@ -993,7 +993,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", stateParamFQDN),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", stateParamFQDN),
 			},
 		},
 		{
@@ -1002,7 +1002,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			DefaultValue: " = null",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForResourceType(nil, "", "Pulumi.CustomResourceOptions"),
 			},
 		},
 	}

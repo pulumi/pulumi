@@ -33,17 +33,17 @@ type DocLanguageHelper struct{}
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	return ""
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName string, input bool) string {
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, modName, typeName string, input bool) string {
 	return ""
 }
 
 // GetDocLinkForFunctionInputOrOutputType is not implemented at this time for Python.
-func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, modName, typeName string, input bool) string {
 	return ""
 }
 

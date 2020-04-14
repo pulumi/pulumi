@@ -36,10 +36,10 @@ type DocLanguageHelper struct {
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
-func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleName string, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
 	var path string
-	if packageName != "" {
-		path = fmt.Sprintf("%s/%s", packageName, moduleName)
+	if pkg != nil && pkg.Name != "" {
+		path = fmt.Sprintf("%s/%s", pkg.Name, moduleName)
 	} else {
 		path = moduleName
 	}
@@ -47,15 +47,22 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(packageName string, moduleN
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
 
-	if packageName != "" {
-		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/go/%s?tab=doc#%s", packageName, path, typeName)
+	moduleVersion := ""
+	if pkg.Version != nil {
+		if pkg.Version.Major > 1 {
+			moduleVersion = fmt.Sprintf("v%d/", pkg.Version.Major)
+		}
 	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/%s?tab=doc#%s", path, typeName)
+
+	if pkg.Name != "" {
+		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/%sgo/%s?tab=doc#%s", pkg.Name, path, moduleVersion, typeName)
+	}
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/%s?tab=doc#%s", moduleVersion, path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.
-func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
-	link := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
+	link := d.GetDocLinkForResourceType(pkg, moduleName, typeName)
 	if !input {
 		return link + "Output"
 	}
@@ -63,8 +70,8 @@ func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, m
 }
 
 // GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
-func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, moduleName, typeName string, input bool) string {
-	link := d.GetDocLinkForResourceType(packageName, moduleName, typeName)
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
+	link := d.GetDocLinkForResourceType(pkg, moduleName, typeName)
 	if !input {
 		return link
 	}

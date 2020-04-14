@@ -19,7 +19,6 @@
 package nodejs
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -33,38 +32,36 @@ type DocLanguageHelper struct{}
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
-func (d DocLanguageHelper) GetDocLinkForResourceType(packageName, modName, typeName string) string {
-	if packageName == "" && modName == "" {
-		panic(errors.New("packageName and modName cannot be empty"))
-	}
-
+func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	var path string
 	switch {
-	case packageName != "" && modName != "":
-		path = fmt.Sprintf("%s/%s", packageName, modName)
-	case packageName == "" && modName != "":
+	case pkg == nil:
+		path = "pulumi"
+	case pkg.Name != "" && modName != "":
+		path = fmt.Sprintf("%s/%s", pkg.Name, modName)
+	case pkg.Name == "" && modName != "":
 		path = modName
-	case packageName != "" && modName == "":
-		path = packageName
+	case pkg.Name != "" && modName == "":
+		path = pkg.Name
 	}
 	typeName = strings.ReplaceAll(typeName, "?", "")
 	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/#%s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
-func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName string, input bool) string {
+func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, modName, typeName string, input bool) string {
 	typeName = strings.TrimSuffix(typeName, "?")
 	parts := strings.Split(typeName, ".")
 	typeName = parts[len(parts)-1]
 	if input {
-		return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", packageName, typeName)
+		return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/input/#%s", pkg.Name, typeName)
 	}
-	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/output/#%s", packageName, typeName)
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/%s/types/output/#%s", pkg.Name, typeName)
 }
 
 // GetDocLinkForFunctionInputOrOutputType returns the doc link for an input or output type of a Function.
-func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(packageName, modName, typeName string, input bool) string {
-	return d.GetDocLinkForResourceInputOrOutputType(packageName, modName, typeName, input)
+func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, modName, typeName string, input bool) string {
+	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
 // GetDocLinkForBuiltInType returns the URL for a built-in type.
