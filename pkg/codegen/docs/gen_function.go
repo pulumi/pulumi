@@ -88,7 +88,7 @@ func (mod *modContext) getFunctionResourceInfo(resourceTypeName string) map[stri
 		resourceMap[lang] = propertyType{
 			Name:        resultTypeName,
 			DisplayName: displayName,
-			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, resultTypeName),
+			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, resultTypeName),
 		}
 	}
 
@@ -107,7 +107,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 			OptionalFlag: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType),
 			},
 		})
 	}
@@ -116,7 +116,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 		OptionalFlag: "?",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType("pulumi", "", "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForResourceType(nil, "", "InvokeOptions"),
 		},
 	})
 
@@ -149,7 +149,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, resourceName string) []
 			OptionalFlag: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, mod.mod, argsType),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType),
 			},
 		})
 	}
@@ -189,7 +189,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 			DefaultValue: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg.Name, "", argLangTypeName),
+				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName),
 			},
 		})
 	}
@@ -200,7 +200,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 		DefaultValue: " = null",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType("", "", "Pulumi.InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForResourceType(nil, "", "Pulumi.InvokeOptions"),
 		},
 	})
 	return params

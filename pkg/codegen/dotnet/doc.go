@@ -37,7 +37,9 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
 	var packageNamespace string
-	if pkg.Name != "" {
+	if pkg == nil {
+		packageNamespace = ""
+	} else if pkg.Name != "" {
 		packageNamespace = "." + Title(pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)

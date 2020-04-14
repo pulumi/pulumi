@@ -34,12 +34,14 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
-	if pkg.Name == "" && modName == "" {
-		panic(errors.New("packageName and modName cannot be empty"))
+	if pkg == nil && modName == "" {
+		panic(errors.New("must provider either a non-nil package or a non-empty modName"))
 	}
 
 	var path string
 	switch {
+	case pkg == nil:
+		path = "pulumi"
 	case pkg.Name != "" && modName != "":
 		path = fmt.Sprintf("%s/%s", pkg.Name, modName)
 	case pkg.Name == "" && modName != "":

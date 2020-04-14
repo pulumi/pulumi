@@ -38,7 +38,7 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
 	var path string
-	if pkg.Name != "" {
+	if pkg != nil && pkg.Name != "" {
 		path = fmt.Sprintf("%s/%s", pkg.Name, moduleName)
 	} else {
 		path = moduleName

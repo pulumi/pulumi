@@ -55,16 +55,25 @@ var testPackageSpec = schema.PackageSpec{
 	},
 }
 
+func getTestPackage(t *testing.T) *schema.Package {
+	t.Helper()
+
+	pkg, err := schema.ImportSpec(testPackageSpec)
+	assert.NoError(t, err, "could not import the test package spec")
+	return pkg
+}
+
 func TestGetDocLinkForResourceType(t *testing.T) {
+	pkg := getTestPackage(t)
+
 	d := DocLanguageHelper{}
 	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Bucket.html"
-	link := d.GetDocLinkForResourceType("Aws", "doesNotMatter", "Pulumi.Aws.S3.Bucket")
+	link := d.GetDocLinkForResourceType(pkg, "doesNotMatter", "Pulumi.Aws.S3.Bucket")
 	assert.Equal(t, expected, link)
 }
 
 func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
-	pkg, err := schema.ImportSpec(testPackageSpec)
-	assert.NoError(t, err, "could not import the test package spec")
+	pkg := getTestPackage(t)
 
 	namespaces := map[string]string{
 		"s3": "S3",
@@ -76,6 +85,6 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	// Generate the type string for the property type and use that to generate the doc link.
 	propertyType := pkg.Resources[0].InputProperties[0].Type
 	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true, true)
-	link := d.GetDocLinkForResourceInputOrOutputType("Aws", "doesNotMatter", typeString, true)
+	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "doesNotMatter", typeString, true)
 	assert.Equal(t, expected, link)
 }
