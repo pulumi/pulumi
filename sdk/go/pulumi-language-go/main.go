@@ -34,7 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-  "github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
