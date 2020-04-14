@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (unreleased)
-_(none)_
+- Fix Go SDK secret propagation for Resource inputs/outputs.
+  [#4387](https://github.com/pulumi/pulumi/pull/4387)
 
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
