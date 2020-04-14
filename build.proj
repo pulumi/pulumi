@@ -265,7 +265,7 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
 
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(PulumiPackagesToBuild.Identity)"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v2/version.Version=$(Version)&quot; %(PulumiPackagesToBuild.Identity)"
        EnvironmentVariables="GOBIN=$(PulumiBin)"
        WorkingDirectory="$(PkgDirectory)"/>
   </Target>
