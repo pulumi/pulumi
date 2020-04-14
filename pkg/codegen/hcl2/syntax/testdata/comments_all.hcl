@@ -47,9 +47,9 @@ block /*label*/ label /*"label2"*/ "label2" /*{*/ { /*{*/
 		//scopeTraversal
 		scopeTraversal /*=*/ = /*foo*/ foo /*.*/ . /*bar*/ bar /*.*/ . /*baz*/ baz /*baz*/
 		//attrSplat
-		attrSplat /*=*/ = /*foo*/ foo /*.*/ . /***/ * /*.*/ . /*bar*/ bar /*bar*/
+		attrSplat /*=*/ = /*foo*/ foo /*.*/ . /*✱*/ * /*.*/ . /*bar*/ bar /*bar*/
 		//indexSplat
-		indexSplat /*=*/ = /*foo*/ foo /*[*/ [ /***/ * /*]*/ ] /*.*/ . /*bar*/ bar /*bar*/
+		indexSplat /*=*/ = /*foo*/ foo /*[*/ [ /*✱*/ * /*]*/ ] /*.*/ . /*bar*/ bar /*bar*/
 		//template
 		template /*=*/ = /*"*/ "foo ${ /*bar*/ bar /*bar*/ } baz ${ /*qux*/ qux /*qux*/ }" /*"*/
 		//tupleCons

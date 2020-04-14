@@ -54,10 +54,7 @@ func (a *Attribute) Format(f fmt.State, c rune) {
 }
 
 func (a *Attribute) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%v% v% v",
-		a.Tokens.GetName().Or(hclsyntax.TokenIdent, a.Name),
-		a.Tokens.GetEquals().Or(hclsyntax.TokenEqual),
-		a.Value)
+	p.fprintf(w, "%v% v% v", a.Tokens.GetName(a.Name), a.Tokens.GetEquals(), a.Value)
 }
 
 func (a *Attribute) Type() Type {
