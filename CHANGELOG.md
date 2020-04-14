@@ -5,6 +5,9 @@ CHANGELOG
 - Fix Go SDK secret propagation for Resource inputs/outputs.
   [#4387](https://github.com/pulumi/pulumi/pull/4387)
 
+- Fix Go codegen to emit config packages
+  [#4388](https://github.com/pulumi/pulumi/pull/4388)
+
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
   [#4307](https://github.com/pulumi/pulumi/pull/4307)
