@@ -219,12 +219,15 @@ func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbol
 		return &ErrorExpression{Syntax: syntax, exprType: DynamicType}, diagnostics
 	}
 
+	traversal := hcl.Traversal{hcl.TraverseRoot{Name: "", SrcRange: syntax.SrcRange}}
 	return &ScopeTraversalExpression{
 		Syntax: &hclsyntax.ScopeTraversalExpr{
-			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "<anonymous>", SrcRange: syntax.SrcRange}},
+			Traversal: traversal,
 			SrcRange:  syntax.SrcRange,
 		},
-		Parts: []Traversable{lv},
+		RootName:  "",
+		Parts:     []Traversable{lv},
+		Traversal: traversal,
 	}, diagnostics
 }
 
@@ -248,6 +251,9 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 	diagnostics = append(diagnostics, typecheckDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.BinaryOpTokens)
+	if tokens == nil {
+		tokens = _syntax.NewBinaryOpTokens(syntax.Op)
+	}
 	return &BinaryOpExpression{
 		Syntax:       syntax,
 		Tokens:       tokens,
@@ -372,9 +378,14 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 		liftArgs = append(liftArgs, condition)
 	}
 
+	tokens := b.tokens.ForNode(syntax)
+	if tokens == nil {
+		tokens = _syntax.NewForTokens(syntax.KeyVar, syntax.ValVar, syntax.KeyExpr != nil, syntax.Group,
+			syntax.CondExpr != nil)
+	}
 	return &ForExpression{
 		Syntax:        syntax,
-		Tokens:        b.tokens.ForNode(syntax),
+		Tokens:        tokens,
 		KeyVariable:   keyVariable,
 		ValueVariable: valueVariable,
 		Collection:    collection,
@@ -396,6 +407,9 @@ func (b *expressionBinder) bindFunctionCallExpression(
 	var diagnostics hcl.Diagnostics
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.FunctionCallTokens)
+	if tokens == nil {
+		tokens = _syntax.NewFunctionCallTokens(syntax.Name, len(syntax.Args))
+	}
 
 	// Bind the function's arguments.
 	args := make([]Expression, len(syntax.Args))
@@ -474,6 +488,9 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 	diagnostics = append(diagnostics, partDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.IndexTokens)
+	if tokens == nil {
+		tokens = _syntax.NewIndexTokens()
+	}
 	return &IndexExpression{
 		Syntax:     syntax,
 		Tokens:     tokens,
@@ -501,6 +518,9 @@ func (b *expressionBinder) bindLiteralValueExpression(
 	}
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
+	if tokens == nil {
+		tokens = _syntax.NewLiteralValueTokens(v)
+	}
 	return &LiteralValueExpression{
 		Syntax:   syntax,
 		Tokens:   tokens,
@@ -563,6 +583,9 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 	}
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ObjectConsTokens)
+	if tokens == nil {
+		tokens = _syntax.NewObjectConsTokens(len(syntax.Items))
+	}
 	return &ObjectConsExpression{
 		Syntax:   syntax,
 		Tokens:   tokens,
@@ -581,6 +604,9 @@ func (b *expressionBinder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKey
 			})
 			lit := expr.(*LiteralValueExpression)
 			lit.Tokens, _ = b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
+			if lit.Tokens == nil {
+				lit.Tokens = _syntax.NewLiteralValueTokens(cty.StringVal(name))
+			}
 			return lit, diags
 		}
 	}
@@ -598,6 +624,9 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	diagnostics = append(diagnostics, partDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.RelativeTraversalTokens)
+	if tokens == nil {
+		tokens = _syntax.NewRelativeTraversalTokens(syntax.Traversal)
+	}
 	return &RelativeTraversalExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
@@ -614,6 +643,9 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 	syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ScopeTraversalTokens)
+	if tokens == nil {
+		tokens = _syntax.NewScopeTraversalTokens(syntax.Traversal)
+	}
 
 	rootName := syntax.Traversal.RootName()
 	def, ok := b.scope.BindReference(rootName)
@@ -669,7 +701,7 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	}
 
 	item := &Variable{
-		Name:         "<anonymous>",
+		Name:         "",
 		VariableType: elementType,
 	}
 	b.anonSymbols[syntax.Item] = item
@@ -678,6 +710,9 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	diagnostics = append(diagnostics, eachDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.SplatTokens)
+	if tokens == nil {
+		tokens = _syntax.NewSplatTokens(false)
+	}
 	return &SplatExpression{
 		Syntax:   syntax,
 		Tokens:   tokens,
@@ -699,6 +734,9 @@ func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr
 	}
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.TemplateTokens)
+	if tokens == nil {
+		tokens = _syntax.NewTemplateTokens()
+	}
 	return &TemplateExpression{
 		Syntax:   syntax,
 		Tokens:   tokens,
@@ -748,6 +786,9 @@ func (b *expressionBinder) bindTupleConsExpression(syntax *hclsyntax.TupleConsEx
 	}
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.TupleConsTokens)
+	if tokens == nil {
+		tokens = _syntax.NewTupleConsTokens(len(syntax.Exprs))
+	}
 	return &TupleConsExpression{
 		Syntax:      syntax,
 		Tokens:      tokens,
@@ -773,6 +814,9 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	diagnostics = append(diagnostics, typecheckDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.UnaryOpTokens)
+	if tokens == nil {
+		tokens = _syntax.NewUnaryOpTokens(syntax.Op)
+	}
 	return &UnaryOpExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
