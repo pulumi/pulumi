@@ -61,7 +61,7 @@ echo "Publishing containers..."
 for container in pulumi actions; do
     echo "- pulumi/${container}"
     docker push "pulumi/${container}:${CLI_VERSION}"
-    docker push "pulumi/${container}:latest"
+    #docker push "pulumi/${container}:latest"
 done
 
 docker logout

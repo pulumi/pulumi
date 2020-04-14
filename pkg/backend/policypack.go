@@ -18,10 +18,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
-
-	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.

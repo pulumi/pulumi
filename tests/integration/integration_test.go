@@ -12,17 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/resource/config"
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
 )
 
 const WindowsOS = "windows"
@@ -82,7 +81,7 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -93,7 +92,7 @@ func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -104,7 +103,7 @@ func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun_main"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 	})
@@ -189,7 +188,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		assert.Equal(t, "Updating (main-abs):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -205,7 +204,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		assert.Equal(t, "Updating (main-parent):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -287,7 +286,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
@@ -375,7 +374,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
   "foo": 42,
@@ -995,7 +994,7 @@ func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -1270,7 +1269,7 @@ func TestStackReferenceGo(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk",
+			"github.com/pulumi/pulumi/sdk/v2",
 		},
 		Quick: true,
 		Config: map[string]string{

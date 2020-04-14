@@ -125,7 +125,7 @@ namespace Pulumi
                     throw new NotSupportedException($"Mulitple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
 
                 deployment = new Deployment(engine, monitor, options);
-                Instance = deployment;
+                Instance = new DeploymentInstance(deployment);
             }
 
             try
@@ -159,7 +159,7 @@ namespace Pulumi
 
                 Serilog.Log.Debug("Creating new Deployment.");
                 var deployment = new Deployment();
-                Instance = deployment;
+                Instance = new DeploymentInstance(deployment);
                 return deployment._runner;
             }
         }

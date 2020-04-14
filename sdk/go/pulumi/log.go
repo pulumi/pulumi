@@ -17,7 +17,7 @@
 package pulumi
 
 import (
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"golang.org/x/net/context"
 )
 

@@ -33,9 +33,9 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -92,6 +92,11 @@ func csharpIdentifier(s string) string {
 	default:
 		return s
 	}
+}
+
+func isImmutableArrayType(t schema.Type, wrapInput bool) bool {
+	_, isArray := t.(*schema.ArrayType)
+	return isArray && !wrapInput
 }
 
 func isValueType(t schema.Type) bool {
@@ -607,9 +612,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	optionsType := "CustomResourceOptions"
-	if r.IsProvider {
-		optionsType = "ResourceOptions"
-	}
 
 	tok := r.Token
 	if r.IsProvider {
@@ -626,7 +628,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
-	fmt.Fprintf(w, "            : base(\"%s\", name, args ?? ResourceArgs.Empty, MakeResourceOptions(options, \"\"))\n", tok)
+	fmt.Fprintf(w, "            : base(\"%s\", name, args ?? new %sArgs(), MakeResourceOptions(options, \"\"))\n", tok, className)
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
@@ -740,19 +742,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
-	methodName := tokenToName(fun.Token)
+	className := tokenToName(fun.Token)
 
 	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token))
 	fmt.Fprintf(w, "{\n")
 
-	// Open the partial class we'll use for datasources.
-	// TODO(pdg): this needs a better name that is guaranteed to be unique.
-	fmt.Fprintf(w, "    public static partial class Invokes\n")
-	fmt.Fprintf(w, "    {\n")
-
 	var typeParameter string
 	if fun.Outputs != nil {
-		typeParameter = fmt.Sprintf("<%sResult>", methodName)
+		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
 	var argsParamDef string
@@ -769,16 +766,22 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			argsDefault, sigil = " = null", "?"
 		}
 
-		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", methodName, sigil, argsDefault)
-		argsParamRef = "args ?? InvokeArgs.Empty"
+		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
+		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
+	// Open the class we'll use for datasources.
+	fmt.Fprintf(w, "    public static class %s\n", className)
+	fmt.Fprintf(w, "    {\n")
+
 	// Emit the doc comment, if any.
-	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "csharp"), "        ")
+	printComment(w, fun.Comment, "        ")
 
 	// Emit the datasource method.
-	fmt.Fprintf(w, "        public static Task%s %s(%sInvokeOptions? options = null)\n", typeParameter, methodName, argsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n", typeParameter, fun.Token, argsParamRef)
+	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
+		typeParameter, argsParamDef)
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
+		typeParameter, fun.Token, argsParamRef)
 
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
@@ -789,7 +792,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 		args := &plainType{
 			mod:                   mod,
-			name:                  methodName + "Args",
+			name:                  className + "Args",
 			baseClass:             "InvokeArgs",
 			propertyTypeQualifier: "Inputs",
 			properties:            fun.Inputs.Properties,
@@ -803,7 +806,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 		res := &plainType{
 			mod:                   mod,
-			name:                  methodName + "Result",
+			name:                  className + "Result",
 			propertyTypeQualifier: "Outputs",
 			properties:            fun.Outputs.Properties,
 		}
@@ -961,7 +964,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 				typ := mod.typeString(prop.Type, "Types", false, false, false /*wrapInput*/, false, !prop.IsRequired)
 
 				initializer := ""
-				if !prop.IsRequired {
+				if !prop.IsRequired && !isValueType(prop.Type) && !isImmutableArrayType(prop.Type, false) {
 					initializer = " = null!;"
 				}
 
@@ -1060,6 +1063,7 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			addFile("Config.cs", config)
+			return nil
 		}
 	}
 

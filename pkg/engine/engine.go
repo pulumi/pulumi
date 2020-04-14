@@ -17,9 +17,9 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/cancel"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // UpdateInfo abstracts away information about an apply, preview, or destroy.

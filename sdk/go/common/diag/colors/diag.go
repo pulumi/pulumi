@@ -15,7 +15,7 @@
 package colors
 
 import (
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type Colorization string

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
 // pythonKeywords is a map of reserved keywords used by python 2 and 3. We use this to avoid generating unspeakable

@@ -71,16 +71,16 @@ Pulumi.CustomTimeouts.Update.set -> void
 Pulumi.DictionaryResourceArgs
 Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
+Pulumi.DeploymentInstance
+Pulumi.DeploymentInstance.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
+Pulumi.DeploymentInstance.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
+Pulumi.DeploymentInstance.IsDryRun.get -> bool
+Pulumi.DeploymentInstance.ProjectName.get -> string
+Pulumi.DeploymentInstance.StackName.get -> string
 Pulumi.FileArchive
 Pulumi.FileArchive.FileArchive(string path) -> void
 Pulumi.FileAsset
 Pulumi.FileAsset.FileAsset(string path) -> void
-Pulumi.IDeployment
-Pulumi.IDeployment.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
-Pulumi.IDeployment.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
-Pulumi.IDeployment.IsDryRun.get -> bool
-Pulumi.IDeployment.ProjectName.get -> string
-Pulumi.IDeployment.StackName.get -> string
 Pulumi.Input<T>
 Pulumi.InputArgs
 Pulumi.InputArgs.InputArgs() -> void
@@ -224,7 +224,7 @@ override Pulumi.Union<T0, T1>.GetHashCode() -> int
 override Pulumi.Union<T0, T1>.ToString() -> string
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ComponentResourceOptions options1, Pulumi.ComponentResourceOptions options2) -> Pulumi.ComponentResourceOptions
 static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1, Pulumi.CustomResourceOptions options2) -> Pulumi.CustomResourceOptions
-static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
+static Pulumi.Deployment.Instance.get -> Pulumi.DeploymentInstance
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func) -> System.Threading.Tasks.Task<int>

@@ -98,7 +98,7 @@ namespace Pulumi.Tests
             mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
                 .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
 
-            Deployment.Instance = mock.Object;
+            Deployment.Instance = new DeploymentInstance(mock.Object);
 
             // Act
             var stack = new T();

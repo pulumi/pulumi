@@ -15,8 +15,8 @@
 package hcl2
 
 import (
-	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 const (

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
-import * as grpc from "grpc";
 import * as path from "path";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";

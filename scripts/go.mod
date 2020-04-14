@@ -1,7 +1,7 @@
-module github.com/pulumi/pulumi/scripts
+module github.com/pulumi/pulumi/scripts/v2
 
 go 1.13
 
-require github.com/pulumi/pulumi/sdk v0.0.0-00010101000000-000000000000
+require github.com/pulumi/pulumi/sdk/v2 v2.0.0-beta.2
 
-replace github.com/pulumi/pulumi/sdk => ../sdk
+replace github.com/pulumi/pulumi/sdk/v2 => ../sdk

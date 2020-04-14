@@ -28,16 +28,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/sdk/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
 )
 
 func TestStackCommands(t *testing.T) {
@@ -219,7 +218,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
 		stackFile := path.Join(e.RootPath, "stack.json")
@@ -264,7 +263,7 @@ func TestStackCommands(t *testing.T) {
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 	})
 }
@@ -308,7 +307,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
@@ -324,7 +323,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi destroy.
 		before = time.Now().UnixNano()
-		e.RunCommand("pulumi", "destroy", "--non-interactive", "--skip-preview")
+		e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.

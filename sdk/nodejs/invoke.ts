@@ -36,8 +36,12 @@ export interface InvokeOptions {
     version?: string;
 
     /**
-     * Invoke this function asynchronously.  If 'true' is passed in here, then an invoked function
-     * will only supply the `Promise<>` side of its result.
+     * Invoke this data source function asynchronously.  Defaults to `true` if unspecified.
+     *
+     * When `true`, only the `Promise<>` side of the invoke result is present.  Explicitly pass in
+     * `false` to get the non-Promise side of the result.  Invoking data source functions
+     * synchronously is deprecated.  The ability to do this will be removed at a later point in
+     * time.
      */
     async?: boolean;
 }

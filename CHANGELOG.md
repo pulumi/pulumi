@@ -1,7 +1,27 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## 2.0.0 (Unreleased)
+=======
+- CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
+  another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
+  explicitly required to proceed in non-interactive scenarios. This affects:
+   * `pulumi destroy`
+   * `pulumi new`
+   * `pulumi refresh`
+   * `pulumi up`
+
+- Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
+  another library.
+
+- @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
+
+- All data-source invocations are now asynchronous (Promise-returning) by default.
+
+- C# code generation switched to schema.
+
+- .NET API: replace `IDeployment` interface with `DeploymentInstance` class.
+
 - Fix Go SDK secret propagation for Resource inputs/outputs.
   [#4387](https://github.com/pulumi/pulumi/pull/4387)
 
@@ -37,10 +57,10 @@ CHANGELOG
   [#4321](https://github.com/pulumi/pulumi/pull/4321)
 
 - Make prebuilt executables opt-in only for the Go SDK
- [#4338](https://github.com/pulumi/pulumi/pull/4338)
+  [#4338](https://github.com/pulumi/pulumi/pull/4338)
 
 - Support the `binary` option (prebuilt executables) for the .NET SDK
- [#4355](https://github.com/pulumi/pulumi/pull/4355)
+  [#4355](https://github.com/pulumi/pulumi/pull/4355)
 
 - Add helper methods for stack outputs in the Go SDK
   [#4341](https://github.com/pulumi/pulumi/pull/4341)
@@ -75,7 +95,7 @@ CHANGELOG
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
-
+  
 - Allow users to specify an alternate backend URL when using the GitHub Actions container with the env var `PULUMI_BACKEND_URL`.
   [#4243](https://github.com/pulumi/pulumi/pull/4243)
 
