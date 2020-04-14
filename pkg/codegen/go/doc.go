@@ -35,14 +35,20 @@ type DocLanguageHelper struct {
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType returns the doc link for a Pulumi type.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	moduleVersion := ""
+	if pkg.Version != nil {
+		if pkg.Version.Major > 1 {
+			moduleVersion = fmt.Sprintf("v%d/", pkg.Version.Major)
+		}
+	}
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/pulumi?tab=doc#%s", moduleVersion, typeName)
+}
+
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
-	var path string
-	if pkg != nil && pkg.Name != "" {
-		path = fmt.Sprintf("%s/%s", pkg.Name, moduleName)
-	} else {
-		path = moduleName
-	}
+	path := fmt.Sprintf("%s/%s", pkg.Name, moduleName)
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
@@ -54,10 +60,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, module
 		}
 	}
 
-	if pkg.Name != "" {
-		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/%sgo/%s?tab=doc#%s", pkg.Name, path, moduleVersion, typeName)
-	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/%s?tab=doc#%s", moduleVersion, path, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/%sgo/%s?tab=doc#%s", pkg.Name, moduleVersion, path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.
