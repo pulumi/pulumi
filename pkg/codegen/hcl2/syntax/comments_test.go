@@ -3,6 +3,7 @@ package syntax
 import (
 	"bytes"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -16,7 +17,7 @@ func commentString(trivia []Trivia) string {
 	for _, t := range trivia {
 		if comment, ok := t.(Comment); ok {
 			for _, l := range comment.Lines {
-				s += l
+				s += strings.Replace(l, "✱", "*", -1)
 			}
 		}
 	}
