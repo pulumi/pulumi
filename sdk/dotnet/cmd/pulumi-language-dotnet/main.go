@@ -210,7 +210,7 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 	// expected output should be like so:
 	//
 	//    Project 'Aliases' has the following package references
-	//    [netcoreapp3.0]:
+	//    [netcoreapp3.1]:
 	//    Top-level Package      Requested                        Resolved
 	//    > Pulumi               1.5.0-preview-alpha.1572911568   1.5.0-preview-alpha.1572911568
 	//
