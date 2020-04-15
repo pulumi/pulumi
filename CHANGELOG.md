@@ -34,6 +34,10 @@ CHANGELOG
 - Remove `{Apply,To*Output}WithContext` methods from the Go SDK.
   [#4396](https://github.com/pulumi/pulumi/pull/4396)
 
+- Switch .NET projects to .NET Core 3.1
+  [#4400](https://github.com/pulumi/pulumi/pull/4400)
+
+
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
   [#4307](https://github.com/pulumi/pulumi/pull/4307)

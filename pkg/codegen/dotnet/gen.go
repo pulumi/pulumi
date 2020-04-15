@@ -891,6 +891,37 @@ func (mod *modContext) genHeader(w io.Writer, using []string) {
 	}
 }
 
+func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string) {
+	propertyType := mod.typeString(
+		schemaType, "Types", false, false, false /*wrapInputs*/, false /*requireInitializers*/, false)
+
+	var getFunc string
+	nullableSigil := "?"
+	switch schemaType {
+	case schema.StringType:
+		getFunc = "Get"
+	case schema.BoolType:
+		getFunc = "GetBoolean"
+	case schema.IntType:
+		getFunc = "GetInt32"
+	case schema.NumberType:
+		getFunc = "GetDouble"
+	default:
+		switch t := schemaType.(type) {
+		case *schema.TokenType:
+			if t.UnderlyingType != nil {
+				return mod.getConfigProperty(t.UnderlyingType)
+			}
+		}
+
+		getFunc = "GetObject<" + propertyType + ">"
+		if _, ok := schemaType.(*schema.ArrayType); ok {
+			nullableSigil = ""
+		}
+	}
+	return propertyType + nullableSigil, getFunc
+}
+
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
@@ -909,26 +940,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		propertyType := mod.typeString(
-			p.Type, "Types", false, false, false /*wrapInputs*/, false /*requireInitializers*/, false)
-
-		var getFunc string
-		nullableSigil := "?"
-		switch p.Type {
-		case schema.StringType:
-			getFunc = "Get"
-		case schema.BoolType:
-			getFunc = "GetBoolean"
-		case schema.IntType:
-			getFunc = "GetInt32"
-		case schema.NumberType:
-			getFunc = "GetDouble"
-		default:
-			getFunc = "GetObject<" + propertyType + ">"
-			if _, ok := p.Type.(*schema.ArrayType); ok {
-				nullableSigil = ""
-			}
-		}
+		propertyType, getFunc := mod.getConfigProperty(p.Type)
 
 		propertyName := strings.Title(p.Name)
 
@@ -942,7 +954,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		}
 
 		printComment(w, p.Comment, "        ")
-		fmt.Fprintf(w, "        public static %s%s %s { get; set; } = %s;\n", propertyType, nullableSigil, propertyName, initializer)
+		fmt.Fprintf(w, "        public static %s %s { get; set; } = %s;\n", propertyType, propertyName, initializer)
 		fmt.Fprintf(w, "\n")
 	}
 
