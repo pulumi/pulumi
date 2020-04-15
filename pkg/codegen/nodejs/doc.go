@@ -69,7 +69,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetDocLinkForBuiltInType returns the URL for a built-in type.
-func GetDocLinkForBuiltInType(typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
 }
 

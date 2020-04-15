@@ -82,7 +82,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
-func GetDocLinkForBuiltInType(typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
 }
 
