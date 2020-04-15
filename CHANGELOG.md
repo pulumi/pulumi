@@ -31,6 +31,10 @@ CHANGELOG
 - Treat config values set with `--path` that start with '0' as strings rather than numbers.
   [#4393](https://github.com/pulumi/pulumi/pull/4393)
 
+- Switch .NET projects to .NET Core 3.1
+  [#4400](https://github.com/pulumi/pulumi/pull/4400)
+
+
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
   [#4307](https://github.com/pulumi/pulumi/pull/4307)
