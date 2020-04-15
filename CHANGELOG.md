@@ -34,6 +34,9 @@ CHANGELOG
 - Switch .NET projects to .NET Core 3.1
   [#4400](https://github.com/pulumi/pulumi/pull/4400)
 
+- Add support for generating Fish completions
+  [#4401](https://github.com/pulumi/pulumi/pull/4401)
+
 
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
