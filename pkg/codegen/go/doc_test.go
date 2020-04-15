@@ -16,11 +16,12 @@
 // goconst linter's warning.
 //
 // nolint: lll, goconst
-package nodejs
+package gen
 
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,33 +67,29 @@ func getTestPackage(t *testing.T) *schema.Package {
 	return pkg
 }
 
-func TestDocLinkGenerationForPulumiTypes(t *testing.T) {
+func TestGetDocLinkForPulumiType(t *testing.T) {
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
-	t.Run("GenerateCustomResourceOptionsLink", func(t *testing.T) {
-		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions"
-		link := d.GetDocLinkForPulumiType(pkg, "CustomResourceOptions")
+	t.Run("GenerateResourceOptionsLink", func(t *testing.T) {
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption"
+		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
 	})
-	t.Run("GenerateInvokeOptionsLink", func(t *testing.T) {
-		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions"
-		link := d.GetDocLinkForPulumiType(pkg, "InvokeOptions")
+	t.Run("Generate_V2_ResourceOptionsLink", func(t *testing.T) {
+		pkg.Version = &semver.Version{
+			Major: 2,
+		}
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#ResourceOption"
+		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
+		pkg.Version = nil
 	})
 }
 
 func TestGetDocLinkForResourceType(t *testing.T) {
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
-	expected := "/docs/reference/pkg/nodejs/pulumi/aws/s3/#Bucket"
+	expected := "https://pkg.go.dev/github.com/pulumi/pulumi-aws/sdk/go/aws/s3?tab=doc#Bucket"
 	link := d.GetDocLinkForResourceType(pkg, "s3", "Bucket")
-	assert.Equal(t, expected, link)
-}
-
-func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
-	pkg := getTestPackage(t)
-	d := DocLanguageHelper{}
-	expected := "/docs/reference/pkg/nodejs/pulumi/aws/types/input/#BucketCorsRule"
-	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "s3", "BucketCorsRule", true)
 	assert.Equal(t, expected, link)
 }

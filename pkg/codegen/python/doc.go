@@ -32,6 +32,11 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	return ""
+}
+
 // GetDocLinkForResourceType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	return ""

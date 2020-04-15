@@ -33,6 +33,11 @@ type DocLanguageHelper struct {
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType returns the .Net API doc link for a Pulumi type.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi/%s.html", typeName)
+}
+
 // GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")

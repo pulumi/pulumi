@@ -116,7 +116,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, resourceName string) []
 		OptionalFlag: "?",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType(nil, "", "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "InvokeOptions"),
 		},
 	})
 
@@ -200,7 +200,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, resourceName string) []
 		DefaultValue: " = null",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForResourceType(nil, "", "Pulumi.InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.InvokeOptions"),
 		},
 	})
 	return params

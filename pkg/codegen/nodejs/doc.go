@@ -31,12 +31,16 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType returns the NodeJS API doc link for a Pulumi type.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	typeName = strings.ReplaceAll(typeName, "?", "")
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/pulumi/#%s", typeName)
+}
+
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	var path string
 	switch {
-	case pkg == nil:
-		path = "pulumi"
 	case pkg.Name != "" && modName != "":
 		path = fmt.Sprintf("%s/%s", pkg.Name, modName)
 	case pkg.Name == "" && modName != "":
