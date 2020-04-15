@@ -42,6 +42,7 @@ type State struct {
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
 	Aliases                 []URN                 // TODO
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations
+	ImportID                ID                    // the resource's import id, if this was an imported resource.
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -49,7 +50,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
-	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts) *State {
+	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
+	importID ID) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -73,6 +75,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		PendingReplacement:      pendingReplacement,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
+		ImportID:                importID,
 	}
 
 	if timeouts != nil {
