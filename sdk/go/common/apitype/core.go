@@ -83,6 +83,17 @@ type CheckpointV3 struct {
 	Latest *DeploymentV3 `json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
+// CheckpointV4 is the fourth version of the Checkpoint. It contains a newer version of
+// the latest deployment.
+type CheckpointV4 struct {
+	// Stack is the stack to update.
+	Stack tokens.QName `json:"stack" yaml:"stack"`
+	// Config contains a bag of optional configuration keys/values.
+	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	// Latest is the latest/current deployment (if an update has occurred).
+	Latest *DeploymentV4 `json:"latest,omitempty" yaml:"latest,omitempty"`
+}
+
 // DeploymentV1 represents a deployment that has actually occurred. It is similar to the engine's snapshot structure,
 // except that it flattens and rearranges a few data structures for serializability.
 type DeploymentV1 struct {
@@ -114,6 +125,19 @@ type DeploymentV3 struct {
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+}
+
+// DeploymentV4 is the fourth version of the Deployment. It contains newer versions of the
+// Resource and Operation API types and a placeholder for a stack's secrets configuration.
+type DeploymentV4 struct {
+	// Manifest contains metadata about this deployment.
+	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	// SecretsProviders is a placeholder for secret provider configuration.
+	SecretsProviders *SecretsProvidersV1 `json:"secrets_providers,omitempty" yaml:"secrets_providers,omitempty"`
+	// Resources contains all resources that are currently part of this stack after this deployment has finished.
+	Resources []ResourceV4 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// PendingOperations are all operations that were known by the engine to be currently executing.
+	PendingOperations []OperationV3 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
@@ -152,6 +176,16 @@ type OperationV1 struct {
 type OperationV2 struct {
 	// Resource is the state that the engine used to initiate this operation.
 	Resource ResourceV3 `json:"resource" yaml:"resource"`
+	// Status is a string representation of the operation that the engine is performing.
+	Type OperationType `json:"type" yaml:"type"`
+}
+
+// OperationV3 represents an operation that the engine is performing. It consists of a Resource, which is the state
+// that the engine used to initiate the operation, and a Status, which is a string representation of the operation
+// that the engine initiated.
+type OperationV3 struct {
+	// Resource is the state that the engine used to initiate this operation.
+	Resource ResourceV4 `json:"resource" yaml:"resource"`
 	// Status is a string representation of the operation that the engine is performing.
 	Type OperationType `json:"type" yaml:"type"`
 }
@@ -287,6 +321,53 @@ type ResourceV3 struct {
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
+}
+
+// ResourceV4 is the fourth version of the Resource API type. It adds an optional "ImportID" field.
+//
+// Migrating from ResourceV3 to ResourceV4 involves:
+//   1. Setting the "ImportID" field to the empty string, because V3 deployments don't have an explicit import id saved.
+type ResourceV4 struct {
+	// URN uniquely identifying this resource.
+	URN resource.URN `json:"urn" yaml:"urn"`
+	// Custom is true when it is managed by a plugin.
+	Custom bool `json:"custom" yaml:"custom"`
+	// Delete is true when the resource should be deleted during the next update.
+	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
+	// ID is the provider-assigned resource, if any, for custom resources.
+	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
+	// Type is the resource's full type token.
+	Type tokens.Type `json:"type" yaml:"type"`
+	// Inputs are the input properties supplied to the provider.
+	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	// Outputs are the output properties returned by the provider after provisioning.
+	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	// Parent is an optional parent URN if this resource is a child of it.
+	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
+	// Protect is set to true when this resource is "protected" and may not be deleted.
+	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
+	External bool `json:"external,omitempty" yaml:"external,omitempty"`
+	// Dependencies contains the dependency edges to other resources that this depends on.
+	Dependencies []resource.URN `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
+	// Provider is a reference to the provider that is associated with this resource.
+	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	// PropertyDependencies maps from an input property name to the set of resources that property depends on.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN `json:"propertyDependencies,omitempty" yaml:"property_dependencies,omitempty"`
+	// PendingReplacement is used to track delete-before-replace resources that have been deleted but not yet
+	// recreated.
+	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
+	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
+	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
+	// Aliases is a list of previous URNs that this resource may have had in previous deployments
+	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
+	// ImportID is the import input used for imported resources.
+	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

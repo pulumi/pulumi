@@ -23,3 +23,11 @@ func UpToOperationV2(v1 apitype.OperationV1) apitype.OperationV2 {
 		Type:     v1.Type,
 	}
 }
+
+// UpToOperationV3 migrates a resource from OperationV2 to OperationV3.
+func UpToOperationV3(v2 apitype.OperationV2) apitype.OperationV3 {
+	return apitype.OperationV3{
+		Resource: UpToResourceV4(v2.Resource),
+		Type:     v2.Type,
+	}
+}

@@ -42,3 +42,18 @@ func UpToDeploymentV3(v2 apitype.DeploymentV2) apitype.DeploymentV3 {
 
 	return v3
 }
+
+// UpToDeploymentV4 migrates a deployment from DeploymentV3 to UpToDeploymentV4.
+func UpToDeploymentV4(v3 apitype.DeploymentV3) apitype.DeploymentV4 {
+	var v4 apitype.DeploymentV4
+	// The manifest format did not change between V3 and V4.
+	v4.Manifest = v3.Manifest
+	for _, res := range v3.Resources {
+		v4.Resources = append(v4.Resources, UpToResourceV4(res))
+	}
+	for _, op := range v3.PendingOperations {
+		v4.PendingOperations = append(v4.PendingOperations, UpToOperationV3(op))
+	}
+
+	return v4
+}

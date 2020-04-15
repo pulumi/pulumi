@@ -76,3 +76,30 @@ func UpToResourceV3(v2 apitype.ResourceV2) apitype.ResourceV3 {
 
 	return v3
 }
+
+// UpToResourceV4 migrates a resource from ResourceV3 to ResourceV4.
+func UpToResourceV4(v3 apitype.ResourceV3) apitype.ResourceV4 {
+	var v4 apitype.ResourceV4
+	v4.URN = v3.URN
+	v4.Custom = v3.Custom
+	v4.Delete = v3.Delete
+	v4.ID = v3.ID
+	v4.Type = v3.Type
+	v4.Inputs = v3.Inputs
+	v4.Outputs = v3.Outputs
+	v4.Parent = v3.Parent
+	v4.Protect = v3.Protect
+	v4.External = v3.External
+	v4.Dependencies = v3.Dependencies
+	v4.InitErrors = v3.InitErrors
+	v4.Provider = v3.Provider
+	v4.PropertyDependencies = v3.PropertyDependencies
+	v4.PendingReplacement = v3.PendingReplacement
+	v4.AdditionalSecretOutputs = v3.AdditionalSecretOutputs
+	v4.Aliases = v3.Aliases
+	v4.CustomTimeouts = v3.CustomTimeouts
+
+	v4.ImportID = ""
+
+	return v4
+}
