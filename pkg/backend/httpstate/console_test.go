@@ -59,6 +59,6 @@ func TestConsoleURL(t *testing.T) {
 
 	t.Run("ConsoleDomainUnknown", func(t *testing.T) {
 		assert.Equal(t, "/pulumi-bot/my-stack", cloudConsoleURL("https://example.com", "pulumi-bot", "my-stack"))
-		assert.Equal(t, "/pulumi-bot/my-stack", cloudConsoleURL("not-even-a-rea-url", "pulumi-bot", "my-stack"))
+		assert.Equal(t, "/pulumi-bot/my-stack", cloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
 	})
 }
