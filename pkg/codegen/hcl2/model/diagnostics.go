@@ -30,7 +30,6 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 	return &hcl.Diagnostic{
 		Severity: severity,
 		Summary:  message,
-		Detail:   message,
 		Subject:  &subject,
 	}
 }
@@ -111,4 +110,11 @@ func cannotTraverseKeyword(name string, rng hcl.Range) *hcl.Diagnostic {
 
 func cannotTraverseFunction(rng hcl.Range) *hcl.Diagnostic {
 	return errorf(rng, "functions cannot be traversed")
+}
+
+func cannotEvaluateAnonymousFunctionExpressions() *hcl.Diagnostic {
+	return &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "cannot evaluate anonymous function expressions",
+	}
 }

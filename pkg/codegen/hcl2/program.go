@@ -32,6 +32,11 @@ type Node interface {
 	// Type returns the type of the node.
 	Type() model.Type
 
+	markBinding()
+	markBound()
+	isBinding() bool
+	isBound() bool
+
 	getDependencies() []Node
 	setDependencies(nodes []Node)
 
@@ -39,7 +44,25 @@ type Node interface {
 }
 
 type node struct {
-	deps []Node
+	binding bool
+	bound   bool
+	deps    []Node
+}
+
+func (r *node) markBinding() {
+	r.binding = true
+}
+
+func (r *node) markBound() {
+	r.bound = true
+}
+
+func (r *node) isBinding() bool {
+	return r.binding && !r.bound
+}
+
+func (r *node) isBound() bool {
+	return r.bound
 }
 
 func (r *node) getDependencies() []Node {

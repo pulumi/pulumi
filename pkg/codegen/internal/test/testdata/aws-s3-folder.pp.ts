@@ -8,7 +8,7 @@ const siteBucket = new aws.s3.Bucket("siteBucket", {website: {
 const siteDir = "www";
 // For each file in the directory, create an S3 object stored in `siteBucket`
 const files: aws.s3.BucketObject[];
-for (const [__key, __value] of (() => throw new Error("FunctionCallExpression: readDir (aws-s3-folder.pp:12,11-27)"))()) {
+for (const [__key, __value] of fs.readDirSync(siteDir)) {
     const range = {key: __key, value: __value};
     files.push(new aws.s3.BucketObject(`files-${range.key}`, {
         bucket: siteBucket.id,

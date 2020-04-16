@@ -65,6 +65,40 @@ func (r *applyRewriter) isEventualType(t model.Type) (model.Type, bool) {
 	return nil, false
 }
 
+func (r *applyRewriter) isPromptArg(paramType, argType model.Type) bool {
+	if isEventualArg := model.ResolveOutputs(argType) != argType; !isEventualArg {
+		return true
+	}
+
+	if union, ok := paramType.(*model.UnionType); ok {
+		for _, t := range union.ElementTypes {
+			if t != model.DynamicType && t.ConversionFrom(argType) != model.NoConversion {
+				return true
+			}
+		}
+		return false
+	}
+	return paramType != model.DynamicType && paramType.ConversionFrom(argType) != model.NoConversion
+}
+
+func (r *applyRewriter) isEventualExpr(x model.Expression) bool {
+	if _, isEventual := r.isEventualType(x.Type()); !isEventual {
+		return false
+	}
+
+	call, isCall := x.(*model.FunctionCallExpression)
+	if !isCall {
+		return true
+	}
+
+	for i, arg := range call.Args {
+		if !r.isPromptArg(call.Signature.Parameters[i].Type, arg.Type()) {
+			return true
+		}
+	}
+	return false
+}
+
 // disambiguateName ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
 func (r *applyRewriter) disambiguateName(name string) string {
 	if name == "" {
@@ -105,6 +139,10 @@ func (r *applyRewriter) bestArgName(x *model.ScopeTraversalExpression) string {
 		default:
 			return n.Name()
 		}
+	case *model.SplatVariable:
+		return n.Name
+	case *model.Variable:
+		return n.Name
 	default:
 		panic(fmt.Errorf("unexpected definition in assignApplyArgName: %T", n))
 	}
@@ -127,8 +165,6 @@ func (r *applyRewriter) disambiguateArgName(x *model.ScopeTraversalExpression, b
 // the __applyArg intrinsic.
 func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
 	isRoot bool) model.Expression {
-
-	// TODO(pdg): arrays of outputs, for expressions, etc.
 
 	// If the access is not an output() or a promise(), return the node as-is.
 	_, isEventual := r.isEventualType(expr.Type())
@@ -259,6 +295,8 @@ func (r *applyRewriter) rewriteRoot(expr model.Expression) model.Expression {
 func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	isRoot := expr == r.root
 
+	// TODO(pdg): arrays of outputs, for expressions, etc.
+
 	if traversal, isScopeTraversal := expr.(*model.ScopeTraversalExpression); isScopeTraversal {
 		expr = r.rewriteScopeTraversalExpression(traversal, isRoot)
 	}
@@ -275,8 +313,7 @@ func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expressi
 // individually.
 func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	if r.root == nil {
-		_, isEventual := r.isEventualType(expr.Type())
-		if isEventual {
+		if r.isEventualExpr(expr) {
 			r.root, r.applyArgs, r.callbackParams, r.paramReferences = expr, nil, nil, nil
 			r.assignedNames, r.nameCounts = codegen.StringSet{}, map[string]int{}
 		}

@@ -63,6 +63,11 @@ func (l tokenList) atPos(p hcl.Pos) Token {
 // inRange returns a slice of the tokens that cover the given range or nil if either the start or end position is
 // uncovered by a token.
 func (l tokenList) inRange(r hcl.Range) []Token {
+	// If the range is empty, ignore it.
+	if r.Empty() {
+		return nil
+	}
+
 	// Find the index of the start and end tokens for this range.
 	start, end := l.offsetIndex(r.Start.Byte), l.offsetIndex(r.End.Byte-1)
 	if start == -1 || end == -1 {
