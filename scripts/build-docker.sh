@@ -48,7 +48,9 @@ test_containers() {
     # RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage -test.v
 
     # In case there are any other unit tests defined in the module, run those as well.
+	pushd ${ROOT}/tests
     GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+    popd
 }
 
 # Publishes the built containers to Docker Hub.
