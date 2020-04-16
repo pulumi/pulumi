@@ -155,16 +155,15 @@ func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	for i, p := range ctyParams {
 		sig.Parameters[i] = Parameter{
 			Name: p.Name,
-			Type: InputType(ctyTypeToType(p.Type, p.AllowNull)),
+			Type: ctyTypeToType(p.Type, p.AllowNull),
 		}
 	}
 	if p := op.Impl.VarParam(); p != nil {
 		sig.VarargsParameter = &Parameter{
 			Name: p.Name,
-			Type: InputType(ctyTypeToType(p.Type, p.AllowNull)),
+			Type: ctyTypeToType(p.Type, p.AllowNull),
 		}
 	}
-
 	sig.ReturnType = ctyTypeToType(op.Type, false)
 
 	return sig
@@ -183,8 +182,8 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 				diagnostics = append(diagnostics, missingRequiredArgument(param, srcRange))
 			}
 		} else {
-			if !param.Type.ConversionFrom(remainingArgs[0].Type()).Exists() {
-				diagnostics = append(diagnostics, ExprNotConvertible(param.Type, remainingArgs[0]))
+			if !InputType(param.Type).ConversionFrom(remainingArgs[0].Type()).Exists() {
+				diagnostics = append(diagnostics, ExprNotConvertible(InputType(param.Type), remainingArgs[0]))
 			}
 			remainingArgs = remainingArgs[1:]
 		}
@@ -197,8 +196,8 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 			diagnostics = append(diagnostics, extraArguments(len(signature.Parameters), len(args), srcRange))
 		} else {
 			for _, arg := range remainingArgs {
-				if !varargs.Type.ConversionFrom(arg.Type()).Exists() {
-					diagnostics = append(diagnostics, ExprNotConvertible(varargs.Type, arg))
+				if !InputType(varargs.Type).ConversionFrom(arg.Type()).Exists() {
+					diagnostics = append(diagnostics, ExprNotConvertible(InputType(varargs.Type), arg))
 				}
 			}
 		}
@@ -225,6 +224,7 @@ func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbol
 			Traversal: traversal,
 			SrcRange:  syntax.SrcRange,
 		},
+		Tokens:    _syntax.NewScopeTraversalTokens(traversal),
 		RootName:  "",
 		Parts:     []Traversable{lv},
 		Traversal: traversal,
@@ -284,9 +284,9 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	resultType, _ := UnifyTypes(trueResult.Type(), falseResult.Type())
 
 	// Typecheck the condition expression.
-	signature := StaticFunctionSignature{Parameters: []Parameter{{Name: "condition", Type: InputType(BoolType)}}}
-	typecheckDiags := typecheckArgs(syntax.Range(), signature, condition)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	if InputType(BoolType).ConversionFrom(condition.Type()) == NoConversion {
+		diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), condition))
+	}
 
 	return &ConditionalExpression{
 		Syntax:      syntax,
@@ -438,14 +438,6 @@ func (b *expressionBinder) bindFunctionCallExpression(
 	// Compute the function's signature.
 	signature, sigDiags := function.GetSignature(args)
 	diagnostics = append(diagnostics, sigDiags...)
-
-	// Wrap the function's parameter types in input types s.t. they accept eventual arguments.
-	for i := range signature.Parameters {
-		signature.Parameters[i].Type = InputType(signature.Parameters[i].Type)
-	}
-	if signature.VarargsParameter != nil {
-		signature.VarargsParameter.Type = InputType(signature.VarargsParameter.Type)
-	}
 
 	// Typecheck the function's arguments.
 	typecheckDiags := typecheckArgs(syntax.Range(), signature, args...)
@@ -627,6 +619,18 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	if tokens == nil {
 		tokens = _syntax.NewRelativeTraversalTokens(syntax.Traversal)
 	}
+
+	// This occurs with splat expressions.
+	if source, ok := source.(*ScopeTraversalExpression); ok {
+		source.Syntax.Traversal = append(source.Syntax.Traversal, syntax.Traversal...)
+		source.Syntax.SrcRange = hcl.RangeBetween(source.Syntax.SrcRange, syntax.SrcRange)
+		source.Tokens.Traversal = append(source.Tokens.Traversal, tokens.Traversal...)
+
+		source.Traversal = source.Syntax.Traversal
+		source.Parts = append(source.Parts, parts[1:]...)
+		return source, diagnostics
+	}
+
 	return &RelativeTraversalExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
@@ -686,23 +690,33 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 
 	sourceType := unwrapIterableSourceType(source.Type())
 	elementType := sourceType
-	if arr, isList := sourceType.(*ListType); isList {
-		elementType = arr.ElementType
-	} else if sourceType != DynamicType {
-		source = &TupleConsExpression{
-			Syntax: &hclsyntax.TupleConsExpr{
-				Exprs:     []hclsyntax.Expression{syntax.Source},
-				SrcRange:  syntax.Source.Range(),
-				OpenRange: syntax.Source.StartRange(),
-			},
-			Expressions: []Expression{source},
-			exprType:    NewListType(source.Type()),
+	switch sourceType := sourceType.(type) {
+	case *ListType:
+		elementType = sourceType.ElementType
+	case *SetType:
+		elementType = sourceType.ElementType
+	case *TupleType:
+		elementType, _ = UnifyTypes(sourceType.ElementTypes...)
+	default:
+		if sourceType != DynamicType {
+			source = &TupleConsExpression{
+				Syntax: &hclsyntax.TupleConsExpr{
+					Exprs:     []hclsyntax.Expression{syntax.Source},
+					SrcRange:  syntax.Source.Range(),
+					OpenRange: syntax.Source.StartRange(),
+				},
+				Tokens:      _syntax.NewTupleConsTokens(1),
+				Expressions: []Expression{source},
+				exprType:    NewListType(source.Type()),
+			}
 		}
 	}
 
-	item := &Variable{
-		Name:         "",
-		VariableType: elementType,
+	item := &SplatVariable{
+		Variable: Variable{
+			Name:         "",
+			VariableType: elementType,
+		},
 	}
 	b.anonSymbols[syntax.Item] = item
 

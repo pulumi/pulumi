@@ -25,19 +25,30 @@ import (
 // bindNode binds a single node in a program. The node's dependencies are bound prior to the node itself; it is an
 // error for a node to depend--directly or indirectly--upon itself.
 func (b *binder) bindNode(node Node) hcl.Diagnostics {
-	//TODO(pdg): detect circular references
+	if node.isBound() {
+		return nil
+	}
+	if node.isBinding() {
+		// TODO(pdg): print trace
+		rng := node.SyntaxNode().Range()
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "circular reference",
+			Subject:  &rng,
+		}}
+
+	}
+	node.markBinding()
 
 	var diagnostics hcl.Diagnostics
 
 	deps := b.getDependencies(node)
 	node.setDependencies(deps)
 
-	// Bind any locals that depend on this node: local types are not known until they are bound.
+	// Bind any nodes this node depends on.
 	for _, dep := range deps {
-		if local, ok := dep.(*LocalVariable); ok {
-			diags := b.bindLocalVariable(local)
-			diagnostics = append(diagnostics, diags...)
-		}
+		diags := b.bindNode(dep)
+		diagnostics = append(diagnostics, diags...)
 	}
 
 	switch node := node.(type) {
@@ -56,6 +67,8 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}
+
+	node.markBound()
 	return diagnostics
 }
 
@@ -99,10 +112,6 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 }
 
 func (b *binder) bindLocalVariable(node *LocalVariable) hcl.Diagnostics {
-	if node.VariableType != nil {
-		return nil
-	}
-
 	attr, diagnostics := model.BindAttribute(node.Syntax, b.root, b.tokens)
 	node.VariableType = attr.Value.Type()
 	node.Value = attr.Value

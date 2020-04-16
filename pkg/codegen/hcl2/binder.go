@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type binder struct {
@@ -60,6 +61,11 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 		root:           model.NewRootScope(syntax.None),
 	}
 
+	// Define null.
+	b.root.Define("null", &model.Constant{
+		Name:          "null",
+		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+	})
 	// Define builtin functions.
 	for name, fn := range pulumiBuiltins {
 		b.root.DefineFunction(name, fn)
@@ -148,9 +154,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
-
-				diags := b.bindResourceTypes(resource)
-				diagnostics = append(diagnostics, diags...)
 			case "output":
 				name, typ := "<unnamed>", model.Type(model.DynamicType)
 				switch len(item.Labels) {

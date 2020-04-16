@@ -33,6 +33,13 @@ type TypedTraversable interface {
 	Type() Type
 }
 
+// ValueTraversable is a Traversable that has an associated value.
+type ValueTraversable interface {
+	Traversable
+
+	Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
+}
+
 // GetTraversableType returns the type of the given Traversable:
 // - If the Traversable is a TypedTraversable, this returns t.Type()
 // - If the Traversable is a Type, this returns t

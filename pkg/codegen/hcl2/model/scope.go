@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Definition represents a single definition in a Scope.
@@ -66,6 +67,53 @@ func (v *Variable) Type() Type {
 	return v.VariableType
 }
 
+func (v *Variable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[v.Name]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
+// A Constant is a traversable, typed definition that represents a named constant.
+type Constant struct {
+	// The syntax node associated with the constant definition, if any.
+	Syntax hclsyntax.Node
+
+	// The name of the constant.
+	Name string
+	// The value of the constant.
+	ConstantValue cty.Value
+
+	typ Type
+}
+
+// Tracerse attempts to traverse the constant's value.
+func (c *Constant) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
+	v, diags := traverser.TraversalStep(c.ConstantValue)
+	return &Constant{ConstantValue: v}, diags
+}
+
+// SyntaxNode returns the constant's syntax node or syntax.None.
+func (c *Constant) SyntaxNode() hclsyntax.Node {
+	return syntaxOrNone(c.Syntax)
+}
+
+// Type returns the type of the constant.
+func (c *Constant) Type() Type {
+	if c.typ == nil {
+		if c.ConstantValue.IsNull() {
+			c.typ = NoneType
+		} else {
+			c.typ = ctyTypeToType(c.ConstantValue.Type(), false)
+		}
+	}
+	return c.typ
+}
+
+func (c *Constant) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return c.ConstantValue, nil
+}
+
 // A Scope is used to map names to definitions during expression binding.
 //
 // A scope has two namespaces: one that is exclusive to functions and one that contains both variables and functions.
@@ -79,7 +127,11 @@ type Scope struct {
 
 // NewRootScope returns a new unparented scope associated with the given syntax node.
 func NewRootScope(syntax hclsyntax.Node) *Scope {
-	return &Scope{syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
+	return &Scope{
+		syntax:    syntax,
+		defs:      map[string]Definition{},
+		functions: map[string]*Function{},
+	}
 }
 
 // Traverse attempts to traverse the scope using the given traverser. If the traverser is a literal string that refers
@@ -164,7 +216,12 @@ func (s *Scope) DefineFunction(name string, def *Function) bool {
 func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 	if s != nil {
 		if _, exists := s.defs[name]; !exists {
-			child := &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
+			child := &Scope{
+				parent:    s,
+				syntax:    syntax,
+				defs:      map[string]Definition{},
+				functions: map[string]*Function{},
+			}
 			s.defs[name] = child
 			return child, true
 		}
@@ -174,7 +231,12 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 
 // Push defines an anonymous child scope associated with the given syntax node.
 func (s *Scope) Push(syntax hclsyntax.Node) *Scope {
-	return &Scope{parent: s, syntax: syntax, defs: map[string]Definition{}, functions: map[string]*Function{}}
+	return &Scope{
+		parent:    s,
+		syntax:    syntax,
+		defs:      map[string]Definition{},
+		functions: map[string]*Function{},
+	}
 }
 
 // Pop returns this scope's parent.

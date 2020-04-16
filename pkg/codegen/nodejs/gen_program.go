@@ -35,8 +35,6 @@ type generator struct {
 
 	program     *hcl2.Program
 	diagnostics hcl.Diagnostics
-
-	anonymousVariables codegen.Set
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -44,8 +42,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program:            program,
-		anonymousVariables: codegen.Set{},
+		program: program,
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -169,11 +166,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	name := r.Name()
 
-	g.genTrivia(w, r.Tokens.Type)
-	for _, l := range r.Tokens.Labels {
+	g.genTrivia(w, r.Tokens.GetType(""))
+	for _, l := range r.Tokens.GetLabels(nil) {
 		g.genTrivia(w, l)
 	}
-	g.genTrivia(w, r.Tokens.OpenBrace)
+	g.genTrivia(w, r.Tokens.GetOpenBrace())
 
 	instantiate := func(resName string) {
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
@@ -189,9 +186,9 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				}
 
 				if len(r.Inputs) == 1 {
-					g.Fgenf(w, "%s: %v", propertyName, g.genExpression(attr.Value))
+					g.Fgenf(w, "%s: %.v", propertyName, g.lowerExpression(attr.Value))
 				} else {
-					g.Fgenf(w, "\n%s%s: %v,", g.Indent, propertyName, g.genExpression(attr.Value))
+					g.Fgenf(w, "\n%s%s: %.v,", g.Indent, propertyName, g.lowerExpression(attr.Value))
 				}
 			}
 		})
@@ -202,25 +199,48 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
-		rangeExpr := newAwaitCall(r.Options.Range)
+		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+			rangeExpr := newAwaitCall(r.Options.Range)
 
-		resName := g.makeResourceName(name, "range.key")
-		g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, name, qualifiedMemberName)
-		g.Fgenf(w, "%sfor (const [__key, __value] of %v) {\n", g.Indent, rangeExpr)
-		g.Indented(func() {
-			g.Fgenf(w, "%sconst range = {key: __key, value: __value};\n", g.Indent)
-			g.Fgenf(w, "%s%s.push(", g.Indent, name)
-			instantiate(resName)
-			g.Fgenf(w, ");\n")
-		})
-		g.Fgenf(w, "%s}\n", g.Indent)
+			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, name, qualifiedMemberName)
+			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
+			g.Indented(func() {
+				g.Fgenf(w, "%s%s = ", g.Indent, name)
+				instantiate(g.makeResourceName(name, ""))
+				g.Fgenf(w, ";\n")
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		} else {
+			rangeExpr := newAwaitCall(r.Options.Range)
+			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, name, qualifiedMemberName)
+
+			resKey, isIterable := "key", false
+			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
+				resKey = "value"
+			} else {
+				g.Fgenf(w, "%sfor (const [__key, __value] of %v) {\n", g.Indent, rangeExpr)
+				isIterable = true
+			}
+
+			resName := g.makeResourceName(name, "range."+resKey)
+			g.Indented(func() {
+				if isIterable {
+					g.Fgenf(w, "%sconst range = {key: __key, value: __value};\n", g.Indent)
+				}
+				g.Fgenf(w, "%s%s.push(", g.Indent, name)
+				instantiate(resName)
+				g.Fgenf(w, ");\n")
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		}
 	} else {
 		g.Fgenf(w, "%sconst %s = ", g.Indent, name)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
 	}
 
-	g.genTrivia(w, r.Tokens.CloseBrace)
+	g.genTrivia(w, r.Tokens.GetCloseBrace())
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
@@ -243,19 +263,19 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
 	if v.DefaultValue != nil {
-		g.Fgenf(w, " || %s", g.genExpression(v.DefaultValue))
+		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue))
 	}
 	g.Fgenf(w, ";\n")
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sconst %s = %s;\n", g.Indent, v.Name(), g.genExpression(v.Value))
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sexport const %s = %s;\n", g.Indent, v.Name(), g.genExpression(v.Value))
+	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
