@@ -133,8 +133,15 @@ func NewPulumiCmd() *cobra.Command {
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
-			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil && !isJSON {
-				cmdutil.Diag().Warningf(checkVersionMsg)
+
+			select {
+			case checkVersionMsg := <-updateCheckResult:
+				if checkVersionMsg != nil && !isJSON {
+					cmdutil.Diag().Warningf(checkVersionMsg)
+				}
+			default:
+				// If the channel doesn't have anything in it yet, just ignore it
+				// and continue shutting down.
 			}
 
 			logging.Flush()
