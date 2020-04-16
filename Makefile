@@ -43,7 +43,7 @@ build-proto::
 generate::
 	$(call STEP_MESSAGE)
 	echo "Generate static assets bundle for docs generator"
-	go generate ./pkg/codegen/docs/
+	go generate ./pkg/codegen/docs/gen.go
 
 build::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
