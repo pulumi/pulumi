@@ -4144,6 +4144,103 @@ func TestImport(t *testing.T) {
 	assert.Nil(t, res)
 }
 
+// TestImportWithDifferingImportIdentifierFormat tests importing a resource that has a different format of identifier
+// for the import input than for the ID property, ensuring that a second update does not result in a replace.
+func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if olds["foo"].DeepEquals(news["foo"]) {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+						DetailedDiff: map[string]plugin.PropertyDiff{
+							"foo": {Kind: plugin.DiffUpdate},
+						},
+					}, nil
+				},
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+
+					return plugin.ReadResult{
+						// This ID is deliberately not the same as the ID used to import.
+						ID: "id",
+						Inputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
+			// The import ID is deliberately not the same as the ID returned from Read.
+			ImportID: resource.ID("import-id"),
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update. The import should succeed.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case provURN:
+					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+				case resURN:
+					assert.Equal(t, deploy.OpImport, entry.Step.Op())
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			return res
+		})
+	assert.Nil(t, res)
+	assert.Len(t, snap.Resources, 2)
+
+	// Now, run another update. The update should succeed and there should be no diffs.
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case provURN, resURN:
+					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			return res
+		})
+	assert.Nil(t, res)
+}
+
 func TestCustomTimeouts(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {

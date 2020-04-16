@@ -34,6 +34,8 @@ CHANGELOG
 - Switch .NET projects to .NET Core 3.1
   [#4400](https://github.com/pulumi/pulumi/pull/4400)
 
+- Avoid unexpected replace on resource with `import` applied on second update.
+  [#4403](https://github.com/pulumi/pulumi/pull/4403)
 
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
