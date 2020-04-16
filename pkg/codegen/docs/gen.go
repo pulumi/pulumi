@@ -184,6 +184,11 @@ type packageDetails struct {
 type resourceDocArgs struct {
 	Header header
 
+	Tool string
+	// LangChooserLanguages is a comma-separated list of languages to pass to the
+	// language-chooser short-code.
+	LangChooserLanguages string
+
 	// Comment represents the introductory resource comment.
 	Comment            string
 	DeprecationMessage string
@@ -788,6 +793,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) map[string]string {
 	constructorParams := make(map[string]string)
+	isK8s := isKubernetesPackage(mod.pkg)
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
@@ -811,7 +817,6 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// The input properties for a resource needs to be exploded as
 			// individual constructor params.
 			params = make([]formalParam, 0, len(r.InputProperties))
-			isK8s := isKubernetesPackage(mod.pkg)
 			for _, p := range r.InputProperties {
 				// In k8s, apiVersion and kind are hard-coded in the SDK and not really
 				// user-provided input properties, so skip them.
@@ -1135,6 +1140,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			Title: name,
 		},
 
+		Tool: mod.tool,
+
 		Comment:            r.Comment,
 		DeprecationMessage: r.DeprecationMessage,
 
@@ -1269,11 +1276,20 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Resources
+	isK8s := isKubernetesPackage(mod.pkg)
 	for _, r := range mod.resources {
 		data := mod.genResource(r)
 
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
+		// Don't include the "go" language in the language chooser
+		// for the helm/v2 and yaml modules in the k8s package. These
+		// are "overlay" modules. The resources under those modules are
+		// not available in Go.
+ 		if isK8s && (mod.mod == "helm/v2" || mod.mod == "yaml") {
+			data.LangChooserLanguages = "javascript,typescript,python,csharp"
+		}
+
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
 			return err
