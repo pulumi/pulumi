@@ -17,11 +17,9 @@ if [ -z "${1:-}" ]; then
     exit 1
 fi
 
-readonly CLI_VERSION="${1}"
-
-# Sanitize the name of the Docker tag, e.g.
+# Sanitize the name of the version, e.g.
 # "v1.14.0-alpha.1586190504+gf4e9f7e2" -> "v1.14.0-alpha.1586190504".
-readonly CLI_VERSION_TAG=$(echo "${1}" | sed 's/\+.*//g')
+readonly CLI_VERSION="$(echo "${1}" | sed 's/\+.*//g')"
 
 # The Docker containers built/tested/published from this repository.
 readonly PULUMI_CONTAINERS=("pulumi" "actions")
@@ -79,18 +77,18 @@ publish_containers() {
 
     for container in ${PULUMI_CONTAINERS[@]}; do
         echo "- pulumi/${container}"
-        docker push "pulumi/${container}:${CLI_VERSION_TAG}"
+        docker push "pulumi/${container}:${CLI_VERSION}"
         docker push "pulumi/${container}:latest"
     done
 
     docker logout
 }
 
-echo_header "Building Pulumi containers"
+echo_header "Building Pulumi containers (${CLI_VERSION})"
 for container in ${PULUMI_CONTAINERS[@]}; do
     echo "- Building pulumi/${container}"
     docker build --build-arg PULUMI_VERSION="${CLI_VERSION}" \
-        -t "pulumi/${container}:${CLI_VERSION_TAG}" \
+        -t "pulumi/${container}:${CLI_VERSION}" \
         -t "pulumi/${container}:latest" \
         "${SCRIPT_DIR}/../dist/${container}"
 done
