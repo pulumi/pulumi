@@ -54,17 +54,26 @@
 {{ template "constructor_args" }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
-#### Resource Arguments
+## Resource Properties
+
+To learn more about resource properties and how to use them, see [Inputs and Outputs](https://www.pulumi.com/docs/intro/concepts/programming-model/#outputs) in the Programming Model docs.
+
+### Inputs
+
+The {{ .Header.Title }} resource accepts the following [input](https://www.pulumi.com/docs/intro/concepts/programming-model/#outputs) properties:
 
 {{ template "properties" .InputProperties }}
 
 <!-- Output properties -->
+### Outputs
 {{ if ne (len .OutputProperties) 0 }}
-## {{.Header.Title}} Output Properties
+All [input](https://www.pulumi.com/docs/intro/concepts/programming-model/#outputs) properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following computed outputs.
 
 The following output properties are available:
 
 {{ template "properties" .OutputProperties }}
+{{ else }}
+All [input](https://www.pulumi.com/docs/intro/concepts/programming-model/#outputs) properties are implicitly available as output properties. The {{ .Header.Title }} resource does not produce any additional output properties.
 {{ end }}
 
 <!-- Read resource -->
