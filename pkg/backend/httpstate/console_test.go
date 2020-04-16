@@ -28,9 +28,9 @@ func TestConsoleURL(t *testing.T) {
 		}()
 
 		// Honor the PULUMI_CONSOLE_DOMAIN environment variable.
-		os.Setenv("PULUMI_CONSOLE_DOMAIN", "https://pulumi-console.contoso.com")
+		os.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
 		assert.Equal(t,
-			"https://pulumi-console.contoso.com/alpha/beta",
+			"https://pulumi-console.contoso.com/1/2",
 			cloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))
 
 		// Unset the variable, confirm the "standard behavior" where we
@@ -58,7 +58,7 @@ func TestConsoleURL(t *testing.T) {
 	})
 
 	t.Run("ConsoleDomainUnknown", func(t *testing.T) {
-		assert.Equal(t, "/pulumi-bot/my-stack", cloudConsoleURL("https://example.com", "pulumi-bot", "my-stack"))
-		assert.Equal(t, "/pulumi-bot/my-stack", cloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
+		assert.Equal(t, "pulumi-bot/my-stack", cloudConsoleURL("https://example.com", "pulumi-bot", "my-stack"))
+		assert.Equal(t, "pulumi-bot/my-stack", cloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
 	})
 }
