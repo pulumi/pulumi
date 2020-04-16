@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## 2.0.0 (Unreleased)
+## 2.0.0 (2020-04-16)
 =======
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
