@@ -16,10 +16,23 @@ package httpstate
 
 import (
 	"net/url"
+	"os"
 	"path"
 	"strings"
 )
 
+const (
+	// PulumiCloudURL is the Cloud URL used if no environment or explicit cloud is chosen.
+	PulumiCloudURL = "https://" + defaultAPIDomainPrefix + "pulumi.com"
+
+	// defaultAPIDomainPrefix is the assumed Cloud URL prefix for typical Pulumi Cloud API endpoints.
+	defaultAPIDomainPrefix = "api."
+	// defaultConsoleDomainPrefix is the assumed Cloud URL prefix typically used for the Pulumi Console.
+	defaultConsoleDomainPrefix = "app."
+)
+
+// cloudConsoleURL returns a URL to the Pulumi Cloud Console, rooted at cloudURL. If there is
+// an error, returns "".
 func cloudConsoleURL(cloudURL string, paths ...string) string {
 	u, err := url.Parse(cloudURL)
 	if err != nil {
@@ -27,12 +40,22 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	}
 
 	switch {
+	case os.Getenv("PULUMI_CONSOLE_DOMAIN") != "":
+		// Honor a PULUMI_CONSOLE_DOMAIN environment variable to override the
+		// default behavior. Since we identify a backend by a single URI, we
+		// cannot know what the Pulumi Console is hosted at...
+		u.Host = os.Getenv("PULUMI_CONSOLE_DOMAIN")
 	case strings.HasPrefix(u.Host, defaultAPIDomainPrefix):
+		// ... but if the cloudURL (API domain) is "api.", then we assume the
+		// console is hosted at "app.".
 		u.Host = defaultConsoleDomainPrefix + u.Host[len(defaultAPIDomainPrefix):]
 	case u.Host == "localhost:8080":
+		// ... or when running locally, on port 3000.
 		u.Host = "localhost:3000"
 	default:
-		return "" // We couldn't figure out how to convert the api hostname into a console hostname
+		// We couldn't figure out how to convert the api hostname into a console hostname.
+		// We skip the host and just print the relative path.
+		return path.Join(paths...)
 	}
 
 	u.Path = path.Join(paths...)
