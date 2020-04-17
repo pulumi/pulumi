@@ -57,13 +57,6 @@ import (
 )
 
 const (
-	// PulumiCloudURL is the Cloud URL used if no environment or explicit cloud is chosen.
-	PulumiCloudURL = "https://" + defaultAPIDomainPrefix + "pulumi.com"
-	// defaultAPIDomainPrefix is the assumed Cloud URL prefix for typical Pulumi Cloud API endpoints.
-	defaultAPIDomainPrefix = "api."
-	// defaultConsoleDomainPrefix is the assumed Cloud URL prefix typically used for the Pulumi Console.
-	defaultConsoleDomainPrefix = "app."
-
 	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
 	defaultURLEnvVar = "PULUMI_API"
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
