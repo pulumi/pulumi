@@ -174,7 +174,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	for _, block := range node.Syntax.Body.Blocks {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
-				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens)
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options...)
 				switch {
 				case model.InputType(model.BoolType).ConversionFrom(expr.Type()) == model.SafeConversion:
 					node.VariableType = model.NewOptionalType(node.VariableType)
@@ -190,7 +190,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	}
 
 	// Bind the resource's body.
-	block, blockDiags := model.BindBlock(node.Syntax, newResourceScopes(b.root, node, rangeKey, rangeValue), b.tokens)
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, blockDiags := model.BindBlock(node.Syntax, scopes, b.tokens, b.options...)
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block

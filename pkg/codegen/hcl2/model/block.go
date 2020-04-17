@@ -108,8 +108,10 @@ func (b *Block) print(w io.Writer, p *printer) {
 func (*Block) isBodyItem() {}
 
 // BindBlock binds an HCL2 block using the given scopes and token map.
-func BindBlock(block *hclsyntax.Block, scopes Scopes, tokens syntax.TokenMap) (*Block, hcl.Diagnostics) {
-	body, diagnostics := BindBody(block.Body, scopes, tokens)
+func BindBlock(block *hclsyntax.Block, scopes Scopes, tokens syntax.TokenMap,
+	opts ...BindOption) (*Block, hcl.Diagnostics) {
+
+	body, diagnostics := BindBody(block.Body, scopes, tokens, opts...)
 	blockTokens, _ := tokens.ForNode(block).(*syntax.BlockTokens)
 	return &Block{
 		Syntax: block,

@@ -28,7 +28,8 @@ import (
 )
 
 type binder struct {
-	host plugin.Host
+	options []model.BindOption
+	host    plugin.Host
 
 	packageSchemas map[string]*packageSchema
 
@@ -39,7 +40,7 @@ type binder struct {
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnostics, error) {
+func BindProgram(files []*syntax.File, host plugin.Host, opts ...model.BindOption) (*Program, hcl.Diagnostics, error) {
 	if host == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -55,6 +56,7 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 	}
 
 	b := &binder{
+		options:        opts,
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
@@ -196,5 +198,5 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 }
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
-	return model.BindExpression(node, b.root, b.tokens)
+	return model.BindExpression(node, b.root, b.tokens, b.options...)
 }
