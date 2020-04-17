@@ -1,5 +1,5 @@
 {{- define "index_modules" }}
-<h3>Modules</h3>
+<h3 id="modules">Modules</h3>
 <ul class="api">
 {{- range . }}
     <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol module"></span>{{ .DisplayName }}</a></li>
@@ -8,7 +8,7 @@
 {{- end }}
 
 {{- define "index_resources" }}
-<h3>Resources</h3>
+<h3 id="resources">Resources</h3>
 <ul class="api">
 {{- range . }}
     <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol resource"></span>{{ .DisplayName }}</a></li>
@@ -17,7 +17,7 @@
 {{- end }}
 
 {{- define "index_functions" }}
-<h3>Functions</h3>
+<h3 id="functions">Functions</h3>
 <ul class="api">
 {{- range . }}
     <li><a href="{{ .Link }}" title="{{ .DisplayName }}"><span class="symbol function"></span>{{ .DisplayName }}</a></li>
