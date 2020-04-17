@@ -22,6 +22,11 @@ import (
 )
 
 const (
+	// ConsoleDomainEnvVar overrides the way we infer the domain we assume the Pulumi Console will
+	// be served from, and instead just use this value. e.g. so links to the stack update go to
+	// https://pulumi.example.com/org/project/stack/updates/2 instead.
+	ConsoleDomainEnvVar = "PULUMI_CONSOLE_DOMAIN"
+
 	// PulumiCloudURL is the Cloud URL used if no environment or explicit cloud is chosen.
 	PulumiCloudURL = "https://" + defaultAPIDomainPrefix + "pulumi.com"
 
@@ -40,11 +45,11 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	}
 
 	switch {
-	case os.Getenv("PULUMI_CONSOLE_DOMAIN") != "":
+	case os.Getenv(ConsoleDomainEnvVar) != "":
 		// Honor a PULUMI_CONSOLE_DOMAIN environment variable to override the
 		// default behavior. Since we identify a backend by a single URI, we
 		// cannot know what the Pulumi Console is hosted at...
-		u.Host = os.Getenv("PULUMI_CONSOLE_DOMAIN")
+		u.Host = os.Getenv(ConsoleDomainEnvVar)
 	case strings.HasPrefix(u.Host, defaultAPIDomainPrefix):
 		// ... but if the cloudURL (API domain) is "api.", then we assume the
 		// console is hosted at "app.".
@@ -54,8 +59,9 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 		u.Host = "localhost:3000"
 	default:
 		// We couldn't figure out how to convert the api hostname into a console hostname.
-		// We skip the host and just print the relative path.
-		return path.Join(paths...)
+		// We return "" so that the caller can know to omit the URL rather than just
+		// return an incorrect one.
+		return ""
 	}
 
 	u.Path = path.Join(paths...)
