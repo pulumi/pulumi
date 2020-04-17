@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+## HEAD (unreleased)
+
+- Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
+  behavior for how URLs to the Pulumi Console are generated.
+  [#4410](https://github.com/pulumi/pulumi/pull/4410)
+
 ## 2.0.0 (2020-04-16)
 =======
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
@@ -36,10 +42,6 @@ CHANGELOG
 
 - Avoid unexpected replace on resource with `import` applied on second update.
   [#4403](https://github.com/pulumi/pulumi/pull/4403)
-
-- Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
-  behavior for how URLs to the Pulumi Console are generated.
-  [#4410](https://github.com/pulumi/pulumi/pull/4410)
 
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
