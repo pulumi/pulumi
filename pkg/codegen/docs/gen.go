@@ -579,13 +579,18 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
+	// Top-level argument types in the k8s package for C# use different namespace path.
+	// Additionally, overlay resources in k8s have argument types in the top-level module path,
+	// but don't use the suffix "Args" like the other modules.
 	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" {
+		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
 			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
 			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
 			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+		} else if mod.isKubernetesOverlayModule() {
+			argLangTypeName = "Pulumi.Kubernetes." + name
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}
@@ -1286,7 +1291,7 @@ func (mod *modContext) gen(fs fs) error {
 		// for the helm/v2 and yaml modules in the k8s package. These
 		// are "overlay" modules. The resources under those modules are
 		// not available in Go.
-		if isK8s && (mod.mod == "helm/v2" || mod.mod == "yaml") {
+		if isK8s && mod.isKubernetesOverlayModule() {
 			data.LangChooserLanguages = "javascript,typescript,python,csharp"
 		}
 
@@ -1536,7 +1541,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}
 
 	scanK8SResource := func(r *schema.Resource) {
-		mod := getK8SMod(pkg, r.Token, modules, tool)
+		mod := getKubernetesMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 	}
 
