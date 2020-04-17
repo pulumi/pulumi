@@ -186,7 +186,7 @@ type resourceDocArgs struct {
 
 	Tool string
 	// LangChooserLanguages is a comma-separated list of languages to pass to the
-	// language-chooser short-code.
+	// language chooser shortcode.
 	LangChooserLanguages string
 
 	// Comment represents the introductory resource comment.
@@ -734,9 +734,11 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		if prop == nil {
 			continue
 		}
-		// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-		// user-provided input properties, so skip them.
-		if isK8s && (prop.Name == "apiVersion" || prop.Name == "kind") {
+
+		// If the property has a const value, then don't show it as an input property.
+		// Even though it is a valid property, it is used by the language code gen to
+		// generate the appropriate defaults for it. These cannot be overridden by users.
+		if prop.ConstValue != nil {
 			continue
 		}
 
@@ -798,7 +800,6 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) map[string]string {
 	constructorParams := make(map[string]string)
-	isK8s := isKubernetesPackage(mod.pkg)
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
@@ -823,9 +824,10 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// individual constructor params.
 			params = make([]formalParam, 0, len(r.InputProperties))
 			for _, p := range r.InputProperties {
-				// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-				// user-provided input properties, so skip them.
-				if isK8s && (p.Name == "apiVersion" || p.Name == "kind") {
+				// If the property defines a const value, then skip it.
+				// For example, in k8s, `apiVersion` and `kind` are often hard-coded
+				// in the SDK and are not really user-provided input properties.
+				if p.ConstValue != nil {
 					continue
 				}
 				params = append(params, formalParam{
