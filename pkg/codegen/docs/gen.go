@@ -1286,7 +1286,7 @@ func (mod *modContext) gen(fs fs) error {
 		// for the helm/v2 and yaml modules in the k8s package. These
 		// are "overlay" modules. The resources under those modules are
 		// not available in Go.
- 		if isK8s && (mod.mod == "helm/v2" || mod.mod == "yaml") {
+		if isK8s && (mod.mod == "helm/v2" || mod.mod == "yaml") {
 			data.LangChooserLanguages = "javascript,typescript,python,csharp"
 		}
 
