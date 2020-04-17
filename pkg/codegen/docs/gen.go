@@ -173,6 +173,9 @@ type formalParam struct {
 	OptionalFlag string
 
 	DefaultValue string
+
+	// Comment is an optional description of the parameter.
+	Comment string
 }
 
 type packageDetails struct {
@@ -194,7 +197,11 @@ type resourceDocArgs struct {
 	Comment            string
 	DeprecationMessage string
 
+	// ConstructorParams is a map from language to the rendered HTML for the constructor's
+	// arguments.
 	ConstructorParams map[string]string
+	// ConstructorParamsTyped is the typed set of parameters for the constructor, in order.
+	ConstructorParamsTyped map[string][]formalParam
 	// ConstructorResource is the resource that is being constructed or
 	// is the result of a constructor-like function.
 	ConstructorResource map[string]propertyType
@@ -473,6 +480,14 @@ func cleanOptionalIdentifier(s, lang string) string {
 	return s
 }
 
+// Resources typically take the same set of parameters to their constructors, and these
+// are the default comments/descriptions for them.
+const (
+	ctorNameArgComment = "The unique name of the resource."
+	ctorArgsArgComment = "The arguments to resource properties."
+	ctorOptsArgComment = "Bag of options to control resource's behavior."
+)
+
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
 	docLangHelper := getLanguageDocHelper("nodejs")
@@ -502,6 +517,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 				Name: "string",
 				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
+			Comment: ctorNameArgComment,
 		},
 		{
 			Name:         "args",
@@ -510,6 +526,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 				Name: argsType,
 				Link: argsDocLink,
 			},
+			Comment: ctorArgsArgComment,
 		},
 		{
 			Name:         "opts",
@@ -518,6 +535,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 				Name: "CustomResourceOptions",
 				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "CustomResourceOptions"),
 			},
+			Comment: ctorOptsArgComment,
 		},
 	}
 }
@@ -541,6 +559,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 				Name: "Context",
 				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Context"),
 			},
+			Comment: "Context object for the current deployment",
 		},
 		{
 			Name: "name",
@@ -548,6 +567,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 				Name: "string",
 				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
+			Comment: ctorNameArgComment,
 		},
 		{
 			Name:         "args",
@@ -556,6 +576,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType),
 			},
+			Comment: ctorArgsArgComment,
 		},
 		{
 			Name:         "opts",
@@ -564,6 +585,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 				Name: "ResourceOption",
 				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "ResourceOption"),
 			},
+			Comment: ctorOptsArgComment,
 		},
 	}
 }
@@ -616,6 +638,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 				Name: "string",
 				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
+			Comment: ctorNameArgComment,
 		},
 		{
 			Name:         "args",
@@ -625,6 +648,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 				Name: name + "Args",
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName),
 			},
+			Comment: ctorArgsArgComment,
 		},
 		{
 			Name:         "opts",
@@ -634,6 +658,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 				Name: "CustomResourceOptions",
 				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.CustomResourceOptions"),
 			},
+			Comment: ctorOptsArgComment,
 		},
 	}
 }
@@ -799,8 +824,10 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 	return docProperties
 }
 
-func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) map[string]string {
-	constructorParams := make(map[string]string)
+// Returns the rendered HTML for the resource's constructor, as well as the specific arguments.
+func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) (map[string]string, map[string][]formalParam) {
+	renderedParams := make(map[string]string)
+	formalParams := make(map[string][]formalParam)
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
@@ -849,9 +876,11 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 				}
 			}
 		}
-		constructorParams[lang] = b.String()
+		renderedParams[lang] = b.String()
+		formalParams[lang] = params
 	}
-	return constructorParams
+
+	return renderedParams, formalParams
 }
 
 // getConstructorResourceInfo returns a map of per-language information about
@@ -1142,6 +1171,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Notes:      mod.pkg.Attribution,
 	}
 
+	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
+
 	stateParam := name + "State"
 	data := resourceDocArgs{
 		Header: header{
@@ -1153,7 +1184,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Comment:            r.Comment,
 		DeprecationMessage: r.DeprecationMessage,
 
-		ConstructorParams:   mod.genConstructors(r, allOptionalInputs),
+		ConstructorParams:      renderedCtorParams,
+		ConstructorParamsTyped: typedCtorParams,
+
 		ConstructorResource: mod.getConstructorResourceInfo(name),
 		ArgsRequired:        !allOptionalInputs,
 

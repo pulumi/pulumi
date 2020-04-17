@@ -18,6 +18,11 @@
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
 
+{{/*
+    Render the specific snippet to construct the resource, e.g.
+    "new Bucket(name: string, args?: BucketArgs, opts?: pulumi.ResourceOptions);"
+    "def Bucket(resource_name, opts=None, acceleration_status=None, ..."
+*/}}
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
@@ -35,30 +40,38 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
-{{ template "constructor_args" }}
+{{ template "constructor_args" .ConstructorParamsTyped.nodejs }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language python %}}" }}
+{{/*
+    Constructing resources in python uses a different approach, which is why
+    we don't use the "constructor_args" and just hard-code two params here.
+*/}}
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
-        <span>name</span>
+        <span>resource_name</span>
         <span class="property-indicator"></span>
+        <span class="property-type">str</span>
     </dt>
     <dd>The unique name of the resource.</dd>
     <dt class="property-optional" title="Optional">
         <span>opts</span>
         <span class="property-indicator"></span>
+        <span class="property-type">
+            <a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">ResourceOptions</a>
+        </span>
     </dt>
     <dd>A bag of options that control this resource's behavior.</dd>
 </dl>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
-{{ template "constructor_args" }}
+{{ template "constructor_args" .ConstructorParamsTyped.go }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language csharp %}}" }}
-{{ template "constructor_args" }}
+{{ template "constructor_args" .ConstructorParamsTyped.csharp }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
 #### Resource Arguments
