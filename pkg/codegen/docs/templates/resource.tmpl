@@ -10,7 +10,7 @@
 {{- end }}
 
 <!-- Create resource -->
-## Create a {{ .Header.Title }} Resource
+## Create a {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
 {{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
@@ -74,7 +74,7 @@
 {{ template "constructor_args" .ConstructorParamsTyped.csharp }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
-## {{ .Header.Title }} Resource Properties
+## {{ .Header.Title }} Resource Properties {#properties}
 
 To learn more about resource properties and how to use them, see [Inputs and Outputs]({{ htmlSafe "{{< relref \"/docs/intro/concepts/programming-model#outputs\" >}}" }}) in the Programming Model docs.
 
@@ -98,7 +98,7 @@ All [input](#inputs) properties are implicitly available as output properties. T
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}
-## Look up an Existing {{.Header.Title}} Resource
+## Look up an Existing {{.Header.Title}} Resource {#look-up}
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
