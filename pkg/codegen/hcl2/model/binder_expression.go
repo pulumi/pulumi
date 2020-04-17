@@ -25,15 +25,34 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 )
 
+type BindOption func(options *bindOptions)
+
+func AllowMissingVariables(options *bindOptions) {
+	options.allowMissingVariables = true
+}
+
+type bindOptions struct {
+	allowMissingVariables bool
+}
+
 type expressionBinder struct {
+	options     bindOptions
 	anonSymbols map[*hclsyntax.AnonSymbolExpr]Definition
 	scope       *Scope
 	tokens      _syntax.TokenMap
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
-func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap) (Expression, hcl.Diagnostics) {
+func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap,
+	opts ...BindOption) (Expression, hcl.Diagnostics) {
+
+	var options bindOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	b := &expressionBinder{
+		options:     options,
 		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Definition{},
 		scope:       scope,
 		tokens:      tokens,
@@ -43,12 +62,14 @@ func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap
 }
 
 // BindExpressionText parses and binds an HCL2 expression using the given scope.
-func BindExpressionText(source string, scope *Scope, initialPos hcl.Pos) (Expression, hcl.Diagnostics) {
+func BindExpressionText(source string, scope *Scope, initialPos hcl.Pos,
+	opts ...BindOption) (Expression, hcl.Diagnostics) {
+
 	syntax, tokens, diagnostics := _syntax.ParseExpression(source, "<anonymous>", initialPos)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
 	}
-	return BindExpression(syntax, scope, tokens)
+	return BindExpression(syntax, scope, tokens, opts...)
 }
 
 // bindExpression binds a single HCL2 expression.
@@ -658,13 +679,20 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 		for i := range parts {
 			parts[i] = DynamicType
 		}
+
+		var diagnostics hcl.Diagnostics
+		if !b.options.allowMissingVariables {
+			diagnostics = hcl.Diagnostics{
+				undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange()),
+			}
+		}
 		return &ScopeTraversalExpression{
 			Syntax:    syntax,
 			Tokens:    tokens,
 			Parts:     parts,
 			RootName:  syntax.Traversal.RootName(),
 			Traversal: syntax.Traversal,
-		}, hcl.Diagnostics{undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange())}
+		}, diagnostics
 	}
 
 	parts, diagnostics := b.bindTraversalParts(def, syntax.Traversal.SimpleSplit().Rel)
