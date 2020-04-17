@@ -8,6 +8,10 @@
     {{ if ne .Notes "" -}}
 	<dt>Notes</dt>
 	<dd>{{ htmlSafe .Notes }}</dd>
-    {{- end }}
+	{{- end }}
+	{{ if ne .Version "" -}}
+	<dt>Version</dt>
+	<dd>{{ htmlSafe .Version }}</dd>
+	{{- end }}
 </dl>
 {{ end }}
