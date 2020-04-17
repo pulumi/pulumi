@@ -185,6 +185,11 @@ type packageDetails struct {
 type resourceDocArgs struct {
 	Header header
 
+	Tool string
+	// LangChooserLanguages is a comma-separated list of languages to pass to the
+	// language chooser shortcode.
+	LangChooserLanguages string
+
 	// Comment represents the introductory resource comment.
 	Comment            string
 	DeprecationMessage string
@@ -575,13 +580,18 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
+	// Top-level argument types in the k8s package for C# use different namespace path.
+	// Additionally, overlay resources in k8s have argument types in the top-level module path,
+	// but don't use the suffix "Args" like the other modules.
 	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" {
+		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
 			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
 			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
 			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+		} else if mod.isKubernetesOverlayModule() {
+			argLangTypeName = "Pulumi.Kubernetes." + name
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}
@@ -725,9 +735,11 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		if prop == nil {
 			continue
 		}
-		// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-		// user-provided input properties, so skip them.
-		if isK8s && (prop.Name == "apiVersion" || prop.Name == "kind") {
+
+		// If the property has a const value, then don't show it as an input property.
+		// Even though it is a valid property, it is used by the language code gen to
+		// generate the appropriate defaults for it. These cannot be overridden by users.
+		if prop.ConstValue != nil {
 			continue
 		}
 
@@ -812,11 +824,11 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// The input properties for a resource needs to be exploded as
 			// individual constructor params.
 			params = make([]formalParam, 0, len(r.InputProperties))
-			isK8s := isKubernetesPackage(mod.pkg)
 			for _, p := range r.InputProperties {
-				// In k8s, apiVersion and kind are hard-coded in the SDK and not really
-				// user-provided input properties, so skip them.
-				if isK8s && (p.Name == "apiVersion" || p.Name == "kind") {
+				// If the property defines a const value, then skip it.
+				// For example, in k8s, `apiVersion` and `kind` are often hard-coded
+				// in the SDK and are not really user-provided input properties.
+				if p.ConstValue != nil {
 					continue
 				}
 				params = append(params, formalParam{
@@ -1136,6 +1148,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			Title: name,
 		},
 
+		Tool: mod.tool,
+
 		Comment:            r.Comment,
 		DeprecationMessage: r.DeprecationMessage,
 
@@ -1270,11 +1284,20 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Resources
+	isK8s := isKubernetesPackage(mod.pkg)
 	for _, r := range mod.resources {
 		data := mod.genResource(r)
 
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
+		// Don't include the "go" language in the language chooser
+		// for the helm/v2 and yaml modules in the k8s package. These
+		// are "overlay" modules. The resources under those modules are
+		// not available in Go.
+		if isK8s && mod.isKubernetesOverlayModule() {
+			data.LangChooserLanguages = "javascript,typescript,python,csharp"
+		}
+
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
 			return err
@@ -1522,7 +1545,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}
 
 	scanK8SResource := func(r *schema.Resource) {
-		mod := getK8SMod(pkg, r.Token, modules, tool)
+		mod := getKubernetesMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 	}
 
