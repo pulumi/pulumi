@@ -1205,7 +1205,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	data := resourceDocArgs{
 		Header: header{
 			Title:    name,
-			TitleTag: fmt.Sprintf("Resource %s | Package %s", name, titleTag),
+			TitleTag: fmt.Sprintf("Resource %s | Module %s | Package %s", name, mod.mod, formatTitleText(mod.pkg.Name)),
 			MetaDesc: metaDescriptionRegexp.FindString((r.Comment)),
 		},
 
@@ -1462,12 +1462,7 @@ func (mod *modContext) genIndex() indexData {
 	title := modName
 	menu := false
 	if title == "" {
-		// If title not found in titleLookup map, default back to mod.pkg.Name.
-		if val, ok := titleLookup[mod.pkg.Name]; ok {
-			title = val
-		} else {
-			title = mod.pkg.Name
-		}
+		title = formatTitleText(mod.pkg.Name)
 		// Flag top-level entries for inclusion in the table-of-contents menu.
 		menu = true
 	}
@@ -1511,12 +1506,22 @@ func (mod *modContext) genIndex() indexData {
 		Version:    mod.pkg.Version.String(),
 	}
 
+	var titleTag string
+	// The same index.tmpl tmeplate is used for both top level package and module pages, if modules not present,
+	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
+	// top level page when generating title tags.
+	if len(modules) > 0 {
+		titleTag = fmt.Sprintf("Package %s", formatTitleText(title))
+	} else {
+		titleTag = fmt.Sprintf("Module %s | Package %s", title, formatTitleText(mod.pkg.Name))
+	}
+
 	data := indexData{
 		Tool: mod.tool,
 
-		Title: title,
-		Menu:  menu,
-
+		Title:          title,
+		TitleTag:       titleTag,
+		Menu:           menu,
 		Resources:      resources,
 		Functions:      functions,
 		Modules:        modules,
@@ -1531,6 +1536,26 @@ func (mod *modContext) genIndex() indexData {
 	return data
 }
 
+<<<<<<< HEAD
+=======
+func formatTitleText(title string) string {
+	// If title not found in titleLookup map, default back to title given.
+	if val, ok := titleLookup[title]; ok {
+		return val
+	}
+	return title
+}
+
+func decodeLangSpecificInfo(pkg *schema.Package, lang string, obj interface{}) error {
+	if csharp, ok := pkg.Language[lang]; ok {
+		if err := json.Unmarshal([]byte(csharp), &obj); err != nil {
+			return errors.Wrap(err, "decoding csharp package info")
+		}
+	}
+	return nil
+}
+
+>>>>>>> Add title tags and description to module and pkg index pages
 func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
