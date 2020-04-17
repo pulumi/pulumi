@@ -9,5 +9,9 @@
 	<dt>Notes</dt>
 	<dd>{{ htmlSafe .Notes }}</dd>
     {{- end }}
+	{{ if ne .Version "" -}}
+	<dt>Version</dt>
+	<dd>{{ htmlSafe .Version }}</dd>
+	{{- end }}
 </dl>
 {{ end }}

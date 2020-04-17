@@ -179,6 +179,7 @@ type packageDetails struct {
 	Repository string
 	License    string
 	Notes      string
+	Version    string
 }
 
 type resourceDocArgs struct {
@@ -1420,6 +1421,7 @@ func (mod *modContext) genIndex() indexData {
 		Repository: mod.pkg.Repository,
 		License:    mod.pkg.License,
 		Notes:      mod.pkg.Attribution,
+		Version:    mod.pkg.Version.String(),
 	}
 
 	data := indexData{
