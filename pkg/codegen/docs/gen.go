@@ -1405,6 +1405,7 @@ type indexData struct {
 	Tool string
 
 	Title              string
+	TitleTag           string
 	PackageDescription string
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
