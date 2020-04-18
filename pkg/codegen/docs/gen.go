@@ -148,6 +148,7 @@ type apiTypeDocLinks struct {
 // docNestedType represents a complex type.
 type docNestedType struct {
 	Name        string
+	AnchorID    string
 	APIDocLinks map[string]apiTypeDocLinks
 	Properties  map[string][]property
 }
@@ -733,8 +734,10 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 			}
 
+			name := tokenToName(obj.Token)
 			objs = append(objs, docNestedType{
-				Name:        wbr(tokenToName(obj.Token)),
+				Name:        wbr(name),
+				AnchorID:    strings.ToLower(name),
 				APIDocLinks: apiDocLinks,
 				Properties:  props,
 			})
