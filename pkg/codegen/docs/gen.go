@@ -560,7 +560,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 				Name: "Context",
 				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Context"),
 			},
-			Comment: "Context object for the current deployment",
+			Comment: "Context object for the current deployment.",
 		},
 		{
 			Name: "name",
