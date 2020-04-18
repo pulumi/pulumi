@@ -6,6 +6,9 @@ CHANGELOG
 - Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
   behavior for how URLs to the Pulumi Console are generated.
   [#4410](https://github.com/pulumi/pulumi/pull/4410)
+  
+- Protect against panic when unprotecting non-existant resources
+  [#4441](https://github.com/pulumi/pulumi/pull/4441)
 
 ## 2.0.0 (2020-04-16)
 =======

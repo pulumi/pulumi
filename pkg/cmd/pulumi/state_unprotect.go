@@ -68,6 +68,11 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 func unprotectAllResources(stackName string, showPrompt bool) result.Result {
 	res := runTotalStateEdit(stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+		// Protects against Panic when a user tries to unprotect non-existing resources
+		if snap == nil {
+			return fmt.Errorf("no resources found to unprotect")
+		}
+
 		for _, res := range snap.Resources {
 			err := edit.UnprotectResource(snap, res)
 			contract.AssertNoError(err)
