@@ -86,15 +86,10 @@ The {{ .Header.Title }} resource accepts the following [input]({{ htmlSafe "{{< 
 
 <!-- Output properties -->
 ### Outputs
-{{ if ne (len .OutputProperties) 0 }}
-All [input](#inputs) properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following computed outputs.
 
-The following output properties are available:
+All [input](#inputs) properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following output properties:
 
 {{ template "properties" .OutputProperties }}
-{{ else }}
-All [input](#inputs) properties are implicitly available as output properties. The {{ .Header.Title }} resource does not produce any additional output properties.
-{{ end }}
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}
