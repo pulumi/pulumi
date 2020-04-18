@@ -819,9 +819,15 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		})
 	}
 
-	// Sort required props to move them to the top of the properties list.
+	// Sort required props to move them to the top of the properties list, then by name.
 	sort.SliceStable(docProperties, func(i, j int) bool {
-		return docProperties[i].IsRequired && !docProperties[j].IsRequired
+		pi, pj := docProperties[i], docProperties[j]
+		switch {
+		case pi.IsRequired != pj.IsRequired:
+			return pi.IsRequired && !pj.IsRequired
+		default:
+			return pi.Name < pj.Name
+		}
 	})
 
 	return docProperties
@@ -1145,14 +1151,20 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	if !r.IsProvider {
 		filteredOutputProps = filterOutputProperties(r.InputProperties, r.Properties)
 	}
-	hasFilteredOutputProps := len(filteredOutputProps) > 0
+
+	// All resources have an implicit `id` output property, that we must inject into the docs.
+	filteredOutputProps = append(filteredOutputProps, &schema.Property{
+		Name:       "id",
+		Comment:    "The provider-assigned unique ID for this managed resource.",
+		Type:       schema.StringType,
+		IsRequired: true,
+	})
+
 	for _, lang := range supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false)
+		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
 		if r.IsProvider {
 			continue
-		}
-		if hasFilteredOutputProps {
-			outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
 		}
 		if r.StateInputs != nil {
 			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
