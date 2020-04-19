@@ -218,7 +218,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
 			g.Indented(func() {
 				g.Fprintf(w, "%s%s = ", g.Indent, name)
-				instantiate(g.makeResourceName(name, ""))
+				instantiate(g.makeResourceName(r.Name(), ""))
 				g.Fprint(w, "\n")
 			})
 		} else {
@@ -232,7 +232,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(r.Name(), "range."+resKey)
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, name)
 				instantiate(resName)
