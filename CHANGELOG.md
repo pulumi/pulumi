@@ -9,6 +9,9 @@ CHANGELOG
   
 - Protect against panic when unprotecting non-existant resources
   [#4441](https://github.com/pulumi/pulumi/pull/4441)
+  
+- Add flag to `pulumi stack` to output only the stack name
+  [#4450](https://github.com/pulumi/pulumi/pull/4450)
 
 ## 2.0.0 (2020-04-16)
 =======
