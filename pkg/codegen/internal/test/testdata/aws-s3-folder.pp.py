@@ -1,5 +1,6 @@
 import pulumi
 import json
+import os
 import pulumi_aws as aws
 
 # Create a bucket and expose a website index document

@@ -176,6 +176,23 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
+var functionImports = map[string]string{
+	"fileArchive": "pulumi",
+	"fileAsset":   "pulumi",
+	"readDir":     "os",
+	"toJSON":      "json",
+}
+
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+	if x.Name != "invoke" {
+		return functionImports[x.Name]
+	}
+
+	pkg, _, _, diags := functionName(x.Args[0])
+	contract.Assert(len(diags) == 0)
+	return "pulumi_" + pkg
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case hcl2.IntrinsicApply:

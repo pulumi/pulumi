@@ -1,5 +1,4 @@
 import pulumi
-import json
 import pulumi_aws as aws
 
 # Create a new security group for port 80.

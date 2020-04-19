@@ -22,7 +22,7 @@ import (
 // A BodyItemVisitor is a function that visits and optionally replaces the contents of a body item.
 type BodyItemVisitor func(n BodyItem) (BodyItem, hcl.Diagnostics)
 
-func IdentityBodyItemVisitor(n BodyItem) (BodyItem, hcl.Diagnostics) {
+func BodyItemIdentityVisitor(n BodyItem) (BodyItem, hcl.Diagnostics) {
 	return n, nil
 }
 
@@ -47,6 +47,13 @@ func visitBlock(n *Block, pre, post BodyItemVisitor) (BodyItem, hcl.Diagnostics)
 func VisitBodyItem(n BodyItem, pre, post BodyItemVisitor) (BodyItem, hcl.Diagnostics) {
 	if n == nil {
 		return nil, nil
+	}
+
+	if pre == nil {
+		pre = BodyItemIdentityVisitor
+	}
+	if post == nil {
+		post = BodyItemIdentityVisitor
 	}
 
 	nn, preDiags := pre(n)
@@ -293,6 +300,13 @@ func VisitExpression(n Expression, pre, post ExpressionVisitor) (Expression, hcl
 		return nil, nil
 	}
 
+	if pre == nil {
+		pre = IdentityVisitor
+	}
+	if post == nil {
+		post = IdentityVisitor
+	}
+
 	nn, preDiags := pre(n)
 
 	var postDiags hcl.Diagnostics
@@ -335,4 +349,41 @@ func VisitExpression(n Expression, pre, post ExpressionVisitor) (Expression, hcl
 	}
 
 	return nn, append(preDiags, postDiags...)
+}
+
+func visitBlockExpressions(n *Block, pre, post ExpressionVisitor) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	for _, item := range n.Body.Items {
+		diags := VisitExpressions(item, pre, post)
+		diagnostics = append(diagnostics, diags...)
+	}
+
+	return diagnostics
+}
+
+// VisitExpressions visits each expression that descends from the given body item.
+func VisitExpressions(n BodyItem, pre, post ExpressionVisitor) hcl.Diagnostics {
+	if n == nil {
+		return nil
+	}
+
+	if pre == nil {
+		pre = IdentityVisitor
+	}
+	if post == nil {
+		post = IdentityVisitor
+	}
+
+	switch n := n.(type) {
+	case *Attribute:
+		v, diags := VisitExpression(n.Value, pre, post)
+		n.Value = v
+		return diags
+	case *Block:
+		return visitBlockExpressions(n, pre, post)
+	default:
+		contract.Failf("unexpected node type in visitExpression: %T", n)
+		return nil
+	}
 }

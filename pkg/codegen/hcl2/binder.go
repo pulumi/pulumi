@@ -111,8 +111,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
 			attrDiags := b.declareNode(item.Name, &LocalVariable{
-				Syntax:       item,
-				VariableName: item.Name,
+				syntax: item,
 			})
 			diagnostics = append(diagnostics, attrDiags...)
 		case *hclsyntax.Block:
@@ -135,9 +134,8 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				// TODO(pdg): check body for valid contents
 
 				diags := b.declareNode(name, &ConfigVariable{
-					typ:          typ,
-					Syntax:       item,
-					VariableName: name,
+					typ:    typ,
+					syntax: item,
 				})
 				diagnostics = append(diagnostics, diags...)
 			case "resource":
@@ -145,10 +143,8 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
 
-				tokens, _ := b.tokens.ForNode(item).(*syntax.BlockTokens)
 				resource := &Resource{
-					Syntax: item,
-					Tokens: tokens,
+					syntax: item,
 				}
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
@@ -174,9 +170,8 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				// TODO(pdg): check body for valid contents
 
 				diags := b.declareNode(name, &OutputVariable{
-					typ:          typ,
-					Syntax:       item,
-					VariableName: name,
+					typ:    typ,
+					syntax: item,
 				})
 				diagnostics = append(diagnostics, diags...)
 			}

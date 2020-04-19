@@ -23,10 +23,8 @@ import (
 
 // ResourceOptions represents a resource instantiation's options.
 type ResourceOptions struct {
-	// The syntax node associated with the resource options.
-	Syntax *hclsyntax.Block
-	// The syntax tokens associated with the resource options, if any.
-	Tokens *syntax.BlockTokens
+	// The definition of the resource options.
+	Definition *model.Block
 
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
@@ -44,10 +42,10 @@ type ResourceOptions struct {
 type Resource struct {
 	node
 
-	// The syntax node associated with the resource instantiation.
-	Syntax *hclsyntax.Block
-	// The syntax tokens associated with the resource instantiation, if any.
-	Tokens *syntax.BlockTokens
+	syntax *hclsyntax.Block
+
+	// The definition of the resource.
+	Definition *model.Block
 
 	// Token is the type token for this resource.
 	Token string
@@ -60,9 +58,6 @@ type Resource struct {
 	// The type of the resource variable.
 	VariableType model.Type
 
-	// The body of this resource.
-	Body *model.Body
-
 	// The resource's input attributes, in source order.
 	Inputs []*model.Attribute
 
@@ -72,12 +67,16 @@ type Resource struct {
 
 // SyntaxNode returns the syntax node associated with the resource.
 func (r *Resource) SyntaxNode() hclsyntax.Node {
-	return r.Syntax
+	return r.syntax
 }
 
 // Type returns the type of the resource.
 func (r *Resource) Type() model.Type {
 	return r.VariableType
+}
+
+func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(r.Definition, pre, post)
 }
 
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
@@ -86,7 +85,7 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 
 // Name returns the name of the resource.
 func (r *Resource) Name() string {
-	return r.Syntax.Labels[0]
+	return r.Definition.Labels[0]
 }
 
 // DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition

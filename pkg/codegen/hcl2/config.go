@@ -25,28 +25,30 @@ import (
 type ConfigVariable struct {
 	node
 
-	// The syntax node for the config variable.
-	Syntax *hclsyntax.Block
+	syntax *hclsyntax.Block
+	typ    model.Type
 
-	typ model.Type
-
-	// The name of the config variable.
-	VariableName string
+	// The variable definition.
+	Definition *model.Block
 	// The default value for the config variable, if any.
 	DefaultValue model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the config variable.
 func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
-	return cv.Syntax
+	return cv.syntax
 }
 
 func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return cv.typ.Traverse(traverser)
 }
 
+func (cv *ConfigVariable) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(cv.Definition, pre, post)
+}
+
 func (cv *ConfigVariable) Name() string {
-	return cv.VariableName
+	return cv.Definition.Labels[0]
 }
 
 // Type returns the type of the config variable.

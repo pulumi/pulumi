@@ -101,30 +101,31 @@ func (b *binder) getDependencies(node Node) []Node {
 }
 
 func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
-	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens, b.options...)
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options...)
 	if defaultValue, ok := block.Body.Attribute("default"); ok {
 		node.DefaultValue = defaultValue.Value
 		if model.InputType(node.typ).ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.DefaultValue))
 		}
 	}
+	node.Definition = block
 	return diagnostics
 }
 
 func (b *binder) bindLocalVariable(node *LocalVariable) hcl.Diagnostics {
-	attr, diagnostics := model.BindAttribute(node.Syntax, b.root, b.tokens, b.options...)
-	node.VariableType = attr.Value.Type()
-	node.Value = attr.Value
+	attr, diagnostics := model.BindAttribute(node.syntax, b.root, b.tokens, b.options...)
+	node.Definition = attr
 	return diagnostics
 }
 
 func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
-	block, diagnostics := model.BindBlock(node.Syntax, model.StaticScope(b.root), b.tokens, b.options...)
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options...)
 	if value, ok := block.Body.Attribute("value"); ok {
 		node.Value = value.Value
 		if model.InputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
+	node.Definition = block
 	return diagnostics
 }

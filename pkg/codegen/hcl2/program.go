@@ -32,6 +32,9 @@ type Node interface {
 	// Type returns the type of the node.
 	Type() model.Type
 
+	// VisitExpressions visits the expressions that make up the node's body.
+	VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics
+
 	markBinding()
 	markBound()
 	isBinding() bool
