@@ -4,7 +4,7 @@ import os
 import pulumi_aws as aws
 
 # Create a bucket and expose a website index document
-site_bucket = aws.s3.Bucket("site_bucket", website={
+site_bucket = aws.s3.Bucket("siteBucket", website={
     "indexDocument": "index.html",
 })
 site_dir = "www"
@@ -18,7 +18,7 @@ for range in [{"key": k, "value": v} for [k, v] in enumerate(os.listdir(site_dir
         content_type=(lambda: raise Exception("FunctionCallExpression: mimeType (aws-s3-folder.pp:19,16-37)"))()))
 # set the MIME type of the file
 # Set the access policy for the bucket so all objects are readable
-bucket_policy = aws.s3.BucketPolicy("bucket_policy",
+bucket_policy = aws.s3.BucketPolicy("bucketPolicy",
     bucket=site_bucket.id,
     policy=site_bucket.id.apply(lambda id: json.dumps({
         "Version": "2012-10-17",

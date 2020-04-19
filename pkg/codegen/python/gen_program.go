@@ -241,7 +241,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		}
 	} else {
 		g.Fgenf(w, "%s%s = ", g.Indent, name)
-		instantiate(g.makeResourceName(name, ""))
+		instantiate(g.makeResourceName(r.Name(), ""))
 		g.Fprint(w, "\n")
 	}
 
