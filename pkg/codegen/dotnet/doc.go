@@ -16,6 +16,7 @@
 package dotnet
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -94,12 +95,17 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) st
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	propLangName := strings.Title(p.Name)
 
-	names := map[*schema.Property]string{}
-	properties := []*schema.Property{p}
-	if err := computePropertyNames(properties, names); err != nil {
-		return "", err
+	if raw, ok := p.Language["csharp"].(json.RawMessage); ok {
+		val, err := Importer.ImportPropertySpec(p, raw)
+		if err != nil {
+			return "", err
+		}
+		p.Language["csharp"] = val
 	}
 
+	names := map[*schema.Property]string{}
+	properties := []*schema.Property{p}
+	computePropertyNames(properties, names)
 	if name, ok := names[p]; ok {
 		return name, nil
 	}

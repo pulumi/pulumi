@@ -101,7 +101,7 @@ func (b *binder) loadPackageSchema(name string) error {
 		return err
 	}
 
-	pkg, err := schema.ImportSpec(spec)
+	pkg, err := schema.ImportSpec(spec, nil)
 	if err != nil {
 		return err
 	}

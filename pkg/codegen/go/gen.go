@@ -20,7 +20,6 @@ package gen
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"go/format"
 	"io"
@@ -103,7 +102,7 @@ type pkgContext struct {
 	tool           string
 	packages       map[string]*pkgContext
 
-	// Name overrides set in GoInfo
+	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
 	pkgImportAliases map[string]string // Package name -> import alias
 }
@@ -1033,28 +1032,8 @@ func (pkg *pkgContext) getPkg(mod string) *pkgContext {
 	return pack
 }
 
-// GoInfo holds information required to generate the Go SDK from a schema.
-type GoInfo struct {
-	// Base path for package imports
-	//
-	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
-	ImportBasePath string `json:"importBasePath,omitempty"`
-
-	// Map from module -> package name
-	//
-	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
-	//
-	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
-
-	// Map from package name -> package alias
-	//
-	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
-	//
-	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
-}
-
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
@@ -1166,13 +1145,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 }
 
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	var goInfo GoInfo
-	if golang, ok := pkg.Language["go"]; ok {
-		if err := json.Unmarshal(golang, &goInfo); err != nil {
-			return nil, errors.Wrap(err, "decoding go package info")
-		}
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		return nil, err
 	}
 
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
 	packages := generatePackageContextMap(tool, pkg, goInfo)
 
 	// emit each package

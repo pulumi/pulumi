@@ -20,7 +20,6 @@ package python
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -820,23 +819,15 @@ func (mod *modContext) genPropertyConversionTables() string {
 	return w.String()
 }
 
-type propertyInfo struct {
-	MapCase bool `json:"mapCase,omitempty"`
-}
-
 // recordProperty records the given property's name and member names. For each property name contained in the given
 // property, the name is converted to snake case and recorded in the snake case to camel case table.
 //
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
-func (mod *modContext) recordProperty(prop *schema.Property) error {
+func (mod *modContext) recordProperty(prop *schema.Property) {
 	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
-		var info propertyInfo
-		if err := json.Unmarshal([]byte(python), &info); err != nil {
-			return errors.Wrap(err, "decoding python property info")
-		}
-		mapCase = info.MapCase
+		mapCase = python.(PropertyInfo).MapCase
 	}
 
 	if mapCase {
@@ -845,24 +836,19 @@ func (mod *modContext) recordProperty(prop *schema.Property) error {
 		mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
 	}
 
-	propType := prop.Type.String()
 	if obj, ok := prop.Type.(*schema.ObjectType); ok {
 		for _, p := range obj.Properties {
 			// Skip the nested type's property if the property's type is the same
 			// as that of the nested type itself.
 			// For example, the JSONSchemaProps type in Kubernetes has properties whose
 			// type is itself. This can lead to infinite recursion.
-			if p.Type.String() == propType {
+			if p.Type == prop.Type {
 				continue
 			}
 
-			if err := mod.recordProperty(p); err != nil {
-				return err
-			}
+			mod.recordProperty(p)
 		}
 	}
-
-	return nil
 }
 
 // genInitDocstring emits the docstring for the __init__ method of the given resource type.
@@ -1154,18 +1140,12 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	return defaultValue, nil
 }
 
-type pythonPackageInfo struct {
-	Requires map[string]string `json:"requires,omitempty"`
-}
-
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode node-specific info
-	var info pythonPackageInfo
-	if python, ok := pkg.Language["python"]; ok {
-		if err := json.Unmarshal([]byte(python), &info); err != nil {
-			return nil, errors.Wrap(err, "decoding python package info")
-		}
+	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+		return nil, err
 	}
+	info, _ := pkg.Language["python"].(PackageInfo)
 
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}
@@ -1210,14 +1190,10 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		// Calculate casing tables. We do this up front because our docstring generator (which is run during
 		// genResource) requires them.
 		for _, prop := range r.Properties {
-			if err := mod.recordProperty(prop); err != nil {
-				return err
-			}
+			mod.recordProperty(prop)
 		}
 		for _, prop := range r.InputProperties {
-			if err := mod.recordProperty(prop); err != nil {
-				return err
-			}
+			mod.recordProperty(prop)
 		}
 		return nil
 	}

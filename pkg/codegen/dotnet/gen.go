@@ -20,7 +20,6 @@ package dotnet
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -1203,72 +1202,40 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-type csharpPropertyInfo struct {
-	Name string `json:"name,omitempty"`
-}
-
-func computePropertyNames(props []*schema.Property, names map[*schema.Property]string) error {
+func computePropertyNames(props []*schema.Property, names map[*schema.Property]string) {
 	for _, p := range props {
-		if csharp, ok := p.Language["csharp"]; ok {
-			var info csharpPropertyInfo
-			if err := json.Unmarshal([]byte(csharp), &info); err != nil {
-				return err
-			}
-			if info.Name != "" {
-				names[p] = info.Name
-			}
+		if info, ok := p.Language["csharp"].(CSharpPropertyInfo); ok && info.Name != "" {
+			names[p] = info.Name
 		}
 	}
-	return nil
-}
-
-// CSharpPackageInfo represents the C# language-specific info at the root
-// of the schema.
-type CSharpPackageInfo struct {
-	PackageReferences map[string]string `json:"packageReferences,omitempty"`
-	Namespaces        map[string]string `json:"namespaces,omitempty"`
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode csharp-specific info
-	var info CSharpPackageInfo
-	if csharp, ok := pkg.Language["csharp"]; ok {
-		if err := json.Unmarshal([]byte(csharp), &info); err != nil {
-			return nil, errors.Wrap(err, "decoding csharp package info")
-		}
+	// Decode .NET-specific info
+	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+		return nil, err
 	}
+	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 
 	propertyNames := map[*schema.Property]string{}
 	for _, r := range pkg.Resources {
-		if err := computePropertyNames(r.Properties, propertyNames); err != nil {
-			return nil, err
-		}
-		if err := computePropertyNames(r.InputProperties, propertyNames); err != nil {
-			return nil, err
-		}
+		computePropertyNames(r.Properties, propertyNames)
+		computePropertyNames(r.InputProperties, propertyNames)
 		if r.StateInputs != nil {
-			if err := computePropertyNames(r.StateInputs.Properties, propertyNames); err != nil {
-				return nil, err
-			}
+			computePropertyNames(r.StateInputs.Properties, propertyNames)
 		}
 	}
 	for _, f := range pkg.Functions {
 		if f.Inputs != nil {
-			if err := computePropertyNames(f.Inputs.Properties, propertyNames); err != nil {
-				return nil, err
-			}
+			computePropertyNames(f.Inputs.Properties, propertyNames)
 		}
 		if f.Outputs != nil {
-			if err := computePropertyNames(f.Outputs.Properties, propertyNames); err != nil {
-				return nil, err
-			}
+			computePropertyNames(f.Outputs.Properties, propertyNames)
 		}
 	}
 	for _, t := range pkg.Types {
 		if obj, ok := t.(*schema.ObjectType); ok {
-			if err := computePropertyNames(obj.Properties, propertyNames); err != nil {
-				return nil, err
-			}
+			computePropertyNames(obj.Properties, propertyNames)
 		}
 	}
 
