@@ -24,10 +24,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type binder struct {
-	host plugin.Host
+	options []model.BindOption
+	host    plugin.Host
 
 	packageSchemas map[string]*packageSchema
 
@@ -38,7 +40,7 @@ type binder struct {
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnostics, error) {
+func BindProgram(files []*syntax.File, host plugin.Host, opts ...model.BindOption) (*Program, hcl.Diagnostics, error) {
 	if host == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -54,12 +56,18 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 	}
 
 	b := &binder{
+		options:        opts,
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
 		root:           model.NewRootScope(syntax.None),
 	}
 
+	// Define null.
+	b.root.Define("null", &model.Constant{
+		Name:          "null",
+		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+	})
 	// Define builtin functions.
 	for name, fn := range pulumiBuiltins {
 		b.root.DefineFunction(name, fn)
@@ -148,9 +156,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
-
-				diags := b.bindResourceTypes(resource)
-				diagnostics = append(diagnostics, diags...)
 			case "output":
 				name, typ := "<unnamed>", model.Type(model.DynamicType)
 				switch len(item.Labels) {
@@ -193,5 +198,5 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 }
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
-	return model.BindExpression(node, b.root, b.tokens)
+	return model.BindExpression(node, b.root, b.tokens, b.options...)
 }

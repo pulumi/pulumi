@@ -99,7 +99,9 @@ func (b *Body) Blocks(typ string) []*Block {
 }
 
 // BindBody binds an HCL2 body using the given scopes and token map.
-func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap) (*Body, hcl.Diagnostics) {
+func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap,
+	opts ...BindOption) (*Body, hcl.Diagnostics) {
+
 	var diagnostics hcl.Diagnostics
 
 	syntaxItems := SourceOrderBody(body)
@@ -111,12 +113,12 @@ func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap) (*Bod
 			scope, scopeDiags := scopes.GetScopeForAttribute(syntaxItem)
 			diagnostics = append(diagnostics, scopeDiags...)
 
-			items[i], itemDiags = BindAttribute(syntaxItem, scope, tokens)
+			items[i], itemDiags = BindAttribute(syntaxItem, scope, tokens, opts...)
 		case *hclsyntax.Block:
 			scopes, scopesDiags := scopes.GetScopesForBlock(syntaxItem)
 			diagnostics = append(diagnostics, scopesDiags...)
 
-			items[i], itemDiags = BindBlock(syntaxItem, scopes, tokens)
+			items[i], itemDiags = BindBlock(syntaxItem, scopes, tokens, opts...)
 		default:
 			contract.Failf("unexpected syntax item of type %T (%v)", syntaxItem, syntaxItem.Range())
 		}

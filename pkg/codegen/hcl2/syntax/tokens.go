@@ -67,6 +67,34 @@ type Trivia interface {
 // TriviaList is a list of trivia.
 type TriviaList []Trivia
 
+func (trivia TriviaList) LeadingWhitespace() TriviaList {
+	end := 0
+	for i, t := range trivia {
+		if _, ok := t.(Whitespace); !ok {
+			break
+		}
+		end = i
+	}
+	if end == 0 {
+		return nil
+	}
+	return append(TriviaList(nil), trivia[0:end]...)
+}
+
+func (trivia TriviaList) TrailingWhitespace() TriviaList {
+	start := len(trivia)
+	for i := len(trivia) - 1; i >= 0; i-- {
+		if _, ok := trivia[i].(Whitespace); !ok {
+			break
+		}
+		start = i
+	}
+	if start == len(trivia) {
+		return nil
+	}
+	return append(TriviaList(nil), trivia[start:]...)
+}
+
 func (trivia TriviaList) CollapseWhitespace() TriviaList {
 	result := make(TriviaList, 0, len(trivia))
 	for _, t := range trivia {
@@ -456,8 +484,9 @@ func (t *BlockTokens) GetLabels(labels []string) []Token {
 func (t *BlockTokens) GetOpenBrace() Token {
 	if t == nil {
 		return Token{
-			Raw:           newRawToken(hclsyntax.TokenOBrace),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:            newRawToken(hclsyntax.TokenOBrace),
+			LeadingTrivia:  TriviaList{NewWhitespace(' ')},
+			TrailingTrivia: TriviaList{NewWhitespace('\n')},
 		}
 	}
 	return t.OpenBrace
@@ -466,8 +495,9 @@ func (t *BlockTokens) GetOpenBrace() Token {
 func (t *BlockTokens) GetCloseBrace() Token {
 	if t == nil {
 		return Token{
-			Raw:           newRawToken(hclsyntax.TokenCBrace),
-			LeadingTrivia: TriviaList{NewWhitespace('\n')},
+			Raw:            newRawToken(hclsyntax.TokenCBrace),
+			LeadingTrivia:  TriviaList{NewWhitespace('\n')},
+			TrailingTrivia: TriviaList{NewWhitespace('\n')},
 		}
 	}
 	return t.CloseBrace

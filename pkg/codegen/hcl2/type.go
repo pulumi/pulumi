@@ -23,8 +23,6 @@ var (
 	ArchiveType model.Type = model.MustNewOpaqueType("Archive")
 	// AssetType represents the set of Pulumi Asset values.
 	AssetType model.Type = model.MustNewOpaqueType("Asset")
-	// ResourceType represents a Pulumi resource instance.
-	ResourceType model.Type = model.MustNewOpaqueType("Resource")
 	// ResourcePropertyType represents a resource property reference.
 	ResourcePropertyType model.Type = model.MustNewOpaqueType("Property")
 )

@@ -1,7 +1,16 @@
 CHANGELOG
 =========
 
-## 2.0.0 (Unreleased)
+## HEAD (unreleased)
+
+- Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
+  behavior for how URLs to the Pulumi Console are generated.
+  [#4410](https://github.com/pulumi/pulumi/pull/4410)
+  
+- Protect against panic when unprotecting non-existant resources
+  [#4441](https://github.com/pulumi/pulumi/pull/4441)
+
+## 2.0.0 (2020-04-16)
 =======
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now

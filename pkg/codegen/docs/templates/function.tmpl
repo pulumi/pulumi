@@ -5,7 +5,7 @@
 {{ .DeprecationMessage }}
 
 <!-- Input properties -->
-## Using {{ .Header.Title }}
+## Using {{ .Header.Title }} {#using}
 
 {{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
 
@@ -39,7 +39,7 @@ The following arguments are supported:
 {{ end }}
 
 <!-- Output properties -->
-## {{.Header.Title}} Result
+## {{.Header.Title}} Result {#result}
 
 The following output properties are available:
 
@@ -49,8 +49,9 @@ The following output properties are available:
 {{ if ne (len .NestedTypes) 0 }}
 
 ## Supporting Types
+
 {{ range .NestedTypes }}
-<h4>{{ htmlSafe .Name }}</h4>
+<h4 id="{{ .AnchorID }}">{{ htmlSafe .Name }}</h4>
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
 > See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.nodejs.InputType "") (ne .APIDocLinks.nodejs.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /choosable %}}" }}

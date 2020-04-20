@@ -34,8 +34,6 @@ type generator struct {
 
 	program     *hcl2.Program
 	diagnostics hcl.Diagnostics
-
-	anonymousVariables codegen.Set
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -43,8 +41,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program:            program,
-		anonymousVariables: codegen.Set{},
+		program: program,
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -173,46 +170,82 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	optionsBag := ""
 
 	name := pyName(r.Name(), false)
-	resName := g.makeResourceName(name, "")
 
-	g.genTrivia(w, r.Tokens.Type)
+	g.genTrivia(w, r.Tokens.GetType(""))
 	for _, l := range r.Tokens.Labels {
 		g.genTrivia(w, l)
 	}
-	g.genTrivia(w, r.Tokens.OpenBrace)
+	g.genTrivia(w, r.Tokens.GetOpenBrace())
 
-	g.Fgenf(w, "%s%s = %s(%s", g.Indent, name, qualifiedMemberName, resName)
-	indenter := func(f func()) { f() }
-	if len(r.Inputs) > 1 {
-		indenter = g.Indented
-	}
-	indenter(func() {
-		for _, attr := range r.Inputs {
-			propertyName := pyName(attr.Name, false)
-			if len(r.Inputs) == 1 {
-				g.Fgenf(w, ", %s=%v", propertyName, g.genExpression(attr.Value))
-			} else {
-				g.Fgenf(w, ",\n%s%s=%v", g.Indent, propertyName, g.genExpression(attr.Value))
-			}
+	instantiate := func(resName string) {
+		g.Fgenf(w, "%s(%s", qualifiedMemberName, resName)
+		indenter := func(f func()) { f() }
+		if len(r.Inputs) > 1 {
+			indenter = g.Indented
 		}
-	})
-	g.Fgenf(w, "%s)\n", optionsBag)
-	g.genTrivia(w, r.Tokens.CloseBrace)
+		indenter(func() {
+			for _, attr := range r.Inputs {
+				propertyName := pyName(attr.Name, false)
+				if len(r.Inputs) == 1 {
+					g.Fgenf(w, ", %s=%.v", propertyName, g.lowerExpression(attr.Value))
+				} else {
+					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, g.lowerExpression(attr.Value))
+				}
+			}
+		})
+		g.Fgenf(w, "%s)", optionsBag)
+	}
+
+	if r.Options != nil && r.Options.Range != nil {
+		rangeExpr := r.Options.Range
+		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+			g.Fgenf(w, "%s%s = None\n", g.Indent, name)
+			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
+			g.Indented(func() {
+				g.Fprintf(w, "%s%s = ", g.Indent, name)
+				instantiate(g.makeResourceName(name, ""))
+				g.Fprint(w, "\n")
+			})
+		} else {
+			g.Fgenf(w, "%s%s = []\n", g.Indent, name)
+
+			resKey := "key"
+			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				resKey = "value"
+			} else {
+				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+			}
+
+			resName := g.makeResourceName(name, "range."+resKey)
+			g.Indented(func() {
+				g.Fgenf(w, "%s%s.append(", g.Indent, name)
+				instantiate(resName)
+				g.Fprint(w, ")\n")
+			})
+		}
+	} else {
+		g.Fgenf(w, "%s%s = ", g.Indent, name)
+		instantiate(g.makeResourceName(name, ""))
+		g.Fprint(w, "\n")
+	}
+
+	g.genTrivia(w, r.Tokens.GetCloseBrace())
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 	// TODO(pdg): trivia
 
-	getType := "object"
+	getType := "_object"
 	switch v.Type() {
 	case model.StringType:
 		getType = ""
 	case model.NumberType:
-		getType = "float"
+		getType = "_float"
 	case model.IntType:
-		getType = "int"
+		getType = "_int"
 	case model.BoolType:
-		getType = "bool"
+		getType = "_bool"
 	}
 
 	getOrRequire := "get"
@@ -220,23 +253,24 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		getOrRequire = "require"
 	}
 
-	g.Fgenf(w, "%[1]s%[2]s = config.%[3]s_%[4]s(\"%[2]s\")\n", g.Indent, v.Name(), getOrRequire, getType)
+	name := pyName(v.Name(), false)
+	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
 	if v.DefaultValue != nil {
-		g.Fgenf(w, "%sif %s is None:\n", g.Indent, v.Name())
+		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
 		g.Indented(func() {
-			g.Fgenf(w, "%s%s = %s\n", g.Indent, v.Name(), g.genExpression(v.DefaultValue))
+			g.Fgenf(w, "%s%s = %.v\n", g.Indent, name, g.lowerExpression(v.DefaultValue))
 		})
 	}
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%s%s = %s\n", g.Indent, v.Name(), g.genExpression(v.Value))
+	g.Fgenf(w, "%s%s = %.v\n", g.Indent, pyName(v.Name(), false), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(\"%s\", %s)\n", g.Indent, v.Name(), g.genExpression(v.Value))
+	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

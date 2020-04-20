@@ -14,25 +14,51 @@
 package httpstate
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConsoleURL(t *testing.T) {
-	assert.Equal(t,
-		"https://app.pulumi.com/pulumi-bot/my-stack",
-		cloudConsoleURL("https://api.pulumi.com", "pulumi-bot", "my-stack"))
+	t.Run("HonorEnvVar", func(t *testing.T) {
+		initial := os.Getenv("PULUMI_CONSOLE_DOMAIN")
+		defer func() {
+			os.Setenv("PULUMI_CONSOLE_DOMAIN", initial)
+		}()
 
-	assert.Equal(t,
-		"http://app.pulumi.example.com/pulumi-bot/my-stack",
-		cloudConsoleURL("http://api.pulumi.example.com", "pulumi-bot", "my-stack"))
+		// Honor the PULUMI_CONSOLE_DOMAIN environment variable.
+		os.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
+		assert.Equal(t,
+			"https://pulumi-console.contoso.com/1/2",
+			cloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))
 
-	assert.Equal(t,
-		"http://localhost:3000/pulumi-bot/my-stack",
-		cloudConsoleURL("http://localhost:8080", "pulumi-bot", "my-stack"))
+		// Unset the variable, confirm the "standard behavior" where we
+		// replace "api." with "app.".
+		os.Unsetenv("PULUMI_CONSOLE_DOMAIN")
+		assert.Equal(t,
+			"https://app.pulumi.contoso.com/1/2",
+			cloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))
+	})
 
-	assert.Equal(t, "", cloudConsoleURL("https://example.com", "pulumi-bot", "my-stack"))
+	t.Run("CloudURLUsingStandardPattern", func(t *testing.T) {
+		assert.Equal(t,
+			"https://app.pulumi.com/pulumi-bot/my-stack",
+			cloudConsoleURL("https://api.pulumi.com", "pulumi-bot", "my-stack"))
 
-	assert.Equal(t, "", cloudConsoleURL("not-even-a-rea-url", "pulumi-bot", "my-stack"))
+		assert.Equal(t,
+			"http://app.pulumi.example.com/pulumi-bot/my-stack",
+			cloudConsoleURL("http://api.pulumi.example.com", "pulumi-bot", "my-stack"))
+	})
+
+	t.Run("LocalDevelopment", func(t *testing.T) {
+		assert.Equal(t,
+			"http://localhost:3000/pulumi-bot/my-stack",
+			cloudConsoleURL("http://localhost:8080", "pulumi-bot", "my-stack"))
+	})
+
+	t.Run("ConsoleDomainUnknown", func(t *testing.T) {
+		assert.Equal(t, "", cloudConsoleURL("https://pulumi.example.com", "pulumi-bot", "my-stack"))
+		assert.Equal(t, "", cloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
+	})
 }

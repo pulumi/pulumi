@@ -15,6 +15,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -31,6 +33,13 @@ type TypedTraversable interface {
 	Traversable
 
 	Type() Type
+}
+
+// ValueTraversable is a Traversable that has an associated value.
+type ValueTraversable interface {
+	Traversable
+
+	Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
 }
 
 // GetTraversableType returns the type of the given Traversable:
@@ -74,6 +83,18 @@ func (b *expressionBinder) bindTraversalParts(receiver Traversable,
 	var diagnostics hcl.Diagnostics
 	for i, part := range traversal {
 		nextReceiver, partDiags := parts[i].Traverse(part)
+
+		// TODO(pdg): proper options for Traverse
+		if b.options.allowMissingVariables {
+			var diags hcl.Diagnostics
+			for _, d := range partDiags {
+				if !strings.HasPrefix(d.Summary, "undefined variable") {
+					diags = append(diags, d)
+				}
+			}
+			partDiags = diags
+		}
+
 		parts[i+1], diagnostics = nextReceiver, append(diagnostics, partDiags...)
 	}
 
@@ -82,7 +103,9 @@ func (b *expressionBinder) bindTraversalParts(receiver Traversable,
 		// OK
 	default:
 		// TODO(pdg): improve this diagnostic
-		diagnostics = append(diagnostics, undefinedVariable("", traversal.SourceRange()))
+		if !b.options.allowMissingVariables {
+			diagnostics = append(diagnostics, undefinedVariable("", traversal.SourceRange()))
+		}
 	}
 
 	return parts, diagnostics

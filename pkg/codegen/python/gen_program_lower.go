@@ -23,7 +23,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 		return nil, false
 	}
 
-	traversal := hcl.TraversalJoin(args[0].Syntax.Traversal, thenTraversal.Syntax.Traversal[1:])
+	traversal := hcl.TraversalJoin(args[0].Traversal, thenTraversal.Traversal[1:])
 	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 		Traversal: traversal,
 		SrcRange:  traversal.SourceRange(),

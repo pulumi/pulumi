@@ -68,9 +68,6 @@ type Resource struct {
 
 	// The resource's options, if any.
 	Options *ResourceOptions
-
-	// range tracks the syntax node for the range option, if any.
-	rangeNode hclsyntax.Node
 }
 
 // SyntaxNode returns the syntax node associated with the resource.
@@ -80,7 +77,7 @@ func (r *Resource) SyntaxNode() hclsyntax.Node {
 
 // Type returns the type of the resource.
 func (r *Resource) Type() model.Type {
-	return ResourceType
+	return r.VariableType
 }
 
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {

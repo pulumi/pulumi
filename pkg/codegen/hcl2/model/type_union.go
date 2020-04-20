@@ -83,7 +83,7 @@ func NewOptionalType(t Type) Type {
 
 // IsOptionalType returns true if t is an optional type.
 func IsOptionalType(t Type) bool {
-	return t.AssignableFrom(NoneType)
+	return t != DynamicType && t.AssignableFrom(NoneType)
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

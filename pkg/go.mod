@@ -35,7 +35,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/sdk/v2 v2.0.0-beta.2
+	github.com/pulumi/pulumi/sdk/v2 v2.0.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.1.0
