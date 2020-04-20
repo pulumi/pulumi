@@ -175,7 +175,7 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
 | <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 10+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 8+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 10+  |
 | <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
 | <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Stable  | Go 1.13.x   |
 | <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | [.NET (C#/F#/VB.NET)](./sdk/dotnet)     | Stable  | .NET Core 3.1  |
