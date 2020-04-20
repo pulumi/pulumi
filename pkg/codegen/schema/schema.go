@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -289,7 +289,7 @@ type Package struct {
 
 // Language provides hooks for importing language-specific metadata in a package.
 type Language interface {
-	// ImportDefaultSpec decodes language-specific metadata associated with a Default.
+	// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
 	ImportDefaultSpec(def *DefaultValue, bytes json.RawMessage) (interface{}, error)
 	// ImportPropertySpec decodes language-specific metadata associated with a Property.
 	ImportPropertySpec(property *Property, bytes json.RawMessage) (interface{}, error)

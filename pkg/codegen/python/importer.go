@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ var Importer schema.Language = importer(0)
 
 type importer int
 
-// ImportDefaultSpec decodes language-specific metadata associated with a Default.
+// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
 func (importer) ImportDefaultSpec(def *schema.DefaultValue, raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
