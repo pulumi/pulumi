@@ -22,7 +22,6 @@ package docs
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
@@ -55,7 +54,7 @@ var (
 	camelCaseToSnakeCase map[string]string
 
 	// The language-specific info objects for a certain package (provider).
-	goPkgInfo     go_gen.GoInfo
+	goPkgInfo     go_gen.GoPackageInfo
 	csharpPkgInfo dotnet.CSharpPackageInfo
 	nodePkgInfo   nodejs.NodePackageInfo
 
@@ -1515,15 +1514,6 @@ func (mod *modContext) genIndex() indexData {
 	return data
 }
 
-func decodeLangSpecificInfo(pkg *schema.Package, lang string, obj interface{}) error {
-	if csharp, ok := pkg.Language[lang]; ok {
-		if err := json.Unmarshal([]byte(csharp), &obj); err != nil {
-			return errors.Wrap(err, "decoding csharp package info")
-		}
-	}
-	return nil
-}
-
 func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
@@ -1564,26 +1554,26 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
-	// Decode Go-specific language info.
-	if err := decodeLangSpecificInfo(pkg, "go", &goPkgInfo); err != nil {
-		panic(errors.Wrap(err, "error decoding go language info"))
+	// Decode language-specific info.
+	if err := pkg.ImportLanguages(map[string]schema.Language{
+		"go":     go_gen.Importer,
+		"python": python.Importer,
+		"csharp": dotnet.Importer,
+		"nodejs": nodejs.Importer,
+	}); err != nil {
+		panic(err)
 	}
+	goPkgInfo, _ = pkg.Language["go"].(go_gen.GoPackageInfo)
+	csharpPkgInfo, _ = pkg.Language["csharp"].(dotnet.CSharpPackageInfo)
+	nodePkgInfo, _ = pkg.Language["nodejs"].(nodejs.NodePackageInfo)
+
 	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
 	// Generate the Go package map info now, so we can use that to get the type string
 	// names later.
 	goLangHelper.GeneratePackagesMap(pkg, tool, goPkgInfo)
 
-	// Decode C#-specific language info.
-	if err := decodeLangSpecificInfo(pkg, "csharp", &csharpPkgInfo); err != nil {
-		panic(errors.Wrap(err, "error decoding c# language info"))
-	}
 	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
-
-	// Decode NodeJS-specific language info.
-	if err := decodeLangSpecificInfo(pkg, "nodejs", &nodePkgInfo); err != nil {
-		panic(errors.Wrap(err, "error decoding nodejs language info"))
-	}
 
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(pkg, r.Token, modules, tool)
