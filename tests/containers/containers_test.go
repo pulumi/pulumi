@@ -59,7 +59,7 @@ func TestPulumiDockerImage(t *testing.T) {
 			}()
 
 			stackName := fmt.Sprintf("%s/container-%s-%x", stackOwner, template, time.Now().UnixNano())
-			e.RunCommand("pulumi", "new", template, "yes", "-f", "-s", stackName)
+			e.RunCommand("pulumi", "new", template, "-y", "-f", "-s", stackName)
 
 			example := base.With(integration.ProgramTestOptions{
 				Dir: e.RootPath,
