@@ -134,7 +134,11 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	}
 
 	// Make a connection to the real engine that we will log messages to.
-	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "language host could not make connection to engine")
 	}

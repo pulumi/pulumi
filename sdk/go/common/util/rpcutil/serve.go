@@ -25,6 +25,15 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+var maxRPCMessageSize = 1024 * 1024 * 400
+
+// GrpcChannelOptions returns the defaultCallOptions with the max_receive_message_length increased to 400mb
+// We want to increase the default message size as per pulumi/pulumi#2319
+func GrpcChannelOptions() grpc.DialOption {
+	return grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxRPCMessageSize))
+}
+
 // IsBenignCloseErr returns true if the error is "expected" upon shutdown of the server.
 func IsBenignCloseErr(err error) bool {
 	msg := err.Error()
@@ -47,7 +56,10 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	}
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
-	srv := grpc.NewServer(grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan)))
+	srv := grpc.NewServer(
+		grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan)),
+		grpc.MaxRecvMsgSize(maxRPCMessageSize),
+	)
 	for _, register := range registers {
 		if err := register(srv); err != nil {
 			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)

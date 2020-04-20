@@ -27,13 +27,13 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
-	"google.golang.org/grpc"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"google.golang.org/grpc"
 )
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -60,7 +60,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
 	if addr := info.MonitorAddr; addr != "" {
-		conn, err := grpc.Dial(info.MonitorAddr, grpc.WithInsecure())
+		conn, err := grpc.Dial(
+			info.MonitorAddr,
+			grpc.WithInsecure(),
+			rpcutil.GrpcChannelOptions(),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
 		}
@@ -71,7 +75,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var engineConn *grpc.ClientConn
 	var engine pulumirpc.EngineClient
 	if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.Dial(info.EngineAddr, grpc.WithInsecure())
+		conn, err := grpc.Dial(
+			info.EngineAddr,
+			grpc.WithInsecure(),
+			rpcutil.GrpcChannelOptions(),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
 		}
