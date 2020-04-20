@@ -22,13 +22,20 @@ import (
 
 // NodePackageInfo contains NodeJS specific overrides for a package.
 type NodePackageInfo struct {
-	PackageName        string            `json:"packageName,omitempty"`        // Custom name for the NPM package.
-	PackageDescription string            `json:"packageDescription,omitempty"` // Description for the NPM package.
-	Dependencies       map[string]string `json:"dependencies,omitempty"`       // NPM dependencies to add to package.json.
-	DevDependencies    map[string]string `json:"devDependencies,omitempty"`    // NPM dev-dependencies to add to package.json.
-	PeerDependencies   map[string]string `json:"peerDependencies,omitempty"`   // NPM peer-dependencies to add to package.json.
-	TypeScriptVersion  string            `json:"typescriptVersion,omitempty"`  // A specific version of TypeScript to include in package.json.
-	ModuleToPackage    map[string]string `json:"moduleToPackage,omitempty"`    // A map containing overrides for module names to package names.
+	// Custom name for the NPM package.
+	PackageName string `json:"packageName,omitempty"`
+	// Description for the NPM package.
+	PackageDescription string `json:"packageDescription,omitempty"`
+	// NPM dependencies to add to package.json.
+	Dependencies map[string]string `json:"dependencies,omitempty"`
+	// NPM dev-dependencies to add to package.json.
+	DevDependencies map[string]string `json:"devDependencies,omitempty"`
+	// NPM peer-dependencies to add to package.json.
+	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
+	// A specific version of TypeScript to include in package.json.
+	TypeScriptVersion string `json:"typescriptVersion,omitempty"`
+	// A map containing overrides for module names to package names.
+	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
 }
 
 // Importer implements schema.Language for NodeJS.
