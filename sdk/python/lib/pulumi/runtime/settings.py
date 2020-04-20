@@ -27,6 +27,9 @@ from ..errors import RunError
 if TYPE_CHECKING:
     from ..resource import Resource
 
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
+_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+
 class Settings:
     monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
@@ -63,17 +66,22 @@ class Settings:
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
 
+
         # Actually connect to the monitor/engine over gRPC.
         if monitor is not None:
             if isinstance(monitor, str):
-                self.monitor = resource_pb2_grpc.ResourceMonitorStub(grpc.insecure_channel(monitor))
+                self.monitor = resource_pb2_grpc.ResourceMonitorStub(
+                    grpc.insecure_channel(monitor, options=_GRPC_CHANNEL_OPTIONS),
+                )
             else:
                 self.monitor = monitor
         else:
             self.monitor = None
         if engine:
             if isinstance(engine, str):
-                self.engine = engine_pb2_grpc.EngineStub(grpc.insecure_channel(engine))
+                self.engine = engine_pb2_grpc.EngineStub(
+                    grpc.insecure_channel(engine, options=_GRPC_CHANNEL_OPTIONS),
+                )
             else:
                 self.engine = engine
         else:

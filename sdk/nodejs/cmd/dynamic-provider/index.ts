@@ -16,6 +16,7 @@ import * as minimist from "minimist";
 import * as path from "path";
 
 import * as grpc from "@grpc/grpc-js";
+import { ChannelOptions } from "@grpc/grpc-js/build/src/channel-options";
 
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
@@ -32,6 +33,7 @@ const plugproto = require("../../proto/plugin_pb.js");
 const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
 // code.
@@ -351,7 +353,9 @@ export async function main(args: string[]) {
     const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server();
+    const server = new grpc.Server(<ChannelOptions>{
+        "grpc.max_receive_message_length": maxRPCMessageSize,
+    });
     server.addService(provrpc.ResourceProviderService, {
         cancel: cancelRPC,
         configure: configureRPC,

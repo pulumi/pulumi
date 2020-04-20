@@ -1,6 +1,7 @@
 // Copyright 2016-2020, Pulumi Corporation
 
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Grpc.Core;
 using Pulumirpc;
 
@@ -12,7 +13,9 @@ namespace Pulumi
 
         public GrpcMonitor(string monitor)
         {
-            this._client = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
+            var maxRpcMessageSize = 400 * 1024 * 1024;
+            var grpcChannelOptions = new List<ChannelOption> { new ChannelOption("MaxReceiveMessageLength", maxRpcMessageSize.ToString())};
+            this._client = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure, grpcChannelOptions));
         }
         
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)

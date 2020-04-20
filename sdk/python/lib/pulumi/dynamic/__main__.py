@@ -26,6 +26,7 @@ from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 PROVIDER_KEY = "__provider"
 
 def get_provider(props) -> ResourceProvider:
@@ -168,7 +169,10 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
 def main():
     monitor = DynamicResourceProviderServicer()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=4),
+        ('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)
+    )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
     server.start()

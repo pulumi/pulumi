@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
+import { ChannelOptions } from "@grpc/grpc-js/build/src/channel-options";
 import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource, URN } from "../resource";
@@ -24,6 +25,9 @@ const provproto = require("../proto/provider_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+const grpcChannelOptions = <ChannelOptions>{"grpc.max_receive_message_length": maxRPCMessageSize};
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -187,7 +191,11 @@ export function getMonitor(): Object | undefined {
         const addr = options.monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
-            monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure());
+            monitor = new resrpc.ResourceMonitorClient(
+                addr,
+                grpc.credentials.createInsecure(),
+                grpcChannelOptions,
+            );
         } else {
             // If test mode isn't enabled, we can't run the program without an engine.
             requireTestModeEnabled();
@@ -228,7 +236,11 @@ export function getEngine(): Object | undefined {
         const addr = options.engineAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the engine.
-            engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure());
+            engine = new engrpc.EngineClient(
+                addr,
+                grpc.credentials.createInsecure(),
+                grpcChannelOptions,
+            );
         }
     }
     return engine;
