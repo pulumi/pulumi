@@ -17,6 +17,9 @@ CHANGELOG
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
 
+- Increase the MaxCallRecvMsgSize for all RPC calls. 
+  [#4455](https://github.com/pulumi/pulumi/pull/4455)
+
 ## 2.0.0 (2020-04-16)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
