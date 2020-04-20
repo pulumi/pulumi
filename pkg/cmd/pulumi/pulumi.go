@@ -143,14 +143,9 @@ func NewPulumiCmd() *cobra.Command {
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
 
-			select {
-			case checkVersionMsg := <-updateCheckResult:
-				if checkVersionMsg != nil && !isJSON {
-					cmdutil.Diag().Warningf(checkVersionMsg)
-				}
-			default:
-				// If the channel doesn't have anything in it yet, just ignore it
-				// and continue shutting down.
+			checkVersionMsg, ok := <-updateCheckResult
+			if ok && checkVersionMsg != nil && !isJSON {
+				cmdutil.Diag().Warningf(checkVersionMsg)
 			}
 
 			logging.Flush()
