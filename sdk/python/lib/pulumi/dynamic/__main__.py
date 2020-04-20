@@ -171,7 +171,7 @@ def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=4),
-        ('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)
+        options=[('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
