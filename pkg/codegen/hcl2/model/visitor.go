@@ -52,21 +52,20 @@ func VisitBodyItem(n BodyItem, pre, post BodyItemVisitor) (BodyItem, hcl.Diagnos
 	if pre == nil {
 		pre = BodyItemIdentityVisitor
 	}
-	if post == nil {
-		post = BodyItemIdentityVisitor
-	}
 
 	nn, preDiags := pre(n)
 
 	var postDiags hcl.Diagnostics
-	switch n := nn.(type) {
-	case *Attribute:
-		nn, postDiags = post(n)
-	case *Block:
-		nn, postDiags = visitBlock(n, pre, post)
-	default:
-		contract.Failf("unexpected node type in visitExpression: %T", n)
-		return nil, nil
+	if post != nil {
+		switch n := nn.(type) {
+		case *Attribute:
+			nn, postDiags = post(n)
+		case *Block:
+			nn, postDiags = visitBlock(n, pre, post)
+		default:
+			contract.Failf("unexpected node type in visitExpression: %T", n)
+			return nil, nil
+		}
 	}
 
 	return nn, append(preDiags, postDiags...)
@@ -303,49 +302,48 @@ func VisitExpression(n Expression, pre, post ExpressionVisitor) (Expression, hcl
 	if pre == nil {
 		pre = IdentityVisitor
 	}
-	if post == nil {
-		post = IdentityVisitor
-	}
 
 	nn, preDiags := pre(n)
 
 	var postDiags hcl.Diagnostics
-	switch n := nn.(type) {
-	case *AnonymousFunctionExpression:
-		nn, postDiags = visitAnonymousFunction(n, pre, post)
-	case *BinaryOpExpression:
-		nn, postDiags = visitBinaryOp(n, pre, post)
-	case *ConditionalExpression:
-		nn, postDiags = visitConditional(n, pre, post)
-	case *ErrorExpression:
-		nn, postDiags = post(n)
-	case *ForExpression:
-		nn, postDiags = visitFor(n, pre, post)
-	case *FunctionCallExpression:
-		nn, postDiags = visitFunctionCall(n, pre, post)
-	case *IndexExpression:
-		nn, postDiags = visitIndex(n, pre, post)
-	case *LiteralValueExpression:
-		nn, postDiags = post(n)
-	case *ObjectConsExpression:
-		nn, postDiags = visitObjectCons(n, pre, post)
-	case *RelativeTraversalExpression:
-		nn, postDiags = visitRelativeTraversal(n, pre, post)
-	case *ScopeTraversalExpression:
-		nn, postDiags = post(n)
-	case *SplatExpression:
-		nn, postDiags = visitSplat(n, pre, post)
-	case *TemplateExpression:
-		nn, postDiags = visitTemplate(n, pre, post)
-	case *TemplateJoinExpression:
-		nn, postDiags = visitTemplateJoin(n, pre, post)
-	case *TupleConsExpression:
-		nn, postDiags = visitTupleCons(n, pre, post)
-	case *UnaryOpExpression:
-		nn, postDiags = visitUnaryOp(n, pre, post)
-	default:
-		contract.Failf("unexpected node type in visitExpression: %T", n)
-		return nil, nil
+	if post != nil {
+		switch n := nn.(type) {
+		case *AnonymousFunctionExpression:
+			nn, postDiags = visitAnonymousFunction(n, pre, post)
+		case *BinaryOpExpression:
+			nn, postDiags = visitBinaryOp(n, pre, post)
+		case *ConditionalExpression:
+			nn, postDiags = visitConditional(n, pre, post)
+		case *ErrorExpression:
+			nn, postDiags = post(n)
+		case *ForExpression:
+			nn, postDiags = visitFor(n, pre, post)
+		case *FunctionCallExpression:
+			nn, postDiags = visitFunctionCall(n, pre, post)
+		case *IndexExpression:
+			nn, postDiags = visitIndex(n, pre, post)
+		case *LiteralValueExpression:
+			nn, postDiags = post(n)
+		case *ObjectConsExpression:
+			nn, postDiags = visitObjectCons(n, pre, post)
+		case *RelativeTraversalExpression:
+			nn, postDiags = visitRelativeTraversal(n, pre, post)
+		case *ScopeTraversalExpression:
+			nn, postDiags = post(n)
+		case *SplatExpression:
+			nn, postDiags = visitSplat(n, pre, post)
+		case *TemplateExpression:
+			nn, postDiags = visitTemplate(n, pre, post)
+		case *TemplateJoinExpression:
+			nn, postDiags = visitTemplateJoin(n, pre, post)
+		case *TupleConsExpression:
+			nn, postDiags = visitTupleCons(n, pre, post)
+		case *UnaryOpExpression:
+			nn, postDiags = visitUnaryOp(n, pre, post)
+		default:
+			contract.Failf("unexpected node type in visitExpression: %T", n)
+			return nil, nil
+		}
 	}
 
 	return nn, append(preDiags, postDiags...)
@@ -370,9 +368,6 @@ func VisitExpressions(n BodyItem, pre, post ExpressionVisitor) hcl.Diagnostics {
 
 	if pre == nil {
 		pre = IdentityVisitor
-	}
-	if post == nil {
-		post = IdentityVisitor
 	}
 
 	switch n := n.(type) {

@@ -208,6 +208,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		}
 		indenter(func() {
 			for _, attr := range r.Inputs {
+				attrType, diags := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				contract.Ignore(diags)
+
+				g.lowerObjectKeys(attr.Value, attrType.(model.Type))
+
 				propertyName := pyName(attr.Name, false)
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, g.lowerExpression(attr.Value))

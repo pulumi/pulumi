@@ -8,14 +8,12 @@ security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[{
     "toPort": 0,
     "cidrBlocks": ["0.0.0.0/0"],
 }])
-ami = aws.get_ami({
-    "filters": [{
+ami = aws.get_ami(filters=[{
         "name": "name",
         "values": ["amzn-ami-hvm-*-x86_64-ebs"],
     }],
-    "owners": ["137112412989"],
-    "mostRecent": True,
-})
+    owners=["137112412989"],
+    most_recent=True)
 # Create a simple web server using the startup script for the instance.
 server = aws.ec2.Instance("server",
     tags={

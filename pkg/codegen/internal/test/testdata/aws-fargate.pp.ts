@@ -83,7 +83,7 @@ const appService = new aws.ecs.Service("appService", {
     desiredCount: 5,
     launchType: "FARGATE",
     taskDefinition: appTask.arn,
-    networkConfiguraiton: {
+    networkConfiguration: {
         assignPublicIp: true,
         subnets: subnets.then(subnets => subnets.ids),
         securityGroups: [webSecurityGroup.id],

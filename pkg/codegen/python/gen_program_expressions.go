@@ -221,7 +221,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			optionsBag = buf.String()
 		}
 
-		g.Fgenf(w, "%s(%.v%v)", name, expr.Args[1], optionsBag)
+		g.Fgenf(w, "%s(", name)
+
+		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
+			g.lowerObjectKeys(expr.Args[1], expr.Signature.Parameters[1].Type)
+
+			indenter := func(f func()) { f() }
+			if len(obj.Items) > 1 {
+				indenter = g.Indented
+			}
+			indenter(func() {
+				for i, item := range obj.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+
+					keyVal := key.Value.AsString()
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		g.Fgenf(w, "%v)", optionsBag)
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
@@ -367,16 +394,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			if receiver, ok := receiver.(model.TypedTraversable); ok {
 				annotations := receiver.Type().GetAnnotations()
 				if len(annotations) == 1 {
-					sch := annotations[0].(*schema.ObjectType)
-					if p, ok := sch.Property(keyVal); ok {
-						mapCase := true
-						if info, ok := p.Language["python"].(PropertyInfo); ok {
-							mapCase = info.MapCase
-						}
-						if mapCase {
-							keyVal = PyName(keyVal)
-						}
-					}
+					keyVal = g.mapObjectKey(keyVal, annotations[0].(*schema.ObjectType))
 				}
 			}
 
