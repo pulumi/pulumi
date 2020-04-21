@@ -33,6 +33,8 @@ const plugproto = require("../../proto/plugin_pb.js");
 const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
+
+// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
