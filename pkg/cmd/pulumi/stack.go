@@ -36,6 +36,7 @@ func newStackCmd() *cobra.Command {
 	var showSecrets bool
 	var stackName string
 	var startTime string
+	var showStackName bool
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -58,6 +59,11 @@ func newStackCmd() *cobra.Command {
 			snap, err := s.Snapshot(commandContext())
 			if err != nil {
 				return err
+			}
+
+			if showStackName {
+				fmt.Printf("%s\n", s.Ref().Name())
+				return nil
 			}
 
 			// First print general info about the current stack.
@@ -160,6 +166,8 @@ func newStackCmd() *cobra.Command {
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
+	cmd.Flags().BoolVar(
+		&showStackName, "show-name", false, "Display only the stack name")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
