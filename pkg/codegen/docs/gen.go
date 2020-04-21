@@ -1197,15 +1197,15 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
-	baseDescription := fmt.Sprintf("Explore the %s resource of the %s module,"+
-		" including examples, input properties, output properties,"+
-		" lookup functions, and supporting types.", name, mod.mod)
+	baseDescription := fmt.Sprintf("Explore the %s resource of the %s module, "+
+		"including examples, input properties, output properties, "+
+		"lookup functions, and supporting types.", name, mod.mod)
 
 	data := resourceDocArgs{
 		Header: header{
 			Title:    name,
 			TitleTag: fmt.Sprintf("Resource %s | Module %s | Package %s", name, mod.mod, formatTitleText(mod.pkg.Name)),
-			MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString((r.Comment)),
+			MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(r.Comment),
 		},
 
 		Tool: mod.tool,

@@ -32,6 +32,8 @@ import (
 type functionDocArgs struct {
 	Header header
 
+	Tool string
+
 	ResourceName       string
 	DeprecationMessage string
 	Comment            string
@@ -298,10 +300,17 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 
 	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/)
 
+	baseDescription := fmt.Sprintf("Explore the %s function of the %s module, "+
+		"including examples, input properties, output properties, "+
+		"and supporting types.", name, mod.mod)
 	args := functionDocArgs{
 		Header: header{
-			Title: name,
+			Title:    name,
+			TitleTag: fmt.Sprintf("Function %s | Module %s | Package %s", name, mod.mod, formatTitleText(mod.pkg.Name)),
+			MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
 		},
+
+		Tool: mod.tool,
 
 		ResourceName:   resourceName,
 		FunctionArgs:   mod.genFunctionArgs(f, resourceName),
