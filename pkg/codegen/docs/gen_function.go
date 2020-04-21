@@ -281,6 +281,30 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, resourceName string) 
 	return functionParams
 }
 
+func (mod *modContext) genFunctionHeader(f *schema.Function) header {
+	funcName := tokenToName(f.Token)
+	packageName := formatTitleText(mod.pkg.Name)
+	var baseDescription string
+	var titleTag string
+	if mod.mod == "" {
+		baseDescription = fmt.Sprintf("Explore the %s function of the %s package, "+
+			"including examples, input properties, output properties, "+
+			"and supporting types.", funcName, packageName)
+		titleTag = fmt.Sprintf("Function %s | Package %s", funcName, packageName)
+	} else {
+		baseDescription = fmt.Sprintf("Explore the %s function of the %s module, "+
+			"including examples, input properties, output properties, "+
+			"and supporting types.", funcName, mod.mod)
+		titleTag = fmt.Sprintf("Function %s | Module %s | Package %s", funcName, mod.mod, packageName)
+	}
+
+	return header{
+		Title:    funcName,
+		TitleTag: titleTag,
+		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
+	}
+}
+
 // genFunction is the main entrypoint for generating docs for a Function.
 // Returns args type that can be used to execute the `function.tmpl` doc template.
 func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
@@ -300,15 +324,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 
 	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/)
 
-	baseDescription := fmt.Sprintf("Explore the %s function of the %s module, "+
-		"including examples, input properties, output properties, "+
-		"and supporting types.", name, mod.mod)
 	args := functionDocArgs{
-		Header: header{
-			Title:    name,
-			TitleTag: fmt.Sprintf("Function %s | Module %s | Package %s", name, mod.mod, formatTitleText(mod.pkg.Name)),
-			MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
-		},
+		Header: mod.genFunctionHeader(f),
 
 		Tool: mod.tool,
 

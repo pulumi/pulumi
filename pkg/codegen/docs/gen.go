@@ -1143,6 +1143,30 @@ func filterOutputProperties(inputProps []*schema.Property, props []*schema.Prope
 	return outputProps
 }
 
+func (mod *modContext) genResourceHeader(r *schema.Resource) header {
+	packageName := formatTitleText(mod.pkg.Name)
+	resourceName := resourceName(r)
+	var baseDescription string
+	var titleTag string
+	if mod.mod == "" {
+		baseDescription = fmt.Sprintf("Explore the %s resource of the %s package, "+
+			"including examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", resourceName, packageName)
+		titleTag = fmt.Sprintf("Resource %s | Package %s", resourceName, packageName)
+	} else {
+		baseDescription = fmt.Sprintf("Explore the %s resource of the %s module, "+
+			"including examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", resourceName, mod.mod)
+		titleTag = fmt.Sprintf("Resource %s | Module %s | Package %s", resourceName, mod.mod, packageName)
+	}
+
+	return header{
+		Title:    resourceName,
+		TitleTag: titleTag,
+		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(r.Comment),
+	}
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -1197,16 +1221,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
-	baseDescription := fmt.Sprintf("Explore the %s resource of the %s module, "+
-		"including examples, input properties, output properties, "+
-		"lookup functions, and supporting types.", name, mod.mod)
-
 	data := resourceDocArgs{
-		Header: header{
-			Title:    name,
-			TitleTag: fmt.Sprintf("Resource %s | Module %s | Package %s", name, mod.mod, formatTitleText(mod.pkg.Name)),
-			MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(r.Comment),
-		},
+		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
