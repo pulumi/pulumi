@@ -11,7 +11,7 @@ CHANGELOG
   [#4441](https://github.com/pulumi/pulumi/pull/4441)
 
 ## 2.0.0 (2020-04-16)
-=======
+
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
@@ -23,7 +23,7 @@ CHANGELOG
 - Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
   another library.
 
-- @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
+- @pulumi/pulumi now requires Node.js version >=10.10.0.
 
 - All data-source invocations are now asynchronous (Promise-returning) by default.
 
