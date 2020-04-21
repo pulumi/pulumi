@@ -953,6 +953,8 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	return dv, nil
 }
 
+// bindProperties binds the map of property specs and list of required properties into a sorted list of peroperties and
+// a lookup table.
 func (t *types) bindProperties(properties map[string]PropertySpec,
 	required []string) ([]*Property, map[string]*Property, error) {
 
