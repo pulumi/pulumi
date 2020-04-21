@@ -2,7 +2,9 @@ package nodejs
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"strings"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 )
 
 type nameInfo int
@@ -23,7 +26,7 @@ func (nameInfo) IsReservedWord(word string) bool {
 func (g *generator) genExpression(expr model.Expression) string {
 	// TODO(pdg): diagnostics
 
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0))
+	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), true)
 	expr, _ = g.lowerProxyApplies(expr)
 
 	var buf bytes.Buffer
@@ -92,54 +95,133 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	switch expr.Collection.Type().(type) {
 	case *model.ListType, *model.TupleType:
-		g.Fgenf(w, "Array.from(%v.entries())", expr.Collection)
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "%v", expr.Collection)
+		} else {
+			g.Fgenf(w, "%v.map((v, k) => [k, v])", expr.Collection)
+		}
 	case *model.MapType, *model.ObjectType:
-		g.Fgenf(w, "Object.entries(%v)", expr.Collection)
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "Object.values(%v)", expr.Collection)
+		} else {
+			g.Fgenf(w, "Object.entries(%v)", expr.Collection)
+		}
 	}
 
-	keyVariableName := "_"
+	fnParams, reduceParams := expr.ValueVariable.Name, expr.ValueVariable.Name
 	if expr.KeyVariable != nil {
-		keyVariableName = expr.KeyVariable.Name
+		reduceParams = fmt.Sprintf("[%v, %v]", expr.KeyVariable.Name, expr.ValueVariable.Name)
+		fnParams = fmt.Sprintf("(%v)", reduceParams)
 	}
 
 	if expr.Condition != nil {
-		g.Fgenf(w, ".filter(([%v, %v]) => %v)", keyVariableName, expr.ValueVariable.Name, expr.Condition)
+		g.Fgenf(w, ".filter(%s => %v)", fnParams, expr.Condition)
 	}
 
 	if expr.Key != nil {
 		// TODO(pdg): grouping
-		g.Fgenf(w, ".reduce((__obj, [%v, %v]) => { ...__obj, [%v]: %v })", keyVariableName, expr.ValueVariable.Name,
-			expr.Key, expr.Value)
+		g.Fgenf(w, ".reduce((__obj, %s) => { ...__obj, [%v]: %v })", reduceParams, expr.Key, expr.Value)
 	} else {
-		g.Fgenf(w, ".map(([%v, %v]) => %v)", keyVariableName, expr.ValueVariable.Name, expr.Value)
+		g.Fgenf(w, ".map(%s => %v)", fnParams, expr.Value)
 	}
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
-	//	g.inApplyCall = true
-	//	defer func() { g.inApplyCall = false }()
-
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := hcl2.ParseApplyCall(expr)
-	//g.applyArgs, g.applyArgNames = applyArgs, g.assignApplyArgNames(applyArgs, then)
-	//defer func() { g.applyArgs = nil }()
+
+	// If all of the arguments are promises, use promise methods. If any argument is an output, convert all other args
+	// to outputs and use output methods.
+	isOutput := make([]bool, len(applyArgs))
+	anyOutputs := false
+	for i, arg := range applyArgs {
+		isOutput[i] = isOutputType(arg.Type())
+		anyOutputs = anyOutputs || isOutput[i]
+	}
+
+	apply, all := "then", "Promise.all"
+	if anyOutputs {
+		apply, all = "apply", "pulumi.all"
+	}
 
 	if len(applyArgs) == 1 {
-		// If we only have a single output, just generate a normal `.apply`.
-		//g.genApplyOutput(w, g.applyArgs[0])
-		g.Fgenf(w, "%v.apply(%v)", applyArgs[0], then)
+		// If we only have a single output, just generate a normal `.apply` or `.then`.
+		g.Fgenf(w, "%v.%v(%v)", applyArgs[0], apply, then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
-		g.Fgen(w, "pulumi.all([")
+		g.Fgen(w, "%v([", all)
 		for i, o := range applyArgs {
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
-			//g.genApplyOutput(w, o)
-			g.Fgenf(w, "%v", o)
+			if anyOutputs && !isOutput[i] {
+				g.Fgenf(w, "pulumi.output(%v)", o)
+			} else {
+				g.Fgenf(w, "%v", o)
+			}
 		}
-		g.Fgenf(w, "]).apply(%v)", then)
+		g.Fgenf(w, "]).%v(%v)", apply, then)
 	}
+}
+
+// functionName computes the NodeJS package, module, and name for the given function token.
+func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	tokenRange := tokenArg.SyntaxNode().Range()
+
+	// Compute the resource type from the Pulumi type token.
+	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	return cleanName(pkg), strings.Replace(module, "/", ".", -1), member, diagnostics
+}
+
+func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
+	log.Printf("generating range() %v", call)
+
+	var from, to model.Expression
+	switch len(call.Args) {
+	case 1:
+		from, to = &model.LiteralValueExpression{Value: cty.NumberIntVal(0)}, call.Args[0]
+	case 2:
+		from, to = call.Args[0], call.Args[1]
+	default:
+		contract.Failf("expected range() to have exactly 1 or 2 args; got %v", len(call.Args))
+	}
+
+	genPrefix := func() { g.Fprint(w, "((from, to) => (new Array(to - from))") }
+	mapValue := "from + i"
+	genSuffix := func() { g.Fgenf(w, ")(%v, %v)", from, to) }
+
+	if litFrom, ok := from.(*model.LiteralValueExpression); ok {
+		fromV, err := convert.Convert(litFrom.Value, cty.Number)
+		contract.Assert(err == nil)
+
+		from, _ := fromV.AsBigFloat().Int64()
+		if litTo, ok := to.(*model.LiteralValueExpression); ok {
+			toV, err := convert.Convert(litTo.Value, cty.Number)
+			contract.Assert(err == nil)
+
+			to, _ := toV.AsBigFloat().Int64()
+			if from == 0 {
+				mapValue = "i"
+			} else {
+				mapValue = fmt.Sprintf("%d + i", from)
+			}
+			genPrefix = func() { g.Fprintf(w, "(new Array(%d))", to-from) }
+			genSuffix = func() {}
+		} else if from == 0 {
+			genPrefix = func() { g.Fgenf(w, "(new Array(%v))", to) }
+			mapValue = "i"
+			genSuffix = func() {}
+		}
+	}
+
+	if entries {
+		mapValue = fmt.Sprintf("{key: %[1]s, value: %[1]s}", mapValue)
+	}
+
+	genPrefix()
+	g.Fprintf(w, ".map((_, i) => %v)", mapValue)
+	genSuffix()
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -156,10 +238,40 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 		}
 		g.Fgen(w, "`")
+	case "entries":
+		switch expr.Args[0].Type().(type) {
+		case *model.ListType, *model.TupleType:
+			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
+				g.genRange(w, call, true)
+				return
+			}
+			g.Fgenf(w, "%v.map((k, v)", expr.Args[0])
+		case *model.MapType, *model.ObjectType:
+			g.Fgenf(w, "Object.entries(%v).map(([k, v])", expr.Args[0])
+		}
+		g.Fgenf(w, " => {key: k, value: v})")
 	case "fileArchive":
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%v)", expr.Args[0])
+	case "invoke":
+		pkg, module, fn, diags := functionName(expr.Args[0])
+		contract.Assert(len(diags) == 0)
+		if module != "" {
+			module = "." + module
+		}
+		name := fmt.Sprintf("%s%s.%s", pkg, module, fn)
+
+		optionsBag := ""
+		if len(expr.Args) == 3 {
+			var buf bytes.Buffer
+			g.Fgenf(&buf, ", %v", expr.Args[2])
+			optionsBag = buf.String()
+		}
+
+		g.Fgenf(w, "%s(%v%v)", name, expr.Args[1], optionsBag)
+	case "range":
+		g.genRange(w, expr, false)
 	case "toJSON":
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	default:

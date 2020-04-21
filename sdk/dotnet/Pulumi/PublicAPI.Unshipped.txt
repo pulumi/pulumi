@@ -227,7 +227,8 @@ static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1,
 static Pulumi.Deployment.Instance.get -> Pulumi.IDeployment
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
-static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func) -> System.Threading.Tasks.Task<int>
+static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func, Pulumi.StackOptions options = null) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.IMocks mocks, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
@@ -275,8 +276,10 @@ static Pulumi.Log.Error(string message, Pulumi.Resource resource = null, int? st
 static Pulumi.Log.Exception(System.Exception exception, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
-static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Output<T>> outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
+static Pulumi.Output.All<T>(params Pulumi.Output<T>[] outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>

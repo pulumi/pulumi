@@ -2,7 +2,7 @@
 attribute /*=*/ = /*foo*/ foo /*foo*/
 
 //block
-block /*label*/ label /*TODO*/ "label2" /*{*/ { /*{*/
+block /*label*/ label /*"label2"*/ "label2" /*{*/ { /*{*/
 	//literal
 	literal /*=*/ = /*bar*/ bar /*bar*/
 	//nestedBlock
@@ -51,7 +51,7 @@ block /*label*/ label /*TODO*/ "label2" /*{*/ { /*{*/
 		//indexSplat
 		indexSplat /*=*/ = /*foo*/ foo /*[*/ [ /***/ * /*]*/ ] /*.*/ . /*bar*/ bar /*bar*/
 		//template
-		template /*=*/ = /*"*/ "foo ${ /*bar*/ bar /*TODO*/ } baz ${ /*qux*/ qux /*TODO*/ }" /*"*/
+		template /*=*/ = /*"*/ "foo ${ /*bar*/ bar /*bar*/ } baz ${ /*qux*/ qux /*qux*/ }" /*"*/
 		//tupleCons
 		tupleCons /*=*/ = /*[*/ [ /*foo*/ foo /*,*/ , /*bar*/ bar /*]*/ ] /*]*/
 		//unaryOp

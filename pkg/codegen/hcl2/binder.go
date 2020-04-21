@@ -64,6 +64,8 @@ func BindProgram(files []*syntax.File, host plugin.Host) (*Program, hcl.Diagnost
 	for name, fn := range pulumiBuiltins {
 		b.root.DefineFunction(name, fn)
 	}
+	// Define the invoke function.
+	b.root.DefineFunction("invoke", model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
 
 	var diagnostics hcl.Diagnostics
 
@@ -100,7 +102,10 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
-			attrDiags := b.declareNode(item.Name, &LocalVariable{Syntax: item})
+			attrDiags := b.declareNode(item.Name, &LocalVariable{
+				Syntax:       item,
+				VariableName: item.Name,
+			})
 			diagnostics = append(diagnostics, attrDiags...)
 		case *hclsyntax.Block:
 			switch item.Type {

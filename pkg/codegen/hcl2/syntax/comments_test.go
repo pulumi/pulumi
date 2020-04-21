@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func commentString(trivia []Trivia) string {
@@ -22,19 +23,23 @@ func commentString(trivia []Trivia) string {
 	return s
 }
 
-func validateTokenTrivia(t *testing.T, token Token) {
+func validateTokenLeadingTrivia(t *testing.T, token Token) {
 	leadingText := commentString(token.LeadingTrivia)
-	if leadingText != "TODO" {
-		if !assert.Equal(t, string(token.Raw.Bytes), leadingText) {
-			t.Logf("leading trivia mismatch for token @ %v", token.Range())
-		}
+	if !assert.Equal(t, string(token.Raw.Bytes), leadingText) {
+		t.Logf("leading trivia mismatch for token @ %v", token.Range())
 	}
+}
 
-	if trailingText := commentString(token.TrailingTrivia); trailingText != "" && trailingText != "TODO" {
-		if !assert.Equal(t, string(token.Raw.Bytes), trailingText) {
-			t.Logf("trailing trivia mismatch for token @ %v", token.Range())
-		}
+func validateTokenTrailingTrivia(t *testing.T, token Token) {
+	trailingText := commentString(token.TrailingTrivia)
+	if trailingText != "" && !assert.Equal(t, string(token.Raw.Bytes), trailingText) {
+		t.Logf("trailing trivia mismatch for token @ %v", token.Range())
 	}
+}
+
+func validateTokenTrivia(t *testing.T, token Token) {
+	validateTokenLeadingTrivia(t, token)
+	validateTokenTrailingTrivia(t, token)
 }
 
 func validateTrivia(t *testing.T, tokens ...interface{}) {
@@ -67,10 +72,40 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 	}
 }
 
+func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr, n *hclsyntax.LiteralValueExpr,
+	tokens *LiteralValueTokens) {
+
+	index := -1
+	for i := range template.Parts {
+		if template.Parts[i] == n {
+			index = i
+			break
+		}
+	}
+	assert.NotEqual(t, -1, index)
+	assert.Len(t, tokens.Value, 1)
+
+	value := tokens.Value[0]
+	if index == 0 {
+		assert.Len(t, value.LeadingTrivia, 0)
+	} else {
+		delim, ok := value.LeadingTrivia[0].(TemplateDelimiter)
+		assert.True(t, ok)
+		assert.Equal(t, hclsyntax.TokenTemplateSeqEnd, delim.Type)
+	}
+	if index == len(template.Parts)-1 {
+		assert.Len(t, value.TrailingTrivia, 0)
+	} else {
+		delim, ok := value.TrailingTrivia[0].(TemplateDelimiter)
+		assert.True(t, ok)
+		assert.Equal(t, hclsyntax.TokenTemplateInterp, delim.Type)
+	}
+}
+
 type validator struct {
-	t          *testing.T
-	tokens     TokenMap
-	inTemplate bool
+	t      *testing.T
+	tokens TokenMap
+	stack  []hclsyntax.Node
 }
 
 func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
@@ -98,9 +133,15 @@ func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		tokens := v.tokens.ForNode(n).(*IndexTokens)
 		validateTrivia(v.t, tokens.OpenBracket, tokens.CloseBracket)
 	case *hclsyntax.LiteralValueExpr:
-		// TODO(pdg): validate string literals
-		if !v.inTemplate {
-			tokens := v.tokens.ForNode(n).(*LiteralValueTokens)
+		template, isTemplateString := (*hclsyntax.TemplateExpr)(nil), false
+		if len(v.stack) > 0 && n.Val.Type().Equals(cty.String) {
+			template, isTemplateString = v.stack[len(v.stack)-1].(*hclsyntax.TemplateExpr)
+		}
+
+		tokens := v.tokens.ForNode(n).(*LiteralValueTokens)
+		if isTemplateString {
+			validateTemplateStringTrivia(v.t, template, n, tokens)
+		} else {
 			validateTrivia(v.t, tokens.Value)
 		}
 	case *hclsyntax.ObjectConsExpr:
@@ -116,8 +157,13 @@ func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		tokens := v.tokens.ForNode(n).(*SplatTokens)
 		validateTrivia(v.t, tokens.Open, tokens.Star, tokens.Close)
 	case *hclsyntax.TemplateExpr:
-		// TODO(pdg): validate template tokens.
-		v.inTemplate = true
+		tokens := v.tokens.ForNode(n).(*TemplateTokens)
+
+		validateTokenLeadingTrivia(v.t, tokens.Open)
+		assert.Equal(v.t, "", commentString(tokens.Open.TrailingTrivia))
+
+		validateTokenTrailingTrivia(v.t, tokens.Close)
+		assert.Equal(v.t, "", commentString(tokens.Close.LeadingTrivia))
 	case *hclsyntax.TupleConsExpr:
 		tokens := v.tokens.ForNode(n).(*TupleConsTokens)
 		validateTrivia(v.t, tokens.OpenBracket, tokens.Commas, tokens.CloseBracket)
@@ -125,13 +171,13 @@ func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		tokens := v.tokens.ForNode(n).(*UnaryOpTokens)
 		validateTrivia(v.t, tokens.Operator)
 	}
+
+	v.stack = append(v.stack, n)
 	return nil
 }
 
 func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
-	if _, isTemplate := n.(*hclsyntax.TemplateExpr); isTemplate {
-		v.inTemplate = false
-	}
+	v.stack = v.stack[:len(v.stack)-1]
 	return nil
 }
 

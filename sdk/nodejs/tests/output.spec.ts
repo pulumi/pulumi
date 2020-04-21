@@ -19,7 +19,6 @@ import { Output, all, concat, interpolate, output, unknown } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
-import { promiseResult } from "../utils";
 
 interface Widget {
     type: string;  // metric | text

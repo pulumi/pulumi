@@ -9,12 +9,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 )
 
+func isOutputType(t model.Type) bool {
+	switch t := t.(type) {
+	case *model.OutputType:
+		return true
+	case *model.UnionType:
+		for _, t := range t.ElementTypes {
+			if _, isOutput := t.(*model.OutputType); isOutput {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // canLiftScopeTraversalExpression returns true if this variable access expression can be lifted. Any variable access
 // expression that does not contain references to potentially-undefined values (e.g. optional fields of a resource) can
 // be lifted.
 func (g *generator) canLiftScopeTraversalExpression(v *model.ScopeTraversalExpression) bool {
 	for _, p := range v.Parts {
-		if model.IsOptionalType(model.GetTraversableType(p)) {
+		t := model.GetTraversableType(p)
+		if model.IsOptionalType(t) || !isOutputType(t) {
 			return false
 		}
 	}
@@ -39,7 +54,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 		return nil, false
 	}
 
-	traversal := hcl.TraversalJoin(args[0].Syntax.Traversal, thenTraversal.Syntax.Traversal[1:])
+	traversal := hcl.TraversalJoin(args[0].Traversal, thenTraversal.Traversal[1:])
 	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 		Traversal: traversal,
 		SrcRange:  traversal.SourceRange(),
@@ -95,7 +110,7 @@ func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
 				return nil, false
 			}
 			arg := args[indices[traversal.Parts[0].(*model.Variable)]]
-			traversal := hcl.TraversalJoin(arg.Syntax.Traversal, traversal.Syntax.Traversal[1:])
+			traversal := hcl.TraversalJoin(arg.Traversal, traversal.Traversal[1:])
 			expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 				Traversal: traversal,
 				SrcRange:  traversal.SourceRange(),

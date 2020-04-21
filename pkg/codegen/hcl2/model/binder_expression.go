@@ -292,37 +292,6 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	}, diagnostics
 }
 
-// unwrapIterableSourceType removes any eventual types that wrap a type intended for iteration.
-func unwrapIterableSourceType(t Type) Type {
-	// TODO(pdg): unions
-	for {
-		switch tt := t.(type) {
-		case *OutputType:
-			t = tt.ElementType
-		case *PromiseType:
-			t = tt.ElementType
-		default:
-			return t
-		}
-	}
-}
-
-// wrapIterableSourceType adds optional or eventual types to a type intended for iteration per the structure of the
-// source type.
-func wrapIterableResultType(sourceType, iterableType Type) Type {
-	// TODO(pdg): unions
-	for {
-		switch t := sourceType.(type) {
-		case *OutputType:
-			sourceType, iterableType = t.ElementType, NewOutputType(iterableType)
-		case *PromiseType:
-			sourceType, iterableType = t.ElementType, NewPromiseType(iterableType)
-		default:
-			return iterableType
-		}
-	}
-}
-
 // bindForExpression binds a for expression. The value being iterated must be an list, map, or object.  The type of
 // the result is an list unless a key expression is present, in which case it is a map. Key types must be strings.
 // The element type of the result is the type of the value expression. If the type of the value being iterated is
@@ -338,31 +307,8 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	collectionType := unwrapIterableSourceType(collection.Type())
 
 	// TODO(pdg): handle union types.
-
-	var keyType, valueType Type
-	switch collectionType := collectionType.(type) {
-	case *ListType:
-		keyType, valueType = NumberType, collectionType.ElementType
-	case *MapType:
-		keyType, valueType = StringType, collectionType.ElementType
-	case *TupleType:
-		keyType = NumberType
-		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
-	case *ObjectType:
-		keyType = StringType
-
-		types := make([]Type, 0, len(collectionType.Properties))
-		for _, t := range collectionType.Properties {
-			types = append(types, t)
-		}
-		valueType, _ = UnifyTypes(types...)
-	default:
-		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic). Otherwise, issue an error.
-		if collectionType != DynamicType {
-			diagnostics = append(diagnostics, unsupportedCollectionType(collectionType, syntax.CollExpr.Range()))
-		}
-		keyType, valueType = DynamicType, DynamicType
-	}
+	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, syntax.CollExpr.Range())
+	diagnostics = append(diagnostics, kvDiags...)
 
 	// Push a scope for the key and value variables and define these vars.
 	b.scope = b.scope.Push(syntax)
@@ -669,7 +615,8 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ScopeTraversalTokens)
 
-	def, ok := b.scope.BindReference(syntax.Traversal.RootName())
+	rootName := syntax.Traversal.RootName()
+	def, ok := b.scope.BindReference(rootName)
 	if !ok {
 		parts := make([]Traversable, len(syntax.Traversal))
 		for i := range parts {
@@ -681,7 +628,7 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 			Parts:     parts,
 			RootName:  syntax.Traversal.RootName(),
 			Traversal: syntax.Traversal,
-		}, hcl.Diagnostics{undefinedVariable(syntax.Traversal.SimpleSplit().Abs.SourceRange())}
+		}, hcl.Diagnostics{undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange())}
 	}
 
 	parts, diagnostics := b.bindTraversalParts(def, syntax.Traversal.SimpleSplit().Rel)
@@ -778,7 +725,12 @@ func (b *expressionBinder) bindTemplateJoinExpression(
 func (b *expressionBinder) bindTemplateWrapExpression(
 	syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
 
-	return b.bindExpression(syntax.Wrapped)
+	wrapped, diagnostics := b.bindExpression(syntax.Wrapped)
+	if tokens, hasTokens := b.tokens.ForNode(syntax).(*_syntax.TemplateTokens); hasTokens {
+		wrapped.SetLeadingTrivia(append(wrapped.GetLeadingTrivia(), tokens.Open.LeadingTrivia...))
+		wrapped.SetTrailingTrivia(append(wrapped.GetTrailingTrivia(), tokens.Close.TrailingTrivia...))
+	}
+	return wrapped, diagnostics
 }
 
 // bindTupleConsExpression binds a tuple construction expression. The result is a tuple(T_0, ..., T_N).

@@ -178,9 +178,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		resolvedArgsMap = resolvedArgs.ObjectValue()
 	}
 
+	keepUnknowns := ctx.DryRun()
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		plugin.MarshalOptions{KeepUnknowns: false, KeepSecrets: true})
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true},
+	)
 	if err != nil {
 		return fmt.Errorf("marshaling arguments: %w", err)
 	}
@@ -215,7 +217,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	// Otherwsie, simply unmarshal the output properties and return the result.
-	outProps, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{KeepSecrets: true})
+	outProps, err := plugin.UnmarshalProperties(
+		resp.Return,
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns},
+	)
 	if err != nil {
 		return err
 	}
@@ -276,10 +281,7 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -405,10 +407,7 @@ func (ctx *Context) RegisterResource(
 		}
 	}
 
-	options := &resourceOptions{}
-	for _, o := range opts {
-		o.applyResourceOption(options)
-	}
+	options := merge(opts...)
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -672,6 +671,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
 		contract.Assert(rs != nil)
+		state.providers = providers
 		rs.providers = providers
 		rs.urn = URNOutput{newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
@@ -698,7 +698,10 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 	var outprops resource.PropertyMap
 	if err == nil {
-		outprops, err = plugin.UnmarshalProperties(result, plugin.MarshalOptions{KeepSecrets: true})
+		outprops, err = plugin.UnmarshalProperties(
+			result,
+			plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: dryrun},
+		)
 	}
 	if err != nil {
 		// If there was an error, we must reject everything.

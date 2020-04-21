@@ -69,7 +69,7 @@ jobs:
     - name: Get dependencies
       run: |
         cd src\github.com\${{ github.repository }}
-        set GOMODULE111=on
+        set GO111MODULE=on
         pushd .
         cd sdk
         go mod tidy

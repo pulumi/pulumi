@@ -44,11 +44,11 @@ func (b *Block) SyntaxNode() hclsyntax.Node {
 	return syntaxOrNone(b.Syntax)
 }
 
-func (b *Block) hasLeadingTrivia() bool {
+func (b *Block) HasLeadingTrivia() bool {
 	return b.Tokens != nil
 }
 
-func (b *Block) hasTrailingTrivia() bool {
+func (b *Block) HasTrailingTrivia() bool {
 	return b.Tokens != nil
 }
 
@@ -74,8 +74,8 @@ func (b *Block) print(w io.Writer, p *printer) {
 		}
 		p.fprintf(w, "% v", t)
 	}
-	if len(b.Labels) < len(b.Tokens.Labels) {
-		for _, l := range b.Tokens.Labels[len(b.Labels):] {
+	if len(b.Labels) < len(labelTokens) {
+		for _, l := range labelTokens[len(b.Labels):] {
 			p.fprintf(w, "%v", syntax.Token{
 				LeadingTrivia:  l.LeadingTrivia,
 				TrailingTrivia: l.TrailingTrivia,
@@ -90,11 +90,14 @@ func (b *Block) print(w io.Writer, p *printer) {
 	p.indented(func() {
 		b.Body.print(w, p)
 	})
+	if !b.Body.HasTrailingTrivia() {
+		p.fprintf(w, "\n")
+	}
 
 	if b.Tokens != nil {
 		p.fprintf(w, "%v", b.Tokens.GetCloseBrace().Or(hclsyntax.TokenCBrace))
 	} else {
-		p.fprintf(w, "\n%s}", p.indent)
+		p.fprintf(w, "%s}", p.indent)
 	}
 }
 
