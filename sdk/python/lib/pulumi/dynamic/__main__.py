@@ -26,6 +26,7 @@ from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 PROVIDER_KEY = "__provider"
 
