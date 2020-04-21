@@ -25,6 +25,9 @@ COPY ./entrypoint.sh /usr/bin/pulumi-action
 WORKDIR /app
 VOLUME ["/app"]
 
+# We need to pass this environment variable as the confirmation to `--non-interactive` in the CLI
+ENV PULUMI_SKIP_CONFIRMATIONS=true
+
 # This image uses a thin wrapper over the Pulumi CLI as its entrypoint. As a result, you may run commands
 # simply by running `docker run pulumi/pulumi up` to run the program mounted in the `/app` volume location.
 ENTRYPOINT ["/usr/bin/pulumi-action", "--non-interactive"]
