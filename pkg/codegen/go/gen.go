@@ -514,7 +514,9 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			printComment(w, p.Comment, false)
 			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
 			deref := ""
-			if p.IsRequired {
+			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
+			// to derference it.
+			if p.IsRequired && applyType[0] == '*' {
 				deref = "&"
 			}
 
@@ -1073,6 +1075,20 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		_ = getPkg(":config/config:")
 	}
 
+	// For any optional properties, we must generate a pointer type for the corresponding property type.
+	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
+	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
+	// those nested types.
+	var markOptionalPropertyTypesAsRequiringPtr func(props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(props []*schema.Property, parentOptional bool) {
+		for _, p := range props {
+			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
+				getPkg(obj.Token).details(obj).ptrElement = true
+				markOptionalPropertyTypesAsRequiringPtr(obj.Properties, true)
+			}
+		}
+	}
+
 	for _, t := range pkg.Types {
 		switch t := t.(type) {
 		case *schema.ArrayType:
@@ -1086,22 +1102,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		case *schema.ObjectType:
 			pkg := getPkg(t.Token)
 			pkg.types = append(pkg.types, t)
-
-			// For any optional properties, we must generate a pointer type for the corresponding property type.
-			// In addition, if the optional property's type is itself an object type, we also need to generate pointer
-			// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
-			// those nested types.
-			var markOptionalPropertyTypesAsRequiringPtr func(t *schema.ObjectType, parentOptional bool)
-			markOptionalPropertyTypesAsRequiringPtr = func(t *schema.ObjectType, parentOptional bool) {
-				for _, p := range t.Properties {
-					if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
-						getPkg(obj.Token).details(obj).ptrElement = true
-						markOptionalPropertyTypesAsRequiringPtr(obj, true)
-					}
-				}
-			}
-
-			markOptionalPropertyTypesAsRequiringPtr(t, false)
+			markOptionalPropertyTypesAsRequiringPtr(t.Properties, false)
 		}
 	}
 
@@ -1119,16 +1120,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			pkg.names.add("Get" + resourceName(r))
 		}
 
-		for _, p := range r.InputProperties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
-		for _, p := range r.Properties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
+		markOptionalPropertyTypesAsRequiringPtr(r.InputProperties, !r.IsProvider)
+		markOptionalPropertyTypesAsRequiringPtr(r.Properties, !r.IsProvider)
 	}
 
 	scanResource(pkg.Provider)
