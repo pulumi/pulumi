@@ -26,6 +26,7 @@ import (
 	"html"
 	"html/template"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -75,6 +76,7 @@ var (
 		"datadog":      "Datadog",
 		"digitalocean": "Digital Ocean",
 		"dnsimple":     "DNSimple",
+		"docker":       "Docker",
 		"f5bigip":      "f5 BIG-IP",
 		"fastly":       "Fastly",
 		"gcp":          "GCP",
@@ -92,12 +94,16 @@ var (
 		"postgresql":   "PostgreSQL",
 		"rabbitmq":     "RabbitMQ",
 		"rancher2":     "Rancher 2",
+		"random":       "Random",
 		"signalfx":     "SignalFx",
 		"spotinst":     "Spotinst",
 		"tls":          "TLS",
 		"vault":        "Vault",
 		"vsphere":      "vSphere",
 	}
+	// metaDescriptionRegexp attempts to extract the description from Resource.Comment.
+	// Extracts the first line, essentially the "human-friendly" part of the description.
+	metaDescriptionRegexp = regexp.MustCompile(`(?m)^.*$`)
 )
 
 func init() {
@@ -122,7 +128,9 @@ func init() {
 
 // header represents the header of each resource markdown file.
 type header struct {
-	Title string
+	Title    string
+	TitleTag string
+	MetaDesc string
 }
 
 // property represents an input or an output property.
@@ -1135,6 +1143,30 @@ func filterOutputProperties(inputProps []*schema.Property, props []*schema.Prope
 	return outputProps
 }
 
+func (mod *modContext) genResourceHeader(r *schema.Resource) header {
+	packageName := formatTitleText(mod.pkg.Name)
+	resourceName := resourceName(r)
+	var baseDescription string
+	var titleTag string
+	if mod.mod == "" {
+		baseDescription = fmt.Sprintf("Explore the %s resource of the %s package, "+
+			"including examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", resourceName, packageName)
+		titleTag = fmt.Sprintf("Resource %s | Package %s", resourceName, packageName)
+	} else {
+		baseDescription = fmt.Sprintf("Explore the %s resource of the %s module, "+
+			"including examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", resourceName, mod.mod)
+		titleTag = fmt.Sprintf("Resource %s | Module %s | Package %s", resourceName, mod.mod, packageName)
+	}
+
+	return header{
+		Title:    resourceName,
+		TitleTag: titleTag,
+		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(r.Comment),
+	}
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -1188,10 +1220,9 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
 
 	stateParam := name + "State"
+
 	data := resourceDocArgs{
-		Header: header{
-			Title: name,
-		},
+		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
@@ -1389,6 +1420,7 @@ type indexData struct {
 	Tool string
 
 	Title              string
+	TitleTag           string
 	PackageDescription string
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
@@ -1445,12 +1477,7 @@ func (mod *modContext) genIndex() indexData {
 	title := modName
 	menu := false
 	if title == "" {
-		// If title not found in titleLookup map, default back to mod.pkg.Name.
-		if val, ok := titleLookup[mod.pkg.Name]; ok {
-			title = val
-		} else {
-			title = mod.pkg.Name
-		}
+		title = formatTitleText(mod.pkg.Name)
 		// Flag top-level entries for inclusion in the table-of-contents menu.
 		menu = true
 	}
@@ -1494,16 +1521,29 @@ func (mod *modContext) genIndex() indexData {
 		Version:    mod.pkg.Version.String(),
 	}
 
+	var titleTag string
+	var packageDescription string
+	// The same index.tmpl template is used for both top level package and module pages, if modules not present,
+	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
+	// top level page when generating title tags.
+	if len(modules) > 0 {
+		titleTag = fmt.Sprintf("Package %s", formatTitleText(title))
+	} else {
+		pkgName := formatTitleText(mod.pkg.Name)
+		titleTag = fmt.Sprintf("Module %s | Package %s", title, pkgName)
+		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s module in the %s package.", title, pkgName)
+	}
+
 	data := indexData{
-		Tool: mod.tool,
-
-		Title: title,
-		Menu:  menu,
-
-		Resources:      resources,
-		Functions:      functions,
-		Modules:        modules,
-		PackageDetails: packageDetails,
+		Tool:               mod.tool,
+		PackageDescription: packageDescription,
+		Title:              title,
+		TitleTag:           titleTag,
+		Menu:               menu,
+		Resources:          resources,
+		Functions:          functions,
+		Modules:            modules,
+		PackageDetails:     packageDetails,
 	}
 
 	// If this is the root module, write out the package description.
@@ -1512,6 +1552,14 @@ func (mod *modContext) genIndex() indexData {
 	}
 
 	return data
+}
+
+func formatTitleText(title string) string {
+	// If title not found in titleLookup map, default back to title given.
+	if val, ok := titleLookup[title]; ok {
+		return val
+	}
+	return title
 }
 
 func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
