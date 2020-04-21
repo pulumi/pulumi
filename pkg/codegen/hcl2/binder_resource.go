@@ -25,7 +25,7 @@ import (
 )
 
 func getResourceToken(node *Resource) (string, hcl.Range) {
-	return node.Syntax.Labels[1], node.Syntax.LabelRanges[1]
+	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
 }
 
 func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
@@ -171,7 +171,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	// range expression now, but ignore the diagnostics.
 	node.VariableType = node.OutputType
 	var rangeKey, rangeValue model.Type
-	for _, block := range node.Syntax.Body.Blocks {
+	for _, block := range node.syntax.Body.Blocks {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options...)
@@ -191,7 +191,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	// Bind the resource's body.
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
-	block, blockDiags := model.BindBlock(node.Syntax, scopes, b.tokens, b.options...)
+	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options...)
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block
@@ -230,7 +230,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
 			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
-				diagnostics = append(diagnostics, missingRequiredAttribute(k, node.Body.Syntax.MissingItemRange()))
+				diagnostics = append(diagnostics,
+					missingRequiredAttribute(k, node.Definition.Body.Syntax.MissingItemRange()))
 			}
 		}
 	}
@@ -273,5 +274,6 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		node.Options = resourceOptions
 	}
 
+	node.Definition = block
 	return diagnostics
 }

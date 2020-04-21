@@ -266,6 +266,24 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 	genSuffix()
 }
 
+var functionImports = map[string]string{
+	intrinsicInterpolate: "@pulumi/pulumi",
+	"fileArchive":        "@pulumi/pulumi",
+	"fileAsset":          "@pulumi/pulumi",
+	"readFile":           "fs",
+	"readDir":            "fs",
+}
+
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+	if x.Name != "invoke" {
+		return functionImports[x.Name]
+	}
+
+	pkg, _, _, diags := functionName(x.Args[0])
+	contract.Assert(len(diags) == 0)
+	return "@pulumi/" + pkg
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case hcl2.IntrinsicApply:

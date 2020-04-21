@@ -24,25 +24,30 @@ import (
 type OutputVariable struct {
 	node
 
-	Syntax *hclsyntax.Block
+	syntax *hclsyntax.Block
+	typ    model.Type
 
-	typ model.Type
-
-	VariableName string
-	Value        model.Expression
+	// The definition of the output.
+	Definition *model.Block
+	// The value of the output.
+	Value model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the output variable.
 func (ov *OutputVariable) SyntaxNode() hclsyntax.Node {
-	return ov.Syntax
+	return ov.syntax
 }
 
 func (ov *OutputVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return ov.typ.Traverse(traverser)
 }
 
+func (ov *OutputVariable) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(ov.Definition, pre, post)
+}
+
 func (ov *OutputVariable) Name() string {
-	return ov.VariableName
+	return ov.Definition.Labels[0]
 }
 
 // Type returns the type of the output variable.

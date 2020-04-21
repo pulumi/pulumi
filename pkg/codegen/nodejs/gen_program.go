@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path"
 	"sort"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type generator struct {
@@ -35,6 +37,8 @@ type generator struct {
 
 	program     *hcl2.Program
 	diagnostics hcl.Diagnostics
+
+	configCreated bool
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -95,26 +99,42 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
-	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
-	var imports []string
-	importSet := codegen.NewStringSet("pulumi")
+	// Accumulate other imports for the various providers and packages. Don't emit them yet, as we need to sort them
+	// later on.
+	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	for _, n := range program.Nodes {
-		// TODO: invokes
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-
-			importName := cleanName(pkg)
-			if !importSet.Has(importName) {
-				imports = append(imports, fmt.Sprintf(`import * as %s from "@pulumi/%s";`, importName, pkg))
-				importSet.Add(importName)
-			}
+			importSet.Add("@pulumi/" + cleanName(pkg))
 		}
+		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+			if call, ok := n.(*model.FunctionCallExpression); ok {
+				if i := g.getFunctionImports(call); i != "" {
+					importSet.Add(i)
+				}
+			}
+			return n, nil
+		})
+		contract.Assert(len(diags) == 0)
 	}
 
-	// Now sort the imports, so we emit them deterministically, and emit them.
+	var imports []string
+	for _, pkg := range importSet.SortedValues() {
+		if pkg == "@pulumi/pulumi" {
+			continue
+		}
+		as := path.Base(pkg)
+		if as != pkg {
+			imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
+		} else {
+			imports = append(imports, fmt.Sprintf("import * from \"%v\";", pkg))
+		}
+	}
 	sort.Strings(imports)
-	for _, line := range imports {
-		g.Fprintln(w, line)
+
+	// Now sort the imports and emit them.
+	for _, i := range imports {
+		g.Fprintln(w, i)
 	}
 	g.Fprint(w, "\n")
 }
@@ -166,11 +186,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	name := r.Name()
 
-	g.genTrivia(w, r.Tokens.GetType(""))
-	for _, l := range r.Tokens.GetLabels(nil) {
+	g.genTrivia(w, r.Definition.Tokens.GetType(""))
+	for _, l := range r.Definition.Tokens.GetLabels(nil) {
 		g.genTrivia(w, l)
 	}
-	g.genTrivia(w, r.Tokens.GetOpenBrace())
+	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	instantiate := func(resName string) {
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
@@ -240,11 +260,16 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.Fgenf(w, ";\n")
 	}
 
-	g.genTrivia(w, r.Tokens.GetCloseBrace())
+	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 	// TODO(pdg): trivia
+
+	if !g.configCreated {
+		g.Fprintf(w, "%sconst config = new pulumi.Config();\n", g.Indent)
+		g.configCreated = true
+	}
 
 	getType := "Object"
 	switch v.Type() {
@@ -270,7 +295,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value))
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {

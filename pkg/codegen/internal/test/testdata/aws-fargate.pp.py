@@ -9,7 +9,7 @@ subnets = aws.ec2.get_subnet_ids({
     "vpcId": vpc.id,
 })
 # Create a security group that permits HTTP ingress and unrestricted egress.
-web_security_group = aws.ec2.SecurityGroup("web_security_group",
+web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,
     egress=[{
         "protocol": "-1",
@@ -26,7 +26,7 @@ web_security_group = aws.ec2.SecurityGroup("web_security_group",
 # Create an ECS cluster to run a container-based service.
 cluster = aws.ecs.Cluster("cluster")
 # Create an IAM role that can be used by our service's task.
-task_exec_role = aws.iam.Role("task_exec_role", assume_role_policy={
+task_exec_role = aws.iam.Role("taskExecRole", assume_role_policy={
     "Version": "2008-10-17",
     "Statement": [{
         "Sid": "",
@@ -37,19 +37,19 @@ task_exec_role = aws.iam.Role("task_exec_role", assume_role_policy={
         "Action": "sts:AssumeRole",
     }],
 })
-task_exec_role_policy_attachment = aws.iam.RolePolicyAttachment("task_exec_role_policy_attachment",
+task_exec_role_policy_attachment = aws.iam.RolePolicyAttachment("taskExecRolePolicyAttachment",
     role=task_exec_role.name,
     policy_arn="arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy")
 # Create a load balancer to listen for HTTP traffic on port 80.
-web_load_balancer = aws.elasticloadbalancingv2.LoadBalancer("web_load_balancer",
+web_load_balancer = aws.elasticloadbalancingv2.LoadBalancer("webLoadBalancer",
     subnets=subnets.ids,
     security_groups=[web_security_group.id])
-web_target_group = aws.elasticloadbalancingv2.TargetGroup("web_target_group",
+web_target_group = aws.elasticloadbalancingv2.TargetGroup("webTargetGroup",
     port=80,
     protocol="HTTP",
     target_type="ip",
     vpc_id=vpc.id)
-web_listener = aws.elasticloadbalancingv2.Listener("web_listener",
+web_listener = aws.elasticloadbalancingv2.Listener("webListener",
     load_balancer_arn=web_load_balancer.arn,
     port=80,
     default_actions=[{
@@ -57,7 +57,7 @@ web_listener = aws.elasticloadbalancingv2.Listener("web_listener",
         "targetGroupArn": web_target_group.arn,
     }])
 # Spin up a load balanced service running NGINX
-app_task = aws.ecs.TaskDefinition("app_task",
+app_task = aws.ecs.TaskDefinition("appTask",
     family="fargate-task-definition",
     cpu="256",
     memory="512",
@@ -73,7 +73,7 @@ app_task = aws.ecs.TaskDefinition("app_task",
             "protocol": "tcp",
         }],
     }]))
-app_service = aws.ecs.Service("app_service",
+app_service = aws.ecs.Service("appService",
     cluster=cluster.arn,
     desired_count=5,
     launch_type="FARGATE",
