@@ -10,6 +10,10 @@ CHANGELOG
 - Protect against panic when unprotecting non-existant resources
   [#4441](https://github.com/pulumi/pulumi/pull/4441)
 
+- Ensure Go accessor methods correctly support nested fields of optional outputs
+  [#4456](https://github.com/pulumi/pulumi/pull/4456)
+
+
 ## 2.0.0 (2020-04-16)
 =======
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
