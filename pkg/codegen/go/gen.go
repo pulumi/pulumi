@@ -1087,11 +1087,21 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			pkg := getPkg(t.Token)
 			pkg.types = append(pkg.types, t)
 
-			for _, p := range t.Properties {
-				if obj, ok := p.Type.(*schema.ObjectType); ok && !p.IsRequired {
-					getPkg(obj.Token).details(obj).ptrElement = true
+			// For any optional properties, we must generate a pointer type for the corresponding property type.
+			// In addition, if the optional property's type is itself an object type, we also need to generate pointer
+			// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
+			// those nested types.
+			var markOptionalPropertyTypesAsRequiringPtr func(t *schema.ObjectType, parentOptional bool)
+			markOptionalPropertyTypesAsRequiringPtr = func(t *schema.ObjectType, parentOptional bool) {
+				for _, p := range t.Properties {
+					if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
+						getPkg(obj.Token).details(obj).ptrElement = true
+						markOptionalPropertyTypesAsRequiringPtr(obj, true)
+					}
 				}
 			}
+
+			markOptionalPropertyTypesAsRequiringPtr(t, false)
 		}
 	}
 
