@@ -512,10 +512,19 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 
 		for _, p := range t.Properties {
 			printComment(w, p.Comment, false)
-			outputType, applyType := pkg.outputType(p.Type, !p.IsRequired), pkg.plainType(p.Type, !p.IsRequired)
+			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
+			deref := ""
+			if p.IsRequired {
+				deref = "&"
+			}
 
 			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, Title(p.Name), outputType)
-			fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, Title(p.Name), outputType)
+			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
+			fmt.Fprintf(w, "\t\tif v == nil {\n")
+			fmt.Fprintf(w, "\t\t\treturn nil\n")
+			fmt.Fprintf(w, "\t\t}\n")
+			fmt.Fprintf(w, "\t\treturn %sv.%s\n", deref, Title(p.Name))
+			fmt.Fprintf(w, "\t}).(%s)\n", outputType)
 			fmt.Fprintf(w, "}\n\n")
 		}
 	}
