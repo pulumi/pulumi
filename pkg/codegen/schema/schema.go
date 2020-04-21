@@ -148,6 +148,19 @@ type ObjectType struct {
 	Properties []*Property
 	// Language specifies additional language-specific data about the object type.
 	Language map[string]interface{}
+
+	properties map[string]*Property
+}
+
+func (t *ObjectType) Property(name string) (*Property, bool) {
+	if t.properties == nil && len(t.Properties) > 0 {
+		t.properties = make(map[string]*Property)
+		for _, p := range t.Properties {
+			t.properties[p.Name] = p
+		}
+	}
+	p, ok := t.properties[name]
+	return p, ok
 }
 
 func (t *ObjectType) String() string {
@@ -940,24 +953,26 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	return dv, nil
 }
 
-func (t *types) bindProperties(properties map[string]PropertySpec, required []string) ([]*Property, error) {
+func (t *types) bindProperties(properties map[string]PropertySpec,
+	required []string) ([]*Property, map[string]*Property, error) {
+
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property
 	for name, spec := range properties {
 		typ, err := t.bindType(spec.TypeSpec)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding type for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding type for property %s", name)
 		}
 
 		cv, err := bindConstValue(spec.Const, typ)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding constant value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding constant value for property %s", name)
 		}
 
 		dv, err := bindDefaultValue(spec.Default, spec.DefaultInfo, typ)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding default value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding default value for property %s", name)
 		}
 
 		language := make(map[string]interface{})
@@ -982,7 +997,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 	for _, name := range required {
 		p, ok := propertyMap[name]
 		if !ok {
-			return nil, errors.Errorf("unknown required property %s", name)
+			return nil, nil, errors.Errorf("unknown required property %s", name)
 		}
 		p.IsRequired = true
 	}
@@ -991,11 +1006,11 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		return result[i].Name < result[j].Name
 	})
 
-	return result, nil
+	return result, propertyMap, nil
 }
 
 func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
-	properties, err := t.bindProperties(spec.Properties, spec.Required)
+	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, err
 	}
@@ -1010,6 +1025,7 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 		Comment:    spec.Description,
 		Language:   language,
 		Properties: properties,
+		properties: propertyMap,
 	}, nil
 }
 
@@ -1036,27 +1052,29 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 
 	// Process properties.
 	for token, spec := range objects {
-		properties, err := typs.bindProperties(spec.Properties, spec.Required)
+		properties, propertyMap, err := typs.bindProperties(spec.Properties, spec.Required)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to bind type %s", token)
 		}
-		typs.objects[token].Properties = properties
+		obj := typs.objects[token]
+		obj.Properties, obj.properties = properties, propertyMap
 	}
 
 	return typs, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
-	return types.bindProperties(spec.Variables, spec.Required)
+	properties, _, err := types.bindProperties(spec.Variables, spec.Required)
+	return properties, err
 }
 
 func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
-	properties, err := types.bindProperties(spec.Properties, spec.Required)
+	properties, _, err := types.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
+	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}

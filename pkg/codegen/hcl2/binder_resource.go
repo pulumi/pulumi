@@ -81,16 +81,16 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Token = token
 
 	// Create input and output types for the schema.
-	inputType := model.InputType(schemaTypeToType(&schema.ObjectType{Properties: inputProperties}))
+	inputType := model.InputType(b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties}))
 
 	outputProperties := map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),
 		"urn": model.NewOutputType(model.StringType),
 	}
 	for _, prop := range properties {
-		outputProperties[prop.Name] = model.NewOutputType(schemaTypeToType(prop.Type))
+		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
 	}
-	outputType := model.NewObjectType(outputProperties)
+	outputType := model.NewObjectType(outputProperties, &schema.ObjectType{Properties: properties})
 
 	node.InputType, node.OutputType = inputType, outputType
 	return diagnostics

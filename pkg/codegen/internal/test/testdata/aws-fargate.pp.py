@@ -88,4 +88,4 @@ app_service = aws.ecs.Service("appService",
         "containerName": "my-app",
         "containerPort": 80,
     }])
-pulumi.export("url", web_load_balancer.dnsName)
+pulumi.export("url", web_load_balancer.dns_name)

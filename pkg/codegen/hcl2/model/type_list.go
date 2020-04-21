@@ -104,6 +104,10 @@ func (t *ListType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
+func (t *ListType) GetAnnotations() []interface{} {
+	return nil
+}
+
 func (t *ListType) String() string {
 	if t.s == "" {
 		t.s = fmt.Sprintf("list(%v)", t.ElementType)

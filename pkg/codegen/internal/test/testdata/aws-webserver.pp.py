@@ -24,9 +24,9 @@ server = aws.ec2.Instance("server",
     instance_type="t2.micro",
     security_groups=[security_group.name],
     ami=ami.id,
-    user_data=f"""#!/bin/bash
-echo \"Hello, World!\" > index.html
+    user_data="""#!/bin/bash
+echo "Hello, World!" > index.html
 nohup python -m SimpleHTTPServer 80 &
 """)
-pulumi.export("publicIp", server.publicIp)
-pulumi.export("publicHostName", server.publicDns)
+pulumi.export("publicIp", server.public_ip)
+pulumi.export("publicHostName", server.public_dns)

@@ -16,11 +16,13 @@ package hcl2
 
 import (
 	"io"
+	"sort"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
 // Node represents a single definition in a program or component. Nodes may be config, locals, resources, or outputs.
@@ -95,4 +97,19 @@ func (p *Program) NewDiagnosticWriter(w io.Writer, width uint, color bool) hcl.D
 // BindExpression binds an HCL2 expression in the top-level context of the program.
 func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
 	return p.binder.bindExpression(node)
+}
+
+// Packages returns the list of package schemas used by this program.
+func (p *Program) Packages() []*schema.Package {
+	names := make([]string, 0, len(p.binder.packageSchemas))
+	for name := range p.binder.packageSchemas {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	packages := make([]*schema.Package, len(names))
+	for i, name := range names {
+		packages[i] = p.binder.packageSchemas[name].schema
+	}
+	return packages
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -32,6 +33,7 @@ type binder struct {
 	host    plugin.Host
 
 	packageSchemas map[string]*packageSchema
+	typeSchemas    map[model.Type]schema.Type
 
 	tokens syntax.TokenMap
 	nodes  []Node
@@ -60,6 +62,7 @@ func BindProgram(files []*syntax.File, host plugin.Host, opts ...model.BindOptio
 		host:           host,
 		tokens:         syntax.NewTokenMapForFiles(files),
 		packageSchemas: map[string]*packageSchema{},
+		typeSchemas:    map[model.Type]schema.Type{},
 		root:           model.NewRootScope(syntax.None),
 	}
 
