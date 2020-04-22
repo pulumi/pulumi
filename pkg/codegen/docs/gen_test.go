@@ -97,6 +97,13 @@ func initTestPackageSpec(t *testing.T) {
 							Type: "boolean",
 						},
 					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						Language:    pythonMapCase,
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
 				},
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
@@ -145,6 +152,12 @@ func initTestPackageSpec(t *testing.T) {
 					"options2Prop": {
 						TypeSpec: schema.TypeSpec{
 							Ref: "#/types/prov:module/ResourceOptions2:ResourceOptions2",
+						},
+					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
 						},
 					},
 				},
