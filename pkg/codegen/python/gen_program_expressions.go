@@ -172,9 +172,15 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
+	// Compute the function name from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+
+	components := strings.Split(module, ".")
+	for i, component := range components {
+		components[i] = PyName(component)
+	}
+
+	return cleanName(pkg), strings.Join(components, "."), title(member), diagnostics
 }
 
 var functionImports = map[string]string{
@@ -439,7 +445,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		}
 	}
 
-	prefix, isMultiLine, quotes := "", false, `"`
+	formatted, isMultiLine, quotes := false, false, `"`
 	for i, part := range expr.Parts {
 		if lit, ok := part.(*model.LiteralValueExpression); ok {
 			if !isMultiLine && lit.Type() == model.StringType {
@@ -455,17 +461,21 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 				isMultiLine, quotes = true, `"""`
 			}
 		} else {
-			prefix = "f"
+			formatted = true
 		}
 	}
 
 	b := bufio.NewWriter(w)
 	defer b.Flush()
 
+	prefix := ""
+	if formatted {
+		prefix = "f"
+	}
 	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, true)
+			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, formatted)
 		} else {
 			g.Fgenf(b, "{%.v}", expr)
 		}
