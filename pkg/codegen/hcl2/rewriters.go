@@ -32,6 +32,10 @@ type NameInfo interface {
 type applyRewriter struct {
 	nameInfo      NameInfo
 	applyPromises bool
+}
+
+type applyContext struct {
+	applyRewriter
 
 	root            model.Expression
 	applyArgs       []*model.ScopeTraversalExpression
@@ -100,19 +104,19 @@ func (r *applyRewriter) isEventualExpr(x model.Expression) bool {
 }
 
 // disambiguateName ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
-func (r *applyRewriter) disambiguateName(name string) string {
+func (ctx *applyContext) disambiguateName(name string) string {
 	if name == "" {
 		name = "arg"
-	} else if r.nameInfo.IsReservedWord(name) {
+	} else if ctx.nameInfo.IsReservedWord(name) {
 		name = "_" + name
 	}
 
-	if !r.assignedNames.Has(name) {
+	if !ctx.assignedNames.Has(name) {
 		return name
 	}
 
 	root := name
-	for i := 1; r.nameCounts[name] != 0; i++ {
+	for i := 1; ctx.nameCounts[name] != 0; i++ {
 		name = fmt.Sprintf("%s%d", root, i)
 	}
 	return name
@@ -121,7 +125,7 @@ func (r *applyRewriter) disambiguateName(name string) string {
 // bestArgName computes the "best" name for a given apply argument. If this name is unambiguous after all best names
 // have been calculated, it will be assigned to the argument. Otherwise, it will go through the disambiguation process
 // in disambiguateArgName.
-func (r *applyRewriter) bestArgName(x *model.ScopeTraversalExpression) string {
+func (ctx *applyContext) bestArgName(x *model.ScopeTraversalExpression) string {
 	switch n := x.Parts[0].(type) {
 	case *ConfigVariable, *LocalVariable, *OutputVariable:
 		return n.(Node).Name()
@@ -149,30 +153,30 @@ func (r *applyRewriter) bestArgName(x *model.ScopeTraversalExpression) string {
 }
 
 // disambiguateArgName applies type-specific disambiguation to an argument name.
-func (r *applyRewriter) disambiguateArgName(x *model.ScopeTraversalExpression, bestName string) string {
+func (ctx *applyContext) disambiguateArgName(x *model.ScopeTraversalExpression, bestName string) string {
 	if n, ok := x.Parts[0].(*Resource); ok {
 		// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
 		// by prepending the resource's variable name.
 		if len(x.Traversal) > 1 {
-			return r.disambiguateName(n.Name() + titleCase(bestName))
+			return ctx.disambiguateName(n.Name() + titleCase(bestName))
 		}
 	}
 	// Hand off to the generic disambiguator.
-	return r.disambiguateName(bestName)
+	return ctx.disambiguateName(bestName)
 }
 
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with a call to
 // the __applyArg intrinsic.
-func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
+func (ctx *applyContext) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
 	isRoot bool) model.Expression {
 
 	// If the access is not an output() or a promise(), return the node as-is.
-	_, isEventual := r.isEventualType(expr.Type())
+	_, isEventual := ctx.isEventualType(expr.Type())
 	if !isEventual {
 		// If this is a reference to a named variable, put the name in scope.
 		if definition, ok := expr.Traversal[0].(Node); ok {
-			r.assignedNames.Add(definition.Name())
-			r.nameCounts[definition.Name()] = 1
+			ctx.assignedNames.Add(definition.Name())
+			ctx.nameCounts[definition.Name()] = 1
 		}
 		return expr
 	}
@@ -188,7 +192,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	var traversal hcl.Traversal
 
 	splitTraversal := expr.Syntax.Traversal.SimpleSplit()
-	if rootResolvedType, rootIsEventual := r.isEventualType(model.GetTraversableType(expr.Parts[0])); rootIsEventual {
+	if rootResolvedType, rootIsEventual := ctx.isEventualType(model.GetTraversableType(expr.Parts[0])); rootIsEventual {
 		applyArg = &model.ScopeTraversalExpression{
 			Parts:     expr.Parts[:1],
 			RootName:  splitTraversal.Abs.RootName(),
@@ -197,7 +201,7 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 		paramType, traversal, parts = rootResolvedType, expr.Syntax.Traversal.SimpleSplit().Rel, expr.Parts[1:]
 	} else {
 		for i := range splitTraversal.Rel {
-			if resolvedType, isEventual := r.isEventualType(model.GetTraversableType(expr.Parts[i+1])); isEventual {
+			if resolvedType, isEventual := ctx.isEventualType(model.GetTraversableType(expr.Parts[i+1])); isEventual {
 				absTraversal, relTraversal := expr.Syntax.Traversal[:i+2], expr.Syntax.Traversal[i+2:]
 
 				applyArg = &model.ScopeTraversalExpression{
@@ -216,18 +220,18 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 	}
 
 	callbackParam := &model.Variable{
-		Name:         fmt.Sprintf("<arg%d>", len(r.callbackParams)),
+		Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
 		VariableType: paramType,
 	}
 
-	r.applyArgs, r.callbackParams = append(r.applyArgs, applyArg), append(r.callbackParams, callbackParam)
+	ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
 
 	// TODO(pdg): this risks information loss for nested output-typed properties... The `Types` array on traversals
 	// ought to store the original types.
 	resolvedParts := make([]model.Traversable, len(parts)+1)
 	resolvedParts[0] = callbackParam
 	for i, p := range parts {
-		resolved, isEventual := r.isEventualType(model.GetTraversableType(p))
+		resolved, isEventual := ctx.isEventualType(model.GetTraversableType(p))
 		contract.Assert(isEventual)
 		resolvedParts[i+1] = resolved
 	}
@@ -237,37 +241,37 @@ func (r *applyRewriter) rewriteScopeTraversalExpression(expr *model.ScopeTravers
 		RootName:  callbackParam.Name,
 		Traversal: hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
 	}
-	r.paramReferences = append(r.paramReferences, result)
+	ctx.paramReferences = append(ctx.paramReferences, result)
 	return result
 }
 
 // rewriteRoot replaces the root node in a bound expression with a call to the __apply intrinsic if necessary.
-func (r *applyRewriter) rewriteRoot(expr model.Expression) model.Expression {
-	contract.Require(expr == r.root, "expr")
+func (ctx *applyContext) rewriteRoot(expr model.Expression) model.Expression {
+	contract.Require(expr == ctx.root, "expr")
 
 	// Clear the root context so that future calls to enterNode recognize new expression roots.
-	r.root = nil
-	if len(r.applyArgs) == 0 {
+	ctx.root = nil
+	if len(ctx.applyArgs) == 0 {
 		return expr
 	}
 
 	// Assign argument names.
-	for i, arg := range r.applyArgs {
-		bestName := r.bestArgName(arg)
-		r.callbackParams[i].Name, r.nameCounts[bestName] = bestName, r.nameCounts[bestName]+1
+	for i, arg := range ctx.applyArgs {
+		bestName := ctx.bestArgName(arg)
+		ctx.callbackParams[i].Name, ctx.nameCounts[bestName] = bestName, ctx.nameCounts[bestName]+1
 	}
-	for i, param := range r.callbackParams {
-		if r.nameCounts[param.Name] > 1 {
-			param.Name = r.disambiguateArgName(r.applyArgs[i], param.Name)
-			if r.nameCounts[param.Name] == 0 {
-				r.nameCounts[param.Name] = 1
+	for i, param := range ctx.callbackParams {
+		if ctx.nameCounts[param.Name] > 1 {
+			param.Name = ctx.disambiguateArgName(ctx.applyArgs[i], param.Name)
+			if ctx.nameCounts[param.Name] == 0 {
+				ctx.nameCounts[param.Name] = 1
 			}
-			r.assignedNames.Add(param.Name)
+			ctx.assignedNames.Add(param.Name)
 		}
 	}
 
 	// Update parameter references with the assigned names.
-	for _, x := range r.paramReferences {
+	for _, x := range ctx.paramReferences {
 		v := x.Parts[0].(*model.Variable)
 		rootTraversal := x.Traversal[0].(hcl.TraverseRoot)
 		x.RootName, rootTraversal.Name = v.Name, v.Name
@@ -277,32 +281,32 @@ func (r *applyRewriter) rewriteRoot(expr model.Expression) model.Expression {
 	// Create a new anonymous function definition.
 	callback := &model.AnonymousFunctionExpression{
 		Signature: model.StaticFunctionSignature{
-			Parameters: make([]model.Parameter, len(r.callbackParams)),
+			Parameters: make([]model.Parameter, len(ctx.callbackParams)),
 			ReturnType: expr.Type(),
 		},
-		Parameters: r.callbackParams,
+		Parameters: ctx.callbackParams,
 		Body:       expr,
 	}
-	for i, p := range r.callbackParams {
+	for i, p := range ctx.callbackParams {
 		callback.Signature.Parameters[i] = model.Parameter{Name: p.Name, Type: p.VariableType}
 	}
 
-	return NewApplyCall(r.applyArgs, callback)
+	return NewApplyCall(ctx.applyArgs, callback)
 }
 
 // rewriteExpression performs the apply rewrite on a single expression, delegating to type-specific functions as
 // necessary.
-func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	isRoot := expr == r.root
+func (ctx *applyContext) rewriteExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+	isRoot := expr == ctx.root
 
 	// TODO(pdg): arrays of outputs, for expressions, etc.
 
 	if traversal, isScopeTraversal := expr.(*model.ScopeTraversalExpression); isScopeTraversal {
-		expr = r.rewriteScopeTraversalExpression(traversal, isRoot)
+		expr = ctx.rewriteScopeTraversalExpression(traversal, isRoot)
 	}
 	if isRoot {
-		r.root = expr
-		expr = r.rewriteRoot(expr)
+		ctx.root = expr
+		expr = ctx.rewriteRoot(expr)
 	}
 	return expr, nil
 }
@@ -311,11 +315,11 @@ func (r *applyRewriter) rewriteExpression(expr model.Expression) (model.Expressi
 // intended to allow consumers of the apply rewrite to call RewriteApplies on a list or map property that may contain
 // multiple independent bound expressions rather than requiring that they find and rewrite these expressions
 // individually.
-func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	if r.root == nil {
-		if r.isEventualExpr(expr) {
-			r.root, r.applyArgs, r.callbackParams, r.paramReferences = expr, nil, nil, nil
-			r.assignedNames, r.nameCounts = codegen.StringSet{}, map[string]int{}
+func (ctx *applyContext) enterExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+	if ctx.root == nil {
+		if ctx.isEventualExpr(expr) {
+			ctx.root, ctx.applyArgs, ctx.callbackParams, ctx.paramReferences = expr, nil, nil, nil
+			ctx.assignedNames, ctx.nameCounts = codegen.StringSet{}, map[string]int{}
 		}
 	}
 	return expr, nil
@@ -384,6 +388,8 @@ func (r *applyRewriter) enterExpression(expr model.Expression) (model.Expression
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).
 func RewriteApplies(expr model.Expression, nameInfo NameInfo, applyPromises bool) (model.Expression, hcl.Diagnostics) {
-	rewriter := &applyRewriter{nameInfo: nameInfo, applyPromises: applyPromises}
-	return model.VisitExpression(expr, rewriter.enterExpression, rewriter.rewriteExpression)
+	context := &applyContext{
+		applyRewriter: applyRewriter{nameInfo: nameInfo, applyPromises: applyPromises},
+	}
+	return model.VisitExpression(expr, context.enterExpression, context.rewriteExpression)
 }
