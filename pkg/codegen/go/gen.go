@@ -1079,12 +1079,17 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var markOptionalPropertyTypesAsRequiringPtr func(props []*schema.Property, parentOptional bool)
-	markOptionalPropertyTypesAsRequiringPtr = func(props []*schema.Property, parentOptional bool) {
+	var markOptionalPropertyTypesAsRequiringPtr func(parent *schema.ObjectType, props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(parent *schema.ObjectType, props []*schema.Property, parentOptional bool) {
 		for _, p := range props {
 			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
+				// Skip recursive recursive types. For example, at the time of this writing
+				// JSONSchemaProps in the package can have properties with a type of JSONSchemaProps.
+				if parent != nil && parent.Token == obj.Token {
+					continue
+				}
 				getPkg(obj.Token).details(obj).ptrElement = true
-				markOptionalPropertyTypesAsRequiringPtr(obj.Properties, true)
+				markOptionalPropertyTypesAsRequiringPtr(obj, obj.Properties, true)
 			}
 		}
 	}
@@ -1102,7 +1107,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		case *schema.ObjectType:
 			pkg := getPkg(t.Token)
 			pkg.types = append(pkg.types, t)
-			markOptionalPropertyTypesAsRequiringPtr(t.Properties, false)
+			markOptionalPropertyTypesAsRequiringPtr(t, t.Properties, false)
 		}
 	}
 
@@ -1120,8 +1125,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			pkg.names.add("Get" + resourceName(r))
 		}
 
-		markOptionalPropertyTypesAsRequiringPtr(r.InputProperties, !r.IsProvider)
-		markOptionalPropertyTypesAsRequiringPtr(r.Properties, !r.IsProvider)
+		markOptionalPropertyTypesAsRequiringPtr(nil, r.InputProperties, !r.IsProvider)
+		markOptionalPropertyTypesAsRequiringPtr(nil, r.Properties, !r.IsProvider)
 	}
 
 	scanResource(pkg.Provider)
