@@ -89,6 +89,10 @@ func (t *SetType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
+func (t *SetType) GetAnnotations() []interface{} {
+	return nil
+}
+
 func (t *SetType) String() string {
 	if t.s == "" {
 		t.s = fmt.Sprintf("set(%v)", t.ElementType)

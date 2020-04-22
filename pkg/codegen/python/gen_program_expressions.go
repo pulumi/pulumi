@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -220,7 +221,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			optionsBag = buf.String()
 		}
 
-		g.Fgenf(w, "%s(%.v%v)", name, expr.Args[1], optionsBag)
+		g.Fgenf(w, "%s(", name)
+
+		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
+			g.lowerObjectKeys(expr.Args[1], expr.Signature.Parameters[1].Type)
+
+			indenter := func(f func()) { f() }
+			if len(obj.Items) > 1 {
+				indenter = g.Indented
+			}
+			indenter(func() {
+				for i, item := range obj.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+
+					keyVal := key.Value.AsString()
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		g.Fgenf(w, "%v)", optionsBag)
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
@@ -274,7 +302,9 @@ func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, esc
 				c = 'n'
 			}
 		case '"', '\\':
-			w.WriteRune('\\')
+			if escapeNewlines {
+				w.WriteRune('\\')
+			}
 		case '{', '}':
 			if escapeBraces {
 				w.WriteRune(c)
@@ -344,21 +374,30 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, types []model.Traversable) {
-	for _, part := range traversal {
+func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable) {
+	for i, traverser := range traversal {
 		var key cty.Value
-		switch part := part.(type) {
+		switch traverser := traverser.(type) {
 		case hcl.TraverseAttr:
-			key = cty.StringVal(part.Name)
+			key = cty.StringVal(traverser.Name)
 		case hcl.TraverseIndex:
-			key = part.Key
+			key = traverser.Key
 		default:
-			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
+			contract.Failf("unexpected traverser of type %T (%v)", traverser, traverser.SourceRange())
 		}
 
 		switch key.Type() {
 		case cty.String:
 			keyVal := key.AsString()
+
+			receiver := parts[i]
+			if receiver, ok := receiver.(model.TypedTraversable); ok {
+				annotations := receiver.Type().GetAnnotations()
+				if len(annotations) == 1 {
+					keyVal = g.mapObjectKey(keyVal, annotations[0].(*schema.ObjectType))
+				}
+			}
+
 			if isLegalIdentifier(keyVal) {
 				g.Fgenf(w, ".%s", keyVal)
 			} else {
@@ -400,27 +439,30 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		}
 	}
 
-	isMultiLine, quotes := false, `"`
+	prefix, isMultiLine, quotes := "", false, `"`
 	for i, part := range expr.Parts {
-		if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			v := lit.Value.AsString()
-			switch strings.Count(v, "\n") {
-			case 0:
-				continue
-			case 1:
-				if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
+		if lit, ok := part.(*model.LiteralValueExpression); ok {
+			if !isMultiLine && lit.Type() == model.StringType {
+				v := lit.Value.AsString()
+				switch strings.Count(v, "\n") {
+				case 0:
 					continue
+				case 1:
+					if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
+						continue
+					}
 				}
+				isMultiLine, quotes = true, `"""`
 			}
-			isMultiLine, quotes = true, `"""`
-			break
+		} else {
+			prefix = "f"
 		}
 	}
 
 	b := bufio.NewWriter(w)
 	defer b.Flush()
 
-	g.Fprintf(b, `f%s`, quotes)
+	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
 			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, true)

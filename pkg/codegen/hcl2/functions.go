@@ -76,6 +76,13 @@ var pulumiBuiltins = map[string]*model.Function{
 			}, diagnostics
 		})),
 	"entries": model.NewFunction(model.GenericFunctionSignature(getEntriesSignature)),
+	"fileArchive": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "path",
+			Type: model.StringType,
+		}},
+		ReturnType: ArchiveType,
+	}),
 	"fileAsset": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "path",

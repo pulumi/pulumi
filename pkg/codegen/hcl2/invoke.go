@@ -97,13 +97,13 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if fn.Inputs == nil {
 		signature.Parameters[1].Type = model.NewOptionalType(model.NewObjectType(map[string]model.Type{}))
 	} else {
-		signature.Parameters[1].Type = schemaTypeToType(fn.Inputs)
+		signature.Parameters[1].Type = b.schemaTypeToType(fn.Inputs)
 	}
 
 	if fn.Outputs == nil {
 		signature.ReturnType = model.NewObjectType(map[string]model.Type{})
 	} else {
-		signature.ReturnType = schemaTypeToType(fn.Outputs)
+		signature.ReturnType = b.schemaTypeToType(fn.Outputs)
 	}
 	signature.ReturnType = model.NewPromiseType(signature.ReturnType)
 

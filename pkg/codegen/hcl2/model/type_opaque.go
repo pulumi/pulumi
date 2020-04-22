@@ -133,6 +133,10 @@ func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
 
+func (t *OpaqueType) GetAnnotations() []interface{} {
+	return nil
+}
+
 func (t *OpaqueType) String() string {
 	if t.s == "" {
 		switch t {

@@ -88,7 +88,7 @@ resource appService "aws:ecs:Service" {
 	desiredCount = 5
 	launchType = "FARGATE"
 	taskDefinition = appTask.arn
-	networkConfiguraiton = {
+	networkConfiguration = {
 		assignPublicIp = true
 		subnets = subnets.ids
 		securityGroups = [webSecurityGroup.id]

@@ -829,7 +829,6 @@ func (mod *modContext) recordProperty(prop *schema.Property) {
 	if python, ok := prop.Language["python"]; ok {
 		mapCase = python.(PropertyInfo).MapCase
 	}
-
 	if mapCase {
 		snakeCaseName := PyName(prop.Name)
 		mod.snakeCaseToCamelCase[snakeCaseName] = prop.Name

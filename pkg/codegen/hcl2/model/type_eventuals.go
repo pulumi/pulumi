@@ -76,7 +76,7 @@ func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
 			}
 			properties[k] = property
 		}
-		return NewObjectType(properties), transform
+		return NewObjectType(properties, t.Annotations...), transform
 	case *TupleType:
 		transform := makeIdentity
 		elements := make([]Type, len(t.ElementTypes))

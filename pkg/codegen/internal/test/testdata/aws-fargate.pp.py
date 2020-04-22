@@ -2,12 +2,8 @@ import pulumi
 import json
 import pulumi_aws as aws
 
-vpc = aws.ec2.get_vpc({
-    "default": True,
-})
-subnets = aws.ec2.get_subnet_ids({
-    "vpcId": vpc.id,
-})
+vpc = aws.ec2.get_vpc(default=True)
+subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
 # Create a security group that permits HTTP ingress and unrestricted egress.
 web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,
@@ -78,7 +74,7 @@ app_service = aws.ecs.Service("appService",
     desired_count=5,
     launch_type="FARGATE",
     task_definition=app_task.arn,
-    network_configuraiton={
+    network_configuration={
         "assignPublicIp": True,
         "subnets": subnets.ids,
         "securityGroups": [web_security_group.id],
@@ -88,4 +84,4 @@ app_service = aws.ecs.Service("appService",
         "containerName": "my-app",
         "containerPort": 80,
     }])
-pulumi.export("url", web_load_balancer.dnsName)
+pulumi.export("url", web_load_balancer.dns_name)
