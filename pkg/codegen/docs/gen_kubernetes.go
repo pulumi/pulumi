@@ -44,7 +44,7 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 	case "helm/v2", "helm/v3":
 		params = []formalParam{
 			{
-				Name:         "config",
+				Name: "config",
 			},
 			{
 				Name:         "opts",
@@ -54,7 +54,7 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 	case "yaml":
 		params = []formalParam{
 			{
-				Name:         "file",
+				Name: "file",
 			},
 			{
 				Name:         "opts",
@@ -72,10 +72,10 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 	case "apiextensions":
 		params = []formalParam{
 			{
-				Name:         "api_version",
+				Name: "api_version",
 			},
 			{
-				Name:         "kind",
+				Name: "kind",
 			},
 			{
 				Name:         "metadata",
