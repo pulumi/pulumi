@@ -844,6 +844,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) (map[string]string, map[string][]formalParam) {
 	renderedParams := make(map[string]string)
 	formalParams := make(map[string][]formalParam)
+	isK8sOverlayMod := mod.isKubernetesOverlayModule()
+	isK8sPackage := isKubernetesPackage(mod.pkg)
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
@@ -865,8 +867,20 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			paramTemplate = "py_formal_param"
 			// The Pulumi Python SDK does not have types for constructor args.
 			// The input properties for a resource needs to be exploded as
-			// individual constructor params.
-			params = make([]formalParam, 0, len(r.InputProperties))
+			// individual constructor params
+
+			// Kubernetes overlay resources use a different ordering of formal params in Python.
+			if isK8sOverlayMod {
+				params = getKubernetesOverlayPythonFormalParams(mod.mod)
+				break
+			}
+
+			params = make([]formalParam, 0, len(r.InputProperties)+1)
+			// All other resources accept the resource options as a second parameter.
+			params = append(params, formalParam{
+				Name:         "opts",
+				DefaultValue: "=None",
+			})
 			for _, p := range r.InputProperties {
 				// If the property defines a const value, then skip it.
 				// For example, in k8s, `apiVersion` and `kind` are often hard-coded
@@ -879,6 +893,16 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 					DefaultValue: "=None",
 				})
 			}
+
+			// Kubernetes resources do not accept a props param.
+			if isK8sPackage {
+				break
+			}
+
+			params = append(params, formalParam{
+				Name:         "__props__",
+				DefaultValue: "=None",
+			})
 		}
 
 		n := len(params)

@@ -28,7 +28,7 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language python %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span><span class="nf">{{ .Header.Title }}</span><span class="p">(resource_name, opts=None, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">, __props__=None);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span><span class="nf">{{ .Header.Title }}</span><span class="p">(resource_name, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">);</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
