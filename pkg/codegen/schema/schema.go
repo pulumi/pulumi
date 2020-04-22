@@ -388,7 +388,7 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 	if resource.StateInputs != nil {
 		for _, property := range resource.StateInputs.Properties {
 			if err := importPropertyLanguages(property, languages); err != nil {
-				return errors.Wrapf(err, "importing input property %v", property.Name)
+				return errors.Wrapf(err, "importing state input property %v", property.Name)
 			}
 		}
 	}
