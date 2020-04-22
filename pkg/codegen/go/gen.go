@@ -1083,8 +1083,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	markOptionalPropertyTypesAsRequiringPtr = func(parent *schema.ObjectType, props []*schema.Property, parentOptional bool) {
 		for _, p := range props {
 			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
-				// Skip recursive recursive types. For example, at the time of this writing
-				// JSONSchemaProps in the package can have properties with a type of JSONSchemaProps.
+				// Skip recursive recursive types. For example, JSONSchemaProps in the Kubernetes
+				// package can have properties with a type of JSONSchemaProps.
 				if parent != nil && parent.Token == obj.Token {
 					continue
 				}
