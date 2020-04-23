@@ -46,6 +46,7 @@ func newPluginRmCmd() *cobra.Command {
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			yes = yes || skipConfirmations()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

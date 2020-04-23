@@ -16,6 +16,8 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
+- Commands checking for a confirmation or requiring a `--yes` flag can now be
+  skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
 
 ## 2.0.0 (2020-04-16)
 

@@ -65,6 +65,16 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
+// skipConfirmations returns whether or not confirmation prompts should
+// be skipped. This should be used by pass any requirement that a --yes
+// parameter has been set for non-interactive scenarios.
+//
+// This should NOT be used to bypass protections for destructive
+// operations, such as those that will fail without a --force parameter.
+func skipConfirmations() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_CONFIRMATIONS"))
+}
+
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
