@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (unreleased)
 
+- Order secretOutputNames when used in stack references
+  [#4481](https://github.com/pulumi/pulumi/pull/4481)
+
 - Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
   behavior for how URLs to the Pulumi Console are generated.
   [#4410](https://github.com/pulumi/pulumi/pull/4410)
