@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1613,7 +1612,7 @@ func TestPartialValuesPython(t *testing.T) {
 //Tests a resource with a large (>4mb) string prop in Node.js
 func TestLargeResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          path.Join("large_resource", "nodejs"),
+		Dir:          filepath.Join("large_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 	})
 }
@@ -1624,7 +1623,7 @@ func TestLargeResourcePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Dir: path.Join("large_resource", "python"),
+		Dir: filepath.Join("large_resource", "python"),
 	})
 }
 
@@ -1634,7 +1633,7 @@ func TestLargeResourceGo(t *testing.T) {
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v2",
 		},
-		Dir: path.Join("large_resource", "go"),
+		Dir: filepath.Join("large_resource", "go"),
 	})
 }
 
@@ -1642,6 +1641,6 @@ func TestLargeResourceGo(t *testing.T) {
 func TestLargeResourceDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{"Pulumi"},
-		Dir:          path.Join("large_resource", "dotnet"),
+		Dir:          filepath.Join("large_resource", "dotnet"),
 	})
 }
