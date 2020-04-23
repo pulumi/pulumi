@@ -74,8 +74,8 @@ func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
 }
 
 // bindTraversalParts computes the type for each element of the given traversal.
-func (b *expressionBinder) bindTraversalParts(receiver Traversable,
-	traversal hcl.Traversal) ([]Traversable, hcl.Diagnostics) {
+func bindTraversalParts(receiver Traversable, traversal hcl.Traversal,
+	allowMissingVariables bool) ([]Traversable, hcl.Diagnostics) {
 
 	parts := make([]Traversable, len(traversal)+1)
 	parts[0] = receiver
@@ -85,7 +85,7 @@ func (b *expressionBinder) bindTraversalParts(receiver Traversable,
 		nextReceiver, partDiags := parts[i].Traverse(part)
 
 		// TODO(pdg): proper options for Traverse
-		if b.options.allowMissingVariables {
+		if allowMissingVariables {
 			var diags hcl.Diagnostics
 			for _, d := range partDiags {
 				if !strings.HasPrefix(d.Summary, "undefined variable") {
@@ -103,7 +103,7 @@ func (b *expressionBinder) bindTraversalParts(receiver Traversable,
 		// OK
 	default:
 		// TODO(pdg): improve this diagnostic
-		if !b.options.allowMissingVariables {
+		if !allowMissingVariables {
 			diagnostics = append(diagnostics, undefinedVariable("", traversal.SourceRange()))
 		}
 	}
