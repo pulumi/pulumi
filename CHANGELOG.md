@@ -16,7 +16,6 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
-
 - Increase the MaxCallRecvMsgSize for all RPC calls. 
   [#4455](https://github.com/pulumi/pulumi/pull/4455)
 
