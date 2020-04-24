@@ -1152,7 +1152,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	var getMod func(token string) *modContext
 	getMod = func(token string) *modContext {
-		modName := pkg.TokenToModule(token)
+		modName := PyName(pkg.TokenToModule(token))
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{

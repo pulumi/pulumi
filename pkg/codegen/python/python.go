@@ -72,7 +72,7 @@ func PyName(name string) string {
 	var components []string     // The components that will be joined together with underscores
 	var currentComponent []rune // The characters composing the current component being built
 	state := stateFirst
-	for _, char := range name {
+	for _, char := range cleanName(name) {
 		switch state {
 		case stateFirst:
 			if unicode.IsUpper(char) {

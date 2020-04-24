@@ -16,6 +16,9 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
+- Ensure generated Python module names are keyword-safe.
+  [#4473](https://github.com/pulumi/pulumi/pull/4473)
+
 
 ## 2.0.0 (2020-04-16)
 
