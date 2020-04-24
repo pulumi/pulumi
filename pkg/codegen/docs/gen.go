@@ -137,15 +137,16 @@ type header struct {
 
 // property represents an input or an output property.
 type property struct {
+	ID string
 	// DisplayName is the property name with word-breaks.
 	DisplayName        string
 	Name               string
 	Comment            string
 	Type               propertyType
 	DeprecationMessage string
-
-	IsRequired bool
-	IsInput    bool
+	Link               string
+	IsRequired         bool
+	IsInput            bool
 }
 
 // apiTypeDocLinks represents the links for a type's input and output API doc.
@@ -841,12 +842,14 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 
 		docProperties = append(docProperties, property{
+			ID:                 strings.ToLower(propLangName),
 			DisplayName:        wbr(propLangName),
 			Name:               propLangName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
 			IsInput:            input,
+			Link:               strings.ToLower("#" + propLangName),
 			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}

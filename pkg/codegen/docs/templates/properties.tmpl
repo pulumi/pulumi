@@ -6,7 +6,7 @@
 {{ range . }}
     <dt class="property-{{- if .IsInput -}}{{- if .IsRequired -}}required{{- else -}}optional{{- end -}}{{- end -}}{{ if .DeprecationMessage }} property-deprecated{{- end -}}"
             title="{{ if .IsInput -}}{{- if .IsRequired -}}Required{{- else -}}Optional{{- end -}}{{- end -}}{{- if .DeprecationMessage -}}, Deprecated{{- end -}}">
-        <span>{{- htmlSafe .DisplayName -}}</span>
+        <span id="{{ htmlSafe .ID }}">{{ template "linkify" . }}</span>
         <span class="property-indicator"></span>
         <span class="property-type">{{- if eq .Type.Link "#" "" -}}{{- htmlSafe .Type.DisplayName -}}{{- else -}}{{ template "linkify" .Type }}{{- end -}}</span>
     </dt>
