@@ -19,6 +19,9 @@ CHANGELOG
 - Improve `ResourceOptions.merge` type in Python SDK
   [#4484](https://github.com/pulumi/pulumi/pull/4484)
 
+- Ensure generated Python module names are keyword-safe.
+  [#4473](https://github.com/pulumi/pulumi/pull/4473)
+
 ## 2.0.0 (2020-04-16)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
