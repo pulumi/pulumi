@@ -298,7 +298,7 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
-	return tokenToName(r.Token)
+	return strings.Title(tokenToName(r.Token))
 }
 
 func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {

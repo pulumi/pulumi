@@ -160,6 +160,10 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func tokenToFunctionName(tok string) string {
+	return tokenToName(tok)
+}
+
 func (mod *modContext) tokenToNamespace(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
@@ -744,7 +748,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
-	className := tokenToName(fun.Token)
+	className := tokenToFunctionName(fun.Token)
 
 	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token))
 	fmt.Fprintf(w, "{\n")

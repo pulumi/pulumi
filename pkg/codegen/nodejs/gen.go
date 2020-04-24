@@ -135,6 +135,10 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func tokenToFunctionName(tok string) string {
+	return camel(tokenToName(tok))
+}
+
 func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool) string {
 	var typ string
 	switch t := t.(type) {
@@ -541,7 +545,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
-	name := camel(tokenToName(fun.Token))
+	name := tokenToFunctionName(fun.Token)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "typescript"), "", "")

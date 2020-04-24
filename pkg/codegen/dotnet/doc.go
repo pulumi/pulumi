@@ -84,10 +84,15 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
 }
 
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
+	return tokenToFunctionName(f.Token)
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Get" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(f *schema.Function) string {
+	funcName := d.GetFunctionName(f)
+	return funcName + "Result"
 }
 
 // GetPropertyName uses the property's csharp-specific language info, if available, to generate
