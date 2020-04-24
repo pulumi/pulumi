@@ -16,7 +16,6 @@ import * as minimist from "minimist";
 import * as path from "path";
 
 import * as grpc from "@grpc/grpc-js";
-import { ChannelOptions } from "@grpc/grpc-js/build/src/channel-options";
 
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
@@ -355,7 +354,7 @@ export async function main(args: string[]) {
     const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server(<ChannelOptions>{
+    const server = new grpc.Server({
         "grpc.max_receive_message_length": maxRPCMessageSize,
     });
     server.addService(provrpc.ResourceProviderService, {

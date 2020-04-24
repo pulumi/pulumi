@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import { ChannelOptions } from "@grpc/grpc-js/build/src/channel-options";
 import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource, URN } from "../resource";
@@ -28,7 +27,7 @@ const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions: ChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
+const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
