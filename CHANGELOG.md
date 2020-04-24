@@ -16,6 +16,8 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
+- Improve `ResourceOptions.merge` type in Python SDK
+  [#4484](https://github.com/pulumi/pulumi/pull/4484)
 
 ## 2.0.0 (2020-04-16)
 
