@@ -72,7 +72,7 @@ func pyName(pulumiName string, isObjectKey bool) string {
 	if isObjectKey {
 		return fmt.Sprintf("%q", pulumiName)
 	}
-	return PyName(cleanName(pulumiName))
+	return PyName(pulumiName)
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
@@ -167,7 +167,13 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	return pyName(pkg, false), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+
+	components := strings.Split(module, ".")
+	for i, component := range components {
+		components[i] = PyName(component)
+	}
+
+	return pyName(pkg, false), strings.Join(components, "."), title(member), diagnostics
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

@@ -177,7 +177,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	}
 	byts, err := m.Marshal(chk)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while marshalling the checkpoint")
 	}
 
 	// Back up the existing file if it already exists.
@@ -185,7 +185,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
 	}
 
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
@@ -193,7 +193,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
-			return "", errors.Wrap(err, "An IO error occurred during the current operation")
+			return "", errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
 		}
 	}
 

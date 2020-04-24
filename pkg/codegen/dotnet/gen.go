@@ -569,6 +569,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsProvider {
 		baseType = "Pulumi.ProviderResource"
 	}
+	if r.DeprecationMessage != "" {
+		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
+	}
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -769,6 +772,9 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
+	if fun.DeprecationMessage != "" {
+		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(fun.DeprecationMessage, `"`, `""`, -1))
+	}
 	// Open the class we'll use for datasources.
 	fmt.Fprintf(w, "    public static class %s\n", className)
 	fmt.Fprintf(w, "    {\n")
