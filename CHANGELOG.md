@@ -19,6 +19,9 @@ CHANGELOG
 - Ensure generated Python module names are keyword-safe.
   [#4473](https://github.com/pulumi/pulumi/pull/4473)
 
+- Explicitly set XDG_CONFIG_HOME and XDG_CACHE_HOME env vars for helm in the
+  pulumi docker image
+  [#4474](https://github.com/pulumi/pulumi/pull/4474)
 
 ## 2.0.0 (2020-04-16)
 
