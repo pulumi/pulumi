@@ -1534,7 +1534,7 @@ func (mod *modContext) genIndex() indexData {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
 			Link:        strings.ToLower(name),
-			DisplayName: name,
+			DisplayName: strings.Title(name),
 		})
 	}
 	sortIndexEntries(functions)

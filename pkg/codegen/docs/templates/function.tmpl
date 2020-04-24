@@ -15,7 +15,7 @@
 {{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
 
 <!-- TS/JS -->
-{{ print "{{% choosable language typescript %}}" }}
+{{ print "{{% choosable language nodejs %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
