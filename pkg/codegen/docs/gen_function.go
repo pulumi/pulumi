@@ -68,11 +68,11 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "nodejs":
-			resultTypeName = docLangHelper.GetResourceFunctionResultName(f)
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		case "go":
-			resultTypeName = docLangHelper.GetResourceFunctionResultName(f)
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		case "csharp":
-			resultTypeName = docLangHelper.GetResourceFunctionResultName(f)
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 			if mod.mod == "" {
 				resultTypeName = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), resultTypeName)
 			} else {
@@ -321,7 +321,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	funcNameMap := map[string]string{}
 	for _, lang := range supportedLanguages {
 		docHelper := getLanguageDocHelper(lang)
-		funcNameMap[lang] = docHelper.GetFunctionName(f)
+		funcNameMap[lang] = docHelper.GetFunctionName(mod.mod, f)
 	}
 
 	args := functionDocArgs{
