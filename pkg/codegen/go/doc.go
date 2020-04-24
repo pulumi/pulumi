@@ -111,7 +111,11 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	funcName := tokenToName(f.Token)
-	pkg := d.packages[f.Token]
+	pkg, ok := d.packages[f.Token]
+	if !ok {
+		return funcName
+	}
+
 	if override, ok := pkg.functionNames[f]; ok {
 		funcName = override
 	}
