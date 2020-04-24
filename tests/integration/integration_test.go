@@ -1611,6 +1611,9 @@ func TestPartialValuesPython(t *testing.T) {
 
 //Tests a resource with a large (>4mb) string prop in Node.js
 func TestLargeResourceNode(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("large_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
