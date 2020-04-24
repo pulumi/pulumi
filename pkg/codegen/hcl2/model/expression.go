@@ -1291,6 +1291,7 @@ func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 		typ, diagnostics = DynamicType, hcl.Diagnostics{unsupportedLiteralValue(x.Value, rng)}
 	}
 
+	x.exprType = typ
 	return diagnostics
 }
 
