@@ -104,7 +104,7 @@ func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(f *schema.Function) string {
 	funcName := d.GetFunctionName(f)
-	return funcName + "Result"
+	return title(funcName) + "Result"
 }
 
 // GetPropertyName returns the property name specific to NodeJS.
