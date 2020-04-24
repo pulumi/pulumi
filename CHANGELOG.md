@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (unreleased)
 
+- Add retry support when writing to state buckets
+
 - Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
   behavior for how URLs to the Pulumi Console are generated.
   [#4410](https://github.com/pulumi/pulumi/pull/4410)
