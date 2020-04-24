@@ -99,7 +99,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 }
 
 func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
-	argsType := funcName + "Args"
+	argsType := title(funcName+"Args", "nodejs")
 
 	docLangHelper := getLanguageDocHelper("nodejs")
 	var params []formalParam
@@ -278,7 +278,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 }
 
 func (mod *modContext) genFunctionHeader(f *schema.Function) header {
-	funcName := tokenToName(f.Token)
+	funcName := strings.Title(tokenToName(f.Token))
 	packageName := formatTitleText(mod.pkg.Name)
 	var baseDescription string
 	var titleTag string
