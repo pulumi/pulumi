@@ -17,6 +17,9 @@ package python
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
+
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
@@ -69,41 +72,50 @@ func PyName(name string) string {
 		stateLowerOrNumber
 	)
 
-	var components []string     // The components that will be joined together with underscores
-	var currentComponent []rune // The characters composing the current component being built
+	var result strings.Builder           // The components of the name, joined together with underscores.
+	var currentComponent strings.Builder // The characters composing the current component being built
 	state := stateFirst
-	for _, char := range cleanName(name) {
+	for _, char := range name {
+		// If this is an illegal character for a Python identifier, replace it.
+		if !isLegalIdentifierPart(char) {
+			char = '_'
+		}
+
 		switch state {
 		case stateFirst:
+			if !isLegalIdentifierStart(char) {
+				currentComponent.WriteRune('_')
+			}
+
 			if unicode.IsUpper(char) {
 				// stateFirst -> stateUpper
 				state = stateUpper
-				currentComponent = append(currentComponent, unicode.ToLower(char))
+				currentComponent.WriteRune(unicode.ToLower(char))
 				continue
 			}
 
 			// stateFirst -> stateLowerOrNumber
 			state = stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
+			currentComponent.WriteRune(char)
 			continue
 
 		case stateUpper:
 			if unicode.IsUpper(char) {
 				// stateUpper -> stateAcronym
 				state = stateAcronym
-				currentComponent = append(currentComponent, unicode.ToLower(char))
+				currentComponent.WriteRune(unicode.ToLower(char))
 				continue
 			}
 
 			// stateUpper -> stateLowerOrNumber
 			state = stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
+			currentComponent.WriteRune(char)
 			continue
 
 		case stateAcronym:
 			if unicode.IsUpper(char) {
 				// stateAcronym -> stateAcronym
-				currentComponent = append(currentComponent, unicode.ToLower(char))
+				currentComponent.WriteRune(unicode.ToLower(char))
 				continue
 			}
 
@@ -111,36 +123,52 @@ func PyName(name string) string {
 			// component as the acronym.
 			if unicode.IsDigit(char) {
 				// stateAcronym -> stateLowerOrNumber
-				currentComponent = append(currentComponent, char)
 				state = stateLowerOrNumber
+				currentComponent.WriteRune(char)
 				continue
 			}
 
 			// stateAcronym -> stateLowerOrNumber
-			last, rest := currentComponent[len(currentComponent)-1], currentComponent[:len(currentComponent)-1]
-			components = append(components, string(rest))
-			currentComponent = []rune{last, char}
+			component := currentComponent.String()
+			last, size := utf8.DecodeLastRuneInString(component)
+			if result.Len() != 0 {
+				result.WriteRune('_')
+			}
+			result.WriteString(component[:len(component)-size])
+
+			currentComponent.Reset()
+			currentComponent.WriteRune(last)
+			currentComponent.WriteRune(char)
 			state = stateLowerOrNumber
 			continue
 
 		case stateLowerOrNumber:
 			if unicode.IsUpper(char) {
 				// stateLowerOrNumber -> stateUpper
-				components = append(components, string(currentComponent))
-				currentComponent = []rune{unicode.ToLower(char)}
+				if result.Len() != 0 {
+					result.WriteRune('_')
+				}
+				result.WriteString(currentComponent.String())
+
+				currentComponent.Reset()
+				currentComponent.WriteRune(unicode.ToLower(char))
 				state = stateUpper
 				continue
 			}
 
 			// stateLowerOrNumber -> stateLowerOrNumber
-			currentComponent = append(currentComponent, char)
+			currentComponent.WriteRune(char)
 			continue
 		}
 	}
 
-	components = append(components, string(currentComponent))
-	result := strings.Join(components, "_")
-	return EnsureKeywordSafe(result)
+	if currentComponent.Len() != 0 {
+		if result.Len() != 0 {
+			result.WriteRune('_')
+		}
+		result.WriteString(currentComponent.String())
+	}
+	return EnsureKeywordSafe(result.String())
 }
 
 // Keywords is a map of reserved keywords used by Python 2 and 3.  We use this to avoid generating unspeakable
@@ -149,50 +177,49 @@ func PyName(name string) string {
 //     * Python 2: https://docs.python.org/2.5/ref/keywords.html
 //     * Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
 //
-var Keywords = map[string]bool{
-	"False":    true,
-	"None":     true,
-	"True":     true,
-	"and":      true,
-	"as":       true,
-	"assert":   true,
-	"async":    true,
-	"await":    true,
-	"break":    true,
-	"class":    true,
-	"continue": true,
-	"def":      true,
-	"del":      true,
-	"elif":     true,
-	"else":     true,
-	"except":   true,
-	"exec":     true,
-	"finally":  true,
-	"for":      true,
-	"from":     true,
-	"global":   true,
-	"if":       true,
-	"import":   true,
-	"in":       true,
-	"is":       true,
-	"lambda":   true,
-	"nonlocal": true,
-	"not":      true,
-	"or":       true,
-	"pass":     true,
-	"print":    true,
-	"raise":    true,
-	"return":   true,
-	"try":      true,
-	"while":    true,
-	"with":     true,
-	"yield":    true,
-}
+var Keywords = codegen.NewStringSet(
+	"False",
+	"None",
+	"True",
+	"and",
+	"as",
+	"assert",
+	"async",
+	"await",
+	"break",
+	"class",
+	"continue",
+	"def",
+	"del",
+	"elif",
+	"else",
+	"except",
+	"exec",
+	"finally",
+	"for",
+	"from",
+	"global",
+	"if",
+	"import",
+	"in",
+	"is",
+	"lambda",
+	"nonlocal",
+	"not",
+	"or",
+	"pass",
+	"print",
+	"raise",
+	"return",
+	"try",
+	"while",
+	"with",
+	"yield")
 
 // EnsureKeywordSafe adds a trailing underscore if the generated name clashes with a Python 2 or 3 keyword, per
 // PEP 8: https://www.python.org/dev/peps/pep-0008/?#function-and-method-arguments
 func EnsureKeywordSafe(name string) string {
-	if _, isKeyword := Keywords[name]; isKeyword {
+	if Keywords.Has(name) {
 		return name + "_"
 	}
 	return name

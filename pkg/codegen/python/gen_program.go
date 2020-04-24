@@ -68,13 +68,6 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	return files, g.diagnostics, nil
 }
 
-func pyName(pulumiName string, isObjectKey bool) string {
-	if isObjectKey {
-		return fmt.Sprintf("%q", pulumiName)
-	}
-	return PyName(pulumiName)
-}
-
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
 func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
 	// TODO(pdg): whitespace
@@ -173,7 +166,7 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 		components[i] = PyName(component)
 	}
 
-	return pyName(pkg, false), strings.Join(components, "."), title(member), diagnostics
+	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -198,7 +191,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	optionsBag := ""
 
-	name := pyName(r.Name(), false)
+	name := PyName(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.Labels {
@@ -219,7 +212,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 				g.lowerObjectKeys(attr.Value, attrType.(model.Type))
 
-				propertyName := pyName(attr.Name, false)
+				propertyName := PyName(attr.Name)
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, g.lowerExpression(attr.Value))
 				} else {
@@ -292,7 +285,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		getOrRequire = "require"
 	}
 
-	name := pyName(v.Name(), false)
+	name := PyName(v.Name())
 	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
 	if v.DefaultValue != nil {
 		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
@@ -304,7 +297,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%s%s = %.v\n", g.Indent, pyName(v.Name(), false), g.lowerExpression(v.Definition.Value))
+	g.Fgenf(w, "%s%s = %.v\n", g.Indent, PyName(v.Name()), g.lowerExpression(v.Definition.Value))
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
