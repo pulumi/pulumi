@@ -309,7 +309,7 @@ func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName stri
 	return ctx.disambiguateName(bestName)
 }
 
-// rewriteApplyArg replaces a single expression with an apply paramter.
+// rewriteApplyArg replaces a single expression with an apply parameter.
 func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType model.Type, traversal hcl.Traversal,
 	parts []model.Traversable, isRoot bool) model.Expression {
 
@@ -342,7 +342,7 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 }
 
 // rewriteRelativeTraversalExpression replaces a single access to an ouptut-typed RelativeTraversalExpression with an
-// apply paramter.
+// apply parameter.
 func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.RelativeTraversalExpression,
 	isRoot bool) model.Expression {
 
@@ -365,7 +365,7 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 }
 
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with an apply
-// paramter.
+// parameter.
 func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
 	isRoot bool) model.Expression {
 

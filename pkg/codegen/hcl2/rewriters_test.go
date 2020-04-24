@@ -12,8 +12,8 @@ import (
 
 type nameInfo int
 
-func (nameInfo) IsReservedWord(name string) bool {
-	return false
+func (nameInfo) Format(name string) string {
+	return name
 }
 
 func TestApplyRewriter(t *testing.T) {
