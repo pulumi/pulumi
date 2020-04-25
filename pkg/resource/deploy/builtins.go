@@ -210,7 +210,7 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 		}
 	}
 
-	// Sort the secret outputs
+	// Sort the secret outputs so the order is deterministic, to avoid spurious diffs during updates.
 	sort.Slice(secretOutputs, func(i, j int) bool {
 		return secretOutputs[i].String() < secretOutputs[j].String()
 	})
