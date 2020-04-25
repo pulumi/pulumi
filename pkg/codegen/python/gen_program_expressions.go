@@ -19,8 +19,8 @@ import (
 
 type nameInfo int
 
-func (nameInfo) IsReservedWord(word string) bool {
-	return isReservedWord(word)
+func (nameInfo) Format(name string) string {
+	return PyName(name)
 }
 
 func (g *generator) lowerExpression(expr model.Expression) model.Expression {
