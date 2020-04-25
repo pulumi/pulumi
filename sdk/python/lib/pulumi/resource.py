@@ -444,7 +444,7 @@ class ResourceOptions:
 
     # pylint: disable=method-hidden
     @staticmethod
-    def merge(opts1: 'ResourceOptions', opts2: 'ResourceOptions') -> 'ResourceOptions':
+    def merge(opts1: Optional['ResourceOptions'], opts2: Optional['ResourceOptions']) -> 'ResourceOptions':
         """
         merge produces a new ResourceOptions object with the respective attributes of the `opts1`
         instance in it with the attributes of `opts2` merged over them.
