@@ -812,6 +812,12 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op.Imports, op.IsImport = imports, true
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+}
+
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
@@ -1008,7 +1014,11 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.PreviewUpdate:
 		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		if op.IsImport {
+			changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
+		} else {
+			changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		}
 	case apitype.RefreshUpdate:
 		changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:

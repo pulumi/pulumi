@@ -422,6 +422,12 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
+func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op.Imports, op.IsImport = imports, true
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+}
+
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
@@ -508,7 +514,11 @@ func (b *localBackend) apply(
 	case apitype.PreviewUpdate:
 		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if op.IsImport {
+			changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+		} else {
+			changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
 	case apitype.RefreshUpdate:
 		changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:

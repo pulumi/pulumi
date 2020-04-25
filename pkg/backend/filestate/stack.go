@@ -72,6 +72,11 @@ func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (en
 	return backend.UpdateStack(ctx, s, op)
 }
 
+func (s *localStack) Import(ctx context.Context, op backend.UpdateOperation,
+	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	return backend.ImportStack(ctx, s, op, imports)
+}
+
 func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }

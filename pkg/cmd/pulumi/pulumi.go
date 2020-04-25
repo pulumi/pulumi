@@ -200,6 +200,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyCmd())
 	//     - Advanced Commands:
 	cmd.AddCommand(newCancelCmd())
+	cmd.AddCommand(newImportCmd())
 	cmd.AddCommand(newRefreshCmd())
 	cmd.AddCommand(newStateCmd())
 	//     - Other Commands:

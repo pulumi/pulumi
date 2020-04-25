@@ -156,6 +156,9 @@ type Backend interface {
 	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Import imports resources into a stack.
+	Import(ctx context.Context, stack Stack, op UpdateOperation,
+		imports []deploy.Import) (engine.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
@@ -201,10 +204,12 @@ type SpecificDeploymentExporter interface {
 	ExportDeploymentForVersion(ctx context.Context, stack Stack, version string) (*apitype.UntypedDeployment, error)
 }
 
-// UpdateOperation is a complete stack update operation (preview, update, refresh, or destroy).
+// UpdateOperation is a complete stack update operation (preview, update, import, refresh, or destroy).
 type UpdateOperation struct {
 	Proj               *workspace.Project
 	Root               string
+	Imports            []deploy.Import
+	IsImport           bool
 	M                  *UpdateMetadata
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager

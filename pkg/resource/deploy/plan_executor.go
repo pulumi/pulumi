@@ -132,6 +132,11 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		}
 	}()
 
+	// If this plan is an import, run the imports and exit.
+	if pe.plan.isImport {
+		return pe.importResources(callerCtx, opts, preview)
+	}
+
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
 		if res := pe.refresh(callerCtx, opts, preview); res != nil {
@@ -423,6 +428,39 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 	return nil
 }
 
+// import imports a list of resources into a stack.
+func (pe *planExecutor) importResources(callerCtx context.Context, opts Options, preview bool) result.Result {
+	if len(pe.plan.imports) == 0 {
+		return nil
+	}
+
+	// Create an executor for this import.
+	ctx, cancel := context.WithCancel(callerCtx)
+	stepExec := newStepExecutor(ctx, cancel, pe.plan, opts, preview, true)
+
+	importer := &importer{
+		plan:     pe.plan,
+		executor: stepExec,
+		preview:  preview,
+	}
+	res := importer.importResources(ctx)
+	stepExec.SignalCompletion()
+	stepExec.WaitForCompletion()
+
+	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+	// cancellation from internally-initiated cancellation.
+	canceled := callerCtx.Err() != nil
+
+	if res != nil || stepExec.Errored() {
+		pe.reportExecResult("failed", preview)
+		return result.Bail()
+	} else if canceled {
+		pe.reportExecResult("canceled", preview)
+		return result.Bail()
+	}
+	return nil
+}
+
 // refresh refreshes the state of the base checkpoint file for the current plan in memory.
 func (pe *planExecutor) refresh(callerCtx context.Context, opts Options, preview bool) result.Result {
 	prev := pe.plan.prev
@@ -507,7 +545,7 @@ func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step
 	for _, s := range pe.plan.prev.Resources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
-			// We produces a refresh step for this specific resource.  Use the new information about
+			// We producesd a refresh step for this specific resource.  Use the new information about
 			// its dependencies during the update.
 			old = step.Old()
 			new = step.New()
