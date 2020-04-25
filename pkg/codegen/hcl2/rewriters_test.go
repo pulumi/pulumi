@@ -38,7 +38,7 @@ func TestApplyRewriter(t *testing.T) {
 		},
 		{
 			input:  `"v: ${element(resources.*.id, 0)}"`,
-			output: `__apply(element(resources.*.id, 0),eval(element, "v: ${element}"))`,
+			output: `__apply(element(resources.*.id, 0),eval(ids, "v: ${ids}"))`,
 		},
 		{
 			input:  `"v: ${resource[key]}"`,
