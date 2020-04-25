@@ -4,8 +4,6 @@ import (
 	"io"
 	"strings"
 	"unicode"
-
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per
