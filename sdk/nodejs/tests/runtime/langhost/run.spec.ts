@@ -1136,6 +1136,24 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        // Create a resource with a large string to test grpcMaxMessageSize increase.
+        "large_resource": {
+            program: path.join(base, "065.large_resource"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                const longString = "a".repeat(1024 * 1024 * 5);
+                assert.strictEqual(t, "test:index:MyLargeStringResource");
+                assert.strictEqual(name, "testResource1");
+                assert.deepEqual(res, { "largeStringProp": longString });
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {
+                        "largeStringProp": "a".repeat(1024 * 1024 * 5),
+                    },
+                };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {

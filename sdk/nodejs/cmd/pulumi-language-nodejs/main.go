@@ -397,7 +397,11 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Make a connection to the real monitor that we will forward messages to.
-	conn, err := grpc.Dial(req.GetMonitorAddress(), grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		req.GetMonitorAddress(),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return nil, err
 	}
