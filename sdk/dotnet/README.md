@@ -1,6 +1,6 @@
-﻿# .NET Language Provider (Preview)
+﻿# .NET Language Provider
 
-A .NET language provider for Pulumi (currently in preview).
+A .NET language provider for Pulumi.
 
 
 ## Building and Running

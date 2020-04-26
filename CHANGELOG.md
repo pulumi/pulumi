@@ -16,12 +16,18 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
+- Improve `ResourceOptions.merge` type in Python SDK
+  [#4484](https://github.com/pulumi/pulumi/pull/4484)
+
 - Ensure generated Python module names are keyword-safe.
   [#4473](https://github.com/pulumi/pulumi/pull/4473)
 
 - Explicitly set XDG_CONFIG_HOME and XDG_CACHE_HOME env vars for helm in the
   pulumi docker image
   [#4474](https://github.com/pulumi/pulumi/pull/4474)
+
+- Increase the MaxCallRecvMsgSize for all RPC calls. 
+  [#4455](https://github.com/pulumi/pulumi/pull/4455)
 
 ## 2.0.0 (2020-04-16)
 

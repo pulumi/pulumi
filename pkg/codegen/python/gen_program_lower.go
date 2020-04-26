@@ -13,10 +13,15 @@ import (
 // parseProxyApply attempts to match the given parsed apply against the pattern (call __applyArg 0). If the call
 // matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
 // proxied apply call.
-func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
+func (g *generator) parseProxyApply(args []model.Expression,
 	then *model.AnonymousFunctionExpression) (*model.ScopeTraversalExpression, bool) {
 
 	if len(args) != 1 {
+		return nil, false
+	}
+
+	arg, ok := args[0].(*model.ScopeTraversalExpression)
+	if !ok {
 		return nil, false
 	}
 
@@ -25,7 +30,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 		return nil, false
 	}
 
-	traversal := hcl.TraversalJoin(args[0].Traversal, thenTraversal.Traversal[1:])
+	traversal := hcl.TraversalJoin(arg.Traversal, thenTraversal.Traversal[1:])
 	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 		Traversal: traversal,
 		SrcRange:  traversal.SourceRange(),
