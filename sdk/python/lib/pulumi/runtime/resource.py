@@ -382,10 +382,11 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 version=opts.version or "",
                 acceptSecrets=True,
                 additionalSecretOutputs=additional_secret_outputs,
-                importId=opts.import_,
+                importId=opts.patch if opts.patch is not None else opts.import_,
                 customTimeouts=custom_timeouts,
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
+                patch=opts.patch is not None,
             )
 
             from ..resource import create_urn # pylint: disable=import-outside-toplevel

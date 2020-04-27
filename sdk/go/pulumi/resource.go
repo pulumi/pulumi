@@ -167,6 +167,10 @@ type resourceOptions struct {
 	// current state. Once a resource has been imported, the import property must be removed from the resource's
 	// options.
 	Import IDInput
+	// Patch, when provided with a resource ID, indicates that this resource's provider should import its state from
+	// the cloud resource with the given ID. The inputs to the resource's constructor may differ from the resource's
+	// current state, but any differences must not require that the resource be replaced.
+	Patch IDInput
 	// CustomTimeouts is an optional configuration block used for CRUD operations
 	CustomTimeouts *CustomTimeouts
 	// Ignore changes to any of the specified properties.
@@ -303,6 +307,15 @@ func DeleteBeforeReplace(o bool) ResourceOption {
 func Import(o IDInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Import = o
+	})
+}
+
+// Patch, when provided with a resource ID, indicates that this resource's provider should import its state from
+// the cloud resource with the given ID. The inputs to the resource's constructor may differ from the resource's
+// current state, but any differences must not require that the resource be replaced.
+func Patch(o IDInput) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Patch = o
 	})
 }
 

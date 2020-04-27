@@ -196,7 +196,8 @@ func GetResourcePropertiesDetails(
 		if !summary {
 			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
-	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
+	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement &&
+		step.Op != deploy.OpPatch && step.Op != deploy.OpPatchReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, debug)
@@ -321,6 +322,8 @@ func GetResourceOutputsPropertiesString(
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
 			step.Op == deploy.OpImportReplacement ||
+			step.Op == deploy.OpPatch ||
+			step.Op == deploy.OpPatchReplacement ||
 			step.URN.Type() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""

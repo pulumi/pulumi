@@ -779,9 +779,12 @@ type ImportStep struct {
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	patch         bool
 }
 
-func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, ignoreChanges []string) Step {
+func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, ignoreChanges []string,
+	patch bool) Step {
+
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID != "")
@@ -794,11 +797,12 @@ func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, i
 		reg:           reg,
 		new:           new,
 		ignoreChanges: ignoreChanges,
+		patch:         patch,
 	}
 }
 
 func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string) Step {
+	ignoreChanges []string, patch bool) Step {
 
 	contract.Assert(original != nil)
 	contract.Assert(new != nil)
@@ -815,14 +819,21 @@ func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, n
 		new:           new,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
+		patch:         patch,
 	}
 }
 
 func (s *ImportStep) Op() StepOp {
-	if s.replacing {
+	switch {
+	case s.replacing && s.patch:
+		return OpPatchReplacement
+	case !s.replacing && s.patch:
+		return OpPatch
+	case s.replacing && !s.patch:
 		return OpImportReplacement
+	default:
+		return OpImport
 	}
-	return OpImport
 }
 
 func (s *ImportStep) Plan() *Plan                                  { return s.plan }
@@ -892,12 +903,43 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
 	if diff.Changes != plugin.DiffNone {
-		const message = "inputs to import do not match the existing resource"
+		switch {
+		case !s.patch:
+			const message = "inputs to import do not match the existing resource"
 
-		if preview {
-			s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
-		} else {
-			err = errors.New(message)
+			if preview {
+				s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
+			} else {
+				err = errors.New(message)
+			}
+		case diff.Replace():
+			const message = "patches must not require replacement"
+
+			if preview {
+				s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; patching this resource will fail", 0))
+			} else {
+				err = errors.New(message)
+			}
+		default:
+			if !preview {
+				// Update to the combination of the old "all" state, but overwritten with new inputs.
+				outs, uprst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
+					s.new.CustomTimeouts.Update, s.ignoreChanges)
+				if upderr != nil {
+					if uprst != resource.StatusPartialFailure {
+						return uprst, nil, upderr
+					}
+
+					rst, err = uprst, upderr
+
+					if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
+						s.new.InitErrors = initErr.Reasons
+					}
+				}
+
+				// Now copy any output state back in case the update triggered cascading updates to other properties.
+				s.new.Outputs = outs
+			}
 		}
 	}
 
@@ -928,6 +970,8 @@ const (
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
+	OpPatch                StepOp = "patch"                  // patch an existing resource.
+	OpPatchReplacement     StepOp = "patch-replacement"      // replace an existing resource with a patched resource.
 )
 
 // StepOps contains the full set of step operation types.
@@ -947,6 +991,8 @@ var StepOps = []StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+	OpPatch,
+	OpPatchReplacement,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -958,7 +1004,7 @@ func (op StepOp) Color() string {
 		return colors.SpecCreate
 	case OpDelete:
 		return colors.SpecDelete
-	case OpUpdate:
+	case OpUpdate, OpPatch:
 		return colors.SpecUpdate
 	case OpReplace:
 		return colors.SpecReplace
@@ -968,7 +1014,7 @@ func (op StepOp) Color() string {
 		return colors.SpecDeleteReplaced
 	case OpRead:
 		return colors.SpecRead
-	case OpReadReplacement, OpImportReplacement:
+	case OpReadReplacement, OpImportReplacement, OpPatchReplacement:
 		return colors.SpecReplace
 	case OpRefresh:
 		return colors.SpecUpdate
@@ -1016,6 +1062,10 @@ func (op StepOp) RawPrefix() string {
 		return "= "
 	case OpImportReplacement:
 		return "=>"
+	case OpPatch:
+		return "≈ "
+	case OpPatchReplacement:
+		return "≈>"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -1034,6 +1084,8 @@ func (op StepOp) PastTense() string {
 		return "discarded"
 	case OpImport, OpImportReplacement:
 		return "imported"
+	case OpPatch, OpPatchReplacement:
+		return "patched"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""

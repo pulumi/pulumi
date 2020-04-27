@@ -300,7 +300,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, false),
 		done: done,
 	}
 	return event, done, nil
@@ -687,6 +687,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	ignoreChanges := req.GetIgnoreChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
+	patch := req.GetPatch()
 	var t tokens.Type
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -799,7 +800,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider, nil,
-			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id, &timeouts),
+			propertyDependencies, deleteBeforeReplace, ignoreChanges, additionalSecretOutputs, aliases, id, &timeouts,
+			patch),
 		done: make(chan *RegisterResult),
 	}
 

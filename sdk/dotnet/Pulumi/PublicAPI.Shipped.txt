@@ -60,6 +60,8 @@ Pulumi.CustomResourceOptions.DeleteBeforeReplace.get -> bool?
 Pulumi.CustomResourceOptions.DeleteBeforeReplace.set -> void
 Pulumi.CustomResourceOptions.ImportId.get -> string
 Pulumi.CustomResourceOptions.ImportId.set -> void
+Pulumi.CustomResourceOptions.Patch.get -> string
+Pulumi.CustomResourceOptions.Patch.set -> void
 Pulumi.CustomTimeouts
 Pulumi.CustomTimeouts.Create.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Create.set -> void

@@ -12,6 +12,7 @@ require (
 	github.com/gofrs/flock v0.7.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
+	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -20,6 +21,7 @@ require (
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v0.0.6
 	github.com/stretchr/testify v1.5.1
@@ -30,6 +32,7 @@ require (
 	golang.org/x/mod v0.2.0
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d
+	google.golang.org/genproto v0.0.0-20200318110522-7735f76e9fa5 // indirect
 	google.golang.org/grpc v1.28.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1

@@ -38,6 +38,13 @@ namespace Pulumi
         /// </summary>
         public string? ImportId { get; set; }
 
+        /// <summary>
+		/// When provided with a resource ID, patch indicates that this resource's provider should import its state from
+		/// the cloud resource with the given ID. The inputs to the resource's constructor may differ from the resource's
+		/// current state, but any differences must not require that the resource be replaced.
+        /// </summary>
+        public string? Patch { get; set; }
+
         internal override ResourceOptions Clone()
             => CreateCustomResourceOptionsCopy(this);
 
@@ -75,6 +82,7 @@ namespace Pulumi
 
             options1.DeleteBeforeReplace = options2.DeleteBeforeReplace ?? options1.DeleteBeforeReplace;
             options1.ImportId = options2.ImportId ?? options1.ImportId;
+            options1.Patch = options2.Patch ?? options1.Patch;
 
             options1.AdditionalSecretOutputs.AddRange(options2.AdditionalSecretOutputs);
             return options1;
