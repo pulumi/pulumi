@@ -742,7 +742,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 			}
 
-			name := tokenToName(obj.Token)
+			name := strings.Title(tokenToName(obj.Token))
 			objs = append(objs, docNestedType{
 				Name:        wbr(name),
 				AnchorID:    strings.ToLower(name),
