@@ -24,7 +24,6 @@ TESTPARALLELISM := 10
 include ../../build/common.mk
 
 build::
-	# .NET support is only in Preview currently.  So unilaterally add `-preview` to the version suffix.
 	# From the nuget docs:
 	#
 	# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
