@@ -32,6 +32,9 @@ CHANGELOG
 - Increase the MaxCallRecvMsgSize for all RPC calls. 
   [#4455](https://github.com/pulumi/pulumi/pull/4455)
 
+- Allow `pulumi.export` calls from Python unit tests.
+  [#4518](https://github.com/pulumi/pulumi/pull/4518)
+
 ## 2.0.0 (2020-04-16)
 
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
