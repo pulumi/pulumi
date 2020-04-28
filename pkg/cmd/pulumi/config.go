@@ -260,7 +260,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    - `pulumi config set --path outer.inner value` " +
 			"will set the value of `outer` to a map `inner: value`.\n" +
 			"    - `pulumi config set --path names[0] a` " +
-			"will set the value to a list with the first item `a`.",
+			"will set the value to a list with the first item `a`.\n" +
+		        "    - `pulumi config set --path '[\"outer.name\"].[\"inner.name\"]' value" +
+		        "will set the of `outer.name` to a map `inner.name: value`. Useful if the names of outer and inner include a `.`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
