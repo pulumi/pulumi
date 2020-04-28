@@ -15,8 +15,8 @@ sudo: true
 git:
   depth: false
 before_install:
-- openssl aes-256-cbc -K $encrypted_342342ee5e49_key -iv $encrypted_342342ee5e49_iv
-  -in gcp-credentials.json.enc -out gcp-credentials.json -d
+- 'if [ "$TRAVIS_PULL_REQUEST_SLUG" != "pulumi/pulumi" ]; then echo "Not decrypting gcp credentials"; else openssl aes-256-cbc -K $encrypted_342342ee5e49_key -iv $encrypted_342342ee5e49_iv
+  -in gcp-credentials.json.enc -out gcp-credentials.json -d; fi'
 - git clone https://github.com/pulumi/scripts ${GOPATH}/src/github.com/pulumi/scripts
 - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
 - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
