@@ -33,6 +33,10 @@ func TestYarnInstall(t *testing.T) {
 }
 
 func testInstall(t *testing.T, expectedBin string) {
+	// Skip for community PRs
+	if os.Getenv("COMMUNITY_PR") == "true" {
+		t.Skip("Skipped for community PRs")
+	}
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
