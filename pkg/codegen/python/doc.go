@@ -100,8 +100,12 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return name
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return PyName(tokenToName(f.Token))
+}
+
 // GetResourceFunctionResultName is not implemented for Python and returns an empty string.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	return ""
 }
 

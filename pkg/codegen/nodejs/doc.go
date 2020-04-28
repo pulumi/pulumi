@@ -96,10 +96,15 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return tokenToFunctionName(f.Token)
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Get" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return title(funcName) + "Result"
 }
 
 // GetPropertyName returns the property name specific to NodeJS.

@@ -59,7 +59,7 @@ func wbr(s string) string {
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return strings.Title(components[2])
+	return components[2]
 }
 
 func title(s, lang string) string {

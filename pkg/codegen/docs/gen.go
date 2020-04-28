@@ -80,9 +80,11 @@ var (
 		"f5bigip":      "f5 BIG-IP",
 		"fastly":       "Fastly",
 		"gcp":          "GCP",
+		"github":       "GitHub",
 		"gitlab":       "GitLab",
 		"kafka":        "Kafka",
 		"keycloak":     "Keycloak",
+		"kong":         "Kong",
 		"kubernetes":   "Kubernetes",
 		"linode":       "Linode",
 		"mailgun":      "Mailgun",
@@ -298,7 +300,7 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
-	return tokenToName(r.Token)
+	return strings.Title(tokenToName(r.Token))
 }
 
 func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
@@ -741,7 +743,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 			}
 
-			name := tokenToName(obj.Token)
+			name := strings.Title(tokenToName(obj.Token))
 			objs = append(objs, docNestedType{
 				Name:        wbr(name),
 				AnchorID:    strings.ToLower(name),
@@ -1533,7 +1535,7 @@ func (mod *modContext) genIndex() indexData {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
 			Link:        strings.ToLower(name),
-			DisplayName: name,
+			DisplayName: strings.Title(name),
 		})
 	}
 	sortIndexEntries(functions)

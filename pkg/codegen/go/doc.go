@@ -109,8 +109,22 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	funcName := tokenToName(f.Token)
+	pkg, ok := d.packages[modName]
+	if !ok {
+		return funcName
+	}
+
+	if override, ok := pkg.functionNames[f]; ok {
+		funcName = override
+	}
+	return funcName
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Lookup" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return funcName + "Result"
 }
