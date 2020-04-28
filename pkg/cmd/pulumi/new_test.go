@@ -807,8 +807,9 @@ func removeStack(t *testing.T, name string) {
 }
 
 func skipIfShort(t *testing.T) {
-	if os.Getenv("COMMUNITY_PR") == "true" {
-		t.Skip("Skipped for community PRs")
+	_, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN")
+	if !ok {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
