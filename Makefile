@@ -76,9 +76,21 @@ publish_packages:
 	$(call STEP_MESSAGE)
 	./scripts/publish_packages.sh
 
+# Run the integration tests for our DockerHub containers. We do so only via the
+# "Travis Cron" job type, because (1) the tests can only be ran _after_ we publish
+# the current SDK version, since it is required by the Docker build. And (2) the
+# tests (currently) aren't reliable enough to run as part of every push to master.
+#
+# So instead we run the ~daily on master. Where we know the current SDK version
+# will have been published.
+.PHONY: test_containers_cron
+test_containers:
+	$(call STEP_MESSAGE)
+	./scripts/build-docker.sh $$(./scripts/get-version HEAD) --test
+
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
-travis_cron: all
+travis_cron: all test_containers_cron
 travis_push: only_build publish_tgz only_test publish_packages
 travis_pull_request: all
 travis_api: all

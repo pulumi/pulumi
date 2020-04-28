@@ -148,7 +148,7 @@ func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
 		// Container to run.
 		container,
 		// Flags to the container's entry point (`pulumi`).
-		"up", "--stack", stackName)
+		"up", "--stack", stackName, "--yes")
 
 	assert.Contains(t, stdout, "Hello from "+runtime,
 		"Looking for indication stack update was successful in container output.")
