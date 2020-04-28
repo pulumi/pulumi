@@ -33,9 +33,12 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
-		rpcutil.OpenTracingClientInterceptor(),
-	))
+	conn, err := grpc.Dial(
+		addr,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return nil, err
 	}

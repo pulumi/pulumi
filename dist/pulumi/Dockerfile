@@ -55,6 +55,11 @@ RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsof
     dotnet-sdk-3.1
 
 # Install Helm
+# Explicitly set env variables that helm reads to their defaults, so that subsequent calls to
+# helm will find the stable repo even if $HOME points to something other than /root
+# (e.g. in GitHub actions where $HOME points to /github/home).
+ENV XDG_CONFIG_HOME=/root/.config
+ENV XDG_CACHE_HOME=/root/.cache
 RUN curl -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
   helm repo add stable https://kubernetes-charts.storage.googleapis.com && \
   helm repo update

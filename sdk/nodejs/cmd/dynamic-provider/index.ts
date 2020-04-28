@@ -33,6 +33,9 @@ const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 
+// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+
 // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
 // code.
 const uncaughtErrors = new Set<Error>();
@@ -351,7 +354,9 @@ export async function main(args: string[]) {
     const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server();
+    const server = new grpc.Server({
+        "grpc.max_receive_message_length": maxRPCMessageSize,
+    });
     server.addService(provrpc.ResourceProviderService, {
         cancel: cancelRPC,
         configure: configureRPC,

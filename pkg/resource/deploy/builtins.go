@@ -3,6 +3,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -208,6 +209,11 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 			secretOutputs = append(secretOutputs, resource.NewStringProperty(string(k)))
 		}
 	}
+
+	// Sort the secret outputs so the order is deterministic, to avoid spurious diffs during updates.
+	sort.Slice(secretOutputs, func(i, j int) bool {
+		return secretOutputs[i].String() < secretOutputs[j].String()
+	})
 
 	return resource.PropertyMap{
 		"name":              name,

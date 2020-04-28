@@ -39,10 +39,15 @@ func (g *generator) canLiftScopeTraversalExpression(v *model.ScopeTraversalExpre
 // parseProxyApply attempts to match the given parsed apply against the pattern (call __applyArg 0). If the call
 // matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
 // proxied apply call.
-func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
+func (g *generator) parseProxyApply(args []model.Expression,
 	then *model.AnonymousFunctionExpression) (*model.ScopeTraversalExpression, bool) {
 
 	if len(args) != 1 {
+		return nil, false
+	}
+
+	arg, ok := args[0].(*model.ScopeTraversalExpression)
+	if !ok {
 		return nil, false
 	}
 
@@ -54,7 +59,7 @@ func (g *generator) parseProxyApply(args []*model.ScopeTraversalExpression,
 		return nil, false
 	}
 
-	traversal := hcl.TraversalJoin(args[0].Traversal, thenTraversal.Traversal[1:])
+	traversal := hcl.TraversalJoin(arg.Traversal, thenTraversal.Traversal[1:])
 	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 		Traversal: traversal,
 		SrcRange:  traversal.SourceRange(),
@@ -87,7 +92,7 @@ func referencesCallbackParameter(expr model.Expression, parameters codegen.Set) 
 //
 // If the call matches, parseInterpolate returns an appropriate call to the __interpolate intrinsic with a mix of
 // expressions and variable accesses that correspond to the __applyArg calls.
-func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
+func (g *generator) parseInterpolate(args []model.Expression,
 	then *model.AnonymousFunctionExpression) (model.Expression, bool) {
 
 	template, ok := then.Body.(*model.TemplateExpression)
@@ -109,7 +114,10 @@ func (g *generator) parseInterpolate(args []*model.ScopeTraversalExpression,
 			if !g.canLiftScopeTraversalExpression(traversal) {
 				return nil, false
 			}
-			arg := args[indices[traversal.Parts[0].(*model.Variable)]]
+			arg, ok := args[indices[traversal.Parts[0].(*model.Variable)]].(*model.ScopeTraversalExpression)
+			if !ok {
+				return nil, false
+			}
 			traversal := hcl.TraversalJoin(arg.Traversal, traversal.Traversal[1:])
 			expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
 				Traversal: traversal,
