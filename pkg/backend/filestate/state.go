@@ -190,8 +190,16 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 		b.mutex.Lock()
 		defer b.mutex.Unlock()
 
+		// FIXME: Would be nice to make these configurable
+		delay, _ := time.ParseDuration("1s")
+		maxDelay, _ := time.ParseDuration("30s")
+		backoff := 1.2
+
 		// Retry the write 10 times in case of upstream bucket errors
 		_, _, err = retry.Until(context.TODO(), retry.Acceptor{
+			Delay: &delay,
+			MaxDelay: &maxDelay,
+			Backoff: &backoff,
 			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(context.TODO(), file, byts, nil)
