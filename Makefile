@@ -63,7 +63,7 @@ test_fast::
 	cd pkg && $(GO_TEST_FAST) ${GO_TEST_SHORT} ${PROJECT_PKGS}
 
 test_all::
-	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
+	cd pkg && $(GO_TEST) ${GO_TEST_SHORT} ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -v -p=1 ${GO_TEST_SHORT} ${TESTS_PKGS}
 
 .PHONY: publish_tgz
