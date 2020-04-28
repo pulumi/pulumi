@@ -807,6 +807,9 @@ func removeStack(t *testing.T, name string) {
 }
 
 func skipIfShort(t *testing.T) {
+	if os.Getenv("COMMUNITY_PR") == "true" {
+		t.Skip("Skipped for community PRs")
+	}
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
 	}
