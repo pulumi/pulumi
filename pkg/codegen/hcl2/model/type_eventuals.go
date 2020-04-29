@@ -148,7 +148,7 @@ func InputType(t Type) Type {
 		for k, t := range t.Properties {
 			properties[k] = InputType(t)
 		}
-		src = NewObjectType(properties)
+		src = NewObjectType(properties, t.Annotations...)
 	default:
 		src = t
 	}
