@@ -184,6 +184,41 @@ func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
 	}
 }
 
+func (m *tokenMapper) mapRelativeTraversalTokens(traversal hcl.Traversal) []TraverserTokens {
+	if len(traversal) == 0 {
+		return nil
+	}
+
+	contract.Assert(traversal.IsRelative())
+	items := make([]TraverserTokens, len(traversal))
+	for i, t := range traversal {
+		rng := t.SourceRange()
+		leadingToken := m.tokens.atPos(rng.Start)
+		indexToken := m.tokens.atOffset(rng.Start.Byte + 1)
+		if leadingToken.Raw.Type == hclsyntax.TokenOBrack {
+			if indexToken.Raw.Type == hclsyntax.TokenOQuote {
+				indexToken = m.collectLabelTokens(hcl.Range{
+					Filename: rng.Filename,
+					Start:    hcl.Pos{Byte: rng.Start.Byte + 1},
+					End:      hcl.Pos{Byte: rng.End.Byte - 1},
+				})
+			}
+			items[i] = &BracketTraverserTokens{
+				OpenBracket:  leadingToken,
+				Index:        indexToken,
+				CloseBracket: m.tokens.atOffset(rng.End.Byte - 1),
+			}
+		} else {
+			items[i] = &DotTraverserTokens{
+				Dot:   leadingToken,
+				Index: indexToken,
+			}
+		}
+	}
+
+	return items
+}
+
 func (m *tokenMapper) nodeRange(n hclsyntax.Node) hcl.Range {
 	tokens, ok := m.tokenMap[n]
 	if !ok {
@@ -505,13 +540,13 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 	case *hclsyntax.RelativeTraversalExpr:
 		nodeTokens = &RelativeTraversalTokens{
 			Parentheses: parens,
-			Traversal:   mapRelativeTraversalTokens(m.tokens, n.Traversal),
+			Traversal:   m.mapRelativeTraversalTokens(n.Traversal),
 		}
 	case *hclsyntax.ScopeTraversalExpr:
 		nodeTokens = &ScopeTraversalTokens{
 			Parentheses: parens,
 			Root:        m.tokens.atPos(n.Traversal[0].SourceRange().Start),
-			Traversal:   mapRelativeTraversalTokens(m.tokens, n.Traversal[1:]),
+			Traversal:   m.mapRelativeTraversalTokens(n.Traversal[1:]),
 		}
 	case *hclsyntax.SplatExpr:
 		openToken := m.tokens.atPos(m.nodeRange(n.Source).End)
@@ -691,34 +726,6 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	if isBody && len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
 		tokenMap[body] = &BodyTokens{EndOfFile: &tokens[len(tokens)-1]}
 	}
-}
-
-func mapRelativeTraversalTokens(tokens tokenList, traversal hcl.Traversal) []TraverserTokens {
-	if len(traversal) == 0 {
-		return nil
-	}
-
-	contract.Assert(traversal.IsRelative())
-	items := make([]TraverserTokens, len(traversal))
-	for i, t := range traversal {
-		rng := t.SourceRange()
-		leadingToken := tokens.atPos(rng.Start)
-		indexToken := tokens.atOffset(rng.Start.Byte + 1)
-		if leadingToken.Raw.Type == hclsyntax.TokenOBrack {
-			items[i] = &BracketTraverserTokens{
-				OpenBracket:  leadingToken,
-				Index:        indexToken,
-				CloseBracket: tokens.atOffset(rng.End.Byte - 1),
-			}
-		} else {
-			items[i] = &DotTraverserTokens{
-				Dot:   leadingToken,
-				Index: indexToken,
-			}
-		}
-	}
-
-	return items
 }
 
 // processComment separates the given comment into lines and attempts to remove comment tokens.
