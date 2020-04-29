@@ -1,6 +1,8 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
