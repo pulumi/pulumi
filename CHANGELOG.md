@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
   [#4516](https://github.com/pulumi/pulumi/pull/4516)
