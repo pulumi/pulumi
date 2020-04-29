@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (unreleased)
 
+- Fix infinite recursion bug for Go SDK
+  [#4516](https://github.com/pulumi/pulumi/pull/4516)
+
 - Order secretOutputNames when used in stack references
   [#4489](https://github.com/pulumi/pulumi/pull/4489)
 
