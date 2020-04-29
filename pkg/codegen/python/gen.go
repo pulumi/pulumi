@@ -824,15 +824,32 @@ func (mod *modContext) genPropertyConversionTables() string {
 //
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
-func (mod *modContext) recordProperty(prop *schema.Property) {
+func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
+	for _, r := range pkg.Resources {
+		// Calculate casing tables. We do this up front because our docstring generator (which is run during
+		// genResource) requires them.
+		for _, prop := range r.Properties {
+			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+		}
+		for _, prop := range r.InputProperties {
+			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+		}
+	}
+}
+
+func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
 	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
 		mapCase = python.(PropertyInfo).MapCase
 	}
 	if mapCase {
 		snakeCaseName := PyName(prop.Name)
-		mod.snakeCaseToCamelCase[snakeCaseName] = prop.Name
-		mod.camelCaseToSnakeCase[prop.Name] = snakeCaseName
+		if snakeCaseToCamelCase != nil {
+			snakeCaseToCamelCase[snakeCaseName] = prop.Name
+		}
+		if camelCaseToSnakeCase != nil {
+			camelCaseToSnakeCase[prop.Name] = snakeCaseName
+		}
 	}
 
 	if obj, ok := prop.Type.(*schema.ObjectType); ok {
@@ -845,7 +862,7 @@ func (mod *modContext) recordProperty(prop *schema.Property) {
 				continue
 			}
 
-			mod.recordProperty(p)
+			recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase)
 		}
 	}
 }
@@ -1146,9 +1163,12 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["python"].(PackageInfo)
 
+	// Build case mapping tables
+	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
+	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase)
+
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}
-	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
 
 	var getMod func(token string) *modContext
 	getMod = func(token string) *modContext {
@@ -1182,28 +1202,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		_ = getMod(":config/config:")
 	}
 
-	scanResource := func(r *schema.Resource) error {
+	scanResource := func(r *schema.Resource) {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
-
-		// Calculate casing tables. We do this up front because our docstring generator (which is run during
-		// genResource) requires them.
-		for _, prop := range r.Properties {
-			mod.recordProperty(prop)
-		}
-		for _, prop := range r.InputProperties {
-			mod.recordProperty(prop)
-		}
-		return nil
 	}
 
-	if err := scanResource(pkg.Provider); err != nil {
-		return nil, err
-	}
+	scanResource(pkg.Provider)
 	for _, r := range pkg.Resources {
-		if err := scanResource(r); err != nil {
-			return nil, err
-		}
+		scanResource(r)
 	}
 
 	for _, f := range pkg.Functions {

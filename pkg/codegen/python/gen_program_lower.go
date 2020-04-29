@@ -105,36 +105,22 @@ func (g *generator) getObjectSchema(typ model.Type) *schema.ObjectType {
 	return nil
 }
 
-func (g *generator) lowerObjectKeys(expr model.Expression, destType model.Type) {
-	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-		switch expr := expr.(type) {
-		case *model.ObjectConsExpression:
-			obj := g.getObjectSchema(destType)
-			for _, item := range expr.Items {
-				// Ignore non-literal keys
-				valueType := model.Type(model.DynamicType)
-				if key, ok := item.Key.(*model.LiteralValueExpression); ok && key.Value.Type().Equals(cty.String) {
-					k := key.Value.AsString()
-
-					vt, diags := destType.Traverse(hcl.TraverseAttr{Name: k})
-					contract.Ignore(diags)
-
-					valueType = vt.(model.Type)
-					key.Value = cty.StringVal(g.mapObjectKey(k, obj))
+func (g *generator) lowerObjectKeys(expr model.Expression, camelCaseToSnakeCase map[string]string) {
+	switch expr := expr.(type) {
+	case *model.ObjectConsExpression:
+		for _, item := range expr.Items {
+			// Ignore non-literal keys
+			if key, ok := item.Key.(*model.LiteralValueExpression); ok && key.Value.Type().Equals(cty.String) {
+				if keyVal, ok := camelCaseToSnakeCase[key.Value.AsString()]; ok {
+					key.Value = cty.StringVal(keyVal)
 				}
-
-				g.lowerObjectKeys(item.Value, valueType)
 			}
-		case *model.TupleConsExpression:
-			valueType, diags := destType.Traverse(hcl.TraverseIndex{Key: cty.NumberIntVal(0)})
-			contract.Ignore(diags)
 
-			for _, element := range expr.Expressions {
-				g.lowerObjectKeys(element, valueType.(model.Type))
-			}
+			g.lowerObjectKeys(item.Value, camelCaseToSnakeCase)
 		}
-		return expr, nil
+	case *model.TupleConsExpression:
+		for _, element := range expr.Expressions {
+			g.lowerObjectKeys(element, camelCaseToSnakeCase)
+		}
 	}
-	_, diags := model.VisitExpression(expr, rewriter, nil)
-	contract.Assert(len(diags) == 0)
 }

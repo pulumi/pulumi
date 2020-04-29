@@ -38,13 +38,38 @@ type generator struct {
 	diagnostics hcl.Diagnostics
 
 	configCreated bool
+	casingTables  map[string]map[string]string
+}
+
+type objectTypeInfo struct {
+	isDictionary         bool
+	camelCaseToSnakeCase map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Import Python-specific schema info.
+	casingTables := map[string]map[string]string{}
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, nil, err
+		}
+
+		// Build the case mapping table.
+		camelCaseToSnakeCase := map[string]string{}
+		buildCaseMappingTables(p, nil, camelCaseToSnakeCase)
+		casingTables[pyName(p.Name, false)] = camelCaseToSnakeCase
+
+		// Annotate nested types to indicate they are dictionaries.
+		for _, t := range p.Types {
+			if t, ok := t.(*schema.ObjectType); ok {
+				if t.Language == nil {
+					t.Language = map[string]interface{}{}
+				}
+				t.Language["python"] = objectTypeInfo{
+					isDictionary:         true,
+					camelCaseToSnakeCase: camelCaseToSnakeCase,
+				}
+			}
 		}
 	}
 
@@ -52,7 +77,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program: program,
+		program:      program,
+		casingTables: casingTables,
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -189,11 +215,9 @@ func (g *generator) makeResourceName(baseName, count string) string {
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-
 	if module != "" {
 		module = "." + module
 	}
-
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
 	optionsBag := ""
@@ -206,6 +230,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
+	casingTable := g.casingTables[pkg]
 	instantiate := func(resName string) {
 		g.Fgenf(w, "%s(%s", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
@@ -214,10 +239,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		}
 		indenter(func() {
 			for _, attr := range r.Inputs {
-				attrType, diags := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-				contract.Ignore(diags)
-
-				g.lowerObjectKeys(attr.Value, attrType.(model.Type))
+				g.lowerObjectKeys(attr.Value, casingTable)
 
 				propertyName := pyName(attr.Name, false)
 				if len(r.Inputs) == 1 {

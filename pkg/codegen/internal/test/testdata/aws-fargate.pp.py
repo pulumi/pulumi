@@ -9,15 +9,15 @@ web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,
     egress=[{
         "protocol": "-1",
-        "fromPort": 0,
-        "toPort": 0,
-        "cidrBlocks": ["0.0.0.0/0"],
+        "from_port": 0,
+        "to_port": 0,
+        "cidr_blocks": ["0.0.0.0/0"],
     }],
     ingress=[{
         "protocol": "tcp",
-        "fromPort": 80,
-        "toPort": 80,
-        "cidrBlocks": ["0.0.0.0/0"],
+        "from_port": 80,
+        "to_port": 80,
+        "cidr_blocks": ["0.0.0.0/0"],
     }])
 # Create an ECS cluster to run a container-based service.
 cluster = aws.ecs.Cluster("cluster")
@@ -50,7 +50,7 @@ web_listener = aws.elasticloadbalancingv2.Listener("webListener",
     port=80,
     default_actions=[{
         "type": "forward",
-        "targetGroupArn": web_target_group.arn,
+        "target_group_arn": web_target_group.arn,
     }])
 # Spin up a load balanced service running NGINX
 app_task = aws.ecs.TaskDefinition("appTask",
@@ -77,11 +77,11 @@ app_service = aws.ecs.Service("appService",
     network_configuration={
         "assignPublicIp": True,
         "subnets": subnets.ids,
-        "securityGroups": [web_security_group.id],
+        "security_groups": [web_security_group.id],
     },
     load_balancers=[{
-        "targetGroupArn": web_target_group.arn,
-        "containerName": "my-app",
+        "target_group_arn": web_target_group.arn,
+        "container_name": "my-app",
         "containerPort": 80,
     }])
 pulumi.export("url", web_load_balancer.dns_name)

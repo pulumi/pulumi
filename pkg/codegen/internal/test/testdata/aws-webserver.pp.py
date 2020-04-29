@@ -4,9 +4,9 @@ import pulumi_aws as aws
 # Create a new security group for port 80.
 security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[{
     "protocol": "tcp",
-    "fromPort": 0,
-    "toPort": 0,
-    "cidrBlocks": ["0.0.0.0/0"],
+    "from_port": 0,
+    "to_port": 0,
+    "cidr_blocks": ["0.0.0.0/0"],
 }])
 ami = aws.get_ami(filters=[{
         "name": "name",
