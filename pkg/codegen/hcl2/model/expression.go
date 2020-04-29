@@ -1361,7 +1361,7 @@ func (x *LiteralValueExpression) Format(f fmt.State, c rune) {
 	x.print(f, &printer{})
 }
 
-func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
+func (x *LiteralValueExpression) printLit(w io.Writer, p *printer, escaped bool) {
 	// Literals are... odd. They may be composed of multiple tokens, but those tokens should never contain interior
 	// trivia.
 
@@ -1377,8 +1377,12 @@ func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
 
 	p.fprintf(w, "%(%v%v%v%)",
 		x.Tokens.GetParentheses(),
-		leading, literalText(x.Value, rawBytes, false, false), trailing,
+		leading, literalText(x.Value, rawBytes, escaped, false), trailing,
 		x.Tokens.GetParentheses())
+}
+
+func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
+	x.printLit(w, p, false)
 }
 
 func (*LiteralValueExpression) isExpression() {}
@@ -1560,17 +1564,6 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 
 func (*ObjectConsExpression) isExpression() {}
 
-func traverserHasTrailingTrivia(tokens syntax.TraverserTokens) bool {
-	switch tokens := tokens.(type) {
-	case *syntax.DotTraverserTokens:
-		return exprHasTrailingTrivia(tokens.Parentheses, tokens.Index)
-	case *syntax.BracketTraverserTokens:
-		return exprHasTrailingTrivia(tokens.Parentheses, tokens.CloseBracket)
-	default:
-		panic(fmt.Errorf("unexpected traverser of type %T", tokens))
-	}
-}
-
 func getTraverserTrivia(tokens syntax.TraverserTokens) (syntax.TriviaList, syntax.TriviaList) {
 	var leading, trailing syntax.TriviaList
 	switch tokens := tokens.(type) {
@@ -1721,8 +1714,8 @@ func (x *RelativeTraversalExpression) HasTrailingTrivia() bool {
 	if parens := x.Tokens.GetParentheses(); parens.Any() {
 		return true
 	}
-	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
-		return traverserHasTrailingTrivia(traversal[len(traversal)-1])
+	if x.Tokens != nil && len(x.Tokens.Traversal) > 0 {
+		return true
 	}
 	return x.Source.HasTrailingTrivia()
 }
@@ -1851,8 +1844,8 @@ func (x *ScopeTraversalExpression) HasTrailingTrivia() bool {
 	if parens := x.Tokens.GetParentheses(); parens.Any() {
 		return true
 	}
-	if traversal := x.Tokens.GetTraversal(x.Traversal); len(traversal) > 0 {
-		return traverserHasTrailingTrivia(traversal[len(traversal)-1])
+	if x.Tokens != nil && len(x.Tokens.Traversal) > 0 {
+		return true
 	}
 	return x.Tokens != nil
 }
@@ -2171,9 +2164,15 @@ func (x *TemplateExpression) print(w io.Writer, p *printer) {
 	// Print the opening quote.
 	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpen())
 
+	isHeredoc := x.Tokens.GetOpen().Raw.Type == hclsyntax.TokenOHeredoc
+
 	// Print the expressions.
 	for _, part := range x.Parts {
-		p.fprintf(w, "%v", part)
+		if lit, ok := part.(*LiteralValueExpression); ok && lit.Type() == StringType {
+			lit.printLit(w, p, !isHeredoc)
+		} else {
+			p.fprintf(w, "%v", part)
+		}
 	}
 
 	// Print the closing quote

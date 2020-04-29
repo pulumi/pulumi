@@ -419,10 +419,10 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	quotes := g.quotes[expr]
 	escapeNewlines := quotes == `"` || quotes == `'`
 
-	prefix := ""
+	prefix, escapeBraces := "", false
 	for _, part := range expr.Parts {
 		if lit, ok := part.(*model.LiteralValueExpression); !ok || lit.Type() != model.StringType {
-			prefix = "f"
+			prefix, escapeBraces = "f", true
 			break
 		}
 	}
@@ -433,7 +433,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.genEscapedString(b, lit.Value.AsString(), escapeNewlines, true)
+			g.genEscapedString(b, lit.Value.AsString(), escapeNewlines, escapeBraces)
 		} else {
 			g.Fgenf(b, "{%.v}", expr)
 		}
