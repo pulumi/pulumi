@@ -11,9 +11,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pulumi
 
 import resources
-
-pulumi.export("outprop", resources.mycomponent.outprop)
-pulumi.export("public_ip", resources.myinstance.public_ip)
