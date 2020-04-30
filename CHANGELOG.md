@@ -6,6 +6,9 @@ CHANGELOG
 - Add support for generating Fish completions
   [#4401](https://github.com/pulumi/pulumi/pull/4401)
 
+- Support map-typed inputs in RegisterResource for Go SDK
+  [#4522](https://github.com/pulumi/pulumi/pull/4522)
+
 - Don't call IMocks.NewResourceAsync for the root stack resource
   [#4527](https://github.com/pulumi/pulumi/pull/4527)
 
