@@ -229,8 +229,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
+		casingTable := g.casingTables[pkg]
 		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
-			g.lowerObjectKeys(expr.Args[1], expr.Signature.Parameters[1].Type)
+			g.lowerObjectKeys(expr.Args[1], casingTable)
 
 			indenter := func(f func()) { f() }
 			if len(obj.Items) > 1 {
@@ -244,7 +245,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						continue
 					}
 
-					keyVal := key.Value.AsString()
+					keyVal := PyName(key.Value.AsString())
 					if i == 0 {
 						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
 					} else {

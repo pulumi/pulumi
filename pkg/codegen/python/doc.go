@@ -116,15 +116,7 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 		return
 	}
 
-	mod := &modContext{
-		pkg:                  pkg,
-		mod:                  modName,
-		tool:                 tool,
-		snakeCaseToCamelCase: snakeCaseToCamelCase,
-		camelCaseToSnakeCase: camelCaseToSnakeCase,
-	}
-
-	mod.recordProperty(prop)
+	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
 }
 
 // GetPropertyName is not implemented for Python because property names in Python must use
