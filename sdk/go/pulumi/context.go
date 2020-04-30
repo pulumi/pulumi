@@ -411,7 +411,8 @@ func (ctx *Context) RegisterResource(
 		if propsType.Kind() == reflect.Ptr {
 			propsType = propsType.Elem()
 		}
-		if !(propsType.Kind() == reflect.Struct || (propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
+		if !(propsType.Kind() == reflect.Struct ||
+			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
 			return errors.New("props must be a struct or map or a pointer to a struct or map")
 		}
 	}

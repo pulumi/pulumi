@@ -495,9 +495,6 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 type simpleResource struct {
 	CustomResourceState
-
-	prop   StringOutput
-	nested nestedTypeOutput
 }
 
 type UntypedArgs map[string]interface{}
