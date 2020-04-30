@@ -57,7 +57,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		// Build the case mapping table.
 		camelCaseToSnakeCase := map[string]string{}
 		buildCaseMappingTables(p, nil, camelCaseToSnakeCase)
-		casingTables[pyName(p.Name, false)] = camelCaseToSnakeCase
+		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
 
 		// Annotate nested types to indicate they are dictionaries.
 		for _, t := range p.Types {
