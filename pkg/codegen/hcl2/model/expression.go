@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -1210,7 +1211,7 @@ func (x *IndexExpression) print(w io.Writer, p *printer) {
 
 func (*IndexExpression) isExpression() {}
 
-func literalText(value cty.Value, rawBytes []byte) string {
+func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string {
 	if len(rawBytes) > 0 {
 		parsed, diags := hclsyntax.ParseExpression(rawBytes, "", hcl.Pos{})
 		if !diags.HasErrors() {
@@ -1235,7 +1236,14 @@ func literalText(value cty.Value, rawBytes []byte) string {
 		d, _ := bf.Float64()
 		return fmt.Sprintf("%g", d)
 	case cty.String:
-		return value.AsString()
+		if !escaped {
+			return value.AsString()
+		}
+		s := strconv.Quote(value.AsString())
+		if !quoted {
+			return s[1 : len(s)-1]
+		}
+		return s
 	default:
 		panic(fmt.Errorf("unexpected literal type %v", value.Type().FriendlyName()))
 	}
@@ -1358,7 +1366,7 @@ func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
 
 	p.fprintf(w, "%(%v%v%v%)",
 		x.Tokens.GetParentheses(),
-		leading, literalText(x.Value, rawBytes), trailing,
+		leading, literalText(x.Value, rawBytes, false, false), trailing,
 		x.Tokens.GetParentheses())
 }
 
@@ -1582,7 +1590,7 @@ func printTraverser(w io.Writer, p *printer, t hcl.Traverser, tokens syntax.Trav
 	case hcl.TraverseAttr:
 		index = t.Name
 	case hcl.TraverseIndex:
-		index = literalText(t.Key, nil)
+		index = literalText(t.Key, nil, true, true)
 	default:
 		panic(fmt.Errorf("unexpected traverser of type %T", t))
 	}

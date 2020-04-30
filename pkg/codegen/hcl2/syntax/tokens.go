@@ -732,6 +732,10 @@ func (t *FunctionCallTokens) GetOpenParen() Token {
 
 func (t *FunctionCallTokens) GetCommas(argCount int) []Token {
 	if t == nil {
+		if argCount == 0 {
+			return nil
+		}
+
 		commas := make([]Token, argCount-1)
 		for i := 0; i < len(commas); i++ {
 			commas[i] = Token{Raw: newRawToken(hclsyntax.TokenComma)}
@@ -1204,6 +1208,10 @@ func (t *TupleConsTokens) GetOpenBracket() Token {
 
 func (t *TupleConsTokens) GetCommas(elementCount int) []Token {
 	if t == nil {
+		if elementCount == 0 {
+			return nil
+		}
+
 		commas := make([]Token, elementCount-1)
 		for i := 0; i < len(commas); i++ {
 			commas[i] = Token{Raw: newRawToken(hclsyntax.TokenComma)}
