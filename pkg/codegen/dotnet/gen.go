@@ -503,7 +503,7 @@ func primitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (pkg *modContext) getConstValue(cv interface{}) (string, error) {
+func (mod *modContext) getConstValue(cv interface{}) (string, error) {
 	var val string
 	if cv != nil {
 		v, err := primitiveValue(cv)
