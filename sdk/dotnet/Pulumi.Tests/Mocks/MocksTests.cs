@@ -18,18 +18,10 @@ namespace Pulumi.Tests.Mocks
 
         public Task<(string id, object state)> NewResourceAsync(string type, string name, ImmutableDictionary<string, object> inputs, string? provider, string? id)
         {
-            Assert.NotEqual("pulumi:pulumi:Stack", type);
-
-            switch (type)
-            {
-                case "aws:ec2/instance:Instance":
-                    return Task.FromResult<(string, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
-                        { "publicIp", "203.0.113.12" },
-                    }));
-
-                default:
-                    return Task.FromResult<(string, object)>(("", new Dictionary<string, object>()));
-            }
+            Assert.Equal("aws:ec2/instance:Instance", type);
+            return Task.FromResult<(string, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
+                { "publicIp", "203.0.113.12" },
+            }));
         }
     }
 
