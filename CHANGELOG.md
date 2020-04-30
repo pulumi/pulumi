@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add support for generating Fish completions
+  [#4401](https://github.com/pulumi/pulumi/pull/4401)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
