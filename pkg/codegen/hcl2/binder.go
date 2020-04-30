@@ -28,22 +28,57 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type binder struct {
-	options []model.BindOption
-	host    plugin.Host
+type bindOptions struct {
+	allowMissingVariables bool
+	host                  plugin.Host
+	packageCache          *PackageCache
+}
 
-	packageSchemas map[string]*packageSchema
-	typeSchemas    map[model.Type]schema.Type
+func (opts bindOptions) modelOptions() []model.BindOption {
+	if opts.allowMissingVariables {
+		return []model.BindOption{model.AllowMissingVariables}
+	}
+	return nil
+}
+
+type binder struct {
+	options bindOptions
+
+	referencedPackages []*schema.Package
+	typeSchemas        map[model.Type]schema.Type
 
 	tokens syntax.TokenMap
 	nodes  []Node
 	root   *model.Scope
 }
 
+type BindOption func(*bindOptions)
+
+func AllowMissingVariables(options *bindOptions) {
+	options.allowMissingVariables = true
+}
+
+func PluginHost(host plugin.Host) BindOption {
+	return func(options *bindOptions) {
+		options.host = host
+	}
+}
+
+func Cache(cache *PackageCache) BindOption {
+	return func(options *bindOptions) {
+		options.packageCache = cache
+	}
+}
+
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, host plugin.Host, opts ...model.BindOption) (*Program, hcl.Diagnostics, error) {
-	if host == nil {
+func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	var options bindOptions
+	for _, o := range opts {
+		o(&options)
+	}
+
+	if options.host == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return nil, nil, err
@@ -52,18 +87,20 @@ func BindProgram(files []*syntax.File, host plugin.Host, opts ...model.BindOptio
 		if err != nil {
 			return nil, nil, err
 		}
-		host = ctx.Host
+		options.host = ctx.Host
 
 		defer contract.IgnoreClose(ctx)
 	}
 
+	if options.packageCache == nil {
+		options.packageCache = NewPackageCache()
+	}
+
 	b := &binder{
-		options:        opts,
-		host:           host,
-		tokens:         syntax.NewTokenMapForFiles(files),
-		packageSchemas: map[string]*packageSchema{},
-		typeSchemas:    map[model.Type]schema.Type{},
-		root:           model.NewRootScope(syntax.None),
+		options:     options,
+		tokens:      syntax.NewTokenMapForFiles(files),
+		typeSchemas: map[model.Type]schema.Type{},
+		root:        model.NewRootScope(syntax.None),
 	}
 
 	// Define null.
@@ -196,5 +233,5 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 }
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
-	return model.BindExpression(node, b.root, b.tokens, b.options...)
+	return model.BindExpression(node, b.root, b.tokens, b.options.modelOptions()...)
 }
