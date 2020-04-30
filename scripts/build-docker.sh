@@ -31,24 +31,27 @@ echo_header() {
 test_containers() {
     # Run tests _within_ the "pulumi" container, ensuring that the CLI is installed
     # and working correctly.
+    pushd ${ROOT}/tests
     echo_header "Executing container runtime tests"
+
+    # Build the test binary that will be available inside the container
+    GOOS=linux go test -c -o /tmp/pulumi-test-containers ./containers/...
+
     docker run -e RUN_CONTAINER_TESTS=true \
         -e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
         --volume /tmp:/src \
         --entrypoint /bin/bash \
         pulumi/pulumi:latest \
         -c "pip install pipenv && /src/pulumi-test-containers -test.parallel=1 -test.v -test.run TestPulumiDockerImage"
+    popd
 
     # The actions container should fetch program dependencies from NPM, PIP, etc. before
     # executing. These tests just shell out to docker run to confirm that.
     # Disabled due to https://github.com/pulumi/pulumi/issues/4136
     # echo_header "Executing container entrypoint tests"
-    # RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage -test.v
-
-    # In case there are any other unit tests defined in the module, run those as well.
-	pushd ${ROOT}/tests
-    GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
-    popd
+    # pushd ${ROOT}/tests
+    # RUN_CONTAINER_TESTS=true go test ./containers/... -test.run TestPulumiActionsImage -test.v
+    # popd
 }
 
 # Publishes the built containers to Docker Hub.
