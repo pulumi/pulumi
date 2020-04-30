@@ -6,6 +6,9 @@ CHANGELOG
 - Add support for generating Fish completions
   [#4401](https://github.com/pulumi/pulumi/pull/4401)
 
+- Don't call IMocks.NewResourceAsync for the root stack resource
+  [#4527](https://github.com/pulumi/pulumi/pull/4527)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK

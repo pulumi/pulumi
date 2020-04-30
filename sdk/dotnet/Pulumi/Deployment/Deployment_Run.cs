@@ -122,7 +122,7 @@ namespace Pulumi
             lock (_instanceLock)
             {
                 if (_instance != null)
-                    throw new NotSupportedException($"Mulitple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
+                    throw new NotSupportedException($"Multiple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
 
                 deployment = new Deployment(engine, monitor, options);
                 Instance = new DeploymentInstance(deployment);
