@@ -141,9 +141,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			}
 		}
 	case reflect.Map:
-		if rt.Key().Kind() != reflect.String {
-			return nil, nil, nil, fmt.Errorf("cannot marhsal Input that is map with non-string keys, saw type %s", rt.String())
-		}
+		contract.Assert(rt.Key().Kind() == reflect.String)
 		for _, key := range pv.MapKeys() {
 			keyname := key.Interface().(string)
 			val := pv.MapIndex(key).Interface()
@@ -153,7 +151,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			}
 		}
 	default:
-		return nil, nil, nil, fmt.Errorf("cannot marhsal Input that is not a struct or map, saw type %s", pt.String())
+		return nil, nil, nil, fmt.Errorf("cannot marshal Input that is not a struct or map, saw type %s", pt.String())
 	}
 
 	return pmap, pdeps, depURNs, nil
