@@ -65,27 +65,6 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
 }
 
-func (g *generator) mapObjectKey(key string, obj *schema.ObjectType) string {
-	if obj == nil {
-		return key
-	}
-
-	prop, ok := obj.Property(key)
-	if !ok {
-		return key
-	}
-
-	mapCase := true
-	if info, ok := prop.Language["python"]; ok {
-		mapCase = info.(PropertyInfo).MapCase
-	}
-	if mapCase {
-		return PyName(key)
-	}
-
-	return key
-}
-
 func (g *generator) getObjectSchema(typ model.Type) *schema.ObjectType {
 	typ = model.ResolveOutputs(typ)
 

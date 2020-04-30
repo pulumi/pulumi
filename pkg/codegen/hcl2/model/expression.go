@@ -1147,6 +1147,17 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		rng = x.Syntax.Collection.Range()
 	}
 
+	if lit, ok := x.Key.(*LiteralValueExpression); ok {
+		traverser := hcl.TraverseIndex{
+			Key: lit.Value,
+		}
+		valueType, traverseDiags := x.Collection.Type().Traverse(traverser)
+		if len(traverseDiags) == 0 {
+			x.exprType = valueType.(Type)
+			return diagnostics
+		}
+	}
+
 	collectionType := unwrapIterableSourceType(x.Collection.Type())
 	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
 	diagnostics = append(diagnostics, kvDiags...)

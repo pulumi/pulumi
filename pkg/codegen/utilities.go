@@ -35,6 +35,10 @@ func (ss StringSet) Add(s string) {
 	ss[s] = struct{}{}
 }
 
+func (ss StringSet) Delete(s string) {
+	delete(ss, s)
+}
+
 func (ss StringSet) Has(s string) bool {
 	_, ok := ss[s]
 	return ok
