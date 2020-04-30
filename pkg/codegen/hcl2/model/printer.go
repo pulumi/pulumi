@@ -72,12 +72,12 @@ func (p *printer) format(f fmt.State, c rune, pp printable) {
 
 	precedence := operatorPrecedence(operator)
 	switch {
-	case precedence > parentPrecedence:
-		pp.print(f, p)
-	case precedence < parentPrecedence || c == 'o':
+	case precedence < parentPrecedence || (precedence == parentPrecedence && c == 'o'):
 		p.fprintf(f, "(")
 		pp.print(f, p)
 		p.fprintf(f, ")")
+	default:
+		pp.print(f, p)
 	}
 }
 
