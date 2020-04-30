@@ -86,7 +86,7 @@ publish_packages:
 .PHONY: test_containers_cron
 test_containers:
 	$(call STEP_MESSAGE)
-	./scripts/build-docker.sh $$(./scripts/get-version HEAD) --test
+	./scripts/build-docker.sh ${VERSION} --test
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
