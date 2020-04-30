@@ -68,7 +68,7 @@ func Title(s string) string {
 func csharpIdentifier(s string) string {
 	// Some schema field names may look like $ref or $schema. Remove the leading $ to make a valid identifier.
 	if strings.HasPrefix(s, "$") {
-		s = s[2:]
+		s = s[1:]
 	}
 
 	switch s {
