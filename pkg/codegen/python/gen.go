@@ -1179,7 +1179,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		_ = getMod(":config/config:")
+		_ = getMod(":config:")
 	}
 
 	scanResource := func(r *schema.Resource) error {

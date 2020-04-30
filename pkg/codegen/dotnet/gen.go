@@ -66,6 +66,11 @@ func Title(s string) string {
 }
 
 func csharpIdentifier(s string) string {
+	// Some schema field names may look like $ref or $schema. Remove the leading $ to make a valid identifier.
+	if strings.HasPrefix(s, "$") {
+		s = s[2:]
+	}
+
 	switch s {
 	case "abstract", "as", "base", "bool",
 		"break", "byte", "case", "catch",
@@ -461,6 +466,10 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	for _, prop := range pt.properties {
 		paramName := csharpIdentifier(prop.Name)
 		fieldName := pt.mod.propertyName(prop)
+		if fieldName == paramName {
+			// Avoid a no-op in case of field and property name collision.
+			fieldName = "this." + fieldName
+		}
 		fmt.Fprintf(w, "%s        %s = %s;\n", indent, fieldName, paramName)
 	}
 	fmt.Fprintf(w, "%s    }\n", indent)
@@ -492,6 +501,19 @@ func primitiveValue(value interface{}) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported default value of type %T", value)
 	}
+}
+
+func (pkg *modContext) getConstValue(cv interface{}) (string, error) {
+	var val string
+	if cv != nil {
+		v, err := primitiveValue(cv)
+		if err != nil {
+			return "", err
+		}
+		val = v
+	}
+
+	return val, nil
 }
 
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
@@ -608,8 +630,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	var argsDefault string
 	allOptionalInputs := true
+	hasConstInputs := false
 	for _, prop := range r.InputProperties {
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired
+		hasConstInputs = hasConstInputs || prop.ConstValue != nil
 	}
 	if allOptionalInputs {
 		// If the number of required input properties was zero, we can make the args object optional.
@@ -624,6 +648,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		tok = mod.pkg.Name
 	}
 
+	argsOverride := fmt.Sprintf("args ?? new %sArgs()", className)
+	if hasConstInputs {
+		argsOverride = "MakeArgs(args)"
+	}
+
 	// Write a comment prior to the constructor.
 	fmt.Fprintf(w, "        /// <summary>\n")
 	fmt.Fprintf(w, "        /// Create a %s resource with the given unique name, arguments, and options.\n", className)
@@ -634,7 +663,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
-	fmt.Fprintf(w, "            : base(\"%s\", name, args ?? new %sArgs(), MakeResourceOptions(options, \"\"))\n", tok, className)
+	fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
@@ -652,6 +681,25 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        }\n")
 	}
 
+	if hasConstInputs {
+		// Write the method that will calculate the resource arguments.
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "        private static %[1]s MakeArgs(%[1]s args)\n", argsType)
+		fmt.Fprintf(w, "        {\n")
+		fmt.Fprintf(w, "            args ??= new %sArgs();\n", className)
+		for _, prop := range r.InputProperties {
+			if prop.ConstValue != nil {
+				v, err := mod.getConstValue(prop.ConstValue)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(w, "            args.%s = %s;\n", mod.propertyName(prop), v)
+			}
+		}
+		fmt.Fprintf(w, "            return args;\n")
+		fmt.Fprintf(w, "        }\n")
+	}
+
 	// Write the method that will calculate the resource options.
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "        private static %[1]s MakeResourceOptions(%[1]s? options, Input<string>? id)\n", optionsType)
@@ -663,12 +711,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	switch len(r.Aliases) {
 	case 0:
 		fmt.Fprintf(w, "\n")
-	case 1:
-		fmt.Fprintf(w, "                Aliases = { ")
-		genAlias(w, r.Aliases[0])
-		fmt.Fprintf(w, " },\n")
 	default:
-		fmt.Fprintf(w, "                Aliases =\n")
+		fmt.Fprintf(w, "\n                Aliases =\n")
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
@@ -687,11 +731,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Write the `Get` method for reading instances of this resource unless this is a provider resource.
 	if !r.IsProvider {
-		stateParam, stateRef := "", ""
-		if r.StateInputs != nil {
-			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state, "
-		}
-
 		fmt.Fprintf(w, "        /// <summary>\n")
 		fmt.Fprintf(w, "        /// Get an existing %s resource's state with the given name, ID, and optional extra\n", className)
 		fmt.Fprintf(w, "        /// properties used to qualify the lookup.\n")
@@ -699,7 +738,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        ///\n")
 		fmt.Fprintf(w, "        /// <param name=\"name\">The unique name of the resulting resource.</param>\n")
 		fmt.Fprintf(w, "        /// <param name=\"id\">The unique provider ID of the resource to lookup.</param>\n")
-		fmt.Fprintf(w, "        /// <param name=\"state\">Any extra arguments used during the lookup.</param>\n")
+
+		stateParam, stateRef := "", ""
+		if r.StateInputs != nil {
+			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state, "
+			fmt.Fprintf(w, "        /// <param name=\"state\">Any extra arguments used during the lookup.</param>\n")
+		}
+
 		fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 		fmt.Fprintf(w, "        public static %s Get(string name, Input<string> id, %s%s? options = null)\n", className, stateParam, optionsType)
 		fmt.Fprintf(w, "        {\n")
@@ -827,22 +872,33 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	return nil
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
+func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited map[schema.Type]bool) {
+	if visited[t] {
+		return
+	}
+	visited[t] = true
+
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		visitObjectTypes(t.ElementType, visitor)
+		visitObjectTypesAcc(t.ElementType, visitor, visited)
 	case *schema.MapType:
-		visitObjectTypes(t.ElementType, visitor)
+		visitObjectTypesAcc(t.ElementType, visitor, visited)
 	case *schema.ObjectType:
 		for _, p := range t.Properties {
-			visitObjectTypes(p.Type, visitor)
+			visitObjectTypesAcc(p.Type, visitor, visited)
 		}
 		visitor(t)
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			visitObjectTypes(e, visitor)
+			visitObjectTypesAcc(e, visitor, visited)
 		}
 	}
+}
+
+func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
+	// Accumulator to avoid visiting the same node twice in case of recursive types.
+	visited := make(map[schema.Type]bool)
+	visitObjectTypesAcc(t, visitor, visited)
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyTypeQualifier string, input, state bool, level int) error {
@@ -951,7 +1007,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	for _, p := range variables {
 		propertyType, getFunc := mod.getConfigProperty(p.Type)
 
-		propertyName := strings.Title(p.Name)
+		propertyName := mod.propertyName(p)
 
 		initializer := fmt.Sprintf("__config.%s(\"%s\")", getFunc, p.Name)
 		if p.DefaultValue != nil {
@@ -1228,6 +1284,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 
 	propertyNames := map[*schema.Property]string{}
+	computePropertyNames(pkg.Config, propertyNames)
+	computePropertyNames(pkg.Provider.InputProperties, propertyNames)
 	for _, r := range pkg.Resources {
 		computePropertyNames(r.Properties, propertyNames)
 		computePropertyNames(r.InputProperties, propertyNames)
@@ -1290,7 +1348,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		cfg := getMod(":config/config:")
+		cfg := getMod(":config:")
 		cfg.namespaceName = assemblyName
 	}
 
