@@ -33,6 +33,16 @@ type packageSchema struct {
 	functions map[string]*schema.Function
 }
 
+type PackageCache struct {
+	entries map[string]*packageSchema
+}
+
+func NewPackageCache() *PackageCache {
+	return &PackageCache{
+		entries: map[string]*packageSchema{},
+	}
+}
+
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
 func canonicalizeToken(tok string, pkg *schema.Package) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
@@ -69,10 +79,12 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	})
 	contract.Assert(len(diags) == 0)
 
-	for _, name := range packageNames.SortedValues() {
+	b.referencedPackages = make([]*schema.Package, len(packageNames))
+	for i, name := range packageNames.SortedValues() {
 		if err := b.loadPackageSchema(name); err != nil {
 			return err
 		}
+		b.referencedPackages[i] = b.options.packageCache.entries[name].schema
 	}
 	return nil
 }
@@ -82,11 +94,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 //
 // TODO: schema and provider versions
 func (b *binder) loadPackageSchema(name string) error {
-	if _, ok := b.packageSchemas[name]; ok {
+	if _, ok := b.options.packageCache.entries[name]; ok {
 		return nil
 	}
 
-	provider, err := b.host.Provider(tokens.Package(name), nil)
+	provider, err := b.options.host.Provider(tokens.Package(name), nil)
 	if err != nil {
 		return err
 	}
@@ -115,7 +127,7 @@ func (b *binder) loadPackageSchema(name string) error {
 		functions[canonicalizeToken(f.Token, pkg)] = f
 	}
 
-	b.packageSchemas[name] = &packageSchema{
+	b.options.packageCache.entries[name] = &packageSchema{
 		schema:    pkg,
 		resources: resources,
 		functions: functions,

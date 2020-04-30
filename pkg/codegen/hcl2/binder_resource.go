@@ -57,7 +57,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		pkg, isProvider = name, true
 	}
 
-	pkgSchema, ok := b.packageSchemas[pkg]
+	pkgSchema, ok := b.options.packageCache.entries[pkg]
 	if !ok {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
@@ -174,7 +174,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	for _, block := range node.syntax.Body.Blocks {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
-				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options...)
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
 				switch {
 				case model.InputType(model.BoolType).ConversionFrom(expr.Type()) == model.SafeConversion:
 					node.VariableType = model.NewOptionalType(node.VariableType)
@@ -191,7 +191,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	// Bind the resource's body.
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
-	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options...)
+	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block
