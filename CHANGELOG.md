@@ -9,6 +9,9 @@ CHANGELOG
 - Support map-typed inputs in RegisterResource for Go SDK
   [#4522](https://github.com/pulumi/pulumi/pull/4522)
 
+- Don't call IMocks.NewResourceAsync for the root stack resource
+  [#4527](https://github.com/pulumi/pulumi/pull/4527)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
