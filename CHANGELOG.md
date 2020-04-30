@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add runTask to F# Deployment module
+  [#3858](https://github.com/pulumi/pulumi/pull/3858)
+
 - Add support for generating Fish completions
   [#4401](https://github.com/pulumi/pulumi/pull/4401)
 
