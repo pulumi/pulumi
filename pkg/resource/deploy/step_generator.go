@@ -109,6 +109,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.AdditionalSecretOutputs(),
 		nil, /* aliases */
 		nil, /* customTimeouts */
+		"",  /* importID */
 	)
 	old, hasOld := sg.plan.Olds()[urn]
 
@@ -250,7 +251,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -277,11 +278,21 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
-	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || old.ID != goal.ID)
+	var oldImportID resource.ID
+	if hasOld {
+		oldImportID = old.ID
+		// If the old resource has an ImportID, look at that rather than the ID, since some resources use a different
+		// format of identifier for the import input than the ID property.
+		if old.ImportID != "" {
+			oldImportID = old.ImportID
+		}
+	}
+	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
 	if isImport {
 		// Write the ID of the resource to import into the new state and return an ImportStep or an
 		// ImportReplacementStep
 		new.ID = goal.ID
+		new.ImportID = goal.ID
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
 				NewImportReplacementStep(sg.plan, event, old, new, goal.IgnoreChanges),

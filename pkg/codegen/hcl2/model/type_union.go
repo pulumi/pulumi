@@ -83,7 +83,7 @@ func NewOptionalType(t Type) Type {
 
 // IsOptionalType returns true if t is an optional type.
 func IsOptionalType(t Type) bool {
-	return t.AssignableFrom(NoneType)
+	return t != DynamicType && t.AssignableFrom(NoneType)
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -178,6 +178,10 @@ func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
 		return NoConversion
 	}
 	return conversionKind
+}
+
+func (t *UnionType) GetAnnotations() []interface{} {
+	return nil
 }
 
 func (t *UnionType) String() string {

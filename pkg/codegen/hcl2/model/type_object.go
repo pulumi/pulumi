@@ -31,6 +31,8 @@ import (
 type ObjectType struct {
 	// Properties records the types of the object's properties.
 	Properties map[string]Type
+	// Annotations records any annotations associated with the object type.
+	Annotations []interface{}
 
 	propertyUnion Type
 	s             string
@@ -39,9 +41,13 @@ type ObjectType struct {
 // The set of object types, indexed by string representation.
 var objectTypes = map[string]*ObjectType{}
 
-// NewObjectType creates a new object type with the given properties.
-func NewObjectType(properties map[string]Type) *ObjectType {
-	t := &ObjectType{Properties: properties}
+// NewObjectType creates a new object type with the given properties and annotations.
+func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
+	t := &ObjectType{Properties: properties, Annotations: annotations}
+	if len(annotations) != 0 {
+		return t
+	}
+
 	if t, ok := objectTypes[t.String()]; ok {
 		return t
 	}
@@ -178,6 +184,10 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
 		}
 		return NoConversion
 	})
+}
+
+func (t *ObjectType) GetAnnotations() []interface{} {
+	return t.Annotations
 }
 
 func (t *ObjectType) String() string {

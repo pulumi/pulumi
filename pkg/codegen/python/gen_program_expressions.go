@@ -12,25 +12,61 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
 
-func (nameInfo) IsReservedWord(word string) bool {
-	return isReservedWord(word)
+func (nameInfo) Format(name string) string {
+	return PyName(name)
 }
 
-func (g *generator) genExpression(expr model.Expression) string {
+func (g *generator) lowerExpression(expr model.Expression) model.Expression {
 	// TODO(pdg): diagnostics
 
 	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
 	expr, _ = g.lowerProxyApplies(expr)
+	return expr
+}
 
-	var buf bytes.Buffer
-	g.Fgen(&buf, expr)
-	return buf.String()
+func (g *generator) GetPrecedence(expr model.Expression) int {
+	// Precedence is taken from https://docs.python.org/3/reference/expressions.html#operator-precedence.
+	switch expr := expr.(type) {
+	case *model.AnonymousFunctionExpression:
+		return 1
+	case *model.ConditionalExpression:
+		return 2
+	case *model.BinaryOpExpression:
+		switch expr.Operation {
+		case hclsyntax.OpLogicalOr:
+			return 3
+		case hclsyntax.OpLogicalAnd:
+			return 4
+		case hclsyntax.OpGreaterThan, hclsyntax.OpGreaterThanOrEqual, hclsyntax.OpLessThan, hclsyntax.OpLessThanOrEqual,
+			hclsyntax.OpEqual, hclsyntax.OpNotEqual:
+			return 6
+		case hclsyntax.OpAdd, hclsyntax.OpSubtract:
+			return 11
+		case hclsyntax.OpMultiply, hclsyntax.OpDivide, hclsyntax.OpModulo:
+			return 12
+		default:
+			contract.Failf("unexpected binary expression %v", expr)
+		}
+	case *model.UnaryOpExpression:
+		return 13
+	case *model.FunctionCallExpression, *model.IndexExpression, *model.RelativeTraversalExpression,
+		*model.TemplateJoinExpression:
+		return 16
+	case *model.ForExpression, *model.ObjectConsExpression, *model.SplatExpression, *model.TupleConsExpression:
+		return 17
+	case *model.LiteralValueExpression, *model.ScopeTraversalExpression, *model.TemplateExpression:
+		return 18
+	default:
+		contract.Failf("unexpected expression %v of type %T", expr, expr)
+	}
+	return 0
 }
 
 func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) {
@@ -42,11 +78,11 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 		g.Fgenf(w, " %s", p.Name)
 	}
 
-	g.Fgenf(w, ": %v", expr.Body)
+	g.Fgenf(w, ": %.v", expr.Body)
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
-	opstr := ","
+	opstr, precedence := "", g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
 		opstr = "+"
@@ -74,13 +110,15 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "!="
 	case hclsyntax.OpSubtract:
 		opstr = "-"
+	default:
+		opstr, precedence = ",", 0
 	}
 
-	g.Fgenf(w, "%v %v %v", expr.LeftOperand, opstr, expr.RightOperand)
+	g.Fgenf(w, "%.[1]*[2]v %[3]v %.[1]*[4]o", precedence, expr.LeftOperand, opstr, expr.RightOperand)
 }
 
 func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
-	g.Fgenf(w, "%v if %v else %v", expr.TrueResult, expr.Condition, expr.FalseResult)
+	g.Fgenf(w, "%.2v if %.2v else %.2v", expr.TrueResult, expr.Condition, expr.FalseResult)
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
@@ -89,21 +127,21 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		// Dictionary comprehension
 		//
 		// TODO(pdg): grouping
-		g.Fgenf(w, "{%v: %v", expr.Key, expr.Value)
+		g.Fgenf(w, "{%.v: %.v", expr.Key, expr.Value)
 		close = "}"
 	} else {
 		// List comprehension
-		g.Fgenf(w, "[%v", expr.Value)
+		g.Fgenf(w, "[%.v", expr.Value)
 	}
 
 	if expr.KeyVariable == nil {
-		g.Fgenf(w, " for %v in %v", expr.ValueVariable, expr.Collection)
+		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
 	} else {
-		g.Fgenf(w, " for %v, %v in %v", expr.KeyVariable, expr.ValueVariable, expr.Collection)
+		g.Fgenf(w, " for %v, %v in %.v", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	}
 
 	if expr.Condition != nil {
-		g.Fgenf(w, " if %v", expr.Condition)
+		g.Fgenf(w, " if %.v", expr.Condition)
 	}
 
 	g.Fprint(w, close)
@@ -115,7 +153,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.apply`.
-		g.Fgenf(w, "%v.apply(%v)", applyArgs[0], then)
+		g.Fgenf(w, "%.16v.apply(%.v)", applyArgs[0], then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
 		g.Fgen(w, "pulumi.Output.all(")
@@ -123,9 +161,9 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
-			g.Fgenf(w, "%v", o)
+			g.Fgenf(w, "%.v", o)
 		}
-		g.Fgenf(w, ").apply(%v)", then)
+		g.Fgenf(w, ").apply(%.v)", then)
 	}
 }
 
@@ -134,21 +172,46 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
+	// Compute the function name from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+
+	components := strings.Split(module, ".")
+	for i, component := range components {
+		components[i] = PyName(component)
+	}
+
+	return cleanName(pkg), strings.Join(components, "."), title(member), diagnostics
+}
+
+var functionImports = map[string]string{
+	"fileArchive": "pulumi",
+	"fileAsset":   "pulumi",
+	"readDir":     "os",
+	"toJSON":      "json",
+}
+
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+	if x.Name != "invoke" {
+		return functionImports[x.Name]
+	}
+
+	pkg, _, _, diags := functionName(x.Args[0])
+	contract.Assert(len(diags) == 0)
+	return "pulumi_" + pkg
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
+	case "element":
+		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %v]`, expr.Args[0])
+		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
 	case "fileArchive":
-		g.Fgenf(w, "pulumi.FileArchive(%v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
-		g.Fgenf(w, "pulumi.FileAsset(%v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
 	case "invoke":
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
@@ -160,22 +223,64 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %v", expr.Args[2])
+			g.Fgenf(&buf, ", %.v", expr.Args[2])
 			optionsBag = buf.String()
 		}
 
-		g.Fgenf(w, "%s(%v%v)", name, expr.Args[1], optionsBag)
+		g.Fgenf(w, "%s(", name)
+
+		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
+			g.lowerObjectKeys(expr.Args[1], expr.Signature.Parameters[1].Type)
+
+			indenter := func(f func()) { f() }
+			if len(obj.Items) > 1 {
+				indenter = g.Indented
+			}
+			indenter(func() {
+				for i, item := range obj.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+
+					keyVal := key.Value.AsString()
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		g.Fgenf(w, "%v)", optionsBag)
+	case "length":
+		g.Fgenf(w, "len(%.v)", expr.Args[0])
+	case "lookup":
+		if len(expr.Args) == 3 {
+			g.Fgenf(w, "(lambda v, def: v if v is not None else def)(%.16v[%.v], %.v)",
+				expr.Args[0], expr.Args[1], expr.Args[2])
+		} else {
+			g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
+		}
 	case "range":
 		g.Fprint(w, "range(")
 		for i, arg := range expr.Args {
 			if i > 0 {
 				g.Fprint(w, ", ")
 			}
-			g.Fgenf(w, "%v", arg)
+			g.Fgenf(w, "%.v", arg)
 		}
 		g.Fprint(w, ")")
+	case "readFile":
+		g.Fgenf(w, "(lambda path: open(path).read())(%.v)", expr.Args[0])
+	case "readDir":
+		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
+	case "split":
+		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "json.dumps(%v)", expr.Args[0])
+		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -186,7 +291,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
-	g.Fgenf(w, "%v[%v]", expr.Collection, expr.Key)
+	g.Fgenf(w, "%.16v[%.v]", expr.Collection, expr.Key)
 }
 
 type runeWriter interface {
@@ -203,7 +308,9 @@ func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, esc
 				c = 'n'
 			}
 		case '"', '\\':
-			w.WriteRune('\\')
+			if escapeNewlines {
+				w.WriteRune('\\')
+			}
 		case '{', '}':
 			if escapeBraces {
 				w.WriteRune(c)
@@ -266,28 +373,37 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		g.Fgen(w, "{")
 		g.Indented(func() {
 			for _, item := range expr.Items {
-				g.Fgenf(w, "\n%s%v: %v,", g.Indent, item.Key, item.Value)
+				g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
 			}
 		})
 		g.Fgenf(w, "\n%s}", g.Indent)
 	}
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, types []model.Traversable) {
-	for _, part := range traversal {
+func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable) {
+	for i, traverser := range traversal {
 		var key cty.Value
-		switch part := part.(type) {
+		switch traverser := traverser.(type) {
 		case hcl.TraverseAttr:
-			key = cty.StringVal(part.Name)
+			key = cty.StringVal(traverser.Name)
 		case hcl.TraverseIndex:
-			key = part.Key
+			key = traverser.Key
 		default:
-			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
+			contract.Failf("unexpected traverser of type %T (%v)", traverser, traverser.SourceRange())
 		}
 
 		switch key.Type() {
 		case cty.String:
 			keyVal := key.AsString()
+
+			receiver := parts[i]
+			if receiver, ok := receiver.(model.TypedTraversable); ok {
+				annotations := receiver.Type().GetAnnotations()
+				if len(annotations) == 1 {
+					keyVal = g.mapObjectKey(keyVal, annotations[0].(*schema.ObjectType))
+				}
+			}
+
 			if isLegalIdentifier(keyVal) {
 				g.Fgenf(w, ".%s", keyVal)
 			} else {
@@ -303,13 +419,13 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, t
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
-	g.Fgen(w, expr.Source)
+	g.Fgenf(w, "%.16v", expr.Source)
 	g.genRelativeTraversal(w, expr.Traversal, expr.Parts)
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
 	rootName := PyName(expr.RootName)
-	if v, ok := expr.Parts[0].(*model.Variable); ok && g.anonymousVariables.Has(v) {
+	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
 	}
 
@@ -318,8 +434,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 }
 
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {
-	g.anonymousVariables.Add(expr.Item)
-	g.Fgenf(w, "[%v for __item in %v]", expr.Each, expr.Source)
+	g.Fgenf(w, "[%.v for __item in %.v]", expr.Each, expr.Source)
 }
 
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
@@ -330,32 +445,39 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		}
 	}
 
-	isMultiLine, quotes := false, `"`
+	formatted, isMultiLine, quotes := false, false, `"`
 	for i, part := range expr.Parts {
-		if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			v := lit.Value.AsString()
-			switch strings.Count(v, "\n") {
-			case 0:
-				continue
-			case 1:
-				if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
+		if lit, ok := part.(*model.LiteralValueExpression); ok {
+			if !isMultiLine && lit.Type() == model.StringType {
+				v := lit.Value.AsString()
+				switch strings.Count(v, "\n") {
+				case 0:
 					continue
+				case 1:
+					if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
+						continue
+					}
 				}
+				isMultiLine, quotes = true, `"""`
 			}
-			isMultiLine, quotes = true, `"""`
-			break
+		} else {
+			formatted = true
 		}
 	}
 
 	b := bufio.NewWriter(w)
 	defer b.Flush()
 
-	g.Fprintf(b, `f%s`, quotes)
+	prefix := ""
+	if formatted {
+		prefix = "f"
+	}
+	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, true)
+			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, formatted)
 		} else {
-			g.Fgenf(b, "{%v}", expr)
+			g.Fgenf(b, "{%.v}", expr)
 		}
 	}
 	g.Fprint(b, quotes)
@@ -370,12 +492,12 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	case 0:
 		g.Fgen(w, "[]")
 	case 1:
-		g.Fgenf(w, "[%v]", expr.Expressions[0])
+		g.Fgenf(w, "[%.v]", expr.Expressions[0])
 	default:
 		g.Fgen(w, "[")
 		g.Indented(func() {
 			for _, v := range expr.Expressions {
-				g.Fgenf(w, "\n%s%v,", g.Indent, v)
+				g.Fgenf(w, "\n%s%.v,", g.Indent, v)
 			}
 		})
 		g.Fgen(w, "\n", g.Indent, "]")
@@ -383,12 +505,12 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 }
 
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
-	opstr := ""
+	opstr, precedence := "", g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpLogicalNot:
 		opstr = "not "
 	case hclsyntax.OpNegate:
 		opstr = "-"
 	}
-	g.Fgenf(w, "%v%v", opstr, expr.Operand)
+	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
 }

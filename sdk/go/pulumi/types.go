@@ -454,6 +454,8 @@ func gatherDependencies(v interface{}) []Resource {
 	return deps
 }
 
+var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+
 func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
@@ -461,6 +463,14 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 			output := v.Convert(outputType).Interface().(Output)
 			for _, d := range output.dependencies() {
 				deps[d] = struct{}{}
+			}
+			return
+		}
+		// Check for an actual Resource.
+		if v.Type().Implements(resourceType) {
+			if v.CanInterface() {
+				resource := v.Convert(resourceType).Interface().(Resource)
+				deps[resource] = struct{}{}
 			}
 			return
 		}

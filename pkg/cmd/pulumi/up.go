@@ -404,7 +404,7 @@ func newUpCmd() *cobra.Command {
 			" Multiple resources can be specified using --target urn1 --target urn2")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
-		"Specify resources to replace. Multiple resources can be specified using --replace run1 --replace urn2")
+		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2")
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+

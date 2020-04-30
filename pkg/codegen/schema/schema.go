@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,7 +147,20 @@ type ObjectType struct {
 	// Properties is the list of the type's properties.
 	Properties []*Property
 	// Language specifies additional language-specific data about the object type.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
+
+	properties map[string]*Property
+}
+
+func (t *ObjectType) Property(name string) (*Property, bool) {
+	if t.properties == nil && len(t.Properties) > 0 {
+		t.properties = make(map[string]*Property)
+		for _, p := range t.Properties {
+			t.properties[p.Name] = p
+		}
+	}
+	p, ok := t.properties[name]
+	return p, ok
 }
 
 func (t *ObjectType) String() string {
@@ -179,7 +192,7 @@ type DefaultValue struct {
 	// Environment specifies a set of environment variables to probe for a default value.
 	Environment []string
 	// Language specifies additional language-specific data about the default value.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
 }
 
 // Property describes an object or resource property.
@@ -199,7 +212,7 @@ type Property struct {
 	// DeprecationMessage indicates whether or not the property is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the property.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
 }
 
 // Alias describes an alias for a Pulumi resource.
@@ -231,7 +244,7 @@ type Resource struct {
 	// DeprecationMessage indicates whether or not the resource is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the resource.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
 }
 
 // Function describes a Pulumi function.
@@ -247,7 +260,7 @@ type Function struct {
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
 }
 
 // Package describes a Pulumi package.
@@ -284,7 +297,208 @@ type Package struct {
 	// Functions is the list of functions defined by the package.
 	Functions []*Function
 	// Language specifies additional language-specific data about the package.
-	Language map[string]json.RawMessage
+	Language map[string]interface{}
+}
+
+// Language provides hooks for importing language-specific metadata in a package.
+type Language interface {
+	// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
+	ImportDefaultSpec(def *DefaultValue, bytes json.RawMessage) (interface{}, error)
+	// ImportPropertySpec decodes language-specific metadata associated with a Property.
+	ImportPropertySpec(property *Property, bytes json.RawMessage) (interface{}, error)
+	// ImportObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
+	ImportObjectTypeSpec(object *ObjectType, bytes json.RawMessage) (interface{}, error)
+	// ImportResourceSpec decodes language-specific metadata associated with a Resource.
+	ImportResourceSpec(resource *Resource, bytes json.RawMessage) (interface{}, error)
+	// ImportFunctionSpec decodes language-specific metadata associated with a Function.
+	ImportFunctionSpec(function *Function, bytes json.RawMessage) (interface{}, error)
+	// ImportPackageSpec decodes language-specific metadata associated with a Package.
+	ImportPackageSpec(pkg *Package, bytes json.RawMessage) (interface{}, error)
+}
+
+func sortedLanguageNames(metadata map[string]interface{}) []string {
+	names := make([]string, 0, len(metadata))
+	for lang := range metadata {
+		names = append(names, lang)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func importDefaultLanguages(def *DefaultValue, languages map[string]Language) error {
+	for _, name := range sortedLanguageNames(def.Language) {
+		val := def.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportDefaultSpec(def, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				def.Language[name] = val
+			}
+		}
+	}
+	return nil
+}
+
+func importPropertyLanguages(property *Property, languages map[string]Language) error {
+	if property.DefaultValue != nil {
+		if err := importDefaultLanguages(property.DefaultValue, languages); err != nil {
+			return errors.Wrapf(err, "importing default value")
+		}
+	}
+
+	for _, name := range sortedLanguageNames(property.Language) {
+		val := property.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportPropertySpec(property, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				property.Language[name] = val
+			}
+		}
+	}
+	return nil
+}
+
+func importObjectTypeLanguages(object *ObjectType, languages map[string]Language) error {
+	for _, property := range object.Properties {
+		if err := importPropertyLanguages(property, languages); err != nil {
+			return errors.Wrapf(err, "importing property %v", property.Name)
+		}
+	}
+
+	for _, name := range sortedLanguageNames(object.Language) {
+		val := object.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportObjectTypeSpec(object, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				object.Language[name] = val
+			}
+		}
+	}
+	return nil
+}
+
+func importResourceLanguages(resource *Resource, languages map[string]Language) error {
+	for _, property := range resource.InputProperties {
+		if err := importPropertyLanguages(property, languages); err != nil {
+			return errors.Wrapf(err, "importing input property %v", property.Name)
+		}
+	}
+
+	for _, property := range resource.Properties {
+		if err := importPropertyLanguages(property, languages); err != nil {
+			return errors.Wrapf(err, "importing property %v", property.Name)
+		}
+	}
+
+	if resource.StateInputs != nil {
+		for _, property := range resource.StateInputs.Properties {
+			if err := importPropertyLanguages(property, languages); err != nil {
+				return errors.Wrapf(err, "importing state input property %v", property.Name)
+			}
+		}
+	}
+
+	for _, name := range sortedLanguageNames(resource.Language) {
+		val := resource.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportResourceSpec(resource, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				resource.Language[name] = val
+			}
+		}
+	}
+	return nil
+}
+
+func importFunctionLanguages(function *Function, languages map[string]Language) error {
+	if function.Inputs != nil {
+		if err := importObjectTypeLanguages(function.Inputs, languages); err != nil {
+			return errors.Wrapf(err, "importing inputs")
+		}
+	}
+	if function.Outputs != nil {
+		if err := importObjectTypeLanguages(function.Outputs, languages); err != nil {
+			return errors.Wrapf(err, "importing outputs")
+		}
+	}
+
+	for _, name := range sortedLanguageNames(function.Language) {
+		val := function.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportFunctionSpec(function, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				function.Language[name] = val
+			}
+		}
+	}
+	return nil
+}
+
+func (pkg *Package) ImportLanguages(languages map[string]Language) error {
+	if len(languages) == 0 {
+		return nil
+	}
+
+	for _, t := range pkg.Types {
+		if object, ok := t.(*ObjectType); ok {
+			if err := importObjectTypeLanguages(object, languages); err != nil {
+				return errors.Wrapf(err, "importing object type %v", object.Token)
+			}
+		}
+	}
+
+	for _, config := range pkg.Config {
+		if err := importPropertyLanguages(config, languages); err != nil {
+			return errors.Wrapf(err, "importing configuration property %v", config.Name)
+		}
+	}
+
+	if pkg.Provider != nil {
+		if err := importResourceLanguages(pkg.Provider, languages); err != nil {
+			return errors.Wrapf(err, "importing provider")
+		}
+	}
+
+	for _, resource := range pkg.Resources {
+		if err := importResourceLanguages(resource, languages); err != nil {
+			return errors.Wrapf(err, "importing resource %v", resource.Token)
+		}
+	}
+
+	for _, function := range pkg.Functions {
+		if err := importFunctionLanguages(function, languages); err != nil {
+			return errors.Wrapf(err, "importing function %v", function.Token)
+		}
+	}
+
+	for _, name := range sortedLanguageNames(pkg.Language) {
+		val := pkg.Language[name]
+		if raw, ok := val.(json.RawMessage); ok {
+			if lang, ok := languages[name]; ok {
+				val, err := lang.ImportPackageSpec(pkg, raw)
+				if err != nil {
+					return errors.Wrapf(err, "importing %v metadata", name)
+				}
+				pkg.Language[name] = val
+			}
+		}
+	}
+
+	return nil
 }
 
 func (pkg *Package) TokenToModule(tok string) string {
@@ -317,8 +531,6 @@ type TypeSpec struct {
 	Items *TypeSpec `json:"items,omitempty"`
 	// OneOf indicates that values of the type may be one of any of the listed types.
 	OneOf []TypeSpec `json:"oneOf,omitempty"`
-	// Language contains language-specific data for the type reference.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
@@ -463,7 +675,7 @@ type PackageSpec struct {
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package.
-func ImportSpec(spec PackageSpec) (*Package, error) {
+func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -531,7 +743,12 @@ func ImportSpec(spec PackageSpec) (*Package, error) {
 		return typeList[i].String() < typeList[j].String()
 	})
 
-	return &Package{
+	language := make(map[string]interface{})
+	for name, raw := range spec.Language {
+		language[name] = raw
+	}
+
+	pkg := &Package{
 		moduleFormat: moduleFormatRegexp,
 		Name:         spec.Name,
 		Version:      version,
@@ -546,8 +763,12 @@ func ImportSpec(spec PackageSpec) (*Package, error) {
 		Provider:     provider,
 		Resources:    resources,
 		Functions:    functions,
-		Language:     spec.Language,
-	}, nil
+		Language:     language,
+	}
+	if err := pkg.ImportLanguages(languages); err != nil {
+		return nil, err
+	}
+	return pkg, nil
 }
 
 type types struct {
@@ -730,29 +951,43 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 
 	dv := &DefaultValue{Value: value}
 	if spec != nil {
-		dv.Environment, dv.Language = spec.Environment, spec.Language
+		language := make(map[string]interface{})
+		for name, raw := range spec.Language {
+			language[name] = raw
+		}
+
+		dv.Environment, dv.Language = spec.Environment, language
 	}
 	return dv, nil
 }
 
-func (t *types) bindProperties(properties map[string]PropertySpec, required []string) ([]*Property, error) {
+// bindProperties binds the map of property specs and list of required properties into a sorted list of peroperties and
+// a lookup table.
+func (t *types) bindProperties(properties map[string]PropertySpec,
+	required []string) ([]*Property, map[string]*Property, error) {
+
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property
 	for name, spec := range properties {
 		typ, err := t.bindType(spec.TypeSpec)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding type for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding type for property %s", name)
 		}
 
 		cv, err := bindConstValue(spec.Const, typ)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding constant value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding constant value for property %s", name)
 		}
 
 		dv, err := bindDefaultValue(spec.Default, spec.DefaultInfo, typ)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding default value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding default value for property %s", name)
+		}
+
+		language := make(map[string]interface{})
+		for name, raw := range spec.Language {
+			language[name] = raw
 		}
 
 		p := &Property{
@@ -762,7 +997,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 			ConstValue:         cv,
 			DefaultValue:       dv,
 			DeprecationMessage: spec.DeprecationMessage,
-			Language:           spec.Language,
+			Language:           language,
 		}
 
 		propertyMap[name], result = p, append(result, p)
@@ -772,7 +1007,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 	for _, name := range required {
 		p, ok := propertyMap[name]
 		if !ok {
-			return nil, errors.Errorf("unknown required property %s", name)
+			return nil, nil, errors.Errorf("unknown required property %s", name)
 		}
 		p.IsRequired = true
 	}
@@ -781,20 +1016,26 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		return result[i].Name < result[j].Name
 	})
 
-	return result, nil
+	return result, propertyMap, nil
 }
 
 func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
-	properties, err := t.bindProperties(spec.Properties, spec.Required)
+	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, err
+	}
+
+	language := make(map[string]interface{})
+	for name, raw := range spec.Language {
+		language[name] = raw
 	}
 
 	return &ObjectType{
 		Token:      token,
 		Comment:    spec.Description,
-		Language:   spec.Language,
+		Language:   language,
 		Properties: properties,
+		properties: propertyMap,
 	}, nil
 }
 
@@ -812,36 +1053,38 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 		if spec.Type != "object" {
 			return nil, errors.Errorf("type %s must be an object, not a %s", token, spec.Type)
 		}
+
 		typs.objects[token] = &ObjectType{
-			Token:    token,
-			Comment:  spec.Description,
-			Language: spec.Language,
+			Token:   token,
+			Comment: spec.Description,
 		}
 	}
 
 	// Process properties.
 	for token, spec := range objects {
-		properties, err := typs.bindProperties(spec.Properties, spec.Required)
+		properties, propertyMap, err := typs.bindProperties(spec.Properties, spec.Required)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to bind type %s", token)
 		}
-		typs.objects[token].Properties = properties
+		obj := typs.objects[token]
+		obj.Properties, obj.properties = properties, propertyMap
 	}
 
 	return typs, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
-	return types.bindProperties(spec.Variables, spec.Required)
+	properties, _, err := types.bindProperties(spec.Variables, spec.Required)
+	return properties, err
 }
 
 func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
-	properties, err := types.bindProperties(spec.Properties, spec.Required)
+	properties, _, err := types.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
+	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
@@ -860,6 +1103,11 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
 
+	language := make(map[string]interface{})
+	for name, raw := range spec.Language {
+		language[name] = raw
+	}
+
 	return &Resource{
 		Token:              token,
 		Comment:            spec.Description,
@@ -868,7 +1116,7 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		StateInputs:        stateInputs,
 		Aliases:            aliases,
 		DeprecationMessage: spec.DeprecationMessage,
-		Language:           spec.Language,
+		Language:           language,
 	}, nil
 }
 
@@ -917,13 +1165,18 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 		outputs = outs
 	}
 
+	language := make(map[string]interface{})
+	for name, raw := range spec.Language {
+		language[name] = raw
+	}
+
 	return &Function{
 		Token:              token,
 		Comment:            spec.Description,
 		Inputs:             inputs,
 		Outputs:            outputs,
 		DeprecationMessage: spec.DeprecationMessage,
-		Language:           spec.Language,
+		Language:           language,
 	}, nil
 }
 

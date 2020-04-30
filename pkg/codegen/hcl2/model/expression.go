@@ -22,7 +22,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 )
 
 // Expression represents a semantically-analyzed HCL2 expression.
@@ -45,6 +47,11 @@ type Expression interface {
 
 	// Type returns the type of the expression.
 	Type() Type
+	// Typecheck recomputes the type of the expression, optionally typechecking its operands first.
+	Typecheck(typecheckOperands bool) hcl.Diagnostics
+
+	// Evaluate evaluates the expression.
+	Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
 
 	isExpression()
 }
@@ -134,6 +141,98 @@ func setExprTrailingTrivia(parens syntax.Parentheses, last interface{}, trivia s
 	}
 }
 
+type syntaxExpr struct {
+	hclsyntax.LiteralValueExpr
+
+	expr Expression
+}
+
+func (x syntaxExpr) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return x.expr.Evaluate(context)
+}
+
+type hclExpression struct {
+	x Expression
+}
+
+func HCLExpression(x Expression) hcl.Expression {
+	return hclExpression{x: x}
+}
+
+func (x hclExpression) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return x.x.Evaluate(context)
+}
+
+func (x hclExpression) Variables() []hcl.Traversal {
+	var variables []hcl.Traversal
+	scope := NewRootScope(syntax.None)
+	_, diags := VisitExpression(x.x, func(n Expression) (Expression, hcl.Diagnostics) {
+		switch n := n.(type) {
+		case *AnonymousFunctionExpression:
+			scope = scope.Push(syntax.None)
+			for _, p := range n.Parameters {
+				scope.Define(p.Name, p)
+			}
+		case *ForExpression:
+			scope = scope.Push(syntax.None)
+			if n.KeyVariable != nil {
+				scope.Define(n.KeyVariable.Name, n.KeyVariable)
+			}
+			scope.Define(n.ValueVariable.Name, n.ValueVariable)
+		}
+		return n, nil
+	}, func(n Expression) (Expression, hcl.Diagnostics) {
+		switch n := n.(type) {
+		case *AnonymousFunctionExpression, *ForExpression:
+			scope = scope.Pop()
+		case *ScopeTraversalExpression:
+			if _, isSplatVariable := n.Parts[0].(*SplatVariable); !isSplatVariable {
+				if _, defined := scope.BindReference(n.RootName); !defined {
+					variables = append(variables, n.Traversal.SimpleSplit().Abs)
+				}
+			}
+		}
+		return n, nil
+	})
+	contract.Assert(len(diags) == 0)
+	return variables
+}
+
+func (x hclExpression) Range() hcl.Range {
+	if syntax := x.x.SyntaxNode(); syntax != nil {
+		return syntax.Range()
+	}
+	return hcl.Range{}
+}
+
+func (x hclExpression) StartRange() hcl.Range {
+	if syntax := x.x.SyntaxNode(); syntax != nil {
+		return syntax.(hcl.Expression).StartRange()
+	}
+	return hcl.Range{}
+}
+
+func operatorPrecedence(op *hclsyntax.Operation) int {
+	switch op {
+	case hclsyntax.OpLogicalOr:
+		return 1
+	case hclsyntax.OpLogicalAnd:
+		return 2
+	case hclsyntax.OpEqual, hclsyntax.OpNotEqual:
+		return 3
+	case hclsyntax.OpGreaterThan, hclsyntax.OpGreaterThanOrEqual, hclsyntax.OpLessThan, hclsyntax.OpLessThanOrEqual:
+		return 4
+	case hclsyntax.OpAdd, hclsyntax.OpSubtract:
+		return 5
+	case hclsyntax.OpMultiply, hclsyntax.OpDivide, hclsyntax.OpModulo:
+		return 6
+	case hclsyntax.OpNegate, hclsyntax.OpLogicalNot:
+		return 7
+	default:
+		return 8
+	}
+}
+
 // AnonymousFunctionExpression represents a semantically-analyzed anonymous function expression.
 //
 // These expressions are not the result of semantically analyzing syntax nodes. Instead, they may be synthesized by
@@ -163,6 +262,21 @@ func (x *AnonymousFunctionExpression) NodeTokens() syntax.NodeTokens {
 // TODO: currently this returns the any type. Instead, it should return a function type.
 func (x *AnonymousFunctionExpression) Type() Type {
 	return DynamicType
+}
+
+func (x *AnonymousFunctionExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		bodyDiags := x.Body.Typecheck(true)
+		diagnostics = append(diagnostics, bodyDiags...)
+	}
+
+	return diagnostics
+}
+
+func (x *AnonymousFunctionExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return cty.NilVal, hcl.Diagnostics{cannotEvaluateAnonymousFunctionExpressions()}
 }
 
 func (x *AnonymousFunctionExpression) HasLeadingTrivia() bool {
@@ -240,6 +354,42 @@ func (x *BinaryOpExpression) Type() Type {
 	return x.exprType
 }
 
+func (x *BinaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	var rng hcl.Range
+	if x.Syntax != nil {
+		rng = x.Syntax.Range()
+	}
+
+	if typecheckOperands {
+		leftDiags := x.LeftOperand.Typecheck(true)
+		diagnostics = append(diagnostics, leftDiags...)
+
+		rightDiags := x.RightOperand.Typecheck(true)
+		diagnostics = append(diagnostics, rightDiags...)
+	}
+
+	// Compute the signature for the operator and typecheck the arguments.
+	signature := getOperationSignature(x.Operation)
+	contract.Assert(len(signature.Parameters) == 2)
+
+	typecheckDiags := typecheckArgs(rng, signature, x.LeftOperand, x.RightOperand)
+	diagnostics = append(diagnostics, typecheckDiags...)
+
+	x.exprType = liftOperationType(signature.ReturnType, x.LeftOperand, x.RightOperand)
+	return diagnostics
+}
+
+func (x *BinaryOpExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.BinaryOpExpr{
+		LHS: &syntaxExpr{expr: x.LeftOperand},
+		Op:  x.Operation,
+		RHS: &syntaxExpr{expr: x.RightOperand},
+	}
+	return syntax.Value(context)
+}
+
 func (x *BinaryOpExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.LeftOperand)
 }
@@ -272,10 +422,12 @@ func (x *BinaryOpExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *BinaryOpExpression) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%(%v% v% v%)",
-		x.Tokens.Parentheses,
+	precedence := operatorPrecedence(x.Operation)
+	p.fprintf(w, "%[2](%.[1]*[3]v% [4]v% .[1]*[5]o%[6])",
+		precedence,
+		x.Tokens.GetParentheses(),
 		x.LeftOperand, x.Tokens.GetOperator(x.Operation), x.RightOperand,
-		x.Tokens.Parentheses)
+		x.Tokens.GetParentheses())
 }
 
 func (*BinaryOpExpression) isExpression() {}
@@ -311,6 +463,41 @@ func (x *ConditionalExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the conditional expression.
 func (x *ConditionalExpression) Type() Type {
 	return x.exprType
+}
+
+func (x *ConditionalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		conditionDiags := x.Condition.Typecheck(true)
+		diagnostics = append(diagnostics, conditionDiags...)
+
+		trueDiags := x.TrueResult.Typecheck(true)
+		diagnostics = append(diagnostics, trueDiags...)
+
+		falseDiags := x.FalseResult.Typecheck(true)
+		diagnostics = append(diagnostics, falseDiags...)
+	}
+
+	// Compute the type of the result.
+	resultType, _ := UnifyTypes(x.TrueResult.Type(), x.FalseResult.Type())
+
+	// Typecheck the condition expression.
+	if InputType(BoolType).ConversionFrom(x.Condition.Type()) == NoConversion {
+		diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), x.Condition))
+	}
+
+	x.exprType = liftOperationType(resultType, x.Condition)
+	return diagnostics
+}
+
+func (x *ConditionalExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.ConditionalExpr{
+		Condition:   &syntaxExpr{expr: x.Condition},
+		TrueResult:  &syntaxExpr{expr: x.TrueResult},
+		FalseResult: &syntaxExpr{expr: x.FalseResult},
+	}
+	return syntax.Value(context)
 }
 
 func (x *ConditionalExpression) HasLeadingTrivia() bool {
@@ -446,6 +633,17 @@ func (x *ErrorExpression) Type() Type {
 	return x.exprType
 }
 
+func (x *ErrorExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	return nil
+}
+
+func (x *ErrorExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return cty.DynamicVal, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary:  x.Message,
+	}}
+}
+
 func (x *ErrorExpression) HasLeadingTrivia() bool {
 	return false
 }
@@ -480,6 +678,8 @@ func (*ErrorExpression) isExpression() {}
 
 // ForExpression represents a semantically-analyzed for expression.
 type ForExpression struct {
+	fmt.Formatter
+
 	// The syntax node associated with the for expression.
 	Syntax *hclsyntax.ForExpr
 	// The tokens associated with the expression, if any.
@@ -518,6 +718,107 @@ func (x *ForExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the for expression.
 func (x *ForExpression) Type() Type {
 	return x.exprType
+}
+
+func (x *ForExpression) typecheck(typecheckCollection, typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	var rng hcl.Range
+	if x.Syntax != nil {
+		rng = x.Syntax.CollExpr.Range()
+	}
+
+	if typecheckOperands {
+		collectionDiags := x.Collection.Typecheck(true)
+		diagnostics = append(diagnostics, collectionDiags...)
+	}
+
+	if typecheckCollection {
+		// Poke through any eventual and optional types that may wrap the collection type.
+		collectionType := unwrapIterableSourceType(x.Collection.Type())
+
+		keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
+		diagnostics = append(diagnostics, kvDiags...)
+
+		if x.KeyVariable != nil {
+			x.KeyVariable.VariableType = keyType
+		}
+		x.ValueVariable.VariableType = valueType
+	}
+
+	if typecheckOperands {
+		if x.Key != nil {
+			keyDiags := x.Key.Typecheck(true)
+			diagnostics = append(diagnostics, keyDiags...)
+		}
+
+		valueDiags := x.Value.Typecheck(true)
+		diagnostics = append(diagnostics, valueDiags...)
+
+		if x.Condition != nil {
+			conditionDiags := x.Condition.Typecheck(true)
+			diagnostics = append(diagnostics, conditionDiags...)
+		}
+	}
+
+	if x.Key != nil {
+		// A key expression is only present when producing a map. Key types must therefore be strings.
+		if !InputType(StringType).ConversionFrom(x.Key.Type()).Exists() {
+			diagnostics = append(diagnostics, ExprNotConvertible(InputType(StringType), x.Key))
+		}
+	}
+
+	if x.Condition != nil {
+		if !InputType(BoolType).ConversionFrom(x.Condition.Type()).Exists() {
+			diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), x.Condition))
+		}
+	}
+
+	// If there is a key expression, we are producing a map. Otherwise, we are producing an list. In either case, wrap
+	// the result type in the same set of eventuals and optionals present in the collection type.
+	var resultType Type
+	if x.Key != nil {
+		valueType := x.Value.Type()
+		if x.Group {
+			valueType = NewListType(valueType)
+		}
+		resultType = wrapIterableResultType(x.Collection.Type(), NewMapType(valueType))
+	} else {
+		resultType = wrapIterableResultType(x.Collection.Type(), NewListType(x.Value.Type()))
+	}
+
+	// If either the key expression or the condition expression is eventual, the result is eventual: each of these
+	// values is required to determine which items are present in the result.
+	var liftArgs []Expression
+	if x.Key != nil {
+		liftArgs = append(liftArgs, x.Key)
+	}
+	if x.Condition != nil {
+		liftArgs = append(liftArgs, x.Condition)
+	}
+
+	x.exprType = liftOperationType(resultType, liftArgs...)
+	return diagnostics
+}
+
+func (x *ForExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	return x.typecheck(true, typecheckOperands)
+}
+
+func (x *ForExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.ForExpr{
+		ValVar:   x.ValueVariable.Name,
+		CollExpr: &syntaxExpr{expr: x.Collection},
+		ValExpr:  &syntaxExpr{expr: x.Value},
+		Group:    x.Group,
+	}
+	if x.KeyVariable != nil {
+		syntax.KeyVar = x.KeyVariable.Name
+	}
+	if x.Condition != nil {
+		syntax.CondExpr = &syntaxExpr{expr: x.Condition}
+	}
+	return syntax.Value(context)
 }
 
 func (x *ForExpression) HasLeadingTrivia() bool {
@@ -675,6 +976,9 @@ type FunctionCallExpression struct {
 	Signature StaticFunctionSignature
 	// The arguments to the function call.
 	Args []Expression
+	// ExpandFinal indicates that the final argument should be a tuple, list, or set whose elements will be passed as
+	// individual arguments to the function.
+	ExpandFinal bool
 }
 
 // SyntaxNode returns the syntax node associated with the function call expression.
@@ -685,6 +989,46 @@ func (x *FunctionCallExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the function call expression.
 func (x *FunctionCallExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the function call expression.
+func (x *FunctionCallExpression) Type() Type {
+	return x.Signature.ReturnType
+}
+
+func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		for _, arg := range x.Args {
+			argDiagnostics := arg.Typecheck(true)
+			diagnostics = append(diagnostics, argDiagnostics...)
+		}
+	}
+
+	var rng hcl.Range
+	if x.Syntax != nil {
+		rng = x.Syntax.Range()
+	}
+
+	// Typecheck the function's arguments.
+	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
+	diagnostics = append(diagnostics, typecheckDiags...)
+
+	x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	return diagnostics
+}
+
+func (x *FunctionCallExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.FunctionCallExpr{
+		Name:        x.Name,
+		Args:        make([]hclsyntax.Expression, len(x.Args)),
+		ExpandFinal: x.ExpandFinal,
+	}
+	for i, arg := range x.Args {
+		syntax.Args[i] = &syntaxExpr{expr: arg}
+	}
+	return syntax.Value(context)
 }
 
 func (x *FunctionCallExpression) HasLeadingTrivia() bool {
@@ -754,11 +1098,6 @@ func (x *FunctionCallExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%v%)", x.Tokens.GetCloseParen(), x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the function call expression.
-func (x *FunctionCallExpression) Type() Type {
-	return x.Signature.ReturnType
-}
-
 func (*FunctionCallExpression) isExpression() {}
 
 // IndexExpression represents a semantically-analyzed index expression.
@@ -784,6 +1123,48 @@ func (x *IndexExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the index expression.
 func (x *IndexExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the index expression.
+func (x *IndexExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		collectionDiags := x.Collection.Typecheck(true)
+		diagnostics = append(diagnostics, collectionDiags...)
+
+		keyDiags := x.Key.Typecheck(true)
+		diagnostics = append(diagnostics, keyDiags...)
+	}
+
+	var rng hcl.Range
+	if x.Syntax != nil {
+		rng = x.Syntax.Collection.Range()
+	}
+
+	collectionType := unwrapIterableSourceType(x.Collection.Type())
+	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
+	diagnostics = append(diagnostics, kvDiags...)
+
+	if !InputType(keyType).ConversionFrom(x.Key.Type()).Exists() {
+		diagnostics = append(diagnostics, ExprNotConvertible(InputType(keyType), x.Key))
+	}
+
+	resultType := wrapIterableResultType(x.Collection.Type(), valueType)
+	x.exprType = liftOperationType(resultType, x.Key)
+	return diagnostics
+}
+
+func (x *IndexExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.IndexExpr{
+		Collection: &syntaxExpr{expr: x.Collection},
+		Key:        &syntaxExpr{expr: x.Key},
+	}
+	return syntax.Value(context)
 }
 
 func (x *IndexExpression) HasLeadingTrivia() bool {
@@ -825,11 +1206,6 @@ func (x *IndexExpression) print(w io.Writer, p *printer) {
 		x.Tokens.GetParentheses(),
 		x.Collection, x.Tokens.GetOpenBracket(), x.Key, x.Tokens.GetCloseBracket(),
 		x.Tokens.GetParentheses())
-}
-
-// Type returns the type of the index expression.
-func (x *IndexExpression) Type() Type {
-	return x.exprType
 }
 
 func (*IndexExpression) isExpression() {}
@@ -886,6 +1262,44 @@ func (x *LiteralValueExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the literal value expression.
 func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the literal value expression.
+func (x *LiteralValueExpression) Type() Type {
+	if x.exprType == nil {
+		x.exprType = ctyTypeToType(x.Value.Type(), false)
+	}
+	return x.exprType
+}
+
+func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	typ := NoneType
+	if !x.Value.IsNull() {
+		typ = ctyTypeToType(x.Value.Type(), false)
+	}
+
+	switch {
+	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
+		// OK
+	default:
+		var rng hcl.Range
+		if x.Syntax != nil {
+			rng = x.Syntax.Range()
+		}
+		typ, diagnostics = DynamicType, hcl.Diagnostics{unsupportedLiteralValue(x.Value, rng)}
+	}
+
+	x.exprType = typ
+	return diagnostics
+}
+
+func (x *LiteralValueExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.LiteralValueExpr{
+		Val: x.Value,
+	}
+	return syntax.Value(context)
 }
 
 func (x *LiteralValueExpression) HasLeadingTrivia() bool {
@@ -948,11 +1362,6 @@ func (x *LiteralValueExpression) print(w io.Writer, p *printer) {
 		x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the literal value expression.
-func (x *LiteralValueExpression) Type() Type {
-	return x.exprType
-}
-
 func (*LiteralValueExpression) isExpression() {}
 
 // ObjectConsItem records a key-value pair that is part of object construction expression.
@@ -984,6 +1393,76 @@ func (x *ObjectConsExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the object construction expression.
 func (x *ObjectConsExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the object construction expression.
+func (x *ObjectConsExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	var keys []Expression
+	for _, item := range x.Items {
+		if typecheckOperands {
+			keyDiags := item.Key.Typecheck(true)
+			diagnostics = append(diagnostics, keyDiags...)
+
+			valDiags := item.Value.Typecheck(true)
+			diagnostics = append(diagnostics, valDiags...)
+		}
+
+		keys = append(keys, item.Key)
+		if !InputType(StringType).ConversionFrom(item.Key.Type()).Exists() {
+			diagnostics = append(diagnostics, objectKeysMustBeStrings(item.Key))
+		}
+	}
+
+	// Attempt to build an object type out of the result. If there are any attribute names that come from variables,
+	// type the result as map(unify(propertyTypes)).
+	properties, isMapType, types := map[string]Type{}, false, []Type{}
+	for _, item := range x.Items {
+		types = append(types, item.Value.Type())
+
+		key := item.Key
+		if template, ok := key.(*TemplateExpression); ok && len(template.Parts) == 1 {
+			key = template.Parts[0]
+		}
+
+		keyLit, ok := key.(*LiteralValueExpression)
+		if ok {
+			key, err := convert.Convert(keyLit.Value, cty.String)
+			if err == nil {
+				properties[key.AsString()] = item.Value.Type()
+				continue
+			}
+		}
+		isMapType = true
+	}
+	var typ Type
+	if isMapType {
+		elementType, _ := UnifyTypes(types...)
+		typ = NewMapType(elementType)
+	} else {
+		typ = NewObjectType(properties)
+	}
+
+	x.exprType = liftOperationType(typ, keys...)
+	return diagnostics
+}
+
+func (x *ObjectConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.ObjectConsExpr{
+		Items: make([]hclsyntax.ObjectConsItem, len(x.Items)),
+	}
+	for i, item := range x.Items {
+		syntax.Items[i] = hclsyntax.ObjectConsItem{
+			KeyExpr:   &syntaxExpr{expr: item.Key},
+			ValueExpr: &syntaxExpr{expr: item.Value},
+		}
+	}
+	return syntax.Value(context)
 }
 
 func (x *ObjectConsExpression) HasLeadingTrivia() bool {
@@ -1058,11 +1537,6 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	} else {
 		p.fprintf(w, "\n%s}", p.indent)
 	}
-}
-
-// Type returns the type of the object construction expression.
-func (x *ObjectConsExpression) Type() Type {
-	return x.exprType
 }
 
 func (*ObjectConsExpression) isExpression() {}
@@ -1188,6 +1662,38 @@ func (x *RelativeTraversalExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
 }
 
+// Type returns the type of the relative traversal expression.
+func (x *RelativeTraversalExpression) Type() Type {
+	return GetTraversableType(x.Parts[len(x.Parts)-1])
+}
+
+func (x *RelativeTraversalExpression) typecheck(typecheckOperands, allowMissingVariables bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		sourceDiags := x.Source.Typecheck(true)
+		diagnostics = append(diagnostics, sourceDiags...)
+	}
+
+	parts, partDiags := bindTraversalParts(x.Source.Type(), x.Traversal, allowMissingVariables)
+	diagnostics = append(diagnostics, partDiags...)
+
+	x.Parts = parts
+	return diagnostics
+}
+
+func (x *RelativeTraversalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	return x.typecheck(typecheckOperands, false)
+}
+
+func (x *RelativeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.RelativeTraversalExpr{
+		Source:    &syntaxExpr{expr: x.Source},
+		Traversal: x.Traversal,
+	}
+	return syntax.Value(context)
+}
+
 func (x *RelativeTraversalExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
@@ -1254,11 +1760,6 @@ func (x *RelativeTraversalExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%)", x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the relative traversal expression.
-func (x *RelativeTraversalExpression) Type() Type {
-	return GetTraversableType(x.Parts[len(x.Parts)-1])
-}
-
 func (*RelativeTraversalExpression) isExpression() {}
 
 // ScopeTraversalExpression represents a semantically-analyzed scope traversal expression.
@@ -1285,6 +1786,42 @@ func (x *ScopeTraversalExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the scope traversal expression.
 func (x *ScopeTraversalExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the scope traversal expression.
+func (x *ScopeTraversalExpression) Type() Type {
+	return GetTraversableType(x.Parts[len(x.Parts)-1])
+}
+
+func (x *ScopeTraversalExpression) typecheck(typecheckOperands, allowMissingVariables bool) hcl.Diagnostics {
+	parts, diagnostics := bindTraversalParts(x.Parts[0], x.Traversal.SimpleSplit().Rel, allowMissingVariables)
+	x.Parts = parts
+
+	return diagnostics
+}
+
+func (x *ScopeTraversalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	return x.typecheck(typecheckOperands, false)
+}
+
+func (x *ScopeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	root, hasValue := x.Parts[0].(ValueTraversable)
+	if !hasValue {
+		return cty.UnknownVal(cty.DynamicPseudoType), nil
+	}
+
+	rootValue, diags := root.Value(context)
+	if diags.HasErrors() {
+		return cty.NilVal, diags
+	}
+	diagnostics = append(diagnostics, diags...)
+
+	if len(x.Traversal) == 1 {
+		return rootValue, diagnostics
+	}
+	return x.Traversal[1:].TraverseRel(rootValue)
 }
 
 func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {
@@ -1353,12 +1890,17 @@ func (x *ScopeTraversalExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%)", x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the scope traversal expression.
-func (x *ScopeTraversalExpression) Type() Type {
-	return GetTraversableType(x.Parts[len(x.Parts)-1])
+func (*ScopeTraversalExpression) isExpression() {}
+
+type SplatVariable struct {
+	Variable
+
+	symbol hclsyntax.AnonSymbolExpr
 }
 
-func (*ScopeTraversalExpression) isExpression() {}
+func (v *SplatVariable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return (&v.symbol).Value(context)
+}
 
 // SplatExpression represents a semantically-analyzed splat expression.
 type SplatExpression struct {
@@ -1373,7 +1915,7 @@ type SplatExpression struct {
 	Each Expression
 	// The local variable definition associated with the current item being processed. This definition is not part of
 	// a scope, and can only be referenced by an AnonSymbolExpr.
-	Item *Variable
+	Item *SplatVariable
 
 	exprType Type
 }
@@ -1386,6 +1928,78 @@ func (x *SplatExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the splat expression.
 func (x *SplatExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the splat expression.
+func (x *SplatExpression) Type() Type {
+	return x.exprType
+}
+
+func splatItemType(source Expression, splatSyntax *hclsyntax.SplatExpr) (Expression, Type) {
+	sourceType := unwrapIterableSourceType(source.Type())
+	itemType := sourceType
+	switch sourceType := sourceType.(type) {
+	case *ListType:
+		itemType = sourceType.ElementType
+	case *SetType:
+		itemType = sourceType.ElementType
+	case *TupleType:
+		itemType, _ = UnifyTypes(sourceType.ElementTypes...)
+	default:
+		if sourceType != DynamicType {
+			var tupleSyntax *hclsyntax.TupleConsExpr
+			if splatSyntax != nil {
+				tupleSyntax = &hclsyntax.TupleConsExpr{
+					Exprs:     []hclsyntax.Expression{splatSyntax.Source},
+					SrcRange:  splatSyntax.Source.Range(),
+					OpenRange: splatSyntax.Source.StartRange(),
+				}
+			}
+
+			source = &TupleConsExpression{
+				Syntax:      tupleSyntax,
+				Tokens:      syntax.NewTupleConsTokens(1),
+				Expressions: []Expression{source},
+				exprType:    NewListType(source.Type()),
+			}
+		}
+	}
+	return source, itemType
+}
+
+func (x *SplatExpression) typecheck(retypeItem, typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		sourceDiags := x.Source.Typecheck(true)
+		diagnostics = append(diagnostics, sourceDiags...)
+	}
+
+	if retypeItem {
+		x.Source, x.Item.VariableType = splatItemType(x.Source, x.Syntax)
+	}
+
+	if typecheckOperands {
+		eachDiags := x.Each.Typecheck(true)
+		diagnostics = append(diagnostics, eachDiags...)
+	}
+
+	x.exprType = wrapIterableResultType(x.Source.Type(), NewListType(x.Each.Type()))
+
+	return diagnostics
+}
+
+func (x *SplatExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	return x.typecheck(true, typecheckOperands)
+}
+
+func (x *SplatExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.SplatExpr{
+		Source: &syntaxExpr{expr: x.Source},
+		Each:   &syntaxExpr{expr: x.Each},
+		Item:   &x.Item.symbol,
+	}
+	return syntax.Value(context)
 }
 
 func (x *SplatExpression) HasLeadingTrivia() bool {
@@ -1446,11 +2060,6 @@ func (x *SplatExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%v%)", x.Each, x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the splat expression.
-func (x *SplatExpression) Type() Type {
-	return x.exprType
-}
-
 func (*SplatExpression) isExpression() {}
 
 // TemplateExpression represents a semantically-analyzed template expression.
@@ -1474,6 +2083,35 @@ func (x *TemplateExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the template expression.
 func (x *TemplateExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the template expression.
+func (x *TemplateExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *TemplateExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		for _, part := range x.Parts {
+			partDiags := part.Typecheck(true)
+			diagnostics = append(diagnostics, partDiags...)
+		}
+	}
+
+	x.exprType = liftOperationType(StringType, x.Parts...)
+	return diagnostics
+}
+
+func (x *TemplateExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.TemplateExpr{
+		Parts: make([]hclsyntax.Expression, len(x.Parts)),
+	}
+	for i, p := range x.Parts {
+		syntax.Parts[i] = &syntaxExpr{expr: p}
+	}
+	return syntax.Value(context)
 }
 
 func (x *TemplateExpression) HasLeadingTrivia() bool {
@@ -1523,11 +2161,6 @@ func (x *TemplateExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%v%)", x.Tokens.GetClose(), x.Tokens.GetParentheses())
 }
 
-// Type returns the type of the template expression.
-func (x *TemplateExpression) Type() Type {
-	return x.exprType
-}
-
 func (*TemplateExpression) isExpression() {}
 
 // TemplateJoinExpression represents a semantically-analyzed template join expression.
@@ -1549,6 +2182,30 @@ func (x *TemplateJoinExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the template join expression.
 func (x *TemplateJoinExpression) NodeTokens() syntax.NodeTokens {
 	return nil
+}
+
+// Type returns the type of the template join expression.
+func (x *TemplateJoinExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *TemplateJoinExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		tupleDiags := x.Tuple.Typecheck(true)
+		diagnostics = append(diagnostics, tupleDiags...)
+	}
+
+	x.exprType = liftOperationType(StringType, x.Tuple)
+	return diagnostics
+}
+
+func (x *TemplateJoinExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.TemplateJoinExpr{
+		Tuple: &syntaxExpr{expr: x.Tuple},
+	}
+	return syntax.Value(context)
 }
 
 func (x *TemplateJoinExpression) HasLeadingTrivia() bool {
@@ -1583,11 +2240,6 @@ func (x *TemplateJoinExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%v", x.Tuple)
 }
 
-// Type returns the type of the template join expression.
-func (x *TemplateJoinExpression) Type() Type {
-	return x.exprType
-}
-
 func (*TemplateJoinExpression) isExpression() {}
 
 // TupleConsExpression represents a semantically-analyzed tuple construction expression.
@@ -1611,6 +2263,38 @@ func (x *TupleConsExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the tuple construction expression.
 func (x *TupleConsExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the tuple construction expression.
+func (x *TupleConsExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *TupleConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	elementTypes := make([]Type, len(x.Expressions))
+	for i, expr := range x.Expressions {
+		if typecheckOperands {
+			exprDiags := expr.Typecheck(true)
+			diagnostics = append(diagnostics, exprDiags...)
+		}
+
+		elementTypes[i] = expr.Type()
+	}
+
+	x.exprType = NewTupleType(elementTypes...)
+	return diagnostics
+}
+
+func (x *TupleConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.TupleConsExpr{
+		Exprs: make([]hclsyntax.Expression, len(x.Expressions)),
+	}
+	for i, x := range x.Expressions {
+		syntax.Exprs[i] = &syntaxExpr{expr: x}
+	}
+	return syntax.Value(context)
 }
 
 func (x *TupleConsExpression) HasLeadingTrivia() bool {
@@ -1687,11 +2371,6 @@ func (x *TupleConsExpression) print(w io.Writer, p *printer) {
 	}
 }
 
-// Type returns the type of the tuple construction expression.
-func (x *TupleConsExpression) Type() Type {
-	return x.exprType
-}
-
 func (*TupleConsExpression) isExpression() {}
 
 // UnaryOpExpression represents a semantically-analyzed unary operation.
@@ -1717,6 +2396,42 @@ func (x *UnaryOpExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the unary operation.
 func (x *UnaryOpExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// Type returns the type of the unary operation.
+func (x *UnaryOpExpression) Type() Type {
+	return x.exprType
+}
+
+func (x *UnaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	if typecheckOperands {
+		operandDiags := x.Operand.Typecheck(true)
+		diagnostics = append(diagnostics, operandDiags...)
+	}
+
+	// Compute the signature for the operator and typecheck the arguments.
+	signature := getOperationSignature(x.Operation)
+	contract.Assert(len(signature.Parameters) == 1)
+
+	var rng hcl.Range
+	if x.Syntax != nil {
+		rng = x.Syntax.Range()
+	}
+	typecheckDiags := typecheckArgs(rng, signature, x.Operand)
+	diagnostics = append(diagnostics, typecheckDiags...)
+
+	x.exprType = liftOperationType(signature.ReturnType, x.Operand)
+	return diagnostics
+}
+
+func (x *UnaryOpExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	syntax := &hclsyntax.UnaryOpExpr{
+		Op:  x.Operation,
+		Val: &syntaxExpr{expr: x.Operand},
+	}
+	return syntax.Value(context)
 }
 
 func (x *UnaryOpExpression) HasLeadingTrivia() bool {
@@ -1754,15 +2469,12 @@ func (x *UnaryOpExpression) Format(f fmt.State, c rune) {
 }
 
 func (x *UnaryOpExpression) print(w io.Writer, p *printer) {
-	p.fprintf(w, "%(%v%v%)",
+	precedence := operatorPrecedence(x.Operation)
+	p.fprintf(w, "%[2](%[3]v%.[1]*[4]v%[5])",
+		precedence,
 		x.Tokens.GetParentheses(),
 		x.Tokens.GetOperator(x.Operation), x.Operand,
 		x.Tokens.GetParentheses())
-}
-
-// Type returns the type of the unary operation.
-func (x *UnaryOpExpression) Type() Type {
-	return x.exprType
 }
 
 func (*UnaryOpExpression) isExpression() {}

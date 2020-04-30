@@ -23,7 +23,7 @@ import (
 )
 
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -43,7 +43,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -62,7 +62,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 }
 
 func TestInvalidPolicyPackTemplateName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	// A template that will never exist.
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"

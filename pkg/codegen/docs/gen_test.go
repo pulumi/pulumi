@@ -97,6 +97,13 @@ func initTestPackageSpec(t *testing.T) {
 							Type: "boolean",
 						},
 					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						Language:    pythonMapCase,
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
 				},
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
@@ -115,6 +122,9 @@ func initTestPackageSpec(t *testing.T) {
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "This is a module-level resource called Resource.",
+				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
 						Description: "This is integerProp's description.",
@@ -142,6 +152,25 @@ func initTestPackageSpec(t *testing.T) {
 					"options2Prop": {
 						TypeSpec: schema.TypeSpec{
 							Ref: "#/types/prov:module/ResourceOptions2:ResourceOptions2",
+						},
+					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+				},
+			},
+			"prov:/packageLevelResource:PackageLevelResource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "This is a package-level resource.",
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"prop": {
+						Description: "An input property.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
 						},
 					},
 				},
@@ -198,7 +227,7 @@ func initTestPackageSpec(t *testing.T) {
 func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 	initTestPackageSpec(t)
 
-	schemaPkg, err := schema.ImportSpec(testPackageSpec)
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
 
 	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
@@ -270,6 +299,61 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 
 				assert.True(t, found, "expected to find %q", name)
 			}
+		})
+	}
+}
+
+func getResourceFromModule(resource string, mod *modContext) *schema.Resource {
+	for _, r := range mod.resources {
+		if resourceName(r) != resource {
+			continue
+		}
+		return r
+	}
+	return nil
+}
+
+func TestResourceDocHeader(t *testing.T) {
+	initTestPackageSpec(t)
+
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	assert.NoError(t, err, "importing spec")
+
+	tests := []struct {
+		Name             string
+		ExpectedTitleTag string
+		ResourceName     string
+		ModuleName       string
+	}{
+		{
+			Name:         "PackageLevelResourceHeader",
+			ResourceName: "PackageLevelResource",
+			// Empty string indicates the package-level root module.
+			ModuleName:       "",
+			ExpectedTitleTag: "Resource PackageLevelResource | Package prov",
+		},
+		{
+			Name:             "ModuleLevelResourceHeader",
+			ResourceName:     "Resource",
+			ModuleName:       "module",
+			ExpectedTitleTag: "Resource Resource | Module module | Package prov",
+		},
+	}
+
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			mod, ok := modules[test.ModuleName]
+			if !ok {
+				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
+			}
+
+			r := getResourceFromModule(test.ResourceName, mod)
+			if r == nil {
+				t.Fatalf("could not find %s in modules", test.ResourceName)
+			}
+			h := mod.genResourceHeader(r)
+			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
 		})
 	}
 }

@@ -37,6 +37,7 @@ type Type interface {
 
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
+	GetAnnotations() []interface{}
 	String() string
 
 	conversionFrom(src Type, unifying bool) ConversionKind

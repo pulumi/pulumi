@@ -761,7 +761,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts)
+			&s.old.CustomTimeouts, s.old.ImportID)
 	} else {
 		s.new = nil
 	}
@@ -871,7 +871,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID)
 
 	// Check the user inputs using the provider inputs for defaults.
 	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)

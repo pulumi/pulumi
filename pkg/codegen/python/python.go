@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ func PyName(name string) string {
 	var components []string     // The components that will be joined together with underscores
 	var currentComponent []rune // The characters composing the current component being built
 	state := stateFirst
-	for _, char := range name {
+	for _, char := range cleanName(name) {
 		switch state {
 		case stateFirst:
 			if unicode.IsUpper(char) {

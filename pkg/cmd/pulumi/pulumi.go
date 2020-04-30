@@ -86,6 +86,15 @@ func NewPulumiCmd() *cobra.Command {
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
 
+			// If we fail before we start the async update check, go ahead and close the
+			// channel since we know it will never receive a value.
+			var waitForUpdateCheck bool
+			defer func() {
+				if !waitForUpdateCheck {
+					close(updateCheckResult)
+				}
+			}()
+
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
@@ -117,10 +126,10 @@ func NewPulumiCmd() *cobra.Command {
 
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
 				logging.V(5).Infof("skipping update check")
-				close(updateCheckResult)
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
+				waitForUpdateCheck = true
 				go func() {
 					updateCheckResult <- checkForUpdate()
 					close(updateCheckResult)
@@ -133,7 +142,9 @@ func NewPulumiCmd() *cobra.Command {
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
-			if checkVersionMsg := <-updateCheckResult; checkVersionMsg != nil && !isJSON {
+
+			checkVersionMsg, ok := <-updateCheckResult
+			if ok && checkVersionMsg != nil && !isJSON {
 				cmdutil.Diag().Warningf(checkVersionMsg)
 			}
 

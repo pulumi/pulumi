@@ -25,17 +25,25 @@ import (
 )
 
 func getResourceToken(node *Resource) (string, hcl.Range) {
-	return node.Syntax.Labels[1], node.Syntax.LabelRanges[1]
+	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
 }
 
 func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
-	return b.bindResourceBody(node)
+	var diagnostics hcl.Diagnostics
+
+	typeDiags := b.bindResourceTypes(node)
+	diagnostics = append(diagnostics, typeDiags...)
+
+	bodyDiags := b.bindResourceBody(node)
+	diagnostics = append(diagnostics, bodyDiags...)
+
+	return diagnostics
 }
 
 // bindResourceTypes binds the input and output types for a resource.
 func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
-	node.InputType, node.OutputType, node.VariableType = model.DynamicType, model.DynamicType, model.DynamicType
+	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
 	// Find the resource's schema.
 	token, tokenRange := getResourceToken(node)
@@ -73,32 +81,18 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Token = token
 
 	// Create input and output types for the schema.
-	inputType := model.InputType(schemaTypeToType(&schema.ObjectType{Properties: inputProperties}))
+	inputType := model.InputType(b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties}))
 
 	outputProperties := map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),
 		"urn": model.NewOutputType(model.StringType),
 	}
 	for _, prop := range properties {
-		outputProperties[prop.Name] = model.NewOutputType(schemaTypeToType(prop.Type))
+		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
 	}
-	outputType := model.NewObjectType(outputProperties)
+	outputType := model.NewObjectType(outputProperties, &schema.ObjectType{Properties: properties})
 
-	// TODO(pdg): properly handle eventually-typed range expressions. This requires binding in topological order, as
-	// we need to know the type of the range expression here. It might be worth representing resources as function
-	// calls rather than blocks simply to pick up the automatic handling of eventuals in the binder.
-	variableType := model.Type(outputType)
-	for _, block := range node.Syntax.Body.Blocks {
-		if block.Type == "options" {
-			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
-				node.rangeNode = rng.Expr
-				variableType = model.NewListType(variableType)
-				break
-			}
-		}
-	}
-
-	node.InputType, node.OutputType, node.VariableType = inputType, outputType, variableType
+	node.InputType, node.OutputType = inputType, outputType
 	return diagnostics
 }
 
@@ -114,14 +108,18 @@ func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeVal
 		withRange: root,
 		resource:  resource,
 	}
-	if _, hasRange := resource.VariableType.(*model.ListType); hasRange {
+	if rangeValue != nil {
+		properties := map[string]model.Type{
+			"value": rangeValue,
+		}
+		if rangeKey != nil {
+			properties["key"] = rangeKey
+		}
+
 		scopes.withRange = root.Push(syntax.None)
 		scopes.withRange.Define("range", &model.Variable{
-			Name: "range",
-			VariableType: model.NewObjectType(map[string]model.Type{
-				"key":   rangeKey,
-				"value": rangeValue,
-			}),
+			Name:         "range",
+			VariableType: model.NewObjectType(properties),
 		})
 	}
 	return scopes
@@ -171,14 +169,29 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	// If the resource has a range option, we need to know the type of the collection being ranged over. Pre-bind the
 	// range expression now, but ignore the diagnostics.
+	node.VariableType = node.OutputType
 	var rangeKey, rangeValue model.Type
-	if node.rangeNode != nil {
-		expr, _ := model.BindExpression(node.rangeNode, b.root, b.tokens)
-		rangeKey, rangeValue, diagnostics = model.GetCollectionTypes(expr.Type(), node.rangeNode.Range())
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options...)
+				switch {
+				case model.InputType(model.BoolType).ConversionFrom(expr.Type()) == model.SafeConversion:
+					node.VariableType = model.NewOptionalType(node.VariableType)
+				case model.InputType(model.NumberType).ConversionFrom(expr.Type()) != model.NoConversion:
+					rangeValue = model.NumberType
+					node.VariableType = model.NewListType(node.VariableType)
+				default:
+					rangeKey, rangeValue, diagnostics = model.GetCollectionTypes(expr.Type(), rng.Range())
+					node.VariableType = model.NewListType(node.VariableType)
+				}
+			}
+		}
 	}
 
 	// Bind the resource's body.
-	block, blockDiags := model.BindBlock(node.Syntax, newResourceScopes(b.root, node, rangeKey, rangeValue), b.tokens)
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options...)
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block
@@ -217,7 +230,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
 			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
-				diagnostics = append(diagnostics, missingRequiredAttribute(k, node.Body.Syntax.MissingItemRange()))
+				diagnostics = append(diagnostics,
+					missingRequiredAttribute(k, node.Definition.Body.Syntax.MissingItemRange()))
 			}
 		}
 	}
@@ -231,10 +245,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				var t model.Type
 				switch item.Name {
 				case "range":
-					t = model.NewUnionType(model.NumberType, model.NewListType(model.DynamicType), model.NewMapType(model.DynamicType))
+					t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
+						model.NewMapType(model.DynamicType))
 					resourceOptions.Range = item.Value
 				case "provider":
-					t = ResourceType
+					t = model.DynamicType
 					resourceOptions.Provider = item.Value
 				case "dependsOn":
 					t = model.NewListType(model.DynamicType)
@@ -259,5 +274,6 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		node.Options = resourceOptions
 	}
 
+	node.Definition = block
 	return diagnostics
 }

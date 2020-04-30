@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
@@ -30,7 +30,6 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 	return &hcl.Diagnostic{
 		Severity: severity,
 		Summary:  message,
-		Detail:   message,
 		Subject:  &subject,
 	}
 }
@@ -45,8 +44,8 @@ func objectKeysMustBeStrings(expr Expression) *hcl.Diagnostic {
 		"object keys must be strings: cannot assign expression of type %v to location of type string", expr.Type())
 }
 
-func unsupportedLiteralValue(syntax *hclsyntax.LiteralValueExpr) *hcl.Diagnostic {
-	return errorf(syntax.Range(), "unsupported literal value of type %v", syntax.Val.Type())
+func unsupportedLiteralValue(val cty.Value, valRange hcl.Range) *hcl.Diagnostic {
+	return errorf(valRange, "unsupported literal value of type %v", val.Type())
 }
 
 func unknownFunction(name string, nameRange hcl.Range) *hcl.Diagnostic {
@@ -111,4 +110,11 @@ func cannotTraverseKeyword(name string, rng hcl.Range) *hcl.Diagnostic {
 
 func cannotTraverseFunction(rng hcl.Range) *hcl.Diagnostic {
 	return errorf(rng, "functions cannot be traversed")
+}
+
+func cannotEvaluateAnonymousFunctionExpressions() *hcl.Diagnostic {
+	return &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "cannot evaluate anonymous function expressions",
+	}
 }

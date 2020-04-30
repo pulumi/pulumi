@@ -61,21 +61,22 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec)
+	pkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
 
 func TestDocLinkGenerationForPulumiTypes(t *testing.T) {
+	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
 	t.Run("GenerateCustomResourceOptionsLink", func(t *testing.T) {
 		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions"
-		link := d.GetDocLinkForResourceType(nil, "", "CustomResourceOptions")
+		link := d.GetDocLinkForPulumiType(pkg, "CustomResourceOptions")
 		assert.Equal(t, expected, link)
 	})
 	t.Run("GenerateInvokeOptionsLink", func(t *testing.T) {
 		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions"
-		link := d.GetDocLinkForResourceType(nil, "", "InvokeOptions")
+		link := d.GetDocLinkForPulumiType(pkg, "InvokeOptions")
 		assert.Equal(t, expected, link)
 	})
 }

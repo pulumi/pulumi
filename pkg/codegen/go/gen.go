@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package gen
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"go/format"
 	"io"
@@ -103,7 +102,7 @@ type pkgContext struct {
 	tool           string
 	packages       map[string]*pkgContext
 
-	// Name overrides set in GoInfo
+	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
 	pkgImportAliases map[string]string // Package name -> import alias
 }
@@ -513,10 +512,21 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 
 		for _, p := range t.Properties {
 			printComment(w, p.Comment, false)
-			outputType, applyType := pkg.outputType(p.Type, !p.IsRequired), pkg.plainType(p.Type, !p.IsRequired)
+			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
+			deref := ""
+			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
+			// to derference it.
+			if p.IsRequired && applyType[0] == '*' {
+				deref = "&"
+			}
 
 			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, Title(p.Name), outputType)
-			fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, Title(p.Name), outputType)
+			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
+			fmt.Fprintf(w, "\t\tif v == nil {\n")
+			fmt.Fprintf(w, "\t\t\treturn nil\n")
+			fmt.Fprintf(w, "\t\t}\n")
+			fmt.Fprintf(w, "\t\treturn %sv.%s\n", deref, Title(p.Name))
+			fmt.Fprintf(w, "\t}).(%s)\n", outputType)
 			fmt.Fprintf(w, "}\n\n")
 		}
 	}
@@ -1033,28 +1043,8 @@ func (pkg *pkgContext) getPkg(mod string) *pkgContext {
 	return pack
 }
 
-// GoInfo holds information required to generate the Go SDK from a schema.
-type GoInfo struct {
-	// Base path for package imports
-	//
-	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
-	ImportBasePath string `json:"importBasePath,omitempty"`
-
-	// Map from module -> package name
-	//
-	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
-	//
-	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
-
-	// Map from package name -> package alias
-	//
-	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
-	//
-	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
-}
-
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
@@ -1085,6 +1075,29 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 		_ = getPkg(":config/config:")
 	}
 
+	// For any optional properties, we must generate a pointer type for the corresponding property type.
+	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
+	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
+	// those nested types.
+	var markOptionalPropertyTypesAsRequiringPtr func(seen stringSet, props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(seen stringSet, props []*schema.Property, parentOptional bool) {
+		for _, p := range props {
+			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
+				if seen.has(obj.Token) {
+					continue
+				}
+
+				seen.add(obj.Token)
+				getPkg(obj.Token).details(obj).ptrElement = true
+				markOptionalPropertyTypesAsRequiringPtr(seen, obj.Properties, true)
+			}
+		}
+	}
+
+	// Use a string set to track object types that have already been processed.
+	// This avoids recursively processing the same type. For example, in the
+	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
+	seenMap := stringSet{}
 	for _, t := range pkg.Types {
 		switch t := t.(type) {
 		case *schema.ArrayType:
@@ -1098,12 +1111,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 		case *schema.ObjectType:
 			pkg := getPkg(t.Token)
 			pkg.types = append(pkg.types, t)
-
-			for _, p := range t.Properties {
-				if obj, ok := p.Type.(*schema.ObjectType); ok && !p.IsRequired {
-					getPkg(obj.Token).details(obj).ptrElement = true
-				}
-			}
+			markOptionalPropertyTypesAsRequiringPtr(seenMap, t.Properties, false)
 		}
 	}
 
@@ -1121,16 +1129,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 			pkg.names.add("Get" + resourceName(r))
 		}
 
-		for _, p := range r.InputProperties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
-		for _, p := range r.Properties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
+		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.InputProperties, !r.IsProvider)
+		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.Properties, !r.IsProvider)
 	}
 
 	scanResource(pkg.Provider)
@@ -1166,13 +1166,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoInfo) 
 }
 
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	var goInfo GoInfo
-	if golang, ok := pkg.Language["go"]; ok {
-		if err := json.Unmarshal(golang, &goInfo); err != nil {
-			return nil, errors.Wrap(err, "decoding go package info")
-		}
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		return nil, err
 	}
 
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
 	packages := generatePackageContextMap(tool, pkg, goInfo)
 
 	// emit each package

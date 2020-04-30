@@ -180,7 +180,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while building the absolute path")
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket

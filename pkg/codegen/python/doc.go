@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,11 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType is not implemented at this time for Python.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	return ""
+}
+
 // GetDocLinkForResourceType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	return ""
@@ -45,6 +50,13 @@ func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Pa
 // GetDocLinkForFunctionInputOrOutputType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, modName, typeName string, input bool) string {
 	return ""
+}
+
+// GetDocLinkForBuiltInType returns the Python URL for a built-in type.
+// Currently not using the typeName parameter because the returned link takes to a general
+// top-level page containing info for all built in types.
+func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
+	return "https://docs.python.org/3/library/stdtypes.html"
 }
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
@@ -88,13 +100,22 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return name
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return PyName(tokenToName(f.Token))
+}
+
 // GetResourceFunctionResultName is not implemented for Python and returns an empty string.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	return ""
 }
 
 // GenPropertyCaseMap generates the case maps for a property.
 func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
+	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
+		return
+	}
+
 	mod := &modContext{
 		pkg:                  pkg,
 		mod:                  modName,
@@ -103,9 +124,7 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 		camelCaseToSnakeCase: camelCaseToSnakeCase,
 	}
 
-	if err := mod.recordProperty(prop); err != nil {
-		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
-	}
+	mod.recordProperty(prop)
 }
 
 // GetPropertyName is not implemented for Python because property names in Python must use

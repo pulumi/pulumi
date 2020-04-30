@@ -31,7 +31,66 @@ func isKubernetesPackage(pkg *schema.Package) bool {
 	return pkg.Name == "kubernetes"
 }
 
-func getK8SMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
+func (mod *modContext) isKubernetesOverlayModule() bool {
+	return mod.mod == "helm/v2" || mod.mod == "yaml"
+}
+
+// getKubernetesOverlayPythonFormalParams returns the formal params to render
+// for a Kubernetes overlay resource. These resources do not follow convention
+// that other resources do, so it is best to manually set these.
+func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
+	var params []formalParam
+	switch modName {
+	case "helm/v2", "helm/v3":
+		params = []formalParam{
+			{
+				Name: "config",
+			},
+			{
+				Name:         "opts",
+				DefaultValue: "=None",
+			},
+		}
+	case "yaml":
+		params = []formalParam{
+			{
+				Name: "file",
+			},
+			{
+				Name:         "opts",
+				DefaultValue: "=None",
+			},
+			{
+				Name:         "transformations",
+				DefaultValue: "=None",
+			},
+			{
+				Name:         "resource_prefix",
+				DefaultValue: "=None",
+			},
+		}
+	case "apiextensions":
+		params = []formalParam{
+			{
+				Name: "api_version",
+			},
+			{
+				Name: "kind",
+			},
+			{
+				Name:         "metadata",
+				DefaultValue: "=None",
+			},
+			{
+				Name:         "opts",
+				DefaultValue: "=None",
+			},
+		}
+	}
+	return params
+}
+
+func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
 	modName := pkg.TokenToModule(token)
 	// Kubernetes' moduleFormat in the schema will match everything
 	// in the token. This prevents us from adding the "Provider"
@@ -60,7 +119,7 @@ func getK8SMod(pkg *schema.Package, token string, modules map[string]*modContext
 			} else {
 				parentName = ":" + parentName + ":"
 			}
-			parent := getK8SMod(pkg, parentName, modules, tool)
+			parent := getKubernetesMod(pkg, parentName, modules, tool)
 			parent.children = append(parent.children, mod)
 		}
 

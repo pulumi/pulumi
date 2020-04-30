@@ -35,14 +35,20 @@ type DocLanguageHelper struct {
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType returns the doc link for a Pulumi type.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	moduleVersion := ""
+	if pkg.Version != nil {
+		if pkg.Version.Major > 1 {
+			moduleVersion = fmt.Sprintf("v%d/", pkg.Version.Major)
+		}
+	}
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/pulumi?tab=doc#%s", moduleVersion, typeName)
+}
+
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
-	var path string
-	if pkg != nil && pkg.Name != "" {
-		path = fmt.Sprintf("%s/%s", pkg.Name, moduleName)
-	} else {
-		path = moduleName
-	}
+	path := fmt.Sprintf("%s/%s", pkg.Name, moduleName)
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
@@ -54,10 +60,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, module
 		}
 	}
 
-	if pkg.Name != "" {
-		return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/%sgo/%s?tab=doc#%s", pkg.Name, path, moduleVersion, typeName)
-	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/%s?tab=doc#%s", moduleVersion, path, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi-%s/sdk/%sgo/%s?tab=doc#%s", pkg.Name, moduleVersion, path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType returns the godoc URL for an input or output type.
@@ -79,7 +82,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
-func GetDocLinkForBuiltInType(typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
 }
 
@@ -97,7 +100,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 }
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
-func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoInfo) {
+func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
 	d.packages = generatePackageContextMap(tool, pkg, goInfo)
 }
 
@@ -106,8 +109,22 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	funcName := tokenToName(f.Token)
+	pkg, ok := d.packages[modName]
+	if !ok {
+		return funcName
+	}
+
+	if override, ok := pkg.functionNames[f]; ok {
+		funcName = override
+	}
+	return funcName
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Lookup" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return funcName + "Result"
 }

@@ -1,8 +1,50 @@
 CHANGELOG
 =========
 
-## 2.0.0 (Unreleased)
-=======
+## HEAD (Unreleased)
+
+- Add support for generating Fish completions
+  [#4401](https://github.com/pulumi/pulumi/pull/4401)
+
+## 2.1.0 (2020-04-28)
+
+- Fix infinite recursion bug for Go SDK
+  [#4516](https://github.com/pulumi/pulumi/pull/4516)
+
+- Order secretOutputNames when used in stack references
+  [#4489](https://github.com/pulumi/pulumi/pull/4489)
+
+- Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
+  behavior for how URLs to the Pulumi Console are generated.
+  [#4410](https://github.com/pulumi/pulumi/pull/4410)
+  
+- Protect against panic when unprotecting non-existant resources
+  [#4441](https://github.com/pulumi/pulumi/pull/4441)
+  
+- Add flag to `pulumi stack` to output only the stack name
+  [#4450](https://github.com/pulumi/pulumi/pull/4450)
+
+- Ensure Go accessor methods correctly support nested fields of optional outputs
+  [#4456](https://github.com/pulumi/pulumi/pull/4456)
+
+- Improve `ResourceOptions.merge` type in Python SDK
+  [#4484](https://github.com/pulumi/pulumi/pull/4484)
+
+- Ensure generated Python module names are keyword-safe.
+  [#4473](https://github.com/pulumi/pulumi/pull/4473)
+
+- Explicitly set XDG_CONFIG_HOME and XDG_CACHE_HOME env vars for helm in the
+  pulumi docker image
+  [#4474](https://github.com/pulumi/pulumi/pull/4474)
+
+- Increase the MaxCallRecvMsgSize for all RPC calls. 
+  [#4455](https://github.com/pulumi/pulumi/pull/4455)
+
+- Allow `pulumi.export` calls from Python unit tests.
+  [#4518](https://github.com/pulumi/pulumi/pull/4518)
+
+## 2.0.0 (2020-04-16)
+
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
@@ -14,7 +56,7 @@ CHANGELOG
 - Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
   another library.
 
-- @pulumi/pulumi Now requires Nodejs version 8.13.0 and upwards or 10.10.0 and upwards.
+- @pulumi/pulumi now requires Node.js version >=10.10.0.
 
 - All data-source invocations are now asynchronous (Promise-returning) by default.
 
@@ -34,9 +76,8 @@ CHANGELOG
 - Switch .NET projects to .NET Core 3.1
   [#4400](https://github.com/pulumi/pulumi/pull/4400)
 
-- Add support for generating Fish completions
-  [#4401](https://github.com/pulumi/pulumi/pull/4401)
-
+- Avoid unexpected replace on resource with `import` applied on second update.
+  [#4403](https://github.com/pulumi/pulumi/pull/4403)
 
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,6 +133,10 @@ func resourceName(r *schema.Resource) string {
 		return "Provider"
 	}
 	return tokenToName(r.Token)
+}
+
+func tokenToFunctionName(tok string) string {
+	return camel(tokenToName(tok))
 }
 
 func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool) string {
@@ -541,7 +545,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
-	name := camel(tokenToName(fun.Token))
+	name := tokenToFunctionName(fun.Token)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "typescript"), "", "")
@@ -1165,25 +1169,12 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 	return w.String()
 }
 
-// NodePackageInfo contains NodeJS specific overrides for a package.
-type NodePackageInfo struct {
-	PackageName        string            `json:"packageName,omitempty"`        // Custom name for the NPM package.
-	PackageDescription string            `json:"packageDescription,omitempty"` // Description for the NPM package.
-	Dependencies       map[string]string `json:"dependencies,omitempty"`       // NPM dependencies to add to package.json.
-	DevDependencies    map[string]string `json:"devDependencies,omitempty"`    // NPM dev-dependencies to add to package.json.
-	PeerDependencies   map[string]string `json:"peerDependencies,omitempty"`   // NPM peer-dependencies to add to package.json.
-	TypeScriptVersion  string            `json:"typescriptVersion,omitempty"`  // A specific version of TypeScript to include in package.json.
-	ModuleToPackage    map[string]string `json:"moduleToPackage,omitempty"`    // A map containing overrides for module names to package names.
-}
-
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode node-specific info
-	var info NodePackageInfo
-	if node, ok := pkg.Language["nodejs"]; ok {
-		if err := json.Unmarshal([]byte(node), &info); err != nil {
-			return nil, errors.Wrap(err, "decoding nodejs package info")
-		}
+	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+		return nil, err
 	}
+	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}

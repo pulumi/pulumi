@@ -17,8 +17,8 @@ package format
 import (
 	"fmt"
 	"io"
+	"math"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -26,6 +26,10 @@ import (
 // ExpressionGenerator is an interface that can be implemented in order to generate code for semantically-analyzed HCL2
 // expressions using a Formatter.
 type ExpressionGenerator interface {
+	// GetPrecedence returns the precedence for the indicated expression. Lower numbers bind more tightly than higher
+	// numbers.
+	GetPrecedence(expr model.Expression) int
+
 	// GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
 	GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression)
 	// GenBinaryOpExpression generates code for a BinaryOpExpression.
@@ -100,50 +104,66 @@ func (e *Formatter) Fprintf(w io.Writer, format string, a ...interface{}) {
 	contract.IgnoreError(err)
 }
 
+func (e *Formatter) gen(w io.Writer, parentPrecedence int, rhs bool, x model.Expression) {
+	precedence := e.g.GetPrecedence(x)
+	switch {
+	case precedence > parentPrecedence:
+		// OK
+	case precedence < parentPrecedence || rhs:
+		_, err := fmt.Fprint(w, "(")
+		contract.AssertNoError(err)
+
+		defer func() {
+			_, err = fmt.Fprint(w, ")")
+			contract.AssertNoError(err)
+		}()
+	}
+
+	switch x := x.(type) {
+	case *model.AnonymousFunctionExpression:
+		e.g.GenAnonymousFunctionExpression(w, x)
+	case *model.BinaryOpExpression:
+		e.g.GenBinaryOpExpression(w, x)
+	case *model.ConditionalExpression:
+		e.g.GenConditionalExpression(w, x)
+	case *model.ForExpression:
+		e.g.GenForExpression(w, x)
+	case *model.FunctionCallExpression:
+		e.g.GenFunctionCallExpression(w, x)
+	case *model.IndexExpression:
+		e.g.GenIndexExpression(w, x)
+	case *model.LiteralValueExpression:
+		e.g.GenLiteralValueExpression(w, x)
+	case *model.ObjectConsExpression:
+		e.g.GenObjectConsExpression(w, x)
+	case *model.RelativeTraversalExpression:
+		e.g.GenRelativeTraversalExpression(w, x)
+	case *model.ScopeTraversalExpression:
+		e.g.GenScopeTraversalExpression(w, x)
+	case *model.SplatExpression:
+		e.g.GenSplatExpression(w, x)
+	case *model.TemplateExpression:
+		e.g.GenTemplateExpression(w, x)
+	case *model.TemplateJoinExpression:
+		e.g.GenTemplateJoinExpression(w, x)
+	case *model.TupleConsExpression:
+		e.g.GenTupleConsExpression(w, x)
+	case *model.UnaryOpExpression:
+		e.g.GenUnaryOpExpression(w, x)
+	default:
+		contract.Failf("unexpected expression node of type %T (%v)", x, x.SyntaxNode().Range())
+	}
+}
+
 // Fgen generates code for a list of strings and expression trees. The former are written directly to the destination;
 // the latter are recursively generated using the appropriate gen* functions.
 func (e *Formatter) Fgen(w io.Writer, vs ...interface{}) {
 	for _, v := range vs {
-		switch v := v.(type) {
-		case string:
+		if x, ok := v.(model.Expression); ok {
+			e.gen(w, math.MaxInt32, false, x)
+		} else {
 			_, err := fmt.Fprint(w, v)
-			contract.IgnoreError(err)
-		case *model.AnonymousFunctionExpression:
-			e.g.GenAnonymousFunctionExpression(w, v)
-		case *model.BinaryOpExpression:
-			e.g.GenBinaryOpExpression(w, v)
-		case *model.ConditionalExpression:
-			e.g.GenConditionalExpression(w, v)
-		case *model.ForExpression:
-			e.g.GenForExpression(w, v)
-		case *model.FunctionCallExpression:
-			e.g.GenFunctionCallExpression(w, v)
-		case *model.IndexExpression:
-			e.g.GenIndexExpression(w, v)
-		case *model.LiteralValueExpression:
-			e.g.GenLiteralValueExpression(w, v)
-		case *model.ObjectConsExpression:
-			e.g.GenObjectConsExpression(w, v)
-		case *model.RelativeTraversalExpression:
-			e.g.GenRelativeTraversalExpression(w, v)
-		case *model.ScopeTraversalExpression:
-			e.g.GenScopeTraversalExpression(w, v)
-		case *model.SplatExpression:
-			e.g.GenSplatExpression(w, v)
-		case *model.TemplateExpression:
-			e.g.GenTemplateExpression(w, v)
-		case *model.TemplateJoinExpression:
-			e.g.GenTemplateJoinExpression(w, v)
-		case *model.TupleConsExpression:
-			e.g.GenTupleConsExpression(w, v)
-		case *model.UnaryOpExpression:
-			e.g.GenUnaryOpExpression(w, v)
-		default:
-			var rng hcl.Range
-			if v, isExpr := v.(model.Expression); isExpr {
-				rng = v.SyntaxNode().Range()
-			}
-			contract.Failf("unexpected expression node of type %T (%v)", v, rng)
+			contract.AssertNoError(err)
 		}
 	}
 }
@@ -155,7 +175,11 @@ func (e *Formatter) Fgen(w io.Writer, vs ...interface{}) {
 func (e *Formatter) Fgenf(w io.Writer, format string, args ...interface{}) {
 	for i := range args {
 		if node, ok := args[i].(model.Expression); ok {
-			args[i] = Func(func(f fmt.State, c rune) { e.Fgen(f, node) })
+			args[i] = Func(func(f fmt.State, c rune) {
+				parentPrecedence, _ := f.Precision()
+				rhs := c == 'o'
+				e.gen(f, parentPrecedence, rhs, node)
+			})
 		}
 	}
 	fmt.Fprintf(w, format, args...)

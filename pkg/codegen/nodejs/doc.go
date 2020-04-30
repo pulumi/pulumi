@@ -31,12 +31,16 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
+// GetDocLinkForPulumiType returns the NodeJS API doc link for a Pulumi type.
+func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+	typeName = strings.ReplaceAll(typeName, "?", "")
+	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/pulumi/#%s", typeName)
+}
+
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	var path string
 	switch {
-	case pkg == nil:
-		path = "pulumi"
 	case pkg.Name != "" && modName != "":
 		path = fmt.Sprintf("%s/%s", pkg.Name, modName)
 	case pkg.Name == "" && modName != "":
@@ -65,7 +69,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetDocLinkForBuiltInType returns the URL for a built-in type.
-func GetDocLinkForBuiltInType(typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
 }
 
@@ -92,10 +96,15 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return tokenToFunctionName(f.Token)
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Get" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return title(funcName) + "Result"
 }
 
 // GetPropertyName returns the property name specific to NodeJS.

@@ -287,6 +287,8 @@ type ResourceV3 struct {
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
+	// ImportID is the import input used for imported resources.
+	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

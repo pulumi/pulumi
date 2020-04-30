@@ -1605,3 +1605,45 @@ func TestPartialValuesPython(t *testing.T) {
 		AllowEmptyPreviewChanges: true,
 	})
 }
+
+// The following 4 tests are testing to ensure that we can make RPC calls >4mb
+// Issue: https://github.com/pulumi/pulumi/issues/4155
+
+//Tests a resource with a large (>4mb) string prop in Node.js
+func TestLargeResourceNode(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("large_resource", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in Python
+func TestLargeResourcePython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Dir: filepath.Join("large_resource", "python"),
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in Go
+func TestLargeResourceGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
+		Dir: filepath.Join("large_resource", "go"),
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in .Net
+func TestLargeResourceDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{"Pulumi"},
+		Dir:          filepath.Join("large_resource", "dotnet"),
+	})
+}
