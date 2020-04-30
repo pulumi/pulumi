@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Support map-typed inputs in RegisterResource for Go SDK
+  [#4522](https://github.com/pulumi/pulumi/pull/4522)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
