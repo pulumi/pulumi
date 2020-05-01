@@ -150,10 +150,13 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
-			attrDiags := b.declareNode(item.Name, &LocalVariable{
-				syntax: item,
-			})
+			v := &LocalVariable{syntax: item}
+			attrDiags := b.declareNode(item.Name, v)
 			diagnostics = append(diagnostics, attrDiags...)
+
+			if err := b.loadReferencedPackageSchemas(v); err != nil {
+				return nil, err
+			}
 		case *hclsyntax.Block:
 			switch item.Type {
 			case "config":
@@ -173,11 +176,16 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 
 				// TODO(pdg): check body for valid contents
 
-				diags := b.declareNode(name, &ConfigVariable{
+				v := &ConfigVariable{
 					typ:    typ,
 					syntax: item,
-				})
+				}
+				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
+
+				if err := b.loadReferencedPackageSchemas(v); err != nil {
+					return nil, err
+				}
 			case "resource":
 				if len(item.Labels) != 2 {
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
@@ -209,11 +217,16 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 
 				// TODO(pdg): check body for valid contents
 
-				diags := b.declareNode(name, &OutputVariable{
+				v := &OutputVariable{
 					typ:    typ,
 					syntax: item,
-				})
+				}
+				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
+
+				if err := b.loadReferencedPackageSchemas(v); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}

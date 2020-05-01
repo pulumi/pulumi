@@ -71,10 +71,12 @@ func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
 	switch first := first.(type) {
 	case Expression:
 		return first.HasLeadingTrivia()
-	case syntax.NodeTokens:
-		return true
+	case bool:
+		return first
+	default:
+		contract.Failf("unexpected value of type %T for first", first)
+		return false
 	}
-	return false
 }
 
 func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
@@ -84,10 +86,12 @@ func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
 	switch last := last.(type) {
 	case Expression:
 		return last.HasTrailingTrivia()
-	case syntax.NodeTokens:
-		return true
+	case bool:
+		return last
+	default:
+		contract.Failf("unexpected value of type %T for last", last)
+		return false
 	}
-	return false
 }
 
 func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.TriviaList {
@@ -1033,11 +1037,11 @@ func (x *FunctionCallExpression) Evaluate(context *hcl.EvalContext) (cty.Value, 
 }
 
 func (x *FunctionCallExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *FunctionCallExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *FunctionCallExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -1184,7 +1188,7 @@ func (x *IndexExpression) HasLeadingTrivia() bool {
 }
 
 func (x *IndexExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *IndexExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -1322,11 +1326,11 @@ func (x *LiteralValueExpression) Evaluate(context *hcl.EvalContext) (cty.Value, 
 }
 
 func (x *LiteralValueExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *LiteralValueExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *LiteralValueExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -1489,11 +1493,11 @@ func (x *ObjectConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hc
 }
 
 func (x *ObjectConsExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *ObjectConsExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *ObjectConsExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -1837,7 +1841,7 @@ func (x *ScopeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value
 }
 
 func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *ScopeTraversalExpression) HasTrailingTrivia() bool {
@@ -2127,11 +2131,11 @@ func (x *TemplateExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.
 }
 
 func (x *TemplateExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *TemplateExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *TemplateExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -2316,11 +2320,11 @@ func (x *TupleConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl
 }
 
 func (x *TupleConsExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *TupleConsExpression) HasTrailingTrivia() bool {
-	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens)
+	return exprHasTrailingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *TupleConsExpression) GetLeadingTrivia() syntax.TriviaList {
@@ -2453,7 +2457,7 @@ func (x *UnaryOpExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.D
 }
 
 func (x *UnaryOpExpression) HasLeadingTrivia() bool {
-	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens.GetOperator(x.Operation))
+	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
 
 func (x *UnaryOpExpression) HasTrailingTrivia() bool {
