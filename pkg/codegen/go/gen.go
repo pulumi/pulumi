@@ -64,9 +64,13 @@ type typeDetails struct {
 
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
+// It also removes $-prefix if any.
 func Title(s string) string {
 	if s == "" {
 		return ""
+	}
+	if s[0] == '$' {
+		return Title(s[1:])
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
@@ -1072,7 +1076,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	if len(pkg.Config) > 0 {
-		_ = getPkg(":config/config:")
+		_ = getPkg(":config:")
 	}
 
 	// For any optional properties, we must generate a pointer type for the corresponding property type.
