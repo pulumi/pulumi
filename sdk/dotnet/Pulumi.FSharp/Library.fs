@@ -38,6 +38,7 @@ module Ops =
 /// </summary>
 module Deployment = 
     open System.Collections.Generic
+    open System.Threading.Tasks
 
     /// <summary>
     /// Runs a function as a Pulumi <see cref="Deployment" />.
@@ -59,6 +60,15 @@ module Deployment =
         |> Async.AwaitTask
         |> Async.RunSynchronously
 
+    /// <summary>
+    /// Runs a task function as a Pulumi <see cref="Deployment" />.
+    /// Blocks internally until the provided function completes,
+    /// so that this function could be used directly from the main function.
+    /// </summary>
+    let runTask (f: unit -> Task<IDictionary<string, obj>>) =
+        Deployment.RunAsync (fun () -> f())
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
 
 /// <summary>
 /// Module containing utility functions to work with <see cref="Output{T}" />'s.
