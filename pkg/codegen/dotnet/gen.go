@@ -67,6 +67,7 @@ func Title(s string) string {
 
 func csharpIdentifier(s string) string {
 	// Some schema field names may look like $ref or $schema. Remove the leading $ to make a valid identifier.
+	// This could lead to a clash if both `$foo` and `foo` are defined, but we don't try to de-duplicate now.
 	if strings.HasPrefix(s, "$") {
 		s = s[1:]
 	}
