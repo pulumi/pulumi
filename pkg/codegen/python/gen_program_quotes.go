@@ -14,27 +14,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func (g *generator) mapObjectKey(key string, obj *schema.ObjectType) string {
-	if obj == nil {
-		return key
-	}
-
-	prop, ok := obj.Property(key)
-	if !ok {
-		return key
-	}
-
-	mapCase := true
-	if info, ok := prop.Language["python"]; ok {
-		mapCase = info.(PropertyInfo).MapCase
-	}
-	if mapCase {
-		return PyName(key)
-	}
-
-	return key
-}
-
 func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expression,
 	parts []model.Traversable) (model.Expression, hcl.Diagnostics) {
 
@@ -77,10 +56,16 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 			annotations := receiver.Type().GetAnnotations()
 			if len(annotations) == 1 {
 				obj := annotations[0].(*schema.ObjectType)
-				if info, ok := obj.Language["python"].(objectTypeInfo); !ok || !info.isDictionary {
-					objectKey = true
+
+				info, ok := obj.Language["python"].(objectTypeInfo)
+				if ok {
+					objectKey = !info.isDictionary
+					if mapped, ok := info.camelCaseToSnakeCase[keyVal]; ok {
+						keyVal = mapped
+					}
+				} else {
+					objectKey, keyVal = true, PyName(keyVal)
 				}
-				keyVal = g.mapObjectKey(keyVal, obj)
 
 				switch t := traverser.(type) {
 				case hcl.TraverseAttr:
@@ -100,7 +85,6 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		}
 
 		if currentExpression == nil {
-			contract.Assert(rootName != "")
 			currentExpression = &model.ScopeTraversalExpression{
 				RootName:  rootName,
 				Traversal: currentTraversal,
