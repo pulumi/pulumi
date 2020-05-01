@@ -29,6 +29,7 @@ type CSharpPropertyInfo struct {
 type CSharpPackageInfo struct {
 	PackageReferences map[string]string `json:"packageReferences,omitempty"`
 	Namespaces        map[string]string `json:"namespaces,omitempty"`
+	Compatibility     string            `json:"compatibility,omitempty"`
 }
 
 // Importer implements schema.Language for .NET.
