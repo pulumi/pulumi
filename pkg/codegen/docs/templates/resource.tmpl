@@ -166,6 +166,10 @@ The following state arguments are supported:
 > See the {{ if ne .APIDocLinks.go.InputType "" }}<a href="{{ .APIDocLinks.go.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.go.InputType "") (ne .APIDocLinks.go.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.go.OutputType "" }}<a href="{{ .APIDocLinks.go.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /choosable %}}" }}
 
+{{ htmlSafe "{{% choosable language csharp %}}" }}
+> See the {{ if ne .APIDocLinks.csharp.InputType "" }}<a href="{{ .APIDocLinks.csharp.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.csharp.InputType "") (ne .APIDocLinks.csharp.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.csharp.OutputType "" }}<a href="{{ .APIDocLinks.csharp.OutputType }}">output</a>{{ end }} API doc for this type.
+{{ htmlSafe "{{% /choosable %}}" }}
+
 {{ template "properties" .Properties }}
 {{ end }}
 
