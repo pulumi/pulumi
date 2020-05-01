@@ -79,12 +79,14 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	})
 	contract.Assert(len(diags) == 0)
 
-	b.referencedPackages = make([]*schema.Package, len(packageNames))
-	for i, name := range packageNames.SortedValues() {
+	for _, name := range packageNames.SortedValues() {
+		if _, ok := b.options.packageCache.entries[name]; ok {
+			continue
+		}
 		if err := b.loadPackageSchema(name); err != nil {
 			return err
 		}
-		b.referencedPackages[i] = b.options.packageCache.entries[name].schema
+		b.referencedPackages = append(b.referencedPackages, b.options.packageCache.entries[name].schema)
 	}
 	return nil
 }

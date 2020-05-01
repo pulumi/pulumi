@@ -89,7 +89,7 @@ func unsupportedReceiverType(receiver Type, indexRange hcl.Range) *hcl.Diagnosti
 }
 
 func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hcl.Diagnostic {
-	return errorf(iteratorRange, "cannot iterator over a value of type %v", collectionType)
+	return errorf(iteratorRange, "cannot iterate over a value of type %v", collectionType)
 }
 
 func undefinedVariable(variableName string, variableRange hcl.Range) *hcl.Diagnostic {
