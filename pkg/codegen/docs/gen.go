@@ -841,15 +841,17 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			propLangName = name
 		}
 
+		propID := strings.ToLower("prop" + propLangName)
+
 		docProperties = append(docProperties, property{
-			ID:                 strings.ToLower(propLangName),
+			ID:                 propID,
 			DisplayName:        wbr(propLangName),
 			Name:               propLangName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
 			IsInput:            input,
-			Link:               strings.ToLower("#" + propLangName),
+			Link:               "#" + propID,
 			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}
