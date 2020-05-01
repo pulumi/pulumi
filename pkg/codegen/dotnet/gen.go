@@ -503,19 +503,6 @@ func primitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (mod *modContext) getConstValue(cv interface{}) (string, error) {
-	var val string
-	if cv != nil {
-		v, err := primitiveValue(cv)
-		if err != nil {
-			return "", err
-		}
-		val = v
-	}
-
-	return val, nil
-}
-
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
@@ -689,7 +676,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "            args ??= new %sArgs();\n", className)
 		for _, prop := range r.InputProperties {
 			if prop.ConstValue != nil {
-				v, err := mod.getConstValue(prop.ConstValue)
+				v, err := primitiveValue(prop.ConstValue)
 				if err != nil {
 					return err
 				}
@@ -872,11 +859,11 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	return nil
 }
 
-func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited map[schema.Type]bool) {
-	if visited[t] {
+func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited codegen.Set) {
+	if visited.Has(t) {
 		return
 	}
-	visited[t] = true
+	visited.Add(t)
 
 	switch t := t.(type) {
 	case *schema.ArrayType:
@@ -897,7 +884,7 @@ func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visite
 
 func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
 	// Accumulator to avoid visiting the same node twice in case of recursive types.
-	visited := make(map[schema.Type]bool)
+	visited := codegen.Set{}
 	visitObjectTypesAcc(t, visitor, visited)
 }
 
