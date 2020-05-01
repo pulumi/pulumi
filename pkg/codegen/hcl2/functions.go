@@ -31,7 +31,8 @@ func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature
 	}
 
 	if len(args) == 1 {
-		keyT, valueT, diags := model.GetCollectionTypes(args[0].Type(), args[0].SyntaxNode().Range())
+		keyT, valueT, diags := model.GetCollectionTypes(model.ResolveOutputs(args[0].Type()),
+			args[0].SyntaxNode().Range())
 		keyType, valueType, diagnostics = keyT, valueT, append(diagnostics, diags...)
 	}
 
