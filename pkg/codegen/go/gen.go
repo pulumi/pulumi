@@ -1169,6 +1169,54 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	return packages
 }
 
+// LanguageResource is derived from the schema and can be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
+
+	Alias   string // The package alias (e.g. appsv1)
+	Name    string // The resource name (e.g. Deployment)
+	Package string // The package name (e.g. github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/apps/v1)
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	resources := map[string]LanguageResource{}
+
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		return nil, err
+	}
+
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
+	packages := generatePackageContextMap(tool, pkg, goInfo)
+
+	// emit each package
+	var pkgMods []string
+	for mod := range packages {
+		pkgMods = append(pkgMods, mod)
+	}
+	sort.Strings(pkgMods)
+
+	for _, mod := range pkgMods {
+		if mod == "" {
+			continue
+		}
+		pkg := packages[mod]
+
+		for _, r := range pkg.resources {
+			packagePath := path.Join(goInfo.ImportBasePath, pkg.mod)
+			resources[r.Token] = LanguageResource{
+				Resource: r,
+				Alias:    goInfo.PackageImportAliases[packagePath],
+				Name:     tokenToName(r.Token),
+				Package:  packagePath,
+			}
+		}
+	}
+
+	return resources, nil
+}
+
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
