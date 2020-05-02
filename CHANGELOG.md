@@ -3,7 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 - Fixed ResourceOptions issue with stack references in Python SDK
- [#4553](https://github.com/pulumi/pulumi/pull/4553)
+ [#4553](https://github.com/pulumi/pulumi/pull/4553) 
 
 - Add runTask to F# Deployment module
   [#3858](https://github.com/pulumi/pulumi/pull/3858)
