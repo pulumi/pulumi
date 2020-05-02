@@ -679,6 +679,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
+	isK8s := isKubernetesPackage(mod.pkg)
+
 	var objs []docNestedType
 	for token, tyUsage := range tokens {
 		for _, t := range mod.pkg.Types {
@@ -736,11 +738,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 						outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
 					}
 				}
+
+				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
+				// Don't add C# type links for Kubernetes because there are differences in the namespaces between the schema code gen and
+				// the current code gen that the package uses. So the links will be incorrect.
+				if isK8s && lang == "csharp" {
+					continue
+				}
 				apiDocLinks[lang] = apiTypeDocLinks{
 					InputType:  inputTypeDocLink,
 					OutputType: outputTypeDocLink,
 				}
-				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 			}
 
 			name := strings.Title(tokenToName(obj.Token))
@@ -1693,8 +1701,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// nolint gosec
 			return template.HTML(html)
 		},
-		"pyName": func(str string) string {
-			return python.PyName(str)
+		"hasDocLinksForLang": func(m map[string]apiTypeDocLinks, lang string) bool {
+			_, ok := m[lang]
+			return ok
 		},
 	})
 

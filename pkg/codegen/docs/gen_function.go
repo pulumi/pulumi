@@ -56,6 +56,8 @@ type functionDocArgs struct {
 	// NestedTypes is a slice of the nested types used in the input and
 	// output properties.
 	NestedTypes []docNestedType
+
+	PackageDetails packageDetails
 }
 
 // getFunctionResourceInfo returns a map of per-language information about
@@ -324,6 +326,12 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		funcNameMap[lang] = docHelper.GetFunctionName(mod.mod, f)
 	}
 
+	packageDetails := packageDetails{
+		Repository: mod.pkg.Repository,
+		License:    mod.pkg.License,
+		Notes:      mod.pkg.Attribution,
+	}
+
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
@@ -340,6 +348,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		OutputProperties: outputProps,
 
 		NestedTypes: nestedTypes,
+
+		PackageDetails: packageDetails,
 	}
 
 	return args
