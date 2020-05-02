@@ -50,3 +50,23 @@ func SourceOrderBody(body *hclsyntax.Body) []hclsyntax.Node {
 	})
 	return items
 }
+
+func VariableReference(v *Variable) *ScopeTraversalExpression {
+	x := &ScopeTraversalExpression{
+		RootName:  v.Name,
+		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: v.Name}},
+		Parts:     []Traversable{v},
+	}
+	x.Typecheck(false)
+	return x
+}
+
+func ConstantReference(c *Constant) *ScopeTraversalExpression {
+	x := &ScopeTraversalExpression{
+		RootName:  c.Name,
+		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: c.Name}},
+		Parts:     []Traversable{c},
+	}
+	x.Typecheck(false)
+	return x
+}
