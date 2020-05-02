@@ -95,13 +95,9 @@ func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*mod
 	// Kubernetes' moduleFormat in the schema will match everything
 	// in the token. This prevents us from adding the "Provider"
 	// resource as a child module of the package level :index: module.
-	if modName == "providers" {
-		modName = ""
-	} else {
-		modName = strings.TrimSuffix(modName, ".k8s.io")
-		modName = strings.TrimSuffix(modName, ".apiserver")
-		modName = strings.TrimSuffix(modName, ".authorization")
-	}
+	modName = strings.TrimSuffix(modName, ".k8s.io")
+	modName = strings.TrimSuffix(modName, ".apiserver")
+	modName = strings.TrimSuffix(modName, ".authorization")
 
 	mod, ok := modules[modName]
 	if !ok {
