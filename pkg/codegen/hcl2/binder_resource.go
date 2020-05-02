@@ -213,7 +213,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						},
 						Value: model.VariableReference(resourceVar),
 					}
-					diahs := rangeExpr.Typecheck(false)
+					diags := rangeExpr.Typecheck(false)
 					contract.Assert(len(diags) == 0)
 
 					node.VariableType = rangeExpr.Type()
@@ -229,7 +229,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Collection: expr,
 						Value:      model.VariableReference(resourceVar),
 					}
-					diags := iterationExpr.Typecheck(false)
+					diags = iterationExpr.Typecheck(false)
 					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
 
 					node.VariableType = iterationExpr.Type()
