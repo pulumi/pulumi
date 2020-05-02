@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 func syntaxOrNone(node hclsyntax.Node) hclsyntax.Node {
@@ -57,7 +58,8 @@ func VariableReference(v *Variable) *ScopeTraversalExpression {
 		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: v.Name}},
 		Parts:     []Traversable{v},
 	}
-	x.Typecheck(false)
+	diags := x.Typecheck(false)
+	contract.Assert(len(diags) == 0)
 	return x
 }
 
@@ -67,6 +69,7 @@ func ConstantReference(c *Constant) *ScopeTraversalExpression {
 		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: c.Name}},
 		Parts:     []Traversable{c},
 	}
-	x.Typecheck(false)
+	diags := x.Typecheck(false)
+	contract.Assert(len(diags) == 0)
 	return x
 }

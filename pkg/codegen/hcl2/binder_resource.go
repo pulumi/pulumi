@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -192,7 +193,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 							ConstantValue: cty.NullVal(cty.DynamicPseudoType),
 						}),
 					}
-					condExpr.Typecheck(false)
+					diags := condExpr.Typecheck(false)
+					contract.Assert(len(diags) == 0)
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) != model.NoConversion:
@@ -211,7 +213,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						},
 						Value: model.VariableReference(resourceVar),
 					}
-					rangeExpr.Typecheck(false)
+					diahs := rangeExpr.Typecheck(false)
+					contract.Assert(len(diags) == 0)
 
 					node.VariableType = rangeExpr.Type()
 				default:
@@ -226,7 +229,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Collection: expr,
 						Value:      model.VariableReference(resourceVar),
 					}
-					iterationExpr.Typecheck(false)
+					diags := iterationExpr.Typecheck(false)
+					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
 
 					node.VariableType = iterationExpr.Type()
 				}
