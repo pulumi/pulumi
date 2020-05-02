@@ -1051,6 +1051,7 @@ type npmPackage struct {
 	Dependencies     map[string]string `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string `json:"devDependencies,omitempty"`
 	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string `json:"resolutions,omitempty"`
 	Pulumi           npmPulumiManifest `json:"pulumi,omitempty"`
 }
 
@@ -1109,6 +1110,12 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			npminfo.PeerDependencies = make(map[string]string)
 		}
 		npminfo.PeerDependencies[depk] = depv
+	}
+	for resk, resv := range info.Resolutions {
+		if npminfo.Resolutions == nil {
+			npminfo.Resolutions = make(map[string]string)
+		}
+		npminfo.Resolutions[resk] = resv
 	}
 
 	// If there is no @pulumi/pulumi, add "latest" as a peer dependency (for npm linking style usage).
