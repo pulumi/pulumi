@@ -52,8 +52,7 @@ class StackReference(CustomResource):
         """
 
         target_stack = stack_name if stack_name is not None else name
-        opts = deepcopy(opts) if opts is not None else ResourceOptions()
-        opts.id = target_stack
+        opts = ResourceOptions.merge(opts, ResourceOptions(id = target_stack))
 
         super().__init__("pulumi:pulumi:StackReference", name, {
             "name": target_stack,
