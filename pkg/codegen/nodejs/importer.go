@@ -32,6 +32,8 @@ type NodePackageInfo struct {
 	DevDependencies map[string]string `json:"devDependencies,omitempty"`
 	// NPM peer-dependencies to add to package.json.
 	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
+	// NPM resolutions to add to package.json
+	Resolutions map[string]string `json:"resolutions,omitempty"`
 	// A specific version of TypeScript to include in package.json.
 	TypeScriptVersion string `json:"typescriptVersion,omitempty"`
 	// A map containing overrides for module names to package names.
