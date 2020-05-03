@@ -88,9 +88,6 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	if moduleName == "" && pkg.Name == "kubernetes" {
-		moduleName = "providers"
-	}
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
