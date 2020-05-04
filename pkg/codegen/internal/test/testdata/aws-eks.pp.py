@@ -42,7 +42,7 @@ rta = []
 for range in [{"key": k, "value": v} for [k, v] in enumerate(zones.names)]:
     rta.append(aws.ec2.RouteTableAssociation(f"rta-{range['key']}",
         route_table_id=eks_route_table.id,
-        subnet_id=vpc_subnet[range["key"]]["id"]))
+        subnet_id=vpc_subnet[range["key"]].id))
 subnet_ids = [__item.id for __item in vpc_subnet]
 eks_security_group = aws.ec2.SecurityGroup("eksSecurityGroup",
     vpc_id=eks_vpc.id,

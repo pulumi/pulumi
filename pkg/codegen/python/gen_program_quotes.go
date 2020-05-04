@@ -52,29 +52,26 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if receiver, ok := receiver.(model.TypedTraversable); ok {
-			annotations := receiver.Type().GetAnnotations()
-			if len(annotations) == 1 {
-				obj := annotations[0].(*schema.ObjectType)
+		if annotations := model.GetTraversableType(receiver).GetAnnotations(); len(annotations) == 1 {
+			obj := annotations[0].(*schema.ObjectType)
 
-				info, ok := obj.Language["python"].(objectTypeInfo)
-				if ok {
-					objectKey = !info.isDictionary
-					if mapped, ok := info.camelCaseToSnakeCase[keyVal]; ok {
-						keyVal = mapped
-					}
-				} else {
-					objectKey, keyVal = true, PyName(keyVal)
+			info, ok := obj.Language["python"].(objectTypeInfo)
+			if ok {
+				objectKey = !info.isDictionary
+				if mapped, ok := info.camelCaseToSnakeCase[keyVal]; ok {
+					keyVal = mapped
 				}
+			} else {
+				objectKey, keyVal = true, PyName(keyVal)
+			}
 
-				switch t := traverser.(type) {
-				case hcl.TraverseAttr:
-					t.Name = keyVal
-					traverser, traversal[i] = t, t
-				case hcl.TraverseIndex:
-					t.Key = cty.StringVal(keyVal)
-					traverser, traversal[i] = t, t
-				}
+			switch t := traverser.(type) {
+			case hcl.TraverseAttr:
+				t.Name = keyVal
+				traverser, traversal[i] = t, t
+			case hcl.TraverseIndex:
+				t.Key = cty.StringVal(keyVal)
+				traverser, traversal[i] = t, t
 			}
 		}
 
