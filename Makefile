@@ -45,13 +45,13 @@ generate::
 	echo "Generate static assets bundle for docs generator"
 	cd pkg && go generate ./codegen/docs/gen.go
 
-build::
+build:: generate
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
-install::
+install:: generate
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
-dist::
+dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
 lint::
@@ -59,10 +59,10 @@ lint::
 		pushd $$DIR ; golangci-lint run -c ../.golangci.yml --timeout 5m ; popd ; \
 	done
 
-test_fast::
+test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all::
+test_all:: build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
 

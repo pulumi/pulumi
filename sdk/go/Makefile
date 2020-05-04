@@ -20,7 +20,7 @@ install:: install_plugin
 
 test_all:: test_fast
 
-test_fast::
+test_fast:: install
 	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 dist::
