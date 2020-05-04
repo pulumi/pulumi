@@ -193,7 +193,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.Fgenf(w, "%.20v.%v(%.v)", applyArgs[0], apply, then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
-		g.Fgen(w, "%v([", all)
+		g.Fgenf(w, "%v([", all)
 		for i, o := range applyArgs {
 			if i > 0 {
 				g.Fgen(w, ", ")
@@ -288,6 +288,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	switch expr.Name {
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
+	case intrinsicAwait:
+		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:
 		g.Fgen(w, "pulumi.interpolate`")
 		for _, part := range expr.Args {
@@ -423,6 +425,38 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	}
 }
 
+func (g *generator) literalKey(x model.Expression) (string, bool) {
+	strKey := ""
+	switch x := x.(type) {
+	case *model.LiteralValueExpression:
+		if x.Type() == model.StringType {
+			strKey = x.Value.AsString()
+			break
+		}
+		var buf bytes.Buffer
+		g.GenLiteralValueExpression(&buf, x)
+		return buf.String(), true
+	case *model.TemplateExpression:
+		if len(x.Parts) == 1 {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+				strKey = lit.Value.AsString()
+				break
+			}
+		}
+		var buf bytes.Buffer
+		g.GenTemplateExpression(&buf, x)
+		return buf.String(), true
+	default:
+		return "", false
+	}
+
+	if isLegalIdentifier(strKey) {
+		return strKey, true
+	}
+	return fmt.Sprintf("%q", strKey), true
+
+}
+
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	if len(expr.Items) == 0 {
 		g.Fgen(w, "{}")
@@ -431,12 +465,8 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		g.Indented(func() {
 			for _, item := range expr.Items {
 				g.Fgenf(w, "\n%s", g.Indent)
-				if lit, isLit := item.Key.(*model.LiteralValueExpression); isLit {
-					if lit.Type() == model.StringType && isLegalIdentifier(lit.Value.AsString()) {
-						g.Fprint(w, lit.Value.AsString())
-					} else {
-						g.Fgenf(w, "%.v", lit)
-					}
+				if lit, ok := g.literalKey(item.Key); ok {
+					g.Fgenf(w, "%s", lit)
 				} else {
 					g.Fgenf(w, "[%.v]", item.Key)
 				}

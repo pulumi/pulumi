@@ -1199,7 +1199,7 @@ func (x *IndexExpression) SetLeadingTrivia(t syntax.TriviaList) {
 	if x.Tokens == nil {
 		x.Tokens = syntax.NewIndexTokens()
 	}
-	setExprLeadingTrivia(x.Tokens.Parentheses, &x.Tokens.OpenBracket, t)
+	setExprLeadingTrivia(x.Tokens.Parentheses, x.Collection, t)
 }
 
 func (x *IndexExpression) GetTrailingTrivia() syntax.TriviaList {

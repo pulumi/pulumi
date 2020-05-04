@@ -22,6 +22,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func getResourceToken(node *Resource) (string, hcl.Range) {
@@ -175,15 +177,62 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+
+				resourceVar := &model.Variable{
+					Name:         "r",
+					VariableType: node.VariableType,
+				}
 				switch {
-				case model.InputType(model.BoolType).ConversionFrom(expr.Type()) == model.SafeConversion:
-					node.VariableType = model.NewOptionalType(node.VariableType)
-				case model.InputType(model.NumberType).ConversionFrom(expr.Type()) != model.NoConversion:
-					rangeValue = model.NumberType
-					node.VariableType = model.NewListType(node.VariableType)
+				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+					condExpr := &model.ConditionalExpression{
+						Condition:  expr,
+						TrueResult: model.VariableReference(resourceVar),
+						FalseResult: model.ConstantReference(&model.Constant{
+							Name:          "null",
+							ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+						}),
+					}
+					diags := condExpr.Typecheck(false)
+					contract.Assert(len(diags) == 0)
+
+					node.VariableType = condExpr.Type()
+				case model.InputType(model.NumberType).ConversionFrom(typ) != model.NoConversion:
+					rangeArgs := []model.Expression{expr}
+					rangeSig, _ := pulumiBuiltins["range"].GetSignature(rangeArgs)
+
+					rangeExpr := &model.ForExpression{
+						ValueVariable: &model.Variable{
+							Name:         "_",
+							VariableType: model.NumberType,
+						},
+						Collection: &model.FunctionCallExpression{
+							Name:      "range",
+							Signature: rangeSig,
+							Args:      rangeArgs,
+						},
+						Value: model.VariableReference(resourceVar),
+					}
+					diags := rangeExpr.Typecheck(false)
+					contract.Assert(len(diags) == 0)
+
+					node.VariableType = rangeExpr.Type()
 				default:
-					rangeKey, rangeValue, diagnostics = model.GetCollectionTypes(expr.Type(), rng.Range())
-					node.VariableType = model.NewListType(node.VariableType)
+					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range())
+					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
+
+					iterationExpr := &model.ForExpression{
+						ValueVariable: &model.Variable{
+							Name:         "_",
+							VariableType: rangeValue,
+						},
+						Collection: expr,
+						Value:      model.VariableReference(resourceVar),
+					}
+					diags = iterationExpr.Typecheck(false)
+					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
+
+					node.VariableType = iterationExpr.Type()
 				}
 			}
 		}

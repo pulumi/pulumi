@@ -48,11 +48,32 @@ type objectTypeInfo struct {
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	g, err := newGenerator(program)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := hcl2.Linearize(program)
+
+	var main bytes.Buffer
+	g.genPreamble(&main, program)
+	for _, n := range nodes {
+		g.genNode(&main, n)
+	}
+
+	files := map[string][]byte{
+		"__main__.py": main.Bytes(),
+	}
+	return files, g.diagnostics, nil
+}
+
+func newGenerator(program *hcl2.Program) (*generator, error) {
 	// Import Python-specific schema info.
 	casingTables := map[string]map[string]string{}
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		// Build the case mapping table.
@@ -74,9 +95,6 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		}
 	}
 
-	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := hcl2.Linearize(program)
-
 	g := &generator{
 		program:      program,
 		casingTables: casingTables,
@@ -84,16 +102,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	}
 	g.Formatter = format.NewFormatter(g)
 
-	var main bytes.Buffer
-	g.genPreamble(&main, program)
-	for _, n := range nodes {
-		g.genNode(&main, n)
-	}
-
-	files := map[string][]byte{
-		"__main__.py": main.Bytes(),
-	}
-	return files, g.diagnostics, nil
+	return g, nil
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
