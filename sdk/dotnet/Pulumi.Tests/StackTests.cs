@@ -100,14 +100,22 @@ namespace Pulumi.Tests
 
             Deployment.Instance = new DeploymentInstance(mock.Object);
 
-            // Act
-            var stack = new T();
-            stack.RegisterPropertyOutputs();
+            try
+            {
+                // Act
+                var stack = new T();
+                stack.RegisterPropertyOutputs();
 
-            // Assert
-            Assert.NotNull(outputs);
-            var values = await outputs!.DataTask;
-            return (stack, values.Value);
+                // Assert
+                Assert.NotNull(outputs);
+                var values = await outputs!.DataTask;
+                return (stack, values.Value);
+            }
+            finally
+            {
+                // Reset the instance as other tests expect it to be initially null.
+                Deployment.Instance = null!;
+            }
         }
     }
 }
