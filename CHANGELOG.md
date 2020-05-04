@@ -20,6 +20,9 @@ CHANGELOG
 - Fix infinite recursion bug for Go SDK
   [#4516](https://github.com/pulumi/pulumi/pull/4516)
 
+- Add retry support when writing to state buckets
+  [#4494](https://github.com/pulumi/pulumi/pull/4494)
+  
 - Order secretOutputNames when used in stack references
   [#4489](https://github.com/pulumi/pulumi/pull/4489)
 

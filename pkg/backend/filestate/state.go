@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"os"
 	"path"
 	"path/filepath"
@@ -185,7 +186,36 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
-		return "", errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
+
+		b.mutex.Lock()
+		defer b.mutex.Unlock()
+
+		// FIXME: Would be nice to make these configurable
+		delay, _ := time.ParseDuration("1s")
+		maxDelay, _ := time.ParseDuration("30s")
+		backoff := 1.2
+
+		// Retry the write 10 times in case of upstream bucket errors
+		_, _, err = retry.Until(context.TODO(), retry.Acceptor{
+			Delay:    &delay,
+			MaxDelay: &maxDelay,
+			Backoff:  &backoff,
+			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+				// And now write out the new snapshot file, overwriting that location.
+				err := b.bucket.WriteAll(context.TODO(), file, byts, nil)
+				if err != nil {
+					logging.V(7).Infof("Error while writing snapshot to: %s (attempt=%d, error=%s)", file, try, err)
+					if try > 10 {
+						return false, nil, errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
+					}
+					return false, nil, nil
+				}
+				return true, nil, nil
+			},
+		})
+		if err != nil {
+			return "", err
+		}
 	}
 
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)

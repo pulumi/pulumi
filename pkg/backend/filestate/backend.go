@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ type localBackend struct {
 	url         string
 
 	bucket Bucket
+	mutex  sync.Mutex
 }
 
 type localBackendReference struct {
