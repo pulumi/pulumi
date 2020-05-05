@@ -118,14 +118,6 @@ type Resource interface {
 	addTransformation(t ResourceTransformation)
 }
 
-// ResourceOutput is an Output that returns Resource values.
-type ResourceOutput struct{ *OutputState }
-
-// ElementType returns the element type of this Output (Resource).
-func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil)).Elem()
-}
-
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
 // external operations on some physical entity.  The engine understands how to diff and perform partial updates of them,
 // and these CRUD operations are implemented in a dynamically loaded plugin for the defining package.
