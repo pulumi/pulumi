@@ -51,7 +51,7 @@ function testResources(val: any, expected: any, resources: TestResource[], allRe
         assert.deepStrictEqual(asyncResources, new Set(allResources));
 
         for (const res of syncResources) {
-            if (!asyncResources.has(res)) {
+            if (!asyncResources.has(<TestResource>res)) {
                 assert.fail(`async resources did not contain: ${(<TestResource><any>res).name}`)
             }
         }
