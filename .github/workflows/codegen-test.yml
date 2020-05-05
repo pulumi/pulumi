@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
     - 'pkg/codegen/**'
+    - '.github/workflows/codegen-test.yml'
 
 jobs:
   downstream-aws:
