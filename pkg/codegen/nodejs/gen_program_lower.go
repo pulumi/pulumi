@@ -2,7 +2,6 @@ package nodejs
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
@@ -23,13 +22,31 @@ func isOutputType(t model.Type) bool {
 	return false
 }
 
-// canLiftScopeTraversalExpression returns true if this variable access expression can be lifted. Any variable access
-// expression that does not contain references to potentially-undefined values (e.g. optional fields of a resource) can
-// be lifted.
-func (g *generator) canLiftScopeTraversalExpression(v *model.ScopeTraversalExpression) bool {
-	for _, p := range v.Parts {
+func isPromiseType(t model.Type) bool {
+	switch t := t.(type) {
+	case *model.PromiseType:
+		return true
+	case *model.UnionType:
+		isPromise := false
+		for _, t := range t.ElementTypes {
+			switch t.(type) {
+			case *model.OutputType:
+				return false
+			case *model.PromiseType:
+				isPromise = true
+			}
+		}
+		return isPromise
+	}
+	return false
+}
+
+// canLiftTraversal returns true if this traversal can be lifted. Any traversal that does not traverse
+// possibly-undefined values can be lifted.
+func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
+	for _, p := range parts {
 		t := model.GetTraversableType(p)
-		if model.IsOptionalType(t) || !isOutputType(t) {
+		if model.IsOptionalType(t) || isPromiseType(t) {
 			return false
 		}
 	}
@@ -40,40 +57,54 @@ func (g *generator) canLiftScopeTraversalExpression(v *model.ScopeTraversalExpre
 // matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
 // proxied apply call.
 func (g *generator) parseProxyApply(args []model.Expression,
-	then *model.AnonymousFunctionExpression) (*model.ScopeTraversalExpression, bool) {
+	then model.Expression) (model.Expression, bool) {
 
 	if len(args) != 1 {
 		return nil, false
 	}
 
-	arg, ok := args[0].(*model.ScopeTraversalExpression)
-	if !ok {
+	switch then := then.(type) {
+	case *model.IndexExpression:
+		if model.IsOptionalType(args[0].Type()) || isPromiseType(args[0].Type()) {
+			return nil, false
+		}
+		then.Collection = args[0]
+	case *model.RelativeTraversalExpression:
+		if model.IsOptionalType(args[0].Type()) || isPromiseType(args[0].Type()) {
+			return nil, false
+		}
+		then.Source = args[0]
+	case *model.ScopeTraversalExpression:
+		arg, ok := args[0].(*model.ScopeTraversalExpression)
+		if !ok || isPromiseType(arg.Type()) {
+			return nil, false
+		}
+
+		if !g.canLiftTraversal(then.Parts) {
+			return nil, false
+		}
+		parts := make([]model.Traversable, len(arg.Parts)+len(then.Parts)-1)
+		copy(parts, arg.Parts)
+		copy(parts[len(arg.Parts):], then.Parts[1:])
+
+		then.RootName = arg.RootName
+		then.Traversal = hcl.TraversalJoin(arg.Traversal, then.Traversal[1:])
+		then.Parts = parts
+	default:
 		return nil, false
 	}
 
-	thenTraversal, ok := then.Body.(*model.ScopeTraversalExpression)
-	if !ok || thenTraversal.Parts[0] != then.Parameters[0] {
-		return nil, false
-	}
-	if !g.canLiftScopeTraversalExpression(thenTraversal) {
-		return nil, false
-	}
-
-	traversal := hcl.TraversalJoin(arg.Traversal, thenTraversal.Traversal[1:])
-	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
-		Traversal: traversal,
-		SrcRange:  traversal.SourceRange(),
-	})
+	diags := then.Typecheck(false)
 	contract.Assert(len(diags) == 0)
-	return expr.(*model.ScopeTraversalExpression), true
+	return then, true
 }
 
-func referencesCallbackParameter(expr model.Expression, parameters codegen.Set) bool {
-	has := false
+func callbackParameterReferences(expr model.Expression, parameters codegen.Set) []*model.Variable {
+	var refs []*model.Variable
 	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		if expr, isScopeTraversal := expr.(*model.ScopeTraversalExpression); isScopeTraversal {
 			if parameters.Has(expr.Parts[0]) {
-				has = true
+				refs = append(refs, expr.Parts[0].(*model.Variable))
 			}
 		}
 		return expr, nil
@@ -81,7 +112,7 @@ func referencesCallbackParameter(expr model.Expression, parameters codegen.Set) 
 
 	_, diags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
 	contract.Assert(len(diags) == 0)
-	return has
+	return refs
 }
 
 // parseInterpolate attempts to match the given parsed apply against the pattern (output /* mix of expressions and
@@ -108,28 +139,25 @@ func (g *generator) parseInterpolate(args []model.Expression,
 
 	exprs := make([]model.Expression, len(template.Parts))
 	for i, expr := range template.Parts {
-		traversal, isTraversal := expr.(*model.ScopeTraversalExpression)
-		switch {
-		case isTraversal && parameters.Has(traversal.Parts[0]):
-			if !g.canLiftScopeTraversalExpression(traversal) {
-				return nil, false
-			}
-			arg, ok := args[indices[traversal.Parts[0].(*model.Variable)]].(*model.ScopeTraversalExpression)
-			if !ok {
-				return nil, false
-			}
-			traversal := hcl.TraversalJoin(arg.Traversal, traversal.Traversal[1:])
-			expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
-				Traversal: traversal,
-				SrcRange:  traversal.SourceRange(),
-			})
-			contract.Assert(len(diags) == 0)
+		parameterRefs := callbackParameterReferences(expr, parameters)
+		if len(parameterRefs) == 0 {
 			exprs[i] = expr
-		case !referencesCallbackParameter(expr, parameters):
-			exprs[i] = expr
-		default:
+			continue
+		}
+
+		proxyArgs := make([]model.Expression, len(parameterRefs))
+		for i, p := range parameterRefs {
+			argIndex, ok := indices[p]
+			contract.Assert(ok)
+
+			proxyArgs[i] = args[argIndex]
+		}
+
+		expr, ok := g.parseProxyApply(proxyArgs, expr)
+		if !ok {
 			return nil, false
 		}
+		exprs[i] = expr
 	}
 
 	return newInterpolateCall(exprs), true
@@ -157,7 +185,7 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		args, then := hcl2.ParseApplyCall(apply)
 
 		// Attempt to match (call __apply (rvar) (call __applyArg 0))
-		if v, ok := g.parseProxyApply(args, then); ok {
+		if v, ok := g.parseProxyApply(args, then.Body); ok {
 			return v, nil
 		}
 

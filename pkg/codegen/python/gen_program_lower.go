@@ -2,7 +2,6 @@ package python
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
@@ -14,29 +13,37 @@ import (
 // matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
 // proxied apply call.
 func (g *generator) parseProxyApply(args []model.Expression,
-	then *model.AnonymousFunctionExpression) (*model.ScopeTraversalExpression, bool) {
+	then model.Expression) (model.Expression, bool) {
 
 	if len(args) != 1 {
 		return nil, false
 	}
 
-	arg, ok := args[0].(*model.ScopeTraversalExpression)
-	if !ok {
+	switch then := then.(type) {
+	case *model.IndexExpression:
+		then.Collection = args[0]
+	case *model.RelativeTraversalExpression:
+		then.Source = args[0]
+	case *model.ScopeTraversalExpression:
+		arg, ok := args[0].(*model.ScopeTraversalExpression)
+		if !ok {
+			return nil, false
+		}
+
+		parts := make([]model.Traversable, len(arg.Parts)+len(then.Parts)-1)
+		copy(parts, arg.Parts)
+		copy(parts[len(arg.Parts):], then.Parts[1:])
+
+		then.RootName = arg.RootName
+		then.Traversal = hcl.TraversalJoin(arg.Traversal, then.Traversal[1:])
+		then.Parts = parts
+	default:
 		return nil, false
 	}
 
-	thenTraversal, ok := then.Body.(*model.ScopeTraversalExpression)
-	if !ok || thenTraversal.Parts[0] != then.Parameters[0] {
-		return nil, false
-	}
-
-	traversal := hcl.TraversalJoin(arg.Traversal, thenTraversal.Traversal[1:])
-	expr, diags := g.program.BindExpression(&hclsyntax.ScopeTraversalExpr{
-		Traversal: traversal,
-		SrcRange:  traversal.SourceRange(),
-	})
+	diags := then.Typecheck(false)
 	contract.Assert(len(diags) == 0)
-	return expr.(*model.ScopeTraversalExpression), true
+	return then, true
 }
 
 // lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses. Concretely, this boils
@@ -56,7 +63,7 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		args, then := hcl2.ParseApplyCall(apply)
 
 		// Attempt to match (call __apply (rvar) (call __applyArg 0))
-		if v, ok := g.parseProxyApply(args, then); ok {
+		if v, ok := g.parseProxyApply(args, then.Body); ok {
 			return v, nil
 		}
 
