@@ -1,4 +1,4 @@
-name: Downstream Codegen Testing
+name: Downstream Codegen Tests
 on:
   pull_request:
     paths:
