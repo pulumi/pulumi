@@ -172,7 +172,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	chk, err := stack.SerializeCheckpoint(name, snap, sm)
+	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
 		return "", errors.Wrap(err, "serializaing checkpoint")
 	}

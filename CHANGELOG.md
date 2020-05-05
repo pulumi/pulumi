@@ -20,6 +20,9 @@ CHANGELOG
 - Add ResourceOutput type to Go SDK
   [#4575](https://github.com/pulumi/pulumi/pull/4575)
 
+- Allow secrets to be decrypted when exporting a stack
+  [#4046](https://github.com/pulumi/pulumi/pull/4046)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK

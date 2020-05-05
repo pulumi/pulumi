@@ -200,10 +200,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 	}
 
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(md.Inputs, encrypter)
+	inputs, err := stack.SerializeProperties(md.Inputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(md.Outputs, encrypter)
+	outputs, err := stack.SerializeProperties(md.Outputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
