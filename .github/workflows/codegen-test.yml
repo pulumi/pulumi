@@ -28,7 +28,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v4
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -61,7 +61,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v4
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -94,7 +94,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v4
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -127,7 +127,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v4
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -160,7 +160,7 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v4
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
