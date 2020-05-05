@@ -84,7 +84,7 @@ publish_packages:
 # So instead we run the ~daily on master. Where we know the current SDK version
 # will have been published.
 .PHONY: test_containers_cron
-test_containers:
+test_containers_cron:
 	$(call STEP_MESSAGE)
 	./scripts/build-docker.sh ${VERSION} --test
 
