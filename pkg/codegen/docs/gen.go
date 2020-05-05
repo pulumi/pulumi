@@ -506,14 +506,23 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 
 	var argsType string
 	var argsDocLink string
-	// The non-schema-based k8s codegen does not apply a suffix to the input types.
+	// The args type for k8s package differs from the rest depending on whether we are dealing with
+	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
-		argsType = name
-		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		if mod.isKubernetesOverlayModule() {
+			if name == "CustomResource" {
+				argsType = name + "Args"
+			}
+			argsType = name + "Opts"
+		} else {
+			// The non-schema-based k8s codegen does not apply a suffix to the input types.
+			argsType = name
+		}
 	} else {
 		argsType = name + "Args"
-		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 	}
+	// All args types are in the same module path as the resource class itself even though it is an "input" type.
+	argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 
 	argsFlag := ""
 	if argsOptional {
@@ -612,9 +621,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
-	// Top-level argument types in the k8s package for C# use different namespace path.
-	// Additionally, overlay resources in k8s have argument types in the top-level module path,
-	// but don't use the suffix "Args" like the other modules.
+	// Constructor argument types in the k8s package for C# use a different namespace path.
+	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
 		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
@@ -622,8 +630,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
 			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
 			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
-		} else if mod.isKubernetesOverlayModule() {
-			argLangTypeName = "Pulumi.Kubernetes." + name
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}

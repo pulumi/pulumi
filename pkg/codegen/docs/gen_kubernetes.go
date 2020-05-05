@@ -32,7 +32,7 @@ func isKubernetesPackage(pkg *schema.Package) bool {
 }
 
 func (mod *modContext) isKubernetesOverlayModule() bool {
-	return mod.mod == "helm/v2" || mod.mod == "yaml"
+	return strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
 }
 
 // getKubernetesOverlayPythonFormalParams returns the formal params to render
