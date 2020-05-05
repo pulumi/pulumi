@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 package pulumi
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type (
 	// ID is a unique identifier assigned by a resource provider to a resource.
@@ -114,6 +116,14 @@ type Resource interface {
 
 	// addTransformation adds a single transformation to the resource.
 	addTransformation(t ResourceTransformation)
+}
+
+// ResourceOutput is an Output that returns Resource values.
+type ResourceOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (Resource).
+func (ResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Resource)(nil)).Elem()
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
