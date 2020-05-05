@@ -10,7 +10,7 @@ using Xunit.Sdk;
 
 namespace Pulumi.Tests
 {
-    public class StackTests
+    public class StackTests : IDisposable
     {
         private class ValidStack : Stack
         {
@@ -100,22 +100,21 @@ namespace Pulumi.Tests
 
             Deployment.Instance = new DeploymentInstance(mock.Object);
 
-            try
-            {
-                // Act
-                var stack = new T();
-                stack.RegisterPropertyOutputs();
+            // Act
+            var stack = new T();
+            stack.RegisterPropertyOutputs();
 
-                // Assert
-                Assert.NotNull(outputs);
-                var values = await outputs!.DataTask;
-                return (stack, values.Value);
-            }
-            finally
-            {
-                // Reset the instance as other tests expect it to be initially null.
-                Deployment.Instance = null!;
-            }
+            // Assert
+            Assert.NotNull(outputs);
+            var values = await outputs!.DataTask;
+            return (stack, values.Value);
+        }
+
+        public void Dispose()
+        {
+            // Always reset the instance after each of these tests as other tests elsewhere
+            // expect it to be initially null.
+            Deployment.Instance = null!;
         }
     }
 }
