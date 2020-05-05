@@ -6,4 +6,4 @@
 
 {{ define "csharp_formal_param" }}{{ template "linkify_param" .Type }}{{ .OptionalFlag }} <span class="nx">{{ .Name }}{{ .DefaultValue }}{{ end }}
 
-{{ define "py_formal_param" }}{{ .Name }}{{ .DefaultValue }}{{ end }}
+{{ define "py_formal_param" }}<span class="nx">{{ .Name }}</span>{{ .DefaultValue }}{{ end }}

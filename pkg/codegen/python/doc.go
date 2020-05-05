@@ -40,7 +40,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 // GetDocLinkForResourceType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	// TODO: Sean - Probably need to do something here.
-	return ""
+	return "/docs/reference/pkg/python/pulumi_aws/s3/#Bucket"
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.

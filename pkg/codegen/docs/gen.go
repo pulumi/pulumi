@@ -987,7 +987,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
-			continue
+			// continue
 		default:
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
