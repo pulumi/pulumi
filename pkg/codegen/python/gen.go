@@ -88,7 +88,8 @@ func printComment(w io.Writer, comment string, indent string) {
 		if l == "" {
 			fmt.Fprintf(w, "\n")
 		} else {
-			fmt.Fprintf(w, "%s%s\n", indent, l)
+			escaped := strings.ReplaceAll(l, `"""`, `\"\"\"`)
+			fmt.Fprintf(w, "%s%s\n", indent, escaped)
 		}
 	}
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
