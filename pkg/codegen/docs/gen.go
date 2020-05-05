@@ -841,7 +841,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			propLangName = name
 		}
 
-		propID := strings.ToLower("prop" + lang + propLangName)
+		propID := strings.ToLower(propLangName + "-" + lang)
 
 		docProperties = append(docProperties, property{
 			ID:                 propID,
