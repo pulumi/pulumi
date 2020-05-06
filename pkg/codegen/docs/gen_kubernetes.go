@@ -32,7 +32,11 @@ func isKubernetesPackage(pkg *schema.Package) bool {
 }
 
 func (mod *modContext) isKubernetesOverlayModule() bool {
-	return strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
+	// The CustomResource overlay resource is directly under the apiextensions module
+	// and not under a version, so we include that. The resources under helm and yaml are
+	// always under a version.
+	return mod.mod == "apiextensions" ||
+		strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
 }
 
 // getKubernetesOverlayPythonFormalParams returns the formal params to render
