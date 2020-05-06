@@ -514,6 +514,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 				argsType = name + "Args"
 			}
 			argsType = name + "Opts"
+			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
 			argsType = name
@@ -626,12 +627,16 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	// Constructor argument types in the k8s package for C# use a different namespace path.
 	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
+		if mod.mod != "" {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
 			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
-			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
-			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+			if !mod.isKubernetesOverlayModule() {
+				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
+				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+			} else {
+				argLangTypeName = "Pulumi.Kubernetes." + correctModName + "." + name + "Args"
+			}
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}
