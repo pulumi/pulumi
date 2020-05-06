@@ -517,12 +517,14 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
 			argsType = name
+			// The args types themselves are all under the input types module path, so use the input type link for the args type.
+			argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
 		}
 	} else {
 		argsType = name + "Args"
+		// All args types are in the same module path as the resource class itself even though it is an "input" type.
+		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 	}
-	// All args types are in the same module path as the resource class itself even though it is an "input" type.
-	argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 
 	argsFlag := ""
 	if argsOptional {
