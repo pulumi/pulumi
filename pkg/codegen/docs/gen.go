@@ -512,8 +512,9 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		if mod.isKubernetesOverlayModule() {
 			if name == "CustomResource" {
 				argsType = name + "Args"
+			} else {
+				argsType = name + "Opts"
 			}
-			argsType = name + "Opts"
 			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
@@ -635,6 +636,10 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
 				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
 			} else {
+				// Helm's resource args type does not use the version number.
+				if strings.HasPrefix(mod.mod, "helm") {
+					correctModName = "Helm"
+				}
 				argLangTypeName = "Pulumi.Kubernetes." + correctModName + "." + name + "Args"
 			}
 		} else {
