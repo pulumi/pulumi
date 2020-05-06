@@ -506,12 +506,25 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 
 	var argsType string
 	var argsDocLink string
-	// The non-schema-based k8s codegen does not apply a suffix to the input types.
+	// The args type for k8s package differs from the rest depending on whether we are dealing with
+	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
-		argsType = name
-		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		if mod.isKubernetesOverlayModule() {
+			if name == "CustomResource" {
+				argsType = name + "Args"
+			} else {
+				argsType = name + "Opts"
+			}
+			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
+		} else {
+			// The non-schema-based k8s codegen does not apply a suffix to the input types.
+			argsType = name
+			// The args types themselves are all under the input types module path, so use the input type link for the args type.
+			argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		}
 	} else {
 		argsType = name + "Args"
+		// All args types are in the same module path as the resource class itself even though it is an "input" type.
 		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 	}
 
@@ -612,18 +625,23 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
-	// Top-level argument types in the k8s package for C# use different namespace path.
-	// Additionally, overlay resources in k8s have argument types in the top-level module path,
-	// but don't use the suffix "Args" like the other modules.
+	// Constructor argument types in the k8s package for C# use a different namespace path.
+	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
+		if mod.mod != "" {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
 			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
-			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
-			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
-		} else if mod.isKubernetesOverlayModule() {
-			argLangTypeName = "Pulumi.Kubernetes." + name
+			if !mod.isKubernetesOverlayModule() {
+				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
+				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+			} else {
+				// Helm's resource args type does not use the version number.
+				if strings.HasPrefix(mod.mod, "helm") {
+					correctModName = "Helm"
+				}
+				argLangTypeName = "Pulumi.Kubernetes." + correctModName + "." + name + "Args"
+			}
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}
