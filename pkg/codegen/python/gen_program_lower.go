@@ -2,6 +2,7 @@ package python
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
@@ -9,48 +10,74 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// parseProxyApply attempts to match the given parsed apply against the pattern (call __applyArg 0). If the call
-// matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
-// proxied apply call.
-func (g *generator) parseProxyApply(args []model.Expression,
+func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
+	if !ok {
+		return false
+	}
+
+	return parameters.Has(scopeTraversal.Parts[0])
+}
+
+// parseProxyApply attempts to match and rewrite the given parsed apply using the following patterns:
+//
+// - __apply(<expr>, eval(x, x[index])) -> <expr>[index]
+// - __apply(<expr>, eval(x, x.attr))) -> <expr>.attr
+// - __apply(traversal, eval(x, x.attr)) -> traversal.attr
+//
+// Each of these patterns matches an apply that can be handled by `pulumi.Output`'s `__getitem__` or `__getattr__`
+// method. The rewritten expressions will use those methods rather than calling `apply`.
+func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
 	then model.Expression) (model.Expression, bool) {
 
 	if len(args) != 1 {
 		return nil, false
 	}
 
+	arg := args[0]
 	switch then := then.(type) {
 	case *model.IndexExpression:
-		then.Collection = args[0]
-	case *model.RelativeTraversalExpression:
-		then.Source = args[0]
+		// Rewrite `__apply(<expr>, eval(x, x[index]))` to `<expr>[index]`.
+		if !isParameterReference(parameters, then.Collection) {
+			return nil, false
+		}
+		then.Collection = arg
 	case *model.ScopeTraversalExpression:
-		arg, ok := args[0].(*model.ScopeTraversalExpression)
-		if !ok {
+		if !isParameterReference(parameters, then) {
 			return nil, false
 		}
 
-		parts := make([]model.Traversable, len(arg.Parts)+len(then.Parts)-1)
-		copy(parts, arg.Parts)
-		copy(parts[len(arg.Parts):], then.Parts[1:])
-
-		then.RootName = arg.RootName
-		then.Traversal = hcl.TraversalJoin(arg.Traversal, then.Traversal[1:])
-		then.Parts = parts
+		switch arg := arg.(type) {
+		case *model.RelativeTraversalExpression:
+			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
+			arg.Parts = append(arg.Parts, then.Parts...)
+		case *model.ScopeTraversalExpression:
+			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
+			arg.Parts = append(arg.Parts, then.Parts...)
+		}
 	default:
 		return nil, false
 	}
 
-	diags := then.Typecheck(false)
+	diags := arg.Typecheck(false)
 	contract.Assert(len(diags) == 0)
-	return then, true
+	return arg, true
 }
 
-// lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses. Concretely, this boils
-// down to rewriting the following shape:
-// - (call __apply (resource variable access) (call __applyArg 0))
-// into
-// - (resource variable access)
+// lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses. Concretely, this
+// boils down to rewriting the following shapes
+//
+// - __apply(<expr>, eval(x, x[index]))
+// - __apply(<expr>, eval(x, x.attr)))
+// - __apply(scope.traversal, eval(x, x.attr))
+//
+// into (respectively)
+//
+// - <expr>[index]
+// - <expr>.attr
+// - scope.traversal.attr
+//
+// These forms will use `pulumi.Output`'s `__getitem__` and `__getattr__` instead of calling `apply`.
 func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to the apply intrinsic.
@@ -62,8 +89,13 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		// Parse the apply call.
 		args, then := hcl2.ParseApplyCall(apply)
 
+		parameters := codegen.Set{}
+		for _, p := range then.Parameters {
+			parameters.Add(p)
+		}
+
 		// Attempt to match (call __apply (rvar) (call __applyArg 0))
-		if v, ok := g.parseProxyApply(args, then.Body); ok {
+		if v, ok := g.parseProxyApply(parameters, args, then.Body); ok {
 			return v, nil
 		}
 

@@ -41,6 +41,15 @@ func isPromiseType(t model.Type) bool {
 	return false
 }
 
+func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
+	if !ok {
+		return false
+	}
+
+	return parameters.Has(scopeTraversal.Parts[0])
+}
+
 // canLiftTraversal returns true if this traversal can be lifted. Any traversal that does not traverse
 // possibly-undefined values can be lifted.
 func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
@@ -53,50 +62,53 @@ func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
 	return true
 }
 
-// parseProxyApply attempts to match the given parsed apply against the pattern (call __applyArg 0). If the call
-// matches, it returns the ScopeTraversalExpression that corresponds to argument zero, which can then be generated as a
-// proxied apply call.
-func (g *generator) parseProxyApply(args []model.Expression,
+// parseProxyApply attempts to match and rewrite the given parsed apply using the following patterns:
+//
+// - __apply(<expr>, eval(x, x[index])) -> <expr>[index]
+// - __apply(<expr>, eval(x, x.attr))) -> <expr>.attr
+// - __apply(scope.traversal, eval(x, x.attr)) -> scope.traversal.attr
+//
+// Each of these patterns matches an apply that can be handled by `pulumi.Output`'s property access proxy.
+func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
 	then model.Expression) (model.Expression, bool) {
 
 	if len(args) != 1 {
 		return nil, false
 	}
 
+	arg := args[0]
 	switch then := then.(type) {
 	case *model.IndexExpression:
-		if model.IsOptionalType(args[0].Type()) || isPromiseType(args[0].Type()) {
+		t := arg.Type()
+		if !isParameterReference(parameters, then.Collection) || model.IsOptionalType(t) || isPromiseType(t) {
 			return nil, false
 		}
-		then.Collection = args[0]
-	case *model.RelativeTraversalExpression:
-		if model.IsOptionalType(args[0].Type()) || isPromiseType(args[0].Type()) {
-			return nil, false
-		}
-		then.Source = args[0]
+		then.Collection = arg
 	case *model.ScopeTraversalExpression:
-		arg, ok := args[0].(*model.ScopeTraversalExpression)
-		if !ok || isPromiseType(arg.Type()) {
+		if !isParameterReference(parameters, then) || isPromiseType(arg.Type()) {
 			return nil, false
 		}
-
 		if !g.canLiftTraversal(then.Parts) {
 			return nil, false
 		}
-		parts := make([]model.Traversable, len(arg.Parts)+len(then.Parts)-1)
-		copy(parts, arg.Parts)
-		copy(parts[len(arg.Parts):], then.Parts[1:])
 
-		then.RootName = arg.RootName
-		then.Traversal = hcl.TraversalJoin(arg.Traversal, then.Traversal[1:])
-		then.Parts = parts
+		switch arg := arg.(type) {
+		case *model.RelativeTraversalExpression:
+			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
+			arg.Parts = append(arg.Parts, then.Parts...)
+		case *model.ScopeTraversalExpression:
+			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
+			arg.Parts = append(arg.Parts, then.Parts...)
+		default:
+			return nil, false
+		}
 	default:
 		return nil, false
 	}
 
-	diags := then.Typecheck(false)
+	diags := arg.Typecheck(false)
 	contract.Assert(len(diags) == 0)
-	return then, true
+	return arg, true
 }
 
 func callbackParameterReferences(expr model.Expression, parameters codegen.Set) []*model.Variable {
@@ -115,15 +127,12 @@ func callbackParameterReferences(expr model.Expression, parameters codegen.Set) 
 	return refs
 }
 
-// parseInterpolate attempts to match the given parsed apply against the pattern (output /* mix of expressions and
-// calls to __applyArg).
+// parseInterpolate attempts to match the given parsed apply against a template whose parts are a mix of prompt
+// expressions and proxyable applies.
 //
-// A legal expression for the match is any expression that does not contain any calls to __applyArg: an expression that
-// does contain such calls requires an apply.
-//
-// If the call matches, parseInterpolate returns an appropriate call to the __interpolate intrinsic with a mix of
-// expressions and variable accesses that correspond to the __applyArg calls.
-func (g *generator) parseInterpolate(args []model.Expression,
+// If a match is found, parseInterpolate returns an appropriate call to the __interpolate intrinsic with a mix of
+// expressions and proxied applies.
+func (g *generator) parseInterpolate(parameters codegen.Set, args []model.Expression,
 	then *model.AnonymousFunctionExpression) (model.Expression, bool) {
 
 	template, ok := then.Body.(*model.TemplateExpression)
@@ -131,9 +140,8 @@ func (g *generator) parseInterpolate(args []model.Expression,
 		return nil, false
 	}
 
-	parameters, indices := codegen.Set{}, map[*model.Variable]int{}
+	indices := map[*model.Variable]int{}
 	for i, p := range then.Parameters {
-		parameters.Add(p)
 		indices[p] = i
 	}
 
@@ -153,7 +161,7 @@ func (g *generator) parseInterpolate(args []model.Expression,
 			proxyArgs[i] = args[argIndex]
 		}
 
-		expr, ok := g.parseProxyApply(proxyArgs, expr)
+		expr, ok := g.parseProxyApply(parameters, proxyArgs, expr)
 		if !ok {
 			return nil, false
 		}
@@ -165,14 +173,21 @@ func (g *generator) parseInterpolate(args []model.Expression,
 
 // lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses and/or calls to the
 // pulumi.interpolate function. Concretely, this boils down to rewriting the following shapes
-// - (call __apply (resource variable access) (call __applyArg 0))
-// - (call __apply (resource variable access 0) ... (resource variable access n)
-//       (output /* some mix of expressions and calls to __applyArg))
-// into (respectively)
-// - (resource variable access)
-// - (call __interpolate /* mix of literals and variable accesses that correspond to the __applyArg calls)
 //
-// The generated code requires that the target version of `@pulumi/pulumi` supports output proxies.
+// - __apply(<expr>, eval(x, x[index]))
+// - __apply(<expr>, eval(x, x.attr))
+// - __apply(scope.traversal, eval(x, x.attr))
+// - __apply(<proxy-apply>, ..., eval(x, ..., "foo ${<proxy-apply>} bar ${...}"))
+//
+// into (respectively)
+//
+// - <expr>[index]
+// - <expr>.attr
+// - scope.traversal.attr
+// - __interpolate("foo ", <proxy-apply>, " bar ", ...)
+//
+// The first two forms will be generated as proxied applies; the lattermost will be generated as an interpolated string
+// that uses `pulumi.interpolate`.
 func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to the apply intrinsic.
@@ -184,13 +199,18 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		// Parse the apply call.
 		args, then := hcl2.ParseApplyCall(apply)
 
+		parameters := codegen.Set{}
+		for _, p := range then.Parameters {
+			parameters.Add(p)
+		}
+
 		// Attempt to match (call __apply (rvar) (call __applyArg 0))
-		if v, ok := g.parseProxyApply(args, then.Body); ok {
+		if v, ok := g.parseProxyApply(parameters, args, then.Body); ok {
 			return v, nil
 		}
 
 		// Attempt to match (call __apply (rvar 0) ... (rvar n) (output /* mix of literals and calls to __applyArg)
-		if v, ok := g.parseInterpolate(args, then); ok {
+		if v, ok := g.parseInterpolate(parameters, args, then); ok {
 			return v, nil
 		}
 
