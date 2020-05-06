@@ -14,6 +14,9 @@ CHANGELOG
 
 - Don't call IMocks.NewResourceAsync for the root stack resource
   [#4527](https://github.com/pulumi/pulumi/pull/4527)
+  
+- Add ResourceOutput type to Go SDK
+  [#4575](https://github.com/pulumi/pulumi/pull/4575)
 
 ## 2.1.0 (2020-04-28)
 
