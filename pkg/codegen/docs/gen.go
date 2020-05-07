@@ -205,6 +205,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
+	ExamplesSection    []exampleSection
 	DeprecationMessage string
 
 	// ConstructorParams is a map from language to the rendered HTML for the constructor's
@@ -1273,13 +1274,21 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
+	// Replace the entire section (including the shortcodes themselves) enclosing the
+	// examples section, with an empty string.
+	newDescription := codegen.SurroundingTextRE.ReplaceAllString(r.Comment, "")
+	examplesSection, err := processExamples(r.Comment)
+	if err != nil {
+		panic(err)
+	}
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:            r.Comment,
+		Comment:            newDescription,
 		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection:    examplesSection,
 
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,

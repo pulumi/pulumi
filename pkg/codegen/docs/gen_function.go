@@ -21,6 +21,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ type functionDocArgs struct {
 
 	DeprecationMessage string
 	Comment            string
+	ExamplesSection    []exampleSection
 
 	// FunctionName is a map of the language and the function name in that language.
 	FunctionName map[string]string
@@ -332,6 +334,13 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Notes:      mod.pkg.Attribution,
 	}
 
+	// Replace the entire section (including the shortcodes themselves) enclosing the
+	// examples section, with an empty string.
+	newDescription := codegen.SurroundingTextRE.ReplaceAllString(f.Comment, "")
+	examplesSection, err := processExamples(f.Comment)
+	if err != nil {
+		panic(err)
+	}
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
@@ -341,8 +350,9 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap),
 		FunctionResult: mod.getFunctionResourceInfo(f),
 
-		Comment:            f.Comment,
+		Comment:            newDescription,
 		DeprecationMessage: f.DeprecationMessage,
+		ExamplesSection:    examplesSection,
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,

@@ -4,6 +4,7 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{ htmlSafe .Comment }}
+{{ template "examples" .ExamplesSection }}
 
 {{- if .DeprecationMessage }}
 <p class="resource-deprecated">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>

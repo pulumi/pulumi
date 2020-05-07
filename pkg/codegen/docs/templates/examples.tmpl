@@ -1,0 +1,15 @@
+{{ define "examples" -}}
+{{ print "{{% examples %}}" }}
+## Example Usage
+
+{{- range . }}
+{{ .Title }}
+{{ range $key, $val := .Snippets }}
+{{- print "{{% example " }}{{ $key }}{{ print " % }}" }}
+{{ $val }}
+{{ print "{{% /example %}}" }}
+{{- end }}
+
+{{- print "{{% /examples %}}" }}
+
+{{- end }}

@@ -123,7 +123,7 @@ func initTestPackageSpec(t *testing.T) {
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "This is a module-level resource called Resource.",
+					Description: "This is a module-level resource called Resource. \n\n{{% examples %}}\n## Example Usage\n\n{{% example %}}\n### Basic Example\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as digitalocean from \"@pulumi/digitalocean\";\n\n// Create a new Spaces Bucket\nconst mybucket = new digitalocean.SpacesBucket(\"mybucket\", {\n    region: \"sfo2\",\n    acl: \"public-read\",\n});\n// Add a CDN endpoint to the Spaces Bucket\nconst mycdn = new digitalocean.Cdn(\"mycdn\", {origin: mybucket.bucketDomainName});\nexport const fqdn = mycdn.endpoint;\n```\n```python\nimport pulumi\nimport pulumi_digitalocean as digitalocean\n\n# Create a new Spaces Bucket\nmybucket = digitalocean.SpacesBucket(\"mybucket\",\n    region=\"sfo2\",\n    acl=\"public-read\")\n# Add a CDN endpoint to the Spaces Bucket\nmycdn = digitalocean.Cdn(\"mycdn\", origin=mybucket.bucket_domain_name)\npulumi.export(\"fqdn\", mycdn.endpoint)\n```\n\n{{% /example %}}\n{{% example %}}\n### Custom Sub-Domain Example\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as digitalocean from \"@pulumi/digitalocean\";\n\n// Create a new Spaces Bucket\nconst mybucket = new digitalocean.SpacesBucket(\"mybucket\", {\n    region: \"sfo2\",\n    acl: \"public-read\",\n});\n// Create a DigitalOcean managed Let's Encrypt Certificate\nconst cert = new digitalocean.Certificate(\"cert\", {\n    type: \"lets_encrypt\",\n    domains: [\"static.example.com\"],\n});\n// Add a CDN endpoint with a custom sub-domain to the Spaces Bucket\nconst mycdn = new digitalocean.Cdn(\"mycdn\", {\n    origin: mybucket.bucketDomainName,\n    customDomain: \"static.example.com\",\n    certificateId: cert.id,\n});\n```\n```python\nimport pulumi\nimport pulumi_digitalocean as digitalocean\n\n# Create a new Spaces Bucket\nmybucket = digitalocean.SpacesBucket(\"mybucket\",\n    region=\"sfo2\",\n    acl=\"public-read\")\n# Create a DigitalOcean managed Let's Encrypt Certificate\ncert = digitalocean.Certificate(\"cert\",\n    type=\"lets_encrypt\",\n    domains=[\"static.example.com\"])\n# Add a CDN endpoint with a custom sub-domain to the Spaces Bucket\nmycdn = digitalocean.Cdn(\"mycdn\",\n    origin=mybucket.bucket_domain_name,\n    custom_domain=\"static.example.com\",\n    certificate_id=cert.id)\n```\n\n{{% /example %}}\n{{% /examples %}}\n",
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
@@ -355,5 +355,26 @@ func TestResourceDocHeader(t *testing.T) {
 			h := mod.genResourceHeader(r)
 			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
 		})
+	}
+}
+
+func TestExamplesProcessing(t *testing.T) {
+	initTestPackageSpec(t)
+
+	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
+	examplesSection, err := processExamples(description)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, examplesSection)
+
+	// The resource under test has two examples and both have TS and Python examples.
+	assert.Equal(t, 2, len(examplesSection))
+	assert.Equal(t, "### Basic Example", examplesSection[0].Title)
+	assert.Equal(t, "### Custom Sub-Domain Example", examplesSection[1].Title)
+	expectedLangSnippets := []string{"typescript", "python"}
+	for _, e := range examplesSection {
+		for _, lang := range expectedLangSnippets {
+			_, ok := e.Snippets[lang]
+			assert.True(t, ok, "Could not find %s snippet", lang)
+		}
 	}
 }
