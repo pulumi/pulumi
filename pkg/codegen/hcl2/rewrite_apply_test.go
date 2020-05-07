@@ -16,6 +16,7 @@ func (nameInfo) Format(name string) string {
 	return name
 }
 
+//nolint: lll
 func TestApplyRewriter(t *testing.T) {
 	cases := []struct {
 		input, output string
