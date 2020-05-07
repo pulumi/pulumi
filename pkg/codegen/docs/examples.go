@@ -26,7 +26,7 @@ func extractExampleCodeSnippets(exampleContent string) map[string]string {
 		// If there is no snippet for the provided language in this example,
 		// then just return nil.
 		if langSnippetIndex < 0 {
-			snippet = defaultMissingExampleSnippetPlaceholder
+			snippets[lang] = defaultMissingExampleSnippetPlaceholder
 			continue
 		}
 

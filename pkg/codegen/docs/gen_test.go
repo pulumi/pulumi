@@ -371,10 +371,16 @@ func TestExamplesProcessing(t *testing.T) {
 	assert.Equal(t, "### Basic Example", examplesSection[0].Title)
 	assert.Equal(t, "### Custom Sub-Domain Example", examplesSection[1].Title)
 	expectedLangSnippets := []string{"typescript", "python"}
+	otherLangSnippets := []string{"csharp", "go"}
 	for _, e := range examplesSection {
 		for _, lang := range expectedLangSnippets {
 			_, ok := e.Snippets[lang]
 			assert.True(t, ok, "Could not find %s snippet", lang)
+		}
+		for _, lang := range otherLangSnippets {
+			snippet, ok := e.Snippets[lang]
+			assert.True(t, ok, "Expected to find default placeholders for other languages")
+			assert.Contains(t, "Coming soon!", snippet)
 		}
 	}
 }
