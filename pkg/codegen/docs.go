@@ -29,14 +29,8 @@ var (
 	surroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
 	examplesSectionRE = regexp.MustCompile(
 		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
-	individualTSExampleRE = regexp.MustCompile(
-		"(?P<example_start>{{% example typescript %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
-	individualPythonExampleRE = regexp.MustCompile(
-		"(?P<example_start>{{% example python %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
-	individualCSharpExampleRE = regexp.MustCompile(
-		"(?P<example_start>{{% example csharp %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
-	individualGoExampleRE = regexp.MustCompile(
-		"(?P<example_start>{{% example go %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
+	individualExampleRE = regexp.MustCompile(
+		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
 	h3TitleRE = regexp.MustCompile("(### .*)")
 
 	// The following regexp's match the code snippet blocks in a single example section.
@@ -151,19 +145,8 @@ func identifyExampleParts(exampleContent string, lang string) *exampleParts {
 }
 
 func getExamplesForLang(examplesContent string, lang string) []exampleParts {
-	var re *regexp.Regexp
 	examples := make([]exampleParts, 0)
-	switch lang {
-	case "csharp":
-		re = individualCSharpExampleRE
-	case "go":
-		re = individualGoExampleRE
-	case "python":
-		re = individualPythonExampleRE
-	case "typescript":
-		re = individualTSExampleRE
-	}
-	exampleMatches := getAllMatchedGroupsFromRegex(re, examplesContent)
+	exampleMatches := getAllMatchedGroupsFromRegex(individualExampleRE, examplesContent)
 	if matchedExamples, ok := exampleMatches["example_content"]; ok {
 		for _, ex := range matchedExamples {
 			exampleParts := identifyExampleParts(ex, lang)
@@ -177,8 +160,7 @@ func getExamplesForLang(examplesContent string, lang string) []exampleParts {
 	return examples
 }
 
-// StripNonRelevantExamples strips the non-relevant language snippets from a resource's description
-// other than the language that is passed to this function.
+// StripNonRelevantExamples strips the non-relevant language snippets from a resource's description.
 func StripNonRelevantExamples(description string, lang string) string {
 	if description == "" {
 		return ""

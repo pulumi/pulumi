@@ -49,20 +49,9 @@ and here
 
 var codeFence = "```"
 
-// getWrappedExample returns an example code snippet for a given language in
-// the following format:
-//
-// {{% example lang %}}
-// ### Title
-// ...code snippet...
-// {{% /example %}}
-func getWrappedExample(title, lang, snippet string) string {
-	return "{{% example " + lang + " %}}" + "\n" + "### " + title + "\n" + snippet + "\n" + "{{% /example %}}"
-}
-
 func TestStripNonRelevantExamples(t *testing.T) {
-	exampleTitle := "Example 1"
-	tsCodeSnippet := codeFence + `typescript
+	tsCodeSnippet := `### Example 1
+` + codeFence + `typescript
 import * as path from path;
 
 console.log("I am a console log statement in ts.");
@@ -80,7 +69,7 @@ func fakeFunc() {
 ` + codeFence
 
 	leadingDescription := "This is a leading description for this resource."
-	exampleShortCode := getWrappedExample(exampleTitle, "typescript", tsCodeSnippet) + "\n" + getWrappedExample(exampleTitle, "go", goCodeSnippet)
+	exampleShortCode := `{{% example %}}` + tsCodeSnippet + "\n" + goCodeSnippet + `{{% /example %}}`
 	description := leadingDescription + `
 {{% examples %}}` + exampleShortCode + `
 {{% /examples %}}`
@@ -120,11 +109,14 @@ func fakeFunc() {
 }
 ` + codeFence
 
-	example1Title := "Example 1"
-	example1ShortCode := getWrappedExample(example1Title, "typescript", tsCodeSnippet) + getWrappedExample(example1Title, "go", goCodeSnippet)
+	example1 := `### Example 1
+	` + tsCodeSnippet + "\n" + goCodeSnippet
 
-	example2Title := "Example 2"
-	example2ShortCode := getWrappedExample(example2Title, "typescript", tsCodeSnippet)
+	example2 := `### Example 2
+	` + tsCodeSnippet
+
+	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
+	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`
 	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
