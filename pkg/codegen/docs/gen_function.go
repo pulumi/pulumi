@@ -334,12 +334,21 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Notes:      mod.pkg.Attribution,
 	}
 
-	// Replace the entire section (including the shortcodes themselves) enclosing the
-	// examples section, with an empty string.
-	newDescription := codegen.SurroundingTextRE.ReplaceAllString(f.Comment, "")
 	examplesSection, err := processExamples(f.Comment)
 	if err != nil {
 		panic(err)
+	}
+
+	functionComment := f.Comment
+	// If we managed to extract examples out of the description, then modify the original
+	// description to remove the examples section.
+	// We may not have been able to extract examples from the description because:
+	// - There is no examples section.
+	// - Or the examples section is not properly wrapped in the expected short-codes.
+	if len(examplesSection) > 0 {
+		// Replace the entire section (including the shortcodes themselves) enclosing the
+		// examples section, with an empty string.
+		functionComment = codegen.SurroundingTextRE.ReplaceAllString(f.Comment, "")
 	}
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
@@ -350,7 +359,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap),
 		FunctionResult: mod.getFunctionResourceInfo(f),
 
-		Comment:            newDescription,
+		Comment:            functionComment,
 		DeprecationMessage: f.DeprecationMessage,
 		ExamplesSection:    examplesSection,
 

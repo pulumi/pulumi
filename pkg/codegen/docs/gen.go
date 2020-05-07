@@ -1274,19 +1274,28 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
-	// Replace the entire section (including the shortcodes themselves) enclosing the
-	// examples section, with an empty string.
-	newDescription := codegen.SurroundingTextRE.ReplaceAllString(r.Comment, "")
 	examplesSection, err := processExamples(r.Comment)
 	if err != nil {
 		panic(err)
+	}
+
+	resourceComment := r.Comment
+	// If we managed to extract examples out of the description, then modify the original
+	// description to remove the examples section.
+	// We may not have been able to extract examples from the description because:
+	// - There is no examples section.
+	// - Or the examples section is not properly wrapped in the expected short-codes.
+	if len(examplesSection) > 0 {
+		// Replace the entire section (including the shortcodes themselves) enclosing the
+		// examples section, with an empty string.
+		resourceComment = codegen.SurroundingTextRE.ReplaceAllString(r.Comment, "")
 	}
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:            newDescription,
+		Comment:            resourceComment,
 		DeprecationMessage: r.DeprecationMessage,
 		ExamplesSection:    examplesSection,
 
