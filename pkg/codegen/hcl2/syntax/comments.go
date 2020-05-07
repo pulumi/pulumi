@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -104,9 +105,10 @@ func NewTokenMapForFiles(files []*File) TokenMap {
 }
 
 type tokenMapper struct {
-	tokenMap tokenMap
-	tokens   tokenList
-	stack    []hclsyntax.Node
+	tokenMap             tokenMap
+	tokens               tokenList
+	stack                []hclsyntax.Node
+	templateControlExprs codegen.Set
 }
 
 func (m *tokenMapper) getParent() (hclsyntax.Node, bool) {
@@ -125,31 +127,12 @@ func (m *tokenMapper) isSingleFunctionCallArg() bool {
 	return ok && len(call.Args) == 1
 }
 
-func (m *tokenMapper) inTemplate() bool {
-	parent, ok := m.getParent()
-	if !ok {
-		return false
-	}
-	switch parent.(type) {
-	case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
-		return true
-	}
-	return false
-}
-
 func (m *tokenMapper) inTemplateControl() bool {
-	if len(m.stack) < 3 {
+	if len(m.stack) < 2 {
 		return false
 	}
-	parent, grandparent := m.stack[len(m.stack)-2], m.stack[len(m.stack)-3]
-	switch parent.(type) {
-	case *hclsyntax.ConditionalExpr, *hclsyntax.ForExpr:
-		switch grandparent.(type) {
-		case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
-			return true
-		}
-	}
-	return false
+	parent := m.stack[len(m.stack)-2]
+	return m.templateControlExprs.Has(parent)
 }
 
 func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
@@ -316,6 +299,19 @@ func (m *tokenMapper) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		m.stack = append(m.stack, n)
 	}
 
+	switch n := n.(type) {
+	case *hclsyntax.ConditionalExpr:
+		open := m.tokens.atPos(n.SrcRange.Start)
+		if open.Raw.Type == hclsyntax.TokenTemplateControl {
+			m.templateControlExprs.Add(n)
+		}
+	case *hclsyntax.ForExpr:
+		open := m.tokens.atPos(n.OpenRange.Start)
+		if open.Raw.Type == hclsyntax.TokenTemplateControl {
+			m.templateControlExprs.Add(n)
+		}
+	}
+
 	// Work around a bug in the HCL syntax library. The walkChildNodes implementation for ObjectConsKeyExpr does not
 	// descend into its wrapped expression if the wrapped expression can be interpreted as a keyword even if the
 	// syntactical form that _forces_ the wrapped expression to be a non-literal is used.
@@ -369,7 +365,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		trueRange := m.nodeRange(n.TrueResult)
 		falseRange := m.nodeRange(n.FalseResult)
 
-		if m.inTemplate() {
+		if m.templateControlExprs.Has(n) {
 			condition := m.tokens.atPos(condRange.Start)
 
 			ift := m.tokens.atOffset(condition.Range().Start.Byte - 1)
@@ -409,8 +405,6 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 			}
 		}
 	case *hclsyntax.ForExpr:
-		inTemplate := m.inTemplate()
-
 		openToken := m.tokens.atPos(n.OpenRange.Start)
 		forToken := m.tokens.atPos(openToken.Range().End)
 
@@ -450,7 +444,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 			ifToken = &ift
 		}
 
-		if inTemplate {
+		if m.templateControlExprs.Has(n) {
 			closeFor := m.tokens.atPos(m.nodeRange(n.CollExpr).End)
 
 			openEndfor := m.tokens.atPos(valRange.End)
@@ -716,8 +710,9 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	//
 	// TODO(pdg): handle parenthesized expressions
 	diags := hclsyntax.Walk(root, &tokenMapper{
-		tokenMap: tokenMap,
-		tokens:   tokens,
+		tokenMap:             tokenMap,
+		tokens:               tokens,
+		templateControlExprs: codegen.Set{},
 	})
 	contract.Assert(diags == nil)
 
