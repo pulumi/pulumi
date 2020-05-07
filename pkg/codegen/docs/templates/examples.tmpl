@@ -5,7 +5,7 @@
 {{- range . }}
 {{ .Title }}
 {{ range $key, $val := .Snippets }}
-{{- print "{{% example " }}{{ $key }}{{ print " % }}" }}
+{{- print "{{% example " }}{{ $key }}{{ print " %}}" }}
 {{ $val }}
 {{ print "{{% /example %}}" }}
 {{- end }}
