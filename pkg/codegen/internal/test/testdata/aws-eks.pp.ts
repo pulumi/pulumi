@@ -50,7 +50,7 @@ export = async () => {
             subnetId: vpcSubnet.then(vpcSubnet => vpcSubnet[range.key].id),
         }));
     }
-    const subnetIds = pulumi.all([vpcSubnet, __item.id]).apply(([vpcSubnet, id]) => vpcSubnet.map(__item => id));
+    const subnetIds = vpcSubnet.then(vpcSubnet => vpcSubnet.map(__item => __item.id));
     const eksSecurityGroup = new aws.ec2.SecurityGroup("eksSecurityGroup", {
         vpcId: eksVpc.id,
         description: "Allow all HTTP(s) traffic to EKS Cluster",

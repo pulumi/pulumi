@@ -36,6 +36,7 @@ type applyRewriter struct {
 	applyPromises bool
 
 	activeContext applyRewriteContext
+	exprStack     []model.Expression
 }
 
 type applyRewriteContext interface {
@@ -70,9 +71,13 @@ type observeContext struct {
 	nameCounts    map[string]int
 }
 
+func (r *applyRewriter) hasEventualTypes(t model.Type) bool {
+	resolved := model.ResolveOutputs(t)
+	return resolved != t
+}
+
 func (r *applyRewriter) hasEventualValues(x model.Expression) bool {
-	resolved := model.ResolveOutputs(x.Type())
-	return resolved != x.Type()
+	return r.hasEventualTypes(x.Type())
 }
 
 func (r *applyRewriter) isEventualType(t model.Type) (model.Type, bool) {
@@ -98,6 +103,14 @@ func (r *applyRewriter) isEventualType(t model.Type) (model.Type, bool) {
 	return nil, false
 }
 
+func (r *applyRewriter) hasEventualElements(x model.Expression) bool {
+	t := x.Type()
+	if resolved, ok := r.isEventualType(t); ok {
+		t = resolved
+	}
+	return r.hasEventualTypes(t)
+}
+
 func (r *applyRewriter) isPromptArg(paramType model.Type, arg model.Expression) bool {
 	if !r.hasEventualValues(arg) {
 		return true
@@ -114,10 +127,28 @@ func (r *applyRewriter) isPromptArg(paramType model.Type, arg model.Expression) 
 	return paramType != model.DynamicType && paramType.ConversionFrom(arg.Type()) != model.NoConversion
 }
 
+func (r *applyRewriter) isIteratorExpr(x model.Expression) (bool, model.Type) {
+	if len(r.exprStack) < 2 {
+		return false, nil
+	}
+
+	parent := r.exprStack[len(r.exprStack)-2]
+	switch parent := parent.(type) {
+	case *model.ForExpression:
+		return x != parent.Collection, parent.ValueVariable.Type()
+	case *model.SplatExpression:
+		return x != parent.Source, parent.Item.Type()
+	default:
+		return false, nil
+	}
+}
+
 func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
 		return r.hasEventualValues(x.TrueResult) || r.hasEventualValues(x.FalseResult)
+	case *model.ForExpression:
+		return r.hasEventualElements(x.Collection)
 	case *model.FunctionCallExpression:
 		for i, arg := range x.Args {
 			if r.hasEventualValues(arg) && r.isPromptArg(x.Signature.Parameters[i].Type, arg) {
@@ -129,9 +160,12 @@ func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 		_, isCollectionEventual := r.isEventualType(x.Collection.Type())
 		return !isCollectionEventual && r.hasEventualValues(x.Collection)
 	case *model.SplatExpression:
-		_, isSourceEventual := r.isEventualType(x.Source.Type())
-		return !isSourceEventual && r.hasEventualValues(x.Source)
+		return r.hasEventualElements(x.Source)
 	default:
+		if isIteratorExpr, elementType := r.isIteratorExpr(x); isIteratorExpr {
+			_, isElementEventual := r.isEventualType(elementType)
+			return !isElementEventual && r.hasEventualTypes(elementType)
+		}
 		return false
 	}
 }
@@ -147,6 +181,9 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 		return false
 	case *model.ConditionalExpression:
 		return r.hasEventualValues(x.Condition)
+	case *model.ForExpression:
+		_, collectionIsEventual := r.isEventualType(x.Collection.Type())
+		return collectionIsEventual
 	case *model.FunctionCallExpression:
 		for i, arg := range x.Args {
 			if !r.isPromptArg(x.Signature.Parameters[i].Type, arg) {
@@ -155,7 +192,7 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 		}
 		return false
 	case *model.IndexExpression:
-		if _, isCollectionEventual := r.isEventualType(x.Collection.Type()); isCollectionEventual {
+		if _, collectionIsEventual := r.isEventualType(x.Collection.Type()); collectionIsEventual {
 			return true
 		}
 		return r.hasEventualValues(x.Key)
@@ -184,11 +221,14 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 }
 
 func (r *applyRewriter) preVisit(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+	r.exprStack = append(r.exprStack, expr)
 	return r.activeContext.PreVisit(expr)
 }
 
 func (r *applyRewriter) postVisit(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	return r.activeContext.PostVisit(expr)
+	x, diags := r.activeContext.PostVisit(expr)
+	r.exprStack = r.exprStack[:len(r.exprStack)-1]
+	return x, diags
 }
 
 // disambiguateName ensures that the given name is unambiguous by appending an integer starting with 1 if necessary.
@@ -235,9 +275,8 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 	case *model.FunctionCallExpression:
 		switch x.Name {
 		case IntrinsicApply:
-			if len(x.Args)-1 == 1 {
-				return ctx.bestArgName(x.Args[0])
-			}
+			_, then := ParseApplyCall(x)
+			return ctx.bestArgName(then.Body)
 		case "element":
 			return ctx.bestArgName(x.Args[0])
 		case "fileArchive", "fileAsset", "readDir", "readFile":
@@ -499,6 +538,10 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 	// TODO(pdg): arrays of outputs, for expressions, etc.
 	diagnostics := expr.Typecheck(false)
 	contract.Assert(len(diagnostics) == 0)
+
+	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr {
+		return expr, nil
+	}
 
 	switch x := expr.(type) {
 	case *model.RelativeTraversalExpression:

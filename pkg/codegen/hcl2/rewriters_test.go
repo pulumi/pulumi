@@ -41,6 +41,14 @@ func TestApplyRewriter(t *testing.T) {
 			output: `__apply(element(resources.*.id, 0),eval(ids, "v: ${ids}"))`,
 		},
 		{
+			input:  `"v: ${[for r in resources: r.id][0]}"`,
+			output: `__apply([for r in resources: r.id][0],eval(id, "v: ${id}"))`,
+		},
+		{
+			input:  `"v: ${element([for r in resources: r.id], 0)}"`,
+			output: `__apply(element([for r in resources: r.id], 0),eval(ids, "v: ${ids}"))`,
+		},
+		{
 			input:  `"v: ${resource[key]}"`,
 			output: `__apply(resource[key],eval(key, "v: ${key}"))`,
 		},
@@ -49,24 +57,44 @@ func TestApplyRewriter(t *testing.T) {
 			output: `__apply(__apply(resource.id,eval(id, resource[id])),eval(id, "v: ${id}"))`,
 		},
 		{
+			input:  `resourcesPromise.*.id`,
+			output: `__apply(resourcesPromise, eval(resourcesPromise, resourcesPromise.*.id))`,
+		},
+		{
+			input:  `[for r in resourcesPromise: r.id]`,
+			output: `__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.id]))`,
+		},
+		{
+			input:  `resourcesOutput.*.id`,
+			output: `__apply(resourcesOutput, eval(resourcesOutput, resourcesOutput.*.id))`,
+		},
+		{
+			input:  `[for r in resourcesOutput: r.id]`,
+			output: `__apply(resourcesOutput,eval(resourcesOutput, [for r in resourcesOutput: r.id]))`,
+		},
+		{
+			input:  `"v: ${[for r in resourcesPromise: r.id]}"`,
+			output: `__apply(__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.id])),eval(ids, "v: ${ids}"))`,
+		},
+		{
 			input: `toJSON({
-				Version = "2012-10-17"
-				Statement = [{
-					Effect = "Allow"
-					Principal = "*"
-					Action = [ "s3:GetObject" ]
-					Resource = [ "arn:aws:s3:::${resource.id}/*" ]
-				}]
-			})`,
+								Version = "2012-10-17"
+								Statement = [{
+									Effect = "Allow"
+									Principal = "*"
+									Action = [ "s3:GetObject" ]
+									Resource = [ "arn:aws:s3:::${resource.id}/*" ]
+								}]
+							})`,
 			output: `__apply(resource.id,eval(id, toJSON({
-				Version = "2012-10-17"
-				Statement = [{
-					Effect = "Allow"
-					Principal = "*"
-					Action = [ "s3:GetObject" ]
-					Resource = [ "arn:aws:s3:::${id}/*" ]
-				}]
-			})))`,
+								Version = "2012-10-17"
+								Statement = [{
+									Effect = "Allow"
+									Principal = "*"
+									Action = [ "s3:GetObject" ]
+									Resource = [ "arn:aws:s3:::${id}/*" ]
+								}]
+							})))`,
 		},
 	}
 
@@ -90,6 +118,14 @@ func TestApplyRewriter(t *testing.T) {
 	scope.Define("resources", &model.Variable{
 		Name:         "resources",
 		VariableType: model.NewListType(resourceType),
+	})
+	scope.Define("resourcesPromise", &model.Variable{
+		Name:         "resourcesPromise",
+		VariableType: model.NewPromiseType(model.NewListType(resourceType)),
+	})
+	scope.Define("resourcesOutput", &model.Variable{
+		Name:         "resourcesOutput",
+		VariableType: model.NewOutputType(model.NewListType(resourceType)),
 	})
 	scope.DefineFunction("element", pulumiBuiltins["element"])
 	scope.DefineFunction("toJSON", pulumiBuiltins["toJSON"])
