@@ -24,7 +24,7 @@ func extractExampleCodeSnippets(exampleContent string) map[string]string {
 		codeFence := "```" + lang
 		langSnippetIndex := strings.Index(exampleContent, codeFence)
 		// If there is no snippet for the provided language in this example,
-		// then just return nil.
+		// then use a placeholder text for it.
 		if langSnippetIndex < 0 {
 			snippets[lang] = defaultMissingExampleSnippetPlaceholder
 			continue
