@@ -32,6 +32,9 @@ type exampleSection struct {
 	Snippets map[string]string
 }
 
+// extractExampleCodeSnippets returns a map of code snippets by language.
+// For any language that was missing in the provided example content, a
+// placeholder snippet is set.
 func extractExampleCodeSnippets(exampleContent string) map[string]string {
 	snippets := map[string]string{}
 	for _, lang := range supportedLanguages {
@@ -65,6 +68,9 @@ func extractExampleCodeSnippets(exampleContent string) map[string]string {
 	return snippets
 }
 
+// getExampleSections returns a slice of all example sections organized
+// by title and the code snippets. Returns an empty slice if examples
+// were not detected due to bad formatting or otherwise.
 func getExampleSections(examplesContent string) []exampleSection {
 	examples := make([]exampleSection, 0)
 	exampleMatches := codegen.GetAllMatchedGroupsFromRegex(codegen.IndividualExampleRE, examplesContent)
@@ -84,6 +90,9 @@ func getExampleSections(examplesContent string) []exampleSection {
 	return examples
 }
 
+// processExamples extracts the examples section from a resource or a function description
+// and individually wraps in {{% example lang %}} short-codes. It also adds placeholder
+// short-codes for missing languages.
 func processExamples(descriptionWithExamples string) ([]exampleSection, error) {
 	if descriptionWithExamples == "" {
 		return nil, nil
