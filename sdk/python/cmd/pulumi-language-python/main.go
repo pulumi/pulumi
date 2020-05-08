@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 	"google.golang.org/grpc"
 )
 
@@ -160,32 +161,12 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	var pythonCmds []string
-	var pythonPath string
 
-	if pythonCmd := os.Getenv("PULUMI_PYTHON_CMD"); pythonCmd != "" {
-		pythonCmds = []string{pythonCmd}
-	} else {
-		// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-		// distributions (in particular the default python.org Windows installation) do not include
-		// a `python3` binary.
-		pythonCmds = []string{"python3", "python"}
-	}
-
-	for _, pythonCmd := range pythonCmds {
-		pythonPath, err = exec.LookPath(pythonCmd)
-		// Break on the first cmd we find on the path (if any)
-		if err == nil {
-			break
-		}
-	}
+	cmd, err := python.Command(args...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
+		return nil, err
 	}
 
-	cmd := exec.Command(pythonPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if config != "" {
