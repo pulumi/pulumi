@@ -6,7 +6,7 @@
 {{ .Title }}
 {{ range $key, $val := .Snippets }}
 {{- print "{{% example " }}{{ $key }}{{ print " %}}" }}
-{{ $val }}
+{{ htmlSafe $val }}
 {{ print "{{% /example %}}" }}
 {{- end }}
 
