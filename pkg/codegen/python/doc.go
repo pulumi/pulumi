@@ -39,8 +39,16 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 
 // GetDocLinkForResourceType is not implemented at this time for Python.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
-	// TODO: Sean - Probably need to do something here.
-	return "/docs/reference/pkg/python/pulumi_aws/s3/#Bucket"
+	var path string
+	switch {
+	case pkg.Name != "" && modName != "":
+		path = fmt.Sprintf("pulumi_%s/%s", pkg.Name, modName)
+	case pkg.Name == "" && modName != "":
+		path = modName
+	case pkg.Name != "" && modName == "":
+		path = pkg.Name
+	}
+	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
