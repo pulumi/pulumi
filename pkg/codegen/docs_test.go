@@ -33,7 +33,7 @@ and here
 `
 		description := `{{% examples %}}` + expectedContent + `{{% /examples %}}`
 
-		actualContent := extractExamplesSection(description)
+		actualContent := ExtractExamplesSection(description)
 		assert.NotNil(t, actualContent, "content could not be extracted")
 		assert.Equal(t, expectedContent, *actualContent, "strings don't match")
 	})
@@ -42,7 +42,7 @@ and here
 		description := `{{% examples %}}
 {{% /examples %}}`
 
-		actualContent := extractExamplesSection(description)
+		actualContent := ExtractExamplesSection(description)
 		assert.Nil(t, actualContent, "expected content to be nil")
 	})
 }

@@ -26,18 +26,29 @@ var (
 	// It's the `?P<group_name>` where group_name can be any name.
 	// When changing the group names, be sure to change the reference to
 	// the corresponding group name below where they are used as well.
-	surroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
-	examplesSectionRE = regexp.MustCompile(
+
+	// SurroundingTextRE is regexp to match the content between the {{% examples %}} short-code
+	// including the short-codes themselves.
+	SurroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
+	// ExamplesSectionRE is a regexp to match just the content between the {{% examples %}} short-codes.
+	ExamplesSectionRE = regexp.MustCompile(
 		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
-	individualExampleRE = regexp.MustCompile(
+	// IndividualExampleRE is a regexp to match a single example section surrounded by the {{% example %}} short-code.
+	IndividualExampleRE = regexp.MustCompile(
 		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
-	h3TitleRE = regexp.MustCompile("(### .*)")
+	// H3TitleRE is a regexp to match an h3 title tag.
+	H3TitleRE = regexp.MustCompile("(### .*)")
 
 	// The following regexp's match the code snippet blocks in a single example section.
-	tsCodeSnippetRE     = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
-	goCodeSnippetRE     = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
-	pythonCodeSnippetRE = regexp.MustCompile("(```(python))((.|\n)*?)(```)")
-	csharpCodeSnippetRE = regexp.MustCompile("(```(csharp))((.|\n)*?)(```)")
+
+	// TSCodeSnippetRE is a regexp to match a TypeScript code snippet.
+	TSCodeSnippetRE = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
+	// GoCodeSnippetRE is a regexp to match a Go code snippet.
+	GoCodeSnippetRE = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
+	// PythonCodeSnippetRE is a regexp to match a Python code snippet.
+	PythonCodeSnippetRE = regexp.MustCompile("(```(python))((.|\n)*?)(```)")
+	// CSharpCodeSnippetRE is a regexp to match a C# code snippet.
+	CSharpCodeSnippetRE = regexp.MustCompile("(```(csharp))((.|\n)*?)(```)")
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
@@ -62,7 +73,8 @@ type exampleParts struct {
 	Snippet string
 }
 
-func getFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string]string {
+// GetFirstMatchedGroupsFromRegex returns the groups for the first match of a regexp.
+func GetFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string]string {
 	groups := map[string]string{}
 
 	// Get all matching groups.
@@ -82,7 +94,8 @@ func getFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string
 	return groups
 }
 
-func getAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][]string {
+// GetAllMatchedGroupsFromRegex returns all matches and the respective groups for a regexp.
+func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][]string {
 	// Get all matching groups.
 	matches := regex.FindAllStringSubmatch(str, -1)
 	// Get the named groups in our regex.
@@ -103,21 +116,23 @@ func getAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][
 	return groups
 }
 
+// isEmpty returns true if the provided string is effectively
+// empty.
 func isEmpty(s string) bool {
 	return strings.Replace(s, "\n", "", 1) == ""
 }
 
-// extractExamplesSection returns the content available between the {{% examples %}} shortcode.
+// ExtractExamplesSection returns the content available between the {{% examples %}} shortcode.
 // Otherwise returns nil.
-func extractExamplesSection(description string) *string {
-	examples := getFirstMatchedGroupsFromRegex(examplesSectionRE, description)
+func ExtractExamplesSection(description string) *string {
+	examples := GetFirstMatchedGroupsFromRegex(ExamplesSectionRE, description)
 	if content, ok := examples["examples_content"]; ok && !isEmpty(content) {
 		return &content
 	}
 	return nil
 }
 
-func identifyExampleParts(exampleContent string, lang string) *exampleParts {
+func extractExampleParts(exampleContent string, lang string) *exampleParts {
 	codeFence := "```" + lang
 	langSnippetIndex := strings.Index(exampleContent, codeFence)
 	// If there is no snippet for the provided language in this example,
@@ -129,27 +144,27 @@ func identifyExampleParts(exampleContent string, lang string) *exampleParts {
 	var snippet string
 	switch lang {
 	case "csharp":
-		snippet = csharpCodeSnippetRE.FindString(exampleContent)
+		snippet = CSharpCodeSnippetRE.FindString(exampleContent)
 	case "go":
-		snippet = goCodeSnippetRE.FindString(exampleContent)
+		snippet = GoCodeSnippetRE.FindString(exampleContent)
 	case "python":
-		snippet = pythonCodeSnippetRE.FindString(exampleContent)
+		snippet = PythonCodeSnippetRE.FindString(exampleContent)
 	case "typescript":
-		snippet = tsCodeSnippetRE.FindString(exampleContent)
+		snippet = TSCodeSnippetRE.FindString(exampleContent)
 	}
 
 	return &exampleParts{
-		Title:   h3TitleRE.FindString(exampleContent),
+		Title:   H3TitleRE.FindString(exampleContent),
 		Snippet: snippet,
 	}
 }
 
 func getExamplesForLang(examplesContent string, lang string) []exampleParts {
 	examples := make([]exampleParts, 0)
-	exampleMatches := getAllMatchedGroupsFromRegex(individualExampleRE, examplesContent)
+	exampleMatches := GetAllMatchedGroupsFromRegex(IndividualExampleRE, examplesContent)
 	if matchedExamples, ok := exampleMatches["example_content"]; ok {
 		for _, ex := range matchedExamples {
-			exampleParts := identifyExampleParts(ex, lang)
+			exampleParts := extractExampleParts(ex, lang)
 			if exampleParts == nil || exampleParts.Snippet == "" {
 				continue
 			}
@@ -169,10 +184,10 @@ func StripNonRelevantExamples(description string, lang string) string {
 	// Replace the entire section (including the shortcodes themselves) enclosing the
 	// examples section, with a placeholder, which itself will be replaced appropriately
 	// later.
-	newDescription := surroundingTextRE.ReplaceAllString(description, "{{ .Examples }}")
+	newDescription := SurroundingTextRE.ReplaceAllString(description, "{{ .Examples }}")
 
 	// Get the content enclosing the outer examples short code.
-	examplesContent := extractExamplesSection(description)
+	examplesContent := ExtractExamplesSection(description)
 	if examplesContent == nil {
 		return strings.ReplaceAll(newDescription, "{{ .Examples }}", "")
 	}

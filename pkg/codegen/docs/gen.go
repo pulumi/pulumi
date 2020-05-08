@@ -205,6 +205,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
+	ExamplesSection    []exampleSection
 	DeprecationMessage string
 
 	// ConstructorParams is a map from language to the rendered HTML for the constructor's
@@ -1273,13 +1274,30 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
+	examplesSection, err := processExamples(r.Comment)
+	if err != nil {
+		panic(err)
+	}
+
+	resourceComment := r.Comment
+	// If we managed to extract examples out of the description, then modify the original
+	// description to remove the examples section.
+	// We may not have been able to extract examples from the description because:
+	// - There is no examples section.
+	// - Or the examples section is not properly wrapped in the expected short-codes.
+	if len(examplesSection) > 0 {
+		// Replace the entire section (including the shortcodes themselves) enclosing the
+		// examples section, with an empty string.
+		resourceComment = codegen.SurroundingTextRE.ReplaceAllString(r.Comment, "")
+	}
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:            r.Comment,
+		Comment:            resourceComment,
 		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection:    examplesSection,
 
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
@@ -1425,7 +1443,7 @@ func (mod *modContext) gen(fs fs) error {
 		// are "overlay" modules. The resources under those modules are
 		// not available in Go.
 		if isK8s && mod.isKubernetesOverlayModule() {
-			data.LangChooserLanguages = "javascript,typescript,python,csharp"
+			data.LangChooserLanguages = "typescript,python,csharp"
 		}
 
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
