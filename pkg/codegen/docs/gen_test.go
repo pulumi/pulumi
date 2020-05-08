@@ -31,6 +31,7 @@ import (
 const (
 	unitTestTool    = "Pulumi Resource Docs Unit Test"
 	providerPackage = "prov"
+	codeFence       = "```"
 )
 
 var (
@@ -123,7 +124,32 @@ func initTestPackageSpec(t *testing.T) {
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "This is a module-level resource called Resource. \n\n{{% examples %}}\n## Example Usage\n\n{{% example %}}\n### Basic Example\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as digitalocean from \"@pulumi/digitalocean\";\n\n// Create a new Spaces Bucket\nconst mybucket = new digitalocean.SpacesBucket(\"mybucket\", {\n    region: \"sfo2\",\n    acl: \"public-read\",\n});\n// Add a CDN endpoint to the Spaces Bucket\nconst mycdn = new digitalocean.Cdn(\"mycdn\", {origin: mybucket.bucketDomainName});\nexport const fqdn = mycdn.endpoint;\n```\n```python\nimport pulumi\nimport pulumi_digitalocean as digitalocean\n\n# Create a new Spaces Bucket\nmybucket = digitalocean.SpacesBucket(\"mybucket\",\n    region=\"sfo2\",\n    acl=\"public-read\")\n# Add a CDN endpoint to the Spaces Bucket\nmycdn = digitalocean.Cdn(\"mycdn\", origin=mybucket.bucket_domain_name)\npulumi.export(\"fqdn\", mycdn.endpoint)\n```\n\n{{% /example %}}\n{{% example %}}\n### Custom Sub-Domain Example\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as digitalocean from \"@pulumi/digitalocean\";\n\n// Create a new Spaces Bucket\nconst mybucket = new digitalocean.SpacesBucket(\"mybucket\", {\n    region: \"sfo2\",\n    acl: \"public-read\",\n});\n// Create a DigitalOcean managed Let's Encrypt Certificate\nconst cert = new digitalocean.Certificate(\"cert\", {\n    type: \"lets_encrypt\",\n    domains: [\"static.example.com\"],\n});\n// Add a CDN endpoint with a custom sub-domain to the Spaces Bucket\nconst mycdn = new digitalocean.Cdn(\"mycdn\", {\n    origin: mybucket.bucketDomainName,\n    customDomain: \"static.example.com\",\n    certificateId: cert.id,\n});\n```\n```python\nimport pulumi\nimport pulumi_digitalocean as digitalocean\n\n# Create a new Spaces Bucket\nmybucket = digitalocean.SpacesBucket(\"mybucket\",\n    region=\"sfo2\",\n    acl=\"public-read\")\n# Create a DigitalOcean managed Let's Encrypt Certificate\ncert = digitalocean.Certificate(\"cert\",\n    type=\"lets_encrypt\",\n    domains=[\"static.example.com\"])\n# Add a CDN endpoint with a custom sub-domain to the Spaces Bucket\nmycdn = digitalocean.Cdn(\"mycdn\",\n    origin=mybucket.bucket_domain_name,\n    custom_domain=\"static.example.com\",\n    certificate_id=cert.id)\n```\n\n{{% /example %}}\n{{% /examples %}}\n",
+					Description: `This is a module-level resource called Resource.
+{{% examples %}}
+## Example Usage
+
+{{% example %}}
+### Basic Example
+
+` + codeFence + `typescript
+					// Some TypeScript code.
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% example %}}
+### Custom Sub-Domain Example
+
+` + codeFence + `typescript
+					// Some typescript code
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% /examples %}}
+`,
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
