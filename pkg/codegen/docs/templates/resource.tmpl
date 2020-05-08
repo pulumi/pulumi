@@ -16,7 +16,7 @@
 ## Create a {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
@@ -101,7 +101,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}

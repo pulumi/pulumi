@@ -1443,7 +1443,7 @@ func (mod *modContext) gen(fs fs) error {
 		// are "overlay" modules. The resources under those modules are
 		// not available in Go.
 		if isK8s && mod.isKubernetesOverlayModule() {
-			data.LangChooserLanguages = "javascript,typescript,python,csharp"
+			data.LangChooserLanguages = "typescript,python,csharp"
 		}
 
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
