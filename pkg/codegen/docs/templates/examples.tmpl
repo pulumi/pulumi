@@ -4,13 +4,14 @@
 
 {{- range . }}
 {{ .Title }}
-{{ range $key, $val := .Snippets }}
-{{- print "{{% example " }}{{ $key }}{{ print " %}}" }}
+
+{{- range $key, $val := .Snippets }}
+{{ print "{{% example " }}{{ $key }}{{ print " %}}" }}
 {{ htmlSafe $val }}
 {{ print "{{% /example %}}" }}
 {{- end }}
 
 {{- end }}
-{{- print "{{% /examples %}}" }}
+{{ print "{{% /examples %}}" }}
 
 {{- end }}
