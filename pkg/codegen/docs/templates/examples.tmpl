@@ -2,7 +2,7 @@
 {{ print "{{% examples %}}" }}
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 
 {{- range . }}
 {{ .Title }}
@@ -11,7 +11,7 @@
 {{ print "{{% example " }}{{ $key }}{{ print " %}}" }}
 {{ htmlSafe $val }}
 {{ print "{{% /example %}}" }}
-{{- end }}
+{{ end }}
 
 {{- end }}
 {{ print "{{% /examples %}}" }}
