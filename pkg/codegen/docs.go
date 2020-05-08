@@ -40,10 +40,11 @@ var (
 	H3TitleRE = regexp.MustCompile("(### .*)")
 
 	// The following regexp's match the code snippet blocks in a single example section.
+
 	// TSCodeSnippetRE is a regexp to match a TypeScript code snippet.
-	TSCodeSnippetRE     = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
+	TSCodeSnippetRE = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
 	// GoCodeSnippetRE is a regexp to match a Go code snippet.
-	GoCodeSnippetRE     = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
+	GoCodeSnippetRE = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
 	// PythonCodeSnippetRE is a regexp to match a Python code snippet.
 	PythonCodeSnippetRE = regexp.MustCompile("(```(python))((.|\n)*?)(```)")
 	// CSharpCodeSnippetRE is a regexp to match a C# code snippet.
