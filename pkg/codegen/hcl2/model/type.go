@@ -64,9 +64,6 @@ func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
 	if dest == src || dest == DynamicType {
 		return true
 	}
-	if src, isUnion := src.(*UnionType); isUnion {
-		return src.assignableTo(dest)
-	}
 	if src == DynamicType {
 		return false
 	}

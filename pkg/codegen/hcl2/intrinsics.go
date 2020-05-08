@@ -22,6 +22,8 @@ import (
 const (
 	// IntrinsicApply is the name of the apply intrinsic.
 	IntrinsicApply = "__apply"
+	// IntrinsicConvert is the name of the conversion intrinsic.
+	IntrinsicConvert = "__convert"
 )
 
 func isOutput(t model.Type) bool {
@@ -81,4 +83,26 @@ func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expressi
 
 	contract.Assert(c.Name == IntrinsicApply)
 	return c.Args[:len(c.Args)-1], c.Args[len(c.Args)-1].(*model.AnonymousFunctionExpression)
+}
+
+// NewConvertCall returns a new expression that represents a call to IntrinsicConvert.
+func NewConvertCall(from model.Expression, to model.Type) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: IntrinsicConvert,
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "from",
+				Type: from.Type(),
+			}},
+			ReturnType: to,
+		},
+		Args: []model.Expression{from},
+	}
+}
+
+// ParseConvertCall extracts the value being converted and the type it is being converted to from a call to the convert
+// intrinsic.
+func ParseConvertCall(c *model.FunctionCallExpression) (model.Expression, model.Type) {
+	contract.Assert(c.Name == IntrinsicConvert)
+	return c.Args[0], c.Signature.ReturnType
 }

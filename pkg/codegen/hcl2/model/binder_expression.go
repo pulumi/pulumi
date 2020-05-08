@@ -164,6 +164,11 @@ func encapsulateType(t Type) cty.Value {
 	return cty.CapsuleVal(typeCapsule, &t)
 }
 
+// MakeTraverser returns an hcl.TraverseIndex with a key of the appropriate type.
+func MakeTraverser(t Type) hcl.TraverseIndex {
+	return hcl.TraverseIndex{Key: encapsulateType(t)}
+}
+
 // getOperationSignature returns the equivalent StaticFunctionSignature for a given Operation. This signature can be
 // used for typechecking the operation's arguments.
 func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
