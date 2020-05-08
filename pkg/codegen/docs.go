@@ -26,17 +26,27 @@ var (
 	// It's the `?P<group_name>` where group_name can be any name.
 	// When changing the group names, be sure to change the reference to
 	// the corresponding group name below where they are used as well.
+
+	// SurroundingTextRE is regexp to match the content between the {{% examples %}} short-code
+	// including the short-codes themselves.
 	SurroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
+	// ExamplesSectionRE is a regexp to match just the content between the {{% examples %}} short-codes.
 	ExamplesSectionRE = regexp.MustCompile(
 		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
+	// IndividualExampleRE is a regexp to match a single example section surrounded by the {{% example %}} short-code.
 	IndividualExampleRE = regexp.MustCompile(
 		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
+	// H3TitleRE is a regexp to match an h3 title tag.
 	H3TitleRE = regexp.MustCompile("(### .*)")
 
 	// The following regexp's match the code snippet blocks in a single example section.
+	// TSCodeSnippetRE is a regexp to match a TypeScript code snippet.
 	TSCodeSnippetRE     = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
+	// GoCodeSnippetRE is a regexp to match a Go code snippet.
 	GoCodeSnippetRE     = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
+	// PythonCodeSnippetRE is a regexp to match a Python code snippet.
 	PythonCodeSnippetRE = regexp.MustCompile("(```(python))((.|\n)*?)(```)")
+	// CSharpCodeSnippetRE is a regexp to match a C# code snippet.
 	CSharpCodeSnippetRE = regexp.MustCompile("(```(csharp))((.|\n)*?)(```)")
 )
 
@@ -62,6 +72,7 @@ type exampleParts struct {
 	Snippet string
 }
 
+// GetFirstMatchedGroupsFromRegex returns the groups for the first match of a regexp.
 func GetFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string]string {
 	groups := map[string]string{}
 
@@ -82,6 +93,7 @@ func GetFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string
 	return groups
 }
 
+// GetAllMatchedGroupsFromRegex returns all matches and the respective groups for a regexp.
 func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][]string {
 	// Get all matching groups.
 	matches := regex.FindAllStringSubmatch(str, -1)
@@ -103,6 +115,8 @@ func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][
 	return groups
 }
 
+// isEmpty returns true if the provided string is effectively
+// empty.
 func isEmpty(s string) bool {
 	return strings.Replace(s, "\n", "", 1) == ""
 }
