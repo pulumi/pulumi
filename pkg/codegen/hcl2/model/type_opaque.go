@@ -28,6 +28,8 @@ import (
 type OpaqueType struct {
 	// Name is the type's name.
 	Name string
+	// Annotations records any annotations associated with the object type.
+	Annotations []interface{}
 
 	s string
 }
@@ -42,8 +44,8 @@ func GetOpaqueType(name string) (*OpaqueType, bool) {
 }
 
 // MustNewOpaqueType creates a new opaque type with the given name.
-func MustNewOpaqueType(name string) *OpaqueType {
-	t, err := NewOpaqueType(name)
+func MustNewOpaqueType(name string, annotations ...interface{}) *OpaqueType {
+	t, err := NewOpaqueType(name, annotations...)
 	if err != nil {
 		panic(err)
 	}
@@ -51,12 +53,12 @@ func MustNewOpaqueType(name string) *OpaqueType {
 }
 
 // NewOpaqueType creates a new opaque type with the given name.
-func NewOpaqueType(name string) (*OpaqueType, error) {
+func NewOpaqueType(name string, annotations ...interface{}) (*OpaqueType, error) {
 	if _, ok := opaqueTypes[name]; ok {
 		return nil, errors.Errorf("opaque type %s is already defined", name)
 	}
 
-	t := &OpaqueType{Name: name}
+	t := &OpaqueType{Name: name, Annotations: annotations}
 	opaqueTypes[name] = t
 	return t, nil
 }
@@ -131,10 +133,6 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool) ConversionKind {
 
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
-}
-
-func (t *OpaqueType) GetAnnotations() []interface{} {
-	return nil
 }
 
 func (t *OpaqueType) String() string {

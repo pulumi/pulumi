@@ -2,18 +2,36 @@ package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func sameAnnotations(xt, yt model.Type) bool {
-	x, y := xt.GetAnnotations(), yt.GetAnnotations()
-	if len(x) != len(y) {
+func sameSchemaTypes(xt, yt model.Type) bool {
+	xs, _ := GetSchemaForType(xt)
+	ys, _ := GetSchemaForType(yt)
+
+	if xs == ys {
+		return true
+	}
+
+	xu, ok := xs.(*schema.UnionType)
+	if !ok {
 		return false
 	}
-	for i := range x {
-		if x[i] != y[i] {
+	yu, ok := ys.(*schema.UnionType)
+	if !ok {
+		return false
+	}
+
+	types := codegen.Set{}
+	for _, t := range xu.ElementTypes {
+		types.Add(t)
+	}
+	for _, t := range yu.ElementTypes {
+		if !types.Has(t) {
 			return false
 		}
 	}
@@ -78,7 +96,7 @@ func RewriteConversions(x model.Expression, to model.Type) model.Expression {
 	}
 
 	// If the expression's type is directly assignable to the destination type, no conversion is necessary.
-	if to.AssignableFrom(x.Type()) && sameAnnotations(to, x.Type()) {
+	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) {
 		return x
 	}
 	return NewConvertCall(x, to)

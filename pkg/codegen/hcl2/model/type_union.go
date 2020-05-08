@@ -171,10 +171,6 @@ func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
 	return conversionKind
 }
 
-func (t *UnionType) GetAnnotations() []interface{} {
-	return nil
-}
-
 func (t *UnionType) String() string {
 	if t.s == "" {
 		elements := make([]string, len(t.ElementTypes))

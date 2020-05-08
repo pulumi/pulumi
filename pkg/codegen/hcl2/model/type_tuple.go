@@ -189,10 +189,6 @@ func (t *TupleType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (t *TupleType) GetAnnotations() []interface{} {
-	return nil
-}
-
 func (t *TupleType) String() string {
 	if t.s == "" {
 		elements := make([]string, len(t.ElementTypes))

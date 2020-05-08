@@ -46,10 +46,6 @@ func (noneType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (noneType) GetAnnotations() []interface{} {
-	return nil
-}
-
 func (noneType) String() string {
 	return "none"
 }

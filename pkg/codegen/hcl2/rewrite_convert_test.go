@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,10 +29,24 @@ func TestRewriteConversions(t *testing.T) {
 		},
 		{
 			input:  `{a: "b"}`,
+			output: `{a: "b"}`,
+			to: model.InputType(model.NewObjectType(map[string]model.Type{
+				"a": model.StringType,
+			})),
+		},
+		{
+			input:  `{a: "b"}`,
 			output: `__convert({a: "b"})`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.StringType,
-			}, "annotation"),
+			}, &schema.ObjectType{}),
+		},
+		{
+			input:  `{a: "b"}`,
+			output: `__convert({a: "b"})`,
+			to: model.InputType(model.NewObjectType(map[string]model.Type{
+				"a": model.StringType,
+			}, &schema.ObjectType{})),
 		},
 	}
 
@@ -47,5 +62,4 @@ func TestRewriteConversions(t *testing.T) {
 		expr = RewriteConversions(expr, to)
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
-
 }

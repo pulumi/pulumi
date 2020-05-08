@@ -198,3 +198,52 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 		}
 	}
 }
+
+// GetSchemaForType extracts the schema.Type associated with a model.Type, if any.
+//
+// The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
+func GetSchemaForType(t model.Type) (schema.Type, bool) {
+	switch t := t.(type) {
+	case *model.ObjectType:
+		if len(t.Annotations) == 0 {
+			return nil, false
+		}
+		for _, a := range t.Annotations {
+			if t, ok := a.(schema.Type); ok {
+				return t, true
+			}
+		}
+		return nil, false
+	case *model.OutputType:
+		return GetSchemaForType(t.ElementType)
+	case *model.PromiseType:
+		return GetSchemaForType(t.ElementType)
+	case *model.UnionType:
+		schemas := codegen.Set{}
+		for _, t := range t.ElementTypes {
+			if s, ok := GetSchemaForType(t); ok {
+				if s, ok := s.(*schema.UnionType); ok {
+					for _, s := range s.ElementTypes {
+						schemas.Add(s)
+					}
+				} else {
+					schemas.Add(s)
+				}
+			}
+		}
+		if len(schemas) == 0 {
+			return nil, false
+		}
+
+		schemaTypes := make([]schema.Type, 0, len(schemas))
+		for t := range schemas {
+			schemaTypes = append(schemaTypes, t.(schema.Type))
+		}
+		if len(schemaTypes) == 1 {
+			return schemaTypes[0], true
+		}
+		return &schema.UnionType{ElementTypes: schemaTypes}, true
+	default:
+		return nil, false
+	}
+}
