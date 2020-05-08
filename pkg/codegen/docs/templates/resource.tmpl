@@ -35,7 +35,7 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>New{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language csharp %}}" }}
