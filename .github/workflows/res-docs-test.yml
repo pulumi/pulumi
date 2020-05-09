@@ -12,6 +12,8 @@ jobs:
     name: AWS Resource Docs
     env:
       GOPATH: ${{ github.workspace }}
+      TF2PULUMI_VERSION: 0.7.0
+      OS: linux
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
@@ -25,9 +27,6 @@ jobs:
         with:
           node-version: '12.x'
       - name: Install tf2pulumi
-        env:
-          TF2PULUMI_VERSION: 0.7.0
-          OS: linux
         run: |
           echo "installing Terraform-to-Pulumi conversion tool (${TF2PULUMI_VERSION}-${OS})"
           curl -L "https://github.com/pulumi/tf2pulumi/releases/download/v${TF2PULUMI_VERSION}/tf2pulumi-v${TF2PULUMI_VERSION}-${OS}-x64.tar.gz" | \
@@ -53,7 +52,6 @@ jobs:
       - name: Regenerate resource docs
         id: regenerate-resource-docs
         run: |
-          ls
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           pushd docs
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
@@ -71,7 +69,7 @@ jobs:
 #          token: ${{ secrets.GITHUB_TOKEN }}
 #          path: docs
 #          commit-message: Regenerate AWS docs
-#          title: Preview resource docs changes due caused by generator changes
+#          title: Preview resource docs changes caused by generator changes
 #          body: |
 #            This PR was auto-generated from "pulumi/pulumi#${PR_NUMBER}"
 #          assignees: ${{ github.actor }}
