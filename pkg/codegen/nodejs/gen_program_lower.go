@@ -231,7 +231,7 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != "invoke" {
+		if !ok || call.Name != hcl2.Invoke {
 			return x, nil
 		}
 

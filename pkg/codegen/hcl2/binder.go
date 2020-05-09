@@ -113,7 +113,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		b.root.DefineFunction(name, fn)
 	}
 	// Define the invoke function.
-	b.root.DefineFunction("invoke", model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
 
 	var diagnostics hcl.Diagnostics
 
