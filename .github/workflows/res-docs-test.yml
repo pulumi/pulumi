@@ -1,0 +1,65 @@
+name: Downstream Resource Docs Test
+on:
+  pull_request:
+    paths:
+      - 'pkg/codegen/docs/**'
+      - 'pkg/codegen/docs/docs.go'
+      - 'pkg/codegen/docs/docs_test.go'
+      - '.github/workflows/res-docs-test.yml'
+
+jobs:
+  aws:
+    name: AWS Resource Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PR number
+        run: |
+          export PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          echo ${PR_NUMBER}
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13.x
+      - name: Install Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '10.x'
+      - name: Install Pulumi CLI
+        uses: pulumi/action-install-pulumi-cli@releases/v1
+
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Check out pulumi-aws
+        uses: actions/checkout@master
+        with:
+          repository: pulumi/pulumi-aws
+          path: ../pulumi-aws
+      - name: Check out docs
+        uses: actions/checkout@master
+        with:
+          ref: format('{0}/{1}-test-generator-changes', ${{ github.actor }}, ${PR_NUMBER})
+          repository: pulumi/docs
+          path: ../docs
+
+      - name: Regenerate resource docs
+        run: |
+          pushd ../docs
+          ./scripts/gen_resource_docs.sh aws true
+          git add .
+          git commit -am "Regenerate AWS docs."
+          popd
+#      - name: Create draft docs PR
+#        uses: peter-evans/create-pull-request@v2
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          path: docs
+#          commit-message: Regenerate AWS docs
+#          title: Preview resource docs changes due caused by generator changes
+#          body: |
+#            This PR was auto-generated from "pulumi/pulumi#${PR_NUMBER}"
+#          assignees: ${{ github.actor }}
+#          draft: true
+#          branch: format('{0}/{1}-test-generator-changes', ${{ github.actor }}, ${PR_NUMBER})
+#          base: master
+#          request-to-parent: false
+

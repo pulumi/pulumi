@@ -1495,6 +1495,7 @@ type indexData struct {
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
 
+	LanguageLinks  map[string]string
 	Functions      []indexEntry
 	Resources      []indexEntry
 	Modules        []indexEntry
@@ -1604,6 +1605,50 @@ func (mod *modContext) genIndex() indexData {
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s module in the %s package.", title, pkgName)
 	}
 
+	languageLinks := map[string]string{}
+	for _, lang := range supportedLanguages {
+		var link string
+		langTitle := strings.Title(lang)
+		docLangHelper := getLanguageDocHelper(lang)
+		var title string
+		switch lang {
+		case "csharp":
+			if mod.mod == "" {
+				title = fmt.Sprintf("Pulumi.%s", strings.Title(mod.pkg.Name))
+				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
+			} else {
+				title = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
+				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
+			}
+		case "python":
+			if mod.mod == "" {
+				title = fmt.Sprintf("pulumi_%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("pulumi_%s/%s", mod.pkg.Name, strings.ToLower(mod.mod))
+			}
+			link = fmt.Sprintf("/docs/reference/pkg/python/%s", title)
+		case "nodejs":
+			langTitle = "JavaScript/TypeScript"
+			if mod.mod == "" {
+				title = fmt.Sprintf("@pulumi/%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("@pulumi/%s/%s", mod.pkg.Name, mod.mod)
+			}
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
+		case "go":
+			if mod.mod == "" {
+				title = fmt.Sprintf("%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod)
+			}
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
+		default:
+			panic(errors.Errorf("Unknown language %s", lang))
+		}
+
+		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s">%s</a>`, link, title)
+	}
+
 	data := indexData{
 		Tool:               mod.tool,
 		PackageDescription: packageDescription,
@@ -1614,6 +1659,7 @@ func (mod *modContext) genIndex() indexData {
 		Functions:          functions,
 		Modules:            modules,
 		PackageDetails:     packageDetails,
+		LanguageLinks:      languageLinks,
 	}
 
 	// If this is the root module, write out the package description.
