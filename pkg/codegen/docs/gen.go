@@ -1608,11 +1608,12 @@ func (mod *modContext) genIndex() indexData {
 	languageLinks := map[string]string{}
 	for _, lang := range supportedLanguages {
 		var link string
-		langTitle := strings.Title(lang)
+		var langTitle string
 		docLangHelper := getLanguageDocHelper(lang)
 		var title string
 		switch lang {
 		case "csharp":
+			langTitle = "C#"
 			if mod.mod == "" {
 				title = fmt.Sprintf("Pulumi.%s", strings.Title(mod.pkg.Name))
 				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
@@ -1621,6 +1622,7 @@ func (mod *modContext) genIndex() indexData {
 				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
 			}
 		case "python":
+			langTitle = "Python"
 			if mod.mod == "" {
 				title = fmt.Sprintf("pulumi_%s", mod.pkg.Name)
 			} else {
@@ -1636,6 +1638,7 @@ func (mod *modContext) genIndex() indexData {
 			}
 			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
 		case "go":
+			langTitle = "Go"
 			if mod.mod == "" {
 				title = fmt.Sprintf("%s", mod.pkg.Name)
 			} else {
