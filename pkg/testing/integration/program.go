@@ -1708,7 +1708,6 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
-	// To compile, simply run `go build -o $GOPATH/bin/<projname> .` from the project's working directory.
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -1745,35 +1744,26 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 	}
-
-	// tidy again after replacements
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
-	if err != nil {
-		return err
-	}
-
 	// resolve dependencies
 	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
 	if err != nil {
 		return err
 	}
 
-	// In our go tests, there seems to be an issue where we *need* to make a build before we
-	// actually run the tests. If a build isn't made, then we get an issue along the lines of
-	// `cannot import absolute path`. We will investigate this and add back in the respect
-	// for the runBuild option
-	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
-	if runtime.GOOS == "windows" {
-		outBin = fmt.Sprintf("%s.exe", outBin)
-	}
-	err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
-	if err != nil {
-		return err
-	}
+	if pt.opts.RunBuild {
+		outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
+		if runtime.GOOS == "windows" {
+			outBin = fmt.Sprintf("%s.exe", outBin)
+		}
+		err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
+		if err != nil {
+			return err
+		}
 
-	_, err = os.Stat(outBin)
-	if err != nil {
-		return fmt.Errorf("error finding built application artifact: %w", err)
+		_, err = os.Stat(outBin)
+		if err != nil {
+			return fmt.Errorf("error finding built application artifact: %w", err)
+		}
 	}
 
 	return nil
