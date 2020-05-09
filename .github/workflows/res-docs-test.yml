@@ -10,16 +10,16 @@ on:
 jobs:
   aws:
     name: AWS Resource Docs
+    env:
+      GOPATH: ${{ github.workspace }}
     runs-on: ubuntu-latest
     steps:
-      - name: Set PR number
-        run: |
-          export PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          echo ${PR_NUMBER}
       - name: Install Go
         uses: actions/setup-go@v1
         with:
           go-version: 1.13.x
+      - name: Add GOBIN to PATH
+        run: echo "::add-path::$(go env GOPATH)/bin"
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -29,25 +29,34 @@ jobs:
 
       - name: Check out source code
         uses: actions/checkout@master
+        with:
+          path: pulumi
       - name: Check out pulumi-aws
         uses: actions/checkout@master
         with:
           repository: pulumi/pulumi-aws
-          path: ../pulumi-aws
+          path: pulumi-aws
       - name: Check out docs
         uses: actions/checkout@master
         with:
-          ref: format('{0}/{1}-test-generator-changes', ${{ github.actor }}, ${PR_NUMBER})
           repository: pulumi/docs
-          path: ../docs
+          path: docs
 
       - name: Regenerate resource docs
+        id: regenerate-resource-docs
         run: |
-          pushd ../docs
+          ls
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          pushd docs
+          BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
+          git checkout -b ${BRANCH_NAME}
           ./scripts/gen_resource_docs.sh aws true
           git add .
           git commit -am "Regenerate AWS docs."
+          git rev-parse --abbrev-ref HEAD
           popd
+
+          echo "::set-output name=branchName::${BRANCH_NAME}"
 #      - name: Create draft docs PR
 #        uses: peter-evans/create-pull-request@v2
 #        with:
@@ -59,7 +68,7 @@ jobs:
 #            This PR was auto-generated from "pulumi/pulumi#${PR_NUMBER}"
 #          assignees: ${{ github.actor }}
 #          draft: true
-#          branch: format('{0}/{1}-test-generator-changes', ${{ github.actor }}, ${PR_NUMBER})
+#          branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
 #          base: master
 #          request-to-parent: false
 
