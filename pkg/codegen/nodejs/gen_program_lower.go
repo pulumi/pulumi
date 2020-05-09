@@ -218,3 +218,29 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 	}
 	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
 }
+
+// awaitInvokes wraps each call to `invoke` with a call to the `await` intrinsic. This rewrite should only be used
+// if we are generating an async main, in which case the apply rewriter should also be configured not to treat
+// promises as eventuals. The cumulative effect of these options is to avoid the use of `then` within async contexts.
+// Note that this depends on the fact that invokes are the only way to introduce promises in to a Pulumi program; if
+// this changes in the future, this transform will need to be applied in a more general way (e.g. by the apply
+// rewriter).
+func (g *generator) awaitInvokes(x model.Expression) model.Expression {
+	contract.Assert(g.asyncMain)
+
+	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
+		// Ignore the node if it is not a call to invoke.
+		call, ok := x.(*model.FunctionCallExpression)
+		if !ok || call.Name != "invoke" {
+			return x, nil
+		}
+
+		_, isPromise := call.Type().(*model.PromiseType)
+		contract.Assert(isPromise)
+
+		return newAwaitCall(call), nil
+	}
+	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
+	contract.Assert(len(diags) == 0)
+	return x
+}

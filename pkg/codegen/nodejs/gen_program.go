@@ -277,7 +277,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
-		rangeExpr := newAwaitCall(g.lowerExpression(r.Options.Range))
+		rangeExpr := g.lowerExpression(r.Options.Range)
 
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, name, qualifiedMemberName)
