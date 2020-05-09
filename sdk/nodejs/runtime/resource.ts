@@ -457,7 +457,7 @@ async function gatherExplicitDependencies(
             const urns = await dos.promise();
             const dosResources = await getAllResources(dos);
             const implicits = await gatherExplicitDependencies([...dosResources]);
-            return urns.concat(implicits);
+            return (urns ?? []).concat(implicits);
         } else {
             if (!Resource.isInstance(dependsOn)) {
                 throw new Error("'dependsOn' was passed a value that was not a Resource.");
