@@ -71,18 +71,24 @@ jobs:
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
           echo "::set-output name=prNumber::${PR_NUMBER}"
-#      - name: Create draft docs PR
-#        uses: peter-evans/create-pull-request@v2
-#        with:
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#          path: docs
-#          commit-message: Regenerate AWS docs
-#          title: Preview resource docs changes caused by generator changes
-#          body: |
-#            This PR was auto-generated from "pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}"
-#          assignees: ${{ github.actor }}
-#          draft: true
-#          branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
-#          base: master
-#          request-to-parent: false
+
+      - name: Create draft docs PR
+        uses: peter-evans/create-pull-request@v2
+        with:
+          draft: true
+          # We use a repo:public scoped PAT instead of the implicitly provided GITHUB_TOKEN secret here
+          # because we want the creation of the docs PR to trigger the `on: pull_request` workflow in the
+          # docs repo. Using a fork repo to raise the PR would also cause the `on: pull_request` workflow
+          # to trigger, but currently Pulumify in the docs repo does not run for forks, but we want it to
+          # generate the preview link.
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          path: docs
+          commit-message: Regenerate AWS docs
+          title: Preview resource docs changes caused by generator changes
+          body: |
+            This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
+          assignees: ${{ github.actor }}
+          branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
+          base: master
+          request-to-parent: false
 
