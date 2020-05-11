@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## 2.1.1 (2020-05-11)
+
+- Add retry support when writing to state buckets
+  [#4494](https://github.com/pulumi/pulumi/pull/4494)
+
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
