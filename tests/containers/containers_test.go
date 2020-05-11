@@ -125,7 +125,13 @@ func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		e.RunCommand("pulumi", "stack", "rm", "--force", "--yes")
-		e.DeleteEnvironment()
+		// BUG: We mount /tmp/${e.CWD} into the container, which contains the Pulumi program,
+		// and then the container executes and leaves new files there too. Since code in the
+		// container ( by default) runs as root (at least that's the default behavior on Linux),
+		// then on CI we don't have access to call e.DeleteEnvironment(). (Since files created
+		// on the container are owned by "root root".) We should fix this, since as-is we
+		// are leaving crap in the temp folder.
+		t.Logf("NOTE: Skipping cleanup of test environment. Leaving files in %q", e.CWD)
 	}()
 	e.ImportDirectory(runtime)
 
