@@ -58,11 +58,15 @@ jobs:
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
 
           pushd docs
-          git checkout -b ${BRANCH_NAME}
+          git config user.email "bot@pulumi.com"
+          git config user.name "Pulumi Bot"
+          git checkout -b "${BRANCH_NAME}"
+
           ./scripts/gen_resource_docs.sh aws true
-          git add .
+          git add ./content/docs/reference/pkg/aws/**/*
+          git add ./content/docs/reference/pkg/aws/*
           git commit -am "Regenerate AWS docs."
-          git rev-parse --abbrev-ref HEAD
+
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
