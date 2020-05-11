@@ -186,7 +186,7 @@ var functionImports = map[string]string{
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != "invoke" {
+	if x.Name != hcl2.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -207,7 +207,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
-	case "invoke":
+	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {

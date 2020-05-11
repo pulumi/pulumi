@@ -24,7 +24,10 @@ func (nameInfo) Format(name string) string {
 
 func (g *generator) lowerExpression(expr model.Expression) model.Expression {
 	// TODO(pdg): diagnostics
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), true)
+	if g.asyncMain {
+		expr = g.awaitInvokes(expr)
+	}
+	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr
 }
@@ -271,7 +274,7 @@ var functionImports = map[string]string{
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != "invoke" {
+	if x.Name != hcl2.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -299,7 +302,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		switch expr.Args[0].Type().(type) {
+		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
 		case *model.ListType, *model.TupleType:
 			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
 				g.genRange(w, call, true)
@@ -314,7 +317,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
-	case "invoke":
+	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
