@@ -222,8 +222,8 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		schemas := codegen.Set{}
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
-				if s, ok := s.(*schema.UnionType); ok {
-					for _, s := range s.ElementTypes {
+				if union, ok := s.(*schema.UnionType); ok {
+					for _, s := range union.ElementTypes {
 						schemas.Add(s)
 					}
 				} else {
