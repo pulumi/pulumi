@@ -82,10 +82,6 @@ func (t *PromiseType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (t *PromiseType) GetAnnotations() []interface{} {
-	return t.ElementType.GetAnnotations()
-}
-
 func (t *PromiseType) String() string {
 	if t.s == "" {
 		t.s = fmt.Sprintf("promise(%v)", t.ElementType)

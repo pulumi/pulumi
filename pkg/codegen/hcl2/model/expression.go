@@ -341,7 +341,9 @@ type BinaryOpExpression struct {
 	// The right-hand operand of the operation.
 	RightOperand Expression
 
-	exprType Type
+	leftType  Type
+	rightType Type
+	exprType  Type
 }
 
 // SyntaxNode returns the syntax node associated with the binary operation.
@@ -352,6 +354,16 @@ func (x *BinaryOpExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the binary operation.
 func (x *BinaryOpExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// LeftOperandType returns the desired type for the left operand of the binary operation.
+func (x *BinaryOpExpression) LeftOperandType() Type {
+	return x.leftType
+}
+
+// RightOperandType returns the desired type for the right operand of the binary operation.
+func (x *BinaryOpExpression) RightOperandType() Type {
+	return x.rightType
 }
 
 // Type returns the type of the binary operation.
@@ -378,6 +390,9 @@ func (x *BinaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	// Compute the signature for the operator and typecheck the arguments.
 	signature := getOperationSignature(x.Operation)
 	contract.Assert(len(signature.Parameters) == 2)
+
+	x.leftType = signature.Parameters[0].Type
+	x.rightType = signature.Parameters[1].Type
 
 	typecheckDiags := typecheckArgs(rng, signature, x.LeftOperand, x.RightOperand)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -1117,6 +1132,7 @@ type IndexExpression struct {
 	// The index key.
 	Key Expression
 
+	keyType  Type
 	exprType Type
 }
 
@@ -1128,6 +1144,11 @@ func (x *IndexExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the index expression.
 func (x *IndexExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// KeyType returns the expected type of the index expression's key.
+func (x *IndexExpression) KeyType() Type {
+	return x.keyType
 }
 
 // Type returns the type of the index expression.
@@ -1151,6 +1172,11 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		rng = x.Syntax.Collection.Range()
 	}
 
+	collectionType := unwrapIterableSourceType(x.Collection.Type())
+	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
+	diagnostics = append(diagnostics, kvDiags...)
+	x.keyType = keyType
+
 	if lit, ok := x.Key.(*LiteralValueExpression); ok {
 		traverser := hcl.TraverseIndex{
 			Key: lit.Value,
@@ -1161,10 +1187,6 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 			return diagnostics
 		}
 	}
-
-	collectionType := unwrapIterableSourceType(x.Collection.Type())
-	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
-	diagnostics = append(diagnostics, kvDiags...)
 
 	if !InputType(keyType).ConversionFrom(x.Key.Type()).Exists() {
 		diagnostics = append(diagnostics, ExprNotConvertible(InputType(keyType), x.Key))
@@ -2407,7 +2429,8 @@ type UnaryOpExpression struct {
 	// The operand of the operation.
 	Operand Expression
 
-	exprType Type
+	operandType Type
+	exprType    Type
 }
 
 // SyntaxNode returns the syntax node associated with the unary operation.
@@ -2418,6 +2441,11 @@ func (x *UnaryOpExpression) SyntaxNode() hclsyntax.Node {
 // NodeTokens returns the tokens associated with the unary operation.
 func (x *UnaryOpExpression) NodeTokens() syntax.NodeTokens {
 	return x.Tokens
+}
+
+// OperandType returns the operand type of the unary operation.
+func (x *UnaryOpExpression) OperandType() Type {
+	return x.operandType
 }
 
 // Type returns the type of the unary operation.
@@ -2436,6 +2464,8 @@ func (x *UnaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	// Compute the signature for the operator and typecheck the arguments.
 	signature := getOperationSignature(x.Operation)
 	contract.Assert(len(signature.Parameters) == 1)
+
+	x.operandType = signature.Parameters[0].Type
 
 	var rng hcl.Range
 	if x.Syntax != nil {

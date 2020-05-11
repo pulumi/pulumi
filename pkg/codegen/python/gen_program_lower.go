@@ -5,7 +5,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -102,25 +101,6 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		return expr, nil
 	}
 	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
-}
-
-func (g *generator) getObjectSchema(typ model.Type) *schema.ObjectType {
-	typ = model.ResolveOutputs(typ)
-
-	if union, ok := typ.(*model.UnionType); ok {
-		for _, t := range union.ElementTypes {
-			if obj := g.getObjectSchema(t); obj != nil {
-				return obj
-			}
-		}
-		return nil
-	}
-
-	annotations := typ.GetAnnotations()
-	if len(annotations) == 1 {
-		return annotations[0].(*schema.ObjectType)
-	}
-	return nil
 }
 
 func (g *generator) lowerObjectKeys(expr model.Expression, camelCaseToSnakeCase map[string]string) {

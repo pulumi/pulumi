@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
@@ -52,8 +53,8 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if annotations := model.GetTraversableType(receiver).GetAnnotations(); len(annotations) == 1 {
-			obj := annotations[0].(*schema.ObjectType)
+		if schemaType, ok := hcl2.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+			obj := schemaType.(*schema.ObjectType)
 
 			info, ok := obj.Language["python"].(objectTypeInfo)
 			if ok {

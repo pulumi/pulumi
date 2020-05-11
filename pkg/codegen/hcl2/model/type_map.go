@@ -103,10 +103,6 @@ func (t *MapType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (t *MapType) GetAnnotations() []interface{} {
-	return nil
-}
-
 func (t *MapType) String() string {
 	if t.s == "" {
 		t.s = fmt.Sprintf("map(%v)", t.ElementType)

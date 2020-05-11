@@ -386,7 +386,6 @@ func TestUnionType(t *testing.T) {
 
 	// Test that union(T_0, ..., T_N) is assignable from union(U_0, ..., U_M) if union(T_0, ..., T_N) is assignable
 	// from all of U_0 through U_M.
-	assert.True(t, typ.AssignableFrom(NewUnionType(BoolType, IntType)))
 	assert.True(t, NewUnionType(NoneType, StringType).ConversionFrom(typ).Exists())
 
 	// Test that union(T_0, ..., T_N) is _not_ assignable from union(U_0, ..., U_M) if union(T_0, ..., T_N) is not
