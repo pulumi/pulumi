@@ -10,6 +10,11 @@ on:
 jobs:
   aws:
     name: AWS Resource Docs
+    # Verify that the event is not triggered by a fork since forks cannot
+    # access secrets other than the default GITHUB_TOKEN. Specifically,
+    # this workflow relies on the secret PULUMI_BOT_GH_PAT_DOCS to create a
+    # draft PR in the docs repo.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     env:
       GOPATH: ${{ github.workspace }}
       TF2PULUMI_VERSION: 0.7.0
@@ -48,6 +53,9 @@ jobs:
       - name: Check out docs
         uses: actions/checkout@master
         with:
+          # Use the PAT and not the default GITHUB_TOKEN since we want to create a branch
+          # in this workflow and push it to a remote that is NOT the current repo, i.e. pulumi/pulumi.
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
           repository: pulumi/docs
           path: docs
 
