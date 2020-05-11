@@ -156,7 +156,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter())
+					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -165,7 +165,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter())
+					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.NewState = &res
 					} else {

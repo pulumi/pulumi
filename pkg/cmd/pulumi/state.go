@@ -170,7 +170,7 @@ func runTotalStateEdit(
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
 	if err != nil {
 		return result.FromError(errors.Wrap(err, "serializing deployment"))
 	}

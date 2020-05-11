@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
@@ -31,6 +32,7 @@ func newStackExportCmd() *cobra.Command {
 	var file string
 	var stackName string
 	var version string
+	var showSecrets bool
 
 	cmd := &cobra.Command{
 		Use:   "export",
@@ -87,12 +89,36 @@ func newStackExportCmd() *cobra.Command {
 				}
 			}
 
+			if showSecrets {
+				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+				if err != nil {
+					return checkDeploymentVersionError(err, stackName)
+				}
+
+				serializedDeployment, err := stack.SerializeDeployment(snap, snap.SecretsManager, true)
+				if err != nil {
+					return err
+				}
+
+				data, err := json.Marshal(serializedDeployment)
+				if err != nil {
+					return err
+				}
+
+				deployment = &apitype.UntypedDeployment{
+					Version:    3,
+					Deployment: data,
+				}
+			}
+
 			// Write the deployment.
 			enc := json.NewEncoder(writer)
 			enc.SetIndent("", "    ")
+
 			if err = enc.Encode(deployment); err != nil {
 				return errors.Wrap(err, "could not export deployment")
 			}
+
 			return nil
 		}),
 	}
@@ -102,5 +128,7 @@ func newStackExportCmd() *cobra.Command {
 		&file, "file", "", "", "A filename to write stack output to")
 	cmd.PersistentFlags().StringVarP(
 		&version, "version", "", "", "Previous stack version to export. (If unset, will export the latest.)")
+	cmd.Flags().BoolVarP(
+		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in exported stack. Defaults to `false`")
 	return cmd
 }

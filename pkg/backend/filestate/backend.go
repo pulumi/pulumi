@@ -657,7 +657,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "serializing deployment")
 	}
