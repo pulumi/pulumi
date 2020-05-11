@@ -21,7 +21,9 @@ jobs:
         with:
           go-version: 1.13.x
       - name: Add GOBIN to PATH
-        run: echo "::add-path::$(go env GOPATH)/bin"
+        run: |
+          mkdir -p "$(go env GOPATH)/bin"
+          echo "::add-path::$(go env GOPATH)/bin"
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -53,8 +55,9 @@ jobs:
         id: regenerate-resource-docs
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          pushd docs
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
+
+          pushd docs
           git checkout -b ${BRANCH_NAME}
           ./scripts/gen_resource_docs.sh aws true
           git add .
@@ -63,6 +66,7 @@ jobs:
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
+          echo "::set-output name=prNumber::${PR_NUMBER}"
 #      - name: Create draft docs PR
 #        uses: peter-evans/create-pull-request@v2
 #        with:
@@ -71,7 +75,7 @@ jobs:
 #          commit-message: Regenerate AWS docs
 #          title: Preview resource docs changes caused by generator changes
 #          body: |
-#            This PR was auto-generated from "pulumi/pulumi#${PR_NUMBER}"
+#            This PR was auto-generated from "pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}"
 #          assignees: ${{ github.actor }}
 #          draft: true
 #          branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
