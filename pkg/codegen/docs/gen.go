@@ -1537,6 +1537,58 @@ func sortIndexEntries(entries []indexEntry) {
 	sort.Sort(sorter)
 }
 
+// getLanguageLinks returns a map of links for the current module's language-specific
+// docs by language.
+func (mod *modContext) getLanguageLinks() map[string]string {
+	languageLinks := map[string]string{}
+	for _, lang := range supportedLanguages {
+		var link string
+		var title string
+		var langTitle string
+		docLangHelper := getLanguageDocHelper(lang)
+		switch lang {
+		case "csharp":
+			langTitle = "C#"
+			if mod.mod == "" {
+				title = fmt.Sprintf("Pulumi.%s", strings.Title(mod.pkg.Name))
+				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
+			} else {
+				title = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
+				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
+			}
+		case "go":
+			langTitle = "Go"
+			if mod.mod == "" {
+				title = fmt.Sprintf("%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod)
+			}
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
+		case "nodejs":
+			langTitle = "Node.js"
+			if mod.mod == "" {
+				title = fmt.Sprintf("@pulumi/%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("@pulumi/%s/%s", mod.pkg.Name, mod.mod)
+			}
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
+		case "python":
+			langTitle = "Python"
+			if mod.mod == "" {
+				title = fmt.Sprintf("pulumi_%s", mod.pkg.Name)
+			} else {
+				title = fmt.Sprintf("pulumi_%s/%s", mod.pkg.Name, strings.ToLower(mod.mod))
+			}
+			link = fmt.Sprintf("/docs/reference/pkg/python/%s", title)
+		default:
+			panic(errors.Errorf("Unknown language %s", lang))
+		}
+
+		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
+	}
+	return languageLinks
+}
+
 // genIndex emits an _index.md file for the module.
 func (mod *modContext) genIndex() indexData {
 	glog.V(4).Infoln("genIndex for", mod.mod)
@@ -1605,53 +1657,6 @@ func (mod *modContext) genIndex() indexData {
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s module in the %s package.", title, pkgName)
 	}
 
-	languageLinks := map[string]string{}
-	for _, lang := range supportedLanguages {
-		var link string
-		var langTitle string
-		docLangHelper := getLanguageDocHelper(lang)
-		var title string
-		switch lang {
-		case "csharp":
-			langTitle = "C#"
-			if mod.mod == "" {
-				title = fmt.Sprintf("Pulumi.%s", strings.Title(mod.pkg.Name))
-				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
-			} else {
-				title = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
-				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
-			}
-		case "python":
-			langTitle = "Python"
-			if mod.mod == "" {
-				title = fmt.Sprintf("pulumi_%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("pulumi_%s/%s", mod.pkg.Name, strings.ToLower(mod.mod))
-			}
-			link = fmt.Sprintf("/docs/reference/pkg/python/%s", title)
-		case "nodejs":
-			langTitle = "JavaScript/TypeScript"
-			if mod.mod == "" {
-				title = fmt.Sprintf("@pulumi/%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("@pulumi/%s/%s", mod.pkg.Name, mod.mod)
-			}
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
-		case "go":
-			langTitle = "Go"
-			if mod.mod == "" {
-				title = fmt.Sprintf("%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod)
-			}
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
-		default:
-			panic(errors.Errorf("Unknown language %s", lang))
-		}
-
-		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s">%s</a>`, link, title)
-	}
-
 	data := indexData{
 		Tool:               mod.tool,
 		PackageDescription: packageDescription,
@@ -1662,7 +1667,7 @@ func (mod *modContext) genIndex() indexData {
 		Functions:          functions,
 		Modules:            modules,
 		PackageDetails:     packageDetails,
-		LanguageLinks:      languageLinks,
+		LanguageLinks:      mod.getLanguageLinks(),
 	}
 
 	// If this is the root module, write out the package description.

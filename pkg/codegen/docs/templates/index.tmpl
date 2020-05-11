@@ -19,8 +19,6 @@ menu:
     will not be included in the generated markdown.
 -->
 
-{{ template "language_sdk_links" .LanguageLinks }}
-
 {{- if ne (len .Modules) 0 -}}
 {{ template "index_modules" .Modules }}
 {{ end }}
@@ -34,3 +32,5 @@ menu:
 {{ end }}
 
 {{- template "package_details" .PackageDetails }}
+
+{{ template "language_sdk_links" .LanguageLinks }}
