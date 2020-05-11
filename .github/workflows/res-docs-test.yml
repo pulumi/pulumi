@@ -66,15 +66,7 @@ jobs:
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
 
           pushd docs
-          git config user.email "bot@pulumi.com"
-          git config user.name "Pulumi Bot"
-          git checkout -b "${BRANCH_NAME}"
-
           ./scripts/gen_resource_docs.sh aws true
-          git add ./content/docs/reference/pkg/aws/**/*
-          git add ./content/docs/reference/pkg/aws/*
-          git commit -am "Regenerate AWS docs."
-
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
@@ -91,12 +83,13 @@ jobs:
           # generate the preview link.
           token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
           path: docs
+          committer: Pulumi Bot <bot@pulumi.com>
+          author: Pulumi Bot <bot@pulumi.com>
           commit-message: Regenerate AWS docs
           title: Preview resource docs changes caused by generator changes
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
           assignees: ${{ github.actor }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
-          base: master
           request-to-parent: false
 
