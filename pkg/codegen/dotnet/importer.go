@@ -27,9 +27,10 @@ type CSharpPropertyInfo struct {
 
 // CSharpPackageInfo represents the C# language-specific info for a package.
 type CSharpPackageInfo struct {
-	PackageReferences map[string]string `json:"packageReferences,omitempty"`
-	Namespaces        map[string]string `json:"namespaces,omitempty"`
-	Compatibility     string            `json:"compatibility,omitempty"`
+	PackageReferences      map[string]string `json:"packageReferences,omitempty"`
+	Namespaces             map[string]string `json:"namespaces,omitempty"`
+	Compatibility          string            `json:"compatibility,omitempty"`
+	DictionaryConstructors bool              `json:"dictionaryConstructors,omitempty"`
 }
 
 // Importer implements schema.Language for .NET.

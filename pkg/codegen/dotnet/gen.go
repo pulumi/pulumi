@@ -121,18 +121,19 @@ func namespaceName(namespaces map[string]string, name string) string {
 }
 
 type modContext struct {
-	pkg           *schema.Package
-	mod           string
-	propertyNames map[*schema.Property]string
-	types         []*schema.ObjectType
-	resources     []*schema.Resource
-	functions     []*schema.Function
-	typeDetails   map[*schema.ObjectType]*typeDetails
-	children      []*modContext
-	tool          string
-	namespaceName string
-	namespaces    map[string]string
-	compatibility string
+	pkg                    *schema.Package
+	mod                    string
+	propertyNames          map[*schema.Property]string
+	types                  []*schema.ObjectType
+	resources              []*schema.Resource
+	functions              []*schema.Function
+	typeDetails            map[*schema.ObjectType]*typeDetails
+	children               []*modContext
+	tool                   string
+	namespaceName          string
+	namespaces             map[string]string
+	compatibility          string
+	dictionaryConstructors bool
 }
 
 func (mod *modContext) propertyName(p *schema.Property) string {
@@ -295,6 +296,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = "AssetOrArchive"
 		case schema.AnyType:
 			typ = "object"
+			// TODO(msh): Remove this check when https://github.com/pulumi/pulumi-terraform-bridge/issues/132 is ready.
 			if mod.isK8sCompatMode() {
 				if wrapInput {
 					typ = "InputJson"
@@ -704,7 +706,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
-	if mod.isK8sCompatMode() {
+	if mod.dictionaryConstructors {
 		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, CustomResourceOptions? options = null)\n", className)
 		fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
 		fmt.Fprintf(w, "        {\n")
@@ -1377,14 +1379,15 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:           pkg,
-				mod:           modName,
-				tool:          tool,
-				namespaceName: ns,
-				namespaces:    info.Namespaces,
-				typeDetails:   details,
-				propertyNames: propertyNames,
-				compatibility: info.Compatibility,
+				pkg:                    pkg,
+				mod:                    modName,
+				tool:                   tool,
+				namespaceName:          ns,
+				namespaces:             info.Namespaces,
+				typeDetails:            details,
+				propertyNames:          propertyNames,
+				compatibility:          info.Compatibility,
+				dictionaryConstructors: info.DictionaryConstructors,
 			}
 
 			if modName != "" {
