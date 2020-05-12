@@ -40,18 +40,35 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 
 func RewriteConversions(x model.Expression, to model.Type) model.Expression {
 	switch x := x.(type) {
+	case *model.AnonymousFunctionExpression:
+		x.Body = RewriteConversions(x.Body, to)
 	case *model.BinaryOpExpression:
 		x.LeftOperand = RewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()))
 		x.RightOperand = RewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()))
 	case *model.ConditionalExpression:
 		x.Condition = RewriteConversions(x.Condition, model.InputType(model.BoolType))
+		x.TrueResult = RewriteConversions(x.TrueResult, to)
+		x.FalseResult = RewriteConversions(x.FalseResult, to)
+
+		diags := x.Typecheck(false)
+		contract.Assert(len(diags) == 0)
 	case *model.ForExpression:
+		traverserType := model.NumberType
 		if x.Key != nil {
+			traverserType = model.StringType
 			x.Key = RewriteConversions(x.Key, model.InputType(model.StringType))
 		}
 		if x.Condition != nil {
 			x.Condition = RewriteConversions(x.Condition, model.InputType(model.BoolType))
 		}
+
+		valueType, diags := to.Traverse(model.MakeTraverser(traverserType))
+		contract.Ignore(diags)
+
+		x.Value = RewriteConversions(x.Value, valueType.(model.Type))
+
+		diags = x.Typecheck(false)
+		contract.Assert(len(diags) == 0)
 	case *model.FunctionCallExpression:
 		args := x.Args
 		for _, param := range x.Signature.Parameters {
