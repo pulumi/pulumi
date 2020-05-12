@@ -17,9 +17,8 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     env:
       GOPATH: ${{ github.workspace }}
-      TF2PULUMI_VERSION: 0.7.0
-      OS: linux
     runs-on: ubuntu-latest
+
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
@@ -33,11 +32,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
-      - name: Install tf2pulumi
-        run: |
-          echo "installing Terraform-to-Pulumi conversion tool (${TF2PULUMI_VERSION}-${OS})"
-          curl -L "https://github.com/pulumi/tf2pulumi/releases/download/v${TF2PULUMI_VERSION}/tf2pulumi-v${TF2PULUMI_VERSION}-${OS}-x64.tar.gz" | \
-                    tar -xvz -C "$(go env GOPATH)/bin"
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
 

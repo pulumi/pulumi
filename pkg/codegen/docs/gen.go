@@ -1545,45 +1545,22 @@ func (mod *modContext) getLanguageLinks() map[string]string {
 		var link string
 		var title string
 		var langTitle string
+
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "csharp":
-			langTitle = "C#"
-			if mod.mod == "" {
-				title = fmt.Sprintf("Pulumi.%s", strings.Title(mod.pkg.Name))
-				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
-			} else {
-				title = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod))
-				link = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", title)
-			}
+			langTitle = ".NET"
 		case "go":
 			langTitle = "Go"
-			if mod.mod == "" {
-				title = fmt.Sprintf("%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("%s/%s", mod.pkg.Name, mod.mod)
-			}
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
 		case "nodejs":
 			langTitle = "Node.js"
-			if mod.mod == "" {
-				title = fmt.Sprintf("@pulumi/%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("@pulumi/%s/%s", mod.pkg.Name, mod.mod)
-			}
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, "")
 		case "python":
 			langTitle = "Python"
-			if mod.mod == "" {
-				title = fmt.Sprintf("pulumi_%s", mod.pkg.Name)
-			} else {
-				title = fmt.Sprintf("pulumi_%s/%s", mod.pkg.Name, strings.ToLower(mod.mod))
-			}
-			link = fmt.Sprintf("/docs/reference/pkg/python/%s", title)
 		default:
 			panic(errors.Errorf("Unknown language %s", lang))
 		}
 
+		title, link = docLangHelper.GetModuleDocLink(mod.pkg, mod.mod)
 		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
 	}
 	return languageLinks
