@@ -4,6 +4,9 @@ LABEL "repository"="https://github.com/pulumi/pulumi"
 LABEL "homepage"="https://pulumi.com/"
 LABEL "maintainer"="Pulumi Team <team@pulumi.com>"
 
+ENV GOLANG_VERSION 1.13.10
+ENV GOLANG_SHA256 8a4cbc9f2b95d114c38f6cbe94a45372d48c604b707db2057c787398dfbf8e7f
+
 # Install deps all in one step
 RUN apt-get update -y && \
   apt-get install -y \
@@ -43,6 +46,17 @@ RUN apt-get update -y && \
   pip install awscli --upgrade && \
   # Clean up the lists work
   rm -rf /var/lib/apt/lists/*
+
+# Install Go
+RUN curl -fsSLo /tmp/go.tgz https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz; \
+    echo "${GOLANG_SHA256} /tmp/go.tgz" | sha256sum -c -; \
+    tar -C /usr/local -xzf /tmp/go.tgz; \
+    rm /tmp/go.tgz; \
+    export PATH="/usr/local/go/bin:$PATH"; \
+    go version
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+    
 
 # Install .NET Core SDK
 RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsoft-prod.deb \
