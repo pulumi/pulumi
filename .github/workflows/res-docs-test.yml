@@ -9,7 +9,7 @@ on:
 
 jobs:
   aws:
-    name: AWS Resource Docs
+    name: Resource Docs
     # Verify that the event is not triggered by a fork since forks cannot
     # access secrets other than the default GITHUB_TOKEN. Specifically,
     # this workflow relies on the secret PULUMI_BOT_GH_PAT_DOCS to create a
