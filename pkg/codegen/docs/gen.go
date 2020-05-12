@@ -1561,6 +1561,10 @@ func (mod *modContext) getLanguageLinks() map[string]string {
 			}
 			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
 				modName = override
+			} else if !ok && isK8s {
+				// For k8s if we don't find a C# namespace override, then don't
+				// include a link to the module since it would lead to a 404.
+				continue
 			}
 		case "go":
 			langTitle = "Go"
