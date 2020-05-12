@@ -106,6 +106,9 @@ var (
 	// metaDescriptionRegexp attempts to extract the description from Resource.Comment.
 	// Extracts the first line, essentially the "human-friendly" part of the description.
 	metaDescriptionRegexp = regexp.MustCompile(`(?m)^.*$`)
+	// Property anchor tag separator, used in a property anchor tag id to separate the
+	// property and language (e.g. property~lang).
+	propertyLangSeparator = "~"
 )
 
 func init() {
@@ -137,6 +140,7 @@ type header struct {
 
 // property represents an input or an output property.
 type property struct {
+	// ID is the `id` attribute that will be attached to the DOM element containing the property.
 	ID string
 	// DisplayName is the property name with word-breaks.
 	DisplayName        string
@@ -145,8 +149,9 @@ type property struct {
 	Type               propertyType
 	DeprecationMessage string
 	Link               string
-	IsRequired         bool
-	IsInput            bool
+
+	IsRequired bool
+	IsInput    bool
 }
 
 // apiTypeDocLinks represents the links for a type's input and output API doc.
@@ -841,7 +846,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			propLangName = name
 		}
 
-		propID := strings.ToLower(propLangName + "~" + lang)
+		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
 
 		docProperties = append(docProperties, property{
 			ID:                 propID,
