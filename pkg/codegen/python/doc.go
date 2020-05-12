@@ -165,3 +165,16 @@ func getMapWithTypeName(t string) string {
 		return fmt.Sprintf("Dict[str, %s]", strings.Title(t))
 	}
 }
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("pulumi_%s", pkg.Name)
+	} else {
+		displayName = fmt.Sprintf("pulumi_%s/%s", pkg.Name, strings.ToLower(modName))
+	}
+	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
+	return displayName, link
+}

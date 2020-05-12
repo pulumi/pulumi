@@ -116,3 +116,16 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	}
 	return propLangName, nil
 }
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("Pulumi.%s", Title(pkg.Name))
+	} else {
+		displayName = fmt.Sprintf("Pulumi.%s.%s", Title(pkg.Name), modName)
+	}
+	link = d.GetDocLinkForResourceType(pkg, "", displayName)
+	return displayName, link
+}

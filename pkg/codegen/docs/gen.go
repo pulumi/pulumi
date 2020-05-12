@@ -1495,6 +1495,7 @@ type indexData struct {
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
 
+	LanguageLinks  map[string]string
 	Functions      []indexEntry
 	Resources      []indexEntry
 	Modules        []indexEntry
@@ -1534,6 +1535,51 @@ func sortIndexEntries(entries []indexEntry) {
 	}
 
 	sort.Sort(sorter)
+}
+
+// getLanguageLinks returns a map of links for the current module's language-specific
+// docs by language.
+func (mod *modContext) getLanguageLinks() map[string]string {
+	languageLinks := map[string]string{}
+	isK8s := isKubernetesPackage(mod.pkg)
+
+	for _, lang := range supportedLanguages {
+		var link string
+		var title string
+		var langTitle string
+		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+
+		docLangHelper := getLanguageDocHelper(lang)
+		switch lang {
+		case "csharp":
+			langTitle = ".NET"
+			// In the k8s package, the C# language info uses normalized package names as the key for namespace override map.
+			// To make sure the proper namespace is found by the dotnet doc language helper method, we should pass the
+			// normalized value here using Go's module-to-package override info.
+			if isK8s {
+				modName = getLanguageModuleName(mod.pkg, mod.mod, "go")
+			}
+			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+				modName = override
+			} else if !ok && isK8s {
+				// For k8s if we don't find a C# namespace override, then don't
+				// include a link to the module since it would lead to a 404.
+				continue
+			}
+		case "go":
+			langTitle = "Go"
+		case "nodejs":
+			langTitle = "Node.js"
+		case "python":
+			langTitle = "Python"
+		default:
+			panic(errors.Errorf("Unknown language %s", lang))
+		}
+
+		title, link = docLangHelper.GetModuleDocLink(mod.pkg, modName)
+		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
+	}
+	return languageLinks
 }
 
 // genIndex emits an _index.md file for the module.
@@ -1614,6 +1660,7 @@ func (mod *modContext) genIndex() indexData {
 		Functions:          functions,
 		Modules:            modules,
 		PackageDetails:     packageDetails,
+		LanguageLinks:      mod.getLanguageLinks(),
 	}
 
 	// If this is the root module, write out the package description.
