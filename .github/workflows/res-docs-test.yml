@@ -44,6 +44,11 @@ jobs:
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
+      - name: Check out pulumi-kubernetes
+        uses: actions/checkout@master
+        with:
+          repository: pulumi/pulumi-kubernetes
+          path: pulumi-kubernetes
       - name: Check out docs
         uses: actions/checkout@master
         with:
@@ -61,6 +66,7 @@ jobs:
 
           pushd docs
           ./scripts/gen_resource_docs.sh aws true
+          ./scripts/gen_resource_docs.sh kubernetes true
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
@@ -79,7 +85,7 @@ jobs:
           path: docs
           committer: Pulumi Bot <bot@pulumi.com>
           author: Pulumi Bot <bot@pulumi.com>
-          commit-message: Regenerate AWS docs
+          commit-message: Regenerate resource docs
           title: Preview resource docs changes caused by generator changes
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.

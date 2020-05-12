@@ -1541,15 +1541,27 @@ func sortIndexEntries(entries []indexEntry) {
 // docs by language.
 func (mod *modContext) getLanguageLinks() map[string]string {
 	languageLinks := map[string]string{}
+	isK8s := isKubernetesPackage(mod.pkg)
+
 	for _, lang := range supportedLanguages {
 		var link string
 		var title string
 		var langTitle string
+		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
 
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "csharp":
 			langTitle = ".NET"
+			// In the k8s package, the C# language info uses normalized package names as the key for namespace override map.
+			// To make sure the proper namespace is found by the dotnet doc language helper method, we should pass the
+			// normalized value here using Go's module-to-package override info.
+			if isK8s {
+				modName = getLanguageModuleName(mod.pkg, mod.mod, "go")
+			}
+			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+				modName = override
+			}
 		case "go":
 			langTitle = "Go"
 		case "nodejs":
@@ -1560,7 +1572,7 @@ func (mod *modContext) getLanguageLinks() map[string]string {
 			panic(errors.Errorf("Unknown language %s", lang))
 		}
 
-		title, link = docLangHelper.GetModuleDocLink(mod.pkg, mod.mod)
+		title, link = docLangHelper.GetModuleDocLink(mod.pkg, modName)
 		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
 	}
 	return languageLinks
