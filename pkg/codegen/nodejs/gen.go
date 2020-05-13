@@ -87,6 +87,9 @@ type modContext struct {
 	typeDetails map[*schema.ObjectType]*typeDetails
 	children    []*modContext
 	tool        string
+
+	// Name overrides set in NodeJSInfo
+	modToPkg map[string]string // Module name -> package name
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -109,6 +112,9 @@ func (mod *modContext) tokenToType(tok string, input bool) string {
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
 	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
+	if override, ok := mod.modToPkg[modName]; ok {
+		modName = override
+	}
 
 	root := "outputs."
 	if input {
@@ -139,13 +145,13 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool) string {
+func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		typ = mod.typeString(t.ElementType, input, wrapInput, false) + "[]"
+		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
 	case *schema.MapType:
-		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false))
+		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
 	case *schema.ObjectType:
 		typ = mod.tokenToType(t.Token, input)
 	case *schema.TokenType:
@@ -153,9 +159,15 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.UnionType:
 		var elements []string
 		for _, e := range t.ElementTypes {
-			elements = append(elements, mod.typeString(e, input, wrapInput, false))
+			t := mod.typeString(e, input, wrapInput, false, constValue)
+			if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
+				contract.Assert(t[len(t)-1] == '>')
+				// Strip off the leading `pulumi.Input<` and the trailing `>`
+				t = t[len("pulumi.Input<") : len(t)-1]
+			}
+			elements = append(elements, t)
 		}
-		return strings.Join(elements, " | ")
+		typ = strings.Join(elements, " | ")
 	default:
 		switch t {
 		case schema.BoolType:
@@ -178,6 +190,9 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	}
 	if optional {
 		return typ + " | undefined"
+	}
+	if constValue != nil && typ == "string" {
+		typ = constValue.(string)
 	}
 	return typ
 }
@@ -239,7 +254,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false))
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, nil))
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 }
@@ -267,6 +282,13 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported default value of type %T", value)
 	}
+}
+
+func (mod *modContext) getConstValue(cv interface{}) (string, error) {
+	if cv == nil {
+		return "", nil
+	}
+	return tsPrimitiveValue(cv)
 }
 
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
@@ -339,7 +361,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "typescript"), "", "")
+	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
 	baseType := "CustomResource"
 	if r.IsProvider {
@@ -361,7 +383,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
 		fmt.Fprintf(w, "     */\n")
 
-		stateParam, stateRef := "", "undefined"
+		stateParam, stateRef := "", "undefined, "
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
@@ -412,7 +434,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			outcomment = "/*out*/ "
 		}
 
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !prop.IsRequired))
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !prop.IsRequired, nil))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -438,6 +460,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsProvider {
 		trailingBrace, optionsType = " {", "ResourceOptions"
 	}
+	if r.StateInputs == nil {
+		trailingBrace = " {"
+	}
 
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
@@ -446,30 +471,36 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		optionsType, trailingBrace)
 
 	if !r.IsProvider {
-		if r.DeprecationMessage != "" {
-			fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
+		if r.StateInputs != nil {
+			if r.DeprecationMessage != "" {
+				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
+			}
+			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
+			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
+			// conditional state into sensible variables using dynamic type tests.
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
+				argsType, stateType)
 		}
-		// Now write out a general purpose constructor implementation that can handle the public signautre as well as the
-		// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
-		// conditional state into sensible variables using dynamic type tests.
-		fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
-			argsType, stateType)
 		if r.DeprecationMessage != "" {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		// The lookup case:
-		fmt.Fprintf(w, "        if (opts && opts.id) {\n")
-		fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
-		for _, prop := range r.Properties {
-			fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+		if r.StateInputs != nil {
+			// The lookup case:
+			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
+			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
+			for _, prop := range r.Properties {
+				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+			}
+			// The creation case (with args):
+			fmt.Fprintf(w, "        } else {\n")
+			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 		}
-		// The creation case (with args):
-		fmt.Fprintf(w, "        } else {\n")
-		fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 	} else {
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		fmt.Fprintf(w, "        {\n")
+		if r.StateInputs != nil {
+			fmt.Fprintf(w, "        {\n")
+		}
 	}
 	for _, prop := range r.InputProperties {
 		if prop.IsRequired {
@@ -480,27 +511,46 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 	for _, prop := range r.InputProperties {
 		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
-		if prop.DefaultValue != nil {
-			dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+
+		prefix := "            "
+		if r.StateInputs == nil {
+			prefix = "        "
+		}
+
+		if prop.ConstValue != nil {
+			cv, err := mod.getConstValue(prop.ConstValue)
 			if err != nil {
 				return err
 			}
-			arg = fmt.Sprintf("(%s) || %s", arg, dv)
-		}
+			arg = cv
+		} else {
+			if prop.DefaultValue != nil {
+				dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+				if err != nil {
+					return err
+				}
+				arg = fmt.Sprintf("(%s) || %s", arg, dv)
+			}
 
-		// provider properties must be marshaled as JSON strings.
-		if r.IsProvider && !isStringType(prop.Type) {
-			arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)\n", arg)
+			// provider properties must be marshaled as JSON strings.
+			if r.IsProvider && !isStringType(prop.Type) {
+				arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+			}
 		}
-
-		fmt.Fprintf(w, "            inputs[\"%s\"] = %s;\n", prop.Name, arg)
+		fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 	}
 	for _, prop := range r.Properties {
+		prefix := "            "
+		if r.StateInputs == nil {
+			prefix = "        "
+		}
 		if !ins.has(prop.Name) {
-			fmt.Fprintf(w, "            inputs[\"%s\"] = undefined /*out*/;\n", prop.Name)
+			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
 		}
 	}
-	fmt.Fprintf(w, "        }\n")
+	if r.StateInputs != nil {
+		fmt.Fprintf(w, "        }\n")
+	}
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "        if (!opts) {\n")
@@ -577,7 +627,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	} else {
 		retty = title(name) + "Result"
 	}
-	fmt.Fprintf(w, "export function %[1]s(%[2]sopts?: pulumi.InvokeOptions): Promise<%[3]s> & %[3]s {\n", name, argsig, retty)
+	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n", name, argsig, retty)
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
 	}
@@ -597,7 +647,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	fmt.Fprintf(w, "    }\n")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
-	fmt.Fprintf(w, "    const promise: Promise<%s> = pulumi.runtime.invoke(\"%s\", {\n", retty, fun.Token)
+	fmt.Fprintf(w, "    return pulumi.runtime.invoke(\"%s\", {\n", fun.Token)
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
@@ -605,8 +655,6 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		}
 	}
 	fmt.Fprintf(w, "    }, opts);\n")
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "    return pulumi.utils.liftProperties(promise, opts);\n")
 	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
@@ -766,7 +814,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		getfunc := "get"
 		if p.Type != schema.StringType {
 			// Only try to parse a JSON object if the config isn't a straight string.
-			getfunc = fmt.Sprintf("getObject<%s>", mod.typeString(p.Type, false, false, false))
+			getfunc = fmt.Sprintf("getObject<%s>", mod.typeString(p.Type, false, false, false, nil))
 		}
 
 		printComment(w, p.Comment, "", "")
@@ -781,7 +829,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(p.Type, false, false, true), configFetch)
+			p.Name, mod.typeString(p.Type, false, false, true, nil), configFetch)
 	}
 
 	return nil
@@ -914,9 +962,21 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Ensure that the target module directory contains a README.md file.
-	readme := mod.pkg.Description
-	if readme != "" && readme[len(readme)-1] != '\n' {
-		readme += "\n"
+	readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
+	if readme == "" {
+		readme := mod.pkg.Description
+		if readme != "" && readme[len(readme)-1] != '\n' {
+			readme += "\n"
+		}
+		if mod.pkg.Attribution != "" {
+			if len(readme) != 0 {
+				readme += "\n"
+			}
+			readme += mod.pkg.Attribution
+		}
+		if readme != "" && readme[len(readme)-1] != '\n' {
+			readme += "\n"
+		}
 	}
 	fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
 
