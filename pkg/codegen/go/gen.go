@@ -330,7 +330,7 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, deprecationMessage, indent)
+		printComment(w, fmt.Sprintf("Deprecated: %s", deprecationMessage), indent)
 	}
 }
 
