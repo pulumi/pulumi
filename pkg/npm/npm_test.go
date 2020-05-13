@@ -52,7 +52,7 @@ func testInstall(t *testing.T, expectedBin string) {
 	packageJSON := []byte(`{
 	    "name": "test-package",
 	    "dependencies": {
-	        "@pulumi/pulumi": "^1.0.0"
+	        "@pulumi/pulumi": "^2.0.0"
 	    }
 	}`)
 	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0644))

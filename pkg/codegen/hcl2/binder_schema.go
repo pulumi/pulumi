@@ -33,6 +33,16 @@ type packageSchema struct {
 	functions map[string]*schema.Function
 }
 
+type PackageCache struct {
+	entries map[string]*packageSchema
+}
+
+func NewPackageCache() *PackageCache {
+	return &PackageCache{
+		entries: map[string]*packageSchema{},
+	}
+}
+
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
 func canonicalizeToken(tok string, pkg *schema.Package) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
@@ -70,9 +80,13 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	contract.Assert(len(diags) == 0)
 
 	for _, name := range packageNames.SortedValues() {
+		if _, ok := b.options.packageCache.entries[name]; ok {
+			continue
+		}
 		if err := b.loadPackageSchema(name); err != nil {
 			return err
 		}
+		b.referencedPackages = append(b.referencedPackages, b.options.packageCache.entries[name].schema)
 	}
 	return nil
 }
@@ -82,11 +96,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 //
 // TODO: schema and provider versions
 func (b *binder) loadPackageSchema(name string) error {
-	if _, ok := b.packageSchemas[name]; ok {
+	if _, ok := b.options.packageCache.entries[name]; ok {
 		return nil
 	}
 
-	provider, err := b.host.Provider(tokens.Package(name), nil)
+	provider, err := b.options.host.Provider(tokens.Package(name), nil)
 	if err != nil {
 		return err
 	}
@@ -115,7 +129,7 @@ func (b *binder) loadPackageSchema(name string) error {
 		functions[canonicalizeToken(f.Token, pkg)] = f
 	}
 
-	b.packageSchemas[name] = &packageSchema{
+	b.options.packageCache.entries[name] = &packageSchema{
 		schema:    pkg,
 		resources: resources,
 		functions: functions,
@@ -182,5 +196,54 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 		default:
 			return model.NoneType
 		}
+	}
+}
+
+// GetSchemaForType extracts the schema.Type associated with a model.Type, if any.
+//
+// The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
+func GetSchemaForType(t model.Type) (schema.Type, bool) {
+	switch t := t.(type) {
+	case *model.ObjectType:
+		if len(t.Annotations) == 0 {
+			return nil, false
+		}
+		for _, a := range t.Annotations {
+			if t, ok := a.(schema.Type); ok {
+				return t, true
+			}
+		}
+		return nil, false
+	case *model.OutputType:
+		return GetSchemaForType(t.ElementType)
+	case *model.PromiseType:
+		return GetSchemaForType(t.ElementType)
+	case *model.UnionType:
+		schemas := codegen.Set{}
+		for _, t := range t.ElementTypes {
+			if s, ok := GetSchemaForType(t); ok {
+				if union, ok := s.(*schema.UnionType); ok {
+					for _, s := range union.ElementTypes {
+						schemas.Add(s)
+					}
+				} else {
+					schemas.Add(s)
+				}
+			}
+		}
+		if len(schemas) == 0 {
+			return nil, false
+		}
+
+		schemaTypes := make([]schema.Type, 0, len(schemas))
+		for t := range schemas {
+			schemaTypes = append(schemaTypes, t.(schema.Type))
+		}
+		if len(schemaTypes) == 1 {
+			return schemaTypes[0], true
+		}
+		return &schema.UnionType{ElementTypes: schemaTypes}, true
+	default:
+		return nil, false
 	}
 }

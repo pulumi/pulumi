@@ -21,8 +21,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const Invoke = "invoke"
+
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
-	if call.Name != "invoke" || len(call.Args) < 1 {
+	if call.Name != Invoke || len(call.Args) < 1 {
 		return "", hcl.Range{}, false
 	}
 	template, ok := call.Args[0].(*hclsyntax.TemplateExpr)
@@ -77,7 +79,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return signature, diagnostics
 	}
 
-	pkgSchema, ok := b.packageSchemas[pkg]
+	pkgSchema, ok := b.options.packageCache.entries[pkg]
 	if !ok {
 		return signature, hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}

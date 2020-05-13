@@ -316,7 +316,8 @@ type PluginInfoV1 struct {
 // NOTE: nothing produces these values yet. This type is merely a placeholder for future use.
 type SecretV1 struct {
 	Sig        string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
-	Ciphertext string `json:"ciphertext" yaml:"ciphertext"`
+	Ciphertext string `json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
+	Plaintext  string `json:"plaintext,omitempty" yaml:"plaintext,omitempty"`
 }
 
 // ConfigValue describes a single (possibly secret) configuration value.

@@ -134,15 +134,6 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 	})
 }
 
-func (t *UnionType) assignableTo(dest Type) bool {
-	for _, t := range t.ElementTypes {
-		if !dest.AssignableFrom(t) {
-			return false
-		}
-	}
-	return true
-}
-
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
@@ -178,10 +169,6 @@ func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
 		return NoConversion
 	}
 	return conversionKind
-}
-
-func (t *UnionType) GetAnnotations() []interface{} {
-	return nil
 }
 
 func (t *UnionType) String() string {

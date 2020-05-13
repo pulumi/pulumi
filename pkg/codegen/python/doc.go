@@ -100,8 +100,12 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return name
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return PyName(tokenToName(f.Token))
+}
+
 // GetResourceFunctionResultName is not implemented for Python and returns an empty string.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	return ""
 }
 
@@ -112,15 +116,7 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 		return
 	}
 
-	mod := &modContext{
-		pkg:                  pkg,
-		mod:                  modName,
-		tool:                 tool,
-		snakeCaseToCamelCase: snakeCaseToCamelCase,
-		camelCaseToSnakeCase: camelCaseToSnakeCase,
-	}
-
-	mod.recordProperty(prop)
+	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
 }
 
 // GetPropertyName is not implemented for Python because property names in Python must use
@@ -168,4 +164,17 @@ func getMapWithTypeName(t string) string {
 	default:
 		return fmt.Sprintf("Dict[str, %s]", strings.Title(t))
 	}
+}
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("pulumi_%s", pkg.Name)
+	} else {
+		displayName = fmt.Sprintf("pulumi_%s/%s", pkg.Name, strings.ToLower(modName))
+	}
+	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
+	return displayName, link
 }

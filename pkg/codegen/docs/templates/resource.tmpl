@@ -4,6 +4,9 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{ htmlSafe .Comment }}
+{{- if ne (len .ExamplesSection) 0 }}
+{{ template "examples" .ExamplesSection }}
+{{- end }}
 
 {{- if .DeprecationMessage }}
 <p class="resource-deprecated">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>
@@ -13,7 +16,7 @@
 ## Create a {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
@@ -98,7 +101,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"javascript,typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
@@ -165,6 +168,12 @@ The following state arguments are supported:
 {{ htmlSafe "{{% choosable language go %}}" }}
 > See the {{ if ne .APIDocLinks.go.InputType "" }}<a href="{{ .APIDocLinks.go.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.go.InputType "") (ne .APIDocLinks.go.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.go.OutputType "" }}<a href="{{ .APIDocLinks.go.OutputType }}">output</a>{{ end }} API doc for this type.
 {{ htmlSafe "{{% /choosable %}}" }}
+
+{{- if (hasDocLinksForLang .APIDocLinks "csharp") }}
+{{ htmlSafe "{{% choosable language csharp %}}" }}
+> See the {{ if ne .APIDocLinks.csharp.InputType "" }}<a href="{{ .APIDocLinks.csharp.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.csharp.InputType "") (ne .APIDocLinks.csharp.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.csharp.OutputType "" }}<a href="{{ .APIDocLinks.csharp.OutputType }}">output</a>{{ end }} API doc for this type.
+{{ htmlSafe "{{% /choosable %}}" }}
+{{- end }}
 
 {{ template "properties" .Properties }}
 {{ end }}

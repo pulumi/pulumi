@@ -88,10 +88,6 @@ func (t *OutputType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (t *OutputType) GetAnnotations() []interface{} {
-	return t.ElementType.GetAnnotations()
-}
-
 func (t *OutputType) String() string {
 	if t.s == "" {
 		t.s = fmt.Sprintf("output(%v)", t.ElementType)

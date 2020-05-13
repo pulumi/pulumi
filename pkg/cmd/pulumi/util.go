@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v2/backend/state"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
@@ -711,4 +712,16 @@ func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOpt
 		AutoApprove: yes,
 		SkipPreview: skipPreview,
 	}, nil
+}
+
+func checkDeploymentVersionError(err error, stackName string) error {
+	switch err {
+	case stack.ErrDeploymentSchemaVersionTooOld:
+		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+			stackName)
+	case stack.ErrDeploymentSchemaVersionTooNew:
+		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+			"Please update your version of the Pulumi CLI", stackName)
+	}
+	return errors.Wrap(err, "could not deserialize deployment")
 }

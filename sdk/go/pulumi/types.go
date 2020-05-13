@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -454,6 +454,8 @@ func gatherDependencies(v interface{}) []Resource {
 	return deps
 }
 
+var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+
 func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
@@ -461,6 +463,14 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 			output := v.Convert(outputType).Interface().(Output)
 			for _, d := range output.dependencies() {
 				deps[d] = struct{}{}
+			}
+			return
+		}
+		// Check for an actual Resource.
+		if v.Type().Implements(resourceType) {
+			if v.CanInterface() {
+				resource := v.Convert(resourceType).Interface().(Resource)
+				deps[resource] = struct{}{}
 			}
 			return
 		}
@@ -882,4 +892,17 @@ func convert(v interface{}, to reflect.Type) interface{} {
 		panic(fmt.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
 	}
 	return rv.Convert(to).Interface()
+}
+
+// TODO: ResourceOutput and the init() should probably be code generated.
+// ResourceOutput is an Output that returns Resource values.
+type ResourceOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (Resource).
+func (ResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Resource)(nil)).Elem()
+}
+
+func init() {
+	RegisterOutputType(ResourceOutput{})
 }

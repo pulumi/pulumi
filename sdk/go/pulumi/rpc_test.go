@@ -492,3 +492,55 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		}
 	}
 }
+
+type simpleResource struct {
+	CustomResourceState
+}
+
+type UntypedArgs map[string]interface{}
+
+func (UntypedArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
+}
+
+func TestMapInputMarhsalling(t *testing.T) {
+	var theResource simpleResource
+	out := newOutput(reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
+	out.resolve("outputty", true, false)
+
+	inputs1 := Map(map[string]Input{
+		"prop": out,
+		"nested": Map(map[string]Input{
+			"foo": String("foo"),
+			"bar": Int(42),
+		}),
+	})
+
+	inputs2 := UntypedArgs(map[string]interface{}{
+		"prop": "outputty",
+		"nested": map[string]interface{}{
+			"foo": "foo",
+			"bar": 42,
+		},
+	})
+
+	cases := []struct {
+		inputs  Input
+		depUrns []string
+	}{
+		{inputs: inputs1, depUrns: []string{""}},
+		{inputs: inputs2, depUrns: nil},
+	}
+
+	for _, c := range cases {
+		resolved, _, depUrns, err := marshalInputs(c.inputs)
+		assert.NoError(t, err)
+		assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		assert.Equal(t, "foo", resolved["nested"].ObjectValue()["foo"].StringValue())
+		assert.Equal(t, 42.0, resolved["nested"].ObjectValue()["bar"].NumberValue())
+		assert.Equal(t, len(c.depUrns), len(depUrns))
+		for i := range c.depUrns {
+			assert.Equal(t, URN(c.depUrns[i]), depUrns[i])
+		}
+	}
+}

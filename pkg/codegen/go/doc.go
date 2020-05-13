@@ -88,9 +88,6 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	if moduleName == "" && pkg.Name == "kubernetes" {
-		moduleName = "providers"
-	}
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
@@ -109,8 +106,35 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	funcName := tokenToName(f.Token)
+	pkg, ok := d.packages[modName]
+	if !ok {
+		return funcName
+	}
+
+	if override, ok := pkg.functionNames[f]; ok {
+		funcName = override
+	}
+	return funcName
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Lookup" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return funcName + "Result"
+}
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("%s", pkg.Name)
+	} else {
+		displayName = fmt.Sprintf("%s/%s", pkg.Name, modName)
+	}
+	link = d.GetDocLinkForResourceType(pkg, modName, "")
+	return displayName, link
 }

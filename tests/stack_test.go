@@ -243,7 +243,7 @@ func TestStackCommands(t *testing.T) {
 			Resource: res,
 			Type:     resource.OperationTypeDeleting,
 		})
-		v3deployment, err := stack.SerializeDeployment(snap, nil)
+		v3deployment, err := stack.SerializeDeployment(snap, nil, false /* showSecrets */)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

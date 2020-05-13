@@ -31,6 +31,7 @@ import (
 const (
 	unitTestTool    = "Pulumi Resource Docs Unit Test"
 	providerPackage = "prov"
+	codeFence       = "```"
 )
 
 var (
@@ -123,7 +124,32 @@ func initTestPackageSpec(t *testing.T) {
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "This is a module-level resource called Resource.",
+					Description: `This is a module-level resource called Resource.
+{{% examples %}}
+## Example Usage
+
+{{% example %}}
+### Basic Example
+
+` + codeFence + `typescript
+					// Some TypeScript code.
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% example %}}
+### Custom Sub-Domain Example
+
+` + codeFence + `typescript
+					// Some typescript code
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% /examples %}}
+`,
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
@@ -355,5 +381,32 @@ func TestResourceDocHeader(t *testing.T) {
 			h := mod.genResourceHeader(r)
 			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
 		})
+	}
+}
+
+func TestExamplesProcessing(t *testing.T) {
+	initTestPackageSpec(t)
+
+	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
+	examplesSection, err := processExamples(description)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, examplesSection)
+
+	// The resource under test has two examples and both have TS and Python examples.
+	assert.Equal(t, 2, len(examplesSection))
+	assert.Equal(t, "### Basic Example", examplesSection[0].Title)
+	assert.Equal(t, "### Custom Sub-Domain Example", examplesSection[1].Title)
+	expectedLangSnippets := []string{"typescript", "python"}
+	otherLangSnippets := []string{"csharp", "go"}
+	for _, e := range examplesSection {
+		for _, lang := range expectedLangSnippets {
+			_, ok := e.Snippets[lang]
+			assert.True(t, ok, "Could not find %s snippet", lang)
+		}
+		for _, lang := range otherLangSnippets {
+			snippet, ok := e.Snippets[lang]
+			assert.True(t, ok, "Expected to find default placeholders for other languages")
+			assert.Contains(t, "Coming soon!", snippet)
+		}
 	}
 }

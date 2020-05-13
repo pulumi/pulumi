@@ -80,9 +80,11 @@ var (
 		"f5bigip":      "f5 BIG-IP",
 		"fastly":       "Fastly",
 		"gcp":          "GCP",
+		"github":       "GitHub",
 		"gitlab":       "GitLab",
 		"kafka":        "Kafka",
 		"keycloak":     "Keycloak",
+		"kong":         "Kong",
 		"kubernetes":   "Kubernetes",
 		"linode":       "Linode",
 		"mailgun":      "Mailgun",
@@ -203,6 +205,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
+	ExamplesSection    []exampleSection
 	DeprecationMessage string
 
 	// ConstructorParams is a map from language to the rendered HTML for the constructor's
@@ -298,7 +301,7 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
-	return tokenToName(r.Token)
+	return strings.Title(tokenToName(r.Token))
 }
 
 func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
@@ -504,12 +507,25 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 
 	var argsType string
 	var argsDocLink string
-	// The non-schema-based k8s codegen does not apply a suffix to the input types.
+	// The args type for k8s package differs from the rest depending on whether we are dealing with
+	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
-		argsType = name
-		argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		if mod.isKubernetesOverlayModule() {
+			if name == "CustomResource" {
+				argsType = name + "Args"
+			} else {
+				argsType = name + "Opts"
+			}
+			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
+		} else {
+			// The non-schema-based k8s codegen does not apply a suffix to the input types.
+			argsType = name
+			// The args types themselves are all under the input types module path, so use the input type link for the args type.
+			argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		}
 	} else {
 		argsType = name + "Args"
+		// All args types are in the same module path as the resource class itself even though it is an "input" type.
 		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 	}
 
@@ -610,18 +626,23 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
-	// Top-level argument types in the k8s package for C# use different namespace path.
-	// Additionally, overlay resources in k8s have argument types in the top-level module path,
-	// but don't use the suffix "Args" like the other modules.
+	// Constructor argument types in the k8s package for C# use a different namespace path.
+	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" && !mod.isKubernetesOverlayModule() {
+		if mod.mod != "" {
 			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
 			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
-			// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
-			argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
-		} else if mod.isKubernetesOverlayModule() {
-			argLangTypeName = "Pulumi.Kubernetes." + name
+			if !mod.isKubernetesOverlayModule() {
+				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
+				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
+			} else {
+				// Helm's resource args type does not use the version number.
+				if strings.HasPrefix(mod.mod, "helm") {
+					correctModName = "Helm"
+				}
+				argLangTypeName = "Pulumi.Kubernetes." + correctModName + "." + name + "Args"
+			}
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
 		}
@@ -676,6 +697,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// Collect all of the types for this "member" as a map of resource names
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
+
+	isK8s := isKubernetesPackage(mod.pkg)
 
 	var objs []docNestedType
 	for token, tyUsage := range tokens {
@@ -734,14 +757,20 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 						outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
 					}
 				}
+
+				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
+				// Don't add C# type links for Kubernetes because there are differences in the namespaces between the schema code gen and
+				// the current code gen that the package uses. So the links will be incorrect.
+				if isK8s && lang == "csharp" {
+					continue
+				}
 				apiDocLinks[lang] = apiTypeDocLinks{
 					InputType:  inputTypeDocLink,
 					OutputType: outputTypeDocLink,
 				}
-				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
 			}
 
-			name := tokenToName(obj.Token)
+			name := strings.Title(tokenToName(obj.Token))
 			objs = append(objs, docNestedType{
 				Name:        wbr(name),
 				AnchorID:    strings.ToLower(name),
@@ -1245,13 +1274,30 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
+	examplesSection, err := processExamples(r.Comment)
+	if err != nil {
+		panic(err)
+	}
+
+	resourceComment := r.Comment
+	// If we managed to extract examples out of the description, then modify the original
+	// description to remove the examples section.
+	// We may not have been able to extract examples from the description because:
+	// - There is no examples section.
+	// - Or the examples section is not properly wrapped in the expected short-codes.
+	if len(examplesSection) > 0 {
+		// Replace the entire section (including the shortcodes themselves) enclosing the
+		// examples section, with an empty string.
+		resourceComment = codegen.SurroundingTextRE.ReplaceAllString(r.Comment, "")
+	}
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:            r.Comment,
+		Comment:            resourceComment,
 		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection:    examplesSection,
 
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
@@ -1397,7 +1443,7 @@ func (mod *modContext) gen(fs fs) error {
 		// are "overlay" modules. The resources under those modules are
 		// not available in Go.
 		if isK8s && mod.isKubernetesOverlayModule() {
-			data.LangChooserLanguages = "javascript,typescript,python,csharp"
+			data.LangChooserLanguages = "typescript,python,csharp"
 		}
 
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
@@ -1449,6 +1495,7 @@ type indexData struct {
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
 
+	LanguageLinks  map[string]string
 	Functions      []indexEntry
 	Resources      []indexEntry
 	Modules        []indexEntry
@@ -1488,6 +1535,51 @@ func sortIndexEntries(entries []indexEntry) {
 	}
 
 	sort.Sort(sorter)
+}
+
+// getLanguageLinks returns a map of links for the current module's language-specific
+// docs by language.
+func (mod *modContext) getLanguageLinks() map[string]string {
+	languageLinks := map[string]string{}
+	isK8s := isKubernetesPackage(mod.pkg)
+
+	for _, lang := range supportedLanguages {
+		var link string
+		var title string
+		var langTitle string
+		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+
+		docLangHelper := getLanguageDocHelper(lang)
+		switch lang {
+		case "csharp":
+			langTitle = ".NET"
+			// In the k8s package, the C# language info uses normalized package names as the key for namespace override map.
+			// To make sure the proper namespace is found by the dotnet doc language helper method, we should pass the
+			// normalized value here using Go's module-to-package override info.
+			if isK8s {
+				modName = getLanguageModuleName(mod.pkg, mod.mod, "go")
+			}
+			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+				modName = override
+			} else if !ok && isK8s {
+				// For k8s if we don't find a C# namespace override, then don't
+				// include a link to the module since it would lead to a 404.
+				continue
+			}
+		case "go":
+			langTitle = "Go"
+		case "nodejs":
+			langTitle = "Node.js"
+		case "python":
+			langTitle = "Python"
+		default:
+			panic(errors.Errorf("Unknown language %s", lang))
+		}
+
+		title, link = docLangHelper.GetModuleDocLink(mod.pkg, modName)
+		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
+	}
+	return languageLinks
 }
 
 // genIndex emits an _index.md file for the module.
@@ -1533,7 +1625,7 @@ func (mod *modContext) genIndex() indexData {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
 			Link:        strings.ToLower(name),
-			DisplayName: name,
+			DisplayName: strings.Title(name),
 		})
 	}
 	sortIndexEntries(functions)
@@ -1568,6 +1660,7 @@ func (mod *modContext) genIndex() indexData {
 		Functions:          functions,
 		Modules:            modules,
 		PackageDetails:     packageDetails,
+		LanguageLinks:      mod.getLanguageLinks(),
 	}
 
 	// If this is the root module, write out the package description.
@@ -1691,8 +1784,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// nolint gosec
 			return template.HTML(html)
 		},
-		"pyName": func(str string) string {
-			return python.PyName(str)
+		"hasDocLinksForLang": func(m map[string]apiTypeDocLinks, lang string) bool {
+			_, ok := m[lang]
+			return ok
 		},
 	})
 

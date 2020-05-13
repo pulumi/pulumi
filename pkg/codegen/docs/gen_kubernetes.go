@@ -32,7 +32,11 @@ func isKubernetesPackage(pkg *schema.Package) bool {
 }
 
 func (mod *modContext) isKubernetesOverlayModule() bool {
-	return mod.mod == "helm/v2" || mod.mod == "yaml"
+	// The CustomResource overlay resource is directly under the apiextensions module
+	// and not under a version, so we include that. The resources under helm and yaml are
+	// always under a version.
+	return mod.mod == "apiextensions" ||
+		strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
 }
 
 // getKubernetesOverlayPythonFormalParams returns the formal params to render
@@ -93,15 +97,11 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
 	modName := pkg.TokenToModule(token)
 	// Kubernetes' moduleFormat in the schema will match everything
-	// in the token. This prevents us from adding the "Provider"
-	// resource as a child module of the package level :index: module.
-	if modName == "providers" {
-		modName = ""
-	} else {
-		modName = strings.TrimSuffix(modName, ".k8s.io")
-		modName = strings.TrimSuffix(modName, ".apiserver")
-		modName = strings.TrimSuffix(modName, ".authorization")
-	}
+	// in the token. So strip some well-known domain name parts from the module
+	// names.
+	modName = strings.TrimSuffix(modName, ".k8s.io")
+	modName = strings.TrimSuffix(modName, ".apiserver")
+	modName = strings.TrimSuffix(modName, ".authorization")
 
 	mod, ok := modules[modName]
 	if !ok {

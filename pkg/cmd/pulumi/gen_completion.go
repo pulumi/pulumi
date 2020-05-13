@@ -39,6 +39,8 @@ func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 				return root.GenBashCompletion(os.Stdout)
 			case args[0] == "zsh":
 				return genZshCompletion(os.Stdout, root)
+			case args[0] == "fish":
+				return root.GenFishCompletion(os.Stdout, true)
 			default:
 				return fmt.Errorf("%q is not a supported shell", args[0])
 			}

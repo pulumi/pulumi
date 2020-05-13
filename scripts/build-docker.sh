@@ -29,9 +29,15 @@ echo_header() {
 }
 
 test_containers() {
+    echo_header "Executing container runtime tests"
+
+    # Run the container tests, note that we also build the binaries into /tmp for the next step.
+    pushd ${ROOT}/tests
+    GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+    popd
+
     # Run tests _within_ the "pulumi" container, ensuring that the CLI is installed
     # and working correctly.
-    echo_header "Executing container runtime tests"
     docker run -e RUN_CONTAINER_TESTS=true \
         -e PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN} \
         --volume /tmp:/src \
@@ -41,13 +47,9 @@ test_containers() {
 
     # The actions container should fetch program dependencies from NPM, PIP, etc. before
     # executing. These tests just shell out to docker run to confirm that.
-    # Disabled due to https://github.com/pulumi/pulumi/issues/4136
-    # echo_header "Executing container entrypoint tests"
-    # RUN_CONTAINER_TESTS=true go test ${ROOT}/tests/containers/... -test.run TestPulumiActionsImage -test.v
-
-    # In case there are any other unit tests defined in the module, run those as well.
-	pushd ${ROOT}/tests
-    GOOS=linux go test -c -o /tmp/pulumi-test-containers ${ROOT}/tests/containers/...
+    echo_header "Executing container entrypoint tests"
+    pushd ${ROOT}/tests/containers
+    RUN_CONTAINER_TESTS=true go test . -test.run TestPulumiActionsImage -test.v
     popd
 }
 

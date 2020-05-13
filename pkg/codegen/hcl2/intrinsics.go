@@ -22,6 +22,8 @@ import (
 const (
 	// IntrinsicApply is the name of the apply intrinsic.
 	IntrinsicApply = "__apply"
+	// IntrinsicConvert is the name of the conversion intrinsic.
+	IntrinsicConvert = "__convert"
 )
 
 func isOutput(t model.Type) bool {
@@ -39,9 +41,7 @@ func isOutput(t model.Type) bool {
 }
 
 // NewApplyCall returns a new expression that represents a call to IntrinsicApply.
-func NewApplyCall(args []*model.ScopeTraversalExpression,
-	then *model.AnonymousFunctionExpression) *model.FunctionCallExpression {
-
+func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpression) *model.FunctionCallExpression {
 	signature := model.StaticFunctionSignature{
 		Parameters: make([]model.Parameter, len(args)+1),
 	}
@@ -78,15 +78,31 @@ func NewApplyCall(args []*model.ScopeTraversalExpression,
 }
 
 // ParseApplyCall extracts the apply arguments and the continuation from a call to the apply intrinsic.
-func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []*model.ScopeTraversalExpression,
+func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expression,
 	then *model.AnonymousFunctionExpression) {
 
 	contract.Assert(c.Name == IntrinsicApply)
+	return c.Args[:len(c.Args)-1], c.Args[len(c.Args)-1].(*model.AnonymousFunctionExpression)
+}
 
-	args := make([]*model.ScopeTraversalExpression, len(c.Args)-1)
-	for i, a := range c.Args[:len(args)] {
-		args[i] = a.(*model.ScopeTraversalExpression)
+// NewConvertCall returns a new expression that represents a call to IntrinsicConvert.
+func NewConvertCall(from model.Expression, to model.Type) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: IntrinsicConvert,
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "from",
+				Type: from.Type(),
+			}},
+			ReturnType: to,
+		},
+		Args: []model.Expression{from},
 	}
+}
 
-	return args, c.Args[len(c.Args)-1].(*model.AnonymousFunctionExpression)
+// ParseConvertCall extracts the value being converted and the type it is being converted to from a call to the convert
+// intrinsic.
+func ParseConvertCall(c *model.FunctionCallExpression) (model.Expression, model.Type) {
+	contract.Assert(c.Name == IntrinsicConvert)
+	return c.Args[0], c.Signature.ReturnType
 }

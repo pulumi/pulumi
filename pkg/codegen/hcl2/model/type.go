@@ -37,7 +37,6 @@ type Type interface {
 
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
-	GetAnnotations() []interface{}
 	String() string
 
 	conversionFrom(src Type, unifying bool) ConversionKind
@@ -63,9 +62,6 @@ var (
 func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
 	if dest == src || dest == DynamicType {
 		return true
-	}
-	if src, isUnion := src.(*UnionType); isUnion {
-		return src.assignableTo(dest)
 	}
 	if src == DynamicType {
 		return false

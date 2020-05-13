@@ -23,6 +23,7 @@ require (
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
 	github.com/dustin/go-humanize v1.0.0
+	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.5
 	github.com/google/go-querystring v1.0.0
@@ -42,7 +43,7 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
-	github.com/spf13/cobra v0.0.6
+	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.3.1

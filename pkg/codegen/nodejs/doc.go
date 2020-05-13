@@ -96,13 +96,31 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return tokenToFunctionName(f.Token)
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Get" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return title(funcName) + "Result"
 }
 
 // GetPropertyName returns the property name specific to NodeJS.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return p.Name, nil
+}
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("@pulumi/%s", pkg.Name)
+	} else {
+		displayName = fmt.Sprintf("@pulumi/%s/%s", pkg.Name, modName)
+	}
+	link = d.GetDocLinkForResourceType(pkg, modName, "")
+	return displayName, link
 }

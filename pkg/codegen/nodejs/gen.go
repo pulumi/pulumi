@@ -135,6 +135,10 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func tokenToFunctionName(tok string) string {
+	return camel(tokenToName(tok))
+}
+
 func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool) string {
 	var typ string
 	switch t := t.(type) {
@@ -541,7 +545,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
-	name := camel(tokenToName(fun.Token))
+	name := tokenToFunctionName(fun.Token)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "typescript"), "", "")
@@ -1047,6 +1051,7 @@ type npmPackage struct {
 	Dependencies     map[string]string `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string `json:"devDependencies,omitempty"`
 	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string `json:"resolutions,omitempty"`
 	Pulumi           npmPulumiManifest `json:"pulumi,omitempty"`
 }
 
@@ -1105,6 +1110,12 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			npminfo.PeerDependencies = make(map[string]string)
 		}
 		npminfo.PeerDependencies[depk] = depv
+	}
+	for resk, resv := range info.Resolutions {
+		if npminfo.Resolutions == nil {
+			npminfo.Resolutions = make(map[string]string)
+		}
+		npminfo.Resolutions[resk] = resv
 	}
 
 	// If there is no @pulumi/pulumi, add "latest" as a peer dependency (for npm linking style usage).
@@ -1204,7 +1215,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		_ = getMod(":config/config:")
+		_ = getMod(":config:")
 	}
 
 	for _, v := range pkg.Config {

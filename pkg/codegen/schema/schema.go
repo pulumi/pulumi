@@ -509,11 +509,18 @@ func (pkg *Package) TokenToModule(tok string) string {
 		return ""
 	}
 
-	matches := pkg.moduleFormat.FindStringSubmatch(components[1])
-	if len(matches) < 2 || matches[1] == "index" {
+	switch components[1] {
+	case "config":
+		return "config"
+	case "providers":
 		return ""
+	default:
+		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
+		if len(matches) < 2 || matches[1] == "index" {
+			return ""
+		}
+		return matches[1]
 	}
-	return matches[1]
 }
 
 // TypeSpec is the serializable form of a reference to a type.

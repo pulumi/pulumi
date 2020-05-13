@@ -1,7 +1,44 @@
 CHANGELOG
 =========
 
-## HEAD (unreleased)
+## HEAD (Unreleased)
+- Fixed ResourceOptions issue with stack references in Python SDK
+ [#4553](https://github.com/pulumi/pulumi/pull/4553)
+
+- Add runTask to F# Deployment module
+  [#3858](https://github.com/pulumi/pulumi/pull/3858)
+
+- Add support for generating Fish completions
+  [#4401](https://github.com/pulumi/pulumi/pull/4401)
+
+- Support map-typed inputs in RegisterResource for Go SDK
+  [#4522](https://github.com/pulumi/pulumi/pull/4522)
+
+- Don't call IMocks.NewResourceAsync for the root stack resource
+  [#4527](https://github.com/pulumi/pulumi/pull/4527)
+  
+- Add ResourceOutput type to Go SDK
+  [#4575](https://github.com/pulumi/pulumi/pull/4575)
+
+- Allow secrets to be decrypted when exporting a stack
+  [#4046](https://github.com/pulumi/pulumi/pull/4046)
+  
+- Commands checking for a confirmation or requiring a `--yes` flag can now be
+  skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
+  [#4477](https://github.com/pulumi/pulumi/pull/4477)
+  
+## 2.1.1 (2020-05-11)
+
+- Add retry support when writing to state buckets
+  [#4494](https://github.com/pulumi/pulumi/pull/4494)
+
+## 2.1.0 (2020-04-28)
+
+- Fix infinite recursion bug for Go SDK
+  [#4516](https://github.com/pulumi/pulumi/pull/4516)
+  
+- Order secretOutputNames when used in stack references
+  [#4489](https://github.com/pulumi/pulumi/pull/4489)
 
 - Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
   behavior for how URLs to the Pulumi Console are generated.
@@ -16,9 +53,20 @@ CHANGELOG
 - Ensure Go accessor methods correctly support nested fields of optional outputs
   [#4456](https://github.com/pulumi/pulumi/pull/4456)
 
-- Commands checking for a confirmation or requiring a `--yes` flag can now be
-  skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
-  [#4477](https://github.com/pulumi/pulumi/pull/4477)
+- Improve `ResourceOptions.merge` type in Python SDK
+  [#4484](https://github.com/pulumi/pulumi/pull/4484)
+
+- Ensure generated Python module names are keyword-safe.
+  [#4473](https://github.com/pulumi/pulumi/pull/4473)
+
+- Explicitly set XDG_CONFIG_HOME and XDG_CACHE_HOME env vars for helm in the
+  pulumi docker image
+  [#4474](https://github.com/pulumi/pulumi/pull/4474)
+
+- Increase the MaxCallRecvMsgSize for all RPC calls. 
+  [#4455](https://github.com/pulumi/pulumi/pull/4455)
+
+- Allow `pulumi.export` calls from Python unit tests.
 
 ## 2.0.0 (2020-04-16)
 

@@ -26,7 +26,7 @@ from . import rpc
 from .settings import Settings, configure, get_stack, get_project
 from .sync_await import _sync_await
 from ..runtime.proto import engine_pb2, engine_pb2_grpc, provider_pb2, resource_pb2, resource_pb2_grpc
-from ..runtime.stack import run_pulumi_func
+from ..runtime.stack import _run_test
 from ..output import Output
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 def test(fn):
     def wrapper(*args, **kwargs):
-        _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
+        _sync_await(_run_test(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
 class Mocks(ABC):
@@ -105,13 +105,17 @@ class MockMonitor:
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
 
     def RegisterResource(self, request):
+        urn = self.make_urn(request.parent, request.type, request.name)
+
+        if request.type == "pulumi:pulumi:Stack":
+            return resource_pb2.RegisterResourceResponse(urn=urn)
+
         inputs = rpc.deserialize_properties(request.object)
 
         id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
 
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 
-        urn = self.make_urn(request.parent, request.type, request.name)
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):

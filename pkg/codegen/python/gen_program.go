@@ -38,23 +38,23 @@ type generator struct {
 	diagnostics hcl.Diagnostics
 
 	configCreated bool
+	casingTables  map[string]map[string]string
+	quotes        map[model.Expression]string
+}
+
+type objectTypeInfo struct {
+	isDictionary         bool
+	camelCaseToSnakeCase map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	// Import Python-specific schema info.
-	for _, p := range program.Packages() {
-		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-			return nil, nil, err
-		}
+	g, err := newGenerator(program)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := hcl2.Linearize(program)
-
-	g := &generator{
-		program: program,
-	}
-	g.Formatter = format.NewFormatter(g)
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program)
@@ -68,11 +68,41 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	return files, g.diagnostics, nil
 }
 
-func pyName(pulumiName string, isObjectKey bool) string {
-	if isObjectKey {
-		return fmt.Sprintf("%q", pulumiName)
+func newGenerator(program *hcl2.Program) (*generator, error) {
+	// Import Python-specific schema info.
+	casingTables := map[string]map[string]string{}
+	for _, p := range program.Packages() {
+		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+			return nil, err
+		}
+
+		// Build the case mapping table.
+		camelCaseToSnakeCase := map[string]string{}
+		buildCaseMappingTables(p, nil, camelCaseToSnakeCase)
+		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
+
+		// Annotate nested types to indicate they are dictionaries.
+		for _, t := range p.Types {
+			if t, ok := t.(*schema.ObjectType); ok {
+				if t.Language == nil {
+					t.Language = map[string]interface{}{}
+				}
+				t.Language["python"] = objectTypeInfo{
+					isDictionary:         true,
+					camelCaseToSnakeCase: camelCaseToSnakeCase,
+				}
+			}
+		}
 	}
-	return PyName(cleanName(pulumiName))
+
+	g := &generator{
+		program:      program,
+		casingTables: casingTables,
+		quotes:       map[model.Expression]string{},
+	}
+	g.Formatter = format.NewFormatter(g)
+
+	return g, nil
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
@@ -167,7 +197,13 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	return pyName(pkg, false), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+
+	components := strings.Split(module, ".")
+	for i, component := range components {
+		components[i] = PyName(component)
+	}
+
+	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -176,23 +212,21 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	if count == "" {
 		return fmt.Sprintf(`"%s"`, baseName)
 	}
-	return fmt.Sprintf(`f"%s-${%s}"`, baseName, count)
+	return fmt.Sprintf(`f"%s-{%s}"`, baseName, count)
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-
 	if module != "" {
 		module = "." + module
 	}
-
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
 	optionsBag := ""
 
-	name := pyName(r.Name(), false)
+	name := PyName(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.Labels {
@@ -200,7 +234,17 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
+	casingTable := g.casingTables[pkg]
 	instantiate := func(resName string) {
+		var temps []*quoteTemp
+		for _, attr := range r.Inputs {
+			g.lowerObjectKeys(attr.Value, casingTable)
+
+			value, valueTemps := g.lowerExpression(attr.Value)
+			temps = append(temps, valueTemps...)
+			attr.Value = value
+		}
+
 		g.Fgenf(w, "%s(%s", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
 		if len(r.Inputs) > 1 {
@@ -208,16 +252,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		}
 		indenter(func() {
 			for _, attr := range r.Inputs {
-				attrType, diags := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-				contract.Ignore(diags)
-
-				g.lowerObjectKeys(attr.Value, attrType.(model.Type))
-
-				propertyName := pyName(attr.Name, false)
+				propertyName := PyName(attr.Name)
 				if len(r.Inputs) == 1 {
-					g.Fgenf(w, ", %s=%.v", propertyName, g.lowerExpression(attr.Value))
+					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
-					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, g.lowerExpression(attr.Value))
+					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, attr.Value)
 				}
 			}
 		})
@@ -245,7 +284,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(r.Name(), "range."+resKey)
+			resName := g.makeResourceName(r.Name(), fmt.Sprintf("range['%s']", resKey))
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, name)
 				instantiate(resName)
@@ -259,6 +298,13 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
+}
+
+func (g *generator) genTemps(w io.Writer, temps []*quoteTemp) {
+	for _, t := range temps {
+		// TODO(pdg): trivia
+		g.Fgenf(w, "%s%s = %.v\n", g.Indent, t.Name, t.Value)
+	}
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
@@ -286,24 +332,37 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		getOrRequire = "require"
 	}
 
-	name := pyName(v.Name(), false)
-	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
+	var defaultValue model.Expression
+	var temps []*quoteTemp
 	if v.DefaultValue != nil {
+		defaultValue, temps = g.lowerExpression(v.DefaultValue)
+	}
+	g.genTemps(w, temps)
+
+	name := PyName(v.Name())
+	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
+	if defaultValue != nil {
 		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
 		g.Indented(func() {
-			g.Fgenf(w, "%s%s = %.v\n", g.Indent, name, g.lowerExpression(v.DefaultValue))
+			g.Fgenf(w, "%s%s = %.v\n", g.Indent, name, defaultValue)
 		})
 	}
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+	value, temps := g.lowerExpression(v.Definition.Value)
+	g.genTemps(w, temps)
+
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%s%s = %.v\n", g.Indent, pyName(v.Name(), false), g.lowerExpression(v.Definition.Value))
+	g.Fgenf(w, "%s%s = %.v\n", g.Indent, PyName(v.Name()), value)
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
+	value, temps := g.lowerExpression(v.Value)
+	g.genTemps(w, temps)
+
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
+	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.Name(), value)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

@@ -186,10 +186,6 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
 	})
 }
 
-func (t *ObjectType) GetAnnotations() []interface{} {
-	return t.Annotations
-}
-
 func (t *ObjectType) String() string {
 	if t.s == "" {
 		var properties []string
@@ -198,7 +194,12 @@ func (t *ObjectType) String() string {
 		}
 		sort.Strings(properties)
 
-		t.s = fmt.Sprintf("object({%s})", strings.Join(properties, ", "))
+		annotations := ""
+		if len(t.Annotations) != 0 {
+			annotations = fmt.Sprintf(", annotated(%p)", t)
+		}
+
+		t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
 	}
 	return t.s
 }

@@ -84,10 +84,15 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
 }
 
+func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+	return tokenToFunctionName(f.Token)
+}
+
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
-func (d DocLanguageHelper) GetResourceFunctionResultName(resourceName string) string {
-	return "Get" + resourceName + "Result"
+func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
+	funcName := d.GetFunctionName(modName, f)
+	return funcName + "Result"
 }
 
 // GetPropertyName uses the property's csharp-specific language info, if available, to generate
@@ -110,4 +115,17 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 		return name, nil
 	}
 	return propLangName, nil
+}
+
+// GetModuleDocLink returns the display name and the link for a module.
+func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
+	var displayName string
+	var link string
+	if modName == "" {
+		displayName = fmt.Sprintf("Pulumi.%s", Title(pkg.Name))
+	} else {
+		displayName = fmt.Sprintf("Pulumi.%s.%s", Title(pkg.Name), modName)
+	}
+	link = d.GetDocLinkForResourceType(pkg, "", displayName)
+	return displayName, link
 }

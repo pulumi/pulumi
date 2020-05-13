@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -104,9 +105,10 @@ func NewTokenMapForFiles(files []*File) TokenMap {
 }
 
 type tokenMapper struct {
-	tokenMap tokenMap
-	tokens   tokenList
-	stack    []hclsyntax.Node
+	tokenMap             tokenMap
+	tokens               tokenList
+	stack                []hclsyntax.Node
+	templateControlExprs codegen.Set
 }
 
 func (m *tokenMapper) getParent() (hclsyntax.Node, bool) {
@@ -125,31 +127,12 @@ func (m *tokenMapper) isSingleFunctionCallArg() bool {
 	return ok && len(call.Args) == 1
 }
 
-func (m *tokenMapper) inTemplate() bool {
-	parent, ok := m.getParent()
-	if !ok {
-		return false
-	}
-	switch parent.(type) {
-	case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
-		return true
-	}
-	return false
-}
-
 func (m *tokenMapper) inTemplateControl() bool {
-	if len(m.stack) < 3 {
+	if len(m.stack) < 2 {
 		return false
 	}
-	parent, grandparent := m.stack[len(m.stack)-2], m.stack[len(m.stack)-3]
-	switch parent.(type) {
-	case *hclsyntax.ConditionalExpr, *hclsyntax.ForExpr:
-		switch grandparent.(type) {
-		case *hclsyntax.TemplateExpr, *hclsyntax.TemplateJoinExpr:
-			return true
-		}
-	}
-	return false
+	parent := m.stack[len(m.stack)-2]
+	return m.templateControlExprs.Has(parent)
 }
 
 func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
@@ -182,6 +165,41 @@ func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
 		LeadingTrivia:  open.LeadingTrivia,
 		TrailingTrivia: close.TrailingTrivia,
 	}
+}
+
+func (m *tokenMapper) mapRelativeTraversalTokens(traversal hcl.Traversal) []TraverserTokens {
+	if len(traversal) == 0 {
+		return nil
+	}
+
+	contract.Assert(traversal.IsRelative())
+	items := make([]TraverserTokens, len(traversal))
+	for i, t := range traversal {
+		rng := t.SourceRange()
+		leadingToken := m.tokens.atPos(rng.Start)
+		indexToken := m.tokens.atOffset(rng.Start.Byte + 1)
+		if leadingToken.Raw.Type == hclsyntax.TokenOBrack {
+			if indexToken.Raw.Type == hclsyntax.TokenOQuote {
+				indexToken = m.collectLabelTokens(hcl.Range{
+					Filename: rng.Filename,
+					Start:    hcl.Pos{Byte: rng.Start.Byte + 1},
+					End:      hcl.Pos{Byte: rng.End.Byte - 1},
+				})
+			}
+			items[i] = &BracketTraverserTokens{
+				OpenBracket:  leadingToken,
+				Index:        indexToken,
+				CloseBracket: m.tokens.atOffset(rng.End.Byte - 1),
+			}
+		} else {
+			items[i] = &DotTraverserTokens{
+				Dot:   leadingToken,
+				Index: indexToken,
+			}
+		}
+	}
+
+	return items
 }
 
 func (m *tokenMapper) nodeRange(n hclsyntax.Node) hcl.Range {
@@ -281,6 +299,19 @@ func (m *tokenMapper) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		m.stack = append(m.stack, n)
 	}
 
+	switch n := n.(type) {
+	case *hclsyntax.ConditionalExpr:
+		open := m.tokens.atPos(n.SrcRange.Start)
+		if open.Raw.Type == hclsyntax.TokenTemplateControl {
+			m.templateControlExprs.Add(n)
+		}
+	case *hclsyntax.ForExpr:
+		open := m.tokens.atPos(n.OpenRange.Start)
+		if open.Raw.Type == hclsyntax.TokenTemplateControl {
+			m.templateControlExprs.Add(n)
+		}
+	}
+
 	// Work around a bug in the HCL syntax library. The walkChildNodes implementation for ObjectConsKeyExpr does not
 	// descend into its wrapped expression if the wrapped expression can be interpreted as a keyword even if the
 	// syntactical form that _forces_ the wrapped expression to be a non-literal is used.
@@ -334,7 +365,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		trueRange := m.nodeRange(n.TrueResult)
 		falseRange := m.nodeRange(n.FalseResult)
 
-		if m.inTemplate() {
+		if m.templateControlExprs.Has(n) {
 			condition := m.tokens.atPos(condRange.Start)
 
 			ift := m.tokens.atOffset(condition.Range().Start.Byte - 1)
@@ -374,8 +405,6 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 			}
 		}
 	case *hclsyntax.ForExpr:
-		inTemplate := m.inTemplate()
-
 		openToken := m.tokens.atPos(n.OpenRange.Start)
 		forToken := m.tokens.atPos(openToken.Range().End)
 
@@ -415,7 +444,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 			ifToken = &ift
 		}
 
-		if inTemplate {
+		if m.templateControlExprs.Has(n) {
 			closeFor := m.tokens.atPos(m.nodeRange(n.CollExpr).End)
 
 			openEndfor := m.tokens.atPos(valRange.End)
@@ -505,13 +534,13 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 	case *hclsyntax.RelativeTraversalExpr:
 		nodeTokens = &RelativeTraversalTokens{
 			Parentheses: parens,
-			Traversal:   mapRelativeTraversalTokens(m.tokens, n.Traversal),
+			Traversal:   m.mapRelativeTraversalTokens(n.Traversal),
 		}
 	case *hclsyntax.ScopeTraversalExpr:
 		nodeTokens = &ScopeTraversalTokens{
 			Parentheses: parens,
 			Root:        m.tokens.atPos(n.Traversal[0].SourceRange().Start),
-			Traversal:   mapRelativeTraversalTokens(m.tokens, n.Traversal[1:]),
+			Traversal:   m.mapRelativeTraversalTokens(n.Traversal[1:]),
 		}
 	case *hclsyntax.SplatExpr:
 		openToken := m.tokens.atPos(m.nodeRange(n.Source).End)
@@ -681,8 +710,9 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	//
 	// TODO(pdg): handle parenthesized expressions
 	diags := hclsyntax.Walk(root, &tokenMapper{
-		tokenMap: tokenMap,
-		tokens:   tokens,
+		tokenMap:             tokenMap,
+		tokens:               tokens,
+		templateControlExprs: codegen.Set{},
 	})
 	contract.Assert(diags == nil)
 
@@ -691,34 +721,6 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	if isBody && len(tokens) > 0 && tokens[len(tokens)-1].Raw.Type == hclsyntax.TokenEOF {
 		tokenMap[body] = &BodyTokens{EndOfFile: &tokens[len(tokens)-1]}
 	}
-}
-
-func mapRelativeTraversalTokens(tokens tokenList, traversal hcl.Traversal) []TraverserTokens {
-	if len(traversal) == 0 {
-		return nil
-	}
-
-	contract.Assert(traversal.IsRelative())
-	items := make([]TraverserTokens, len(traversal))
-	for i, t := range traversal {
-		rng := t.SourceRange()
-		leadingToken := tokens.atPos(rng.Start)
-		indexToken := tokens.atOffset(rng.Start.Byte + 1)
-		if leadingToken.Raw.Type == hclsyntax.TokenOBrack {
-			items[i] = &BracketTraverserTokens{
-				OpenBracket:  leadingToken,
-				Index:        indexToken,
-				CloseBracket: tokens.atOffset(rng.End.Byte - 1),
-			}
-		} else {
-			items[i] = &DotTraverserTokens{
-				Dot:   leadingToken,
-				Index: indexToken,
-			}
-		}
-	}
-
-	return items
 }
 
 // processComment separates the given comment into lines and attempts to remove comment tokens.

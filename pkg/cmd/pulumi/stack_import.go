@@ -77,18 +77,8 @@ func newStackImportCmd() *cobra.Command {
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			snapshot, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
 			if err != nil {
-				switch err {
-				case stack.ErrDeploymentSchemaVersionTooOld:
-					return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-						stackName)
-				case stack.ErrDeploymentSchemaVersionTooNew:
-					return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-						"Please update your version of the Pulumi CLI", stackName)
-				}
-
-				return errors.Wrap(err, "could not deserialize deployment")
+				return checkDeploymentVersionError(err, stackName.String())
 			}
-
 			var result error
 			for _, res := range snapshot.Resources {
 				if res.URN.Stack() != stackName {
@@ -130,7 +120,7 @@ func newStackImportCmd() *cobra.Command {
 
 				snapshot.PendingOperations = nil
 			}
-			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager)
+			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
 			if err != nil {
 				return errors.Wrap(err, "constructing deployment for upload")
 			}

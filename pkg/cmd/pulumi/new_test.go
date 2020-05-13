@@ -29,7 +29,7 @@ import (
 )
 
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -52,7 +52,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestFailInInteractiveWithoutYes(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -72,7 +72,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -94,7 +94,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -119,7 +119,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -143,7 +143,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 }
 
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -170,7 +170,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 }
 
 func TestCreatingProjectWithDefaultName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -196,7 +196,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 }
 
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -223,7 +223,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithPromptedName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -247,7 +247,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -274,7 +274,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -299,7 +299,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -330,7 +330,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -359,7 +359,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -388,7 +388,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 }
 
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -415,7 +415,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 }
 
 func TestInvalidTemplateName(t *testing.T) {
-	skipIfShort(t)
+	skipIfShortOrNoPulumiAccessToken(t)
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
 		t.Parallel()
@@ -806,7 +806,11 @@ func removeStack(t *testing.T, name string) {
 	assert.NoError(t, err)
 }
 
-func skipIfShort(t *testing.T) {
+func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
+	_, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN")
+	if !ok {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
 	}

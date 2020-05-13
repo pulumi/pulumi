@@ -27,18 +27,18 @@ lint::
 	pipenv run mypy ./lib/pulumi --config-file=mypy.ini
 	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
 
-install_package::
+install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
 	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
-install_plugin::
+install_plugin:: build_plugin
 	GOBIN=$(PULUMI_BIN) go install \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
-test_fast::
+test_fast:: build
 	pipenv run pip install ./env/src
 	pipenv run python -m unittest discover -s lib/test -v
 

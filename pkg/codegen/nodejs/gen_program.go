@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type generator struct {
@@ -38,6 +39,7 @@ type generator struct {
 	program     *hcl2.Program
 	diagnostics hcl.Diagnostics
 
+	asyncMain     bool
 	configCreated bool
 }
 
@@ -53,7 +55,53 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
 	for _, n := range nodes {
-		g.genNode(&index, n)
+		if r, ok := n.(*hcl2.Resource); ok && requiresAsyncMain(r) {
+			g.asyncMain = true
+			break
+		}
+	}
+
+	indenter := func(f func()) { f() }
+	if g.asyncMain {
+		indenter = g.Indented
+		g.Fgenf(&index, "export = async () => {\n")
+	}
+
+	indenter(func() {
+		for _, n := range nodes {
+			g.genNode(&index, n)
+		}
+
+		if g.asyncMain {
+			var result *model.ObjectConsExpression
+			for _, n := range nodes {
+				if o, ok := n.(*hcl2.OutputVariable); ok {
+					if result == nil {
+						result = &model.ObjectConsExpression{}
+					}
+					name := cleanName(o.Name())
+					result.Items = append(result.Items, model.ObjectConsItem{
+						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
+						Value: &model.ScopeTraversalExpression{
+							RootName:  name,
+							Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
+							Parts: []model.Traversable{&model.Variable{
+								Name:         name,
+								VariableType: o.Type(),
+							}},
+						},
+					})
+				}
+			}
+			if result != nil {
+				g.Fgenf(&index, "%sreturn %v;\n", g.Indent, result)
+			}
+		}
+
+	})
+
+	if g.asyncMain {
+		g.Fgenf(&index, "}\n")
 	}
 
 	files := map[string][]byte{
@@ -152,6 +200,15 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
+func requiresAsyncMain(r *hcl2.Resource) bool {
+	if r.Options == nil || r.Options.Range == nil {
+		return false
+	}
+
+	t := r.Options.Range.Type()
+	return model.ResolveOutputs(t) != t
+}
+
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
@@ -219,9 +276,10 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
-		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
-			rangeExpr := newAwaitCall(r.Options.Range)
+		rangeType := model.ResolveOutputs(r.Options.Range.Type())
+		rangeExpr := g.lowerExpression(r.Options.Range)
 
+		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, name, qualifiedMemberName)
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
@@ -231,23 +289,22 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			rangeExpr := newAwaitCall(r.Options.Range)
 			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, name, qualifiedMemberName)
 
-			resKey, isIterable := "key", false
+			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
-				g.Fgenf(w, "%sfor (const [__key, __value] of %v) {\n", g.Indent, rangeExpr)
-				isIterable = true
+				rangeExpr := &model.FunctionCallExpression{
+					Name: "entries",
+					Args: []model.Expression{rangeExpr},
+				}
+				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
-				if isIterable {
-					g.Fgenf(w, "%sconst range = {key: __key, value: __value};\n", g.Indent)
-				}
 				g.Fgenf(w, "%s%s.push(", g.Indent, name)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
@@ -300,7 +357,11 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Value))
+	export := "export "
+	if g.asyncMain {
+		export = ""
+	}
+	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export, cleanName(v.Name()), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

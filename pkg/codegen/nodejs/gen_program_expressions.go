@@ -18,13 +18,16 @@ import (
 
 type nameInfo int
 
-func (nameInfo) IsReservedWord(word string) bool {
-	return isReservedWord(word)
+func (nameInfo) Format(name string) string {
+	return cleanName(name)
 }
 
 func (g *generator) lowerExpression(expr model.Expression) model.Expression {
 	// TODO(pdg): diagnostics
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), true)
+	if g.asyncMain {
+		expr = g.awaitInvokes(expr)
+	}
+	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr
 }
@@ -176,11 +179,11 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 
 	// If all of the arguments are promises, use promise methods. If any argument is an output, convert all other args
 	// to outputs and use output methods.
-	isOutput := make([]bool, len(applyArgs))
 	anyOutputs := false
-	for i, arg := range applyArgs {
-		isOutput[i] = isOutputType(arg.Type())
-		anyOutputs = anyOutputs || isOutput[i]
+	for _, arg := range applyArgs {
+		if isOutputType(arg.Type()) {
+			anyOutputs = true
+		}
 	}
 
 	apply, all := "then", "Promise.all"
@@ -193,16 +196,12 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.Fgenf(w, "%.20v.%v(%.v)", applyArgs[0], apply, then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
-		g.Fgen(w, "%v([", all)
+		g.Fgenf(w, "%v([", all)
 		for i, o := range applyArgs {
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
-			if anyOutputs && !isOutput[i] {
-				g.Fgenf(w, "pulumi.output(%.v)", o)
-			} else {
-				g.Fgenf(w, "%v", o)
-			}
+			g.Fgenf(w, "%v", o)
 		}
 		g.Fgenf(w, "]).%v(%.v)", apply, then)
 	}
@@ -275,7 +274,7 @@ var functionImports = map[string]string{
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != "invoke" {
+	if x.Name != hcl2.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -288,6 +287,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	switch expr.Name {
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
+	case intrinsicAwait:
+		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:
 		g.Fgen(w, "pulumi.interpolate`")
 		for _, part := range expr.Args {
@@ -301,7 +302,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		switch expr.Args[0].Type().(type) {
+		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
 		case *model.ListType, *model.TupleType:
 			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
 				g.genRange(w, call, true)
@@ -316,7 +317,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
-	case "invoke":
+	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
@@ -423,6 +424,38 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	}
 }
 
+func (g *generator) literalKey(x model.Expression) (string, bool) {
+	strKey := ""
+	switch x := x.(type) {
+	case *model.LiteralValueExpression:
+		if x.Type() == model.StringType {
+			strKey = x.Value.AsString()
+			break
+		}
+		var buf bytes.Buffer
+		g.GenLiteralValueExpression(&buf, x)
+		return buf.String(), true
+	case *model.TemplateExpression:
+		if len(x.Parts) == 1 {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+				strKey = lit.Value.AsString()
+				break
+			}
+		}
+		var buf bytes.Buffer
+		g.GenTemplateExpression(&buf, x)
+		return buf.String(), true
+	default:
+		return "", false
+	}
+
+	if isLegalIdentifier(strKey) {
+		return strKey, true
+	}
+	return fmt.Sprintf("%q", strKey), true
+
+}
+
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	if len(expr.Items) == 0 {
 		g.Fgen(w, "{}")
@@ -431,12 +464,8 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		g.Indented(func() {
 			for _, item := range expr.Items {
 				g.Fgenf(w, "\n%s", g.Indent)
-				if lit, isLit := item.Key.(*model.LiteralValueExpression); isLit {
-					if lit.Type() == model.StringType && isLegalIdentifier(lit.Value.AsString()) {
-						g.Fprint(w, lit.Value.AsString())
-					} else {
-						g.Fgenf(w, "%.v", lit)
-					}
+				if lit, ok := g.literalKey(item.Key); ok {
+					g.Fgenf(w, "%s", lit)
 				} else {
 					g.Fgenf(w, "[%.v]", item.Key)
 				}

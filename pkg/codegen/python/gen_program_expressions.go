@@ -1,3 +1,4 @@
+//nolint: goconst
 package python
 
 import (
@@ -12,23 +13,23 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
 
-func (nameInfo) IsReservedWord(word string) bool {
-	return isReservedWord(word)
+func (nameInfo) Format(name string) string {
+	return PyName(name)
 }
 
-func (g *generator) lowerExpression(expr model.Expression) model.Expression {
+func (g *generator) lowerExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
 	// TODO(pdg): diagnostics
 
 	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
 	expr, _ = g.lowerProxyApplies(expr)
-	return expr
+	expr, quotes, _ := g.rewriteQuotes(expr)
+	return expr, quotes
 }
 
 func (g *generator) GetPrecedence(expr model.Expression) int {
@@ -185,7 +186,7 @@ var functionImports = map[string]string{
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != "invoke" {
+	if x.Name != hcl2.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -206,7 +207,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
-	case "invoke":
+	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
@@ -223,8 +224,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
+		casingTable := g.casingTables[pkg]
 		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
-			g.lowerObjectKeys(expr.Args[1], expr.Signature.Parameters[1].Type)
+			g.lowerObjectKeys(expr.Args[1], casingTable)
 
 			indenter := func(f func()) { f() }
 			if len(obj.Items) > 1 {
@@ -238,7 +240,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						continue
 					}
 
-					keyVal := key.Value.AsString()
+					keyVal := PyName(key.Value.AsString())
 					if i == 0 {
 						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
 					} else {
@@ -314,24 +316,13 @@ func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, esc
 	}
 }
 
-func (g *generator) genStringLiteral(w io.Writer, v string) {
+func (g *generator) genStringLiteral(w io.Writer, quotes, v string) {
 	builder := &strings.Builder{}
-	newlines := strings.Count(v, "\n")
-	if newlines == 0 || newlines == 1 && (v[0] == '\n' || v[len(v)-1] == '\n') {
-		// This string either does not contain newlines or contains a single leading or trailing newline, so we'll
-		// Generate a short string literal. Quotes, backslashes, and newlines will be escaped in conformance with
-		// https://docs.python.org/3.7/reference/lexical_analysis.html#literals.
-		builder.WriteRune('"')
-		g.genEscapedString(builder, v, true, false)
-		builder.WriteRune('"')
-	} else {
-		// This string does contain newlines, so we'll generate a long string literal. "${", backquotes, and
-		// backslashes will be escaped in conformance with
-		// https://docs.python.org/3.7/reference/lexical_analysis.html#literals.
-		builder.WriteString(`"""`)
-		g.genEscapedString(builder, v, false, false)
-		builder.WriteString(`"""`)
-	}
+
+	builder.WriteString(quotes)
+	escapeNewlines := quotes == `"` || quotes == `'`
+	g.genEscapedString(builder, v, escapeNewlines, false)
+	builder.WriteString(quotes)
 
 	g.Fgenf(w, "%s", builder.String())
 }
@@ -353,7 +344,8 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 			g.Fgenf(w, "%g", f)
 		}
 	case model.StringType:
-		g.genStringLiteral(w, expr.Value.AsString())
+		quotes := g.quotes[expr]
+		g.genStringLiteral(w, quotes, expr.Value.AsString())
 	default:
 		contract.Failf("unexpected literal type in GenLiteralValueExpression: %v (%v)", expr.Type(),
 			expr.SyntaxNode().Range())
@@ -375,7 +367,7 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable) {
-	for i, traverser := range traversal {
+	for _, traverser := range traversal {
 		var key cty.Value
 		switch traverser := traverser.(type) {
 		case hcl.TraverseAttr:
@@ -389,25 +381,17 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		switch key.Type() {
 		case cty.String:
 			keyVal := key.AsString()
-
-			receiver := parts[i]
-			if receiver, ok := receiver.(model.TypedTraversable); ok {
-				annotations := receiver.Type().GetAnnotations()
-				if len(annotations) == 1 {
-					keyVal = g.mapObjectKey(keyVal, annotations[0].(*schema.ObjectType))
-				}
-			}
-
-			if isLegalIdentifier(keyVal) {
-				g.Fgenf(w, ".%s", keyVal)
-			} else {
-				g.Fgenf(w, "[%q]", keyVal)
-			}
+			contract.Assert(isLegalIdentifier(keyVal))
+			g.Fgenf(w, ".%s", keyVal)
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
 			g.Fgenf(w, "[%d]", idx)
 		default:
-			g.Fgenf(w, "[%q]", key.AsString())
+			keyExpr := &model.LiteralValueExpression{Value: key}
+			diags := keyExpr.Typecheck(false)
+			contract.Ignore(diags)
+
+			g.Fgenf(w, "[%v]", keyExpr)
 		}
 	}
 }
@@ -432,30 +416,14 @@ func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression)
 }
 
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
-	if len(expr.Parts) == 1 {
-		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.GenLiteralValueExpression(w, lit)
-			return
-		}
-	}
+	quotes := g.quotes[expr]
+	escapeNewlines := quotes == `"` || quotes == `'`
 
-	prefix, isMultiLine, quotes := "", false, `"`
-	for i, part := range expr.Parts {
-		if lit, ok := part.(*model.LiteralValueExpression); ok {
-			if !isMultiLine && lit.Type() == model.StringType {
-				v := lit.Value.AsString()
-				switch strings.Count(v, "\n") {
-				case 0:
-					continue
-				case 1:
-					if i == 0 && v[0] == '\n' || i == len(expr.Parts)-1 && v[len(v)-1] == '\n' {
-						continue
-					}
-				}
-				isMultiLine, quotes = true, `"""`
-			}
-		} else {
-			prefix = "f"
+	prefix, escapeBraces := "", false
+	for _, part := range expr.Parts {
+		if lit, ok := part.(*model.LiteralValueExpression); !ok || lit.Type() != model.StringType {
+			prefix, escapeBraces = "f", true
+			break
 		}
 	}
 
@@ -465,7 +433,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.genEscapedString(b, lit.Value.AsString(), !isMultiLine, true)
+			g.genEscapedString(b, lit.Value.AsString(), escapeNewlines, escapeBraces)
 		} else {
 			g.Fgenf(b, "{%.v}", expr)
 		}

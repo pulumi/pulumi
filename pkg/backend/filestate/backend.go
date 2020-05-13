@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ type localBackend struct {
 	url         string
 
 	bucket Bucket
+	mutex  sync.Mutex
 }
 
 type localBackendReference struct {
@@ -180,7 +182,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while building the absolute path")
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -655,7 +657,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "serializing deployment")
 	}

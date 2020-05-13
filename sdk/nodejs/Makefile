@@ -31,21 +31,21 @@ build_plugin::
 
 build:: build_package build_plugin
 
-install_package::
+install_package:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
 
-install_plugin::
+install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
-istanbul_tests::
-	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+istanbul_tests:: build
+	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 30000 'bin/tests/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
 
-sxs_tests::
+sxs_tests:: build
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
 	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 
@@ -55,7 +55,7 @@ test_fast:: sxs_tests istanbul_tests
 test_all:: sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
-dist::
+dist:: build
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
