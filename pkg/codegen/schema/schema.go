@@ -97,8 +97,8 @@ var (
 	ArchiveType Type = archiveType
 	// AssetType represents the set of Pulumi Asset values.
 	AssetType Type = assetType
-	// JsonType represents the set of JSON-encoded values.
-	JsonType Type = jsonType
+	// JSONType represents the set of JSON-encoded values.
+	JSONType Type = jsonType
 	// AnyType represents the complete set of values.
 	AnyType Type = anyType
 )
@@ -799,7 +799,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		case "pulumi.json#/Asset":
 			return AssetType, nil
 		case "pulumi.json#/Json":
-			return JsonType, nil
+			return JSONType, nil
 		case "pulumi.json#/Any":
 			return AnyType, nil
 		}

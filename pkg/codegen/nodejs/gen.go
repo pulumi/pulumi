@@ -168,7 +168,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 			typ = "pulumi.asset.Archive"
 		case schema.AssetType:
 			typ = "pulumi.asset.Asset | pulumi.asset.Archive"
-		case schema.JsonType:
+		case schema.JSONType:
 			fallthrough
 		case schema.AnyType:
 			typ = "any"

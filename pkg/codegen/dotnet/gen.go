@@ -294,7 +294,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = "Archive"
 		case schema.AssetType:
 			typ = "AssetOrArchive"
-		case schema.JsonType:
+		case schema.JSONType:
 			if wrapInput {
 				typ = "InputJson"
 				wrapInput = false
