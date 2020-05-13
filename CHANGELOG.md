@@ -22,14 +22,16 @@ CHANGELOG
 
 - Allow secrets to be decrypted when exporting a stack
   [#4046](https://github.com/pulumi/pulumi/pull/4046)
+  
+## 2.1.1 (2020-05-11)
+
+- Add retry support when writing to state buckets
+  [#4494](https://github.com/pulumi/pulumi/pull/4494)
 
 ## 2.1.0 (2020-04-28)
 
 - Fix infinite recursion bug for Go SDK
   [#4516](https://github.com/pulumi/pulumi/pull/4516)
-
-- Add retry support when writing to state buckets
-  [#4494](https://github.com/pulumi/pulumi/pull/4494)
   
 - Order secretOutputNames when used in stack references
   [#4489](https://github.com/pulumi/pulumi/pull/4489)
