@@ -67,6 +67,7 @@ CHANGELOG
   [#4455](https://github.com/pulumi/pulumi/pull/4455)
 
 - Allow `pulumi.export` calls from Python unit tests.
+  [#4518](https://github.com/pulumi/pulumi/pull/4518)
 
 ## 2.0.0 (2020-04-16)
 
