@@ -79,7 +79,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		pkg: pkg,
 		mod: moduleName,
 	}
-	typeName := modCtx.typeString(t, input, false, optional)
+	typeName := modCtx.typeString(t, input, false, optional, nil)
 
 	// Remove any package qualifiers from the type name.
 	typeQualifierPackage := "inputs"

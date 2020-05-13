@@ -26,6 +26,8 @@ type NodePackageInfo struct {
 	PackageName string `json:"packageName,omitempty"`
 	// Description for the NPM package.
 	PackageDescription string `json:"packageDescription,omitempty"`
+	// Readme contains the text for the package's README.md files.
+	Readme string `json:"readme,omityempty"`
 	// NPM dependencies to add to package.json.
 	Dependencies map[string]string `json:"dependencies,omitempty"`
 	// NPM dev-dependencies to add to package.json.
