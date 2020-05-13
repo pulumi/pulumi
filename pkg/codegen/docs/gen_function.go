@@ -76,11 +76,15 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 		case "go":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		case "csharp":
+			namespace := title(mod.pkg.Name, lang)
+			if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+				namespace = ns
+			}
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 			if mod.mod == "" {
-				resultTypeName = fmt.Sprintf("Pulumi.%s.%s", strings.Title(mod.pkg.Name), resultTypeName)
+				resultTypeName = fmt.Sprintf("Pulumi.%s.%s", namespace, resultTypeName)
 			} else {
-				resultTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", strings.Title(mod.pkg.Name), strings.Title(mod.mod), resultTypeName)
+				resultTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, title(mod.mod, lang), resultTypeName)
 			}
 
 		case "python":

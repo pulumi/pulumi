@@ -969,8 +969,12 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		case "nodejs", "go":
 			// Intentionally left blank.
 		case "csharp":
+			namespace := title(mod.pkg.Name, lang)
+			if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+				namespace = ns
+			}
 			if mod.mod == "" {
-				resourceTypeName = fmt.Sprintf("Pulumi.%s.%s", title(mod.pkg.Name, lang), resourceTypeName)
+				resourceTypeName = fmt.Sprintf("Pulumi.%s.%s", namespace, resourceTypeName)
 				break
 			}
 
@@ -980,7 +984,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 				goPkgName := getLanguageModuleName(mod.pkg, mod.mod, "go")
 				modName = getLanguageModuleName(mod.pkg, goPkgName, "csharp")
 			}
-			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, lang), modName, resourceTypeName)
+			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		case "python":
 			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
 			continue
@@ -1087,7 +1091,11 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	modName := getLanguageModuleName(mod.pkg, mod.mod, "csharp")
-	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", title(mod.pkg.Name, "csharp"), modName, stateParam)
+	namespace := title(mod.pkg.Name, "csharp")
+	if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+		namespace = ns
+	}
+	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, stateParam)
 
 	docLangHelper := getLanguageDocHelper("csharp")
 	return []formalParam{
