@@ -41,10 +41,11 @@ import (
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
-	ctx    *Context
-	name   tokens.QName
-	plug   *plugin
-	client pulumirpc.AnalyzerClient
+	ctx     *Context
+	name    tokens.QName
+	plug    *plugin
+	client  pulumirpc.AnalyzerClient
+	version string
 }
 
 var _ Analyzer = (*analyzer)(nil)
@@ -136,10 +137,11 @@ func NewPolicyAnalyzer(
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
-		ctx:    ctx,
-		name:   name,
-		plug:   plug,
-		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+		ctx:     ctx,
+		name:    name,
+		plug:    plug,
+		client:  pulumirpc.NewAnalyzerClient(plug.Conn),
+		version: proj.Version,
 	}, nil
 }
 
@@ -184,7 +186,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	failures := resp.GetDiagnostics()
 	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
 
-	diags, err := convertDiagnostics(failures)
+	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting analysis results")
 	}
@@ -257,7 +259,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 	failures := resp.GetDiagnostics()
 	logging.V(7).Infof("%s.AnalyzeStack(...) success: failures=#%d", a.label(), len(failures))
 
-	diags, err := convertDiagnostics(failures)
+	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting analysis results")
 	}
@@ -325,10 +327,17 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		}
 	}
 
+	// The version from PulumiPolicy.yaml is used, if set, over the version from the response.
+	version := resp.GetVersion()
+	if a.version != "" {
+		version = a.version
+		logging.V(7).Infof("Using version %q from PulumiPolicy.yaml", version)
+	}
+
 	return AnalyzerInfo{
 		Name:           resp.GetName(),
 		DisplayName:    resp.GetDisplayName(),
-		Version:        resp.GetVersion(),
+		Version:        version,
 		SupportsConfig: resp.GetSupportsConfig(),
 		Policies:       policies,
 		InitialConfig:  initialConfig,
@@ -596,10 +605,16 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 	}
 }
 
-func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]AnalyzeDiagnostic, error) {
+func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic, version string) ([]AnalyzeDiagnostic, error) {
 	diagnostics := make([]AnalyzeDiagnostic, len(protoDiagnostics))
 	for idx := range protoDiagnostics {
 		protoD := protoDiagnostics[idx]
+
+		// The version from PulumiPolicy.yaml is used, if set, over the version from the diagnostic.
+		policyPackVersion := protoD.PolicyPackVersion
+		if version != "" {
+			policyPackVersion = version
+		}
 
 		enforcementLevel, err := convertEnforcementLevel(protoD.EnforcementLevel)
 		if err != nil {
@@ -609,7 +624,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]Anal
 		diagnostics[idx] = AnalyzeDiagnostic{
 			PolicyName:        protoD.PolicyName,
 			PolicyPackName:    protoD.PolicyPackName,
-			PolicyPackVersion: protoD.PolicyPackVersion,
+			PolicyPackVersion: policyPackVersion,
 			Description:       protoD.Description,
 			Message:           protoD.Message,
 			Tags:              protoD.Tags,

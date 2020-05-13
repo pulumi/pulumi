@@ -133,6 +133,10 @@ func (proj *Project) Save(path string) error {
 type PolicyPackProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Version specifies the version of the policy pack. If set, it will override the
+	// version specified in `package.json` for Node.js policy packs.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
