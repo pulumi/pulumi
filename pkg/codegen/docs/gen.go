@@ -1444,10 +1444,10 @@ func (mod *modContext) gen(fs fs) error {
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
 		// Don't include the "go" language in the language chooser
-		// for the helm/v2 and yaml modules in the k8s package. These
-		// are "overlay" modules. The resources under those modules are
-		// not available in Go.
-		if isK8s && mod.isKubernetesOverlayModule() {
+		// for the k8s package's apiextensions module. The
+		// "overlay" resource called CustomResource (not to be confused
+		// with CustomResourceDefintion) is not available in Go yet.
+		if isK8s && mod.mod == "apiextensions" && title == "CustomResource" {
 			data.LangChooserLanguages = "typescript,python,csharp"
 		}
 
