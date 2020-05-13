@@ -46,7 +46,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	if pkg == nil {
 		packageNamespace = ""
 	} else if pkg.Name != "" {
-		packageNamespace = "." + Title(pkg.Name)
+		packageNamespace = "." + namespaceName(d.Namespaces, pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
@@ -122,9 +122,9 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	var displayName string
 	var link string
 	if modName == "" {
-		displayName = fmt.Sprintf("Pulumi.%s", Title(pkg.Name))
+		displayName = fmt.Sprintf("Pulumi.%s", namespaceName(d.Namespaces, pkg.Name))
 	} else {
-		displayName = fmt.Sprintf("Pulumi.%s.%s", Title(pkg.Name), modName)
+		displayName = fmt.Sprintf("Pulumi.%s.%s", namespaceName(d.Namespaces, pkg.Name), modName)
 	}
 	link = d.GetDocLinkForResourceType(pkg, "", displayName)
 	return displayName, link
