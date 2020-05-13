@@ -24,12 +24,12 @@ import (
 func isReservedWord(s string) bool {
 	switch s {
 	case "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const",
-	     "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern",
-	     "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "int", "interface",
-	     "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "override",
-	     "params", "private", "protected", "public", "readonly" ,"ref", "return", "sbyte", "sealed", "short",
-	     "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof",
-	     "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while":
+		"continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern",
+		"false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "int", "interface",
+		"internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "override",
+		"params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short",
+		"sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof",
+		"uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while":
 		return true
 
 	default:
@@ -38,14 +38,14 @@ func isReservedWord(s string) bool {
 }
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a C# identifier as per
-// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure#identifiers
+// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 func isLegalIdentifierStart(c rune) bool {
 	return c == '_' ||
 		unicode.In(c, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Lm, unicode.Lo, unicode.Nl)
 }
 
 // isLegalIdentifierPart returns true if it is legal for c to be part of a C# identifier (besides the first character)
-// as per https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure#identifiers.
+// as per https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 func isLegalIdentifierPart(c rune) bool {
 	return isLegalIdentifierStart(c) || unicode.In(c, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Cf)
 }

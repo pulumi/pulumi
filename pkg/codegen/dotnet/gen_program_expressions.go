@@ -366,14 +366,14 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 	if !newlines {
 		// This string does not contain newlines so we'll generate a regular string literal. Quotes and backslashes
 		// will be escaped in conformance with
-		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure#string-literals
+		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 		g.Fgen(w, "\"")
 		g.Fgen(w, g.escapeString(v, false))
 		g.Fgen(w, "\"")
 	} else {
 		// This string does contain newlines, so we'll generate a verbatim string literal. Quotes will be escaped
 		// in conformance with
-		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure#string-literals
+		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 		g.Fgen(w, "@\"")
 		g.Fgen(w, g.escapeString(v, true))
 		g.Fgen(w, "\"")
@@ -431,7 +431,9 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType) {
+func (g *generator) genRelativeTraversal(w io.Writer,
+	traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType) {
+
 	for i, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {
