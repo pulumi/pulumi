@@ -197,6 +197,8 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 			return "pulumi.Archive"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchive"
+		case schema.JsonType:
+			fallthrough
 		case schema.AnyType:
 			return "interface{}"
 		}
@@ -242,6 +244,8 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 			return "pulumi.ArchiveInput"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchiveInput"
+		case schema.JsonType:
+			fallthrough
 		case schema.AnyType:
 			return "pulumi.Input"
 		}
@@ -293,6 +297,8 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 			return "pulumi.ArchiveOutput"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchiveOutput"
+		case schema.JsonType:
+			fallthrough
 		case schema.AnyType:
 			return "pulumi.AnyOutput"
 		}

@@ -294,17 +294,15 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = "Archive"
 		case schema.AssetType:
 			typ = "AssetOrArchive"
+		case schema.JsonType:
+			if wrapInput {
+				typ = "InputJson"
+				wrapInput = false
+			} else {
+				typ = "System.Text.Json.JsonElement"
+			}
 		case schema.AnyType:
 			typ = "object"
-			// TODO(msh): Remove this check when https://github.com/pulumi/pulumi-terraform-bridge/issues/132 is ready.
-			if mod.isK8sCompatMode() {
-				if wrapInput {
-					typ = "InputJson"
-					wrapInput = false
-				} else {
-					typ = "System.Text.Json.JsonElement"
-				}
-			}
 		}
 	}
 
