@@ -331,6 +331,8 @@ func newUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			yes = yes || skipConfirmations()
+
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
 				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))

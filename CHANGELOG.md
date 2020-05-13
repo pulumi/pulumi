@@ -23,6 +23,10 @@ CHANGELOG
 - Allow secrets to be decrypted when exporting a stack
   [#4046](https://github.com/pulumi/pulumi/pull/4046)
   
+- Commands checking for a confirmation or requiring a `--yes` flag can now be
+  skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
+  [#4477](https://github.com/pulumi/pulumi/pull/4477)
+  
 ## 2.1.1 (2020-05-11)
 
 - Add retry support when writing to state buckets

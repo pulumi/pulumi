@@ -352,6 +352,7 @@ func newNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
+			args.yes = args.yes || skipConfirmations()
 			return runNew(args)
 		}),
 	}
