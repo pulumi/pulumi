@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
@@ -84,7 +85,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
 
-	proj, err := workspace.LoadPolicyPack(filepath.Join(policyPackPath, "PulumiPolicy.yaml"))
+	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
+	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
 	}
@@ -112,6 +114,28 @@ func NewPolicyAnalyzer(
 	env, err := constructEnv(opts, proj.Runtime.Name())
 	if err != nil {
 		return nil, err
+	}
+
+	// If this is a Python policy pack and it has the virtualenv runtime option set, "activate"
+	// the environment variables used to execute the plugin so that the python binary and
+	// installed dependencies in the virtual environment are used by the plugin.
+	if strings.EqualFold(proj.Runtime.Name(), "python") && len(proj.Runtime.Options()) > 0 {
+		if virtualenvInterface, hasVirtualenv := proj.Runtime.Options()["virtualenv"]; hasVirtualenv {
+			virtualenv, ok := virtualenvInterface.(string)
+			if !ok {
+				return nil, errors.New("virtualenv not set to a string")
+			}
+			if !filepath.IsAbs(virtualenv) {
+				virtualenv = filepath.Clean(filepath.Join(filepath.Dir(projPath), virtualenv))
+			}
+			if _, err := os.Stat(virtualenv); os.IsNotExist(err) {
+				return nil, errors.Errorf("virtualenv does not exist: %s", virtualenv)
+			}
+			if !python.IsVirtualEnv(virtualenv) {
+				return nil, errors.Errorf("virtualenv does not appear to be a virtual environment: %s", virtualenv)
+			}
+			env = python.ActivateVirtualEnv(env, virtualenv)
+		}
 	}
 
 	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
