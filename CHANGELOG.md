@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.2.0 (2020-05-13)
+
 - Fixed ResourceOptions issue with stack references in Python SDK
  [#4553](https://github.com/pulumi/pulumi/pull/4553)
 
