@@ -230,8 +230,8 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir":  {"System.IO", "System.Linq"},
-	"toJSON":   {"System.Text.Json"},
+	"readDir": {"System.IO", "System.Linq"},
+	"toJSON":  {"System.Text.Json", "System.Collections.Generic"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
