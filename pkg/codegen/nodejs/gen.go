@@ -964,7 +964,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Ensure that the target module directory contains a README.md file.
 	readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
 	if readme == "" {
-		readme := mod.pkg.Description
+		readme = mod.pkg.Description
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
