@@ -15,24 +15,26 @@
 package archive
 
 import (
-	"archive/zip"
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIngoreSimple(t *testing.T) {
 	doArchiveTest(t,
-		fileContents{name: ".pulumiignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
+		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
 		fileContents{name: "included.txt", shouldRetain: true},
 		fileContents{name: "node_modules/included.txt", shouldRetain: true},
 		fileContents{name: "node_modules/pulumi/excluded.txt", shouldRetain: false},
@@ -41,7 +43,7 @@ func TestIngoreSimple(t *testing.T) {
 
 func TestIgnoreNegate(t *testing.T) {
 	doArchiveTest(t,
-		fileContents{name: ".pulumiignore", contents: []byte("/*\n!/foo\n/foo/*\n!/foo/bar"), shouldRetain: false},
+		fileContents{name: ".gitignore", contents: []byte("/*\n!/foo\n/foo/*\n!/foo/bar"), shouldRetain: false},
 		fileContents{name: "excluded.txt", shouldRetain: false},
 		fileContents{name: "foo/excluded.txt", shouldRetain: false},
 		fileContents{name: "foo/baz/exlcuded.txt", shouldRetain: false},
@@ -50,27 +52,53 @@ func TestIgnoreNegate(t *testing.T) {
 
 func TestNested(t *testing.T) {
 	doArchiveTest(t,
-		fileContents{name: ".pulumiignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
-		fileContents{name: "node_modules/.pulumiignore", contents: []byte("@pulumi/"), shouldRetain: true},
+		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
+		fileContents{name: "node_modules/.gitignore", contents: []byte("@pulumi/"), shouldRetain: true},
 		fileContents{name: "included.txt", shouldRetain: true},
 		fileContents{name: "node_modules/included.txt", shouldRetain: true},
 		fileContents{name: "node_modules/pulumi/excluded.txt", shouldRetain: false},
 		fileContents{name: "node_modules/@pulumi/pulumi-cloud/excluded.txt", shouldRetain: false})
 }
 
-func doArchiveTest(t *testing.T, files ...fileContents) {
-	archive, err := archiveContents(files...)
-	assert.NoError(t, err)
-
-	fmt.Println(archive.Len())
-
-	r, err := zip.NewReader(bytes.NewReader(archive.Bytes()), int64(archive.Len()))
-	assert.NoError(t, err)
-
-	checkFiles(t, files, r.File)
+func TestTypicalPythonPolicyPackDir(t *testing.T) {
+	doArchiveTest(t,
+		fileContents{name: "__main__.py", shouldRetain: true},
+		fileContents{name: ".gitignore", contents: []byte("*.pyc\nvenv/\n"), shouldRetain: true},
+		fileContents{name: "PulumiPolicy.yaml", shouldRetain: true},
+		fileContents{name: "requirements.txt", shouldRetain: true},
+		fileContents{name: "venv/bin/activate", shouldRetain: false},
+		fileContents{name: "venv/bin/pip", shouldRetain: false},
+		fileContents{name: "venv/bin/python", shouldRetain: false},
+		fileContents{name: "__pycache__/__main__.cpython-37.pyc", shouldRetain: false})
 }
 
-func archiveContents(files ...fileContents) (*bytes.Buffer, error) {
+func TestIgnoreContentOfDotGit(t *testing.T) {
+	doArchiveTest(t,
+		fileContents{name: ".git/HEAD", shouldRetain: false},
+		fileContents{name: ".git/objects/00/02ae827766d77ee9e2082fee9adeaae90aff65", shouldRetain: false},
+		fileContents{name: "__main__.py", shouldRetain: true},
+		fileContents{name: "PulumiPolicy.yaml", shouldRetain: true},
+		fileContents{name: "requirements.txt", shouldRetain: true})
+}
+
+func doArchiveTest(t *testing.T, files ...fileContents) {
+	doTest := func(prefixPathInsideTar string) {
+		tarball, err := archiveContents(prefixPathInsideTar, files...)
+		assert.NoError(t, err)
+
+		tarReader := bytes.NewReader(tarball)
+		gzr, err := gzip.NewReader(tarReader)
+		assert.NoError(t, err)
+		r := tar.NewReader(gzr)
+
+		checkFiles(t, prefixPathInsideTar, files, r)
+	}
+	for _, prefix := range []string{"", "package"} {
+		doTest(prefix)
+	}
+}
+
+func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte, error) {
 	dir, err := ioutil.TempDir("", "archive-test")
 	if err != nil {
 		return nil, err
@@ -81,38 +109,55 @@ func archiveContents(files ...fileContents) (*bytes.Buffer, error) {
 	}()
 
 	for _, file := range files {
-		err := os.MkdirAll(path.Dir(path.Join(dir, file.name)), 0755)
+		name := file.name
+		if os.PathSeparator != '/' {
+			name = strings.ReplaceAll(name, "/", string(os.PathSeparator))
+		}
+
+		err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0755)
 		if err != nil {
 			return nil, err
 		}
 
-		err = ioutil.WriteFile(path.Join(dir, file.name), file.contents, 0644)
+		err = ioutil.WriteFile(filepath.Join(dir, name), file.contents, 0644)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return Process(dir, false)
+	return Tgz(dir, prefixPathInsideTar, true /*useDefaultExcludes*/)
 }
 
-func checkFiles(t *testing.T, expected []fileContents, actual []*zip.File) {
+func checkFiles(t *testing.T, prefixPathInsideTar string, expected []fileContents, r *tar.Reader) {
 	var expectedFiles []string
 	var actualFiles []string
 
 	for _, f := range expected {
 		if f.shouldRetain {
-			expectedFiles = append(expectedFiles, f.name)
+			name := f.name
+			if prefixPathInsideTar != "" {
+				// Joining with '/' rather than platform-specific `filepath.Join` because we expect
+				// the name in the tar to be using '/'.
+				name = fmt.Sprintf("%s/%s", prefixPathInsideTar, name)
+			}
+			expectedFiles = append(expectedFiles, name)
 		}
 	}
 
-	for _, f := range actual {
+	for {
+		header, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
 
-		// Ignore any directories (we only care that the files themselves are correct)
-		if strings.HasSuffix(f.Name, "/") {
+		// Ignore anything other than regular files (e.g. directories) since we only care
+		// that the files themselves are correct.
+		if header.Typeflag != tar.TypeReg {
 			continue
 		}
 
-		actualFiles = append(actualFiles, f.Name)
+		actualFiles = append(actualFiles, header.Name)
 	}
 
 	sort.Strings(expectedFiles)

@@ -21,22 +21,21 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 )
 
-// newPulumiIgnorerIgnorer creates an ignorer based on the contents of a .pulumiignore file, which
-// has the same semantics as a .gitignore file
-func newPulumiIgnorerIgnorer(pathToPulumiIgnore string) (ignorer, error) {
+// newGitIgnoreIgnorer creates an ignorer based on the contents of a .gitignore file.
+func newGitIgnoreIgnorer(pathToPulumiIgnore string) (ignorer, error) {
 	gitIgnorer, err := ignore.CompileIgnoreFile(pathToPulumiIgnore)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumiIgnoreIgnorer{root: path.Dir(pathToPulumiIgnore), ignorer: gitIgnorer}, nil
+	return &gitIngoreIgnorer{root: path.Dir(pathToPulumiIgnore), ignorer: gitIgnorer}, nil
 }
 
-type pulumiIgnoreIgnorer struct {
+type gitIngoreIgnorer struct {
 	root    string
 	ignorer *ignore.GitIgnore
 }
 
-func (g *pulumiIgnoreIgnorer) IsIgnored(f string) bool {
+func (g *gitIngoreIgnorer) IsIgnored(f string) bool {
 	return g.ignorer.MatchesPath(strings.TrimPrefix(f, g.root))
 }
