@@ -127,14 +127,15 @@ func TestRegisterResource(t *testing.T) {
 			"baz":  String("zab"),
 			"bang": String("gnab"),
 		}, &res2)
+		assert.NoError(t, err)
 
-		id, known, secret, err = await(res.ID())
+		id, known, secret, err = await(res2.ID())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, ID("someID"), id)
 
-		urn, known, secret, err = await(res.URN())
+		urn, known, secret, err = await(res2.URN())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
