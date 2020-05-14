@@ -54,6 +54,10 @@ install:: generate
 dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
+# NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
+brew::
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+
 lint::
 	for DIR in "pkg" "sdk" "tests" ; do \
 		pushd $$DIR ; golangci-lint run -c ../.golangci.yml --timeout 5m ; popd ; \
