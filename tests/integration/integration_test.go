@@ -1546,15 +1546,26 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 }
 
 func TestCloudSecretProvider(t *testing.T) {
-	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
-	if kmsKeyAlias == "" {
+	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
+	if awsKmsKeyAlias == "" {
 		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
 	}
 
+	azureKeyVault := os.Getenv("PULUMI_TEST_AZURE_KEY")
+	if azureKeyVault == "" {
+		t.Skipf("Skipping: PULUMI_TEST_AZURE_KEY is not set")
+	}
+
+	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
+	if azureKeyVault == "" {
+		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
+	}
+
+	// Generic test options for all providers
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
+		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
@@ -1578,11 +1589,26 @@ func TestCloudSecretProvider(t *testing.T) {
 		CloudURL: "file://~",
 	})
 
+	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
+		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
+	})
+
+	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
+		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+	})
+
 	// Run with default Pulumi service backend
 	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
 
+	// Check Azure secrets provider
+	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
+
+	// Check gcloud secrets provider
+	t.Run("gcp", func(t *testing.T) { integration.ProgramTest(t, &gcpTestOptions) })
+
 	// Also run with local backend
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
+
 }
 
 func TestPartialValuesNode(t *testing.T) {
