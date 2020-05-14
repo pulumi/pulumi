@@ -25,3 +25,5 @@ test_fast:: install
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+brew:: dist

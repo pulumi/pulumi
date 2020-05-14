@@ -129,6 +129,7 @@ default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
+brew:: $(SUB_PROJECTS:%=%_brew)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -169,6 +170,9 @@ install::
 	@mkdir -p $(PULUMI_NUGET)
 
 dist::
+	$(call STEP_MESSAGE)
+
+brew::
 	$(call STEP_MESSAGE)
 
 test_all::
@@ -218,6 +222,8 @@ $(SUB_PROJECTS:%=%_only_test_fast):
 	@$(MAKE) -C ./$(@:%_only_test_fast=%) only_test_fast
 $(SUB_PROJECTS:%=%_dist):
 	@$(MAKE) -C ./$(@:%_dist=%) dist
+$(SUB_PROJECTS:%=%_brew):
+	@$(MAKE) -C ./$(@:%_brew=%) brew
 endif
 
 # As a convinece, we provide a format target that folks can build to
