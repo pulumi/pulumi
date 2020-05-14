@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Add support for untagged outputs in Go SDK.
+ [#4640](https://github.com/pulumi/pulumi/pull/4640)
 
 ## 2.2.0 (2020-05-13)
 
