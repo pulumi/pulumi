@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -802,7 +803,10 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
 		}
 
-		token := spec.Ref[len("#/types/"):]
+		token, err := url.PathUnescape(spec.Ref[len("#/types/"):])
+		if err != nil {
+			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
+		}
 		if typ, ok := t.objects[token]; ok {
 			return typ, nil
 		}
