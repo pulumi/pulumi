@@ -2,11 +2,13 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	gofmt "go/format"
 	"io"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
@@ -54,14 +56,37 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	g.Fprint(w, "package main\n")
-	// TODO calculate real imports
+
+	imports := g.collectImports(w, program)
 	g.Fprintf(w, "import (\n")
 	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+	for _, pkg := range imports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", pkg)
+	}
 	g.Fprintf(w, ")\n")
 
 	g.Fprintf(w, "func main() {\n")
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
+}
 
+func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.StringSet {
+	// Accumulate other using statements for the various providers
+	pulumiImports := codegen.NewStringSet()
+	for _, n := range program.Nodes {
+		if r, isResource := n.(*hcl2.Resource); isResource {
+			pkg, mod, _, _ := r.DecomposeToken()
+			majVersion := getProviderMajorVersion(pkg)
+
+			vPath := fmt.Sprintf("/v%s", majVersion)
+			if majVersion == "1" {
+				vPath = ""
+			}
+
+			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+		}
+	}
+
+	return pulumiImports
 }
 
 // genPostamble closes the method
