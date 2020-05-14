@@ -15,9 +15,8 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program      *hcl2.Program
-	functionArgs map[string]string
-	diagnostics  hcl.Diagnostics
+	program     *hcl2.Program
+	diagnostics hcl.Diagnostics
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
