@@ -4,6 +4,10 @@ CHANGELOG
 ## HEAD (Unreleased)
 _(none)_
 
+## 2.2.1 (2020-05-13)
+- Add new brew target to fix homebrew builds
+ [#4633](https://github.com/pulumi/pulumi/pull/4633)
+
 ## 2.2.0 (2020-05-13)
 
 - Fixed ResourceOptions issue with stack references in Python SDK
