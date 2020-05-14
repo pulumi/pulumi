@@ -100,5 +100,9 @@ func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Dia
 
 // Packages returns the list of package schemas used by this program.
 func (p *Program) Packages() []*schema.Package {
-	return p.binder.referencedPackages
+	values := make([]*schema.Package, 0, len(p.binder.referencedPackages))
+	for _, value := range p.binder.referencedPackages {
+		values = append(values, value)
+	}
+	return values
 }
