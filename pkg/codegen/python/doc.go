@@ -37,7 +37,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 	return ""
 }
 
-// GetDocLinkForResourceType is not implemented at this time for Python.
+// GetDocLinkForResourceType returns the Python API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
 	var path string
 	switch {
