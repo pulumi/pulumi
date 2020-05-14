@@ -84,7 +84,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) { /*TODO*/ }
 
 // GenConditionalExpression generates code for a ConditionalExpression.
-func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) { /*TODO*/ }
+func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
 
 // GenForExpression generates code for a ForExpression.
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
