@@ -60,6 +60,11 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 			return x, nil
 		}
 
+		_, isOutput := call.Type().(*model.OutputType)
+		if isOutput {
+			return x, nil
+		}
+
 		_, isPromise := call.Type().(*model.PromiseType)
 		contract.Assert(isPromise)
 
