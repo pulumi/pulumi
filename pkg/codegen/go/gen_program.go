@@ -34,10 +34,9 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
 
-	// TODO: process nodes
-	// for _, n := range nodes {
-	// 	g.genNode(&index, n)
-	// }
+	for _, n := range nodes {
+		g.genNode(&index, n)
+	}
 
 	g.genPostamble(&index, nodes)
 
@@ -95,6 +94,32 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 	g.Fprint(w, "return nil\n")
 	g.Fprintf(w, "})\n")
 	g.Fprintf(w, "}\n")
+}
+
+func (g *generator) genNode(w io.Writer, n hcl2.Node) {
+	switch n := n.(type) {
+	case *hcl2.Resource:
+		g.genResource(w, n)
+		// TODO
+		// case *hcl2.ConfigVariable:
+		// 	g.genConfigVariable(w, n)
+		// case *hcl2.LocalVariable:
+		// 	g.genLocalVariable(w, n)
+		// case *hcl2.OutputVariable:
+		// 	g.genOutputAssignment(w, n)
+	}
+}
+
+func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
+
+	resName := r.Name()
+	_, mod, typ, _ := r.DecomposeToken()
+
+	g.Fprintf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", nil)\n", resName, mod, typ)
+	g.Fprintf(w, "if err != nil {\n")
+	g.Fprintf(w, "return err\n")
+	g.Fprintf(w, "}\n")
+
 }
 
 // GetPrecedence returns the precedence for the indicated expression. Lower numbers bind more tightly than higher
