@@ -64,6 +64,8 @@ jobs:
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
 
+          # If generating docs for more providers here, be sure to update
+          # the description of the draft PR that is opened in the next step.
           pushd docs
           ./scripts/gen_resource_docs.sh aws true
           ./scripts/gen_resource_docs.sh kubernetes true
@@ -86,10 +88,12 @@ jobs:
           committer: Pulumi Bot <bot@pulumi.com>
           author: Pulumi Bot <bot@pulumi.com>
           commit-message: Regenerate resource docs
-          title: Preview resource docs changes caused by generator changes
+          title: Preview resource docs changes for pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
-          assignees: ${{ github.actor }}
+            By default, this PR contains regenerated docs for AWS and Kubernetes only.
+          # Assign the draft PR to the author of the current PR.
+          assignees: ${{ github.event.pull_request.user.login }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
           request-to-parent: false
 
