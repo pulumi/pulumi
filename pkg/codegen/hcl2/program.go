@@ -16,6 +16,7 @@ package hcl2
 
 import (
 	"io"
+	"sort"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -100,9 +101,15 @@ func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Dia
 
 // Packages returns the list of package schemas used by this program.
 func (p *Program) Packages() []*schema.Package {
+	keys := make([]string, 0, len(p.binder.referencedPackages))
+	for k := range p.binder.referencedPackages {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	values := make([]*schema.Package, 0, len(p.binder.referencedPackages))
-	for _, value := range p.binder.referencedPackages {
-		values = append(values, value)
+	for _, k := range keys {
+		values = append(values, p.binder.referencedPackages[k])
 	}
 	return values
 }
