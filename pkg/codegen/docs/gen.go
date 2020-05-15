@@ -200,7 +200,9 @@ type resourceDocArgs struct {
 
 	Tool string
 	// LangChooserLanguages is a comma-separated list of languages to pass to the
-	// language chooser shortcode.
+	// language chooser shortcode. Use this to customize the languages shown for a
+	// resource. By default, the language chooser will show all languages supported
+	// by Pulumi for all resources.
 	LangChooserLanguages string
 
 	// Comment represents the introductory resource comment.
@@ -1443,13 +1445,6 @@ func (mod *modContext) gen(fs fs) error {
 
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
-		// Don't include the "go" language in the language chooser
-		// for the k8s package's apiextensions module. The
-		// "overlay" resource called CustomResource (not to be confused
-		// with CustomResourceDefintion) is not available in Go yet.
-		if isK8s && mod.mod == "apiextensions" && title == "CustomResource" {
-			data.LangChooserLanguages = "typescript,python,csharp"
-		}
 
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
