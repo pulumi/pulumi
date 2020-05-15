@@ -80,13 +80,13 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	contract.Assert(len(diags) == 0)
 
 	for _, name := range packageNames.SortedValues() {
-		if _, ok := b.options.packageCache.entries[name]; ok {
+		if _, ok := b.referencedPackages[name]; ok {
 			continue
 		}
 		if err := b.loadPackageSchema(name); err != nil {
 			return err
 		}
-		b.referencedPackages = append(b.referencedPackages, b.options.packageCache.entries[name].schema)
+		b.referencedPackages[name] = b.options.packageCache.entries[name].schema
 	}
 	return nil
 }
