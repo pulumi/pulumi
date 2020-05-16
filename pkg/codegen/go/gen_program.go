@@ -5,6 +5,7 @@ import (
 	"fmt"
 	gofmt "go/format"
 	"io"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
@@ -115,64 +116,30 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	resName := r.Name()
 	_, mod, typ, _ := r.DecomposeToken()
 
-	g.Fprintf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", nil)\n", resName, mod, typ)
-	g.Fprintf(w, "if err != nil {\n")
-	g.Fprintf(w, "return err\n")
-	g.Fprintf(w, "}\n")
+	// Add conversions to input properties
+	for _, input := range r.Inputs {
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		input.Value = g.rewriteExpression(input.Value, destType.(model.Type))
+	}
+
+	g.Fgenf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", ", resName, mod, typ)
+	if len(r.Inputs) > 0 {
+		g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
+		for _, attr := range r.Inputs {
+			// TODO now I need to translate these thigns into the go names:
+			// loggings => Loggings
+			// Loggings: s3.BucketLoggingArray{ s3.BucketLoggingArgs{...} }
+			g.Fgenf(w, "%s: ", strings.Title(attr.Name))
+			g.Fgenf(w, "%.v\n", attr.Value)
+
+		}
+		g.Fgenf(w, "}\n")
+	} else {
+		g.Fgenf(w, "nil)\n")
+	}
+	g.Fgenf(w, "if err != nil {\n")
+	g.Fgenf(w, "return err\n")
+	g.Fgenf(w, "}\n")
 
 }
-
-// GetPrecedence returns the precedence for the indicated expression. Lower numbers bind more tightly than higher
-// numbers.
-func (g *generator) GetPrecedence(expr model.Expression) int { /*TODO*/ return -1 }
-
-// GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
-func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) { /*TODO*/
-}
-
-// GenBinaryOpExpression generates code for a BinaryOpExpression.
-func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) { /*TODO*/ }
-
-// GenConditionalExpression generates code for a ConditionalExpression.
-func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
-
-// GenForExpression generates code for a ForExpression.
-func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
-
-// GenFunctionCallExpression generates code for a FunctionCallExpression.
-func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) { /*TODO*/
-}
-
-// GenIndexExpression generates code for an IndexExpression.
-func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) { /*TODO*/ }
-
-// GenLiteralValueExpression generates code for a LiteralValueExpression.
-func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) { /*TODO*/
-}
-
-// GenObjectConsExpression generates code for an ObjectConsExpression.
-func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) { /*TODO*/ }
-
-// GenRelativeTraversalExpression generates code for a RelativeTraversalExpression.
-func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) { /*TODO*/
-}
-
-// GenScopeTraversalExpression generates code for a ScopeTraversalExpression.
-func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) { /*TODO*/
-}
-
-// GenSplatExpression generates code for a SplatExpression.
-func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) { /*TODO*/ }
-
-// GenTemplateExpression generates code for a TemplateExpression.
-func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) { /*TODO*/ }
-
-// GenTemplateJoinExpression generates code for a TemplateJoinExpression.
-func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) { /*TODO*/
-}
-
-// GenTupleConsExpression generates code for a TupleConsExpression.
-func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) { /*TODO*/ }
-
-// GenUnaryOpExpression generates code for a UnaryOpExpression.
-func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }

@@ -204,6 +204,13 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 // The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
 func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	switch t := t.(type) {
+	case *model.ListType:
+		return GetSchemaForType(t.ElementType)
+	case *model.TupleType:
+		for _, tt := range t.ElementTypes {
+			return GetSchemaForType(tt)
+		}
+		return nil, false
 	case *model.ObjectType:
 		if len(t.Annotations) == 0 {
 			return nil, false
