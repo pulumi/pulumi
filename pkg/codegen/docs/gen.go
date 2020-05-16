@@ -1255,7 +1255,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			continue
 		}
 		if r.StateInputs != nil {
-			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
+			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false)
+			for i := 0; i < len(stateProps); i++ {
+				id := "state_" + stateProps[i].ID
+				stateProps[i].ID = id
+				stateProps[i].Link = "#" + id
+			}
+			stateInputs[lang] = stateProps
 		}
 	}
 
