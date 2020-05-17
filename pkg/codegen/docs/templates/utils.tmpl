@@ -7,3 +7,12 @@
 <!-- linkify wraps any propertyType instance in an anchor tag. The display name/name is rendered as-is by passing it through the htmlSafe function
 to avoid double-encoding html characters, which is typical of properties type names. -->
 {{ define "linkify" }}<a href="{{ .Link }}">{{ if ne .DisplayName "" }}{{ htmlSafe .DisplayName }}{{ else }}{{ htmlSafe .Name }}{{ end }}</a>{{ end }}
+
+<!-- linkify_w_icon an anchor tag with a link icon. The display name/name is rendered as-is by passing it through the htmlSafe function
+to avoid double-encoding html characters, which is typical of properties type names. -->
+{{ define "linkify_w_icon" }}
+<span class="nx">
+{{ if ne .DisplayName "" }}{{ htmlSafe .DisplayName }}{{ else }}{{ htmlSafe .Name }}{{ end }}
+<a class="anchorjs-link " href="{{ .Link }}" aria-label="Anchor" data-anchorjs-icon="" style="font: 1em / 1 anchorjs-icons;padding-left: 0.375em;"></a>
+</span>
+{{ end }}
