@@ -6,6 +6,9 @@ CHANGELOG
 - Add support for untagged outputs in Go SDK.
  [#4640](https://github.com/pulumi/pulumi/pull/4640)
 
+- Fix a Regression in .NET unit testing.
+ [#4656](https://github.com/pulumi/pulumi/pull/4656)
+
 ## 2.2.1 (2020-05-13)
 - Add new brew target to fix homebrew builds
  [#4633](https://github.com/pulumi/pulumi/pull/4633)
