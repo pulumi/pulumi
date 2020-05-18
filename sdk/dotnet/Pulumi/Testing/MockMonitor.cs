@@ -49,22 +49,23 @@ namespace Pulumi.Testing
 
         public async Task<RegisterResourceResponse> RegisterResourceAsync(Resource resource, RegisterResourceRequest request)
         {
+            lock (this.Resources)
+            {
+                this.Resources.Add(resource);
+            }
+
             if (request.Type == Stack._rootPulumiStackTypeName)
             {
                 return new RegisterResourceResponse
                 {
                     Urn = NewUrn(request.Parent, request.Type, request.Name),
+                    Object = new Struct(),
                 };
             }
 
             var (id, state) = await _mocks.NewResourceAsync(request.Type, request.Name, ToDictionary(request.Object),
                 request.Provider, request.ImportId).ConfigureAwait(false);
             
-            lock (this.Resources)
-            {
-                this.Resources.Add(resource);
-            }
-
             return new RegisterResourceResponse
             {
                 Id = id ?? request.ImportId,
