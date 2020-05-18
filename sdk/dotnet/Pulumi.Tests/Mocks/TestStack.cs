@@ -19,9 +19,13 @@ namespace Pulumi.Tests.Mocks
 
     public class MyStack : Stack
     {
+        [Output("publicIp")]
+        public Output<string> PublicIp { get; private set; } = null!;
+
         public MyStack()
         {
             var myInstance = new Instance("instance", new InstanceArgs());
+            this.PublicIp = myInstance.PublicIp;
         }
     }
 }
