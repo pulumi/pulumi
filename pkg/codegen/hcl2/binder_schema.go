@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	jsoniter "github.com/json-iterator/go"
