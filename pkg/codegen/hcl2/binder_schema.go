@@ -15,14 +15,16 @@
 package hcl2
 
 import (
-	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -34,6 +36,8 @@ type packageSchema struct {
 }
 
 type PackageCache struct {
+	m sync.RWMutex
+
 	entries map[string]*packageSchema
 }
 
@@ -41,6 +45,69 @@ func NewPackageCache() *PackageCache {
 	return &PackageCache{
 		entries: map[string]*packageSchema{},
 	}
+}
+
+func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	schema, ok := c.entries[name]
+	return schema, ok
+}
+
+// loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
+// GetSchema method.
+//
+// TODO: schema and provider versions
+func (c *PackageCache) loadPackageSchema(host plugin.Host, name string) (*packageSchema, error) {
+	if s, ok := c.getPackageSchema(name); ok {
+		return s, nil
+	}
+
+	provider, err := host.Provider(tokens.Package(name), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	schemaBytes, err := provider.GetSchema(0)
+	if err != nil {
+		return nil, err
+	}
+
+	var spec schema.PackageSpec
+	if err := jsoniter.Unmarshal(schemaBytes, &spec); err != nil {
+		return nil, err
+	}
+
+	pkg, err := schema.ImportSpec(spec, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := map[string]*schema.Resource{}
+	for _, r := range pkg.Resources {
+		resources[canonicalizeToken(r.Token, pkg)] = r
+	}
+	functions := map[string]*schema.Function{}
+	for _, f := range pkg.Functions {
+		functions[canonicalizeToken(f.Token, pkg)] = f
+	}
+
+	schema := &packageSchema{
+		schema:    pkg,
+		resources: resources,
+		functions: functions,
+	}
+
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	if s, ok := c.entries[name]; ok {
+		return s, nil
+	}
+	c.entries[name] = schema
+
+	return schema, nil
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
@@ -83,56 +150,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if _, ok := b.referencedPackages[name]; ok {
 			continue
 		}
-		if err := b.loadPackageSchema(name); err != nil {
+		pkg, err := b.options.packageCache.loadPackageSchema(b.options.host, name)
+		if err != nil {
 			return err
 		}
-		b.referencedPackages[name] = b.options.packageCache.entries[name].schema
-	}
-	return nil
-}
-
-// loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
-// GetSchema method.
-//
-// TODO: schema and provider versions
-func (b *binder) loadPackageSchema(name string) error {
-	if _, ok := b.options.packageCache.entries[name]; ok {
-		return nil
-	}
-
-	provider, err := b.options.host.Provider(tokens.Package(name), nil)
-	if err != nil {
-		return err
-	}
-
-	schemaBytes, err := provider.GetSchema(0)
-	if err != nil {
-		return err
-	}
-
-	var spec schema.PackageSpec
-	if err := json.Unmarshal(schemaBytes, &spec); err != nil {
-		return err
-	}
-
-	pkg, err := schema.ImportSpec(spec, nil)
-	if err != nil {
-		return err
-	}
-
-	resources := map[string]*schema.Resource{}
-	for _, r := range pkg.Resources {
-		resources[canonicalizeToken(r.Token, pkg)] = r
-	}
-	functions := map[string]*schema.Function{}
-	for _, f := range pkg.Functions {
-		functions[canonicalizeToken(f.Token, pkg)] = f
-	}
-
-	b.options.packageCache.entries[name] = &packageSchema{
-		schema:    pkg,
-		resources: resources,
-		functions: functions,
+		b.referencedPackages[name] = pkg.schema
 	}
 	return nil
 }
