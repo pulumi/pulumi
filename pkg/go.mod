@@ -47,8 +47,8 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.3.1
-	gocloud.dev v0.19.0
-	gocloud.dev/secrets/hashivault v0.19.0
+	gocloud.dev v0.19.1-0.20200517170643-46480dc2c3dd
+	gocloud.dev/secrets/hashivault v0.19.1-0.20200517170643-46480dc2c3dd
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
