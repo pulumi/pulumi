@@ -64,12 +64,14 @@ func (c *PackageCache) loadPackageSchema(host plugin.Host, name string) (*packag
 		return s, nil
 	}
 
-	provider, err := host.Provider(tokens.Package(name), nil)
+	providerVersion := (*semver.Version)(nil)
+	provider, err := host.Provider(tokens.Package(name), providerVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	schemaBytes, err := provider.GetSchema(0)
+	schemaFormatVersion := 0
+	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
 	if err != nil {
 		return nil, err
 	}
