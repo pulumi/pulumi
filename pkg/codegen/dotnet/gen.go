@@ -339,8 +339,22 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	if prop.IsRequired {
 		attributeArgs = ", required: true"
 	}
-	if pt.res != nil && pt.res.IsProvider && prop.Type != schema.StringType {
-		attributeArgs += ", json: true"
+	if pt.res != nil && pt.res.IsProvider {
+		json := true
+		switch prop.Type {
+		case schema.StringType:
+			json = false
+		default:
+			switch t := prop.Type.(type) {
+			case *schema.TokenType:
+				if t.UnderlyingType == schema.StringType {
+					json = false
+				}
+			}
+		}
+		if json {
+			attributeArgs += ", json: true"
+		}
 	}
 
 	// Next generate the input property itself. The way this is generated depends on the type of the property:
