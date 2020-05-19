@@ -78,9 +78,9 @@ func isLegalIdentifier(s string) bool {
 	}
 }
 
-// cleanName replaces characters that are not allowed in JavaScript identifiers with underscores. No attempt is made to
-// ensure that the result is unique.
-func cleanName(name string) string {
+// makeValidIdentifier replaces characters that are not allowed in JavaScript identifiers with underscores. No attempt
+// is made to ensure that the result is unique.
+func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
 		if !isLegalIdentifierPart(c) {

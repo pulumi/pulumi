@@ -152,7 +152,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 	if f.Inputs != nil {
 		params = append(params, formalParam{
 			Name:         "args",
-			OptionalFlag: "",
+			OptionalFlag: "*",
 			Type: propertyType{
 				Name: argsType,
 				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType),

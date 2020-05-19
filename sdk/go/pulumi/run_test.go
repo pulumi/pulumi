@@ -54,6 +54,12 @@ func (*testResource2Inputs) ElementType() reflect.Type {
 	return reflect.TypeOf((*testResource2Args)(nil))
 }
 
+type testResource3 struct {
+	CustomResourceState
+
+	Outputs MapOutput `pulumi:""`
+}
+
 type invokeArgs struct {
 	Bang string `pulumi:"bang"`
 	Bar  string `pulumi:"bar"`
@@ -85,6 +91,7 @@ func TestRegisterResource(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		// Test struct-tag-based marshaling.
 		var res testResource2
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
 			Foo:  String("oof"),
@@ -111,6 +118,34 @@ func TestRegisterResource(t *testing.T) {
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Equal(t, "qux", foo)
+
+		// Test map marshaling.
+		var res2 testResource3
+		err = ctx.RegisterResource("test:resource:type", "resA", Map{
+			"foo":  String("oof"),
+			"bar":  String("rab"),
+			"baz":  String("zab"),
+			"bang": String("gnab"),
+		}, &res2)
+		assert.NoError(t, err)
+
+		id, known, secret, err = await(res2.ID())
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, ID("someID"), id)
+
+		urn, known, secret, err = await(res2.URN())
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.NotEqual(t, "", urn)
+
+		outputs, known, secret, err := await(res2.Outputs)
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, map[string]interface{}{"foo": "qux"}, outputs)
 
 		return nil
 	}, WithMocks("project", "stack", mocks))

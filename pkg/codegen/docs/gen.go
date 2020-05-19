@@ -200,7 +200,9 @@ type resourceDocArgs struct {
 
 	Tool string
 	// LangChooserLanguages is a comma-separated list of languages to pass to the
-	// language chooser shortcode.
+	// language chooser shortcode. Use this to customize the languages shown for a
+	// resource. By default, the language chooser will show all languages supported
+	// by Pulumi for all resources.
 	LangChooserLanguages string
 
 	// Comment represents the introductory resource comment.
@@ -318,11 +320,11 @@ type propertyCharacteristics struct {
 	optional bool
 }
 
-// getLanguageModuleName returns the module name mapped to its language-specific
-// equivalent if the schema for this provider has any overrides for that language.
-// Otherwise, returns the module name as-is.
-func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
-	modName := mod
+// getLanguageModuleName transforms the current module's name to a
+// language-specific name using the language info, if any, for the
+// current package.
+func (mod *modContext) getLanguageModuleName(lang string) string {
+	modName := mod.mod
 	lookupKey := lang + "_" + modName
 	if v, ok := langModuleNameLookup[lookupKey]; ok {
 		return v
@@ -334,10 +336,6 @@ func getLanguageModuleName(pkg *schema.Package, mod, lang string) string {
 			modName = override
 		}
 	case "csharp":
-		// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
-		// Despite that being the case, we don't apply that correction here since the schema-based
-		// codegen for dotnet languages is not aware of this "issue" and will cause other issues in
-		// the docs generator.
 		if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
 			modName = override
 		}
@@ -412,7 +410,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	case *schema.ObjectType:
 		objTypeModName := mod.pkg.TokenToModule(t.Token)
 		if objTypeModName != mod.mod {
-			modName = getLanguageModuleName(mod.pkg, objTypeModName, lang)
+			modName = mod.getLanguageModuleName(lang)
 		}
 	}
 
@@ -428,7 +426,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 // a type if the type of the property is an array or an object.
 func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
 	docLanguageHelper := getLanguageDocHelper(lang)
-	modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+	modName := mod.getLanguageModuleName(lang)
 	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input, characteristics.optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
@@ -503,7 +501,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	name := resourceName(r)
 	docLangHelper := getLanguageDocHelper("nodejs")
 	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
+	modName := mod.getLanguageModuleName("nodejs")
 
 	var argsType string
 	var argsDocLink string
@@ -574,7 +572,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 	docLangHelper := getLanguageDocHelper("go")
 	// Use the Go module to package lookup to transform the module name to its normalized package name.
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "go")
+	modName := mod.getLanguageModuleName("go")
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -630,9 +628,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
 		if mod.mod != "" {
-			// Find the normalize package name for the current module from the "Go" moduleToPackage language info map.
-			normalizedModName := getLanguageModuleName(mod.pkg, mod.mod, "go")
-			correctModName := getLanguageModuleName(mod.pkg, normalizedModName, "csharp")
+			correctModName := mod.getLanguageModuleName("csharp")
 			if !mod.isKubernetesOverlayModule() {
 				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
 				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
@@ -721,10 +717,10 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				// nested types elsewhere. So we use the appropriate name of that type,
 				// as well as its language-specific name. For example, module name for use as a C# namespace
 				// or as a Go package name.
-				modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+				modName := mod.getLanguageModuleName(lang)
 				nestedTypeModName := mod.pkg.TokenToModule(token)
 				if nestedTypeModName != mod.mod {
-					modName = getLanguageModuleName(mod.pkg, nestedTypeModName, lang)
+					modName = mod.getLanguageModuleName(lang)
 				}
 
 				docLangHelper := getLanguageDocHelper(lang)
@@ -895,8 +891,7 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 		case "python":
 			paramTemplate = "py_formal_param"
 			// The Pulumi Python SDK does not have types for constructor args.
-			// The input properties for a resource needs to be exploded as
-			// individual constructor params
+			// All of the input properties are spread out in the signature as format params.
 
 			// Kubernetes overlay resources use a different ordering of formal params in Python.
 			if isK8sOverlayMod {
@@ -960,13 +955,13 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 	for _, lang := range supportedLanguages {
 		// Use the module to package lookup to transform the module name to its normalized package name.
-		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+		modName := mod.getLanguageModuleName(lang)
 		// Reset the type name back to the display name.
 		resourceTypeName = resourceDisplayName
 
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
-		case "nodejs", "go":
+		case "nodejs", "go", "python":
 			// Intentionally left blank.
 		case "csharp":
 			namespace := title(mod.pkg.Name, lang)
@@ -978,16 +973,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 				break
 			}
 
-			// For k8s, the C# ModuleToPackage map uses the normalized Go package names as the key.
-			// So we first lookup that name and then use that to lookup the C# namespace.
-			if isKubernetesPackage(mod.pkg) {
-				goPkgName := getLanguageModuleName(mod.pkg, mod.mod, "go")
-				modName = getLanguageModuleName(mod.pkg, goPkgName, "csharp")
-			}
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
-		case "python":
-			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
-			continue
 		default:
 			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
@@ -1007,7 +993,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("nodejs")
 	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "nodejs")
+	modName := mod.getLanguageModuleName("nodejs")
 	return []formalParam{
 		{
 			Name: "name",
@@ -1046,7 +1032,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("go")
 	// Use the Go module to package lookup to transform the module name to its normalized package name.
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "go")
+	modName := mod.getLanguageModuleName("go")
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -1090,7 +1076,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	modName := getLanguageModuleName(mod.pkg, mod.mod, "csharp")
+	modName := mod.getLanguageModuleName("csharp")
 	namespace := title(mod.pkg.Name, "csharp")
 	if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
 		namespace = ns
@@ -1407,13 +1393,14 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
-// getModuleFileName returns the normalized package name to use
-// for k8s. Otherwise, returns the current module's name as-is.
+// getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
 	if !isKubernetesPackage(mod.pkg) {
 		return mod.mod
 	}
 
+	// For k8s packages, use the Go-language info to get the file name
+	// for the module.
 	if override, ok := goPkgInfo.ModuleToPackage[mod.mod]; ok {
 		return override
 	}
@@ -1440,19 +1427,11 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Resources
-	isK8s := isKubernetesPackage(mod.pkg)
 	for _, r := range mod.resources {
 		data := mod.genResource(r)
 
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
-		// Don't include the "go" language in the language chooser
-		// for the helm/v2 and yaml modules in the k8s package. These
-		// are "overlay" modules. The resources under those modules are
-		// not available in Go.
-		if isK8s && mod.isKubernetesOverlayModule() {
-			data.LangChooserLanguages = "typescript,python,csharp"
-		}
 
 		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
@@ -1555,18 +1534,12 @@ func (mod *modContext) getLanguageLinks() map[string]string {
 		var link string
 		var title string
 		var langTitle string
-		modName := getLanguageModuleName(mod.pkg, mod.mod, lang)
+		modName := mod.getLanguageModuleName(lang)
 
 		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "csharp":
 			langTitle = ".NET"
-			// In the k8s package, the C# language info uses normalized package names as the key for namespace override map.
-			// To make sure the proper namespace is found by the dotnet doc language helper method, we should pass the
-			// normalized value here using Go's module-to-package override info.
-			if isK8s {
-				modName = getLanguageModuleName(mod.pkg, mod.mod, "go")
-			}
 			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
 				modName = override
 			} else if !ok && isK8s {

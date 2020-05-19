@@ -121,17 +121,19 @@ func namespaceName(namespaces map[string]string, name string) string {
 }
 
 type modContext struct {
-	pkg           *schema.Package
-	mod           string
-	propertyNames map[*schema.Property]string
-	types         []*schema.ObjectType
-	resources     []*schema.Resource
-	functions     []*schema.Function
-	typeDetails   map[*schema.ObjectType]*typeDetails
-	children      []*modContext
-	tool          string
-	namespaceName string
-	namespaces    map[string]string
+	pkg                    *schema.Package
+	mod                    string
+	propertyNames          map[*schema.Property]string
+	types                  []*schema.ObjectType
+	resources              []*schema.Resource
+	functions              []*schema.Function
+	typeDetails            map[*schema.ObjectType]*typeDetails
+	children               []*modContext
+	tool                   string
+	namespaceName          string
+	namespaces             map[string]string
+	compatibility          string
+	dictionaryConstructors bool
 }
 
 func (mod *modContext) propertyName(p *schema.Property) string {
@@ -170,16 +172,28 @@ func tokenToFunctionName(tok string) string {
 	return tokenToName(tok)
 }
 
-func (mod *modContext) tokenToNamespace(tok string) string {
+func (mod *modContext) isK8sCompatMode() bool {
+	return mod.compatibility == "kubernetes20"
+}
+
+func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
 	pkg, nsName := "Pulumi."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
-	if nsName == "" {
-		return pkg
+
+	if mod.isK8sCompatMode() {
+		return pkg + ".Types." + qualifier + "." + namespaceName(mod.namespaces, nsName)
 	}
 
-	return pkg + "." + namespaceName(mod.namespaces, nsName)
+	typ := pkg
+	if nsName != "" {
+		typ += "." + namespaceName(mod.namespaces, nsName)
+	}
+	if qualifier != "" {
+		typ += "." + qualifier
+	}
+	return typ
 }
 
 func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
@@ -212,11 +226,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		wrapInput = false
 		typ = fmt.Sprintf(mapFmt, mod.typeString(t.ElementType, qualifier, input, state, false, false, false))
 	case *schema.ObjectType:
-		typ = mod.tokenToNamespace(t.Token)
-		if typ == mod.namespaceName {
+		typ = mod.tokenToNamespace(t.Token, qualifier)
+		if (typ == mod.namespaceName && qualifier == "") || typ == mod.namespaceName+"."+qualifier {
 			typ = qualifier
-		} else if qualifier != "" {
-			typ += "." + qualifier
 		}
 		if typ != "" {
 			typ += "."
@@ -237,7 +249,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		typ = tokenToName(t.Token)
-		if ns := mod.tokenToNamespace(t.Token); ns != mod.namespaceName {
+		if ns := mod.tokenToNamespace(t.Token, qualifier); ns != mod.namespaceName {
 			typ = ns + "." + typ
 		}
 	case *schema.UnionType:
@@ -282,6 +294,13 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = "Archive"
 		case schema.AssetType:
 			typ = "AssetOrArchive"
+		case schema.JSONType:
+			if wrapInput {
+				typ = "InputJson"
+				wrapInput = false
+			} else {
+				typ = "System.Text.Json.JsonElement"
+			}
 		case schema.AnyType:
 			typ = "object"
 		}
@@ -382,14 +401,34 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	}
 }
 
+// Set to avoid generating a class with the same name twice.
+var generatedTypes = codegen.Set{}
+
 func (pt *plainType) genInputType(w io.Writer, level int) error {
+	// The way the legacy codegen for kubernetes is structured, inputs for a resource args type and resource args
+	// subtype could become a single class because of the name + namespace clash. We use a set of generated types
+	// to prevent generating classes with equal full names in multiple files. The check should be removed if we
+	// ever change the namespacing in the k8s SDK to the standard one.
+	if pt.mod.isK8sCompatMode() {
+		key := pt.mod.namespaceName + pt.name
+		if generatedTypes.Has(key) {
+			return nil
+		}
+		generatedTypes.Add(key)
+	}
+
 	indent := strings.Repeat("    ", level)
 
 	fmt.Fprintf(w, "\n")
 
+	sealed := "sealed "
+	if pt.mod.isK8sCompatMode() && (pt.res == nil || !pt.res.IsProvider) {
+		sealed = ""
+	}
+
 	// Open the class.
 	printComment(w, pt.comment, indent)
-	fmt.Fprintf(w, "%spublic sealed class %s : Pulumi.%s\n", indent, pt.name, pt.baseClass)
+	fmt.Fprintf(w, "%spublic %sclass %s : Pulumi.%s\n", indent, sealed, pt.name, pt.baseClass)
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
@@ -432,7 +471,8 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	// Generate each output field.
 	for _, prop := range pt.properties {
 		fieldName := pt.mod.propertyName(prop)
-		fieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !prop.IsRequired)
+		required := prop.IsRequired || pt.mod.isK8sCompatMode()
+		fieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !required)
 		printComment(w, prop.Comment, indent+"    ")
 		fmt.Fprintf(w, "%s    public readonly %s %s;\n", indent, fieldType, fieldName)
 	}
@@ -447,7 +487,8 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	// Generate the constructor parameters.
 	for i, prop := range pt.properties {
 		paramName := csharpIdentifier(prop.Name)
-		paramType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !prop.IsRequired)
+		required := prop.IsRequired || pt.mod.isK8sCompatMode()
+		paramType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !required)
 
 		terminator := ""
 		if i != len(pt.properties)-1 {
@@ -580,6 +621,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Open the class.
 	className := name
 	baseType := "Pulumi.CustomResource"
+	if mod.isK8sCompatMode() {
+		baseType = "KubernetesResource"
+	}
 	if r.IsProvider {
 		baseType = "Pulumi.ProviderResource"
 	}
@@ -594,7 +638,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		// Write the property attribute
 		wireName := prop.Name
 		propertyName := mod.propertyName(prop)
-		propertyType := mod.typeString(prop.Type, "Outputs", false, false, false, false, !prop.IsRequired)
+		required := prop.IsRequired || mod.isK8sCompatMode()
+		propertyType := mod.typeString(prop.Type, "Outputs", false, false, false, false, !required)
 
 		// Workaround the fact that provider inputs come back as strings.
 		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) {
@@ -614,7 +659,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	// Emit the class constructor.
-	argsType := className + "Args"
+	argsClassName := className + "Args"
+	if mod.isK8sCompatMode() && !r.IsProvider {
+		argsClassName = fmt.Sprintf("%s.%sArgs", mod.tokenToNamespace(r.Token, "Inputs"), className)
+	}
+	argsType := argsClassName
 
 	var argsDefault string
 	allOptionalInputs := true
@@ -623,7 +672,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired
 		hasConstInputs = hasConstInputs || prop.ConstValue != nil
 	}
-	if allOptionalInputs {
+	if allOptionalInputs || mod.isK8sCompatMode() {
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsDefault = " = null"
 		argsType += "?"
@@ -655,6 +704,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
+	if mod.dictionaryConstructors {
+		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, CustomResourceOptions? options = null)\n", className)
+		fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
+		fmt.Fprintf(w, "        {\n")
+		fmt.Fprintf(w, "        }\n")
+	}
+
 	// Write a private constructor for the use of `Get`.
 	if !r.IsProvider {
 		stateParam, stateRef := "", "null"
@@ -674,7 +730,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        private static %[1]s MakeArgs(%[1]s args)\n", argsType)
 		fmt.Fprintf(w, "        {\n")
-		fmt.Fprintf(w, "            args ??= new %sArgs();\n", className)
+		fmt.Fprintf(w, "            args ??= new %s();\n", argsClassName)
 		for _, prop := range r.InputProperties {
 			if prop.ConstValue != nil {
 				v, err := primitiveValue(prop.ConstValue)
@@ -743,6 +799,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
 
+	// Arguments are in a different namespace for the Kubernetes SDK.
+	if mod.isK8sCompatMode() && !r.IsProvider {
+		// Close the namespace.
+		fmt.Fprintf(w, "}\n")
+
+		// Open the namespace.
+		fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(r.Token, "Inputs"))
+		fmt.Fprintf(w, "{\n")
+	}
+
 	// Generate the resource args type.
 	args := &plainType{
 		mod:                   mod,
@@ -783,7 +849,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
-	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token))
+	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token, ""))
 	fmt.Fprintf(w, "{\n")
 
 	var typeParameter string
@@ -1162,7 +1228,7 @@ func (mod *modContext) gen(fs fs) error {
 			buffer := &bytes.Buffer{}
 			mod.genPulumiHeader(buffer)
 
-			fmt.Fprintf(buffer, "namespace %s.Inputs\n", mod.namespaceName)
+			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
 			if err := mod.genType(buffer, t, "Inputs", true, false, 1); err != nil {
 				return err
@@ -1175,7 +1241,7 @@ func (mod *modContext) gen(fs fs) error {
 			buffer := &bytes.Buffer{}
 			mod.genPulumiHeader(buffer)
 
-			fmt.Fprintf(buffer, "namespace %s.Inputs\n", mod.namespaceName)
+			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
 			if err := mod.genType(buffer, t, "Inputs", true, true, 1); err != nil {
 				return err
@@ -1188,7 +1254,7 @@ func (mod *modContext) gen(fs fs) error {
 			buffer := &bytes.Buffer{}
 			mod.genPulumiHeader(buffer)
 
-			fmt.Fprintf(buffer, "namespace %s.Outputs\n", mod.namespaceName)
+			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Outputs"))
 			fmt.Fprintf(buffer, "{\n")
 			if err := mod.genType(buffer, t, "Outputs", false, false, 1); err != nil {
 				return err
@@ -1311,13 +1377,15 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:           pkg,
-				mod:           modName,
-				tool:          tool,
-				namespaceName: ns,
-				namespaces:    info.Namespaces,
-				typeDetails:   details,
-				propertyNames: propertyNames,
+				pkg:                    pkg,
+				mod:                    modName,
+				tool:                   tool,
+				namespaceName:          ns,
+				namespaces:             info.Namespaces,
+				typeDetails:            details,
+				propertyNames:          propertyNames,
+				compatibility:          info.Compatibility,
+				dictionaryConstructors: info.DictionaryConstructors,
 			}
 
 			if modName != "" {

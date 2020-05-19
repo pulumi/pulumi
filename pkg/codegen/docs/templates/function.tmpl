@@ -30,6 +30,9 @@
 <!-- Go -->
 {{ print "{{% choosable language go %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span></code></pre></div>
+{{ if ne .FunctionName.go .Header.Title }}
+> Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
+{{ end }}
 {{ print "{{% /choosable %}}" }}
 
 <!-- C# -->

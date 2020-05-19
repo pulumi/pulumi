@@ -28,7 +28,7 @@ resource cluster "aws:ecs:Cluster" {}
 
 // Create an IAM role that can be used by our service's task.
 resource taskExecRole "aws:iam:Role" {
-	assumeRolePolicy = {
+	assumeRolePolicy = toJSON({
 		Version = "2008-10-17"
 		Statement = [{
 			Sid = ""
@@ -38,7 +38,7 @@ resource taskExecRole "aws:iam:Role" {
 			}
 			Action = "sts:AssumeRole"
 		}]
-	}
+	})
 }
 resource taskExecRolePolicyAttachment "aws:iam:RolePolicyAttachment" {
 	role = taskExecRole.name

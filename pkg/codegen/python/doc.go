@@ -37,9 +37,24 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 	return ""
 }
 
-// GetDocLinkForResourceType is not implemented at this time for Python.
+// GetDocLinkForResourceType returns the Python API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
-	return ""
+	var path string
+	// The k8s module names contain the domain names. For now we are stripping them off manually so they link correctly.
+	if modName != "" {
+		modName = strings.ReplaceAll(modName, ".k8s.io", "")
+		modName = strings.ReplaceAll(modName, ".apiserver", "")
+		modName = strings.ReplaceAll(modName, ".authorization", "")
+	}
+	switch {
+	case pkg.Name != "" && modName != "":
+		path = fmt.Sprintf("pulumi_%s/%s", pkg.Name, modName)
+	case pkg.Name == "" && modName != "":
+		path = modName
+	case pkg.Name != "" && modName == "":
+		path = pkg.Name
+	}
+	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.

@@ -44,7 +44,7 @@ func (opts bindOptions) modelOptions() []model.BindOption {
 type binder struct {
 	options bindOptions
 
-	referencedPackages []*schema.Package
+	referencedPackages map[string]*schema.Package
 	typeSchemas        map[model.Type]schema.Type
 
 	tokens syntax.TokenMap
@@ -97,10 +97,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}
 
 	b := &binder{
-		options:     options,
-		tokens:      syntax.NewTokenMapForFiles(files),
-		typeSchemas: map[model.Type]schema.Type{},
-		root:        model.NewRootScope(syntax.None),
+		options:            options,
+		tokens:             syntax.NewTokenMapForFiles(files),
+		referencedPackages: map[string]*schema.Package{},
+		typeSchemas:        map[model.Type]schema.Type{},
+		root:               model.NewRootScope(syntax.None),
 	}
 
 	// Define null.

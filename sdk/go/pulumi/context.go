@@ -607,6 +607,8 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	return aliasURNs, nil
 }
 
+var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
+
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
@@ -656,13 +658,18 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		case field.Anonymous && field.Type == providerResourceStateType:
 			prs = fieldV.Addr().Interface().(*ProviderResourceState)
 		case field.Type.Implements(outputType):
-			tag := typ.Field(i).Tag.Get("pulumi")
-			if tag == "" {
+			tag, has := typ.Field(i).Tag.Lookup("pulumi")
+			if !has {
 				continue
 			}
 
 			output := newOutput(field.Type, resourceV)
 			fieldV.Set(reflect.ValueOf(output))
+
+			if tag == "" && field.Type != mapOutputType {
+				output.reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
+			}
+
 			state.outputs[tag] = output
 		}
 	}
@@ -726,6 +733,23 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 		outprops["id"] = resource.NewStringProperty(id)
 	} else {
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
+	}
+
+	if _, hasRemainingOutput := state.outputs[""]; hasRemainingOutput {
+		remaining, known := resource.PropertyMap{}, true
+		for k, v := range outprops {
+			if v.IsNull() || v.IsComputed() || v.IsOutput() {
+				known = !dryrun
+			}
+			if _, ok := state.outputs[string(k)]; !ok {
+				remaining[k] = v
+			}
+		}
+		if !known {
+			outprops[""] = resource.MakeComputed(resource.NewStringProperty(""))
+		} else {
+			outprops[""] = resource.NewObjectProperty(remaining)
+		}
 	}
 
 	for k, output := range state.outputs {

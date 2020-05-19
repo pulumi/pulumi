@@ -38,6 +38,18 @@ namespace Pulumi.Tests.Mocks
             var ip = await instance.PublicIp.GetValueAsync();
             Assert.Equal("203.0.113.12", ip);
         }
+        
+        [Fact]
+        public async Task TestStack()
+        {
+            var resources = await Testing.RunAsync<MyStack>();
+
+            var stack = resources.OfType<MyStack>().FirstOrDefault();
+            Assert.NotNull(stack);
+
+            var ip = await stack.PublicIp.GetValueAsync();
+            Assert.Equal("203.0.113.12", ip);
+        }
     }
 
     public static class Testing
