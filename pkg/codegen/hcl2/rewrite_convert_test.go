@@ -57,7 +57,7 @@ func TestRewriteConversions(t *testing.T) {
 		},
 		{
 			input:  `[{a: "b"}]`,
-			output: "[\n    __convert({a: \"b\"})]",
+			output: "__convert([\n    __convert({a: \"b\"})])",
 			to: model.NewListType(model.NewObjectType(map[string]model.Type{
 				"a": model.StringType,
 			}, &schema.ObjectType{})),
