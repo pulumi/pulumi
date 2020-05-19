@@ -70,7 +70,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 }
 
 func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.StringSet {
-	// Accumulate other using statements for the various providers
+	// Accumulate import statements for the various providers
 	pulumiImports := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
