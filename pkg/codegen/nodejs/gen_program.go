@@ -79,7 +79,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 					if result == nil {
 						result = &model.ObjectConsExpression{}
 					}
-					name := cleanName(o.Name())
+					name := makeValidIdentifier(o.Name())
 					result.Items = append(result.Items, model.ObjectConsItem{
 						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
 						Value: &model.ScopeTraversalExpression{
@@ -153,7 +153,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("@pulumi/" + cleanName(pkg))
+			importSet.Add("@pulumi/" + makeValidIdentifier(pkg))
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -216,7 +216,7 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	if pkg == "pulumi" && module == "providers" {
 		pkg, module, member = member, "", "Provider"
 	}
-	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -361,7 +361,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 	if g.asyncMain {
 		export = ""
 	}
-	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export, cleanName(v.Name()), g.lowerExpression(v.Value))
+	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export, makeValidIdentifier(v.Name()), g.lowerExpression(v.Value))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

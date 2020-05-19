@@ -26,7 +26,7 @@ const webSecurityGroup = new aws.ec2.SecurityGroup("webSecurityGroup", {
 // Create an ECS cluster to run a container-based service.
 const cluster = new aws.ecs.Cluster("cluster", {});
 // Create an IAM role that can be used by our service's task.
-const taskExecRole = new aws.iam.Role("taskExecRole", {assumeRolePolicy: {
+const taskExecRole = new aws.iam.Role("taskExecRole", {assumeRolePolicy: JSON.stringify({
     Version: "2008-10-17",
     Statement: [{
         Sid: "",
@@ -36,7 +36,7 @@ const taskExecRole = new aws.iam.Role("taskExecRole", {assumeRolePolicy: {
         },
         Action: "sts:AssumeRole",
     }],
-}});
+})});
 const taskExecRolePolicyAttachment = new aws.iam.RolePolicyAttachment("taskExecRolePolicyAttachment", {
     role: taskExecRole.name,
     policyArn: "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
