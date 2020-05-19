@@ -30,5 +30,6 @@ myinstance = Instance("instance",
                       value=pulumi.Output.secret("secret_value"))
 invoke_result = do_invoke()
 
+pulumi.export("hello", "world")
 pulumi.export("outprop", mycomponent.outprop)
 pulumi.export("public_ip", myinstance.public_ip)

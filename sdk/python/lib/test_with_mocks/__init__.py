@@ -12,4 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import resources
+"""
+The Pulumi SDK test package for testing with mocks.
+"""
+
+# The mocks tests are in their own `test_with_mocks` package so they can be run separately
+# from other tests in the `test` package. Otherwise, if the mocks tests were in the same
+# package as other tests, the code that initializes the mocks and test resources would run
+# during test discovery and impact the behavior of other tests due to modifying global state.

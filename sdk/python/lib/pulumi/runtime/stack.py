@@ -80,15 +80,6 @@ async def run_in_stack(func: Callable):
     """
     await run_pulumi_func(lambda: Stack(func))
 
-async def _run_test(func: Callable):
-    """
-    Run the given function after ensuring a new stack resource has been initialized. This is meant
-    for internal runtime use only.
-    """
-    if get_root_resource() is None:
-        Stack(lambda: None)
-
-    await run_pulumi_func(func)
 
 @known_types.stack
 class Stack(ComponentResource):
