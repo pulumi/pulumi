@@ -50,9 +50,9 @@ func isLegalIdentifierPart(c rune) bool {
 	return isLegalIdentifierStart(c) || unicode.In(c, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Cf)
 }
 
-// validIdentifier replaces characters that are not allowed in C# identifiers with underscores. A reserved word is
+// makeValidIdentifier replaces characters that are not allowed in C# identifiers with underscores. A reserved word is
 // prefixed with @. No attempt is made to ensure that the result is unique.
-func validIdentifier(name string) string {
+func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
 		if !isLegalIdentifierPart(c) {
@@ -73,5 +73,5 @@ func validIdentifier(name string) string {
 
 // propertyName returns a name as a valid identifier in title case.
 func propertyName(name string) string {
-	return Title(validIdentifier(name))
+	return Title(makeValidIdentifier(name))
 }

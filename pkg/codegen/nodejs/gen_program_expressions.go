@@ -19,7 +19,7 @@ import (
 type nameInfo int
 
 func (nameInfo) Format(name string) string {
-	return cleanName(name)
+	return makeValidIdentifier(name)
 }
 
 func (g *generator) lowerExpression(expr model.Expression) model.Expression {
@@ -214,7 +214,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return cleanName(pkg), strings.Replace(module, "/", ".", -1), member, diagnostics
+	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), member, diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {

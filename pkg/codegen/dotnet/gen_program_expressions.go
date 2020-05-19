@@ -33,11 +33,11 @@ import (
 type nameInfo int
 
 func (nameInfo) Format(name string) string {
-	return validIdentifier(name)
+	return makeValidIdentifier(name)
 }
 
-// rewriteExpression amends the expression with intrinsics for C# generation.
-func (g *generator) rewriteExpression(expr model.Expression, typ model.Type) model.Expression {
+// lowerExpression amends the expression with intrinsics for C# generation.
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
 	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)
@@ -52,6 +52,9 @@ func (g *generator) rewriteExpression(expr model.Expression, typ model.Type) mod
 // outputInvokes wraps each call to `invoke` with a call to the `output` intrinsic. This rewrite should only be used if
 // resources are instantiated within a stack constructor, where `await` operator is not available. We want to avoid the
 // nastiness of working with raw `Task` and wrap it into Pulumi's Output immediately to be able to `Apply` on it.
+// Note that this depends on the fact that invokes are the only way to introduce promises
+// in to a Pulumi program; if this changes in the future, this transform will need to be applied in a more general way
+// (e.g. by the apply rewriter).
 func (g *generator) outputInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
@@ -410,29 +413,31 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 }
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
-	if len(expr.Items) > 0 {
-		typeName := g.argumentTypeName(expr, destType)
-		if typeName != "" {
-			g.Fgenf(w, "new %s", typeName)
-			g.Fgenf(w, "\n%s{\n", g.Indent)
-			g.Indented(func() {
-				for _, item := range expr.Items {
-					g.Fgenf(w, "%s", g.Indent)
-					lit := item.Key.(*model.LiteralValueExpression)
-					g.Fprint(w, Title(lit.Value.AsString()))
-					g.Fgenf(w, " = %.v,\n", item.Value)
-				}
-			})
-			g.Fgenf(w, "%s}", g.Indent)
-		} else {
-			g.Fgenf(w, "\n%s{\n", g.Indent)
-			g.Indented(func() {
-				for _, item := range expr.Items {
-					g.Fgenf(w, "%s{ %.v, %.v },\n", g.Indent, item.Key, item.Value)
-				}
-			})
-			g.Fgenf(w, "%s}", g.Indent)
-		}
+	if len(expr.Items) == 0 {
+		return
+	}
+
+	typeName := g.argumentTypeName(expr, destType)
+	if typeName != "" {
+		g.Fgenf(w, "new %s", typeName)
+		g.Fgenf(w, "\n%s{\n", g.Indent)
+		g.Indented(func() {
+			for _, item := range expr.Items {
+				g.Fgenf(w, "%s", g.Indent)
+				lit := item.Key.(*model.LiteralValueExpression)
+				g.Fprint(w, Title(lit.Value.AsString()))
+				g.Fgenf(w, " = %.v,\n", item.Value)
+			}
+		})
+		g.Fgenf(w, "%s}", g.Indent)
+	} else {
+		g.Fgenf(w, "\n%s{\n", g.Indent)
+		g.Indented(func() {
+			for _, item := range expr.Items {
+				g.Fgenf(w, "%s{ %.v, %.v },\n", g.Indent, item.Key, item.Value)
+			}
+		})
+		g.Fgenf(w, "%s}", g.Indent)
 	}
 }
 

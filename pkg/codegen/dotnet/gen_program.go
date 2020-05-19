@@ -185,7 +185,7 @@ func (g *generator) genInitialize(w io.Writer, nodes []hcl2.Node) {
 			switch n := n.(type) {
 			case *hcl2.OutputVariable:
 				g.Fprintf(w, "%sthis.%s = dict.Apply(dict => dict[\"%s\"]);\n", g.Indent,
-					propertyName(n.Name()), validIdentifier(n.Name()))
+					propertyName(n.Name()), makeValidIdentifier(n.Name()))
 			}
 		}
 	})
@@ -296,38 +296,42 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 
 // argumentTypeName computes the C# argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
-	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
-		if objType, ok := schemaType.(*schema.ObjectType); ok {
-			token := objType.Token
-			tokenRange := expr.SyntaxNode().Range()
-			qualifier := "Inputs"
-			if f, ok := g.functionArgs[token]; ok {
-				token = f
-				qualifier = ""
-			}
-
-			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
-			contract.Assert(len(diags) == 0)
-			namespaces := g.namespaces[pkg]
-			namespaceKey := strings.Split(module, "/")[0]
-			rootNamespace := namespaceName(namespaces, pkg)
-			namespace := namespaceName(namespaces, namespaceKey)
-			if namespace == "index" {
-				namespace = ""
-			}
-			if namespace != "" {
-				namespace = "." + namespace
-			}
-			if qualifier != "" {
-				namespace = namespace + "." + qualifier
-			}
-			member = member + "Args"
-
-			return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
-		}
+	schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type))
+	if !ok {
+		return ""
 	}
 
-	return ""
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return ""
+	}
+
+	token := objType.Token
+	tokenRange := expr.SyntaxNode().Range()
+	qualifier := "Inputs"
+	if f, ok := g.functionArgs[token]; ok {
+		token = f
+		qualifier = ""
+	}
+
+	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+	contract.Assert(len(diags) == 0)
+	namespaces := g.namespaces[pkg]
+	namespaceKey := strings.Split(module, "/")[0]
+	rootNamespace := namespaceName(namespaces, pkg)
+	namespace := namespaceName(namespaces, namespaceKey)
+	if namespace == "index" {
+		namespace = ""
+	}
+	if namespace != "" {
+		namespace = "." + namespace
+	}
+	if qualifier != "" {
+		namespace = namespace + "." + qualifier
+	}
+	member = member + "Args"
+
+	return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -347,7 +351,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		input.Value = g.rewriteExpression(input.Value, destType.(model.Type))
+		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
 
 	optionsBag := ""
@@ -404,22 +408,23 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	// TODO(pdg): trivia
-	expr := g.rewriteExpression(v.Definition.Value, v.Type())
-	g.Fgenf(w, "%svar %s = %.3v;\n", g.Indent, validIdentifier(v.Name()), expr)
+	expr := g.lowerExpression(v.Definition.Value, v.Type())
+	g.Fgenf(w, "%svar %s = %.3v;\n", g.Indent, makeValidIdentifier(v.Name()), expr)
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
 	if g.asyncInit {
-		g.Fgenf(w, "%svar %s", g.Indent, validIdentifier(v.Name()))
+		g.Fgenf(w, "%svar %s", g.Indent, makeValidIdentifier(v.Name()))
 	} else {
 		g.Fgenf(w, "%sthis.%s", g.Indent, propertyName(v.Name()))
 	}
-	g.Fgenf(w, " = %.3v;\n", g.rewriteExpression(v.Value, v.Type()))
+	g.Fgenf(w, " = %.3v;\n", g.lowerExpression(v.Value, v.Type()))
 }
 
 func (g *generator) genOutputProperty(w io.Writer, v *hcl2.OutputVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%s[Output(\"%s\")]\n", g.Indent, v.Name())
+	// TODO(msh): derive the element type of the Output from the type of its value.
 	g.Fgenf(w, "%spublic Output<string> %s { get; set; }\n", g.Indent, propertyName(v.Name()))
 }
 
