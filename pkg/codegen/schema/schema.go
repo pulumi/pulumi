@@ -50,6 +50,7 @@ const (
 	archiveType primitiveType = 5
 	assetType   primitiveType = 6
 	anyType     primitiveType = 7
+	jsonType    primitiveType = 8
 )
 
 func (t primitiveType) String() string {
@@ -66,6 +67,8 @@ func (t primitiveType) String() string {
 		return "pulumi:pulumi:Archive"
 	case assetType:
 		return "pulumi:pulumi:Asset"
+	case jsonType:
+		fallthrough
 	case anyType:
 		return "pulumi:pulumi:Any"
 	default:
@@ -95,6 +98,8 @@ var (
 	ArchiveType Type = archiveType
 	// AssetType represents the set of Pulumi Asset values.
 	AssetType Type = assetType
+	// JSONType represents the set of JSON-encoded values.
+	JSONType Type = jsonType
 	// AnyType represents the complete set of values.
 	AnyType Type = anyType
 )
@@ -794,6 +799,8 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return ArchiveType, nil
 		case "pulumi.json#/Asset":
 			return AssetType, nil
+		case "pulumi.json#/Json":
+			return JSONType, nil
 		case "pulumi.json#/Any":
 			return AnyType, nil
 		}

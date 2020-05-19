@@ -216,6 +216,8 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 			return ArchiveType
 		case schema.AssetType:
 			return AssetType
+		case schema.JSONType:
+			fallthrough
 		case schema.AnyType:
 			return model.DynamicType
 		default:
