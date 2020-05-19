@@ -22,7 +22,7 @@ web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
 # Create an ECS cluster to run a container-based service.
 cluster = aws.ecs.Cluster("cluster")
 # Create an IAM role that can be used by our service's task.
-task_exec_role = aws.iam.Role("taskExecRole", assume_role_policy={
+task_exec_role = aws.iam.Role("taskExecRole", assume_role_policy=json.dumps({
     "Version": "2008-10-17",
     "Statement": [{
         "Sid": "",
@@ -32,7 +32,7 @@ task_exec_role = aws.iam.Role("taskExecRole", assume_role_policy={
         },
         "Action": "sts:AssumeRole",
     }],
-})
+}))
 task_exec_role_policy_attachment = aws.iam.RolePolicyAttachment("taskExecRolePolicyAttachment",
     role=task_exec_role.name,
     policy_arn="arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy")

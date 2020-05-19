@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
+	github.com/json-iterator/go v1.1.9
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d

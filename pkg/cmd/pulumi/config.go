@@ -257,10 +257,12 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 			"may be set by piping a file to standard in.\n\n" +
 			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
-			"    - `pulumi config set --path outer.inner value` " +
-			"will set the value of `outer` to a map `inner: value`.\n" +
 			"    - `pulumi config set --path names[0] a` " +
-			"will set the value to a list with the first item `a`.",
+			"will set the value to a list with the first item `a`.\n" +
+			"    - `pulumi config set --path parent.nested value` " +
+			"will set the value of `parent` to a map `nested: value`.\n" +
+			"    - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
+			"	`parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

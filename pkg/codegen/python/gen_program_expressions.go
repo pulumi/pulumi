@@ -175,7 +175,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return cleanName(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
 var functionImports = map[string]string{
