@@ -9,6 +9,9 @@ CHANGELOG
 - Fix a Regression in .NET unit testing.
  [#4656](https://github.com/pulumi/pulumi/pull/4656)
 
+- Allow `pulumi.export` calls from Python unit tests.
+  [#4670](https://github.com/pulumi/pulumi/pull/4670)
+
 ## 2.2.1 (2020-05-13)
 - Add new brew target to fix homebrew builds
  [#4633](https://github.com/pulumi/pulumi/pull/4633)
@@ -78,9 +81,6 @@ CHANGELOG
 
 - Increase the MaxCallRecvMsgSize for all RPC calls. 
   [#4455](https://github.com/pulumi/pulumi/pull/4455)
-
-- Allow `pulumi.export` calls from Python unit tests.
-  [#4518](https://github.com/pulumi/pulumi/pull/4518)
 
 ## 2.0.0 (2020-04-16)
 
