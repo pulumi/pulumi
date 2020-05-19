@@ -220,14 +220,14 @@ namespace Pulumi.Serialization
             if (exception1 == null)
             {
                 var fromT0Method = oneOfType.GetMethod(nameof(Union<int, int>.FromT0), BindingFlags.Public | BindingFlags.Static);
-                return (fromT0Method.Invoke(null, new[] { val1 }), null);
+                return (fromT0Method?.Invoke(null, new[] { val1 }), null);
             }
 
             var (val2, exception2) = TryConvertObject($"{context}.AsT1", val, secondType);
             if (exception2 == null)
             {
                 var fromT1Method = oneOfType.GetMethod(nameof(Union<int, int>.FromT1), BindingFlags.Public | BindingFlags.Static);
-                return (fromT1Method.Invoke(null, new[] { val2 }), null);
+                return (fromT1Method?.Invoke(null, new[] { val2 }), null);
             }
 
             return (null, new InvalidOperationException($"Expected {firstType.FullName} or {secondType.FullName} but got {val.GetType().FullName} deserializing {context}"));
