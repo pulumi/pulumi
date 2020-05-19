@@ -127,14 +127,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	if len(r.Inputs) > 0 {
 		g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
 		for _, attr := range r.Inputs {
-			// TODO now I need to translate these thigns into the go names:
-			// loggings => Loggings
-			// Loggings: s3.BucketLoggingArray{ s3.BucketLoggingArgs{...} }
 			g.Fgenf(w, "%s: ", strings.Title(attr.Name))
-			g.Fgenf(w, "%.v\n", attr.Value)
+			g.Fgenf(w, "%.v,\n", attr.Value)
 
 		}
-		g.Fgenf(w, "}\n")
+		g.Fgenf(w, "})\n")
 	} else {
 		g.Fgenf(w, "nil)\n")
 	}

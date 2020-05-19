@@ -11,7 +11,13 @@ func main() {
 		if err != nil {
 			return err
 		}
-		bucket, err := s3.NewBucket(ctx, "bucket", nil)
+		bucket, err := s3.NewBucket(ctx, "bucket", &s3.BucketArgs{
+			Loggings: &s3.BucketLoggingArray{
+				&s3.BucketLoggingArgs{
+					TargetBucket: logs.Bucket,
+				},
+			},
+		})
 		if err != nil {
 			return err
 		}

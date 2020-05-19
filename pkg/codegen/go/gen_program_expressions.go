@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -75,7 +76,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case hcl2.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.TupleConsExpression:
-			g.GenTupleConsExpression(w, arg)
+			g.genTupleConsExpression(w, arg, expr.Type())
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
@@ -177,25 +178,18 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) > 0 {
 		typeName := g.argumentTypeName(expr, destType)
 		if typeName != "" {
-			g.Fgenf(w, "new %s", typeName)
-			g.Fgenf(w, "\n%s{\n", g.Indent)
-			g.Indented(func() {
-				for _, item := range expr.Items {
-					g.Fgenf(w, "%s", g.Indent)
-					lit := item.Key.(*model.LiteralValueExpression)
-					g.Fprint(w, Title(lit.Value.AsString()))
-					g.Fgenf(w, " = %.v,\n", item.Value)
-				}
-			})
-			g.Fgenf(w, "%s}", g.Indent)
+			g.Fgenf(w, "&%sArgs", typeName)
+			g.Fgenf(w, "{\n")
+
+			for _, item := range expr.Items {
+				lit := item.Key.(*model.LiteralValueExpression)
+				g.Fprint(w, Title(lit.Value.AsString()))
+				g.Fgenf(w, ": %.v,\n", item.Value)
+			}
+
+			g.Fgenf(w, "}")
 		} else {
-			g.Fgenf(w, "\n%s{\n", g.Indent)
-			g.Indented(func() {
-				for _, item := range expr.Items {
-					g.Fgenf(w, "{ %.v, %.v },\n", item.Key, item.Value)
-				}
-			})
-			g.Fgenf(w, "%s}", g.Indent)
+			// TODO
 		}
 	}
 }
@@ -233,63 +227,40 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) { /*TODO*/
 }
 
-// GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
-	argType := g.argumentTypeName(expr, expr.Type())
-	fmt.Println(argType)
-	// TODO: generate somethign like: s3.BucketLoggingArgs
+	g.genTupleConsExpression(w, expr, expr.Type())
+}
+
+// GenTupleConsExpression generates code for a TupleConsExpression.
+func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
+	argType := g.argumentTypeName(expr, destType)
+	g.Fgenf(w, "&%sArray{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
-		// TODO empty array
-		g.Fgen(w, "{}")
+		// empty array
+		break
 	default:
-		// TODO augment argumentTypeName with tuple
-		g.Fgenf(w, "\n{")
 		for _, v := range expr.Expressions {
-			arg := g.argumentTypeName(v, v.Type())
-			fmt.Println(arg)
-			g.Fgenf(w, "\n%.v,", v)
+			g.Fgenf(w, "%v,\n", v)
 		}
-		g.Fgenf(w, "\n%s}", g.Indent)
 	}
+	g.Fgenf(w, "}")
 }
 
 // GenUnaryOpExpression generates code for a UnaryOpExpression.
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }
 
-// argumentTypeName computes the C# argument class name for the given expression and model type.
+// argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
 		if objType, ok := schemaType.(*schema.ObjectType); ok {
 			token := objType.Token
 			tokenRange := expr.SyntaxNode().Range()
-			// qualifier := "Inputs"
-			// TODO: function calls
-			// if f, ok := g.functionArgs[token]; ok {
-			// 	token = f
-			// 	qualifier = ""
-			// }
 
-			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
-			fmt.Println(pkg, module, member)
+			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
-			// namespaces := g.namespaces[pkg]
-			// namespaceKey := strings.Split(module, "/")[0]
-			// rootNamespace := namespaceName(namespaces, pkg)
-			// namespace := namespaceName(namespaces, namespaceKey)
-			// if namespace == "index" {
-			// 	namespace = ""
-			// }
-			// if namespace != "" {
-			// 	namespace = "." + namespace
-			// }
-			// if qualifier != "" {
-			// 	namespace = namespace + "." + qualifier
-			// }
-			// member = member + "Args"
-
-			// return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
-			return ""
+			return fmt.Sprintf("%s.%s", importPrefix, member)
 		} else if tupType, ok := schemaType.(*schema.ArrayType); ok {
 			fmt.Println(tupType)
 		}
@@ -306,14 +277,6 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 		switch part := part.(type) {
 		case hcl.TraverseAttr:
 			key = cty.StringVal(part.Name)
-			if objType != nil {
-				if _, ok := objType.Property(part.Name); ok {
-					// TODO
-					// if info, ok := p.Language["csharp"].(CSharpPropertyInfo); ok && info.Name != "" {
-					// 	key = cty.StringVal(info.Name)
-					// }
-				}
-			}
 		case hcl.TraverseIndex:
 			key = part.Key
 		default:
@@ -348,13 +311,6 @@ func (g *generator) rewriteExpression(expr model.Expression, typ model.Type) mod
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)
-
-	// TODO ?
-	// if g.asyncInit {
-	// 	expr = g.awaitInvokes(expr)
-	// } else {
-	// 	expr = g.outputInvokes(expr)
-	// }
 
 	return expr
 }
