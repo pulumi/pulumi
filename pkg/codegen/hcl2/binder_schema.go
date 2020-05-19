@@ -232,7 +232,11 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	switch t := t.(type) {
 	case *model.ListType:
-		return GetSchemaForType(t.ElementType)
+		if element, ok := GetSchemaForType(t.ElementType); ok {
+			return &schema.ArrayType{ElementType: element}, true
+		}
+
+		return nil, false
 	case *model.ObjectType:
 		if len(t.Annotations) == 0 {
 			return nil, false

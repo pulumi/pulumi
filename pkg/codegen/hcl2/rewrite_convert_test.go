@@ -64,7 +64,7 @@ func TestRewriteConversions(t *testing.T) {
 		},
 		{
 			input:  `[for v in ["b"]: {a: v}]`,
-			output: `[for v in ["b"]: __convert( {a: v})]`,
+			output: `__convert([for v in ["b"]: __convert( {a: v})])`,
 			to: model.NewListType(model.NewObjectType(map[string]model.Type{
 				"a": model.StringType,
 			}, &schema.ObjectType{})),

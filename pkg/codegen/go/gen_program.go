@@ -120,7 +120,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		input.Value = g.rewriteExpression(input.Value, destType.(model.Type))
+		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
 
 	g.Fgenf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", ", resName, mod, typ)

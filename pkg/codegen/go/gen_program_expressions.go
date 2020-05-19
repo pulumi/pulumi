@@ -233,8 +233,15 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
+	switch destType.(type) {
+	// TODO this probably does not generalize
+	case *model.UnionType:
+		val := destType.(*model.UnionType).ElementTypes[0]
+		destType = val
+		break
+	}
 	argType := g.argumentTypeName(expr, destType)
-	g.Fgenf(w, "&%sArray{\n", argType)
+	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
 		// empty array
@@ -253,6 +260,15 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
+		if arrayType, ok := schemaType.(*schema.ArrayType); ok {
+			token := arrayType.ElementType.(*schema.ObjectType).Token
+			tokenRange := expr.SyntaxNode().Range()
+
+			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			importPrefix := strings.Split(module, "/")[0]
+			contract.Assert(len(diags) == 0)
+			return fmt.Sprintf("%s.%sArray", importPrefix, member)
+		}
 		if objType, ok := schemaType.(*schema.ObjectType); ok {
 			token := objType.Token
 			tokenRange := expr.SyntaxNode().Range()
@@ -306,8 +322,8 @@ func (nameInfo) Format(name string) string {
 	return name
 }
 
-// rewriteExpression amends the expression with intrinsics for C# generation.
-func (g *generator) rewriteExpression(expr model.Expression, typ model.Type) model.Expression {
+// lowerExpression amends the expression with intrinsics for C# generation.
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)
