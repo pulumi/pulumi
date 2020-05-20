@@ -39,8 +39,9 @@ type generator struct {
 	// Type names per invoke function token.
 	functionArgs map[string]string
 	// Whether awaits are needed, and therefore an async Initialize method should be declared.
-	asyncInit   bool
-	diagnostics hcl.Diagnostics
+	asyncInit     bool
+	configCreated bool
+	diagnostics   hcl.Diagnostics
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -132,7 +133,9 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", Title(pkg)))
+			if pkg != "pulumi" {
+				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", Title(pkg)))
+			}
 			if r.Options != nil && r.Options.Range != nil {
 				systemUsings.Add("System.Collections.Generic")
 			}
@@ -357,6 +360,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	optionsBag := ""
 
 	name := r.Name()
+	variableName := makeValidIdentifier(name)
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -377,24 +381,35 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
-		g.Fgenf(w, "%svar %s = new List<%s>();\n", g.Indent, name, qualifiedMemberName)
+		rangeType := model.ResolveOutputs(r.Options.Range.Type())
+		rangeExpr := g.lowerExpression(r.Options.Range, rangeType)
 
-		rangeExpr := &model.FunctionCallExpression{
-			Name: "entries",
-			Args: []model.Expression{r.Options.Range},
+		g.Fgenf(w, "%svar %s = new List<%s>();\n", g.Indent, variableName, qualifiedMemberName)
+
+		resKey := "Key"
+		if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			g.Fgenf(w, "%sfor (var rangeIndex = 0; rangeIndex < %.12o; rangeIndex++)\n", g.Indent, rangeExpr)
+			g.Fgenf(w, "%s{\n", g.Indent)
+			g.Fgenf(w, "%s    var range = new { Value = rangeIndex };\n", g.Indent)
+			resKey = "Value"
+		} else {
+			rangeExpr := &model.FunctionCallExpression{
+				Name: "entries",
+				Args: []model.Expression{rangeExpr},
+			}
+			g.Fgenf(w, "%sforeach (var range in %.v)\n", g.Indent, rangeExpr)
+			g.Fgenf(w, "%s{\n", g.Indent)
 		}
-		g.Fgenf(w, "%sforeach (var range in %.v)\n", g.Indent, rangeExpr)
-		g.Fgenf(w, "%s{\n", g.Indent)
 
-		resName := g.makeResourceName(name, "range.Key")
+		resName := g.makeResourceName(name, "range."+resKey)
 		g.Indented(func() {
-			g.Fgenf(w, "%s%s.Add(", g.Indent, name)
+			g.Fgenf(w, "%s%s.Add(", g.Indent, variableName)
 			instantiate(resName)
 			g.Fgenf(w, ");\n")
 		})
 		g.Fgenf(w, "%s}\n", g.Indent)
 	} else {
-		g.Fgenf(w, "%svar %s = ", g.Indent, name)
+		g.Fgenf(w, "%svar %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
 	}
@@ -403,7 +418,31 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
-	g.genNYI(w, "// TODO config")
+	if !g.configCreated {
+		g.Fprintf(w, "%svar config = new Config();\n", g.Indent)
+		g.configCreated = true
+	}
+
+	getType := "Object<dynamic>"
+	switch v.Type() {
+	case model.StringType:
+		getType = ""
+	case model.NumberType, model.IntType:
+		getType = "Number"
+	case model.BoolType:
+		getType = "Boolean"
+	}
+
+	getOrRequire := "Get"
+	if v.DefaultValue == nil {
+		getOrRequire = "Require"
+	}
+
+	g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+	if v.DefaultValue != nil {
+		g.Fgenf(w, " ?? %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+	}
+	g.Fgenf(w, ";\n")
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {

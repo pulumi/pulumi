@@ -31,7 +31,11 @@ func isReservedWord(s string) bool {
 		"sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof",
 		"uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while":
 		return true
-
+	// Treat contextual keywords as keywords, as we don't validate the context around them.
+	case "add", "alias", "ascending", "async", "await", "by", "descending", "dynamic", "equals", "from", "get",
+		"global", "group", "into", "join", "let", "nameof", "on", "orderby", "partial", "remove", "select", "set",
+		"unmanaged", "value", "var", "when", "where", "yield":
+		return true
 	default:
 		return false
 	}
@@ -73,5 +77,5 @@ func makeValidIdentifier(name string) string {
 
 // propertyName returns a name as a valid identifier in title case.
 func propertyName(name string) string {
-	return Title(makeValidIdentifier(name))
+	return makeValidIdentifier(Title(name))
 }

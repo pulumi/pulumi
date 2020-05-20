@@ -238,8 +238,9 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir": {"System.IO", "System.Linq"},
-	"toJSON":  {"System.Text.Json", "System.Collections.Generic"},
+	"readDir":  {"System.IO", "System.Linq"},
+	"readFile": {"System.IO"},
+	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -267,7 +268,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case intrinsicOutput:
 		g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])
 	case "element":
-		g.genNYI(w, "element")
+		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
 		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
 		case *model.ListType, *model.TupleType:
@@ -298,11 +299,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "length":
 		g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
-		g.genNYI(w, "Lookup")
+		g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
+		if len(expr.Args) == 3 {
+			g.Fgenf(w, " ?? %v", expr.Args[2])
+		}
 	case "range":
 		g.genRange(w, expr, false)
 	case "readFile":
-		g.genNYI(w, "ReadFile")
+		g.Fgenf(w, "File.ReadAllText(%v)", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "Directory.GetFiles(%.v).Select(Path.GetFileName)", expr.Args[0])
 	case "split":
@@ -352,7 +356,7 @@ func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression)
 	g.Fgenf(w, "%.20v[%.v]", expr.Collection, expr.Key)
 }
 
-func (g *generator) escapeString(v string, verbatim bool) string {
+func (g *generator) escapeString(v string, verbatim, expressions bool) string {
 	builder := strings.Builder{}
 	for _, c := range v {
 		if verbatim {
@@ -363,6 +367,9 @@ func (g *generator) escapeString(v string, verbatim bool) string {
 			if c == '"' || c == '\\' {
 				builder.WriteRune('\\')
 			}
+		}
+		if expressions && (c == '{' || c == '}') {
+			builder.WriteRune(c)
 		}
 		builder.WriteRune(c)
 	}
@@ -376,14 +383,14 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 		// will be escaped in conformance with
 		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 		g.Fgen(w, "\"")
-		g.Fgen(w, g.escapeString(v, false))
+		g.Fgen(w, g.escapeString(v, false, false))
 		g.Fgen(w, "\"")
 	} else {
 		// This string does contain newlines, so we'll generate a verbatim string literal. Quotes will be escaped
 		// in conformance with
 		// https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 		g.Fgen(w, "@\"")
-		g.Fgen(w, g.escapeString(v, true))
+		g.Fgen(w, g.escapeString(v, true, false))
 		g.Fgen(w, "\"")
 	}
 }
@@ -425,7 +432,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			for _, item := range expr.Items {
 				g.Fgenf(w, "%s", g.Indent)
 				lit := item.Key.(*model.LiteralValueExpression)
-				g.Fprint(w, Title(lit.Value.AsString()))
+				g.Fprint(w, propertyName(lit.Value.AsString()))
 				g.Fgenf(w, " = %.v,\n", item.Value)
 			}
 		})
@@ -468,7 +475,7 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 
 		switch key.Type() {
 		case cty.String:
-			g.Fgenf(w, ".%s", Title(key.AsString()))
+			g.Fgenf(w, ".%s", propertyName(key.AsString()))
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
 			g.Fgenf(w, "[%d]", idx)
@@ -484,7 +491,7 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
-	rootName := expr.RootName
+	rootName := makeValidIdentifier(expr.RootName)
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
 	}
@@ -506,27 +513,27 @@ func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression)
 
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
 	multiLine := false
-	hasExpressions := false
+	expressions := false
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
 			if strings.Contains(lit.Value.AsString(), "\n") {
 				multiLine = true
 			}
 		} else {
-			hasExpressions = true
+			expressions = true
 		}
 	}
 
 	if multiLine {
 		g.Fgen(w, "@")
 	}
-	if hasExpressions {
+	if expressions {
 		g.Fgen(w, "$")
 	}
 	g.Fgen(w, "\"")
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
-			g.Fgen(w, g.escapeString(lit.Value.AsString(), multiLine))
+			g.Fgen(w, g.escapeString(lit.Value.AsString(), multiLine, expressions))
 		} else {
 			g.Fgenf(w, "{%.v}", expr)
 		}
