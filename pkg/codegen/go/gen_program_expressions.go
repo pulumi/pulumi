@@ -233,13 +233,6 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
-	switch destType.(type) {
-	// TODO this probably does not generalize
-	case *model.UnionType:
-		val := destType.(*model.UnionType).ElementTypes[0]
-		destType = val
-		break
-	}
 	argType := g.argumentTypeName(expr, destType)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
