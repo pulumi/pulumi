@@ -41,6 +41,7 @@ install:: install_package install_plugin
 test_fast:: build
 	pipenv run pip install ./env/src
 	pipenv run python -m unittest discover -s lib/test -v
+	pipenv run python -m unittest discover -s lib/test_with_mocks -v
 
 test_all:: test_fast
 

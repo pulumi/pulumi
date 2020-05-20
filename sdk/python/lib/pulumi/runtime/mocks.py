@@ -23,10 +23,10 @@ from typing import Optional, Awaitable, Tuple, Union, Any, TYPE_CHECKING
 import grpc
 from google.protobuf import empty_pb2
 from . import rpc
-from .settings import Settings, configure, get_stack, get_project
+from .settings import Settings, configure, get_stack, get_project, get_root_resource
 from .sync_await import _sync_await
 from ..runtime.proto import engine_pb2, engine_pb2_grpc, provider_pb2, resource_pb2, resource_pb2_grpc
-from ..runtime.stack import _run_test
+from ..runtime.stack import Stack, run_pulumi_func
 from ..output import Output
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 def test(fn):
     def wrapper(*args, **kwargs):
-        _sync_await(_run_test(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
+        _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
 class Mocks(ABC):
@@ -159,3 +159,7 @@ def set_mocks(mocks: Mocks,
                         dry_run=preview,
                         test_mode_enabled=True)
     configure(settings)
+
+    # Ensure a new root stack resource has been initialized.
+    if get_root_resource() is None:
+        Stack(lambda: None)
