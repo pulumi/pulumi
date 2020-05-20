@@ -6,7 +6,6 @@ replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.4.3+incompatible
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
 	github.com/pulumi/pulumi/sdk/v2 => ../sdk
-	gocloud.dev => github.com/pulumi/go-cloud v0.18.1-0.20191119155701-6a8381d0793f
 )
 
 require (
@@ -18,7 +17,7 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.3.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/Sirupsen/logrus v1.0.5 // indirect
-	github.com/aws/aws-sdk-go v1.29.27
+	github.com/aws/aws-sdk-go v1.30.7
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
@@ -48,8 +47,8 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.3.1
-	gocloud.dev v0.19.0
-	gocloud.dev/secrets/hashivault v0.19.0
+	gocloud.dev v0.19.1-0.20200517170643-46480dc2c3dd
+	gocloud.dev/secrets/hashivault v0.19.1-0.20200517170643-46480dc2c3dd
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d

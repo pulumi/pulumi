@@ -6,6 +6,9 @@ CHANGELOG
 - Add support for untagged outputs in Go SDK.
  [#4640](https://github.com/pulumi/pulumi/pull/4640)
 
+- Update go-cloud to support all Azure regions
+ [#4643](https://github.com/pulumi/pulumi/pull/4643)
+ 
 - Fix a Regression in .NET unit testing.
  [#4656](https://github.com/pulumi/pulumi/pull/4656)
 
