@@ -95,6 +95,8 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 ## <a name="getting-started"></a>Getting Started
 
+[![Watch the video](/youtube_preview_image.png)](https://www.youtube.com/watch?v=6f8KF6UGN7g)
+
 See the [Get Started](https://www.pulumi.com/docs/quickstart/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=getting-started-quickstart) guide to quickly get started with
 Pulumi on your platform and cloud of choice.
 
