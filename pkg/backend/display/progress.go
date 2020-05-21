@@ -1202,6 +1202,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
 				return "importing failed"
+			case deploy.OpPatch, deploy.OpPatchReplacement:
+				return "patching failed"
 			}
 		} else {
 			switch op {
@@ -1234,6 +1236,10 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "imported"
 			case deploy.OpImportReplacement:
 				return "imported replacement"
+			case deploy.OpPatch:
+				return "patched"
+			case deploy.OpPatchReplacement:
+				return "patched replacement"
 			}
 		}
 
@@ -1279,6 +1285,10 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 		return "import"
 	case deploy.OpImportReplacement:
 		return "import replacement"
+	case deploy.OpPatch:
+		return "patch"
+	case deploy.OpPatchReplacement:
+		return "patch replacement"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1309,6 +1319,8 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "discard"
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return "import"
+	case deploy.OpPatch, deploy.OpPatchReplacement:
+		return "patch"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1387,6 +1399,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "importing"
 		case deploy.OpImportReplacement:
 			return "importing replacement"
+		case deploy.OpPatch:
+			return "patching"
+		case deploy.OpPatchReplacement:
+			return "patching replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

@@ -146,7 +146,7 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &refreshSnapshotMutation{sm}, nil
 	case deploy.OpRemovePendingReplace:
 		return &removePendingReplaceSnapshotMutation{sm}, nil
-	case deploy.OpImport, deploy.OpImportReplacement:
+	case deploy.OpImport, deploy.OpImportReplacement, deploy.OpPatch, deploy.OpPatchReplacement:
 		return sm.doImport(step)
 	}
 
@@ -476,10 +476,12 @@ type importSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+// nolint: lll
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement,
-		"step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement")
+	contract.Require(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement ||
+		step.Op() == deploy.OpPatch || step.Op() == deploy.OpPatchReplacement,
+		"step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement || step.Op() == deploy.OpPatch || step.Op() == deploy.OpPatchReplacement")
 
 	return ism.manager.mutate(func() bool {
 		ism.manager.markOperationComplete(step.New())

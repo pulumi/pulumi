@@ -82,6 +82,8 @@ interface ResourceResolverOperation {
     aliases: URN[];
     // An ID to import, if any.
     import: ID | undefined;
+    // An ID to patch, if any.
+    patch: ID | undefined;
 }
 
 /**
@@ -192,8 +194,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAcceptsecrets(true);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
-        req.setImportid(resop.import || "");
+        req.setImportid(resop.patch || resop.import || "");
         req.setSupportspartialvalues(true);
+        req.setPatch(!!resop.patch);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -322,9 +325,11 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     let providerRef: string | undefined;
     let importID: ID | undefined;
+    let patchID: ID | undefined;
     if (custom) {
         const customOpts = <CustomResourceOptions>opts;
         importID = customOpts.import;
+        patchID = customOpts.patch;
         providerRef = await ProviderResource.register(opts.provider);
     }
 
@@ -369,6 +374,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
         aliases: aliases,
         import: importID,
+        patch: patchID,
     };
 }
 

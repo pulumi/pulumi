@@ -605,6 +605,14 @@ export interface CustomResourceOptions extends ResourceOptions {
      */
     import?: ID;
 
+    /**
+     * When provided with a resource ID, patch indicates that this resource's provider should import its state from
+     * the cloud resource with the given ID. The inputs to the resource's constructor may differ from the resource's
+     * current state, but any differences must not require that the resource be replaced.
+     */
+    patch?: ID;
+
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }

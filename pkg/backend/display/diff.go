@@ -333,7 +333,8 @@ func renderDiffResourcePreEvent(
 	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
-	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
+	switch payload.Metadata.Op {
+	case deploy.OpRefresh, deploy.OpImport, deploy.OpPatch:
 		return ""
 	}
 
@@ -352,7 +353,7 @@ func renderDiffResourceOutputsEvent(
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		// If this is the output step for an import, we actually want to display the diff at this point.
-		if payload.Metadata.Op == deploy.OpImport {
+		if payload.Metadata.Op == deploy.OpImport || payload.Metadata.Op == deploy.OpPatch {
 			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
 			return out.String()
 		}

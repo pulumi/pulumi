@@ -371,6 +371,14 @@ class ResourceOptions:
     property must be removed from the resource's options.
     """
 
+    patch: Optional[str]
+    """
+    When provided with a resource ID, patch indicates that this resource's provider should import
+    its state from the cloud resource with the given ID. The inputs to the resource's constructor
+    may differ from the resource's current state, but any differences must not require that the
+    resource be replaced.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -386,7 +394,8 @@ class ResourceOptions:
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
-                 transformations: Optional[List[ResourceTransformation]] = None) -> None:
+                 transformations: Optional[List[ResourceTransformation]] = None,
+                 patch: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -432,6 +441,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
+        self.patch = patch
 
         if depends_on is not None:
             for dep in depends_on:
@@ -502,6 +512,7 @@ class ResourceOptions:
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
+        dest.patch = dest.patch if source.patch is None else source.patch
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.

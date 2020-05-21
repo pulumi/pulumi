@@ -61,7 +61,7 @@ namespace Pulumi
                 Custom = custom,
                 Protect = options.Protect ?? false,
                 Version = options.Version ?? "",
-                ImportId = customOpts?.ImportId ?? "",
+                ImportId = customOpts?.Patch ?? customOpts?.ImportId ?? "",
                 AcceptSecrets = true,
                 DeleteBeforeReplace = deleteBeforeReplace ?? false,
                 DeleteBeforeReplaceDefined = deleteBeforeReplace != null,
@@ -71,6 +71,7 @@ namespace Pulumi
                     Delete = TimeoutString(options.CustomTimeouts?.Delete),
                     Update = TimeoutString(options.CustomTimeouts?.Update),
                 },
+				Patch = customOpts?.Patch == null,
             };
 
             if (customOpts != null)
