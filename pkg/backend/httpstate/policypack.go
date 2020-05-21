@@ -11,18 +11,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
-
-	"github.com/pulumi/pulumi/pkg/v2/npm"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/npm"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/python"
@@ -68,6 +67,8 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		// We've already downloaded and installed the PolicyPack. Return.
 		return policyPackPath, nil
 	}
+
+	fmt.Printf("Installing policy pack %s %s...\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
 	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
@@ -280,7 +281,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 		return err
 	}
 
-	fmt.Printf("Unpacking policy pack %q %q\n", tempDir, finalDir)
+	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
 
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
@@ -306,9 +307,6 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 }
 
 func completeNodeJSInstall(finalDir string) error {
-	fmt.Println("Installing dependencies for policy pack...")
-	fmt.Println()
-
 	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
@@ -316,17 +314,13 @@ func completeNodeJSInstall(finalDir string) error {
 				"in %q before this policy pack works", bin, finalDir)
 	}
 
-	fmt.Println("Finished installing dependencies")
+	fmt.Println("Finished installing policy pack")
 	fmt.Println()
-
 	return nil
 }
 
 func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	// Create virtual environment.
-	fmt.Println("Creating virtual environment for policy pack...")
-	fmt.Println()
-
 	venvDir := filepath.Join(finalDir, "venv")
 	cmd, err := python.Command("-m", "venv", venvDir)
 	if err != nil {
@@ -347,16 +341,10 @@ func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPack
 		return errors.Wrapf(err, "saving project at %s", projPath)
 	}
 
-	fmt.Println("Finished creating virtual environment")
-	fmt.Println()
-
 	requirementsPath := filepath.Join(finalDir, "requirements.txt")
 	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
 	}
-
-	fmt.Println("Installing dependencies for policy pack...")
-	fmt.Println()
 
 	pipCmd := python.VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
 	pipCmd.Dir = finalDir
@@ -370,8 +358,7 @@ func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPack
 		return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
 	}
 
-	fmt.Println("Finished installing dependencies")
+	fmt.Println("Finished installing policy pack")
 	fmt.Println()
-
 	return nil
 }
