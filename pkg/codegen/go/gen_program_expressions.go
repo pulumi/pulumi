@@ -284,7 +284,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 func (g *generator) genRelativeTraversal(w io.Writer,
 	traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType) {
 
-	for i, part := range traversal {
+	for _, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {
 		case hcl.TraverseAttr:

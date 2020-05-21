@@ -75,10 +75,20 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.S
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, mod, _, _ := r.DecomposeToken()
-			majVersion := getProviderMajorVersion(pkg)
+			version := -1
+			for _, p := range program.Packages() {
+				if p.Name == pkg {
+					version = int(p.Version.Major)
+					break
+				}
+			}
 
-			vPath := fmt.Sprintf("/v%s", majVersion)
-			if majVersion == "1" {
+			if version == -1 {
+				panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", r.Token))
+			}
+
+			vPath := fmt.Sprintf("/v%d", version)
+			if version <= 1 {
 				vPath = ""
 			}
 
