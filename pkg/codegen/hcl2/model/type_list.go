@@ -26,22 +26,11 @@ import (
 type ListType struct {
 	// ElementType is the element type of the list.
 	ElementType Type
-
-	s string
 }
-
-// The set of list types, indexed by element type.
-var listTypes = map[Type]*ListType{}
 
 // NewListType creates a new list type with the given element type.
 func NewListType(elementType Type) *ListType {
-	if t, ok := listTypes[elementType]; ok {
-		return t
-	}
-
-	t := &ListType{ElementType: elementType}
-	listTypes[elementType] = t
-	return t
+	return &ListType{ElementType: elementType}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -59,6 +48,16 @@ func (t *ListType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 		diagnostics = hcl.Diagnostics{unsupportedListIndex(traverser.SourceRange())}
 	}
 	return t.ElementType, diagnostics
+}
+
+// Equals returns true if this type has the same identity as the given type.
+func (t *ListType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+
+	otherList, ok := other.(*ListType)
+	return ok && t.ElementType.Equals(otherList.ElementType)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A list(T) is assignable
@@ -80,6 +79,10 @@ func (t *ListType) AssignableFrom(src Type) bool {
 	})
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A list(T)
+// is safely convertible from list(U), set(U), or tuple(U_0 ... U_N) if the element type(s) U is/are safely convertible
+// to T. If any element type is unsafely convertible to T and no element type is safely convertible to T, the
+// conversion is unsafe. Otherwise, no conversion exists.
 func (t *ListType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
@@ -105,10 +108,7 @@ func (t *ListType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *ListType) String() string {
-	if t.s == "" {
-		t.s = fmt.Sprintf("list(%v)", t.ElementType)
-	}
-	return t.s
+	return fmt.Sprintf("list(%v)", t.ElementType)
 }
 
 func (t *ListType) unify(other Type) (Type, ConversionKind) {

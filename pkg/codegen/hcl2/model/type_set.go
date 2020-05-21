@@ -26,22 +26,11 @@ import (
 type SetType struct {
 	// ElementType is the element type of the set.
 	ElementType Type
-
-	s string
 }
-
-// The set of set types, indexed by element type.
-var setTypes = map[Type]*SetType{}
 
 // NewSetType creates a new set type with the given element type.
 func NewSetType(elementType Type) *SetType {
-	if t, ok := setTypes[elementType]; ok {
-		return t
-	}
-
-	t := &SetType{ElementType: elementType}
-	setTypes[elementType] = t
-	return t
+	return &SetType{ElementType: elementType}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -52,6 +41,15 @@ func (*SetType) SyntaxNode() hclsyntax.Node {
 // Traverse attempts to traverse the optional type with the given traverser. This always fails.
 func (t *SetType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+}
+
+// Equals returns true if this type has the same identity as the given type.
+func (t *SetType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+	otherSet, ok := other.(*SetType)
+	return ok && t.ElementType.Equals(otherSet.ElementType)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A set(T) is assignable
@@ -65,6 +63,10 @@ func (t *SetType) AssignableFrom(src Type) bool {
 	})
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
+// A set(T) is convertible from a set(U) if a conversion exists from U to T. If the conversion from U to T is unsafe,
+// the entire conversion is unsafe; otherwise the conversion is safe. An unsafe conversion exists from list(U) or
+// or tuple(U_0 ... U_N) to set(T) if a conversion exists from each U to T.
 func (t *SetType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
@@ -90,10 +92,7 @@ func (t *SetType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *SetType) String() string {
-	if t.s == "" {
-		t.s = fmt.Sprintf("set(%v)", t.ElementType)
-	}
-	return t.s
+	return fmt.Sprintf("set(%v)", t.ElementType)
 }
 
 func (t *SetType) unify(other Type) (Type, ConversionKind) {

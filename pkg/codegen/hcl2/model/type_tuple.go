@@ -34,17 +34,9 @@ type TupleType struct {
 	s            string
 }
 
-// The set of tuple types, indexed by string representation.
-var tupleTypes = map[string]*TupleType{}
-
 // NewTupleType creates a new tuple type with the given element types.
 func NewTupleType(elementTypes ...Type) Type {
-	t := &TupleType{ElementTypes: elementTypes}
-	if t, ok := tupleTypes[t.String()]; ok {
-		return t
-	}
-	tupleTypes[t.String()] = t
-	return t
+	return &TupleType{ElementTypes: elementTypes}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -75,6 +67,26 @@ func (t *TupleType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 		return DynamicType, hcl.Diagnostics{tupleIndexOutOfRange(len(t.ElementTypes), traverser.SourceRange())}
 	}
 	return t.ElementTypes[int(elementIndex)], nil
+}
+
+// Equals returns true if this type has the same identity as the given type.
+func (t *TupleType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+	otherTuple, ok := other.(*TupleType)
+	if !ok {
+		return false
+	}
+	if len(t.ElementTypes) != len(otherTuple.ElementTypes) {
+		return false
+	}
+	for i, t := range t.ElementTypes {
+		if !t.Equals(otherTuple.ElementTypes[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type..

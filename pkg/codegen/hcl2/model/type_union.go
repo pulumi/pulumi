@@ -32,9 +32,6 @@ type UnionType struct {
 	s string
 }
 
-// The set of union types, indexed by string representation.
-var unionTypes = map[string]*UnionType{}
-
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
 // replaced with their element types.
 func NewUnionType(types ...Type) Type {
@@ -53,7 +50,7 @@ func NewUnionType(types ...Type) Type {
 
 	dst := 0
 	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src] == elementTypes[dst] {
+		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
 			src++
 		}
 		dst++
@@ -68,12 +65,7 @@ func NewUnionType(types ...Type) Type {
 		return elementTypes[0]
 	}
 
-	t := &UnionType{ElementTypes: elementTypes}
-	if t, ok := unionTypes[t.String()]; ok {
-		return t
-	}
-	unionTypes[t.String()] = t
-	return t
+	return &UnionType{ElementTypes: elementTypes}
 }
 
 // NewOptionalType returns a new union(T, None).
@@ -120,6 +112,26 @@ func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	}
 }
 
+// Equals returns true if this type has the same identity as the given type.
+func (t *UnionType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+	otherUnion, ok := other.(*UnionType)
+	if !ok {
+		return false
+	}
+	if len(t.ElementTypes) != len(otherUnion.ElementTypes) {
+		return false
+	}
+	for i, t := range t.ElementTypes {
+		if !t.Equals(otherUnion.ElementTypes[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A union(T_0, ..., T_N)
 // from values of type union(U_0, ..., U_M) where all of U_0 through U_M are assignable to some type in
 // (T_0, ..., T_N) and V where V is assignable to at least one of (T_0, ..., T_N).
@@ -134,6 +146,10 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 	})
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A union
+// type is convertible from a source type if any of its elements are convertible from the source type. If any element
+// type is safely convertible, the conversion is safe; if no element is safely convertible but some element is unsafely
+// convertible, the conversion is unsafe.
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }

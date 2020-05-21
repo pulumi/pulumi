@@ -30,6 +30,10 @@ func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics)
 	return NoneType, hcl.Diagnostics{unsupportedReceiverType(NoneType, traverser.SourceRange())}
 }
 
+func (noneType) Equals(other Type) bool {
+	return other == NoneType
+}
+
 func (noneType) AssignableFrom(src Type) bool {
 	return assignableFrom(NoneType, src, func() bool {
 		return false
