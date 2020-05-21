@@ -74,7 +74,7 @@ func TestCollectImports(t *testing.T) {
 	var index bytes.Buffer
 	imports := g.collectImports(&index, g.program).SortedValues()
 	assert.Equal(t, 1, len(imports))
-	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk/v2/go/aws/s3", imports[0])
+	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk/go/aws/s3", imports[0])
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
