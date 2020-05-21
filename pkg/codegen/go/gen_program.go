@@ -2,11 +2,14 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	gofmt "go/format"
 	"io"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
@@ -32,10 +35,9 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
 
-	// TODO: process nodes
-	// for _, n := range nodes {
-	// 	g.genNode(&index, n)
-	// }
+	for _, n := range nodes {
+		g.genNode(&index, n)
+	}
 
 	g.genPostamble(&index, nodes)
 
@@ -54,14 +56,47 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	g.Fprint(w, "package main\n")
-	// TODO calculate real imports
+
+	imports := g.collectImports(w, program)
 	g.Fprintf(w, "import (\n")
 	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+	for _, pkg := range imports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", pkg)
+	}
 	g.Fprintf(w, ")\n")
 
 	g.Fprintf(w, "func main() {\n")
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
+}
 
+func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.StringSet {
+	// Accumulate import statements for the various providers
+	pulumiImports := codegen.NewStringSet()
+	for _, n := range program.Nodes {
+		if r, isResource := n.(*hcl2.Resource); isResource {
+			pkg, mod, _, _ := r.DecomposeToken()
+			version := -1
+			for _, p := range program.Packages() {
+				if p.Name == pkg {
+					version = int(p.Version.Major)
+					break
+				}
+			}
+
+			if version == -1 {
+				panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", r.Token))
+			}
+
+			vPath := fmt.Sprintf("/v%d", version)
+			if version <= 1 {
+				vPath = ""
+			}
+
+			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+		}
+	}
+
+	return pulumiImports
 }
 
 // genPostamble closes the method
@@ -72,57 +107,46 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 	g.Fprintf(w, "}\n")
 }
 
-// GetPrecedence returns the precedence for the indicated expression. Lower numbers bind more tightly than higher
-// numbers.
-func (g *generator) GetPrecedence(expr model.Expression) int { /*TODO*/ return -1 }
-
-// GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
-func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) { /*TODO*/
+func (g *generator) genNode(w io.Writer, n hcl2.Node) {
+	switch n := n.(type) {
+	case *hcl2.Resource:
+		g.genResource(w, n)
+		// TODO
+		// case *hcl2.ConfigVariable:
+		// 	g.genConfigVariable(w, n)
+		// case *hcl2.LocalVariable:
+		// 	g.genLocalVariable(w, n)
+		// case *hcl2.OutputVariable:
+		// 	g.genOutputAssignment(w, n)
+	}
 }
 
-// GenBinaryOpExpression generates code for a BinaryOpExpression.
-func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) { /*TODO*/ }
+func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
-// GenConditionalExpression generates code for a ConditionalExpression.
-func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
+	resName := r.Name()
+	_, mod, typ, _ := r.DecomposeToken()
 
-// GenForExpression generates code for a ForExpression.
-func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
+	// Add conversions to input properties
+	for _, input := range r.Inputs {
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+	}
 
-// GenFunctionCallExpression generates code for a FunctionCallExpression.
-func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) { /*TODO*/
+	g.Fgenf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", ", resName, mod, typ)
+	if len(r.Inputs) > 0 {
+		g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
+		for _, attr := range r.Inputs {
+			g.Fgenf(w, "%s: ", strings.Title(attr.Name))
+			g.Fgenf(w, "%.v,\n", attr.Value)
+
+		}
+		g.Fgenf(w, "})\n")
+	} else {
+		g.Fgenf(w, "nil)\n")
+	}
+	g.Fgenf(w, "if err != nil {\n")
+	g.Fgenf(w, "return err\n")
+	g.Fgenf(w, "}\n")
+
 }
-
-// GenIndexExpression generates code for an IndexExpression.
-func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) { /*TODO*/ }
-
-// GenLiteralValueExpression generates code for a LiteralValueExpression.
-func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) { /*TODO*/
-}
-
-// GenObjectConsExpression generates code for an ObjectConsExpression.
-func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) { /*TODO*/ }
-
-// GenRelativeTraversalExpression generates code for a RelativeTraversalExpression.
-func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) { /*TODO*/
-}
-
-// GenScopeTraversalExpression generates code for a ScopeTraversalExpression.
-func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) { /*TODO*/
-}
-
-// GenSplatExpression generates code for a SplatExpression.
-func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) { /*TODO*/ }
-
-// GenTemplateExpression generates code for a TemplateExpression.
-func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) { /*TODO*/ }
-
-// GenTemplateJoinExpression generates code for a TemplateJoinExpression.
-func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) { /*TODO*/
-}
-
-// GenTupleConsExpression generates code for a TupleConsExpression.
-func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) { /*TODO*/ }
-
-// GenUnaryOpExpression generates code for a UnaryOpExpression.
-func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }

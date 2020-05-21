@@ -226,11 +226,23 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 	}
 }
 
+var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)
+
 // GetSchemaForType extracts the schema.Type associated with a model.Type, if any.
 //
 // The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
 func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	switch t := t.(type) {
+	case *model.ListType:
+		element, ok := GetSchemaForType(t.ElementType)
+		if !ok {
+			return nil, false
+		}
+		if t, ok := schemaArrayTypes[element]; ok {
+			return t, true
+		}
+		schemaArrayTypes[element] = &schema.ArrayType{ElementType: element}
+		return schemaArrayTypes[element], true
 	case *model.ObjectType:
 		if len(t.Annotations) == 0 {
 			return nil, false
@@ -261,7 +273,6 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		if len(schemas) == 0 {
 			return nil, false
 		}
-
 		schemaTypes := make([]schema.Type, 0, len(schemas))
 		for t := range schemas {
 			schemaTypes = append(schemaTypes, t.(schema.Type))
