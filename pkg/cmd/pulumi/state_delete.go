@@ -38,7 +38,7 @@ func newStateDeleteCommand() *cobra.Command {
 		Long: `Deletes a resource from a stack's state
 
 This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified 
-by its Pulumi URN (use 'pulumi stack --show-urns' to get it).
+by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
 
 Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources 
 will not be deleted unless it is specifically requested using the --force flag.
