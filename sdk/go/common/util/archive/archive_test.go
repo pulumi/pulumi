@@ -125,7 +125,7 @@ func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte,
 		}
 	}
 
-	return Tgz(dir, prefixPathInsideTar, true /*useDefaultExcludes*/)
+	return TGZ(dir, prefixPathInsideTar, true /*useDefaultExcludes*/)
 }
 
 func checkFiles(t *testing.T, prefixPathInsideTar string, expected []fileContents, r *tar.Reader) {

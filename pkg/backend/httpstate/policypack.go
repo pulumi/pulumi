@@ -189,7 +189,7 @@ func (pack *cloudPolicyPack) Publish(
 		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
 		// the same for Python. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
 		// package directory to determine the runtime of the policy pack.
-		packTarball, err = archive.Tgz(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
+		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
 		if err != nil {
 			return result.FromError(
 				errors.Wrap(err, "could not publish policies because of error creating the .tgz"))
@@ -276,7 +276,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	}()
 
 	// Uncompress the policy pack.
-	err = archive.Untgz(tarball, tempDir)
+	err = archive.UnTGZ(tarball, tempDir)
 	if err != nil {
 		return err
 	}

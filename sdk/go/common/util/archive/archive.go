@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
 
-// Tgz adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.
-func Tgz(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, error) {
+// TGZ adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.
+func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	gw := gzip.NewWriter(buffer)
 	writer := tar.NewWriter(gw)
@@ -60,8 +60,8 @@ func Tgz(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 	return buffer.Bytes(), nil
 }
 
-// Untgz uncompresses a .tar.gz/.tgz file into a specific directory.
-func Untgz(tarball []byte, dir string) error {
+// UnTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
+func UnTGZ(tarball []byte, dir string) error {
 	tarReader := bytes.NewReader(tarball)
 	gzr, err := gzip.NewReader(tarReader)
 	if err != nil {

@@ -248,7 +248,7 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 			return err
 		}
 
-		return archive.Untgz(tarballBytes, tempDir)
+		return archive.UnTGZ(tarballBytes, tempDir)
 	})()
 	if err != nil {
 		return err
