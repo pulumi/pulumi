@@ -67,22 +67,6 @@ func VirtualEnvCommand(virtualEnvDir string, name string, arg ...string) *exec.C
 	return exec.Command(cmdPath, arg...)
 }
 
-// IsVirtualEnv returns true if the specified directory contains python and pip binaries.
-func IsVirtualEnv(dir string) bool {
-	fileExists := func(file string) bool {
-		if runtime.GOOS == windows {
-			file = fmt.Sprintf("%s.exe", file)
-		}
-		if info, err := os.Stat(file); err == nil && !info.IsDir() {
-			return true
-		}
-		return false
-	}
-
-	return fileExists(filepath.Join(dir, virtualEnvBinDirName(), "python")) &&
-		fileExists(filepath.Join(dir, virtualEnvBinDirName(), "pip"))
-}
-
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
 // a virtual environment directory, and returns a new "activated" array with the virtual environment's
 // "bin" dir ("Scripts" on Windows) prepended to the `PATH` environment variable and `PYTHONHOME` variable

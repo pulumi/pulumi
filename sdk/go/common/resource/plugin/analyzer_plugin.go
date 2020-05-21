@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
-	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
@@ -116,36 +115,21 @@ func NewPolicyAnalyzer(
 		return nil, err
 	}
 
-	// If this is a Python policy pack and it has the virtualenv runtime option set, "activate"
-	// the environment variables used to execute the plugin so that the python binary and
-	// installed dependencies in the virtual environment are used by the plugin.
-	if strings.EqualFold(proj.Runtime.Name(), "python") && len(proj.Runtime.Options()) > 0 {
-		if virtualenvInterface, hasVirtualenv := proj.Runtime.Options()["virtualenv"]; hasVirtualenv {
-			virtualenv, ok := virtualenvInterface.(string)
-			if !ok {
-				return nil, errors.New("virtualenv not set to a string")
-			}
-			if !filepath.IsAbs(virtualenv) {
-				virtualenv = filepath.Clean(filepath.Join(filepath.Dir(projPath), virtualenv))
-			}
-			if _, err := os.Stat(virtualenv); os.IsNotExist(err) {
-				return nil, errors.Errorf("virtualenv does not exist: %s", virtualenv)
-			}
-			if !python.IsVirtualEnv(virtualenv) {
-				return nil, errors.Errorf("virtualenv does not appear to be a virtual environment: %s", virtualenv)
-			}
-			env = python.ActivateVirtualEnv(env, virtualenv)
-		}
-	}
-
 	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
 	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
 	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
 	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
 	// node_modules is used.
 	pwd := policyPackPath
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), "."}, env)
+
+	args := []string{host.ServerAddr(), "."}
+	for k, v := range proj.Runtime.Options() {
+		if vstr := fmt.Sprintf("%v", v); vstr != "" {
+			args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
+		}
+	}
+
+	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.

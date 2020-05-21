@@ -25,25 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsVirtualEnv(t *testing.T) {
-	// Create a new empty test directory.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
-
-	// Assert the empty test directory is not a virtual environment.
-	assert.False(t, IsVirtualEnv(tempdir))
-
-	// Create and run a python command to create a virtual environment.
-	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
-	assert.NoError(t, err)
-	err = cmd.Run()
-	assert.NoError(t, err)
-
-	// Assert the new venv directory is a virtual environment.
-	assert.True(t, IsVirtualEnv(venvDir))
-}
-
 func TestActivateVirtualEnv(t *testing.T) {
 	venvName := "venv"
 	venvDir := filepath.Join(venvName, "bin")

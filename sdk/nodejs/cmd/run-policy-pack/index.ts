@@ -95,7 +95,7 @@ function main(args: string[]): void {
     const argv: minimist.ParsedArgs = minimist(args, {});
 
     // Finally, ensure we have a program to run.
-    if (argv._.length !== 2) {
+    if (argv._.length < 2) {
         return printErrorUsageAndExit("error: Usage: RUN <engine-address> <program>");
     }
 
