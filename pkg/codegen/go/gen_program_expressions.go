@@ -256,28 +256,27 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
-		if arrayType, ok := schemaType.(*schema.ArrayType); ok {
-			token := arrayType.ElementType.(*schema.ObjectType).Token
+		switch schemaType := schemaType.(type) {
+		case *schema.ArrayType:
+			token := schemaType.ElementType.(*schema.ObjectType).Token
 			tokenRange := expr.SyntaxNode().Range()
-
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
 			return fmt.Sprintf("%s.%sArray", importPrefix, member)
-		}
-		if objType, ok := schemaType.(*schema.ObjectType); ok {
-			token := objType.Token
+		case *schema.ObjectType:
+			token := schemaType.Token
 			tokenRange := expr.SyntaxNode().Range()
-
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
 			return fmt.Sprintf("%s.%s", importPrefix, member)
-		} else if tupType, ok := schemaType.(*schema.ArrayType); ok {
-			fmt.Println(tupType)
+		default:
+			contract.Failf("unexpected schema type %T", schemaType)
 		}
 	}
 
+	// TODO support rest of types
 	return ""
 }
 
