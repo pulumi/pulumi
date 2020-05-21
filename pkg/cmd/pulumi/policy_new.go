@@ -186,7 +186,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 }
 
 func installPolicyPackDependencies(proj *workspace.PolicyPackProject) error {
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
 			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)

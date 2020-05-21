@@ -562,7 +562,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func installDependencies(proj *workspace.Project, root string) error {
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
 			return errors.Wrapf(err, "%s install failed; rerun manually to try again, "+

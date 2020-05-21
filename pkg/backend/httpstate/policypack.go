@@ -177,7 +177,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	var packTarball []byte
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	runtime := op.PolicyPack.Runtime.Name()
 	if strings.EqualFold(runtime, "nodejs") {
 		packTarball, err = npm.Pack(op.PlugCtx.Pwd, os.Stderr)
@@ -296,7 +296,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
 	}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		return completeNodeJSInstall(finalDir)
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
