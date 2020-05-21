@@ -133,7 +133,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readFile":
 		g.genNYI(w, "ReadFile")
 	case "readDir":
-		g.Fgenf(w, "Directory.GetFiles(%.v).Select(Path.GetFileName)", expr.Args[0])
+		// TODO
+		g.genNYI(w, "call %v", expr.Name)
+		// C# for reference
+		// g.Fgenf(w, "Directory.GetFiles(%.v).Select(Path.GetFileName)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
@@ -292,9 +295,10 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
 		}
 
-		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
-			g.Fgen(w, "?")
-		}
+		// TODO handle optionals in go
+		// if model.IsOptionalType(model.GetTraversableType(parts[i])) {
+		// 	g.Fgen(w, "?")
+		// }
 
 		switch key.Type() {
 		case cty.String:
