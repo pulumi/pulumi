@@ -111,13 +111,13 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	switch n := n.(type) {
 	case *hcl2.Resource:
 		g.genResource(w, n)
+	case *hcl2.OutputVariable:
+		g.genOutputAssignment(w, n)
 		// TODO
 		// case *hcl2.ConfigVariable:
 		// 	g.genConfigVariable(w, n)
 		// case *hcl2.LocalVariable:
 		// 	g.genLocalVariable(w, n)
-		// case *hcl2.OutputVariable:
-		// 	g.genOutputAssignment(w, n)
 	}
 }
 
@@ -149,4 +149,8 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.Fgenf(w, "return err\n")
 	g.Fgenf(w, "}\n")
 
+}
+
+func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
+	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), g.lowerExpression(v.Value, v.Type()))
 }
