@@ -24,6 +24,9 @@ func TestBindProgram(t *testing.T) {
 		if filepath.Ext(f.Name()) != ".pp" {
 			continue
 		}
+		if f.Name() != "aws-eks.pp" {
+			continue
+		}
 
 		t.Run(f.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, f.Name())

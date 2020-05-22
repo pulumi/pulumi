@@ -27,7 +27,7 @@ resource eksRouteTable "aws:ec2:RouteTable" {
 		"Name": "pulumi-vpc-rt"
 	}
 }
-
+# fixme: being captured as trailing trivia
 # Subnets, one for each AZ in a region
 
 zones = invoke("aws:index:getAvailabilityZones", {})
