@@ -2,11 +2,13 @@ package hcl2
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 )
 
 func sameSchemaTypes(xt, yt model.Type) bool {
@@ -116,5 +118,78 @@ func RewriteConversions(x model.Expression, to model.Type) model.Expression {
 	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) {
 		return x
 	}
+	// If we can convert a primitive value in place, do so.
+	if value, ok := convertPrimitiveValues(x, to); ok {
+		return value
+	}
 	return NewConvertCall(x, to)
+}
+
+// convertPrimitiveValues returns a new expression if the given expression can be converted to another primitive type
+// (bool, int, number, string) that matches the target type.
+func convertPrimitiveValues(from model.Expression, to model.Type) (model.Expression, bool) {
+	var expression model.Expression
+	switch {
+	case to.AssignableFrom(model.DynamicType):
+		return nil, false
+	case to.AssignableFrom(model.BoolType):
+		if stringLiteral, ok := extractStringValue(from); ok {
+			if value, err := convert.Convert(cty.StringVal(stringLiteral), cty.Bool); err == nil {
+				expression = &model.LiteralValueExpression{Value: value}
+			}
+		}
+	case to.AssignableFrom(model.IntType), to.AssignableFrom(model.NumberType):
+		if stringLiteral, ok := extractStringValue(from); ok {
+			if value, err := convert.Convert(cty.StringVal(stringLiteral), cty.Number); err == nil {
+				expression = &model.LiteralValueExpression{Value: value}
+			}
+		}
+	case to.AssignableFrom(model.StringType):
+		if stringValue, ok := convertLiteralToString(from); ok {
+			expression = &model.TemplateExpression{
+				Parts: []model.Expression{&model.LiteralValueExpression{
+					Value: cty.StringVal(stringValue),
+				}},
+			}
+		}
+	}
+	if expression == nil {
+		return nil, false
+	}
+
+	expression.SetLeadingTrivia(from.GetLeadingTrivia())
+	expression.SetTrailingTrivia(from.GetTrailingTrivia())
+	return expression, true
+}
+
+// extractStringValue returns a string if the given expression is a template expression containing a single string
+// literal value.
+func extractStringValue(arg model.Expression) (string, bool) {
+	template, ok := arg.(*model.TemplateExpression)
+	if !ok || len(template.Parts) != 1 {
+		return "", false
+	}
+	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
+	if !ok || lit.Type() != model.StringType {
+		return "", false
+	}
+	return lit.Value.AsString(), true
+}
+
+// convertLiteralToString converts a literal of type Bool, Int, or Number to its string representation. It also handles
+// the unary negate operation in front of a literal number.
+func convertLiteralToString(from model.Expression) (string, bool) {
+	switch expr := from.(type) {
+	case *model.UnaryOpExpression:
+		if expr.Operation == hclsyntax.OpNegate {
+			if operandValue, ok := convertLiteralToString(expr.Operand); ok {
+				return "-" + operandValue, true
+			}
+		}
+	case *model.LiteralValueExpression:
+		if stringValue, err := convert.Convert(expr.Value, cty.String); err == nil {
+			return stringValue.AsString(), true
+		}
+	}
+	return "", false
 }

@@ -18,7 +18,7 @@ func TestRewriteConversions(t *testing.T) {
 	}{
 		{
 			input:  `"1" + 2`,
-			output: `__convert("1") + 2`,
+			output: `1 + 2`,
 		},
 		{
 			input:  `{a: "b"}`,
@@ -50,7 +50,7 @@ func TestRewriteConversions(t *testing.T) {
 		},
 		{
 			input:  `{a: "1" + 2}`,
-			output: `{a: __convert( "1") + 2}`,
+			output: `{a: 1 + 2}`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.NumberType,
 			}),
@@ -78,7 +78,7 @@ func TestRewriteConversions(t *testing.T) {
 		},
 		{
 			input:  `!"true"`,
-			output: `!__convert("true")`,
+			output: `!true`,
 			to:     model.BoolType,
 		},
 		{
