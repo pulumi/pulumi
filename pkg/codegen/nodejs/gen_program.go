@@ -242,6 +242,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	optionsBag := ""
 
 	name := r.Name()
+	variableName := makeValidIdentifier(name)
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -280,16 +281,16 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		rangeExpr := g.lowerExpression(r.Options.Range)
 
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
-			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, name, qualifiedMemberName)
+			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s = ", g.Indent, name)
+				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
 				instantiate(g.makeResourceName(name, ""))
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, name, qualifiedMemberName)
+			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -305,14 +306,14 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s.push(", g.Indent, name)
+				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
-		g.Fgenf(w, "%sconst %s = ", g.Indent, name)
+		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
 	}
