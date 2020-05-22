@@ -197,6 +197,8 @@ type DefaultValue struct {
 	Value interface{}
 	// Environment specifies a set of environment variables to probe for a default value.
 	Environment []string
+	// Secret specifies whether the default value is a secret value
+	Secret bool
 	// Language specifies additional language-specific data about the default value.
 	Language map[string]interface{}
 }
@@ -550,6 +552,8 @@ type TypeSpec struct {
 type DefaultSpec struct {
 	// Environment specifies a set of environment variables to probe for a default value.
 	Environment []string `json:"environment,omitempty"`
+	// Secret specifies whether the default value is a secret value
+	Secret bool `json:"secret,omitempty"`
 	// Language specifies additional language-specific data about the default value.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
@@ -974,7 +978,7 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 			language[name] = raw
 		}
 
-		dv.Environment, dv.Language = spec.Environment, language
+		dv.Environment, dv.Language, dv.Secret = spec.Environment, language, spec.Secret
 	}
 	return dv, nil
 }

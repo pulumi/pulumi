@@ -447,6 +447,9 @@ func (pt *plainType) genInputType(w io.Writer, level int) error {
 				return err
 			}
 			propertyName := pt.mod.propertyName(prop)
+			if prop.DefaultValue.Secret {
+				dv = fmt.Sprintf("Output.CreateSecret(%s)", dv)
+			}
 			fmt.Fprintf(w, "%s        %s = %s;\n", indent, propertyName, dv)
 		}
 	}

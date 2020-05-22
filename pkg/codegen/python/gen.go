@@ -415,6 +415,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			if err != nil {
 				return "", err
 			}
+			if prop.DefaultValue.Secret {
+				dv = fmt.Sprintf("Output.secret(%s)", dv)
+			}
 			fmt.Fprintf(w, "            if %s is None:\n", pname)
 			fmt.Fprintf(w, "                %s = %s\n", pname, dv)
 		}

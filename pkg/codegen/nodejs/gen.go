@@ -532,6 +532,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 					return err
 				}
 				arg = fmt.Sprintf("(%s) || %s", arg, dv)
+				if prop.DefaultValue.Secret {
+					arg = fmt.Sprintf("pulumi.secret(%s)", arg)
+				}
 			}
 
 			// provider properties must be marshaled as JSON strings.

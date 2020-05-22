@@ -716,8 +716,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 				t = "pulumi.Any"
 			}
 
+			if p.DefaultValue.Secret {
+				v = fmt.Sprintf("pulumi.ToSecret(%s).(%s)", v, pkg.outputType(p.Type, false))
+			} else {
+				v = fmt.Sprintf("%s(%s)", t, v)
+			}
+
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+			fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
 			fmt.Fprintf(w, "\t}\n")
 		}
 	}
