@@ -251,8 +251,7 @@ func requiresAsyncInit(r *hcl2.Resource) bool {
 		return false
 	}
 
-	t := r.Options.Range.Type()
-	return model.ResolveOutputs(t) != t
+	return model.ContainsPromises(r.Options.Range.Type())
 }
 
 // resourceTypeName computes the C# class name for the given resource.

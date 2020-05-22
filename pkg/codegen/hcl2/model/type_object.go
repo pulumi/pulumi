@@ -38,21 +38,9 @@ type ObjectType struct {
 	s             string
 }
 
-// The set of object types, indexed by string representation.
-var objectTypes = map[string]*ObjectType{}
-
 // NewObjectType creates a new object type with the given properties and annotations.
 func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
-	t := &ObjectType{Properties: properties, Annotations: annotations}
-	if len(annotations) != 0 {
-		return t
-	}
-
-	if t, ok := objectTypes[t.String()]; ok {
-		return t
-	}
-	objectTypes[t.String()] = t
-	return t
+	return &ObjectType{Properties: properties, Annotations: annotations}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -90,6 +78,27 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
 	}
 	return propertyType, nil
+}
+
+// Equals returns true if this type has the same identity as the given type.
+func (t *ObjectType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+
+	otherObject, ok := other.(*ObjectType)
+	if !ok {
+		return false
+	}
+	if len(t.Properties) != len(otherObject.Properties) {
+		return false
+	}
+	for k, t := range t.Properties {
+		if u, ok := otherObject.Properties[k]; !ok || !t.Equals(u) {
+			return false
+		}
+	}
+	return true
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type.
@@ -147,6 +156,16 @@ func (u *objectTypeUnifier) unify(t *ObjectType) {
 	}
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
+//
+// An object({K_0 = T_0, ..., K_N = T_N}) is convertible from object({K_0 = U_0, ... K_M = U_M}) if all properties
+// that exist in both types are convertible, and any keys that do not exist in the source type are optional in
+// the destination type. If any of these conversions are unsafe, the whole conversion is unsafe; otherwise, the
+// conversion is safe.
+//
+// An object({K_0 = T_0, ..., K_N = T_N}) is convertible from a map(U) if U is convertible to all of T_0 through T_N.
+// This conversion is always unsafe, and may fail if the map does not contain an appropriate set of keys for the
+// destination type.
 func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }

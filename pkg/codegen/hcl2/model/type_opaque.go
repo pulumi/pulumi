@@ -78,6 +78,11 @@ func (t *OpaqueType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
+// Equals returns true if this type has the same identity as the given type.
+func (t *OpaqueType) Equals(other Type) bool {
+	return t == other
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A token(name) is assignable
 // from token(name).
 func (t *OpaqueType) AssignableFrom(src Type) bool {
@@ -131,6 +136,17 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool) ConversionKind {
 	return t.conversionFromImpl(src, unifying, true)
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
+//
+// In general, an opaque type is only convertible from itself (in addition to the standard dynamic and union
+// conversions). However, there are special rules for the builtin types:
+//
+// - The dynamic type is safely convertible from any other type, and is unsafely convertible _to_ any other type
+// - The string type is safely convertible from bool, number, and int
+// - The number type is safely convertible from int and unsafely convertible from string
+// - The int type is unsafely convertible from string
+// - The bool type is unsafely convertible from string
+//
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }

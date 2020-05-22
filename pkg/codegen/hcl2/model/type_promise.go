@@ -26,24 +26,12 @@ import (
 type PromiseType struct {
 	// ElementType is the element type of the promise.
 	ElementType Type
-
-	s string
 }
-
-// The set of promise types, indexed by element type.
-var promiseTypes = map[Type]*PromiseType{}
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
 // the element type with their respective element types.
 func NewPromiseType(elementType Type) *PromiseType {
-	elementType = ResolvePromises(elementType)
-	if t, ok := promiseTypes[elementType]; ok {
-		return t
-	}
-
-	t := &PromiseType{ElementType: elementType}
-	promiseTypes[elementType] = t
-	return t
+	return &PromiseType{ElementType: ResolvePromises(elementType)}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -58,6 +46,15 @@ func (t *PromiseType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagno
 	return NewPromiseType(element.(Type)), diagnostics
 }
 
+// Equals returns true if this type has the same identity as the given type.
+func (t *PromiseType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+	otherPromise, ok := other.(*PromiseType)
+	return ok && t.ElementType.Equals(otherPromise.ElementType)
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A promise(T) is assignable
 // from values of type promise(U) and U, where T is assignable from U.
 func (t *PromiseType) AssignableFrom(src Type) bool {
@@ -69,6 +66,9 @@ func (t *PromiseType) AssignableFrom(src Type) bool {
 	})
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. An
+// promise(T) is convertible from a type U or promise(U) if U is convertible to T. If the conversion from U to T is
+// unsafe, the entire conversion is unsafe. Otherwise, the conversion is safe.
 func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
@@ -83,10 +83,7 @@ func (t *PromiseType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *PromiseType) String() string {
-	if t.s == "" {
-		t.s = fmt.Sprintf("promise(%v)", t.ElementType)
-	}
-	return t.s
+	return fmt.Sprintf("promise(%v)", t.ElementType)
 }
 
 func (t *PromiseType) unify(other Type) (Type, ConversionKind) {

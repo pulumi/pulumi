@@ -26,22 +26,11 @@ import (
 type MapType struct {
 	// ElementType is the element type of the map.
 	ElementType Type
-
-	s string
 }
-
-// The set of map types, indexed by element type.
-var mapTypes = map[Type]*MapType{}
 
 // NewMapType creates a new map type with the given element type.
 func NewMapType(elementType Type) *MapType {
-	if t, ok := mapTypes[elementType]; ok {
-		return t
-	}
-
-	t := &MapType{ElementType: elementType}
-	mapTypes[elementType] = t
-	return t
+	return &MapType{ElementType: elementType}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of traverse(map(T))
@@ -59,6 +48,16 @@ func (t *MapType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*MapType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+// Equals returns true if this type has the same identity as the given type.
+func (t *MapType) Equals(other Type) bool {
+	if t == other {
+		return true
+	}
+
+	otherMap, ok := other.(*MapType)
+	return ok && t.ElementType.Equals(otherMap.ElementType)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A map(T) is assignable
@@ -81,6 +80,10 @@ func (t *MapType) AssignableFrom(src Type) bool {
 	})
 }
 
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A map(T)
+// is safely convertible from map(U) or object({K_0 = U_0 ... K_N = U_N}) if the element type(s) U is/are safely
+// convertible to T. If any element type is unsafely convertible to T and no element type is safely convertible to T,
+// the conversion is unsafe. Otherwise, no conversion exists.
 func (t *MapType) ConversionFrom(src Type) ConversionKind {
 	return t.conversionFrom(src, false)
 }
@@ -104,10 +107,7 @@ func (t *MapType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *MapType) String() string {
-	if t.s == "" {
-		t.s = fmt.Sprintf("map(%v)", t.ElementType)
-	}
-	return t.s
+	return fmt.Sprintf("map(%v)", t.ElementType)
 }
 
 func (t *MapType) unify(other Type) (Type, ConversionKind) {
