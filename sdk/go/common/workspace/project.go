@@ -116,23 +116,16 @@ func (proj *Project) Save(path string) error {
 	contract.Require(path != "", "path")
 	contract.Require(proj != nil, "proj")
 	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return err
-	}
-
-	b, err := m.Marshal(proj)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(path, b, 0644)
+	return save(path, proj, false /*mkDirAll*/)
 }
 
 type PolicyPackProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Version specifies the version of the policy pack. If set, it will override the
+	// version specified in `package.json` for Node.js policy packs.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
@@ -154,6 +147,14 @@ func (proj *PolicyPackProject) Validate() error {
 	return nil
 }
 
+// Save writes a project definition to a file.
+func (proj *PolicyPackProject) Save(path string) error {
+	contract.Require(path != "", "path")
+	contract.Require(proj != nil, "proj")
+	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
+	return save(path, proj, false /*mkDirAll*/)
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
@@ -172,22 +173,7 @@ type ProjectStack struct {
 func (ps *ProjectStack) Save(path string) error {
 	contract.Require(path != "", "path")
 	contract.Require(ps != nil, "ps")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return err
-	}
-
-	b, err := m.Marshal(ps)
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(path, b, 0644)
+	return save(path, ps, true /*mkDirAll*/)
 }
 
 type ProjectRuntimeInfo struct {
@@ -208,6 +194,13 @@ func (info *ProjectRuntimeInfo) Name() string {
 
 func (info *ProjectRuntimeInfo) Options() map[string]interface{} {
 	return info.options
+}
+
+func (info *ProjectRuntimeInfo) SetOption(key string, value interface{}) {
+	if info.options == nil {
+		info.options = make(map[string]interface{})
+	}
+	info.options[key] = value
 }
 
 func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
@@ -365,4 +358,27 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	}
 
 	return m, nil
+}
+
+func save(path string, value interface{}, mkDirAll bool) error {
+	contract.Require(path != "", "path")
+	contract.Require(value != nil, "value")
+
+	m, err := marshallerForPath(path)
+	if err != nil {
+		return err
+	}
+
+	b, err := m.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	if mkDirAll {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+	}
+
+	return ioutil.WriteFile(path, b, 0644)
 }

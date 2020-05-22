@@ -15,6 +15,9 @@ CHANGELOG
 - Allow `pulumi.export` calls from Python unit tests.
   [#4670](https://github.com/pulumi/pulumi/pull/4670)
 
+- Add support for publishing Python policy packs.
+  [#4644](https://github.com/pulumi/pulumi/pull/4644)
+
 ## 2.2.1 (2020-05-13)
 - Add new brew target to fix homebrew builds
  [#4633](https://github.com/pulumi/pulumi/pull/4633)

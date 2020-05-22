@@ -22,7 +22,7 @@ import pulumi.runtime
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         # For whatever reason, sys.stderr.write is not picked up by the engine as a message, but 'print' is. The Python
         # langhost automatically flushes stdout and stderr on shutdown, so we don't need to do it here - just trust that
         # Python does the sane thing when printing to stderr.

@@ -7,25 +7,24 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
-
-	"github.com/pulumi/pulumi/pkg/v2/npm"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/npm"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 type cloudRequiredPolicy struct {
@@ -68,6 +67,8 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		// We've already downloaded and installed the PolicyPack. Return.
 		return policyPackPath, nil
 	}
+
+	fmt.Printf("Installing policy pack %s %s...\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
 	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
@@ -174,24 +175,36 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	if runtime := op.PolicyPack.Runtime.Name(); !strings.EqualFold(runtime, "nodejs") {
-		return result.Errorf(
-			"failed to publish policies because Pulumi.yaml requests unsupported runtime %s",
-			runtime)
-	}
+	var packTarball []byte
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	packTarball, err := npm.Pack(op.PlugCtx.Pwd, os.Stderr)
-	if err != nil {
-		return result.FromError(
-			errors.Wrapf(err, "could not publish policies because of error running npm pack"))
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
+	runtime := op.PolicyPack.Runtime.Name()
+	if strings.EqualFold(runtime, "nodejs") {
+		packTarball, err = npm.Pack(op.PlugCtx.Pwd, os.Stderr)
+		if err != nil {
+			return result.FromError(
+				errors.Wrap(err, "could not publish policies because of error running npm pack"))
+		}
+	} else if strings.EqualFold(runtime, "python") {
+		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
+		// the same for Python. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
+		// package directory to determine the runtime of the policy pack.
+		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
+		if err != nil {
+			return result.FromError(
+				errors.Wrap(err, "could not publish policies because of error creating the .tgz"))
+		}
+	} else {
+		return result.Errorf(
+			"failed to publish policies because PulumiPolicy.yaml specifies an unsupported runtime %s",
+			runtime)
 	}
 
 	//
 	// Publish.
 	//
 
-	fmt.Println("Uploading Policy Pack to Pulumi service")
+	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
@@ -237,7 +250,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 	return pack.cl.RemovePolicyPackByVersion(ctx, pack.ref.orgName, string(pack.ref.name), *op.VersionTag)
 }
 
-const npmPackageDir = "package"
+const packageDir = "package"
 
 func installRequiredPolicy(finalDir string, tarball []byte) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
@@ -251,9 +264,9 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}
 
-	// npm unpacks into a directory called `package`.
-	tempNPMPkgDir := path.Join(tempDir, npmPackageDir)
-	if err := os.MkdirAll(tempNPMPkgDir, 0700); err != nil {
+	// The policy pack files are actually in a directory called `package`.
+	tempPackageDir := filepath.Join(tempDir, packageDir)
+	if err := os.MkdirAll(tempPackageDir, 0700); err != nil {
 		return errors.Wrap(err, "creating plugin root")
 	}
 
@@ -263,34 +276,37 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	}()
 
 	// Uncompress the policy pack.
-	err = archive.Untgz(tarball, tempDir)
+	err = archive.UnTGZ(tarball, tempDir)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Unpacking policy zip %q %q\n", tempDir, finalDir)
+	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
 
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
 	// as part of the install will be cleaned up when we exit by the defer above.
-	if err := os.Rename(tempNPMPkgDir, finalDir); err != nil && !os.IsExist(err) {
+	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
 		return errors.Wrap(err, "moving plugin")
 	}
 
-	proj, err := workspace.LoadPolicyPack(path.Join(finalDir, "PulumiPolicy.yaml"))
+	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
+	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
 	}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
-	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		return fmt.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+		return completeNodeJSInstall(finalDir)
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		return completePythonInstall(finalDir, projPath, proj)
 	}
 
-	fmt.Println("Installing dependencies...")
-	fmt.Println()
+	return errors.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+}
 
-	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+func completeNodeJSInstall(finalDir string) error {
 	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
@@ -298,8 +314,51 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 				"in %q before this policy pack works", bin, finalDir)
 	}
 
-	fmt.Println("Finished installing dependencies")
+	fmt.Println("Finished installing policy pack")
 	fmt.Println()
+	return nil
+}
 
+func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
+	// Create virtual environment.
+	venvDir := filepath.Join(finalDir, "venv")
+	cmd, err := python.Command("-m", "venv", venvDir)
+	if err != nil {
+		return err
+	}
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		if len(output) > 0 {
+			os.Stdout.Write(output)
+			fmt.Println()
+		}
+		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
+	}
+
+	// Save project with venv info.
+	proj.Runtime.SetOption("virtualenv", "venv")
+	if err := proj.Save(projPath); err != nil {
+		return errors.Wrapf(err, "saving project at %s", projPath)
+	}
+
+	requirementsPath := filepath.Join(finalDir, "requirements.txt")
+	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	pipCmd := python.VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
+	pipCmd.Dir = finalDir
+	pipCmd.Env = python.ActivateVirtualEnv(os.Environ(), venvDir)
+
+	if output, err := pipCmd.CombinedOutput(); err != nil {
+		if len(output) > 0 {
+			os.Stdout.Write(output)
+			fmt.Println()
+		}
+		return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
+	}
+
+	fmt.Println("Finished installing policy pack")
+	fmt.Println()
 	return nil
 }
