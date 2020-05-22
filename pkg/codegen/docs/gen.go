@@ -108,7 +108,7 @@ var (
 	metaDescriptionRegexp = regexp.MustCompile(`(?m)^.*$`)
 	// Property anchor tag separator, used in a property anchor tag id to separate the
 	// property and language (e.g. property~lang).
-	propertyLangSeparator = "~"
+	propertyLangSeparator = "_"
 )
 
 func init() {
