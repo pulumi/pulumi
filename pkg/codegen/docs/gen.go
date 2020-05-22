@@ -106,6 +106,9 @@ var (
 	// metaDescriptionRegexp attempts to extract the description from Resource.Comment.
 	// Extracts the first line, essentially the "human-friendly" part of the description.
 	metaDescriptionRegexp = regexp.MustCompile(`(?m)^.*$`)
+	// Property anchor tag separator, used in a property anchor tag id to separate the
+	// property and language (e.g. property~lang).
+	propertyLangSeparator = "_"
 )
 
 func init() {
@@ -137,12 +140,15 @@ type header struct {
 
 // property represents an input or an output property.
 type property struct {
+	// ID is the `id` attribute that will be attached to the DOM element containing the property.
+	ID string
 	// DisplayName is the property name with word-breaks.
 	DisplayName        string
 	Name               string
 	Comment            string
 	Type               propertyType
 	DeprecationMessage string
+	Link               string
 
 	IsRequired bool
 	IsInput    bool
@@ -840,13 +846,17 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			propLangName = name
 		}
 
+		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
+
 		docProperties = append(docProperties, property{
+			ID:                 propID,
 			DisplayName:        wbr(propLangName),
 			Name:               propLangName,
 			Comment:            prop.Comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
 			IsInput:            input,
+			Link:               "#" + propID,
 			Type:               mod.typeString(prop.Type, lang, characteristics, true),
 		})
 	}
@@ -1245,7 +1255,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			continue
 		}
 		if r.StateInputs != nil {
-			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true, false)
+			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false)
+			for i := 0; i < len(stateProps); i++ {
+				id := "state_" + stateProps[i].ID
+				stateProps[i].ID = id
+				stateProps[i].Link = "#" + id
+			}
+			stateInputs[lang] = stateProps
 		}
 	}
 
