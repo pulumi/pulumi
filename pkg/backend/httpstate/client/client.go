@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v2/backend/policypack"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"regexp"
@@ -597,17 +597,9 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	//
-	// Step 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The PolicyPack is
-	// now published.
+	// Step 2: Upload the compressed PolicyPack directory. The PolicyPack is now published.
 	//
-
-	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
-	if err != nil {
-		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
-	}
-
-	_, err = http.DefaultClient.Do(putS3Req)
-	if err != nil {
+	if err := policypack.Publish(ctx, resp.UploadURI, dirArchive); err != nil {
 		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
@@ -754,23 +746,7 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 
 // DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
 func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, error) {
-	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
-	}
-
-	resp, err := http.DefaultClient.Do(getS3Req)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
-	}
-	defer resp.Body.Close()
-
-	tarball, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
-	}
-
-	return tarball, nil
+	return policypack.Download(ctx, url)
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
