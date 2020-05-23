@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v2/backend/policypack"
 	"io"
 	"net/http"
 	"path"
@@ -31,6 +30,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/v2/backend/policypack"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/util/validation"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
