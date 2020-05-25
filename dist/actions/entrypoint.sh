@@ -100,7 +100,7 @@ if [ -e package.json ]; then
         if [ ! -z "$NPM_AUTH_TOKEN" ]; then
             echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" > ~/.npmrc
         fi
-        if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json]; then
+        if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
           npm ci
         else
           npm install
