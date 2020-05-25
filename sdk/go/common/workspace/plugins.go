@@ -193,9 +193,9 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	if serverURL == "" {
 		serverURL = "https://get.pulumi.com/releases/plugins"
 	}
+	serverURL = strings.TrimSuffix(serverURL, "/")
 
 	endpoint := fmt.Sprintf("%s/pulumi-%s-%s-v%s-%s-%s.tar.gz", serverURL, info.Kind, info.Name, info.Version, os, arch)
-	endpoint = strings.ReplaceAll(endpoint, "//", "/")
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return nil, -1, err
