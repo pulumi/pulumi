@@ -18,6 +18,9 @@ CHANGELOG
 - Add support for publishing Python policy packs.
   [#4644](https://github.com/pulumi/pulumi/pull/4644)
 
+- Improve download perf by fetching plugins from a CDN.
+  [#4692](https://github.com/pulumi/pulumi/pull/4692)
+
 ## 2.2.1 (2020-05-13)
 - Add new brew target to fix homebrew builds
  [#4633](https://github.com/pulumi/pulumi/pull/4633)

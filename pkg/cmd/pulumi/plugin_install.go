@@ -26,13 +26,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 func newPluginInstallCmd() *cobra.Command {
 	var serverURL string
-	var cloudURL string
 	var exact bool
 	var file string
 	var reinstall bool
@@ -56,23 +54,6 @@ func newPluginInstallCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			if serverURL != "" && cloudURL != "" {
-				return errors.New("only one of server and cloud-url may be specified")
-			}
-
-			if cloudURL != "" {
-				cmdutil.Diag().Warningf(diag.Message("", "cloud-url is deprecated, please pass '--server "+
-					"%s/releases/plugins' instead."), cloudURL)
-
-				serverURL = cloudURL + "/releases/plugins"
-			}
-
-			// Note we don't presently set this as the default value for `--server` so we can play games like the above
-			// where we want to ensure at most one of `--server` or `--cloud-url` is set.
-			if serverURL == "" {
-				serverURL = "https://api.pulumi.com/releases/plugins"
-			}
-
 			// Parse the kind, name, and version, if specified.
 			var installs []workspace.PluginInfo
 			if len(args) > 0 {
@@ -91,7 +72,7 @@ func newPluginInstallCmd() *cobra.Command {
 					Kind:      workspace.PluginKind(args[0]),
 					Name:      args[1],
 					Version:   &version,
-					ServerURL: serverURL,
+					ServerURL: serverURL, // If empty, will use default plugin source.
 				})
 			} else {
 				if file != "" {
@@ -179,8 +160,6 @@ func newPluginInstallCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&serverURL,
 		"server", "", "A URL to download plugins from")
-	cmd.PersistentFlags().StringVarP(&cloudURL,
-		"cloud-url", "c", "", "A cloud URL to download releases from")
 	cmd.PersistentFlags().BoolVar(&exact,
 		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
@@ -189,9 +168,6 @@ func newPluginInstallCmd() *cobra.Command {
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().BoolVar(&verbose,
 		"verbose", false, "Print detailed information about the installation steps")
-
-	// We are moving away from supporting this option, for now we mark it hidden.
-	contract.AssertNoError(cmd.PersistentFlags().MarkHidden("cloud-url"))
 
 	return cmd
 }
