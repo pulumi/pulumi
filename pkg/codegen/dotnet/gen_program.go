@@ -134,7 +134,8 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != "pulumi" {
-				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", Title(pkg)))
+				namespace := namespaceName(g.namespaces[pkg], pkg)
+				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", namespace))
 			}
 			if r.Options != nil && r.Options.Range != nil {
 				systemUsings.Add("System.Collections.Generic")
@@ -322,7 +323,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	namespaceKey := strings.Split(module, "/")[0]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, namespaceKey)
-	if namespace == "index" {
+	if strings.ToLower(namespace) == "index" {
 		namespace = ""
 	}
 	if namespace != "" {
