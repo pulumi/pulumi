@@ -61,13 +61,7 @@ var (
 )
 
 func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
-	if dest.Equals(src) || dest == DynamicType {
-		return true
-	}
-	if src == DynamicType {
-		return false
-	}
-	return assignableFrom()
+	return dest.Equals(src) || dest == DynamicType || assignableFrom()
 }
 
 func conversionFrom(dest, src Type, unifying bool, conversionFrom func() ConversionKind) ConversionKind {
