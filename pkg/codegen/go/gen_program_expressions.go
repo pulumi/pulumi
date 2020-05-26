@@ -59,7 +59,24 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 }
 
 // GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
-func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) { /*TODO*/
+func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) {
+	g.Fgenf(w, "func(")
+	leadingSep := ""
+	for _, param := range expr.Signature.Parameters {
+		// TODO derive this value from some ambient context
+		isInput := false
+		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
+		leadingSep = ", "
+	}
+
+	fmt.Println(expr.Signature.ReturnType)
+	// TODO handle multiple return types for go
+	// TODO deterime from ambient context
+	isInput := false
+	retType := g.argumentTypeName(nil, expr.Signature.ReturnType, isInput)
+	g.Fgenf(w, ") (%s, error) {\n", retType)
+	g.Fgenf(w, "return %v, nil", expr.Body)
+	g.Fgenf(w, "\n}")
 }
 
 // GenBinaryOpExpression generates code for a BinaryOpExpression.
@@ -83,8 +100,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
 		}
 	case hcl2.IntrinsicApply:
-		g.genNYI(w, "call %v", expr.Name)
-		// g.genApply(w, expr)
+		g.genApply(w, expr)
 	// case intrinsicAwait:
 	// g.genNYI(w, "call %v", expr.Name)
 	// g.Fgenf(w, "await %.17v", expr.Args[0])
@@ -179,7 +195,9 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) > 0 {
-		typeName := g.argumentTypeName(expr, destType)
+		// TODO derive from ambient context
+		isInput := true
+		typeName := g.argumentTypeName(expr, destType, isInput)
 		if typeName != "" {
 			g.Fgenf(w, "&%sArgs", typeName)
 			g.Fgenf(w, "{\n")
@@ -236,7 +254,9 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
-	argType := g.argumentTypeName(expr, destType)
+	// TODO derive from ambient context
+	isInput := true
+	argType := g.argumentTypeName(expr, destType, isInput)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
@@ -254,19 +274,25 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }
 
 // argumentTypeName computes the go type for the given expression and model type.
-func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
+func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
+	var tokenRange hcl.Range
+	if expr != nil {
+		tokenRange = expr.SyntaxNode().Range()
+	}
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
 		switch schemaType := schemaType.(type) {
 		case *schema.ArrayType:
 			token := schemaType.ElementType.(*schema.ObjectType).Token
-			tokenRange := expr.SyntaxNode().Range()
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
-			return fmt.Sprintf("%s.%sArray", importPrefix, member)
+			fmtString := "[]%s.%s"
+			if isInput {
+				fmtString = "%s.%sArray"
+			}
+			return fmt.Sprintf(fmtString, importPrefix, member)
 		case *schema.ObjectType:
 			token := schemaType.Token
-			tokenRange := expr.SyntaxNode().Range()
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
@@ -277,6 +303,12 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	}
 
 	// TODO support rest of types
+	switch destType.(type) {
+	case *model.OpaqueType:
+		return destType.String()
+	default:
+		contract.Failf("unexpected schema type %T", destType)
+	}
 	return ""
 }
 
@@ -329,4 +361,20 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
+}
+
+func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
+	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
+	applyArgs, then := hcl2.ParseApplyCall(expr)
+	isInput := false
+	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
+	// TODO account for outputs in other namespaces like aws
+	typeAssertion := fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+
+	if len(applyArgs) == 1 {
+		// If we only have a single output, just generate a normal `.Apply`
+		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
+	} else {
+		// TODO
+	}
 }
