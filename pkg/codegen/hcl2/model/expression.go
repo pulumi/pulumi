@@ -835,6 +835,9 @@ func (x *ForExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagn
 	if x.KeyVariable != nil {
 		syntax.KeyVar = x.KeyVariable.Name
 	}
+	if x.Key != nil {
+		syntax.KeyExpr = &syntaxExpr{expr: x.Key}
+	}
 	if x.Condition != nil {
 		syntax.CondExpr = &syntaxExpr{expr: x.Condition}
 	}
