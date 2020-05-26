@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add F# operators for InputUnion.
+ [#4699](https://github.com/pulumi/pulumi/pull/4699)
+
 - Add support for untagged outputs in Go SDK.
  [#4640](https://github.com/pulumi/pulumi/pull/4640)
 

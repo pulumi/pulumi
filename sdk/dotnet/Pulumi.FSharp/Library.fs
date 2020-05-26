@@ -33,6 +33,17 @@ module Ops =
             result.Add item
         result
 
+    /// <summary>
+    /// Wraps a raw value for the first type into an <see cref="InputUnion{'a,'b}" />.
+    /// </summary>
+    let inputUnion1Of2<'a, 'b> (valA: 'a) = InputUnion<'a, 'b>.op_Implicit(valA)
+
+    /// <summary>
+    /// Wraps a raw value for the second type into an <see cref="InputUnion{'a,'b}" />.
+    /// </summary>
+    let inputUnion2Of2<'a, 'b> (valB: 'b) = InputUnion<'a, 'b>.op_Implicit(valB)
+
+
 /// <summary>
 /// Pulumi deployment functions.
 /// </summary>
