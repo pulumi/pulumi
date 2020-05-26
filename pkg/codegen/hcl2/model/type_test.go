@@ -53,6 +53,28 @@ func TestDynamicType(t *testing.T) {
 		"int":  IntType,
 	})))
 
+	// Test that DynamicType is assignable to certain types and not assignable to others.
+	assert.True(t, NewOptionalType(DynamicType).AssignableFrom(DynamicType))
+	assert.True(t, NewOutputType(DynamicType).AssignableFrom(DynamicType))
+	assert.True(t, NewPromiseType(DynamicType).AssignableFrom(DynamicType))
+	assert.True(t, NewUnionType(BoolType, DynamicType).AssignableFrom(DynamicType))
+
+	assert.False(t, BoolType.AssignableFrom(DynamicType))
+	assert.False(t, IntType.AssignableFrom(DynamicType))
+	assert.False(t, NumberType.AssignableFrom(DynamicType))
+	assert.False(t, StringType.AssignableFrom(DynamicType))
+
+	assert.False(t, NewOptionalType(BoolType).AssignableFrom(DynamicType))
+	assert.False(t, NewOutputType(BoolType).AssignableFrom(DynamicType))
+	assert.False(t, NewPromiseType(BoolType).AssignableFrom(DynamicType))
+	assert.False(t, NewMapType(BoolType).AssignableFrom(DynamicType))
+	assert.False(t, NewListType(BoolType).AssignableFrom(DynamicType))
+	assert.False(t, NewUnionType(BoolType, IntType).AssignableFrom(DynamicType))
+	assert.False(t, NewObjectType(map[string]Type{
+		"bool": BoolType,
+		"int":  IntType,
+	}).AssignableFrom(DynamicType))
+
 	// Test that DynamicType is convertible from any type.
 	assert.True(t, DynamicType.ConversionFrom(BoolType).Exists())
 	assert.True(t, DynamicType.ConversionFrom(IntType).Exists())
