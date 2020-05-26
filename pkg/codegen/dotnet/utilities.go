@@ -44,14 +44,16 @@ func isReservedWord(s string) bool {
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a C# identifier as per
 // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 func isLegalIdentifierStart(c rune) bool {
-	return c == '_' ||
+	return c == '_' || c == '@' ||
 		unicode.In(c, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Lm, unicode.Lo, unicode.Nl)
 }
 
 // isLegalIdentifierPart returns true if it is legal for c to be part of a C# identifier (besides the first character)
 // as per https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 func isLegalIdentifierPart(c rune) bool {
-	return isLegalIdentifierStart(c) || unicode.In(c, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Cf)
+	return c == '_' ||
+		unicode.In(c, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Lm, unicode.Lo, unicode.Nl, unicode.Mn, unicode.Mc,
+			unicode.Nd, unicode.Pc, unicode.Cf)
 }
 
 // makeValidIdentifier replaces characters that are not allowed in C# identifiers with underscores. A reserved word is
@@ -59,12 +61,9 @@ func isLegalIdentifierPart(c rune) bool {
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
-		if !isLegalIdentifierPart(c) {
+		if i == 0 && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
-			if i == 0 && !isLegalIdentifierStart(c) {
-				builder.WriteRune('_')
-			}
 			builder.WriteRune(c)
 		}
 	}
