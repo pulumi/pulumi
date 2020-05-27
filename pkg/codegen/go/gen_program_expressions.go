@@ -79,8 +79,41 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, "\n}")
 }
 
-// GenBinaryOpExpression generates code for a BinaryOpExpression.
-func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) { /*TODO*/ }
+func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
+	opstr, precedence := "", g.GetPrecedence(expr)
+	switch expr.Operation {
+	case hclsyntax.OpAdd:
+		opstr = "+"
+	case hclsyntax.OpDivide:
+		opstr = "/"
+	case hclsyntax.OpEqual:
+		opstr = "=="
+	case hclsyntax.OpGreaterThan:
+		opstr = ">"
+	case hclsyntax.OpGreaterThanOrEqual:
+		opstr = ">="
+	case hclsyntax.OpLessThan:
+		opstr = "<"
+	case hclsyntax.OpLessThanOrEqual:
+		opstr = "<="
+	case hclsyntax.OpLogicalAnd:
+		opstr = "&&"
+	case hclsyntax.OpLogicalOr:
+		opstr = "||"
+	case hclsyntax.OpModulo:
+		opstr = "%"
+	case hclsyntax.OpMultiply:
+		opstr = "*"
+	case hclsyntax.OpNotEqual:
+		opstr = "!="
+	case hclsyntax.OpSubtract:
+		opstr = "-"
+	default:
+		opstr, precedence = ",", 1
+	}
+
+	g.Fgenf(w, "%.[1]*[2]v %[3]v %.[1]*[4]o", precedence, expr.LeftOperand, opstr, expr.RightOperand)
+}
 
 // GenConditionalExpression generates code for a ConditionalExpression.
 func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
