@@ -45,10 +45,10 @@ func TestLiteralExpression(t *testing.T) {
 
 func TestBinaryOpExpression(t *testing.T) {
 	env := environment(map[string]interface{}{
-		"a": model.NewOutputType(model.BoolType),
-		"b": model.NewPromiseType(model.BoolType),
-		"c": model.NewOutputType(model.NumberType),
-		"d": model.NewPromiseType(model.NumberType),
+		"a": model.BoolType,
+		"b": model.BoolType,
+		"c": model.NumberType,
+		"d": model.NumberType,
 	})
 	scope := env.scope()
 
@@ -77,11 +77,31 @@ func TestBinaryOpExpression(t *testing.T) {
 	}
 }
 
+func TestUnaryOpExrepssion(t *testing.T) {
+	env := environment(map[string]interface{}{
+		"a": model.NumberType,
+		"b": model.BoolType,
+	})
+	scope := env.scope()
+
+	cases := []exprTestCase{
+		{hcl2Expr: "-1", goCode: "-1"},
+		{hcl2Expr: "!true", goCode: "!true"},
+		{hcl2Expr: "-a", goCode: "-a"},
+		{hcl2Expr: "!b", goCode: "!b"},
+	}
+	for _, c := range cases {
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope)
+	}
+}
+
 func testGenerateExpression(t *testing.T, hcl2Expr, goCode string, scope *model.Scope) {
-	// test program is only for schema info
-	g := newTestGenerator(t, "aws-s3-logging.pp")
-	var index bytes.Buffer
-	expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
-	g.Fgenf(&index, "%v", expr)
-	assert.Equal(t, goCode, index.String())
+	t.Run(hcl2Expr, func(t *testing.T) {
+		// test program is only for schema info
+		g := newTestGenerator(t, "aws-s3-logging.pp")
+		var index bytes.Buffer
+		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
+		g.Fgenf(&index, "%v", expr)
+		assert.Equal(t, goCode, index.String())
+	})
 }

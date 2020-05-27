@@ -311,8 +311,16 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	g.Fgenf(w, "}")
 }
 
-// GenUnaryOpExpression generates code for a UnaryOpExpression.
-func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }
+func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
+	opstr, precedence := "", g.GetPrecedence(expr)
+	switch expr.Operation {
+	case hclsyntax.OpLogicalNot:
+		opstr = "!"
+	case hclsyntax.OpNegate:
+		opstr = "-"
+	}
+	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
+}
 
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
