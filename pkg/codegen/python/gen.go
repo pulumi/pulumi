@@ -1232,6 +1232,85 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	return defaultValue, nil
 }
 
+// LanguageResource is derived from the schema and can be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
+
+	Name    string // The resource name (e.g. Deployment)
+	Package string // The package name (e.g. pulumi_kubernetes.apps.v1)
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	resources := map[string]LanguageResource{}
+
+	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+		return nil, err
+	}
+
+	// Build case mapping tables
+	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
+	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase)
+
+	// group resources, types, and functions into Go packages
+	modules := map[string]*modContext{}
+
+	var getMod func(token string) *modContext
+	getMod = func(token string) *modContext {
+		modName := pkg.TokenToModule(token)
+		mod, ok := modules[modName]
+		if !ok {
+			mod = &modContext{
+				pkg:                  pkg,
+				mod:                  modName,
+				tool:                 tool,
+				snakeCaseToCamelCase: snakeCaseToCamelCase,
+				camelCaseToSnakeCase: camelCaseToSnakeCase,
+			}
+
+			if modName != "" {
+				parentName := path.Dir(modName)
+				if parentName == "." || parentName == "" {
+					parentName = ":index:"
+				}
+				parent := getMod(parentName)
+				parent.children = append(parent.children, mod)
+			}
+
+			modules[modName] = mod
+		}
+		return mod
+	}
+
+	scanResource := func(r *schema.Resource) {
+		mod := getMod(r.Token)
+		mod.resources = append(mod.resources, r)
+	}
+
+	scanResource(pkg.Provider)
+	for _, r := range pkg.Resources {
+		scanResource(r)
+	}
+
+	for modName, mod := range modules {
+		if modName == "" {
+			continue
+		}
+		for _, r := range mod.resources {
+			packagePath := strings.Replace(modName, "/", ".", -1)
+			lr := LanguageResource{
+				Resource: r,
+				Package:  packagePath,
+				Name:     pyClassName(tokenToName(r.Token)),
+			}
+			resources[r.Token] = lr
+		}
+	}
+
+	return resources, nil
+}
+
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	// Decode python-specific info
 	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
