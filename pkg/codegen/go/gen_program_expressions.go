@@ -181,8 +181,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 			g.Fgenf(w, "%g", f)
 		}
 	case model.StringType:
-		// TODO
-		// g.genStringLiteral(w, expr.Value.AsString())
+		g.genStringLiteral(w, expr.Value.AsString())
 	default:
 		contract.Failf("unexpected literal type in GenLiteralValueExpression: %v (%v)", expr.Type(),
 			expr.SyntaxNode().Range())
@@ -242,7 +241,16 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) { /*TODO*/ }
 
 // GenTemplateExpression generates code for a TemplateExpression.
-func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) { /*TODO*/ }
+func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
+	if len(expr.Parts) == 1 {
+		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			g.GenLiteralValueExpression(w, lit)
+			return
+		}
+	}
+
+	g.genNYI(w, "TODO multi part template expressions")
+}
 
 // GenTemplateJoinExpression generates code for a TemplateJoinExpression.
 func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) { /*TODO*/
@@ -377,4 +385,30 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	} else {
 		// TODO
 	}
+}
+
+func (g *generator) genStringLiteral(w io.Writer, v string) {
+	// TODO more robust and go-specific handling of strings
+	newlines := strings.Contains(v, "\n")
+	if !newlines {
+		// This string does not contain newlines so we'll generate a regular string literal. Quotes and backslashes
+		// will be escaped in conformance with
+		// https://golang.org/ref/spec#String_literals
+		g.Fgen(w, "\"")
+		g.Fgen(w, g.escapeString(v))
+		g.Fgen(w, "\"")
+	} else {
+		g.genNYI(w, "TODO multiline strings")
+	}
+}
+
+func (g *generator) escapeString(v string) string {
+	builder := strings.Builder{}
+	for _, c := range v {
+		if c == '"' || c == '\\' {
+			builder.WriteRune('\\')
+		}
+		builder.WriteRune(c)
+	}
+	return builder.String()
 }
