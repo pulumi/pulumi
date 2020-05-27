@@ -345,11 +345,8 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		case schema.StringType:
 			json = false
 		default:
-			switch t := prop.Type.(type) {
-			case *schema.TokenType:
-				if t.UnderlyingType == schema.StringType {
-					json = false
-				}
+			if t, ok := prop.Type.(*schema.TokenType); ok && t.UnderlyingType == schema.StringType {
+				json = false
 			}
 		}
 		if json {
