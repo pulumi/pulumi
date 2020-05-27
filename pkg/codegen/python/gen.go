@@ -936,12 +936,14 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param str resource_name: The unique name of the resulting resource.")
 	fmt.Fprintln(b, ":param str id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
-	for _, prop := range res.StateInputs.Properties {
-		mod.genPropDocstring(b, prop, true /*wrapInput*/)
-	}
+	if res.StateInputs != nil {
+		for _, prop := range res.StateInputs.Properties {
+			mod.genPropDocstring(b, prop, true /*wrapInput*/)
+		}
 
-	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-	mod.genNestedStructuresDocstring(b, res.StateInputs.Properties, true /*wrapInput*/)
+		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
+		mod.genNestedStructuresDocstring(b, res.StateInputs.Properties, true /*wrapInput*/)
+	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
