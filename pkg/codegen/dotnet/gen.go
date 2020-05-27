@@ -341,13 +341,10 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	}
 	if pt.res != nil && pt.res.IsProvider {
 		json := true
-		switch prop.Type {
-		case schema.StringType:
+		if prop.Type == schema.StringType {
 			json = false
-		default:
-			if t, ok := prop.Type.(*schema.TokenType); ok && t.UnderlyingType == schema.StringType {
-				json = false
-			}
+		} else if t, ok := prop.Type.(*schema.TokenType); ok && t.UnderlyingType == schema.StringType {
+			json = false
 		}
 		if json {
 			attributeArgs += ", json: true"
