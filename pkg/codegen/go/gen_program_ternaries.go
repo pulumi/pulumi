@@ -34,12 +34,10 @@ func (ta *tempAllocator) allocateExpression(x model.Expression) (model.Expressio
 	var temp *ternaryTemp
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
-		cond, _ := ta.allocateExpression(x.Condition)
-		t, _ := ta.allocateExpression(x.TrueResult)
-		f, _ := ta.allocateExpression(x.FalseResult)
-		x.Condition = cond
-		x.TrueResult = t
-		x.FalseResult = f
+		x.Condition, _ = ta.allocateExpression(x.Condition)
+		x.TrueResult, _ = ta.allocateExpression(x.TrueResult)
+		x.FalseResult, _ = ta.allocateExpression(x.FalseResult)
+
 		temp = &ternaryTemp{
 			Name:  fmt.Sprintf("tmp%d", len(ta.temps)),
 			Value: x,
