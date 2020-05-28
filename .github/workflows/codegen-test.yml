@@ -13,7 +13,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13.x
+          go-version: 1.14.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -46,7 +46,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13.x
+          go-version: 1.14.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -79,7 +79,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13.x
+          go-version: 1.14.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -112,7 +112,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13.x
+          go-version: 1.14.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -145,7 +145,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.13.x
+          go-version: 1.14.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:

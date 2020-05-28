@@ -25,8 +25,8 @@ init:
   - ps: Install-Product node $env:nodejs_version x64
 install:
   - rmdir C:\go /s /q
-  - appveyor DownloadFile https://dl.google.com/go/go1.13.4.windows-amd64.zip
-  - 7z x go1.13.4.windows-amd64.zip -y -oC:\ > NUL
+  - appveyor DownloadFile https://dl.google.com/go/go1.14.3.windows-amd64.zip
+  - 7z x go1.14.3.windows-amd64.zip -y -oC:\ > NUL
   - cmd: >-
       set GOPATH=%USERPROFILE%\go
 
