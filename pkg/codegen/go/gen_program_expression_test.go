@@ -100,7 +100,6 @@ func TestUnaryOpExrepssion(t *testing.T) {
 // nolint: lll
 func TestConditionalExpression(t *testing.T) {
 	cases := []exprTestCase{
-		// TODO test nested within other expressions and scopes, ie object cons
 		{
 			hcl2Expr: "true ? 1 : 0",
 			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
@@ -112,6 +111,10 @@ func TestConditionalExpression(t *testing.T) {
 		{
 			hcl2Expr: "true ? true ? 0 : -1 : 0",
 			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
+		},
+		{
+			hcl2Expr: "{foo = true ? 2 : 0}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\n&interface{}{\nFoo: tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {

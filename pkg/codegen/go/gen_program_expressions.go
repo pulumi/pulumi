@@ -231,14 +231,27 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) > 0 {
+		var temps []*ternaryTemp
+
+		// first lower all inner expressions and emit temps
+		for i, item := range expr.Items {
+			// TODO keys are also expressions
+			x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
+			temps = append(temps, xTemps...)
+			item.Value = x
+			expr.Items[i] = item
+		}
+		g.genTemps(w, temps)
+
 		// TODO derive from ambient context
 		isInput := true
 		typeName := g.argumentTypeName(expr, destType, isInput)
 		if typeName != "" {
-			g.Fgenf(w, "&%sArgs", typeName)
+			g.Fgenf(w, "&%s", typeName)
 			g.Fgenf(w, "{\n")
 
 			for _, item := range expr.Items {
+				// TODO key can also be an expression
 				lit := item.Key.(*model.LiteralValueExpression)
 				g.Fprint(w, Title(lit.Value.AsString()))
 				g.Fgenf(w, ": %.v,\n", item.Value)
@@ -352,7 +365,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
-			return fmt.Sprintf("%s.%s", importPrefix, member)
+			fmtString := "[]%s.%s"
+			if isInput {
+				fmtString = "%s.%sArgs"
+			}
+			return fmt.Sprintf(fmtString, importPrefix, member)
 		default:
 			contract.Failf("unexpected schema type %T", schemaType)
 		}
@@ -367,6 +384,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		default:
 			return destType.String()
 		}
+	// TODO could probably improve these types by inspecting kv types
+	case *model.ObjectType, *model.MapType:
+		return "interface{}"
 	default:
 		contract.Failf("unexpected schema type %T", destType)
 	}
