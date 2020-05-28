@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -79,11 +80,47 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, "\n}")
 }
 
-// GenBinaryOpExpression generates code for a BinaryOpExpression.
-func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) { /*TODO*/ }
+func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
+	opstr, precedence := "", g.GetPrecedence(expr)
+	switch expr.Operation {
+	case hclsyntax.OpAdd:
+		opstr = "+"
+	case hclsyntax.OpDivide:
+		opstr = "/"
+	case hclsyntax.OpEqual:
+		opstr = "=="
+	case hclsyntax.OpGreaterThan:
+		opstr = ">"
+	case hclsyntax.OpGreaterThanOrEqual:
+		opstr = ">="
+	case hclsyntax.OpLessThan:
+		opstr = "<"
+	case hclsyntax.OpLessThanOrEqual:
+		opstr = "<="
+	case hclsyntax.OpLogicalAnd:
+		opstr = "&&"
+	case hclsyntax.OpLogicalOr:
+		opstr = "||"
+	case hclsyntax.OpModulo:
+		opstr = "%"
+	case hclsyntax.OpMultiply:
+		opstr = "*"
+	case hclsyntax.OpNotEqual:
+		opstr = "!="
+	case hclsyntax.OpSubtract:
+		opstr = "-"
+	default:
+		opstr, precedence = ",", 1
+	}
 
-// GenConditionalExpression generates code for a ConditionalExpression.
-func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
+	g.Fgenf(w, "%.[1]*[2]v %[3]v %.[1]*[4]o", precedence, expr.LeftOperand, opstr, expr.RightOperand)
+}
+
+func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
+	// Ternary expressions are not supported in go so we need to allocate temp variables in the parent scope.
+	// This is handled by lower expression and rewriteTernaries
+	contract.Failf("unlowered conditional expression @ %v", expr.SyntaxNode().Range())
+}
 
 // GenForExpression generates code for a ForExpression.
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
@@ -194,14 +231,27 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) > 0 {
+		var temps []*ternaryTemp
+
+		// first lower all inner expressions and emit temps
+		for i, item := range expr.Items {
+			// TODO keys are also expressions
+			x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
+			temps = append(temps, xTemps...)
+			item.Value = x
+			expr.Items[i] = item
+		}
+		g.genTemps(w, temps)
+
 		// TODO derive from ambient context
 		isInput := true
 		typeName := g.argumentTypeName(expr, destType, isInput)
 		if typeName != "" {
-			g.Fgenf(w, "&%sArgs", typeName)
+			g.Fgenf(w, "&%s", typeName)
 			g.Fgenf(w, "{\n")
 
 			for _, item := range expr.Items {
+				// TODO key can also be an expression
 				lit := item.Key.(*model.LiteralValueExpression)
 				g.Fprint(w, Title(lit.Value.AsString()))
 				g.Fgenf(w, ": %.v,\n", item.Value)
@@ -278,14 +328,25 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	g.Fgenf(w, "}")
 }
 
-// GenUnaryOpExpression generates code for a UnaryOpExpression.
-func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) { /*TODO*/ }
+func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
+	opstr, precedence := "", g.GetPrecedence(expr)
+	switch expr.Operation {
+	case hclsyntax.OpLogicalNot:
+		opstr = "!"
+	case hclsyntax.OpNegate:
+		opstr = "-"
+	}
+	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
+}
 
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
 	var tokenRange hcl.Range
 	if expr != nil {
-		tokenRange = expr.SyntaxNode().Range()
+		node := expr.SyntaxNode()
+		if node != nil && !reflect.ValueOf(node).IsNil() {
+			tokenRange = expr.SyntaxNode().Range()
+		}
 	}
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
 		switch schemaType := schemaType.(type) {
@@ -304,16 +365,28 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
-			return fmt.Sprintf("%s.%s", importPrefix, member)
+			fmtString := "[]%s.%s"
+			if isInput {
+				fmtString = "%s.%sArgs"
+			}
+			return fmt.Sprintf(fmtString, importPrefix, member)
 		default:
 			contract.Failf("unexpected schema type %T", schemaType)
 		}
 	}
 
 	// TODO support rest of types
-	switch destType.(type) {
+	switch destType := destType.(type) {
 	case *model.OpaqueType:
-		return destType.String()
+		switch destType {
+		case model.NumberType:
+			return "float64"
+		default:
+			return destType.Name
+		}
+	// TODO could probably improve these types by inspecting kv types
+	case *model.ObjectType, *model.MapType:
+		return "interface{}"
 	default:
 		contract.Failf("unexpected schema type %T", destType)
 	}
@@ -359,12 +432,13 @@ func (nameInfo) Format(name string) string {
 }
 
 // lowerExpression amends the expression with intrinsics for C# generation.
-func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*ternaryTemp) {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)
-
-	return expr
+	expr, temps, ternDiags := g.rewriteTernaries(expr)
+	diags = append(diags, ternDiags...)
+	contract.Assert(len(diags) == 0)
+	return expr, temps
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
