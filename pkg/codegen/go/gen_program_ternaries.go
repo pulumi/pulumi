@@ -30,13 +30,13 @@ type tempSpiller struct {
 	temps []*ternaryTemp
 }
 
-func (ta *tempSpiller) allocateExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
+func (ta *tempSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
 	var temp *ternaryTemp
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
-		x.Condition, _ = ta.allocateExpression(x.Condition)
-		x.TrueResult, _ = ta.allocateExpression(x.TrueResult)
-		x.FalseResult, _ = ta.allocateExpression(x.FalseResult)
+		x.Condition, _ = ta.spillExpression(x.Condition)
+		x.TrueResult, _ = ta.spillExpression(x.TrueResult)
+		x.FalseResult, _ = ta.spillExpression(x.FalseResult)
 
 		temp = &ternaryTemp{
 			Name:  fmt.Sprintf("tmp%d", len(ta.temps)),
@@ -54,9 +54,9 @@ func (ta *tempSpiller) allocateExpression(x model.Expression) (model.Expression,
 }
 
 func (g *generator) rewriteTernaries(x model.Expression) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
-	allocator := &tempSpiller{}
-	x, diags := model.VisitExpression(x, allocator.allocateExpression, nil)
+	spiller := &tempSpiller{}
+	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
 
-	return x, allocator.temps, diags
+	return x, spiller.temps, diags
 
 }
