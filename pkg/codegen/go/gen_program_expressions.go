@@ -115,8 +115,11 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 	g.Fgenf(w, "%.[1]*[2]v %[3]v %.[1]*[4]o", precedence, expr.LeftOperand, opstr, expr.RightOperand)
 }
 
-// GenConditionalExpression generates code for a ConditionalExpression.
-func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {}
+func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
+	// Ternary expressions are not supported in go so we need to allocate temp variables in the parent scope.
+	// This is handled by lower expression and rewriteTernaries
+	contract.Failf("BUG: this conditional expression needs to be lowered.")
+}
 
 // GenForExpression generates code for a ForExpression.
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
@@ -352,9 +355,14 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	}
 
 	// TODO support rest of types
-	switch destType.(type) {
+	switch destType := destType.(type) {
 	case *model.OpaqueType:
-		return destType.String()
+		switch destType.Name {
+		case "number":
+			return "float64"
+		default:
+			return destType.String()
+		}
 	default:
 		contract.Failf("unexpected schema type %T", destType)
 	}
@@ -400,12 +408,13 @@ func (nameInfo) Format(name string) string {
 }
 
 // lowerExpression amends the expression with intrinsics for C# generation.
-func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*ternaryTemp) {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)
-
-	return expr
+	expr, temps, ternDiags := g.rewriteTernaries(expr)
+	diags = append(diags, ternDiags...)
+	contract.Assert(len(diags) == 0)
+	return expr, temps
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

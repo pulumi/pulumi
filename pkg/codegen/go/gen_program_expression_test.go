@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -39,7 +40,7 @@ func TestLiteralExpression(t *testing.T) {
 		{hcl2Expr: "\"foo\"", goCode: "\"foo\""},
 	}
 	for _, c := range cases {
-		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil)
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, nil)
 	}
 }
 
@@ -73,7 +74,7 @@ func TestBinaryOpExpression(t *testing.T) {
 		{hcl2Expr: "b && true", goCode: "b && true"},
 	}
 	for _, c := range cases {
-		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope)
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }
 
@@ -90,18 +91,44 @@ func TestUnaryOpExrepssion(t *testing.T) {
 		{hcl2Expr: "-a", goCode: "-a"},
 		{hcl2Expr: "!b", goCode: "!b"},
 	}
+
 	for _, c := range cases {
-		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope)
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }
 
-func testGenerateExpression(t *testing.T, hcl2Expr, goCode string, scope *model.Scope) {
+func TestConditionalExpression(t *testing.T) {
+	cases := []exprTestCase{
+		// TODO test nested within other expressions and scopes, ie object cons
+		{hcl2Expr: "true ? 1 : 0", goCode: "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0"},
+	}
+	genFunc := func(w io.Writer, g *generator, e model.Expression) {
+		e, temps := g.lowerExpression(e, e.Type())
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%v", e)
+	}
+	for _, c := range cases {
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, genFunc)
+	}
+}
+
+func testGenerateExpression(
+	t *testing.T,
+	hcl2Expr, goCode string,
+	scope *model.Scope,
+	gen func(w io.Writer, g *generator, e model.Expression),
+) {
 	t.Run(hcl2Expr, func(t *testing.T) {
 		// test program is only for schema info
 		g := newTestGenerator(t, "aws-s3-logging.pp")
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
-		g.Fgenf(&index, "%v", expr)
+		if gen != nil {
+			gen(&index, g, expr)
+		} else {
+			g.Fgenf(&index, "%v", expr)
+		}
+
 		assert.Equal(t, goCode, index.String())
 	})
 }
