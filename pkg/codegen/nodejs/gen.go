@@ -670,11 +670,11 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	}
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen map[schema.Type]struct{}) {
-	if _, ok := seen[t]; ok {
+func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen codegen.Set) {
+	if seen.Has(t) {
 		return
 	}
-	seen[t] = struct{}{}
+	seen.Add(t)
 	switch t := t.(type) {
 	case *schema.ArrayType:
 		visitObjectTypes(t.ElementType, visitor, seen)
@@ -696,11 +696,11 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, !mod.details(obj).functionType, false, level)
 }
 
-func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]stringSet, seen map[schema.Type]struct{}) bool {
-	if _, ok := seen[t]; ok {
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]stringSet, seen codegen.Set) bool {
+	if seen.Has(t) {
 		return false
 	}
-	seen[t] = struct{}{}
+	seen.Add(t)
 	switch t := t.(type) {
 	case *schema.ArrayType:
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
@@ -735,7 +735,7 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 }
 
 func (mod *modContext) getImports(member interface{}, imports map[string]stringSet) bool {
-	seen := map[schema.Type]struct{}{}
+	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		needsTypes := false
@@ -1289,8 +1289,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		_ = getMod(":config:")
 	}
 
-	outputSeen := map[schema.Type]struct{}{}
-	inputSeen := map[schema.Type]struct{}{}
+	outputSeen := codegen.Set{}
+	inputSeen := codegen.Set{}
 	for _, v := range pkg.Config {
 		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
 	}
