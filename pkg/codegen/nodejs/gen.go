@@ -689,7 +689,8 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
-	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, !mod.details(obj).functionType, false, level)
+	wrapInput := input && !mod.details(obj).functionType
+	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, wrapInput, false, level)
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, imports map[string]stringSet) bool {
@@ -976,9 +977,9 @@ func (mod *modContext) gen(fs fs) error {
 			}
 			readme += mod.pkg.Attribution
 		}
-		if readme != "" && readme[len(readme)-1] != '\n' {
-			readme += "\n"
-		}
+	}
+	if readme != "" && readme[len(readme)-1] != '\n' {
+		readme += "\n"
 	}
 	fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
 
