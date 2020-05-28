@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -329,7 +330,10 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
 	var tokenRange hcl.Range
 	if expr != nil {
-		tokenRange = expr.SyntaxNode().Range()
+		node := expr.SyntaxNode()
+		if node != nil && !reflect.ValueOf(node).IsNil() {
+			tokenRange = expr.SyntaxNode().Range()
+		}
 	}
 	if schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type)); ok {
 		switch schemaType := schemaType.(type) {

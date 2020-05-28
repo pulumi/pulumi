@@ -97,10 +97,22 @@ func TestUnaryOpExrepssion(t *testing.T) {
 	}
 }
 
+// nolint: lll
 func TestConditionalExpression(t *testing.T) {
 	cases := []exprTestCase{
 		// TODO test nested within other expressions and scopes, ie object cons
-		{hcl2Expr: "true ? 1 : 0", goCode: "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0"},
+		{
+			hcl2Expr: "true ? 1 : 0",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
+		},
+		{
+			hcl2Expr: "true ? 1 : true ? 0 : -1",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = 1\n} else {\ntmp1 = tmp0\n}\ntmp1",
+		},
+		{
+			hcl2Expr: "true ? true ? 0 : -1 : 0",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
+		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
 		e, temps := g.lowerExpression(e, e.Type())

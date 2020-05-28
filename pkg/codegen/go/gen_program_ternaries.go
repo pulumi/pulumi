@@ -37,15 +37,17 @@ func (ta *tempAllocator) allocateExpression(x model.Expression) (model.Expressio
 	var temp *ternaryTemp
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
+		cond, _ := ta.allocateExpression(x.Condition)
+		t, _ := ta.allocateExpression(x.TrueResult)
+		f, _ := ta.allocateExpression(x.FalseResult)
 		temp = &ternaryTemp{
 			Name:         fmt.Sprintf("tmp%d", len(ta.temps)),
 			VariableType: x.Type(),
-			Condition:    x.Condition,
-			TrueResult:   x.TrueResult,
-			FalseResult:  x.FalseResult,
+			Condition:    cond,
+			TrueResult:   t,
+			FalseResult:  f,
 		}
 		ta.temps = append(ta.temps, temp)
-		// TODO - recurse to support nested conditionals
 	default:
 		return x, nil
 	}
