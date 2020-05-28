@@ -2,7 +2,11 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
 
+---
+
+## 2.3.0 (2020-05-27)
 - Add F# operators for InputUnion.
  [#4699](https://github.com/pulumi/pulumi/pull/4699)
 
