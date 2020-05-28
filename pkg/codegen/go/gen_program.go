@@ -130,7 +130,9 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+		expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+		input.Value = expr
+		g.genTemps(w, temps)
 	}
 
 	g.Fgenf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", ", resName, mod, typ)
@@ -152,5 +154,21 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
-	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), g.lowerExpression(v.Value, v.Type()))
+	expr, temps := g.lowerExpression(v.Value, v.Type())
+	g.genTemps(w, temps)
+	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
+}
+
+func (g *generator) genTemps(w io.Writer, temps []*ternaryTemp) {
+	for _, t := range temps {
+
+		// TODO derive from ambient context
+		isInput := false
+		g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+		g.Fgenf(w, "if %.v {\n", t.Value.Condition)
+		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
+		g.Fgenf(w, "} else {\n")
+		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
+		g.Fgenf(w, "}\n")
+	}
 }
