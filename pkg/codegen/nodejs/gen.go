@@ -670,20 +670,24 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	}
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
+func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen map[schema.Type]struct{}) {
+	if _, ok := seen[t]; ok {
+		return
+	}
+	seen[t] = struct{}{}
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		visitObjectTypes(t.ElementType, visitor)
+		visitObjectTypes(t.ElementType, visitor, seen)
 	case *schema.MapType:
-		visitObjectTypes(t.ElementType, visitor)
+		visitObjectTypes(t.ElementType, visitor, seen)
 	case *schema.ObjectType:
 		for _, p := range t.Properties {
-			visitObjectTypes(p.Type, visitor)
+			visitObjectTypes(p.Type, visitor, seen)
 		}
 		visitor(t)
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			visitObjectTypes(e, visitor)
+			visitObjectTypes(e, visitor, seen)
 		}
 	}
 }
@@ -692,12 +696,16 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, !mod.details(obj).functionType, false, level)
 }
 
-func (mod *modContext) getTypeImports(t schema.Type, imports map[string]stringSet) bool {
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]stringSet, seen map[schema.Type]struct{}) bool {
+	if _, ok := seen[t]; ok {
+		return false
+	}
+	seen[t] = struct{}{}
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, imports)
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, imports)
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.ObjectType:
 		return true
 	case *schema.TokenType:
@@ -718,7 +726,7 @@ func (mod *modContext) getTypeImports(t schema.Type, imports map[string]stringSe
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
-			needsTypes = mod.getTypeImports(e, imports) || needsTypes
+			needsTypes = mod.getTypeImports(e, recurse, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -727,35 +735,36 @@ func (mod *modContext) getTypeImports(t schema.Type, imports map[string]stringSe
 }
 
 func (mod *modContext) getImports(member interface{}, imports map[string]stringSet) bool {
+	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, imports) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, true, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, imports) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
 		}
 		for _, p := range member.InputProperties {
-			needsTypes = mod.getTypeImports(p.Type, imports) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case *schema.Function:
 		needsTypes := false
 		if member.Inputs != nil {
-			needsTypes = mod.getTypeImports(member.Inputs, imports) || needsTypes
+			needsTypes = mod.getTypeImports(member.Inputs, false, imports, seen) || needsTypes
 		}
 		if member.Outputs != nil {
-			needsTypes = mod.getTypeImports(member.Outputs, imports) || needsTypes
+			needsTypes = mod.getTypeImports(member.Outputs, false, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case []*schema.Property:
 		needsTypes := false
 		for _, p := range member {
-			needsTypes = mod.getTypeImports(p.Type, imports) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -1280,15 +1289,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		_ = getMod(":config:")
 	}
 
+	outputSeen := map[schema.Type]struct{}{}
+	inputSeen := map[schema.Type]struct{}{}
 	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
+		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
 	}
 
 	scanResource := func(r *schema.Resource) {
 		mod := getMod(r.Token)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true })
+			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
 		}
 		for _, p := range r.InputProperties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
@@ -1296,10 +1307,10 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 					types.details(t).outputType = true
 				}
 				types.details(t).inputType = true
-			})
+			}, inputSeen)
 		}
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true })
+			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true }, inputSeen)
 		}
 	}
 
@@ -1315,13 +1326,13 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
 				types.details(t).functionType = true
-			})
+			}, inputSeen)
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
 				types.details(t).outputType = true
 				types.details(t).functionType = true
-			})
+			}, outputSeen)
 		}
 	}
 
