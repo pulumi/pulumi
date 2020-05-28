@@ -164,11 +164,11 @@ func (g *generator) genTemps(w io.Writer, temps []*ternaryTemp) {
 
 		// TODO derive from ambient context
 		isInput := false
-		g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.TrueResult, t.Type(), isInput))
-		g.Fgenf(w, "if %.v {\n", t.Condition)
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.TrueResult)
+		g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+		g.Fgenf(w, "if %.v {\n", t.Value.Condition)
+		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
 		g.Fgenf(w, "} else {\n")
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.FalseResult)
+		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
 		g.Fgenf(w, "}\n")
 	}
 }

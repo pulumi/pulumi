@@ -10,19 +10,16 @@ import (
 )
 
 type ternaryTemp struct {
-	Name         string
-	Condition    model.Expression
-	TrueResult   model.Expression
-	FalseResult  model.Expression
-	VariableType model.Type
+	Name  string
+	Value *model.ConditionalExpression
 }
 
 func (tt *ternaryTemp) Type() model.Type {
-	return tt.VariableType
+	return tt.Value.Type()
 }
 
 func (tt *ternaryTemp) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
-	return tt.VariableType.Traverse(traverser)
+	return tt.Type().Traverse(traverser)
 }
 
 func (tt *ternaryTemp) SyntaxNode() hclsyntax.Node {
@@ -40,12 +37,12 @@ func (ta *tempAllocator) allocateExpression(x model.Expression) (model.Expressio
 		cond, _ := ta.allocateExpression(x.Condition)
 		t, _ := ta.allocateExpression(x.TrueResult)
 		f, _ := ta.allocateExpression(x.FalseResult)
+		x.Condition = cond
+		x.TrueResult = t
+		x.FalseResult = f
 		temp = &ternaryTemp{
-			Name:         fmt.Sprintf("tmp%d", len(ta.temps)),
-			VariableType: x.Type(),
-			Condition:    cond,
-			TrueResult:   t,
-			FalseResult:  f,
+			Name:  fmt.Sprintf("tmp%d", len(ta.temps)),
+			Value: x,
 		}
 		ta.temps = append(ta.temps, temp)
 	default:

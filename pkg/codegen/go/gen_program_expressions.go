@@ -119,7 +119,7 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
 	// Ternary expressions are not supported in go so we need to allocate temp variables in the parent scope.
 	// This is handled by lower expression and rewriteTernaries
-	contract.Failf("BUG: this conditional expression needs to be lowered.")
+	contract.Failf("unlowered conditional expression @ %v", expr.SyntaxNode().Range())
 }
 
 // GenForExpression generates code for a ForExpression.
@@ -378,11 +378,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	// TODO support rest of types
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
-		switch destType.Name {
-		case "number":
+		switch destType {
+		case model.NumberType:
 			return "float64"
 		default:
-			return destType.String()
+			return destType.Name
 		}
 	// TODO could probably improve these types by inspecting kv types
 	case *model.ObjectType, *model.MapType:
