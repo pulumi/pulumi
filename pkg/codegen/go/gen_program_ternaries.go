@@ -26,11 +26,11 @@ func (tt *ternaryTemp) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-type tempAllocator struct {
+type tempSpiller struct {
 	temps []*ternaryTemp
 }
 
-func (ta *tempAllocator) allocateExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
+func (ta *tempSpiller) allocateExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
 	var temp *ternaryTemp
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
@@ -54,7 +54,7 @@ func (ta *tempAllocator) allocateExpression(x model.Expression) (model.Expressio
 }
 
 func (g *generator) rewriteTernaries(x model.Expression) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
-	allocator := &tempAllocator{}
+	allocator := &tempSpiller{}
 	x, diags := model.VisitExpression(x, allocator.allocateExpression, nil)
 
 	return x, allocator.temps, diags
