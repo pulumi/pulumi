@@ -443,12 +443,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "     * @param opts A bag of options that control this resource's behavior.\n")
 	fmt.Fprintf(w, "     */\n")
 
+	// k8s provider "get" methods don't require args, so make args optional.
+	if mod.compatibility == kubernetes20 {
+		allOptionalInputs = true
+	}
+
 	// Write out callable constructor: We only emit a single public constructor, even though we use a private signature
 	// as well as part of the implementation of `.get`. This is complicated slightly by the fact that, if there is no
 	// args type, we will emit a constructor lacking that parameter.
 	var argsFlags string
-	if allOptionalInputs ||
-		mod.pkg.Name == "kubernetes" { // k8s provider "get" methods don't require args, so make args optional.
+	if allOptionalInputs {
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsFlags = "?"
 	}
