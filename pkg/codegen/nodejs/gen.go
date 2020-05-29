@@ -1305,8 +1305,8 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 	return w.String()
 }
 
-// generatePackageContextMap groups resources, types, and functions into NodeJS packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, info NodePackageInfo) (map[string]*modContext, error) {
+// generateModuleContextMap groups resources, types, and functions into NodeJS packages.
+func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo) (map[string]*modContext, error) {
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
 
@@ -1444,7 +1444,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generatePackageContextMap(tool, pkg, info)
+	modules, err := generateModuleContextMap(tool, pkg, info)
 	if err != nil {
 		return nil, err
 	}
@@ -1485,7 +1485,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generatePackageContextMap(tool, pkg, info)
+	modules, err := generateModuleContextMap(tool, pkg, info)
 	if err != nil {
 		return nil, err
 	}
