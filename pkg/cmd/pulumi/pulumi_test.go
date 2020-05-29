@@ -22,8 +22,8 @@ import (
 
 func TestIsDevVersion(t *testing.T) {
 
-	// This function primarily focuses on the "Pre" section of the semver string
-	// So we'll focus on testing that
+	// This function primarily focuses on the "Pre" section of the semver string,
+	// so we'll focus on testing that.
 	stableVer, _ := semver.ParseTolerant("1.0.0")
 	devVer, _ := semver.ParseTolerant("v1.0.0-dev")
 	alphaVer, _ := semver.ParseTolerant("v1.0.0-alpha.1590772212+g4ff08363.dirty")
