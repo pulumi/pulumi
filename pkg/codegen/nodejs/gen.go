@@ -67,14 +67,14 @@ func camel(s string) string {
 	return string(res)
 }
 
-type modContext struct {
+type pkgContext struct {
 	pkg         *schema.Package
 	mod         string
 	types       []*schema.ObjectType
 	resources   []*schema.Resource
 	functions   []*schema.Function
 	typeDetails map[*schema.ObjectType]*typeDetails
-	children    []*modContext
+	children    []*pkgContext
 	tool        string
 
 	// Name overrides set in NodeJSInfo
@@ -82,7 +82,7 @@ type modContext struct {
 	compatibility string            // Toggle compatibility mode for a specified target.
 }
 
-func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
+func (mod *pkgContext) details(t *schema.ObjectType) *typeDetails {
 	details, ok := mod.typeDetails[t]
 	if !ok {
 		details = &typeDetails{}
@@ -94,7 +94,7 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
+func (mod *pkgContext) tokenToType(tok string, input bool) string {
 	// token := pkg : module : member
 	// module := path/to/module
 
@@ -135,7 +135,7 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
+func (mod *pkgContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.ArrayType:
@@ -227,7 +227,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	fmt.Fprintf(w, "%s */\n", indent)
 }
 
-func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput, readonly bool, level int) {
+func (mod *pkgContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput, readonly bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -276,14 +276,14 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (mod *modContext) getConstValue(cv interface{}) (string, error) {
+func (mod *pkgContext) getConstValue(cv interface{}) (string, error) {
 	if cv == nil {
 		return "", nil
 	}
 	return tsPrimitiveValue(cv)
 }
 
-func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
+func (mod *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
 		v, err := tsPrimitiveValue(dv.Value)
@@ -323,7 +323,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
+func (mod *pkgContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, "{ ")
 
 	parts := []string{}
@@ -348,7 +348,7 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, " }")
 }
 
-func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
+func (mod *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
@@ -591,7 +591,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	return nil
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
+func (mod *pkgContext) genFunction(w io.Writer, fun *schema.Function) {
 	name := tokenToFunctionName(fun.Token)
 
 	// Write the TypeDoc/JSDoc for the data source function.
@@ -687,12 +687,12 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen code
 	}
 }
 
-func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
+func (mod *pkgContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
 	wrapInput := input && !mod.details(obj).functionType
 	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, wrapInput, false, level)
 }
 
-func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {
+func (mod *pkgContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {
 	if seen.Has(t) {
 		return false
 	}
@@ -730,7 +730,7 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 	}
 }
 
-func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) bool {
+func (mod *pkgContext) getImports(member interface{}, imports map[string]codegen.StringSet) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -768,7 +768,7 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 	}
 }
 
-func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes map[string]codegen.StringSet) {
+func (mod *pkgContext) genHeader(w io.Writer, imports []string, importedTypes map[string]codegen.StringSet) {
 	fmt.Fprintf(w, "// *** WARNING: this file was generated by %v. ***\n", mod.tool)
 	fmt.Fprintf(w, "// *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 
@@ -806,7 +806,7 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes ma
 	}
 }
 
-func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
+func (mod *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
 	imports := map[string]codegen.StringSet{}
 	mod.getImports(variables, imports)
 
@@ -842,7 +842,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
-func (mod *modContext) sdkImports(nested, utilities bool) []string {
+func (mod *pkgContext) sdkImports(nested, utilities bool) []string {
 	imports := []string{"import * as pulumi from \"@pulumi/pulumi\";"}
 
 	rel, err := filepath.Rel(mod.mod, "")
@@ -859,7 +859,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	return imports
 }
 
-func (mod *modContext) genTypes() (string, string) {
+func (mod *pkgContext) genTypes() (string, string) {
 	imports := map[string]codegen.StringSet{}
 	for _, t := range mod.types {
 		mod.getImports(t, imports)
@@ -950,7 +950,7 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *pkgContext) gen(fs fs) error {
 	var files []string
 	for p := range fs {
 		d := path.Dir(p)
@@ -1047,7 +1047,7 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
-func (mod *modContext) genIndex(exports []string) string {
+func (mod *pkgContext) genIndex(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, nil, nil)
 
@@ -1253,14 +1253,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
 	// group resources, types, and functions into Go packages
-	modules := map[string]*modContext{}
+	modules := map[string]*pkgContext{}
 
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
+	var getMod func(token string) *pkgContext
+	getMod = func(token string) *pkgContext {
 		modName := pkg.TokenToModule(token)
 		mod, ok := modules[modName]
 		if !ok {
-			mod = &modContext{
+			mod = &pkgContext{
 				pkg:           pkg,
 				mod:           modName,
 				tool:          tool,
@@ -1281,7 +1281,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return mod
 	}
 
-	types := &modContext{pkg: pkg, mod: "types", tool: tool}
+	types := &pkgContext{pkg: pkg, mod: "types", tool: tool}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&

@@ -75,7 +75,7 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	modCtx := &modContext{
+	modCtx := &pkgContext{
 		pkg: pkg,
 		mod: moduleName,
 	}
