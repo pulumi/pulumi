@@ -250,7 +250,11 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		typeName := argumentTypeName(expr, destType, isInput)
 		isMap := strings.HasPrefix(typeName, "map[")
 
-		g.Fgenf(w, "%s", typeName)
+		if isMap {
+			g.Fgenf(w, "%s", typeName)
+		} else {
+			g.Fgenf(w, "&%s", typeName)
+		}
 		g.Fgenf(w, "{\n")
 
 		for _, item := range expr.Items {
@@ -258,7 +262,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 				if isMap {
 					g.Fgenf(w, "\"%s\"", lit)
 				} else {
-					g.Fgenf(w, "%s", lit)
+					g.Fgenf(w, "%s", Title(lit))
 				}
 			} else {
 				g.Fgenf(w, "%.v", item.Key)
@@ -396,14 +400,30 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 	case *model.MapType:
 		valType := argumentTypeName(nil, destType.ElementType, isInput)
 		return fmt.Sprintf("map[string]%s", valType)
+	case *model.ListType:
+		return fmt.Sprintf("[]%s", argumentTypeName(nil, destType.ElementType, isInput))
 	case *model.TupleType:
-		if len(destType.ElementTypes) == 0 {
-			if isInput {
-				return fmt.Sprintf("pulumi.%sArray", Title(destType.ElementTypes[0].String()))
+		// attempt to collapse tuple types
+		var elmType model.Type
+		for i, t := range destType.ElementTypes {
+			if i == 0 {
+				elmType = t
 			}
-			return fmt.Sprintf("[]%s", Title(destType.ElementTypes[0].String()))
 
+			if !elmType.Equals(t) {
+				elmType = nil
+				break
+			}
 		}
+
+		if elmType != nil {
+			argTypeName := argumentTypeName(nil, elmType, isInput)
+			if isInput {
+				return fmt.Sprintf("pulumi.%sArray", Title(argTypeName))
+			}
+			return fmt.Sprintf("[]%s", argTypeName)
+		}
+
 		if isInput {
 			return "pulumi.Array"
 		}

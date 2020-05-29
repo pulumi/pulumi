@@ -114,7 +114,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 		{
 			hcl2Expr: "{foo = true ? 2 : 0}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\n&interface{}{\nFoo: tmp0,\n}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -153,6 +153,38 @@ func TestObjectConsExpression(t *testing.T) {
 		{
 			hcl2Expr: "{(a+a) = 1}",
 			goCode:   "map[string]float64{\na + a: 1,\n}",
+		},
+	}
+	for _, c := range cases {
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
+	}
+}
+
+func TestTupleConsExpression(t *testing.T) {
+	env := environment(map[string]interface{}{
+		"a": model.StringType,
+	})
+	scope := env.scope()
+	cases := []exprTestCase{
+		{
+			hcl2Expr: "[\"foo\"]",
+			goCode:   "[]string{\n\"foo\",\n}",
+		},
+		{
+			hcl2Expr: "[\"foo\", \"bar\", \"baz\"]",
+			goCode:   "[]string{\n\"foo\",\n\"bar\",\n\"baz\",\n}",
+		},
+		{
+			hcl2Expr: "[1]",
+			goCode:   "[]float64{\n1,\n}",
+		},
+		{
+			hcl2Expr: "[1,2,3]",
+			goCode:   "[]float64{\n1,\n2,\n3,\n}",
+		},
+		{
+			hcl2Expr: "[1,\"foo\"]",
+			goCode:   "[]interface{}{\n1,\n\"foo\",\n}",
 		},
 	}
 	for _, c := range cases {
