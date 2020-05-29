@@ -40,7 +40,12 @@ type NodePackageInfo struct {
 	TypeScriptVersion string `json:"typescriptVersion,omitempty"`
 	// A map containing overrides for module names to package names.
 	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
+	// Toggle compatibility mode for a specified target.
+	Compatibility string `json:"compatibility,omitempty"`
 }
+
+// Compatibility mode for Kubernetes 2.0 SDK
+const kubernetes20 = "kubernetes20"
 
 // Importer implements schema.Language for NodeJS.
 var Importer schema.Language = importer(0)
