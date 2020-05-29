@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"math/big"
@@ -65,7 +66,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
+		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, argumentTypeName(nil, param.Type, isInput))
 		leadingSep = ", "
 	}
 
@@ -73,7 +74,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	// TODO handle multiple return types for go
 	// TODO deterime from ambient context
 	isInput := false
-	retType := g.argumentTypeName(nil, expr.Signature.ReturnType, isInput)
+	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
 	g.Fgenf(w, "return %v, nil", expr.Body)
 	g.Fgenf(w, "\n}")
@@ -234,7 +235,10 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 		// first lower all inner expressions and emit temps
 		for i, item := range expr.Items {
-			// TODO keys are also expressions
+
+			k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
+			temps = append(temps, kTemps...)
+			item.Key = k
 			x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
 			temps = append(temps, xTemps...)
 			item.Value = x
@@ -243,22 +247,27 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		g.genTemps(w, temps)
 
 		isInput := isInputty(destType)
-		typeName := g.argumentTypeName(expr, destType, isInput)
-		if typeName != "" {
-			g.Fgenf(w, "&%s", typeName)
-			g.Fgenf(w, "{\n")
+		typeName := argumentTypeName(expr, destType, isInput)
+		isMap := strings.HasPrefix(typeName, "map[")
 
-			for _, item := range expr.Items {
-				// TODO key can also be an expression
-				lit := item.Key.(*model.LiteralValueExpression)
-				g.Fprint(w, Title(lit.Value.AsString()))
-				g.Fgenf(w, ": %.v,\n", item.Value)
+		g.Fgenf(w, "%s", typeName)
+		g.Fgenf(w, "{\n")
+
+		for _, item := range expr.Items {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if isMap {
+					g.Fgenf(w, "\"%s\"", lit)
+				} else {
+					g.Fgenf(w, "%s", lit)
+				}
+			} else {
+				g.Fgenf(w, "%.v", item.Key)
 			}
 
-			g.Fgenf(w, "}")
-		} else {
-			// TODO
+			g.Fgenf(w, ": %.v,\n", item.Value)
 		}
+
+		g.Fgenf(w, "}")
 	}
 }
 
@@ -311,7 +320,7 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
 	isInput := isInputty(destType)
-	argType := g.argumentTypeName(expr, destType, isInput)
+	argType := argumentTypeName(expr, destType, isInput)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
@@ -337,7 +346,7 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 }
 
 // argumentTypeName computes the go type for the given expression and model type.
-func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
+func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
 	var tokenRange hcl.Range
 	if expr != nil {
 		node := expr.SyntaxNode()
@@ -382,9 +391,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		default:
 			return destType.Name
 		}
-	// TODO could probably improve these types by inspecting kv types
-	case *model.ObjectType, *model.MapType:
-		return "interface{}"
+	case *model.ObjectType:
+		return "map[string]interface{}"
+	case *model.MapType:
+		valType := argumentTypeName(nil, destType.ElementType, isInput)
+		return fmt.Sprintf("map[string]%s", valType)
 	case *model.TupleType:
 		if len(destType.ElementTypes) == 0 {
 			if isInput {
@@ -459,7 +470,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := hcl2.ParseApplyCall(expr)
 	isInput := false
-	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
+	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
 	typeAssertion := fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
 
@@ -512,4 +523,32 @@ func isInputty(destType model.Type) bool {
 		return true
 	}
 	return false
+}
+
+func (g *generator) literalKey(x model.Expression) (string, bool) {
+	strKey := ""
+	switch x := x.(type) {
+	case *model.LiteralValueExpression:
+		if x.Type() == model.StringType {
+			strKey = x.Value.AsString()
+			break
+		}
+		var buf bytes.Buffer
+		g.GenLiteralValueExpression(&buf, x)
+		return buf.String(), true
+	case *model.TemplateExpression:
+		if len(x.Parts) == 1 {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+				strKey = lit.Value.AsString()
+				break
+			}
+		}
+		var buf bytes.Buffer
+		g.GenTemplateExpression(&buf, x)
+		return buf.String(), true
+	default:
+		return "", false
+	}
+
+	return strKey, true
 }

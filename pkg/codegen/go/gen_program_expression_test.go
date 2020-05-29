@@ -127,6 +127,39 @@ func TestConditionalExpression(t *testing.T) {
 	}
 }
 
+func TestObjectConsExpression(t *testing.T) {
+	env := environment(map[string]interface{}{
+		"a": model.StringType,
+	})
+	scope := env.scope()
+	cases := []exprTestCase{
+		{
+			// TODO probably a bug in the binder. Single value objects should just be maps
+			hcl2Expr: "{foo = 1}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+		},
+		{
+			hcl2Expr: "{\"foo\" = 1}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+		},
+		{
+			hcl2Expr: "{1 = 1}",
+			goCode:   "map[string]interface{}{\n\"1\": 1,\n}",
+		},
+		{
+			hcl2Expr: "{(a) = 1}",
+			goCode:   "map[string]float64{\na: 1,\n}",
+		},
+		{
+			hcl2Expr: "{(a+a) = 1}",
+			goCode:   "map[string]float64{\na + a: 1,\n}",
+		},
+	}
+	for _, c := range cases {
+		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
+	}
+}
+
 func testGenerateExpression(
 	t *testing.T,
 	hcl2Expr, goCode string,
