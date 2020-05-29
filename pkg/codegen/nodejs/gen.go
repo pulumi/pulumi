@@ -1031,8 +1031,15 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(p, []byte(contents))
 	}
 
-	// Ensure that the top-level (provider) module directory contains a README.md file.
-	if mod.mod == "" {
+	// Utilities, config, readme
+	switch mod.mod {
+	case "":
+		buffer := &bytes.Buffer{}
+		mod.genHeader(buffer, nil, nil)
+		fmt.Fprintf(buffer, "%s", utilitiesFile)
+		fs.add(path.Join(mod.mod, "utilities.ts"), buffer.Bytes())
+
+		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
 		if readme == "" {
 			readme = mod.pkg.Description
@@ -1050,15 +1057,6 @@ func (mod *modContext) gen(fs fs) error {
 			readme += "\n"
 		}
 		fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
-	}
-
-	// Utilities, config
-	switch mod.mod {
-	case "":
-		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, nil, nil)
-		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(path.Join(mod.mod, "utilities.ts"), buffer.Bytes())
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
