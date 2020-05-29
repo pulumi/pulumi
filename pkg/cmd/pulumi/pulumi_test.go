@@ -27,9 +27,13 @@ func TestIsDevVersion(t *testing.T) {
 	stableVer, _ := semver.ParseTolerant("1.0.0")
 	devVer, _ := semver.ParseTolerant("v1.0.0-dev")
 	alphaVer, _ := semver.ParseTolerant("v1.0.0-alpha.1590772212+g4ff08363.dirty")
+	betaVer, _ := semver.ParseTolerant("v1.0.0-beta.1590772212")
+	rcVer, _ := semver.ParseTolerant("v1.0.0-rc.1")
 
 	assert.False(t, isDevVersion(stableVer))
 	assert.True(t, isDevVersion(devVer))
 	assert.True(t, isDevVersion(alphaVer))
+	assert.True(t, isDevVersion(betaVer))
+	assert.True(t, isDevVersion(rcVer))
 
 }
