@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -195,7 +196,11 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	}
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
-	endpoint := fmt.Sprintf("%s/pulumi-%s-%s-v%s-%s-%s.tar.gz", serverURL, info.Kind, info.Name, info.Version, os, arch)
+	// URL escape the path value to ensure we have the correct path for S3/CloudFront.
+	endpoint := fmt.Sprintf("%s/%s",
+		serverURL,
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", info.Kind, info.Name, info.Version, os, arch)))
+
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return nil, -1, err
