@@ -37,8 +37,8 @@ func newLoginCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
-		Short: "Log into the Pulumi service",
-		Long: "Log into the Pulumi service.\n" +
+		Short: "Log in to the Pulumi service",
+		Long: "Log in to the Pulumi service.\n" +
 			"\n" +
 			"The service manages your stack's state reliably. Simply run\n" +
 			"\n" +
@@ -47,12 +47,12 @@ func newLoginCmd() *cobra.Command {
 			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
 			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
 			"\n" +
-			"By default, this will log into the Pulumi service backend. If you prefer to log into a separate instance\n" +
-			"of the Pulumi service, such as Pulumi Enterprise, specify a URL. For example, run\n" +
+			"By default, this will log in to the managed Pulumi service backend.\n" +
+			"If you prefer to log in to a self-hosted Pulumi service backend, specify a URL. For example, run\n" +
 			"\n" +
 			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
-			"to log in to a Pulumi Enterprise server running at the api.pulumi.acmecorp.com domain.\n" +
+			"to log in to a self-hosted Pulumi service running at the api.pulumi.acmecorp.com domain.\n" +
 			"\n" +
 			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
 			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
@@ -130,16 +130,16 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			if currentUser, err := be.CurrentUser(); err == nil {
-				fmt.Printf("Logged into %s as %s (%s)\n", be.Name(), currentUser, be.URL())
+				fmt.Printf("Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
 			} else {
-				fmt.Printf("Logged into %s (%s)\n", be.Name(), be.URL())
+				fmt.Printf("Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
 			return nil
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")
+	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log in to")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
