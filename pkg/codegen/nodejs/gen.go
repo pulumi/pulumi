@@ -1305,18 +1305,16 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 	return w.String()
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode node-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
-
-	// group resources, types, and functions into Go packages
+// generatePackageContextMap groups resources, types, and functions into NodeJS packages.
+func generatePackageContextMap(tool string, pkg *schema.Package, info NodePackageInfo) (map[string]*modContext, error) {
+	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
 
 	var getMod func(modName string) *modContext
 	getMod = func(modName string) *modContext {
+		if override, ok := info.ModuleToPackage[modName]; ok {
+			modName = override
+		}
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
@@ -1415,6 +1413,81 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		typeDetails, typeList := types.typeDetails, types.types
 		types = getMod("types")
 		types.typeDetails, types.types = typeDetails, typeList
+	}
+
+	return modules, nil
+}
+
+// LanguageResource holds information about a resource to be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
+
+	Name       string             // The resource name (e.g., "FlowSchema")
+	Package    string             // The name of the package containing the resource definition (e.g., "flowcontrol.v1alpha1")
+	Properties []LanguageProperty // Properties of the resource
+}
+
+// LanguageProperty holds information about a resource property to be used by downstream codegen.
+type LanguageProperty struct {
+	ConstValue string // If set, the constant value of the property (e.g., "flowcontrol.apiserver.k8s.io/v1alpha1")
+	Name       string // The name of the property (e.g., "FlowSchemaSpec")
+	Package    string // The package path containing the property definition (e.g., "outputs.flowcontrol.v1alpha1")
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	resources := map[string]LanguageResource{}
+
+	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
+
+	modules, err := generatePackageContextMap(tool, pkg, info)
+	if err != nil {
+		return nil, err
+	}
+
+	for modName, mod := range modules {
+		if modName == "" {
+			continue
+		}
+		for _, r := range mod.resources {
+			packagePath := strings.Replace(modName, "/", ".", -1)
+			lr := LanguageResource{
+				Resource: r,
+				Name:     resourceName(r),
+				Package:  packagePath,
+			}
+			for _, p := range r.Properties {
+				lp := LanguageProperty{
+					Name: p.Name,
+				}
+				if p.ConstValue != nil {
+					lp.ConstValue = mod.typeString(p.Type, false, false, false, p.ConstValue)
+				} else {
+					lp.Package = mod.typeString(p.Type, false, false, false, nil)
+				}
+				lr.Properties = append(lr.Properties, lp)
+			}
+			resources[r.Token] = lr
+		}
+	}
+
+	return resources, nil
+}
+
+func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	// Decode node-specific info
+	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
+
+	modules, err := generatePackageContextMap(tool, pkg, info)
+	if err != nil {
+		return nil, err
 	}
 
 	files := fs{}
