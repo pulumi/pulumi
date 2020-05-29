@@ -64,8 +64,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, "func(")
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
-		// TODO derive this value from some ambient context
-		isInput := false
+		isInput := isInputty(param.Type)
 		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
 		leadingSep = ", "
 	}
@@ -243,8 +242,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		}
 		g.genTemps(w, temps)
 
-		// TODO derive from ambient context
-		isInput := true
+		isInput := isInputty(destType)
 		typeName := g.argumentTypeName(expr, destType, isInput)
 		if typeName != "" {
 			g.Fgenf(w, "&%s", typeName)
@@ -312,8 +310,7 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
-	// TODO derive from ambient context
-	isInput := true
+	isInput := isInputty(destType)
 	argType := g.argumentTypeName(expr, destType, isInput)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
@@ -375,6 +372,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		}
 	}
 
+	// TODO if over input type for the rest of the types
 	// TODO support rest of types
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
@@ -387,6 +385,18 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	// TODO could probably improve these types by inspecting kv types
 	case *model.ObjectType, *model.MapType:
 		return "interface{}"
+	case *model.TupleType:
+		if len(destType.ElementTypes) == 0 {
+			if isInput {
+				return fmt.Sprintf("pulumi.%sArray", Title(destType.ElementTypes[0].String()))
+			}
+			return fmt.Sprintf("[]%s", Title(destType.ElementTypes[0].String()))
+
+		}
+		if isInput {
+			return "pulumi.Array"
+		}
+		return "[]interface{}"
 	default:
 		contract.Failf("unexpected schema type %T", destType)
 	}
@@ -485,4 +495,21 @@ func (g *generator) escapeString(v string) string {
 		builder.WriteRune(c)
 	}
 	return builder.String()
+}
+
+// nolint: lll
+func isInputty(destType model.Type) bool {
+	// TODO this needs to be more robust, likely the inverse of:
+	// https://github.com/pulumi/pulumi/blob/5330c97684cad78bcc60d8867f1b28704bd8a555/pkg/codegen/hcl2/model/type_eventuals.go#L244
+	switch destType := destType.(type) {
+	case *model.UnionType:
+		for _, t := range destType.ElementTypes {
+			if _, ok := t.(*model.OutputType); ok {
+				return true
+			}
+		}
+	case *model.OutputType:
+		return true
+	}
+	return false
 }
