@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -78,7 +79,8 @@ type modContext struct {
 	tool        string
 
 	// Name overrides set in NodeJSInfo
-	modToPkg map[string]string // Module name -> package name
+	modToPkg      map[string]string // Module name -> package name
+	compatibility string            // Toggle compatibility mode for a specified target.
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -425,7 +427,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			outcomment = "/*out*/ "
 		}
 
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !prop.IsRequired, nil))
+		required := prop.IsRequired
+		if mod.compatibility == kubernetes20 {
+			required = true
+		}
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !required, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -442,7 +448,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// as well as part of the implementation of `.get`. This is complicated slightly by the fact that, if there is no
 	// args type, we will emit a constructor lacking that parameter.
 	var argsFlags string
-	if allOptionalInputs {
+	if allOptionalInputs ||
+		mod.pkg.Name == "kubernetes" { // k8s provider "get" methods don't require args, so make args optional.
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsFlags = "?"
 	}
@@ -1253,9 +1260,10 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:  pkg,
-				mod:  modName,
-				tool: tool,
+				pkg:           pkg,
+				mod:           modName,
+				tool:          tool,
+				compatibility: info.Compatibility,
 			}
 
 			if modName != "" {
@@ -1275,8 +1283,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	types := &modContext{pkg: pkg, mod: "types", tool: tool}
 
 	// Create the config module if necessary.
-	if len(pkg.Config) > 0 {
-		_ = getMod(":config:")
+	if len(pkg.Config) > 0 &&
+		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
+		_ = getMod(":config/config:")
 	}
 
 	outputSeen := codegen.Set{}
