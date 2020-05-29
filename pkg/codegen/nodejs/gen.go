@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -188,11 +189,14 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	if wrapInput && typ != "any" {
 		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
 	}
+	if constValue != nil && typ == "string" {
+		typ = fmt.Sprintf("%q", constValue.(string))
+	}
+	if constValue != nil && typ == "pulumi.Input<string>" {
+		typ = fmt.Sprintf("pulumi.Input<%q>", constValue.(string))
+	}
 	if optional {
 		return typ + " | undefined"
-	}
-	if constValue != nil && typ == "string" {
-		typ = constValue.(string)
 	}
 	return typ
 }
@@ -254,7 +258,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, nil))
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, p.ConstValue))
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 }
@@ -380,7 +384,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     *\n")
 		fmt.Fprintf(w, "     * @param name The _unique_ name of the resulting resource.\n")
 		fmt.Fprintf(w, "     * @param id The _unique_ provider ID of the resource to lookup.\n")
-		fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
+		// TODO: add k8s specific ID format doc?
+		if r.StateInputs != nil {
+			fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
+		}
+		fmt.Fprintf(w, "     * @param opts Optional settings to control the behavior of the CustomResource.\n")
 		fmt.Fprintf(w, "     */\n")
 
 		stateParam, stateRef := "", "undefined, "
@@ -743,6 +751,9 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		return true
 	case *schema.TokenType:
 		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
+		if override, ok := mod.modToPkg[modName]; ok {
+			modName = override
+		}
 		if modName != mod.mod {
 			mp, err := filepath.Rel(mod.mod, modName)
 			contract.Assert(err == nil)
@@ -875,6 +886,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		printComment(w, p.Comment, "", "")
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
+		// TODO: handle ConstValues
 		if p.DefaultValue != nil {
 			v, err := mod.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
@@ -952,7 +964,11 @@ func (mod *modContext) genTypes() (string, string) {
 	}
 
 	for _, t := range mod.types {
-		ns := getNamespace(mod.pkg.TokenToModule(t.Token))
+		modName := mod.pkg.TokenToModule(t.Token)
+		if override, ok := mod.modToPkg[modName]; ok {
+			modName = override
+		}
+		ns := getNamespace(modName)
 		ns.types = append(ns.types, t)
 	}
 
@@ -1134,12 +1150,21 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 	}
 
-	var children []string
+	children := codegen.NewStringSet()
+	versionSuffix := regexp.MustCompile(`/v\d+((alpha|beta)\d+)?`)
 	for _, mod := range mod.children {
-		children = append(children, mod.mod)
+		child := mod.mod
+		// Trim version suffix from child modules. Nested versions will have their own index.ts file.
+		if versionSuffix.MatchString(child) {
+			if i := strings.LastIndex(child, "/"); i > 0 {
+				child = child[:i]
+			}
+		}
+		children.Add(child)
 	}
 	if len(mod.types) > 0 {
-		children = append(children, "input", "output")
+		children.Add("input")
+		children.Add("output")
 	}
 
 	// Finally, if there are submodules, export them.
@@ -1149,14 +1174,18 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		fmt.Fprintf(w, "// Export sub-modules:\n")
 
-		sort.Strings(children)
+		var childrenStrings []string
+		for s := range children {
+			childrenStrings = append(childrenStrings, s)
+		}
+		sort.Strings(childrenStrings)
 
-		for _, mod := range children {
+		for _, mod := range childrenStrings {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
 		fmt.Fprintf(w, "export {")
-		for i, mod := range children {
+		for i, mod := range childrenStrings {
 			if i > 0 {
 				fmt.Fprint(w, ", ")
 			}
@@ -1331,6 +1360,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 				mod:                     modName,
 				tool:                    tool,
 				compatibility:           info.Compatibility,
+				modToPkg:                info.ModuleToPackage,
 				disableUnionOutputTypes: info.DisableUnionOutputTypes,
 			}
 
