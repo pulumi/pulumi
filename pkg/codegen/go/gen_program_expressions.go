@@ -75,6 +75,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	// TODO deterime from ambient context
 	isInput := false
 	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
+	// TODO: --------BUG---------
 	g.Fgenf(w, ") (%s, error) {\n", retType)
 	g.Fgenf(w, "return %v, nil", expr.Body)
 	g.Fgenf(w, "\n}")
@@ -206,19 +207,41 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) { /*TODO*/ }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
+	argTypeName := argumentTypeName(expr, expr.Type(), false)
+	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
 	switch expr.Type() {
 	case model.BoolType:
-		g.Fgenf(w, "%v", expr.Value.True())
+		if isPulumiType {
+			g.Fgenf(w, "%s(%v)", argTypeName, expr.Value.True())
+		} else {
+			g.Fgenf(w, "%v", expr.Value.True())
+		}
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
-			g.Fgenf(w, "%d", i)
+			if isPulumiType {
+				g.Fgenf(w, "%s(%d)", argTypeName, i)
+			} else {
+				g.Fgenf(w, "%d", i)
+			}
+
 		} else {
 			f, _ := bf.Float64()
-			g.Fgenf(w, "%g", f)
+			if isPulumiType {
+				g.Fgenf(w, "%s(%g)", argTypeName, f)
+			} else {
+				g.Fgenf(w, "%g", f)
+			}
 		}
 	case model.StringType:
-		g.genStringLiteral(w, expr.Value.AsString())
+		strVal := expr.Value.AsString()
+		if isPulumiType {
+			g.Fgenf(w, "%s(", argTypeName)
+			g.genStringLiteral(w, strVal)
+			g.Fgenf(w, ")")
+		} else {
+			g.genStringLiteral(w, strVal)
+		}
 	default:
 		contract.Failf("unexpected literal type in GenLiteralValueExpression: %v (%v)", expr.Type(),
 			expr.SyntaxNode().Range())
@@ -232,21 +255,21 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) > 0 {
 		var temps []*ternaryTemp
+		isInput := isInputty(destType)
 
 		// first lower all inner expressions and emit temps
 		for i, item := range expr.Items {
 
-			k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
+			k, kTemps := g.lowerExpression(item.Key, item.Key.Type(), isInput)
 			temps = append(temps, kTemps...)
 			item.Key = k
-			x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
+			x, xTemps := g.lowerExpression(item.Value, item.Value.Type(), isInput)
 			temps = append(temps, xTemps...)
 			item.Value = x
 			expr.Items[i] = item
 		}
 		g.genTemps(w, temps)
 
-		isInput := isInputty(destType)
 		typeName := argumentTypeName(expr, destType, isInput)
 		isMap := strings.HasPrefix(typeName, "map[")
 
@@ -389,9 +412,27 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 	// TODO support rest of types
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
+		for _, a := range destType.Annotations {
+			if a, ok := a.(string); ok && a == hcl2.IntrinsicInput {
+				isInput = true
+			}
+		}
 		switch destType {
 		case model.NumberType:
+			if isInput {
+				return "pulumi.Float64"
+			}
 			return "float64"
+		case model.StringType:
+			if isInput {
+				return "pulumi.String"
+			}
+			return "string"
+		case model.BoolType:
+			if isInput {
+				return "pulumi.Bool"
+			}
+			return "bool"
 		default:
 			return destType.Name
 		}
@@ -473,7 +514,9 @@ func (nameInfo) Format(name string) string {
 }
 
 // lowerExpression amends the expression with intrinsics for C# generation.
-func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*ternaryTemp) {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
+	model.Expression, []*ternaryTemp) {
+	expr = applyInputAnnotations(expr, isInput)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
 	expr, temps, ternDiags := g.rewriteTernaries(expr)
@@ -492,10 +535,12 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	isInput := false
 	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
+		// TODO --- BUG here we may need to strip out the IntrinsicInput annotation of the return type,
+		// otherwise we migth need to make isInput a bool pointer
 		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
 	} else {
 		// TODO

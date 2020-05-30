@@ -125,12 +125,13 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	resName := r.Name()
 	_, mod, typ, _ := r.DecomposeToken()
+	isInput := true
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+		expr, temps := g.lowerExpression(input.Value, destType.(model.Type), isInput)
 		input.Value = expr
 		g.genTemps(w, temps)
 	}
@@ -154,7 +155,8 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
-	expr, temps := g.lowerExpression(v.Value, v.Type())
+	isInput := false
+	expr, temps := g.lowerExpression(v.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
 }

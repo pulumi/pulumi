@@ -1320,6 +1320,11 @@ func (x *LiteralValueExpression) Type() Type {
 	return x.exprType
 }
 
+// TODO figure out a better way to overwrite the annotations on the type
+func (x *LiteralValueExpression) SetType(typ Type) {
+	x.exprType = typ
+}
+
 func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
