@@ -19,7 +19,6 @@ require (
 	github.com/Sirupsen/logrus v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.30.7
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/davecgh/go-spew v1.1.1
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
 	github.com/dustin/go-humanize v1.0.0
