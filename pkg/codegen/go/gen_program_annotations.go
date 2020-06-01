@@ -10,7 +10,6 @@ func applyInputAnnotations(x model.Expression, isInput bool) model.Expression {
 		return x
 	}
 
-	// TODO walk further down into the rest of expressions: tuple, obj, etc.
 	switch x := x.(type) {
 	case *model.FunctionCallExpression:
 		switch x.Name {

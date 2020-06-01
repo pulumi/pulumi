@@ -455,7 +455,14 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		valType := argumentTypeName(nil, destType.ElementType, isInput)
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
-		return fmt.Sprintf("[]%s", argumentTypeName(nil, destType.ElementType, isInput))
+		argTypeName := argumentTypeName(nil, destType.ElementType, isInput)
+		if isInput {
+			return fmt.Sprintf("pulumi.%sArray", Title(argTypeName))
+		}
+		if strings.HasPrefix(argTypeName, "pulumi.") {
+			return fmt.Sprintf("%sArray", argTypeName)
+		}
+		return fmt.Sprintf("[]%s", argTypeName)
 	case *model.TupleType:
 		// attempt to collapse tuple types
 		var elmType model.Type
@@ -474,6 +481,9 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			argTypeName := argumentTypeName(nil, elmType, isInput)
 			if isInput {
 				return fmt.Sprintf("pulumi.%sArray", Title(argTypeName))
+			}
+			if strings.HasPrefix(argTypeName, "pulumi.") {
+				return fmt.Sprintf("%sArray", argTypeName)
 			}
 			return fmt.Sprintf("[]%s", argTypeName)
 		}
