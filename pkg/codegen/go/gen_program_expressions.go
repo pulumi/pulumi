@@ -256,6 +256,11 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) > 0 {
 		var temps []*ternaryTemp
 		isInput := isInputty(destType)
+		typeName := argumentTypeName(expr, destType, isInput)
+		if strings.HasSuffix(typeName, "Args") {
+			isInput = true
+		}
+		isMap := strings.HasPrefix(typeName, "map[")
 
 		// first lower all inner expressions and emit temps
 		for i, item := range expr.Items {
@@ -269,9 +274,6 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			expr.Items[i] = item
 		}
 		g.genTemps(w, temps)
-
-		typeName := argumentTypeName(expr, destType, isInput)
-		isMap := strings.HasPrefix(typeName, "map[")
 
 		if isMap {
 			g.Fgenf(w, "%s", typeName)
@@ -348,6 +350,17 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
 	isInput := isInputty(destType)
 	argType := argumentTypeName(expr, destType, isInput)
+	if strings.HasSuffix("argType", "Array") {
+		isInput = true
+	}
+
+	var temps []*ternaryTemp
+	for i, item := range expr.Expressions {
+		item, itemTemps := g.lowerExpression(item, item.Type(), isInput)
+		temps = append(temps, itemTemps...)
+		expr.Expressions[i] = item
+	}
+	g.genTemps(w, temps)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:

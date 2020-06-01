@@ -12,6 +12,11 @@ func applyInputAnnotations(x model.Expression, isInput bool) model.Expression {
 
 	// TODO walk further down into the rest of expressions: tuple, obj, etc.
 	switch x := x.(type) {
+	case *model.FunctionCallExpression:
+		switch x.Name {
+		case hcl2.IntrinsicConvert:
+			x.Args[0] = applyInputAnnotations(x.Args[0], isInput)
+		}
 	case *model.LiteralValueExpression:
 		t := x.Type()
 		switch t := t.(type) {
