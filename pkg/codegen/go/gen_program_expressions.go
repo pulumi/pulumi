@@ -492,8 +492,11 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			return "pulumi.Array"
 		}
 		return "[]interface{}"
+	case *model.OutputType:
+		isInput = true
+		return argumentTypeName(expr, destType.ElementType, isInput)
 	default:
-		contract.Failf("unexpected schema type %T", destType)
+		contract.Failf("unexpected destType type %T", destType)
 	}
 	return ""
 }
