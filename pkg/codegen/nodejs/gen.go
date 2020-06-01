@@ -692,8 +692,33 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen code
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
+	properties := obj.Properties
+	info, hasInfo := obj.Language["nodejs"]
+	if hasInfo {
+		var requiredProperties []string
+		if input {
+			requiredProperties = info.(NodeObjectInfo).RequiredInputs
+		} else {
+			requiredProperties = info.(NodeObjectInfo).RequiredOutputs
+		}
+
+		if requiredProperties != nil {
+			required := codegen.StringSet{}
+			for _, name := range requiredProperties {
+				required.Add(name)
+			}
+
+			properties = make([]*schema.Property, len(obj.Properties))
+			for i, p := range obj.Properties {
+				copy := *p
+				properties[i] = &copy
+				properties[i].IsRequired = required.Has(p.Name)
+			}
+		}
+	}
+
 	wrapInput := input && !mod.details(obj).functionType
-	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, wrapInput, false, level)
+	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, properties, input, wrapInput, false, level)
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {

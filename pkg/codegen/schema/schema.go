@@ -1037,10 +1037,10 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 	return result, propertyMap, nil
 }
 
-func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
+func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec) error {
 	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	language := make(map[string]interface{})
@@ -1048,13 +1048,20 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 		language[name] = raw
 	}
 
-	return &ObjectType{
-		Token:      token,
-		Comment:    spec.Description,
-		Language:   language,
-		Properties: properties,
-		properties: propertyMap,
-	}, nil
+	obj.Token = token
+	obj.Comment = spec.Description
+	obj.Language = language
+	obj.Properties = properties
+	obj.properties = propertyMap
+	return nil
+}
+
+func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
+	obj := &ObjectType{}
+	if err := t.bindObjectTypeDetails(obj, token, spec); err != nil {
+		return nil, err
+	}
+	return obj, nil
 }
 
 func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
@@ -1072,20 +1079,14 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 			return nil, errors.Errorf("type %s must be an object, not a %s", token, spec.Type)
 		}
 
-		typs.objects[token] = &ObjectType{
-			Token:   token,
-			Comment: spec.Description,
-		}
+		typs.objects[token] = &ObjectType{}
 	}
 
 	// Process properties.
 	for token, spec := range objects {
-		properties, propertyMap, err := typs.bindProperties(spec.Properties, spec.Required)
-		if err != nil {
+		if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec); err != nil {
 			return nil, errors.Wrapf(err, "failed to bind type %s", token)
 		}
-		obj := typs.objects[token]
-		obj.Properties, obj.properties = properties, propertyMap
 	}
 
 	return typs, nil
