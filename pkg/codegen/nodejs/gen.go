@@ -979,6 +979,21 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
+func (mod *modContext) isReservedSourceFileName(name string) bool {
+	switch name {
+	case "index.ts":
+		return true
+	case "input.ts", "output.ts":
+		return len(mod.types) != 0
+	case "utilities.ts":
+		return mod.mod == ""
+	case "vars.ts":
+		return len(mod.pkg.Config) > 0
+	default:
+		return false
+	}
+}
+
 func (mod *modContext) gen(fs fs) error {
 	var files []string
 	for p := range fs {
@@ -1047,7 +1062,11 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(camel(resourceName(r))+".ts", buffer.String())
+		fileName := camel(resourceName(r)) + ".ts"
+		if mod.isReservedSourceFileName(fileName) {
+			fileName = camel(resourceName(r)) + "_.ts"
+		}
+		addFile(fileName, buffer.String())
 	}
 
 	// Functions
@@ -1060,7 +1079,11 @@ func (mod *modContext) gen(fs fs) error {
 
 		mod.genFunction(buffer, f)
 
-		addFile(camel(tokenToName(f.Token))+".ts", buffer.String())
+		fileName := camel(tokenToName(f.Token)) + ".ts"
+		if mod.isReservedSourceFileName(fileName) {
+			fileName = camel(tokenToName(f.Token)) + "_.ts"
+		}
+		addFile(fileName, buffer.String())
 	}
 
 	// Nested types
