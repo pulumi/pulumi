@@ -139,10 +139,17 @@ type UnionType struct {
 }
 
 func (t *UnionType) String() string {
-	elements := make([]string, len(t.ElementTypes))
+	elements := make([]string, len(t.ElementTypes)+1)
 	for i, e := range t.ElementTypes {
 		elements[i] = e.String()
 	}
+
+	def := "default="
+	if t.DefaultType != nil {
+		def += t.DefaultType.String()
+	}
+	elements[len(elements)-1] = def
+
 	return fmt.Sprintf("Union<%v>", strings.Join(elements, ", "))
 }
 
@@ -1102,7 +1109,11 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 			return nil, errors.Errorf("type %s must be an object, not a %s", token, spec.Type)
 		}
 
-		typs.objects[token] = &ObjectType{}
+		// It's important that we set the token here. This package interns types so that they can be equality-compared
+		// for identity. Types are interned based on their string representation, and the string representation of an
+		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
+		// that reference object types (e.g. arrays, maps, unions)
+		typs.objects[token] = &ObjectType{Token: token}
 	}
 
 	// Process properties.
