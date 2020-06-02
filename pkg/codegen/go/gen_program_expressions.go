@@ -134,6 +134,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genTupleConsExpression(w, arg, expr.Type())
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
+		case *model.LiteralValueExpression:
+			g.genLiteralValueExpression(w, arg, expr.Type())
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
 		}
@@ -207,43 +209,63 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) { /*TODO*/ }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	argTypeName := argumentTypeName(expr, expr.Type(), false)
-	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
-	switch expr.Type() {
-	case model.BoolType:
-		if isPulumiType {
-			g.Fgenf(w, "%s(%v)", argTypeName, expr.Value.True())
-		} else {
-			g.Fgenf(w, "%v", expr.Value.True())
-		}
-	case model.NumberType:
-		bf := expr.Value.AsBigFloat()
-		if i, acc := bf.Int64(); acc == big.Exact {
-			if isPulumiType {
-				g.Fgenf(w, "%s(%d)", argTypeName, i)
-			} else {
-				g.Fgenf(w, "%d", i)
-			}
+	g.genLiteralValueExpression(w, expr, expr.Type())
+}
 
-		} else {
-			f, _ := bf.Float64()
+func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression, destType model.Type) {
+	argTypeName := argumentTypeName(expr, destType, false)
+	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
+
+	switch destType := destType.(type) {
+	case *model.OpaqueType:
+		switch destType {
+		case model.BoolType:
 			if isPulumiType {
-				g.Fgenf(w, "%s(%g)", argTypeName, f)
+				g.Fgenf(w, "%s(%v)", argTypeName, expr.Value.True())
 			} else {
-				g.Fgenf(w, "%g", f)
+				g.Fgenf(w, "%v", expr.Value.True())
 			}
+		case model.NumberType, model.IntType:
+			bf := expr.Value.AsBigFloat()
+			if i, acc := bf.Int64(); acc == big.Exact {
+				if isPulumiType {
+					g.Fgenf(w, "%s(%d)", argTypeName, i)
+				} else {
+					g.Fgenf(w, "%d", i)
+				}
+
+			} else {
+				f, _ := bf.Float64()
+				if isPulumiType {
+					g.Fgenf(w, "%s(%g)", argTypeName, f)
+				} else {
+					g.Fgenf(w, "%g", f)
+				}
+			}
+		case model.StringType:
+			strVal := expr.Value.AsString()
+			if isPulumiType {
+				g.Fgenf(w, "%s(", argTypeName)
+				g.genStringLiteral(w, strVal)
+				g.Fgenf(w, ")")
+			} else {
+				g.genStringLiteral(w, strVal)
+			}
+		default:
+			contract.Failf("unexpected opaque type in GenLiteralValueExpression: %v (%v)", destType,
+				expr.SyntaxNode().Range())
 		}
-	case model.StringType:
-		strVal := expr.Value.AsString()
-		if isPulumiType {
-			g.Fgenf(w, "%s(", argTypeName)
-			g.genStringLiteral(w, strVal)
-			g.Fgenf(w, ")")
-		} else {
-			g.genStringLiteral(w, strVal)
+	// handles the __convert intrinsic assuming that the union type will have an opaque type containing the dest type
+	case *model.UnionType:
+		for _, t := range destType.ElementTypes {
+			switch t := t.(type) {
+			case *model.OpaqueType:
+				g.genLiteralValueExpression(w, expr, t)
+				break
+			}
 		}
 	default:
-		contract.Failf("unexpected literal type in GenLiteralValueExpression: %v (%v)", expr.Type(),
+		contract.Failf("unexpected destType in GenLiteralValueExpression: %v (%v)", destType,
 			expr.SyntaxNode().Range())
 	}
 }
@@ -421,8 +443,6 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		}
 	}
 
-	// TODO if over input type for the rest of the types
-	// TODO support rest of types
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
 		for _, a := range destType.Annotations {
@@ -431,6 +451,11 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			}
 		}
 		switch destType {
+		case model.IntType:
+			if isInput {
+				return "pulumi.Int"
+			}
+			return "int"
 		case model.NumberType:
 			if isInput {
 				return "pulumi.Float64"
@@ -495,6 +520,15 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 	case *model.OutputType:
 		isInput = true
 		return argumentTypeName(expr, destType.ElementType, isInput)
+	case *model.UnionType:
+		// TODO replace with unionType.DefaultType
+		for _, ut := range destType.ElementTypes {
+			switch ut.(type) {
+			case *model.OpaqueType:
+				return argumentTypeName(expr, ut, isInput)
+			}
+		}
+		return "interface{}"
 	default:
 		contract.Failf("unexpected destType type %T", destType)
 	}
@@ -542,9 +576,9 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []*ternaryTemp) {
-	expr = applyInputAnnotations(expr, isInput)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
+	expr = applyInputAnnotations(expr, isInput)
 	expr, temps, ternDiags := g.rewriteTernaries(expr)
 	diags = append(diags, ternDiags...)
 	contract.Assert(len(diags) == 0)
