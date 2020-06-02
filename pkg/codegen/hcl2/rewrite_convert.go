@@ -40,8 +40,13 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 	return true
 }
 
+// rewriteConversions implements the core of RewriteConversions. It returns the rewritten expression and true if the
+// type of the expression may have changed.
 func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bool) {
+	// If rewriting an operand changed its type and the type of the expression depends on the type of that operand, the
+	// expression must be typechecked in order to update its type.
 	var typecheck bool
+
 	switch x := x.(type) {
 	case *model.AnonymousFunctionExpression:
 		x.Body, _ = rewriteConversions(x.Body, to)
@@ -115,23 +120,48 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()))
 	}
 
+	var typeChanged bool
 	if typecheck {
 		diags := x.Typecheck(false)
 		contract.Assert(len(diags) == 0)
+		typeChanged = true
 	}
 
 	// If we can convert a primitive value in place, do so.
 	if value, ok := convertPrimitiveValues(x, to); ok {
-		x = value
+		x, typeChanged = value, true
 	}
 	// If the expression's type is directly assignable to the destination type, no conversion is necessary.
 	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) {
-		return x, false
+		return x, typeChanged
 	}
 
+	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
 }
 
+// RewriteConversions wraps automatic conversions indicated by the HCL2 spec and conversions to schema-annotated types
+// in calls to the __convert intrinsic.
+//
+// Note that the result is a bit out of line with the HCL2 spec, as static conversions may happen earlier than they
+// would at runtime. For example, consider the case of a tuple of strings that is being converted to a list of numbers:
+//
+//     [a, b, c]
+//
+// Calling RewriteConversions on this expression with a destination type of list(number) would result in this IR:
+//
+//     [__convert(a), __convert(b), __convert(c)]
+//
+// If any of these conversions fail, the evaluation of the tuple itself fails. The HCL2 evaluation semantics, however,
+// would convert the tuple _after_ it has been evaluated. The IR that matches these semantics is
+//
+//     __convert([a, b, c])
+//
+// This transform uses the former representation so that it can appropriately insert calls to `__convert` in the face
+// of schema-annotated types. There is a reasonable argument to be made that RewriteConversions should not be
+// responsible for propagating schema annotations, and that this pass should be split in two: one pass would insert
+// conversions that match HCL2 evaluation semantics, and another would insert calls to some separate intrinsic in order
+// to propagate schema information.
 func RewriteConversions(x model.Expression, to model.Type) model.Expression {
 	x, _ = rewriteConversions(x, to)
 	return x
