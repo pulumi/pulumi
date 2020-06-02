@@ -1171,9 +1171,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}
 
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
-		modName := PyName(pkg.TokenToModule(token))
+	var getMod func(modName string) *modContext
+	getMod = func(modName string) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
@@ -1186,8 +1185,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 			if modName != "" {
 				parentName := path.Dir(modName)
-				if parentName == "." || parentName == "" {
-					parentName = ":index:"
+				if parentName == "." {
+					parentName = ""
 				}
 				parent := getMod(parentName)
 				parent.children = append(parent.children, mod)
@@ -1198,13 +1197,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return mod
 	}
 
+	getModFromToken := func(token string) *modContext {
+		return getMod(PyName(pkg.TokenToModule(token)))
+	}
+
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		_ = getMod(":config:")
+		_ = getMod("config")
 	}
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
 	}
 
@@ -1214,7 +1217,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	for _, f := range pkg.Functions {
-		mod := getMod(f.Token)
+		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 	}
 

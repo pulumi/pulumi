@@ -45,6 +45,8 @@ type NodePackageInfo struct {
 	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
 	// Toggle compatibility mode for a specified target.
 	Compatibility string `json:"compatibility,omitempty"`
+	// Disable support for unions in output types.
+	DisableUnionOutputTypes bool `json:"disableUnionOutputTypes,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
