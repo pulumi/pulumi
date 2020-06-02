@@ -56,6 +56,7 @@ from .resource import (
     Alias,
     Resource,
     CustomResource,
+    CustomTimeouts,
     ComponentResource,
     ProviderResource,
     ResourceOptions,
