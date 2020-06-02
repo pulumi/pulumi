@@ -5,6 +5,9 @@ CHANGELOG
 - Improve dev version detection logic
  [#4732](https://github.com/pulumi/pulumi/pull/4732)
 
+- Export `CustomTimeouts` in the Python SDK
+ [#4747](https://github.com/pulumi/pulumi/pull/4747)
+
 ---
 
 ## 2.3.0 (2020-05-27)
