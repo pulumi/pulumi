@@ -53,6 +53,7 @@ const (
 	jsonType    primitiveType = 8
 )
 
+//nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
 	case boolType:
@@ -132,13 +133,23 @@ func (*ArrayType) isType() {}
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
 	ElementTypes []Type
+	// DefaultType is the default type, if any, for the union type. This can be used by targets that do not support
+	// unions, or in positions where unions are not appropriate.
+	DefaultType Type
 }
 
 func (t *UnionType) String() string {
-	elements := make([]string, len(t.ElementTypes))
+	elements := make([]string, len(t.ElementTypes)+1)
 	for i, e := range t.ElementTypes {
 		elements[i] = e.String()
 	}
+
+	def := "default="
+	if t.DefaultType != nil {
+		def += t.DefaultType.String()
+	}
+	elements[len(elements)-1] = def
+
 	return fmt.Sprintf("Union<%v>", strings.Join(elements, ", "))
 }
 
@@ -516,8 +527,6 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 
 	switch components[1] {
-	case "config":
-		return "config"
 	case "providers":
 		return ""
 	default:
@@ -792,6 +801,21 @@ type types struct {
 	tokens  map[string]*TokenType
 }
 
+func (t *types) bindPrimitiveType(name string) (Type, error) {
+	switch name {
+	case "boolean":
+		return BoolType, nil
+	case "integer":
+		return IntType, nil
+	case "number":
+		return NumberType, nil
+	case "string":
+		return StringType, nil
+	default:
+		return nil, errors.Errorf("unknown primitive type %v", name)
+	}
+}
+
 func (t *types) bindType(spec TypeSpec) (Type, error) {
 	if spec.Ref != "" {
 		switch spec.Ref {
@@ -837,6 +861,15 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return nil, errors.New("oneOf should list at least two types")
 		}
 
+		var defaultType Type
+		if spec.Type != "" {
+			dt, err := t.bindPrimitiveType(spec.Type)
+			if err != nil {
+				return nil, err
+			}
+			defaultType = dt
+		}
+
 		elements := make([]Type, len(spec.OneOf))
 		for i, spec := range spec.OneOf {
 			e, err := t.bindType(spec)
@@ -846,7 +879,10 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			elements[i] = e
 		}
 
-		union := &UnionType{ElementTypes: elements}
+		union := &UnionType{
+			ElementTypes: elements,
+			DefaultType:  defaultType,
+		}
 		if typ, ok := t.unions[union.String()]; ok {
 			return typ, nil
 		}
@@ -855,14 +891,8 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 	}
 
 	switch spec.Type {
-	case "boolean":
-		return BoolType, nil
-	case "integer":
-		return IntType, nil
-	case "number":
-		return NumberType, nil
-	case "string":
-		return StringType, nil
+	case "boolean", "integer", "number", "string":
+		return t.bindPrimitiveType(spec.Type)
 	case "array":
 		if spec.Items == nil {
 			return nil, errors.Errorf("missing \"items\" property in type spec")
@@ -1079,7 +1109,11 @@ func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
 			return nil, errors.Errorf("type %s must be an object, not a %s", token, spec.Type)
 		}
 
-		typs.objects[token] = &ObjectType{}
+		// It's important that we set the token here. This package interns types so that they can be equality-compared
+		// for identity. Types are interned based on their string representation, and the string representation of an
+		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
+		// that reference object types (e.g. arrays, maps, unions)
+		typs.objects[token] = &ObjectType{Token: token}
 	}
 
 	// Process properties.

@@ -78,8 +78,9 @@ type modContext struct {
 	tool        string
 
 	// Name overrides set in NodeJSInfo
-	modToPkg      map[string]string // Module name -> package name
-	compatibility string            // Toggle compatibility mode for a specified target.
+	modToPkg                map[string]string // Module name -> package name
+	compatibility           string            // Toggle compatibility mode for a specified target.
+	disableUnionOutputTypes bool              // Disable unions in output types.
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -147,17 +148,24 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
-		var elements []string
-		for _, e := range t.ElementTypes {
-			t := mod.typeString(e, input, wrapInput, false, constValue)
-			if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
-				contract.Assert(t[len(t)-1] == '>')
-				// Strip off the leading `pulumi.Input<` and the trailing `>`
-				t = t[len("pulumi.Input<") : len(t)-1]
+		if !input && mod.disableUnionOutputTypes {
+			if t.DefaultType != nil {
+				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
 			}
-			elements = append(elements, t)
+			typ = "any"
+		} else {
+			var elements []string
+			for _, e := range t.ElementTypes {
+				t := mod.typeString(e, input, wrapInput, false, constValue)
+				if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
+					contract.Assert(t[len(t)-1] == '>')
+					// Strip off the leading `pulumi.Input<` and the trailing `>`
+					t = t[len("pulumi.Input<") : len(t)-1]
+				}
+				elements = append(elements, t)
+			}
+			typ = strings.Join(elements, " | ")
 		}
-		typ = strings.Join(elements, " | ")
 	default:
 		switch t {
 		case schema.BoolType:
@@ -1307,22 +1315,22 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}
 
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
-		modName := pkg.TokenToModule(token)
+	var getMod func(modName string) *modContext
+	getMod = func(modName string) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:           pkg,
-				mod:           modName,
-				tool:          tool,
-				compatibility: info.Compatibility,
+				pkg:                     pkg,
+				mod:                     modName,
+				tool:                    tool,
+				compatibility:           info.Compatibility,
+				disableUnionOutputTypes: info.DisableUnionOutputTypes,
 			}
 
 			if modName != "" {
 				parentName := path.Dir(modName)
-				if parentName == "." || parentName == "" {
-					parentName = ":index:"
+				if parentName == "." {
+					parentName = ""
 				}
 				parent := getMod(parentName)
 				parent.children = append(parent.children, mod)
@@ -1333,12 +1341,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return mod
 	}
 
-	types := &modContext{pkg: pkg, mod: "types", tool: tool}
+	getModFromToken := func(token string) *modContext {
+		return getMod(pkg.TokenToModule(token))
+	}
+
+	// Create a temporary module for type information.
+	types := &modContext{}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
 		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
-		_ = getMod(":config/config:")
+		_ = getMod("config")
 	}
 
 	outputSeen := codegen.Set{}
@@ -1348,7 +1361,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
@@ -1372,7 +1385,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	for _, f := range pkg.Functions {
-		mod := getMod(f.Token)
+		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
@@ -1399,9 +1412,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 	if len(types.types) > 0 {
-		root := modules[""]
-		root.children = append(root.children, types)
-		modules["types"] = types
+		typeDetails, typeList := types.typeDetails, types.types
+		types = getMod("types")
+		types.typeDetails, types.types = typeDetails, typeList
 	}
 
 	files := fs{}

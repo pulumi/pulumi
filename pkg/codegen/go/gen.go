@@ -1071,8 +1071,7 @@ func (pkg *pkgContext) getPkg(mod string) *pkgContext {
 // generatePackageContextMap groups resources, types, and functions into Go packages.
 func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
-	getPkg := func(token string) *pkgContext {
-		mod := pkg.TokenToModule(token)
+	getPkg := func(mod string) *pkgContext {
 		if override, ok := goInfo.ModuleToPackage[mod]; ok {
 			mod = override
 		}
@@ -1096,8 +1095,12 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		return pack
 	}
 
+	getPkgFromToken := func(token string) *pkgContext {
+		return getPkg(pkg.TokenToModule(token))
+	}
+
 	if len(pkg.Config) > 0 {
-		_ = getPkg(":config:")
+		_ = getPkg("config")
 	}
 
 	// For any optional properties, we must generate a pointer type for the corresponding property type.
@@ -1113,7 +1116,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				}
 
 				seen.add(obj.Token)
-				getPkg(obj.Token).details(obj).ptrElement = true
+				getPkgFromToken(obj.Token).details(obj).ptrElement = true
 				markOptionalPropertyTypesAsRequiringPtr(seen, obj.Properties, true)
 			}
 		}
@@ -1127,21 +1130,21 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		switch t := t.(type) {
 		case *schema.ArrayType:
 			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
-				getPkg(obj.Token).details(obj).arrayElement = true
+				getPkgFromToken(obj.Token).details(obj).arrayElement = true
 			}
 		case *schema.MapType:
 			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
-				getPkg(obj.Token).details(obj).mapElement = true
+				getPkgFromToken(obj.Token).details(obj).mapElement = true
 			}
 		case *schema.ObjectType:
-			pkg := getPkg(t.Token)
+			pkg := getPkgFromToken(t.Token)
 			pkg.types = append(pkg.types, t)
 			markOptionalPropertyTypesAsRequiringPtr(seenMap, t.Properties, false)
 		}
 	}
 
 	scanResource := func(r *schema.Resource) {
-		pkg := getPkg(r.Token)
+		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
 
 		pkg.names.add(resourceName(r))
@@ -1164,7 +1167,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	for _, f := range pkg.Functions {
-		pkg := getPkg(f.Token)
+		pkg := getPkgFromToken(f.Token)
 		pkg.functions = append(pkg.functions, f)
 
 		name := tokenToName(f.Token)
