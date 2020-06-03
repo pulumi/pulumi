@@ -21,7 +21,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("targetBucket", bucket.Loggings.ApplyT(func(loggings []s3.BucketLogging) (pulumi.String, error) {
+		ctx.Export("targetBucket", bucket.Loggings.ApplyT(func(loggings []s3.BucketLogging) (string, error) {
 			return loggings[0].TargetBucket, nil
 		}).(pulumi.StringOutput))
 		return nil

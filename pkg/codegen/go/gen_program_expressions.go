@@ -71,11 +71,8 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	}
 
 	fmt.Println(expr.Signature.ReturnType)
-	// TODO handle multiple return types for go
-	// TODO deterime from ambient context
-	isInput := false
+	isInput := isInputty(expr.Signature.ReturnType)
 	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
-	// TODO: --------BUG---------
 	g.Fgenf(w, ") (%s, error) {\n", retType)
 	g.Fgenf(w, "return %v, nil", expr.Body)
 	g.Fgenf(w, "\n}")
@@ -592,15 +589,14 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := hcl2.ParseApplyCall(expr)
+	then = stripInputAnnotations(then).(*model.AnonymousFunctionExpression)
 	isInput := false
 	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
+	typeAssertion := fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
-		// TODO --- BUG here we may need to strip out the IntrinsicInput annotation of the return type,
-		// otherwise we migth need to make isInput a bool pointer
 		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
 	} else {
 		// TODO

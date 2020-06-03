@@ -9,11 +9,40 @@ func applyInputAnnotations(x model.Expression, isInput bool) model.Expression {
 	if !isInput {
 		return x
 	}
+	return modifyInputAnnotations(x, applyInput)
+}
 
+func stripInputAnnotations(x model.Expression) model.Expression {
+	return modifyInputAnnotations(x, stripInput)
+}
+
+func stripInput(annotations []interface{}) []interface{} {
+	var stripped []interface{}
+	for _, a := range annotations {
+		if a != hcl2.IntrinsicInput {
+			stripped = append(stripped, a)
+		}
+	}
+	return stripped
+}
+
+func applyInput(annotations []interface{}) []interface{} {
+	return append(annotations, hcl2.IntrinsicInput)
+}
+
+func modifyInputAnnotations(
+	x model.Expression,
+	modf func([]interface{}) []interface{},
+) model.Expression {
 	switch x := x.(type) {
+	case *model.AnonymousFunctionExpression:
+		switch rt := x.Signature.ReturnType.(type) {
+		case *model.OpaqueType:
+			rt.Annotations = modf(rt.Annotations)
+		}
 	case *model.FunctionCallExpression:
 		for _, arg := range x.Args {
-			applyInputAnnotations(arg, isInput)
+			modifyInputAnnotations(arg, modf)
 		}
 		switch x.Name {
 		// for __convert calls we rely on an opaqueType to be present in the union return type
@@ -23,7 +52,7 @@ func applyInputAnnotations(x model.Expression, isInput bool) model.Expression {
 				for _, t := range rt.ElementTypes {
 					switch t := t.(type) {
 					case *model.OpaqueType:
-						t.Annotations = append(t.Annotations, hcl2.IntrinsicInput)
+						t.Annotations = modf(t.Annotations)
 					}
 				}
 			}
@@ -32,7 +61,7 @@ func applyInputAnnotations(x model.Expression, isInput bool) model.Expression {
 		t := x.Type()
 		switch t := t.(type) {
 		case *model.OpaqueType:
-			t.Annotations = append(t.Annotations, hcl2.IntrinsicInput)
+			t.Annotations = modf(t.Annotations)
 		}
 	}
 
