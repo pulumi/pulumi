@@ -1436,7 +1436,7 @@ type LanguageProperty struct {
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
 // key is the resource schema token.
-func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error) {
 	resources := map[string]LanguageResource{}
 
 	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
@@ -1444,15 +1444,12 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, err := generateModuleContextMap("", pkg, info)
 	if err != nil {
 		return nil, err
 	}
 
 	for modName, mod := range modules {
-		if modName == "" {
-			continue
-		}
 		for _, r := range mod.resources {
 			packagePath := strings.Replace(modName, "/", ".", -1)
 			lr := LanguageResource{
