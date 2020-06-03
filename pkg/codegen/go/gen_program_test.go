@@ -27,7 +27,8 @@ func TestGenProgram(t *testing.T) {
 			continue
 		}
 		// TODO: include all test files
-		if filepath.Base(f.Name()) != "aws-s3-logging.pp" {
+		if filepath.Base(f.Name()) != "aws-s3-logging.pp" ||
+			filepath.Base(f.Name()) != "aws-fargate.pp" {
 			continue
 		}
 

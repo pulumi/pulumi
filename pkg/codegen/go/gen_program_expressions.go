@@ -165,17 +165,22 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
 	case hcl2.Invoke:
-		g.genNYI(w, "call %v", expr.Name)
-		// _, name := g.functionName(expr.Args[0])
+		_, module, fn, diags := functionName(expr.Args[0])
+		contract.Assert(len(diags) == 0)
+		name := fmt.Sprintf("%s.%s", module, fn)
 
-		// optionsBag := ""
-		// if len(expr.Args) == 3 {
-		// 	var buf bytes.Buffer
-		// 	g.Fgenf(&buf, ", %.v", expr.Args[2])
-		// 	optionsBag = buf.String()
-		// }
+		optionsBag := ""
+		var buf bytes.Buffer
+		if len(expr.Args) == 3 {
+			g.Fgenf(&buf, ", %.v", expr.Args[2])
+		} else {
+			g.Fgenf(&buf, ", nil")
+		}
+		optionsBag = buf.String()
 
-		// g.Fgenf(w, "%s.InvokeAsync(%.v%v)", name, expr.Args[1], optionsBag)
+		g.Fgenf(w, "%s(ctx, ", name)
+		g.Fgenf(w, "%.v", expr.Args[1])
+		g.Fgenf(w, "%v)", optionsBag)
 	case "length":
 		g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
@@ -279,7 +284,13 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		if strings.HasSuffix(typeName, "Args") {
 			isInput = true
 		}
+		// invokes are not inputty
+		if strings.Contains(typeName, ".Lookup") {
+			isInput = false
+		}
 		isMap := strings.HasPrefix(typeName, "map[")
+
+		// TODO: retrieve schema and propagate optionals to emit bool ptr, etc.
 
 		// first lower all inner expressions and emit temps
 		for i, item := range expr.Items {
@@ -445,7 +456,12 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
-			fmtString := "[]%s.%s"
+			member = Title(member)
+			if strings.HasPrefix(member, "Get") {
+				member = strings.Replace(member, "Get", "Lookup", 1)
+				return fmt.Sprintf("%s.%s", importPrefix, member)
+			}
+			fmtString := "%s.%s"
 			if isInput {
 				fmtString = "%s.%sArgs"
 			}
@@ -687,4 +703,20 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	}
 
 	return strKey, true
+}
+
+// functionName computes the go package, module, and name for the given function token.
+func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	tokenRange := tokenArg.SyntaxNode().Range()
+
+	// Compute the resource type from the Pulumi type token.
+	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	// GetResource -> LookupResource
+	// TODO figure out how to deal with get/lookup ambiguity
+	// https://github.com/pulumi/pulumi/blob/adfa8116fbf61ad328568fe4b53e32c751f30553/pkg/codegen/go/gen.go#L1171
+	if strings.HasPrefix(member, "get") {
+		member = strings.Replace(member, "get", "lookup", 1)
+	}
+	return pkg, strings.Replace(module, "/", ".", -1), Title(member), diagnostics
 }

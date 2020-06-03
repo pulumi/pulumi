@@ -113,11 +113,11 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 		g.genResource(w, n)
 	case *hcl2.OutputVariable:
 		g.genOutputAssignment(w, n)
-		// TODO
-		// case *hcl2.ConfigVariable:
-		// 	g.genConfigVariable(w, n)
-		// case *hcl2.LocalVariable:
-		// 	g.genLocalVariable(w, n)
+	// TODO
+	// case *hcl2.ConfigVariable:
+	// 	g.genConfigVariable(w, n)
+	case *hcl2.LocalVariable:
+		g.genLocalVariable(w, n)
 	}
 }
 
@@ -173,4 +173,24 @@ func (g *generator) genTemps(w io.Writer, temps []*ternaryTemp) {
 		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
 		g.Fgenf(w, "}\n")
 	}
+}
+
+func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+	isInput := false
+	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
+	g.genTemps(w, temps)
+	switch expr := expr.(type) {
+	case *model.FunctionCallExpression:
+		switch expr.Name {
+		case hcl2.Invoke:
+			g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+		}
+	default:
+		g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+
+	}
+
 }
