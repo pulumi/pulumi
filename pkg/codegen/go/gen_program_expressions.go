@@ -332,14 +332,29 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	// }
 
 	g.Fgen(w, rootName)
+	genIDCall := false
 
 	var objType *schema.ObjectType
 	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
 		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
 			objType, _ = schemaType.(*schema.ObjectType)
+			// convert .id into .ID()
+			last := expr.Traversal[len(expr.Traversal)-1]
+			switch last := last.(type) {
+			case hcl.TraverseAttr:
+				if last.Name == "id" {
+					genIDCall = true
+					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+				}
+
+			}
 		}
 	}
+
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+	if genIDCall {
+		g.Fgenf(w, ".ID()")
+	}
 }
 
 // GenSplatExpression generates code for a SplatExpression.
