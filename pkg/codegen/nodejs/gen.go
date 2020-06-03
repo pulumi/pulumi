@@ -78,7 +78,9 @@ type modContext struct {
 	tool        string
 
 	// Name overrides set in NodeJSInfo
-	modToPkg map[string]string // Module name -> package name
+	modToPkg                map[string]string // Module name -> package name
+	compatibility           string            // Toggle compatibility mode for a specified target.
+	disableUnionOutputTypes bool              // Disable unions in output types.
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -146,17 +148,24 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
-		var elements []string
-		for _, e := range t.ElementTypes {
-			t := mod.typeString(e, input, wrapInput, false, constValue)
-			if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
-				contract.Assert(t[len(t)-1] == '>')
-				// Strip off the leading `pulumi.Input<` and the trailing `>`
-				t = t[len("pulumi.Input<") : len(t)-1]
+		if !input && mod.disableUnionOutputTypes {
+			if t.DefaultType != nil {
+				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
 			}
-			elements = append(elements, t)
+			typ = "any"
+		} else {
+			var elements []string
+			for _, e := range t.ElementTypes {
+				t := mod.typeString(e, input, wrapInput, false, constValue)
+				if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
+					contract.Assert(t[len(t)-1] == '>')
+					// Strip off the leading `pulumi.Input<` and the trailing `>`
+					t = t[len("pulumi.Input<") : len(t)-1]
+				}
+				elements = append(elements, t)
+			}
+			typ = strings.Join(elements, " | ")
 		}
-		typ = strings.Join(elements, " | ")
 	default:
 		switch t {
 		case schema.BoolType:
@@ -425,7 +434,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			outcomment = "/*out*/ "
 		}
 
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !prop.IsRequired, nil))
+		required := prop.IsRequired
+		if mod.compatibility == kubernetes20 {
+			required = true
+		}
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !required, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -437,6 +450,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "     * @param args The arguments to use to populate this resource's properties.\n")
 	fmt.Fprintf(w, "     * @param opts A bag of options that control this resource's behavior.\n")
 	fmt.Fprintf(w, "     */\n")
+
+	// k8s provider "get" methods don't require args, so make args optional.
+	if mod.compatibility == kubernetes20 {
+		allOptionalInputs = true
+	}
 
 	// Write out callable constructor: We only emit a single public constructor, even though we use a private signature
 	// as well as part of the implementation of `.get`. This is complicated slightly by the fact that, if there is no
@@ -682,8 +700,33 @@ func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen code
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
+	properties := obj.Properties
+	info, hasInfo := obj.Language["nodejs"]
+	if hasInfo {
+		var requiredProperties []string
+		if input {
+			requiredProperties = info.(NodeObjectInfo).RequiredInputs
+		} else {
+			requiredProperties = info.(NodeObjectInfo).RequiredOutputs
+		}
+
+		if requiredProperties != nil {
+			required := codegen.StringSet{}
+			for _, name := range requiredProperties {
+				required.Add(name)
+			}
+
+			properties = make([]*schema.Property, len(obj.Properties))
+			for i, p := range obj.Properties {
+				copy := *p
+				properties[i] = &copy
+				properties[i].IsRequired = required.Has(p.Name)
+			}
+		}
+	}
+
 	wrapInput := input && !mod.details(obj).functionType
-	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, obj.Properties, input, wrapInput, false, level)
+	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, properties, input, wrapInput, false, level)
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {
@@ -944,6 +987,21 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
+func (mod *modContext) isReservedSourceFileName(name string) bool {
+	switch name {
+	case "index.ts":
+		return true
+	case "input.ts", "output.ts":
+		return len(mod.types) != 0
+	case "utilities.ts":
+		return mod.mod == ""
+	case "vars.ts":
+		return len(mod.pkg.Config) > 0
+	default:
+		return false
+	}
+}
+
 func (mod *modContext) gen(fs fs) error {
 	var files []string
 	for p := range fs {
@@ -962,24 +1020,26 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(p, []byte(contents))
 	}
 
-	// Ensure that the target module directory contains a README.md file.
-	readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
-	if readme == "" {
-		readme = mod.pkg.Description
+	// Ensure that the top-level (provider) module directory contains a README.md file.
+	if mod.mod == "" {
+		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
+		if readme == "" {
+			readme = mod.pkg.Description
+			if readme != "" && readme[len(readme)-1] != '\n' {
+				readme += "\n"
+			}
+			if mod.pkg.Attribution != "" {
+				if len(readme) != 0 {
+					readme += "\n"
+				}
+				readme += mod.pkg.Attribution
+			}
+		}
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
-		if mod.pkg.Attribution != "" {
-			if len(readme) != 0 {
-				readme += "\n"
-			}
-			readme += mod.pkg.Attribution
-		}
+		fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
 	}
-	if readme != "" && readme[len(readme)-1] != '\n' {
-		readme += "\n"
-	}
-	fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
 
 	// Utilities, config
 	switch mod.mod {
@@ -1010,7 +1070,11 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(camel(resourceName(r))+".ts", buffer.String())
+		fileName := camel(resourceName(r)) + ".ts"
+		if mod.isReservedSourceFileName(fileName) {
+			fileName = camel(resourceName(r)) + "_.ts"
+		}
+		addFile(fileName, buffer.String())
 	}
 
 	// Functions
@@ -1023,7 +1087,11 @@ func (mod *modContext) gen(fs fs) error {
 
 		mod.genFunction(buffer, f)
 
-		addFile(camel(tokenToName(f.Token))+".ts", buffer.String())
+		fileName := camel(tokenToName(f.Token)) + ".ts"
+		if mod.isReservedSourceFileName(fileName) {
+			fileName = camel(tokenToName(f.Token)) + "_.ts"
+		}
+		addFile(fileName, buffer.String())
 	}
 
 	// Nested types
@@ -1247,21 +1315,22 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// group resources, types, and functions into Go packages
 	modules := map[string]*modContext{}
 
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
-		modName := pkg.TokenToModule(token)
+	var getMod func(modName string) *modContext
+	getMod = func(modName string) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:  pkg,
-				mod:  modName,
-				tool: tool,
+				pkg:                     pkg,
+				mod:                     modName,
+				tool:                    tool,
+				compatibility:           info.Compatibility,
+				disableUnionOutputTypes: info.DisableUnionOutputTypes,
 			}
 
 			if modName != "" {
 				parentName := path.Dir(modName)
-				if parentName == "." || parentName == "" {
-					parentName = ":index:"
+				if parentName == "." {
+					parentName = ""
 				}
 				parent := getMod(parentName)
 				parent.children = append(parent.children, mod)
@@ -1272,11 +1341,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return mod
 	}
 
-	types := &modContext{pkg: pkg, mod: "types", tool: tool}
+	getModFromToken := func(token string) *modContext {
+		return getMod(pkg.TokenToModule(token))
+	}
+
+	// Create a temporary module for type information.
+	types := &modContext{}
 
 	// Create the config module if necessary.
-	if len(pkg.Config) > 0 {
-		_ = getMod(":config:")
+	if len(pkg.Config) > 0 &&
+		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
+		_ = getMod("config")
 	}
 
 	outputSeen := codegen.Set{}
@@ -1286,7 +1361,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
@@ -1310,7 +1385,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	for _, f := range pkg.Functions {
-		mod := getMod(f.Token)
+		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
@@ -1337,9 +1412,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 	if len(types.types) > 0 {
-		root := modules[""]
-		root.children = append(root.children, types)
-		modules["types"] = types
+		typeDetails, typeList := types.typeDetails, types.types
+		types = getMod("types")
+		types.typeDetails, types.types = typeDetails, typeList
 	}
 
 	files := fs{}

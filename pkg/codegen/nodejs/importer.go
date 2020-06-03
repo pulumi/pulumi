@@ -20,7 +20,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
-// NodePackageInfo contains NodeJS specific overrides for a package.
+// Compatibility mode for Kubernetes 2.0 SDK
+const kubernetes20 = "kubernetes20"
+
+// NodePackageInfo contains NodeJS-specific information for a package.
 type NodePackageInfo struct {
 	// Custom name for the NPM package.
 	PackageName string `json:"packageName,omitempty"`
@@ -40,6 +43,18 @@ type NodePackageInfo struct {
 	TypeScriptVersion string `json:"typescriptVersion,omitempty"`
 	// A map containing overrides for module names to package names.
 	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
+	// Toggle compatibility mode for a specified target.
+	Compatibility string `json:"compatibility,omitempty"`
+	// Disable support for unions in output types.
+	DisableUnionOutputTypes bool `json:"disableUnionOutputTypes,omitempty"`
+}
+
+// NodeObjectInfo contains NodeJS-specific information for an object.
+type NodeObjectInfo struct {
+	// List of properties that are required on the input side of a type.
+	RequiredInputs []string `json:"requiredInputs"`
+	// List of properties that are required on the output side of a type.
+	RequiredOutputs []string `json:"requiredOutputs"`
 }
 
 // Importer implements schema.Language for NodeJS.
@@ -59,7 +74,11 @@ func (importer) ImportPropertySpec(property *schema.Property, raw json.RawMessag
 
 // ImportObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
 func (importer) ImportObjectTypeSpec(object *schema.ObjectType, raw json.RawMessage) (interface{}, error) {
-	return raw, nil
+	var info NodeObjectInfo
+	if err := json.Unmarshal([]byte(raw), &info); err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 // ImportResourceSpec decodes language-specific metadata associated with a Resource.

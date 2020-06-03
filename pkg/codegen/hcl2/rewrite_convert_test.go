@@ -86,6 +86,23 @@ func TestRewriteConversions(t *testing.T) {
 			output: `["a"][__convert(i)]`,
 			to:     model.StringType,
 		},
+		{
+			input:  `42`,
+			output: `__convert(42)`,
+			to:     model.IntType,
+		},
+		{
+			input:  `"42"`,
+			output: `__convert(42)`,
+			to:     model.IntType,
+		},
+		{
+			input:  `{a: 42}`,
+			output: `{a: __convert( 42)}`,
+			to: model.NewObjectType(map[string]model.Type{
+				"a": model.IntType,
+			}),
+		},
 	}
 
 	scope := model.NewRootScope(syntax.None)

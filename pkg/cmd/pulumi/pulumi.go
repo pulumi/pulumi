@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -501,7 +502,8 @@ func isDevVersion(s semver.Version) bool {
 		return false
 	}
 
-	return !s.Pre[0].IsNum && strings.HasPrefix("dev", s.Pre[0].VersionStr)
+	devStrings := regexp.MustCompile(`alpha|beta|dev|rc`)
+	return !s.Pre[0].IsNum && devStrings.MatchString(s.Pre[0].VersionStr)
 }
 
 func confirmPrompt(prompt string, name string, opts display.Options) bool {

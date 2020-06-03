@@ -1375,9 +1375,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	assemblyName := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
 
-	var getMod func(token string) *modContext
-	getMod = func(token string) *modContext {
-		modName := pkg.TokenToModule(token)
+	var getMod func(modName string) *modContext
+	getMod = func(modName string) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			ns := assemblyName
@@ -1398,8 +1397,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 			if modName != "" {
 				parentName := path.Dir(modName)
-				if parentName == "." || parentName == "" {
-					parentName = ":index:"
+				if parentName == "." {
+					parentName = ""
 				}
 				parent := getMod(parentName)
 				parent.children = append(parent.children, mod)
@@ -1410,35 +1409,41 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return mod
 	}
 
+	getModFromToken := func(token string) *modContext {
+		return getMod(pkg.TokenToModule(token))
+	}
+
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		cfg := getMod(":config:")
+		cfg := getMod("config")
 		cfg.namespaceName = assemblyName
 	}
 
 	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getMod(t.Token).details(t).outputType = true })
+		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getModFromToken(t.Token).details(t).outputType = true })
 	}
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(r.Token)
+		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { getMod(t.Token).details(t).outputType = true })
+			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
+				getModFromToken(t.Token).details(t).outputType = true
+			})
 		}
 		for _, p := range r.InputProperties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
-					getMod(t.Token).details(t).outputType = true
+					getModFromToken(t.Token).details(t).outputType = true
 				}
-				getMod(t.Token).details(t).inputType = true
+				getModFromToken(t.Token).details(t).inputType = true
 			})
 		}
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
-				getMod(t.Token).details(t).inputType = true
-				getMod(t.Token).details(t).stateType = true
+				getModFromToken(t.Token).details(t).inputType = true
+				getModFromToken(t.Token).details(t).stateType = true
 			})
 		}
 	}
@@ -1450,18 +1455,18 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getMod(f.Token)
+		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
-				getMod(t.Token).details(t).inputType = true
-				getMod(t.Token).details(t).functionType = true
+				getModFromToken(t.Token).details(t).inputType = true
+				getModFromToken(t.Token).details(t).functionType = true
 			})
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
-				getMod(t.Token).details(t).outputType = true
-				getMod(t.Token).details(t).functionType = true
+				getModFromToken(t.Token).details(t).outputType = true
+				getModFromToken(t.Token).details(t).functionType = true
 			})
 		}
 	}
@@ -1469,7 +1474,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// Find nested types.
 	for _, t := range pkg.Types {
 		if obj, ok := t.(*schema.ObjectType); ok {
-			mod := getMod(obj.Token)
+			mod := getModFromToken(obj.Token)
 			mod.types = append(mod.types, obj)
 		}
 	}

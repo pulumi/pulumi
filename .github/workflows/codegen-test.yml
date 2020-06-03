@@ -170,3 +170,36 @@ jobs:
           use-provider-dir: true
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
+
+  downstream-kubernetes:
+    name: Test Kubernetes Downstream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14.x
+      - name: Install Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '10.x'
+      - name: Install Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6.10
+      - name: Install Pulumi CLI
+        uses: pulumi/action-install-pulumi-cli@releases/v1
+
+      - name: Check out source code
+        uses: actions/checkout@master
+      - name: Test Downstream
+        uses: pulumi/action-test-provider-downstream@releases/v4
+        env:
+          GOPROXY: "https://proxy.golang.org"
+        with:
+          replacements: github.com/pulumi/pulumi/pkg/v2=pulumi/pkg,github.com/pulumi/pulumi/sdk/v2=pulumi/sdk
+          downstream-name: pulumi-kubernetes
+          downstream-url: https://github.com/pulumi/pulumi-kubernetes
+          use-provider-dir: true
+          pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          github-actions-token: ${{ secrets.GITHUB_TOKEN }}
