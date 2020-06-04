@@ -725,3 +725,11 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	}
 	return pkg, strings.Replace(module, "/", ".", -1), Title(member), diagnostics
 }
+
+var functionPackages = map[string][]string{
+	"toJSON": {"encoding/json"},
+}
+
+func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
+	return functionPackages[x.Name]
+}

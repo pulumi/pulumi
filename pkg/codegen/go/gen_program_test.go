@@ -73,9 +73,12 @@ func TestGenProgram(t *testing.T) {
 func TestCollectImports(t *testing.T) {
 	g := newTestGenerator(t, "aws-s3-logging.pp")
 	var index bytes.Buffer
-	imports := g.collectImports(&index, g.program).SortedValues()
-	assert.Equal(t, 1, len(imports))
-	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk/v2/go/aws/s3", imports[0])
+	stdImports, pulumiImports := g.collectImports(&index, g.program)
+	stdVals := stdImports.SortedValues()
+	pulumiVals := pulumiImports.SortedValues()
+	assert.Equal(t, 0, len(stdVals))
+	assert.Equal(t, 1, len(pulumiVals))
+	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk/v2/go/aws/s3", pulumiVals[0])
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {

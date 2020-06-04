@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type generator struct {
@@ -59,24 +60,31 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
-	g.Fprint(w, "package main\n")
-
-	imports := g.collectImports(w, program)
+	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
-	// TODO imports for function calls like encoding/json
-	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
-	for _, pkg := range imports.SortedValues() {
-		g.Fprintf(w, "\"%s\"\n", pkg)
-	}
-	g.Fprintf(w, ")\n")
 
+	stdImports, pulumiImports := g.collectImports(w, program)
+	for _, imp := range stdImports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", imp)
+	}
+
+	g.Fprintf(w, "\n")
+	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+
+	for _, imp := range pulumiImports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", imp)
+	}
+
+	g.Fprintf(w, ")\n")
 	g.Fprintf(w, "func main() {\n")
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 }
 
-func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.StringSet {
+// collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
+func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	pulumiImports := codegen.NewStringSet()
+	stdImports := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, mod, _, _ := r.DecomposeToken()
@@ -99,9 +107,19 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.S
 
 			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
 		}
+
+		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+			if call, ok := n.(*model.FunctionCallExpression); ok {
+				for _, fnPkg := range g.genFunctionPackages(call) {
+					stdImports.Add(fnPkg)
+				}
+			}
+			return n, nil
+		})
+		contract.Assert(len(diags) == 0)
 	}
 
-	return pulumiImports
+	return stdImports, pulumiImports
 }
 
 // genPostamble closes the method

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ecs"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/elasticloadbalancingv2"
