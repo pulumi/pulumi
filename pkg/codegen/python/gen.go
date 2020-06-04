@@ -361,7 +361,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.Comment != "" {
 			doc := prop.Comment
 
-			nested := nestedStructure(prop.Type)
+			seenTypes := codegen.Set{}
+			nested := nestedStructure(prop.Type, seenTypes)
 			if len(nested) > 0 {
 				doc = fmt.Sprintf("%s\n", doc)
 
@@ -977,8 +978,9 @@ func (mod *modContext) genPropDocstring(w io.Writer, prop *schema.Property, wrap
 func (mod *modContext) genNestedStructuresDocstring(w io.Writer, props []*schema.Property, wrapInput bool) {
 	var names []string
 	nestedMap := make(map[string][]*nestedVariable)
+	seenTypes := codegen.Set{}
 	for _, prop := range props {
-		nested := nestedStructure(prop.Type)
+		nested := nestedStructure(prop.Type, seenTypes)
 		if len(nested) > 0 {
 			nestedMap[prop.Name] = nested
 			names = append(names, prop.Name)
@@ -1043,16 +1045,20 @@ type nestedVariable struct {
 	nested []*nestedVariable
 }
 
-func nestedStructure(typ schema.Type) []*nestedVariable {
+func nestedStructure(typ schema.Type, seen codegen.Set) []*nestedVariable {
+	if seen.Has(typ) {
+		return nil
+	}
+	seen.Add(typ)
 	switch typ := typ.(type) {
 	case *schema.ArrayType:
-		return nestedStructure(typ.ElementType)
+		return nestedStructure(typ.ElementType, seen)
 	case *schema.ObjectType:
 		nested := make([]*nestedVariable, len(typ.Properties))
 		for i, p := range typ.Properties {
 			nested[i] = &nestedVariable{
 				prop:   p,
-				nested: nestedStructure(p.Type),
+				nested: nestedStructure(p.Type, seen),
 			}
 		}
 		return nested
