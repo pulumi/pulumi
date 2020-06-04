@@ -843,6 +843,21 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes ma
 	}
 }
 
+// configGetter returns the name of the config.get* method used for a configuration variable and the cast necessary
+// for the result of the call, if any.
+func (mod *modContext) configGetter(v *schema.Property) (string, string) {
+	if v.Type == schema.StringType {
+		return "get", ""
+	}
+
+	if tok, ok := v.Type.(*schema.TokenType); ok && tok.UnderlyingType == schema.StringType {
+		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, nil))
+	}
+
+	// Only try to parse a JSON object if the config isn't a straight string.
+	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, nil)), ""
+}
+
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
 	imports := map[string]codegen.StringSet{}
 	mod.getImports(variables, imports)
@@ -855,15 +870,11 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		getfunc := "get"
-		if p.Type != schema.StringType {
-			// Only try to parse a JSON object if the config isn't a straight string.
-			getfunc = fmt.Sprintf("getObject<%s>", mod.typeString(p.Type, false, false, false, nil))
-		}
+		getfunc, cast := mod.configGetter(p)
 
 		printComment(w, p.Comment, "", "")
 
-		configFetch := fmt.Sprintf("__config.%s(\"%s\")", getfunc, p.Name)
+		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		if p.DefaultValue != nil {
 			v, err := mod.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
