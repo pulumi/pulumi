@@ -198,10 +198,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgen(w, "JsonSerializer.Serialize(")
-		// g.genDictionary(w, expr.Args[0])
-		// g.Fgen(w, ")")
+		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -278,7 +275,7 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) > 0 {
-		var temps []*ternaryTemp
+		var temps []interface{}
 		isInput := isInputty(destType)
 		typeName := argumentTypeName(expr, destType, isInput)
 		if strings.HasSuffix(typeName, "Args") {
@@ -399,7 +396,7 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		isInput = true
 	}
 
-	var temps []*ternaryTemp
+	var temps []interface{}
 	for i, item := range expr.Expressions {
 		item, itemTemps := g.lowerExpression(item, item.Type(), isInput)
 		temps = append(temps, itemTemps...)
@@ -549,7 +546,6 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		isInput = true
 		return argumentTypeName(expr, destType.ElementType, isInput)
 	case *model.UnionType:
-		// TODO replace with unionType.DefaultType
 		for _, ut := range destType.ElementTypes {
 			switch ut.(type) {
 			case *model.OpaqueType:
@@ -603,12 +599,21 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
-	model.Expression, []*ternaryTemp) {
+	model.Expression, []interface{}) {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
 	expr = applyInputAnnotations(expr, isInput)
-	expr, temps, ternDiags := g.rewriteTernaries(expr)
+	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
+	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
+	var temps []interface{}
+	for _, t := range tTemps {
+		temps = append(temps, t)
+	}
+	for _, t := range jTemps {
+		temps = append(temps, t)
+	}
 	diags = append(diags, ternDiags...)
+	diags = append(diags, jsonDiags...)
 	contract.Assert(len(diags) == 0)
 	return expr, temps
 }

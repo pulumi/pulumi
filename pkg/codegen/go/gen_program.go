@@ -18,8 +18,10 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program     *hcl2.Program
-	diagnostics hcl.Diagnostics
+	program            *hcl2.Program
+	diagnostics        hcl.Diagnostics
+	jsonTempSpiller    *jsonSpiller
+	ternaryTempSpiller *tempSpiller
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -27,7 +29,9 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program: program,
+		program:            program,
+		jsonTempSpiller:    &jsonSpiller{count: 0},
+		ternaryTempSpiller: &tempSpiller{count: 0},
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -59,6 +63,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 
 	imports := g.collectImports(w, program)
 	g.Fprintf(w, "import (\n")
+	// TODO imports for function calls like encoding/json
 	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
 	for _, pkg := range imports.SortedValues() {
 		g.Fprintf(w, "\"%s\"\n", pkg)
@@ -161,17 +166,28 @@ func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
 	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
 }
 
-func (g *generator) genTemps(w io.Writer, temps []*ternaryTemp) {
+func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 	for _, t := range temps {
-
-		// TODO derive from ambient context
-		isInput := false
-		g.Fgenf(w, "var %s %s\n", t.Name, argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
-		g.Fgenf(w, "if %.v {\n", t.Value.Condition)
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
-		g.Fgenf(w, "} else {\n")
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
-		g.Fgenf(w, "}\n")
+		switch t := t.(type) {
+		case *ternaryTemp:
+			// TODO derive from ambient context
+			isInput := false
+			g.Fgenf(w, "var %s %s\n", t.Name, argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+			g.Fgenf(w, "if %.v {\n", t.Value.Condition)
+			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
+			g.Fgenf(w, "} else {\n")
+			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
+			g.Fgenf(w, "}\n")
+		case *jsonTemp:
+			bytesVar := fmt.Sprintf("tmp%s", strings.ToUpper(t.Name))
+			g.Fgenf(w, "%s, err := json.Marshal(", bytesVar)
+			args := stripInputAnnotations(t.Value.Args[0])
+			g.Fgenf(w, "%.v)\n", args)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+			g.Fgenf(w, "%s := string(%s)\n", t.Name, bytesVar)
+		}
 	}
 }
 

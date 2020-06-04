@@ -52,8 +52,25 @@ func main() {
 		if err != nil {
 			return err
 		}
+		tmpJSON0, err := json.Marshal(map[string]interface{}{
+			"Version": "2008-10-17",
+			"Statement": []map[string]interface{}{
+				map[string]interface{}{
+					"Sid":    "",
+					"Effect": "Allow",
+					"Principal": map[string]interface{}{
+						"Service": "ecs-tasks.amazonaws.com",
+					},
+					"Action": "sts:AssumeRole",
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		json0 := string(tmpJSON0)
 		taskExecRole, err := iam.NewRole(ctx, "taskExecRole", &iam.RoleArgs{
-			AssumeRolePolicy: "TODO: call toJSON",
+			AssumeRolePolicy: json0,
 		})
 		if err != nil {
 			return err
@@ -96,16 +113,33 @@ func main() {
 		if err != nil {
 			return err
 		}
+		tmpJSON1, err := json.Marshal([]map[string]interface{}{
+			map[string]interface{}{
+				"name":  "my-app",
+				"image": "nginx",
+				"portMappings": []map[string]interface{}{
+					map[string]interface{}{
+						"containerPort": 80,
+						"hostPort":      80,
+						"protocol":      "tcp",
+					},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		json1 := string(tmpJSON1)
 		appTask, err := ecs.NewTaskDefinition(ctx, "appTask", &ecs.TaskDefinitionArgs{
-			Family:      pulumi.String("fargate-task-definition"),
-			Cpu:         pulumi.String("256"),
-			Memory:      pulumi.String("512"),
-			NetworkMode: pulumi.String("awsvpc"),
-			RequiresCompatibilities: pulumi.StringArray{
-				pulumi.String("FARGATE"),
+			Family:      "fargate-task-definition",
+			Cpu:         "256",
+			Memory:      "512",
+			NetworkMode: "awsvpc",
+			RequiresCompatibilities: []string{
+				"FARGATE",
 			},
 			ExecutionRoleArn:     taskExecRole.Arn,
-			ContainerDefinitions: "TODO: call toJSON",
+			ContainerDefinitions: json1,
 		})
 		if err != nil {
 			return err

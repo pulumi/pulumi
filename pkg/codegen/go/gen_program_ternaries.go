@@ -28,6 +28,7 @@ func (tt *ternaryTemp) SyntaxNode() hclsyntax.Node {
 
 type tempSpiller struct {
 	temps []*ternaryTemp
+	count int
 }
 
 func (ta *tempSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -39,10 +40,11 @@ func (ta *tempSpiller) spillExpression(x model.Expression) (model.Expression, hc
 		x.FalseResult, _ = ta.spillExpression(x.FalseResult)
 
 		temp = &ternaryTemp{
-			Name:  fmt.Sprintf("tmp%d", len(ta.temps)),
+			Name:  fmt.Sprintf("tmp%d", ta.count),
 			Value: x,
 		}
 		ta.temps = append(ta.temps, temp)
+		ta.count++
 	default:
 		return x, nil
 	}
@@ -53,8 +55,11 @@ func (ta *tempSpiller) spillExpression(x model.Expression) (model.Expression, hc
 	}, nil
 }
 
-func (g *generator) rewriteTernaries(x model.Expression) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
-	spiller := &tempSpiller{}
+func (g *generator) rewriteTernaries(
+	x model.Expression,
+	spiller *tempSpiller,
+) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
+	spiller.temps = nil
 	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
 
 	return x, spiller.temps, diags

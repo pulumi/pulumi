@@ -41,8 +41,8 @@ func modifyInputAnnotations(
 			rt.Annotations = modf(rt.Annotations)
 		}
 	case *model.FunctionCallExpression:
-		for _, arg := range x.Args {
-			modifyInputAnnotations(arg, modf)
+		for i, arg := range x.Args {
+			x.Args[i] = modifyInputAnnotations(arg, modf)
 		}
 		switch x.Name {
 		// for __convert calls we rely on an opaqueType to be present in the union return type
@@ -57,11 +57,26 @@ func modifyInputAnnotations(
 				}
 			}
 		}
+	case *model.TemplateExpression:
+		if len(x.Parts) == 1 {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+				x.Parts[0] = modifyInputAnnotations(x.Parts[0], modf)
+			}
+		}
 	case *model.LiteralValueExpression:
 		t := x.Type()
 		switch t := t.(type) {
 		case *model.OpaqueType:
 			t.Annotations = modf(t.Annotations)
+		}
+	case *model.ObjectConsExpression:
+		for _, item := range x.Items {
+			item.Key = modifyInputAnnotations(item.Key, modf)
+			item.Value = modifyInputAnnotations(item.Value, modf)
+		}
+	case *model.TupleConsExpression:
+		for i, item := range x.Expressions {
+			x.Expressions[i] = modifyInputAnnotations(item, modf)
 		}
 	}
 
