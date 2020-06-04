@@ -294,6 +294,12 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
 		fmt.Fprintf(w, "            raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
+		if prop.DeprecationMessage != "" {
+			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", prop.DeprecationMessage)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, prop.DeprecationMessage)
+		}
+
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
 		fmt.Fprintf(w, "        __self__.%[1]s = %[1]s\n", pname)
 		printComment(w, prop.Comment, "        ")
@@ -423,6 +429,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.IsRequired {
 			fmt.Fprintf(w, "            if %s is None:\n", pname)
 			fmt.Fprintf(w, "                raise TypeError(\"Missing required property '%s'\")\n", pname)
+		}
+
+		// Check that the property isn't deprecated
+		if prop.DeprecationMessage != "" {
+			fmt.Fprintf(w, "            if %s is not None:\n", pname)
+			fmt.Fprintf(w, "                warnings.warn(\"%s\", DeprecationWarning)\n", prop.DeprecationMessage)
+			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, prop.DeprecationMessage)
 		}
 
 		// And add it to the dictionary.
