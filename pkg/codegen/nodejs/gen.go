@@ -1148,17 +1148,20 @@ func (mod *modContext) genIndex(exports []string) string {
 	}
 
 	children := codegen.NewStringSet()
-	versionSuffix := regexp.MustCompile(`/v\d+((alpha|beta)\d+)?`)
+
 	for _, mod := range mod.children {
 		child := mod.mod
-		// Trim version suffix from child modules. Nested versions will have their own index.ts file.
-		if versionSuffix.MatchString(child) {
-			if i := strings.LastIndex(child, "/"); i > 0 {
-				child = child[:i]
+		if mod.compatibility == kubernetes20 {
+			// Trim version suffix from child modules. Nested versions will have their own index.ts file.
+			if match, _ := regexp.MatchString(`/v\d+((alpha|beta)\d+)?`, child); match {
+				if i := strings.LastIndex(child, "/"); i > 0 {
+					child = child[:i]
+				}
 			}
 		}
 		children.Add(child)
 	}
+
 	if len(mod.types) > 0 {
 		children.Add("input")
 		children.Add("output")
@@ -1171,18 +1174,13 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		fmt.Fprintf(w, "// Export sub-modules:\n")
 
-		var childrenStrings []string
-		for s := range children {
-			childrenStrings = append(childrenStrings, s)
-		}
-		sort.Strings(childrenStrings)
-
-		for _, mod := range childrenStrings {
+		sorted := children.SortedValues()
+		for _, mod := range sorted {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
 		fmt.Fprintf(w, "export {")
-		for i, mod := range childrenStrings {
+		for i, mod := range sorted {
 			if i > 0 {
 				fmt.Fprint(w, ", ")
 			}
