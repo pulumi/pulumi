@@ -186,14 +186,11 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 		}
 	}
 
-	if wrapInput && typ != "any" {
-		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
-	}
 	if constValue != nil && typ == "string" {
 		typ = fmt.Sprintf("%q", constValue.(string))
 	}
-	if constValue != nil && typ == "pulumi.Input<string>" {
-		typ = fmt.Sprintf("pulumi.Input<%q>", constValue.(string))
+	if wrapInput && typ != "any" {
+		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
 	}
 	if optional {
 		return typ + " | undefined"
@@ -384,7 +381,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     *\n")
 		fmt.Fprintf(w, "     * @param name The _unique_ name of the resulting resource.\n")
 		fmt.Fprintf(w, "     * @param id The _unique_ provider ID of the resource to lookup.\n")
-		// TODO: add k8s specific ID format doc?
+		// TODO: Document id format: https://github.com/pulumi/pulumi/issues/4754
 		if r.StateInputs != nil {
 			fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
 		}
@@ -886,7 +883,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		printComment(w, p.Comment, "", "")
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
-		// TODO: handle ConstValues
+		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
 		if p.DefaultValue != nil {
 			v, err := mod.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
