@@ -147,22 +147,20 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(p, []byte(contents))
 	}
 
-	// Ensure that the target module directory contains a README.md file.
-	if mod.mod != "" {
-		readme := mod.pkg.Description
-		if readme != "" && readme[len(readme)-1] != '\n' {
-			readme += "\n"
-		}
-		fs.add(filepath.Join(dir, "README.md"), []byte(readme))
-	}
-
-	// Utilities, config
+	// Utilities, config, readme
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, false)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
 		fs.add(filepath.Join(dir, "utilities.py"), buffer.Bytes())
+
+		// Ensure that the top-level (provider) module directory contains a README.md file.
+		readme := mod.pkg.Description
+		if readme != "" && readme[len(readme)-1] != '\n' {
+			readme += "\n"
+		}
+		fs.add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	case "config":
 		if len(mod.pkg.Config) > 0 {
