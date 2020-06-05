@@ -41,7 +41,7 @@ type githubActionsPullRequestEvent struct {
 	PullRequest githubPR `json:"pull_request"`
 }
 
-// DetectVars detects the Travis env vars.
+// DetectVars detects the GitHub Actions env vars.
 // See https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables.
 func (t githubActionsCI) DetectVars() Vars {
 	v := Vars{Name: GitHubActions}
