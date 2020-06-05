@@ -37,16 +37,16 @@ const (
 	// to their CI build.
 	GenericCI SystemName = "Generic CI"
 
-	GitHub      SystemName = "GitHub"
-	GitLab      SystemName = "GitLab"
-	GoCD        SystemName = "GoCD"
-	Hudson      SystemName = "Hudson"
-	Jenkins     SystemName = "Jenkins"
-	MagnumCI    SystemName = "Magnum CI"
-	Semaphore   SystemName = "Semaphore"
-	TaskCluster SystemName = "TaskCluster"
-	TeamCity    SystemName = "TeamCity"
-	Travis      SystemName = "Travis CI"
+	GitHubActions SystemName = "GitHub Actions"
+	GitLab        SystemName = "GitLab CI/CD"
+	GoCD          SystemName = "GoCD"
+	Hudson        SystemName = "Hudson"
+	Jenkins       SystemName = "Jenkins"
+	MagnumCI      SystemName = "Magnum CI"
+	Semaphore     SystemName = "Semaphore"
+	TaskCluster   SystemName = "TaskCluster"
+	TeamCity      SystemName = "TeamCity"
+	Travis        SystemName = "Travis CI"
 )
 
 // SystemName is a recognized CI system.

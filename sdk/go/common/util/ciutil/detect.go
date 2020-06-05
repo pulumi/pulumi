@@ -84,9 +84,11 @@ var detectors = map[SystemName]system{
 		},
 	},
 
-	GitHub: baseCI{
-		Name:            GitHub,
-		EnvVarsToDetect: []string{"GITHUB_WORKFLOW"},
+	GitHubActions: githubActionsCI{
+		baseCI{
+			Name:            GitHubActions,
+			EnvVarsToDetect: []string{"GITHUB_ACTIONS"},
+		},
 	},
 	GitLab: gitlabCI{
 		baseCI: baseCI{
