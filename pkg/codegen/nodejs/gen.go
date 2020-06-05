@@ -38,8 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
-// Match k8s version suffix. Examples include "v1beta1" and "v1alpha2".
-var k8sVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta)\d+)?)$`)
+// Match k8s version suffix. Examples include "/v1beta1" and "/v1alpha2".
+var k8sVersionSuffix = regexp.MustCompile(`/v\d+((alpha|beta)\d+)?$`)
 
 type typeDetails struct {
 	outputType   bool
@@ -1158,7 +1158,7 @@ func (mod *modContext) genIndex(exports []string) string {
 			// Extract version suffix from child modules. Nested versions will have their own index.ts file.
 			// Example: apps/v1beta1 -> v1beta1
 			if match := k8sVersionSuffix.FindStringIndex(child); len(match) != 0 {
-				child = child[match[2]:match[3]]
+				child = child[match[0]+1:match[1]]
 			}
 		}
 		children.Add(child)
