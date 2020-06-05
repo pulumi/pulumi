@@ -70,7 +70,6 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 		leadingSep = ", "
 	}
 
-	fmt.Println(expr.Signature.ReturnType)
 	isInput := isInputty(expr.Signature.ReturnType)
 	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
@@ -143,9 +142,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genObjectConsExpression(w, arg, expr.Type())
 		case *model.LiteralValueExpression:
 			g.genLiteralValueExpression(w, arg, expr.Type())
-		case *model.FunctionCallExpression:
-			name := arg.Name
-			fmt.Println(name)
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
 		}
@@ -366,13 +362,9 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 			objType, _ = schemaType.(*schema.ObjectType)
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
-			switch last := last.(type) {
-			case hcl.TraverseAttr:
-				if last.Name == "id" {
-					genIDCall = true
-					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
-				}
-
+			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
+				genIDCall = true
+				expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
 			}
 		}
 	}
@@ -419,10 +411,6 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
 	isInput := isInputty(destType) || containsInputs(expr)
-	argType := argumentTypeName(expr, destType, isInput)
-	if strings.HasSuffix(argType, "Array") {
-		isInput = true
-	}
 
 	var temps []interface{}
 	for i, item := range expr.Expressions {
@@ -431,6 +419,7 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		expr.Expressions[i] = item
 	}
 	g.genTemps(w, temps)
+	argType := argumentTypeName(expr, destType, isInput)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
@@ -534,7 +523,8 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		}
 		return fmt.Sprintf("[]%s", argTypeName)
 	case *model.TupleType:
-		// attempt to collapse tuple types
+		// attempt to collapse tuple types. intentionally does not use model.UnifyTypes
+		// correct go code requires all types to match, or use of interface{}
 		var elmType model.Type
 		for i, t := range destType.ElementTypes {
 			if i == 0 {
@@ -564,8 +554,7 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		return argumentTypeName(expr, destType.ElementType, isInput)
 	case *model.UnionType:
 		for _, ut := range destType.ElementTypes {
-			switch ut.(type) {
-			case *model.OpaqueType:
+			if _, isOpaqueType := ut.(*model.OpaqueType); isOpaqueType {
 				return argumentTypeName(expr, ut, isInput)
 			}
 		}
@@ -619,10 +608,11 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []interface{}) {
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	expr = hcl2.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
+	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
+	expr = hcl2.RewriteConversions(expr, typ)
+
 	if isInput {
 		expr = rewriteInputs(expr)
 	}

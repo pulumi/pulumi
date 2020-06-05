@@ -31,8 +31,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 	g := &generator{
 		program:            program,
-		jsonTempSpiller:    &jsonSpiller{count: 0},
-		ternaryTempSpiller: &tempSpiller{count: 0},
+		jsonTempSpiller:    &jsonSpiller{},
+		ternaryTempSpiller: &tempSpiller{},
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -148,12 +148,12 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	resName := r.Name()
 	_, mod, typ, _ := r.DecomposeToken()
-	isInput := true
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
+		isInput := true
 		expr, temps := g.lowerExpression(input.Value, destType.(model.Type), isInput)
 		input.Value = expr
 		g.genTemps(w, temps)

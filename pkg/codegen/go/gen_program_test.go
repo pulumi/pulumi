@@ -117,8 +117,8 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 
 		g := &generator{
 			program:            program,
-			jsonTempSpiller:    &jsonSpiller{count: 0},
-			ternaryTempSpiller: &tempSpiller{count: 0},
+			jsonTempSpiller:    &jsonSpiller{},
+			ternaryTempSpiller: &tempSpiller{},
 		}
 		g.Formatter = format.NewFormatter(g)
 		return g
