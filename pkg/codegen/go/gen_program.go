@@ -199,7 +199,7 @@ func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 		case *jsonTemp:
 			bytesVar := fmt.Sprintf("tmp%s", strings.ToUpper(t.Name))
 			g.Fgenf(w, "%s, err := json.Marshal(", bytesVar)
-			args := stripInputAnnotations(t.Value.Args[0])
+			args := stripInputs(t.Value.Args[0])
 			g.Fgenf(w, "%.v)\n", args)
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")

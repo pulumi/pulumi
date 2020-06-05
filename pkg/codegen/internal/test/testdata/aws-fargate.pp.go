@@ -25,7 +25,7 @@ func main() {
 			return err
 		}
 		webSecurityGroup, err := ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
-			VpcId: vpc.Id,
+			VpcId: pulumi.String(vpc.Id),
 			Egress: ec2.SecurityGroupEgressArray{
 				&ec2.SecurityGroupEgressArgs{
 					Protocol: pulumi.String("-1"),
@@ -72,7 +72,7 @@ func main() {
 		}
 		json0 := string(tmpJSON0)
 		taskExecRole, err := iam.NewRole(ctx, "taskExecRole", &iam.RoleArgs{
-			AssumeRolePolicy: json0,
+			AssumeRolePolicy: pulumi.String(json0),
 		})
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func main() {
 			return err
 		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: subnets.Ids,
+			Subnets: pulumi.StringArray(subnets.Ids),
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -97,7 +97,7 @@ func main() {
 			Port:       pulumi.Int(80),
 			Protocol:   pulumi.String("HTTP"),
 			TargetType: pulumi.String("ip"),
-			VpcId:      vpc.Id,
+			VpcId:      pulumi.String(vpc.Id),
 		})
 		if err != nil {
 			return err
@@ -133,15 +133,15 @@ func main() {
 		}
 		json1 := string(tmpJSON1)
 		appTask, err := ecs.NewTaskDefinition(ctx, "appTask", &ecs.TaskDefinitionArgs{
-			Family:      "fargate-task-definition",
-			Cpu:         "256",
-			Memory:      "512",
-			NetworkMode: "awsvpc",
-			RequiresCompatibilities: []string{
-				"FARGATE",
+			Family:      pulumi.String("fargate-task-definition"),
+			Cpu:         pulumi.String("256"),
+			Memory:      pulumi.String("512"),
+			NetworkMode: pulumi.String("awsvpc"),
+			RequiresCompatibilities: pulumi.StringArray{
+				pulumi.String("FARGATE"),
 			},
 			ExecutionRoleArn:     taskExecRole.Arn,
-			ContainerDefinitions: json1,
+			ContainerDefinitions: pulumi.String(json1),
 		})
 		if err != nil {
 			return err
@@ -153,7 +153,7 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        subnets.Ids,
+				Subnets:        pulumi.StringArray(subnets.Ids),
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},

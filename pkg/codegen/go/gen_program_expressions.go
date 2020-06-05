@@ -125,6 +125,16 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
+	case hcl2.IntrinsicInput:
+		isInput := true
+		switch arg := expr.Args[0].(type) {
+		case *model.ScopeTraversalExpression:
+			g.genScopeTraversalExpression(w, arg, isInput)
+		default:
+			argType := argumentTypeName(arg, arg.Type(), isInput)
+			g.Fgenf(w, "%s(%v", argType, arg)
+			g.Fgenf(w, ")")
+		}
 	case hcl2.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.TupleConsExpression:
@@ -133,6 +143,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genObjectConsExpression(w, arg, expr.Type())
 		case *model.LiteralValueExpression:
 			g.genLiteralValueExpression(w, arg, expr.Type())
+		case *model.FunctionCallExpression:
+			name := arg.Name
+			fmt.Println(name)
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
 		}
@@ -291,8 +304,8 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 		// first lower all inner expressions and emit temps
 		for i, item := range expr.Items {
-
-			k, kTemps := g.lowerExpression(item.Key, item.Key.Type(), isInput)
+			// don't treat keys as inputs
+			k, kTemps := g.lowerExpression(item.Key, item.Key.Type(), false)
 			temps = append(temps, kTemps...)
 			item.Key = k
 			x, xTemps := g.lowerExpression(item.Value, item.Value.Type(), isInput)
@@ -333,17 +346,22 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	isInput := false
+	g.genScopeTraversalExpression(w, expr, isInput)
+}
+
+func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression, isInput bool) {
 	rootName := expr.RootName
 	// TODO splat
 	// if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 	// 	rootName = "__item"
 	// }
 
-	g.Fgen(w, rootName)
 	genIDCall := false
 
 	var objType *schema.ObjectType
 	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
+		isInput = false
 		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
 			objType, _ = schemaType.(*schema.ObjectType)
 			// convert .id into .ID()
@@ -359,7 +377,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		}
 	}
 
+	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
+	if isInput {
+		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
+	}
+	g.Fgen(w, rootName)
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+
+	if isInput {
+		g.Fgenf(w, ")")
+	}
+
 	if genIDCall {
 		g.Fgenf(w, ".ID()")
 	}
@@ -390,9 +418,9 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
-	isInput := isInputty(destType)
+	isInput := isInputty(destType) || containsInputs(expr)
 	argType := argumentTypeName(expr, destType, isInput)
-	if strings.HasSuffix("argType", "Array") {
+	if strings.HasSuffix(argType, "Array") {
 		isInput = true
 	}
 
@@ -470,11 +498,6 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
-		for _, a := range destType.Annotations {
-			if a, ok := a.(string); ok && a == hcl2.IntrinsicInput {
-				isInput = true
-			}
-		}
 		switch destType {
 		case model.IntType:
 			if isInput {
@@ -506,9 +529,6 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
 		argTypeName := argumentTypeName(nil, destType.ElementType, isInput)
-		if isInput {
-			return fmt.Sprintf("pulumi.%sArray", Title(argTypeName))
-		}
 		if strings.HasPrefix(argTypeName, "pulumi.") {
 			return fmt.Sprintf("%sArray", argTypeName)
 		}
@@ -529,9 +549,6 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 
 		if elmType != nil {
 			argTypeName := argumentTypeName(nil, elmType, isInput)
-			if isInput {
-				return fmt.Sprintf("pulumi.%sArray", Title(argTypeName))
-			}
 			if strings.HasPrefix(argTypeName, "pulumi.") {
 				return fmt.Sprintf("%sArray", argTypeName)
 			}
@@ -553,6 +570,8 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			}
 		}
 		return "interface{}"
+	case *model.PromiseType:
+		return argumentTypeName(expr, destType.ElementType, isInput)
 	default:
 		contract.Failf("unexpected destType type %T", destType)
 	}
@@ -602,9 +621,11 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	model.Expression, []interface{}) {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
-	expr = applyInputAnnotations(expr, isInput)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
+	if isInput {
+		expr = rewriteInputs(expr)
+	}
 	var temps []interface{}
 	for _, t := range tTemps {
 		temps = append(temps, t)
@@ -625,7 +646,7 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := hcl2.ParseApplyCall(expr)
-	then = stripInputAnnotations(then).(*model.AnonymousFunctionExpression)
+	then = stripInputs(then).(*model.AnonymousFunctionExpression)
 	isInput := false
 	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
