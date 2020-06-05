@@ -61,7 +61,6 @@ func (t githubActionsCI) DetectVars() Vars {
 	if v.BuildType == "pull_request" {
 		eventPath := os.Getenv("GITHUB_EVENT_PATH")
 		var prEvent githubActionsPullRequestEvent
-		// If we fail to un-marshal the payload,
 		if err := json.Unmarshal([]byte(eventPath), &prEvent); err == nil {
 			v.PRNumber = strconv.FormatInt(prEvent.PullRequest.Number, 10)
 		}
