@@ -38,6 +38,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
+// Match k8s version suffix. Examples include "v1beta1" and "v1alpha2".
+var k8sVersionRegex = regexp.MustCompile(`v\d+((alpha|beta)\d+)?$`)
+
 type typeDetails struct {
 	outputType   bool
 	inputType    bool
@@ -1153,10 +1156,8 @@ func (mod *modContext) genIndex(exports []string) string {
 		child := mod.mod
 		if mod.compatibility == kubernetes20 {
 			// Trim version suffix from child modules. Nested versions will have their own index.ts file.
-			if match, _ := regexp.MatchString(`/v\d+((alpha|beta)\d+)?`, child); match {
-				if i := strings.LastIndex(child, "/"); i > 0 {
-					child = child[:i]
-				}
+			if match := k8sVersionRegex.FindStringIndex(child); len(match) != 0 {
+				child = child[:match[0]-1] // -1 required to remove the leading '/'
 			}
 		}
 		children.Add(child)
