@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // githubActionsCI represents the GitHub Actions CI system.
@@ -31,7 +32,7 @@ type githubActionsCI struct {
 // See https://developer.github.com/webhooks/event-payloads/#pull_request.
 type githubPR struct {
 	Action string `json:"action"`
-	Number string `json:"number"`
+	Number int64  `json:"number"`
 }
 
 // githubActionsPullRequestEvent represents the webhook payload for a pull_request event.
@@ -62,7 +63,7 @@ func (t githubActionsCI) DetectVars() Vars {
 		var prEvent githubActionsPullRequestEvent
 		// If we fail to un-marshal the payload,
 		if err := json.Unmarshal([]byte(eventPath), &prEvent); err == nil {
-			v.PRNumber = prEvent.PullRequest.Number
+			v.PRNumber = strconv.FormatInt(prEvent.PullRequest.Number, 10)
 		}
 	}
 	return v
