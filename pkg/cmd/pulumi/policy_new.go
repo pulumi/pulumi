@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -162,14 +163,14 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	fmt.Println("Created Policy Pack!")
 
-	proj, root, err := readPolicyProject()
+	proj, projPath, root, err := readPolicyProject()
 	if err != nil {
 		return err
 	}
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(proj); err != nil {
+		if err := installPolicyPackDependencies(proj, projPath, root); err != nil {
 			return err
 		}
 	}
@@ -185,11 +186,22 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(proj *workspace.PolicyPackProject) error {
+func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
 			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)
+		}
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		if err := python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
+			// Save project with venv info.
+			proj.Runtime.SetOption("virtualenv", virtualenv)
+			if err := proj.Save(projPath); err != nil {
+				return errors.Wrapf(err, "saving project at %s", projPath)
+			}
+			return nil
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -197,14 +209,13 @@ func installPolicyPackDependencies(proj *workspace.PolicyPackProject) error {
 
 func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, generateOnly bool, opts display.Options) {
 	var commands []string
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") && generateOnly {
-		// If we're generating a NodeJS policy pack, and we didn't install dependencies
-		// (generateOnly), instruct the user to do so.
-		commands = append(commands, "npm install")
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		// If we're generating a Python policy pack, instruct the user to set up and
-		// activate a virtual environment.
-		commands = append(commands, pythonCommands()...)
+	if generateOnly {
+		// We didn't install dependencies, so instruct the user to do so.
+		if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+			commands = append(commands, "npm install")
+		} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+			commands = append(commands, pythonCommands()...)
+		}
 	}
 
 	if len(commands) == 1 {
@@ -228,8 +239,7 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 		[]string{"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run"}
 	usageCommands := []string{fmt.Sprintf("pulumi up --policy-pack %s", root)}
 
-	// Currently, only Node.js Policy Packs can be published.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
 		usageCommandPreambles = append(usageCommandPreambles, "publish the Policy Pack, run")
 		usageCommands = append(usageCommands, "pulumi policy publish [org-name]")
 	}
@@ -250,12 +260,6 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 			fmt.Printf("   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
 		}
 		fmt.Println()
-	}
-
-	// Add special note for Python.
-	if strings.EqualFold(proj.Runtime.Name(), "python") {
-		fmt.Println("Note: When running the Policy Pack against a Pulumi program, if the Pulumi program is " +
-			"also Python, both the Pulumi program and Policy Pack must use the same virtual environment.")
 	}
 }
 

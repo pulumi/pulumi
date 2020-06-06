@@ -402,26 +402,26 @@ func readProject() (*workspace.Project, string, error) {
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
 // workspace. If the project is successfully detected and read, it is returned along with the path
 // to its containing directory, which will be used as the root of the project's Pulumi program.
-func readPolicyProject() (*workspace.PolicyPackProject, string, error) {
+func readPolicyProject() (*workspace.PolicyPackProject, string, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectPolicyPackPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
+		return nil, "", "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
 			"an error when searching for the PulumiPolicy.yaml file (searching upwards from %s)", pwd)
 	} else if path == "" {
-		return nil, "", fmt.Errorf("no PulumiPolicy.yaml project file found (searching upwards from %s)", pwd)
+		return nil, "", "", fmt.Errorf("no PulumiPolicy.yaml project file found (searching upwards from %s)", pwd)
 	}
 	proj, err := workspace.LoadPolicyPack(path)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "failed to load Pulumi policy project located at %q", path)
+		return nil, "", "", errors.Wrapf(err, "failed to load Pulumi policy project located at %q", path)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, filepath.Dir(path), nil
 }
 
 // anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a

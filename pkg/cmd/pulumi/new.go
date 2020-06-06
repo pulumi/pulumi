@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -568,6 +569,8 @@ func installDependencies(proj *workspace.Project, root string) error {
 			return errors.Wrapf(err, "%s install failed; rerun manually to try again, "+
 				"then run 'pulumi up' to perform an initial deployment", bin)
 		}
+	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+		return pythonInstallDependencies(proj, root)
 	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
 		return dotnetInstallDependenciesAndBuild(proj, root)
 	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
@@ -595,6 +598,18 @@ func nodeInstallDependencies() (string, error) {
 	fmt.Println()
 
 	return bin, nil
+}
+
+// pythonInstallDependencies will create a new virtual environment and install dependencies.
+func pythonInstallDependencies(proj *workspace.Project, root string) error {
+	return python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
+		// Save project with venv info.
+		proj.Runtime.SetOption("virtualenv", virtualenv)
+		if err := workspace.SaveProject(proj); err != nil {
+			return errors.Wrap(err, "saving project")
+		}
+		return nil
+	})
 }
 
 // dotnetInstallDependenciesAndBuild will install dependencies and build the project.
@@ -672,18 +687,14 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		commands = append(commands, cd)
 	}
 
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") && generateOnly {
-		// If we're generating a NodeJS project, and we didn't install dependencies (generateOnly),
-		// instruct the user to do so.
-		commands = append(commands, "npm install")
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		// If we're generating a Python project, instruct the user to set up and activate a virtual
-		// environment.
-		commands = append(commands, pythonCommands()...)
-	}
-
-	// If we didn't create a stack, show that as a command to run before `pulumi up`.
 	if generateOnly {
+		// We didn't install dependencies, so instruct the user to do so.
+		if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+			commands = append(commands, "npm install")
+		} else if strings.EqualFold(proj.Runtime.Name(), "python") {
+			commands = append(commands, pythonCommands()...)
+		}
+		// We didn't create a stack so show that as a command to run before `pulumi up`.
 		commands = append(commands, "pulumi stack init")
 	}
 
