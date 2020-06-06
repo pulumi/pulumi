@@ -42,6 +42,7 @@ type githubActionsPullRequestEvent struct {
 }
 
 // DetectVars detects the GitHub Actions env vars.
+// nolint: lll
 // See https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables.
 func (t githubActionsCI) DetectVars() Vars {
 	v := Vars{Name: GitHubActions}
