@@ -61,12 +61,24 @@ func Command(arg ...string) (*exec.Cmd, error) {
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
 // directory.
-func VirtualEnvCommand(virtualEnvDir string, name string, arg ...string) *exec.Cmd {
+func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	if runtime.GOOS == windows {
 		name = fmt.Sprintf("%s.exe", name)
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
 	return exec.Command(cmdPath, arg...)
+}
+
+// IsVirtualEnv returns true if the specified directory contains a python binary.
+func IsVirtualEnv(dir string) bool {
+	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
+	if runtime.GOOS == windows {
+		pyBin = fmt.Sprintf("%s.exe", pyBin)
+	}
+	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
+		return true
+	}
+	return false
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
