@@ -156,9 +156,21 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(filepath.Join(dir, "utilities.py"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
-		readme := mod.pkg.Description
-		if readme != "" && readme[len(readme)-1] != '\n' {
-			readme += "\n"
+		readme := mod.pkg.Language["python"].(PackageInfo).Readme
+		if readme == "" {
+			readme = mod.pkg.Description
+			if readme != "" && readme[len(readme)-1] != '\n' {
+				readme += "\n"
+			}
+			if mod.pkg.Attribution != "" {
+				if len(readme) != 0 {
+					readme += "\n"
+				}
+				readme += mod.pkg.Attribution
+			}
+			if readme != "" && readme[len(readme)-1] != '\n' {
+				readme += "\n"
+			}
 		}
 		fs.add(filepath.Join(dir, "README.md"), []byte(readme))
 
