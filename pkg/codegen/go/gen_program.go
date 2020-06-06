@@ -13,13 +13,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program     *hcl2.Program
-	diagnostics hcl.Diagnostics
+	program            *hcl2.Program
+	diagnostics        hcl.Diagnostics
+	jsonTempSpiller    *jsonSpiller
+	ternaryTempSpiller *tempSpiller
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -27,7 +30,9 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program: program,
+		program:            program,
+		jsonTempSpiller:    &jsonSpiller{},
+		ternaryTempSpiller: &tempSpiller{},
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -55,23 +60,31 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
-	g.Fprint(w, "package main\n")
-
-	imports := g.collectImports(w, program)
+	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
-	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
-	for _, pkg := range imports.SortedValues() {
-		g.Fprintf(w, "\"%s\"\n", pkg)
-	}
-	g.Fprintf(w, ")\n")
 
+	stdImports, pulumiImports := g.collectImports(w, program)
+	for _, imp := range stdImports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", imp)
+	}
+
+	g.Fprintf(w, "\n")
+	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+
+	for _, imp := range pulumiImports.SortedValues() {
+		g.Fprintf(w, "\"%s\"\n", imp)
+	}
+
+	g.Fprintf(w, ")\n")
 	g.Fprintf(w, "func main() {\n")
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 }
 
-func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.StringSet {
+// collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
+func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	pulumiImports := codegen.NewStringSet()
+	stdImports := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, mod, _, _ := r.DecomposeToken()
@@ -94,9 +107,19 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) codegen.S
 
 			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
 		}
+
+		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+			if call, ok := n.(*model.FunctionCallExpression); ok {
+				for _, fnPkg := range g.genFunctionPackages(call) {
+					stdImports.Add(fnPkg)
+				}
+			}
+			return n, nil
+		})
+		contract.Assert(len(diags) == 0)
 	}
 
-	return pulumiImports
+	return stdImports, pulumiImports
 }
 
 // genPostamble closes the method
@@ -113,11 +136,11 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 		g.genResource(w, n)
 	case *hcl2.OutputVariable:
 		g.genOutputAssignment(w, n)
-		// TODO
-		// case *hcl2.ConfigVariable:
-		// 	g.genConfigVariable(w, n)
-		// case *hcl2.LocalVariable:
-		// 	g.genLocalVariable(w, n)
+	// TODO
+	// case *hcl2.ConfigVariable:
+	// 	g.genConfigVariable(w, n)
+	case *hcl2.LocalVariable:
+		g.genLocalVariable(w, n)
 	}
 }
 
@@ -130,7 +153,8 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+		isInput := true
+		expr, temps := g.lowerExpression(input.Value, destType.(model.Type), isInput)
 		input.Value = expr
 		g.genTemps(w, temps)
 	}
@@ -154,21 +178,53 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
-	expr, temps := g.lowerExpression(v.Value, v.Type())
+	isInput := false
+	expr, temps := g.lowerExpression(v.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
 }
 
-func (g *generator) genTemps(w io.Writer, temps []*ternaryTemp) {
+func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 	for _, t := range temps {
-
-		// TODO derive from ambient context
-		isInput := false
-		g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
-		g.Fgenf(w, "if %.v {\n", t.Value.Condition)
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
-		g.Fgenf(w, "} else {\n")
-		g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
-		g.Fgenf(w, "}\n")
+		switch t := t.(type) {
+		case *ternaryTemp:
+			// TODO derive from ambient context
+			isInput := false
+			g.Fgenf(w, "var %s %s\n", t.Name, argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+			g.Fgenf(w, "if %.v {\n", t.Value.Condition)
+			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
+			g.Fgenf(w, "} else {\n")
+			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
+			g.Fgenf(w, "}\n")
+		case *jsonTemp:
+			bytesVar := fmt.Sprintf("tmp%s", strings.ToUpper(t.Name))
+			g.Fgenf(w, "%s, err := json.Marshal(", bytesVar)
+			args := stripInputs(t.Value.Args[0])
+			g.Fgenf(w, "%.v)\n", args)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+			g.Fgenf(w, "%s := string(%s)\n", t.Name, bytesVar)
+		}
 	}
+}
+
+func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+	isInput := false
+	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
+	g.genTemps(w, temps)
+	switch expr := expr.(type) {
+	case *model.FunctionCallExpression:
+		switch expr.Name {
+		case hcl2.Invoke:
+			g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+		}
+	default:
+		g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+
+	}
+
 }
