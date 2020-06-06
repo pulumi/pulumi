@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# When making changes to this script, also update pulumi-resource-pulumi-python.
+
 # Parse the -virtualenv command line argument.
 virtualenv=""
 for arg in "$@"

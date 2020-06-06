@@ -64,7 +64,8 @@ type provider struct {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version) (Provider, error) {
+func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
+	options map[string]interface{}) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
@@ -78,8 +79,12 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		})
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, nil /*env*/)
+	args := []string{host.ServerAddr()}
+	for k, v := range options {
+		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+	}
+
+	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg), args, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}
