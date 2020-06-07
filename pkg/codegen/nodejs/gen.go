@@ -72,14 +72,15 @@ func camel(s string) string {
 }
 
 type modContext struct {
-	pkg         *schema.Package
-	mod         string
-	types       []*schema.ObjectType
-	resources   []*schema.Resource
-	functions   []*schema.Function
-	typeDetails map[*schema.ObjectType]*typeDetails
-	children    []*modContext
-	tool        string
+	pkg              *schema.Package
+	mod              string
+	types            []*schema.ObjectType
+	resources        []*schema.Resource
+	functions        []*schema.Function
+	typeDetails      map[*schema.ObjectType]*typeDetails
+	children         []*modContext
+	extraSourceFiles []string
+	tool             string
 
 	// Name overrides set in NodeJSInfo
 	modToPkg                map[string]string // Module name -> package name
@@ -1030,16 +1031,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs fs) error {
-	var files []string
-	for p := range fs {
-		d := path.Dir(p)
-		if d == "." {
-			d = ""
-		}
-		if d == mod.mod {
-			files = append(files, p)
-		}
-	}
+	files := append([]string(nil), mod.extraSourceFiles...)
 
 	addFile := func(name, contents string) {
 		p := path.Join(mod.mod, name)
@@ -1341,7 +1333,9 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 }
 
 // generateModuleContextMap groups resources, types, and functions into NodeJS packages.
-func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo) (map[string]*modContext, error) {
+func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo,
+	extraFiles map[string][]byte) (map[string]*modContext, error) {
+
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
 
@@ -1451,6 +1445,21 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		types.typeDetails, types.types = typeDetails, typeList
 	}
 
+	// Add Typescript source files to the corresponding modules. Note that we only add the file names; the contents are
+	// still laid out manually in GeneratePackage.
+	for p := range extraFiles {
+		if path.Ext(p) != ".ts" {
+			continue
+		}
+
+		modName := path.Dir(p)
+		if modName == "/" || modName == "." {
+			modName = ""
+		}
+		mod := getMod(modName)
+		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
+	}
+
 	return modules, nil
 }
 
@@ -1480,7 +1489,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap("", pkg, info)
+	modules, err := generateModuleContextMap("", pkg, info, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1518,7 +1527,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, err := generateModuleContextMap(tool, pkg, info, extraFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -1526,7 +1535,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	files := fs{}
 	for p, f := range extraFiles {
 		files.add(p, f)
-
 	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
