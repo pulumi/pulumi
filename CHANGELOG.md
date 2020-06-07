@@ -8,6 +8,9 @@ CHANGELOG
 - Export `CustomTimeouts` in the Python SDK
  [#4747](https://github.com/pulumi/pulumi/pull/4747)
 
+- Allow users to specify base64 encoded strings as GOOGLE_CREDENTIALS
+ [#4773](https://github.com/pulumi/pulumi/pull/4773)
+
 ---
 
 ## 2.3.0 (2020-05-27)

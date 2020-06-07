@@ -79,7 +79,12 @@ fi
 # For Google, we need to authenticate with a service principal for certain authentication operations.
 if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
     export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp).json"
-    echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    # Check if GOOGLE_CREDENTIALS is base64 encoded 
+    if [[ $GOOGLE_CREDENTIALS =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
+        echo "$GOOGLE_CREDENTIALS"|base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+    else
+        echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    fi
     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
 fi
 
