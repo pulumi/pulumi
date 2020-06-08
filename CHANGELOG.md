@@ -11,6 +11,9 @@ CHANGELOG
 - Allow users to specify base64 encoded strings as GOOGLE_CREDENTIALS
  [#4773](https://github.com/pulumi/pulumi/pull/4773)
 
+- Install and use dependencies automatically for new Python projects.
+  [#4775](https://github.com/pulumi/pulumi/pull/4775)
+
 ---
 
 ## 2.3.0 (2020-05-27)
