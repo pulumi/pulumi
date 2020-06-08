@@ -76,6 +76,18 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
+// TestEmptyPythonVenv simply tests that we can run an empty Python project using automatic virtual environment support.
+func TestEmptyPythonVenv(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("empty", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:                  true,
+		UseAutomaticVirtualEnv: true,
+	})
+}
+
 // TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1087,6 +1099,37 @@ func TestConfigBasicPython(t *testing.T) {
 	})
 }
 
+// Tests basic configuration from the perspective of a Pulumi program using automatic virtual environment support.
+func TestConfigBasicPythonVenv(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("config_basic", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a Pythonic value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+		UseAutomaticVirtualEnv: true,
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1443,6 +1486,28 @@ func TestDynamicPython(t *testing.T) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
 			},
 		}},
+	})
+}
+
+// Tests dynamic provider in Python using automatic virtual environment support.
+func TestDynamicPythonVenv(t *testing.T) {
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
+		UseAutomaticVirtualEnv: true,
 	})
 }
 

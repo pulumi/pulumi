@@ -60,6 +60,8 @@ const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
 const DotNetRuntime = "dotnet"
 
+const windowsOS = "windows"
+
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
@@ -245,6 +247,8 @@ type ProgramTestOptions struct {
 	YarnBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
+	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
+	PythonBin string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
 	PipenvBin string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
@@ -252,6 +256,9 @@ type ProgramTestOptions struct {
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
+
+	// Automatically create and use a virtual environment, rather than using the Pipenv tool.
+	UseAutomaticVirtualEnv bool
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -479,14 +486,14 @@ func (rf *regexFlag) Set(v string) error {
 
 var directoryMatcher regexFlag
 var listDirs bool
-var pipenvMutex *fsutil.FileMutex
+var pipMutex *fsutil.FileMutex
 
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
 	flag.BoolVar(&listDirs, "list-dirs", false, "list available integration tests without running them")
 
-	mutexPath := filepath.Join(os.TempDir(), "pipenv-mutex.lock")
-	pipenvMutex = fsutil.NewFileMutex(mutexPath)
+	mutexPath := filepath.Join(os.TempDir(), "pip-mutex.lock")
+	pipMutex = fsutil.NewFileMutex(mutexPath)
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
@@ -628,6 +635,7 @@ type ProgramTester struct {
 	bin          string              // the `pulumi` binary we are using.
 	yarnBin      string              // the `yarn` binary we are using.
 	goBin        string              // the `go` binary we are using.
+	pythonBin    string              // the `python` binary we are using.
 	pipenvBin    string              // The `pipenv` binary we are using.
 	dotNetBin    string              // the `dotnet` binary we are using.
 	eventLog     string              // The path to the event log for this test.
@@ -668,6 +676,31 @@ func (pt *ProgramTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
 }
 
+// getPythonBin returns a path to the currently-installed `python` binary, or an error if it could not be found.
+func (pt *ProgramTester) getPythonBin() (string, error) {
+	if pt.pythonBin == "" {
+		pt.pythonBin = pt.opts.PythonBin
+		if pt.opts.PythonBin == "" {
+			var err error
+			// Look for "python3" by default, but fallback to `python` if not found as some Python 3
+			// distributions (in particular the default python.org Windows installation) do not include
+			// a `python3` binary.
+			pythonCmds := []string{"python3", "python"}
+			for _, bin := range pythonCmds {
+				pt.pythonBin, err = exec.LookPath(bin)
+				// Break on the first cmd we find on the path (if any).
+				if err == nil {
+					break
+				}
+			}
+			if err != nil {
+				return "", errors.Wrapf(err, "Expected to find one of %q on $PATH", pythonCmds)
+			}
+		}
+	}
+	return pt.pythonBin, nil
+}
+
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
@@ -701,6 +734,16 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	result := []string{bin}
 	result = append(result, args...)
 	return withOptionalYarnFlags(result), nil
+}
+
+func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
+	bin, err := pt.getPythonBin()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{bin}
+	return append(cmd, args...), nil
 }
 
 func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
@@ -737,7 +780,8 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	// the command in the context of the virtual environment that Pipenv created in order to pick up
 	// the correct version of Python.  We also need to do this for destroy and refresh so that
 	// dynamic providers are run in the right virtual environment.
-	if isUpdate {
+	// This is only necessary when not using automatic virtual environment support.
+	if !pt.opts.UseAutomaticVirtualEnv && isUpdate {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil
@@ -809,6 +853,51 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 	return err
 }
 
+func (pt *ProgramTester) runPythonCommand(name string, args []string, wd string) error {
+	cmd, err := pt.pythonCmd(args)
+	if err != nil {
+		return err
+	}
+
+	return pt.runCommand(name, cmd, wd)
+}
+
+func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd string) error {
+	// When installing with `pip install -e`, a PKG-INFO file is created. If two packages are being installed
+	// this way simultaneously (which happens often, when running tests), both installations will be writing the
+	// same file simultaneously. If one process catches "PKG-INFO" in a half-written state, the one process that
+	// observed the torn write will fail to install the package.
+	//
+	// To avoid this problem, we use pipMutex to explicitly serialize installation operations. Doing so avoids
+	// the problem of multiple processes stomping on the same files in the source tree. Note that pipMutex is a
+	// file mutex, so this strategy works even if the go test runner chooses to split up text execution across
+	// multiple processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd
+	// need to be sharing the mutex globally in each test process if we weren't using the file system to lock.)
+	if name == "virtualenv-pip-install-package" {
+		if err := pipMutex.Lock(); err != nil {
+			panic(err)
+		}
+
+		if pt.opts.Verbose {
+			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
+			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
+		}
+		defer func() {
+			if err := pipMutex.Unlock(); err != nil {
+				panic(err)
+			}
+		}()
+	}
+
+	virtualenvBinPath, err := getVirtualenvBinPath(wd, args[0])
+	if err != nil {
+		return err
+	}
+
+	cmd := append([]string{virtualenvBinPath}, args[1:]...)
+	return pt.runCommand(name, cmd, wd)
+}
+
 func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string) error {
 	// Pipenv uses setuptools to install and uninstall packages. Setuptools has an installation mode called "develop"
 	// that we use to install the package being tested, since it is 1) lightweight and 2) not doing so has its own set
@@ -830,22 +919,22 @@ func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string)
 	// simultaneously. If one process catches "PKG-INFO" in a half-written state, the one process that observed the
 	// torn write will fail to install the package (setuptools crashes).
 	//
-	// To avoid this problem, we use pipenvMutex to explicitly serialize installation operations. Doing so avoids the
-	// problem of multiple processes stomping on the same files in the source tree. Note that pipenvMutex is a file
+	// To avoid this problem, we use pipMutex to explicitly serialize installation operations. Doing so avoids the
+	// problem of multiple processes stomping on the same files in the source tree. Note that pipMutex is a file
 	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
 	// processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd need to be
 	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {
-		if err := pipenvMutex.Lock(); err != nil {
+		if err := pipMutex.Lock(); err != nil {
 			panic(err)
 		}
 
 		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "acquired pipenv install lock\n")
-			defer fprintf(pt.opts.Stdout, "released pipenv install lock\n")
+			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
+			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
 		}
 		defer func() {
-			if err := pipenvMutex.Unlock(); err != nil {
+			if err := pipMutex.Unlock(); err != nil {
 				panic(err)
 			}
 		}()
@@ -1626,26 +1715,25 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
-	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
-	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	pythonVersion := "3"
-	if runtime.GOOS == "windows" {
-		// Due to https://bugs.python.org/issue34679, Python Dynamic Providers on Windows do not
-		// work on Python 3.8.0 (but are fixed in 3.8.1).  For now we will force Windows to use 3.7
-		// to avoid this bug, until 3.8.1 is available in all our CI systems.
-		pythonVersion = "3.7"
-	}
-	if err = pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
-		return err
-	}
+	if pt.opts.UseAutomaticVirtualEnv {
+		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
+			return err
+		}
 
-	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
-	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
-	// which matches what our customers do
-	err = pt.runPipenvCommand("pipenv-install", []string{"run", "pip", "install", "-r", "requirements.txt"}, cwd)
-	if err != nil {
-		return err
+		projinfo.Proj.Runtime.SetOption("virtualenv", "venv")
+		projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
+		if err = projinfo.Proj.Save(projfile); err != nil {
+			return errors.Wrap(err, "saving project")
+		}
+
+		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
+			[]string{"pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
+			return err
+		}
+	} else {
+		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			return err
+		}
 	}
 
 	if !pt.opts.RunUpdateTest {
@@ -1654,6 +1742,31 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
+	return nil
+}
+
+func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
+	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
+	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
+	// of Python that you are requesting on the host machine before building a virtualenv for it.
+	pythonVersion := "3"
+	if runtime.GOOS == windowsOS {
+		// Due to https://bugs.python.org/issue34679, Python Dynamic Providers on Windows do not
+		// work on Python 3.8.0 (but are fixed in 3.8.1).  For now we will force Windows to use 3.7
+		// to avoid this bug, until 3.8.1 is available in all our CI systems.
+		pythonVersion = "3.7"
+	}
+	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
+		return err
+	}
+
+	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
+	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
+	// which matches what our customers do
+	err := pt.runPipenvCommand("pipenv-install", []string{"run", "pip", "install", "-r", "requirements.txt"}, cwd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1681,13 +1794,31 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 			}
 		}
 
-		err := pt.runPipenvCommand("pipenv-install-package", []string{"run", "pip", "install", "-e", dep}, cwd)
-		if err != nil {
-			return err
+		if pt.opts.UseAutomaticVirtualEnv {
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
+				[]string{"pip", "install", "-e", dep}, cwd); err != nil {
+				return err
+			}
+		} else {
+			if err := pt.runPipenvCommand("pipenv-install-package",
+				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
+}
+
+func getVirtualenvBinPath(cwd, bin string) (string, error) {
+	virtualenvBinPath := filepath.Join(cwd, "venv", "bin", bin)
+	if runtime.GOOS == windowsOS {
+		virtualenvBinPath = filepath.Join(cwd, "venv", "Scripts", fmt.Sprintf("%s.exe", bin))
+	}
+	if info, err := os.Stat(virtualenvBinPath); err != nil || info.IsDir() {
+		return "", errors.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)
+	}
+	return virtualenvBinPath, nil
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
@@ -1752,7 +1883,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	if pt.opts.RunBuild {
 		outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == windowsOS {
 			outBin = fmt.Sprintf("%s.exe", outBin)
 		}
 		err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
