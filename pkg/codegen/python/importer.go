@@ -28,6 +28,8 @@ type PropertyInfo struct {
 // PackageInfo tracks Python-specific information associated with a package.
 type PackageInfo struct {
 	Requires map[string]string `json:"requires,omitempty"`
+	// Readme contains the text for the package's README.md files.
+	Readme string `json:"readme,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
