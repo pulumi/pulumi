@@ -30,6 +30,11 @@ type PackageInfo struct {
 	Requires map[string]string `json:"requires,omitempty"`
 	// Readme contains the text for the package's README.md files.
 	Readme string `json:"readme,omitempty"`
+	// Map from module -> package name
+	//
+	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
+	//
+	ModuleToPackage map[string]string `json:"moduleToPackage,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

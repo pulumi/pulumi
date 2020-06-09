@@ -66,6 +66,9 @@ type modContext struct {
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
 	tool                 string
+
+	// Name overrides set in PackageInfo
+	modToPkg map[string]string // Module name -> package name
 }
 
 func tokenToName(tok string) string {
@@ -1189,7 +1192,7 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode node-specific info
+	// Decode python-specific info
 	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 		return nil, err
 	}
@@ -1199,7 +1202,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
 	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase)
 
-	// group resources, types, and functions into Go packages
+	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
 
 	var getMod func(modName string) *modContext
@@ -1212,6 +1215,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 				tool:                 tool,
 				snakeCaseToCamelCase: snakeCaseToCamelCase,
 				camelCaseToSnakeCase: camelCaseToSnakeCase,
+				modToPkg:             info.ModuleToPackage,
 			}
 
 			if modName != "" {
@@ -1229,7 +1233,12 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	getModFromToken := func(token string) *modContext {
-		return getMod(PyName(pkg.TokenToModule(token)))
+		canonicalModName := pkg.TokenToModule(token)
+		modName := PyName(canonicalModName)
+		if override, ok := info.ModuleToPackage[canonicalModName]; ok {
+			modName = override
+		}
+		return getMod(modName)
 	}
 
 	// Create the config module if necessary.
