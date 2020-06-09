@@ -30,9 +30,13 @@ type genericCICI struct {
 func (g genericCICI) DetectVars() Vars {
 	v := Vars{}
 	v.Name = SystemName(os.Getenv("PULUMI_CI_SYSTEM"))
+	v.BranchName = os.Getenv("PULUMI_CI_BRANCH_NAME")
 	v.BuildID = os.Getenv("PULUMI_CI_BUILD_ID")
+	v.BuildNumber = os.Getenv("PULUMI_CI_BUILD_NUMBER")
 	v.BuildType = os.Getenv("PULUMI_CI_BUILD_TYPE")
 	v.BuildURL = os.Getenv("PULUMI_CI_BUILD_URL")
+	v.CommitMessage = os.Getenv("PULUMI_COMMIT_MESSAGE")
+	v.PRNumber = os.Getenv("PULUMI_PR_NUMBER")
 	v.SHA = os.Getenv("PULUMI_CI_PULL_REQUEST_SHA")
 
 	return v
