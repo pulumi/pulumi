@@ -217,6 +217,10 @@ type ProgramTestOptions struct {
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
+	// A list of commands to process before the pulumi up. Can be used for things like
+	// preparing a lambda
+	TestPreSteps map[string][]string
+
 	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
 	// optionally return another callback to be invoked after the `pulumi` invocation completes.
 	PrePulumiCommand func(verb string) (func(err error) error, error)
@@ -421,6 +425,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PrePulumiCommand != nil {
 		opts.PrePulumiCommand = overrides.PrePulumiCommand
 	}
+	if overrides.TestPreSteps != nil {
+		opts.TestPreSteps = overrides.TestPreSteps
+	}
 	if overrides.ReportStats != nil {
 		opts.ReportStats = overrides.ReportStats
 	}
@@ -577,8 +584,9 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 // binaries available on PATH.  It essentially executes the following workflow:
 //
 //   yarn install
-//   yarn link <each opts.Depencies>
+//   yarn link <each opts.Dependencies>
 //   (+) yarn run build
+// 	 Run any pre-steps
 //   pulumi init
 //   (*) pulumi login
 //   pulumi stack init integrationtesting
@@ -666,6 +674,11 @@ func (pt *ProgramTester) getYarnBin() (string, error) {
 
 func (pt *ProgramTester) getGoBin() (string, error) {
 	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
+}
+
+func (pt *ProgramTester) getArbitraryBin(name string) (string, error) {
+	emptyLoc := ""
+	return getCmdBin(&emptyLoc, name, "")
 }
 
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
@@ -901,6 +914,11 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	pt.TestFinished = false
 	defer pt.TestCleanUp()
 
+	err = pt.TestLifeCycleRunPresteps()
+	if err != nil {
+		return errors.Wrap(err, "running test pre-steps")
+	}
+
 	err = pt.TestLifeCycleInitialize()
 	if err != nil {
 		return errors.Wrap(err, "initializing test project")
@@ -948,6 +966,27 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 		}
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", rt)
+	}
+
+	return nil
+}
+
+func (pt *ProgramTester) TestLifeCycleRunPresteps() error {
+	if pt.opts.TestPreSteps != nil {
+		dir := pt.projdir
+		fprintf(pt.opts.Stdout, "running test pre-requisites in %s\n", dir)
+		for name, commands := range pt.opts.TestPreSteps {
+			bin, err := pt.getArbitraryBin(name)
+			if err != nil {
+				return err
+			}
+			steps := []string{bin}
+			steps = append(steps, commands...)
+			err = pt.runCommand(fmt.Sprintf("%s-%s", name, commands[0]), steps, dir)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
