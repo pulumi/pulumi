@@ -193,7 +193,7 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
-// resourceTypeName computes the NodeJS package, module, and type name for the given resource.
+// resourceTypeName computes the python package, module, and type name for the given resource.
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
