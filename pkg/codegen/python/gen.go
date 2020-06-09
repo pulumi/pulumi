@@ -68,7 +68,7 @@ type modContext struct {
 	tool                 string
 
 	// Name overrides set in PackageInfo
-	modToPkg map[string]string // Module name -> package name
+	modNameOverrides map[string]string // Optional overrides for Pulumi module names
 }
 
 func tokenToName(tok string) string {
@@ -1215,7 +1215,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 				tool:                 tool,
 				snakeCaseToCamelCase: snakeCaseToCamelCase,
 				camelCaseToSnakeCase: camelCaseToSnakeCase,
-				modToPkg:             info.ModuleToPackage,
+				modNameOverrides:     info.ModuleNameOverrides,
 			}
 
 			if modName != "" {
@@ -1235,7 +1235,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	getModFromToken := func(token string) *modContext {
 		canonicalModName := pkg.TokenToModule(token)
 		modName := PyName(canonicalModName)
-		if override, ok := info.ModuleToPackage[canonicalModName]; ok {
+		if override, ok := info.ModuleNameOverrides[canonicalModName]; ok {
 			modName = override
 		}
 		return getMod(modName)
