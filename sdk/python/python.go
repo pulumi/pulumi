@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const windows = "windows"
@@ -59,12 +61,24 @@ func Command(arg ...string) (*exec.Cmd, error) {
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
 // directory.
-func VirtualEnvCommand(virtualEnvDir string, name string, arg ...string) *exec.Cmd {
+func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	if runtime.GOOS == windows {
 		name = fmt.Sprintf("%s.exe", name)
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
 	return exec.Command(cmdPath, arg...)
+}
+
+// IsVirtualEnv returns true if the specified directory contains a python binary.
+func IsVirtualEnv(dir string) bool {
+	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
+	if runtime.GOOS == windows {
+		pyBin = fmt.Sprintf("%s.exe", pyBin)
+	}
+	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
+		return true
+	}
+	return false
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
@@ -94,6 +108,79 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 		result = append(result, path)
 	}
 	return result
+}
+
+// InstallDependencies will create a new virtual environment and install dependencies in the root directory.
+func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv string) error) error {
+	if showOutput {
+		fmt.Println("Creating virtual environment...")
+		fmt.Println()
+	}
+
+	// Create the virtual environment by running `python -m venv venv`.
+	venvDir := filepath.Join(root, "venv")
+	cmd, err := Command("-m", "venv", venvDir)
+	if err != nil {
+		return err
+	}
+	if output, err := cmd.CombinedOutput(); err != nil {
+		if len(output) > 0 {
+			os.Stdout.Write(output)
+			fmt.Println()
+		}
+		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
+	}
+
+	// Save project with venv info.
+	if err := saveProj("venv"); err != nil {
+		return err
+	}
+
+	if showOutput {
+		fmt.Println("Finished creating virtual environment")
+		fmt.Println()
+	}
+
+	// If `requirements.txt` doesn't exist, just exit early.
+	requirementsPath := filepath.Join(root, "requirements.txt")
+	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	if showOutput {
+		fmt.Println("Installing dependencies...")
+		fmt.Println()
+	}
+
+	// Install dependencies by running `pip install -r requirements.txt` using the `pip`
+	// in the virtual environment.
+	pipCmd := VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
+	pipCmd.Dir = root
+	pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+	if showOutput {
+		// Show stdout/stderr output.
+		pipCmd.Stdout = os.Stdout
+		pipCmd.Stderr = os.Stderr
+		if err := pipCmd.Run(); err != nil {
+			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
+		}
+	} else {
+		// Otherwise, only show output if there is an error.
+		if output, err := pipCmd.CombinedOutput(); err != nil {
+			if len(output) > 0 {
+				os.Stdout.Write(output)
+				fmt.Println()
+			}
+			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
+		}
+	}
+
+	if showOutput {
+		fmt.Println("Finished installing dependencies")
+		fmt.Println()
+	}
+
+	return nil
 }
 
 func virtualEnvBinDirName() string {

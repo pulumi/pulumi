@@ -320,42 +320,15 @@ func completeNodeJSInstall(finalDir string) error {
 }
 
 func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	// Create virtual environment.
-	venvDir := filepath.Join(finalDir, "venv")
-	cmd, err := python.Command("-m", "venv", venvDir)
-	if err != nil {
-		return err
-	}
-
-	if output, err := cmd.CombinedOutput(); err != nil {
-		if len(output) > 0 {
-			os.Stdout.Write(output)
-			fmt.Println()
+	if err := python.InstallDependencies(finalDir, false /*showOutput*/, func(virtualenv string) error {
+		// Save project with venv info.
+		proj.Runtime.SetOption("virtualenv", virtualenv)
+		if err := proj.Save(projPath); err != nil {
+			return errors.Wrapf(err, "saving project at %s", projPath)
 		}
-		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
-	}
-
-	// Save project with venv info.
-	proj.Runtime.SetOption("virtualenv", "venv")
-	if err := proj.Save(projPath); err != nil {
-		return errors.Wrapf(err, "saving project at %s", projPath)
-	}
-
-	requirementsPath := filepath.Join(finalDir, "requirements.txt")
-	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
-	}
-
-	pipCmd := python.VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
-	pipCmd.Dir = finalDir
-	pipCmd.Env = python.ActivateVirtualEnv(os.Environ(), venvDir)
-
-	if output, err := pipCmd.CombinedOutput(); err != nil {
-		if len(output) > 0 {
-			os.Stdout.Write(output)
-			fmt.Println()
-		}
-		return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
+	}); err != nil {
+		return err
 	}
 
 	fmt.Println("Finished installing policy pack")

@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/blang/semver"
@@ -64,7 +65,8 @@ type provider struct {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version) (Provider, error) {
+func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
+	options map[string]interface{}) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
@@ -78,8 +80,14 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		})
 	}
 
+	// Runtime options are passed as environment variables to the provider.
+	env := os.Environ()
+	for k, v := range options {
+		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+	}
+
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, nil /*env*/)
+		[]string{host.ServerAddr()}, env)
 	if err != nil {
 		return nil, err
 	}

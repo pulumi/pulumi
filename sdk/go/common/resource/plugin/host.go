@@ -258,7 +258,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// Try to load and bind to a plugin.
-		plug, err := NewProvider(host, host.ctx, pkg, version)
+		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
