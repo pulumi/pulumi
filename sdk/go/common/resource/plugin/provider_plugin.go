@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/blang/semver"
@@ -79,12 +80,14 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		})
 	}
 
-	args := []string{host.ServerAddr()}
+	// Runtime options are passed as environment variables to the provider.
+	env := os.Environ()
 	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg), args, nil /*env*/)
+	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
+		[]string{host.ServerAddr()}, env)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,5 @@
 @echo off
 
-REM When making changes to this script, also update pulumi-resource-pulumi-python.cmd.
-
 REM Save the first two arguments.
 set "pulumi_policy_python_engine_address=%1"
 set "pulumi_policy_python_program=%2"

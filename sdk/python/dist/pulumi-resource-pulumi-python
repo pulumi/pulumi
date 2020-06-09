@@ -1,42 +1,28 @@
 #!/bin/sh
 
-# When making changes to this script, also update pulumi-analyzer-policy-python.
-
-# Parse the -virtualenv command line argument.
-virtualenv=""
-for arg in "$@"
-do
-    case $arg in
-        -virtualenv=*)
-        virtualenv="${arg#*=}"
-        break
-        ;;
-    esac
-done
-
-if [ -n "${virtualenv:-}" ] ; then
+if [ -n "${PULUMI_RUNTIME_VIRTUALENV:-}" ] ; then
     # Remove trailing slash.
-    virtualenv=${virtualenv%/}
+    PULUMI_RUNTIME_VIRTUALENV=${PULUMI_RUNTIME_VIRTUALENV%/}
 
     # Make the path absolute (if not already).
-    case $virtualenv in
+    case $PULUMI_RUNTIME_VIRTUALENV in
         /*) : ;;
-        *) virtualenv=$PWD/$virtualenv;;
+        *) PULUMI_RUNTIME_VIRTUALENV=$PWD/$PULUMI_RUNTIME_VIRTUALENV;;
     esac
 
     # If python exists in the virtual environment, set PATH and run it.
-    if [ -f "$virtualenv/bin/python" ]; then
+    if [ -f "$PULUMI_RUNTIME_VIRTUALENV/bin/python" ]; then
         # Update PATH and unset PYTHONHOME.
-        PATH="$virtualenv/bin:$PATH"
+        PATH="$PULUMI_RUNTIME_VIRTUALENV/bin:$PATH"
         export PATH
         if [ -n "${PYTHONHOME:-}" ] ; then
             unset PYTHONHOME
         fi
 
         # Run python from the virtual environment.
-        "$virtualenv/bin/python" -u -m pulumi.dynamic $@
+        "$PULUMI_RUNTIME_VIRTUALENV/bin/python" -u -m pulumi.dynamic $@
     else
-        echo "\"$virtualenv\" doesn't appear to be a virtual environment"
+        echo "\"$PULUMI_RUNTIME_VIRTUALENV\" doesn't appear to be a virtual environment"
         exit 1
     fi
 else

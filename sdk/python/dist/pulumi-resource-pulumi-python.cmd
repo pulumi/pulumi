@@ -1,32 +1,17 @@
 @echo off
 
-REM When making changes to this script, also update pulumi-analyzer-policy-python.cmd.
-
-REM Parse the -virtualenv command line argument.
-set pulumi_runtime_python_virtualenv=
-:parse
-if "%~1"=="" goto endparse
-if "%~1"=="-virtualenv" (
-    REM Get the value as a fully-qualified path.
-    set "pulumi_runtime_python_virtualenv=%~f2"
-    goto endparse
-)
-shift /1
-goto parse
-:endparse
-
-if defined pulumi_runtime_python_virtualenv (
+if defined PULUMI_RUNTIME_VIRTUALENV (
     REM If python exists in the virtual environment, set PATH and run it.
-    if exist "%pulumi_runtime_python_virtualenv%\Scripts\python.exe" (
+    if exist "%PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe" (
         REM Update PATH and unset PYTHONHOME.
-        set "PATH=%pulumi_runtime_python_virtualenv%\Scripts;%PATH%"
+        set "PATH=%PULUMI_RUNTIME_VIRTUALENV%\Scripts;%PATH%"
         set PYTHONHOME=
 
         REM Run python from the virtual environment.
-        "%pulumi_runtime_python_virtualenv%\Scripts\python.exe" -u -m pulumi.dynamic %*
+        "%PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe" -u -m pulumi.dynamic %*
         exit /B
     ) else (
-        echo "%pulumi_runtime_python_virtualenv%" doesn't appear to be a virtual environment
+        echo "%PULUMI_RUNTIME_VIRTUALENV%" doesn't appear to be a virtual environment
         exit 1
     )
 ) else (
