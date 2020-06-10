@@ -366,5 +366,11 @@ func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+	message := fmt.Sprintf("unimplemented expression: %s", fmt.Sprintf(reason, vs...))
+	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  message,
+		Detail:   message,
+	})
 	g.Fgenf(w, "(lambda: raise Exception(%q))()", fmt.Sprintf(reason, vs...))
 }

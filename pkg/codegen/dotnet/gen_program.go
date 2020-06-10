@@ -17,8 +17,6 @@ package dotnet
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"io"
 	"strings"
 
@@ -28,6 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type generator struct {
@@ -468,5 +468,11 @@ func (g *generator) genOutputProperty(w io.Writer, v *hcl2.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+	message := fmt.Sprintf("unimplemented expression: %s", fmt.Sprintf(reason, vs...))
+	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  message,
+		Detail:   message,
+	})
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
 }
