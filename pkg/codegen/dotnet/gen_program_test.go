@@ -67,7 +67,7 @@ func TestGenProgram(t *testing.T) {
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
 				for _, d := range diags {
-					if !strings.HasPrefix(d.Summary, "unimplemented expression") {
+					if !strings.HasPrefix(d.Summary, "not yet implemented") {
 						tmpDiags = append(tmpDiags, d)
 					}
 				}
