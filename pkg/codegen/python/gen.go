@@ -134,7 +134,7 @@ func relPathToRelImport(relPath string) string {
 	matches := dirRegex.FindAllStringIndex(relPath, -1)
 
 	relImport := "."
-	for _ = range matches {
+	for range matches {
 		relImport = relImport + "."
 	}
 	return relImport
