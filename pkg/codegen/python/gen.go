@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
+// Match k8s version suffix. Examples include "/v1beta1" and "/v1alpha2".
 var k8sVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta)\d+)?)$`)
 
 type stringSet map[string]struct{}
