@@ -20,9 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
-// Compatibility mode for Kubernetes 2.0 SDK
-const kubernetes20 = "kubernetes20"
-
 // PropertyInfo tracks Python-specific information associated with properties in a package.
 type PropertyInfo struct {
 	MapCase bool `json:"mapCase,omitempty"`
@@ -38,8 +35,6 @@ type PackageInfo struct {
 	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
 	//
 	ModuleNameOverrides map[string]string `json:"moduleNameOverrides,omitempty"`
-	// Toggle compatibility mode for a specified target.
-	Compatibility string `json:"compatibility,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
