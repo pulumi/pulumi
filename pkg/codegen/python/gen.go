@@ -366,7 +366,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
+	fmt.Fprintf(w, "\nclass %s(%s):\n", name, baseType)
 	for _, prop := range res.Properties {
 		name := PyName(prop.Name)
 		ty := pyType(prop.Type)
@@ -525,7 +525,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 
-		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n", name)
+		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
@@ -536,7 +536,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
     def translate_input_property(self, prop):
         return tables._SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
-
 `)
 
 	return w.String(), nil
@@ -681,7 +680,7 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "from setuptools import setup, find_packages\n")
 	fmt.Fprintf(w, "from setuptools.command.install import install\n")
 	fmt.Fprintf(w, "from subprocess import check_call\n")
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "\n\n")
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
@@ -700,14 +699,14 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "                \"\"\")\n")
 	fmt.Fprintf(w, "            else:\n")
 	fmt.Fprintf(w, "                raise\n")
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "\n\n")
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
 	fmt.Fprintf(w, "def readme():\n")
 	fmt.Fprintf(w, "    with open('README.md', encoding='utf-8') as f:\n")
 	fmt.Fprintf(w, "        return f.read()\n")
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "\n\n")
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPack(pkg.Name))
@@ -1296,12 +1295,14 @@ import pkg_resources
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
 
+
 def get_env(*args):
     for v in args:
         value = os.getenv(v)
         if value is not None:
             return value
     return None
+
 
 def get_env_bool(*args):
     str = get_env(*args)
@@ -1314,6 +1315,7 @@ def get_env_bool(*args):
             return False
     return None
 
+
 def get_env_int(*args):
     str = get_env(*args)
     if str is not None:
@@ -1323,6 +1325,7 @@ def get_env_int(*args):
             return None
     return None
 
+
 def get_env_float(*args):
     str = get_env(*args)
     if str is not None:
@@ -1331,6 +1334,7 @@ def get_env_float(*args):
         except:
             return None
     return None
+
 
 def get_version():
     # __name__ is set to the fully-qualified name of the current module, In our case, it will be
