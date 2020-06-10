@@ -115,15 +115,23 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool) {
 		rel, err := filepath.Rel(mod.mod, "")
 		contract.Assert(err == nil)
 		relRoot := path.Dir(rel)
+		relImport := relPathToRelImport(relRoot)
 
 		fmt.Fprintf(w, "import json\n")
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
 		fmt.Fprintf(w, "from typing import Union\n")
-		fmt.Fprintf(w, "from %s import utilities, tables\n", relRoot)
+		fmt.Fprintf(w, "from %s import utilities, tables\n", relImport)
 		fmt.Fprintf(w, "\n")
 	}
+}
+
+func relPathToRelImport(relPath string) string {
+	if relPath == "../.." {
+		return "..."
+	}
+	return relPath
 }
 
 type fs map[string][]byte
