@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -24,6 +26,11 @@ func TestGenProgram(t *testing.T) {
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".pp" {
 			continue
+		}
+
+		expectNYIDiags := false
+		if filepath.Base(f.Name()) == "aws-s3-folder.pp" {
+			expectNYIDiags = true
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
@@ -56,8 +63,17 @@ func TestGenProgram(t *testing.T) {
 
 			files, diags, err := GenerateProgram(program)
 			assert.NoError(t, err)
+			if expectNYIDiags {
+				var tmpDiags hcl.Diagnostics
+				for _, d := range diags {
+					if !strings.HasPrefix(d.Summary, "not yet implemented") {
+						tmpDiags = append(tmpDiags, d)
+					}
+				}
+				diags = tmpDiags
+			}
 			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
+				t.Fatalf("failed to generate program: %v", diags)
 			}
 			assert.Equal(t, string(expected), string(files["__main__.py"]))
 		})
