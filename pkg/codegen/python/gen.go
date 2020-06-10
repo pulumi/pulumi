@@ -128,10 +128,16 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool) {
 }
 
 func relPathToRelImport(relPath string) string {
-	if relPath == "../.." {
-		return "..."
+	// Convert relative path to relative import e.g. "../.." -> "..."
+	// https://realpython.com/absolute-vs-relative-python-imports/#relative-imports
+	dirRegex := regexp.MustCompile(`\.\.`)
+	matches := dirRegex.FindAllStringIndex(relPath, -1)
+
+	relImport := "."
+	for _ = range matches {
+		relImport = relImport + "."
 	}
-	return relPath
+	return relImport
 }
 
 type fs map[string][]byte
