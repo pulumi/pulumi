@@ -130,12 +130,13 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool) {
 func relPathToRelImport(relPath string) string {
 	// Convert relative path to relative import e.g. "../.." -> "..."
 	// https://realpython.com/absolute-vs-relative-python-imports/#relative-imports
-	dirRegex := regexp.MustCompile(`\.\.`)
-	matches := dirRegex.FindAllStringIndex(relPath, -1)
-
 	relImport := "."
-	for range matches {
-		relImport = relImport + "."
+	for _, component := range strings.Split(relPath, "/") {
+		if component == ".." {
+			relImport += "."
+		} else {
+			relImport += component
+		}
 	}
 	return relImport
 }
