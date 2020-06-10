@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+---
+
+## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)
 
@@ -10,7 +15,7 @@ CHANGELOG
 
 - Export `CustomTimeouts` in the Python SDK
  [#4747](https://github.com/pulumi/pulumi/pull/4747)
- 
+
 - Add GitHub Actions CI detection
  [#4758](https://github.com/pulumi/pulumi/pull/4758)
 
@@ -19,8 +24,6 @@ CHANGELOG
 
 - Install and use dependencies automatically for new Python projects.
   [#4775](https://github.com/pulumi/pulumi/pull/4775)
-
----
 
 ## 2.3.0 (2020-05-27)
 - Add F# operators for InputUnion.
@@ -31,7 +34,7 @@ CHANGELOG
 
 - Update go-cloud to support all Azure regions
  [#4643](https://github.com/pulumi/pulumi/pull/4643)
- 
+
 - Fix a Regression in .NET unit testing.
  [#4656](https://github.com/pulumi/pulumi/pull/4656)
 
@@ -64,17 +67,17 @@ CHANGELOG
 
 - Don't call IMocks.NewResourceAsync for the root stack resource
   [#4527](https://github.com/pulumi/pulumi/pull/4527)
-  
+
 - Add ResourceOutput type to Go SDK
   [#4575](https://github.com/pulumi/pulumi/pull/4575)
 
 - Allow secrets to be decrypted when exporting a stack
   [#4046](https://github.com/pulumi/pulumi/pull/4046)
-  
+
 - Commands checking for a confirmation or requiring a `--yes` flag can now be
   skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
   [#4477](https://github.com/pulumi/pulumi/pull/4477)
-  
+
 ## 2.1.1 (2020-05-11)
 
 - Add retry support when writing to state buckets
@@ -84,17 +87,17 @@ CHANGELOG
 
 - Fix infinite recursion bug for Go SDK
   [#4516](https://github.com/pulumi/pulumi/pull/4516)
-  
+
 - Order secretOutputNames when used in stack references
   [#4489](https://github.com/pulumi/pulumi/pull/4489)
 
 - Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
   behavior for how URLs to the Pulumi Console are generated.
   [#4410](https://github.com/pulumi/pulumi/pull/4410)
-  
+
 - Protect against panic when unprotecting non-existant resources
   [#4441](https://github.com/pulumi/pulumi/pull/4441)
-  
+
 - Add flag to `pulumi stack` to output only the stack name
   [#4450](https://github.com/pulumi/pulumi/pull/4450)
 
@@ -111,7 +114,7 @@ CHANGELOG
   pulumi docker image
   [#4474](https://github.com/pulumi/pulumi/pull/4474)
 
-- Increase the MaxCallRecvMsgSize for all RPC calls. 
+- Increase the MaxCallRecvMsgSize for all RPC calls.
   [#4455](https://github.com/pulumi/pulumi/pull/4455)
 
 ## 2.0.0 (2020-04-16)
@@ -153,10 +156,10 @@ CHANGELOG
 ## 1.14.1 (2020-04-13)
 - Propagate `additionalSecretOutputs` opt to Read in NodeJS.
   [#4307](https://github.com/pulumi/pulumi/pull/4307)
-  
+
 - Fix handling of `nil` values in Outputs in Go.
   [#4268](https://github.com/pulumi/pulumi/pull/4268)
-  
+
 - Include usage hints for Input types in Go SDK
   [#4279](https://github.com/pulumi/pulumi/pull/4279)
 
@@ -165,7 +168,7 @@ CHANGELOG
 
 - Fix the `call` mock in Python.
   [#4274](https://github.com/pulumi/pulumi/pull/4274)
-  
+
 - Fix handling of secret values in mock-based tests.
   [#4272](https://github.com/pulumi/pulumi/pull/4272)
 
@@ -192,16 +195,16 @@ CHANGELOG
 
 - Automate execution of `go mod download` for `pulumi new` Go templates
   [#4353](https://github.com/pulumi/pulumi/pull/4353)
-  
+
 - Fix `pulumi up -r -t $URN` not refreshing only the target
   [#4217](https://github.com/pulumi/pulumi/pull/4217)
-  
+
 - Fix logout with file backend when state is deleted
   [#4218](https://github.com/pulumi/pulumi/pull/4218)
-  
+
 - Fix specific flags for `pulumi stack` being global
   [#4294](https://github.com/pulumi/pulumi/pull/4294)
-  
+
 - Fix error when setting config without value in non-interactive mode
   [#4358](https://github.com/pulumi/pulumi/pull/4358)
 
@@ -217,7 +220,7 @@ CHANGELOG
 ## 1.14.0 (2020-04-01)
 - Fix error related to side-by-side versions of `@pulumi/pulumi`.
   [#4235](https://github.com/pulumi/pulumi/pull/4235)
-  
+
 - Allow users to specify an alternate backend URL when using the GitHub Actions container with the env var `PULUMI_BACKEND_URL`.
   [#4243](https://github.com/pulumi/pulumi/pull/4243)
 
@@ -252,7 +255,7 @@ CHANGELOG
 
 - Display resource type in PAC violation output
   [#4061](https://github.com/pulumi/pulumi/issues/4061)
-  
+
 - Update to Helm v3 in pulumi Docker image
   [#4090](https://github.com/pulumi/pulumi/pull/4090)
 
@@ -321,7 +324,7 @@ CHANGELOG
 
 - Avoid panic when displaying failed stack policies.
   [#3960](https://github.com/pulumi/pulumi/pull/3960)
-  
+
 - Add support for secrets in the Go SDK.
   [3938](https://github.com/pulumi/pulumi/pull/3938)
 
