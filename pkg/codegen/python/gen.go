@@ -38,6 +38,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
+// Match k8s version suffix. Examples include "/v1beta1" and "/v1alpha2".
+var k8sVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta)\d+)?)$`)
+
 type stringSet map[string]struct{}
 
 func (ss stringSet) add(s string) {
@@ -69,6 +72,7 @@ type modContext struct {
 
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
+	compatibility    string            // Toggle compatibility mode for a specified target.
 }
 
 func tokenToName(tok string) string {
@@ -229,10 +233,18 @@ func (mod *modContext) genInit(exports []string) string {
 		fmt.Fprintf(w, "# Make subpackages available:\n")
 		fmt.Fprintf(w, "__all__ = [")
 		for i, mod := range mod.children {
+			child := mod.mod
+			if mod.compatibility == kubernetes20 {
+				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
+				// Example: apps/v1beta1 -> v1beta1
+				if match := k8sVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
+					child = child[match[2]:match[3]]
+				}
+			}
 			if i > 0 {
 				fmt.Fprintf(w, ", ")
 			}
-			fmt.Fprintf(w, "'%s'", PyName(mod.mod))
+			fmt.Fprintf(w, "'%s'", PyName(child))
 		}
 		fmt.Fprintf(w, "]\n")
 		fmt.Fprintf(w, "for pkg in __all__:\n")
@@ -1216,6 +1228,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 				snakeCaseToCamelCase: snakeCaseToCamelCase,
 				camelCaseToSnakeCase: camelCaseToSnakeCase,
 				modNameOverrides:     info.ModuleNameOverrides,
+				compatibility:        info.Compatibility,
 			}
 
 			if modName != "" {
