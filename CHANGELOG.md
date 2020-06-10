@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Turn program generation NYIs into diagnostic errors
+ [#4794](https://github.com/pulumi/pulumi/pull/4794)
+
 - Improve dev version detection logic
  [#4732](https://github.com/pulumi/pulumi/pull/4732)
 
