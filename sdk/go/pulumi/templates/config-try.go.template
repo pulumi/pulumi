@@ -58,12 +58,13 @@ func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
 {{end}}
 
 // TrySecret loads a configuration value by its key, returning a non-nil error if it doesn't exist.
-func TrySecret(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+func TrySecret(ctx *pulumi.Context, key string) (pulumi.StringOutput, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
-		return nil, err
+		var empty pulumi.StringOutput
+		return empty, err
 	}
-	return pulumi.ToSecret(pulumi.String(v)), nil
+	return pulumi.ToSecret(pulumi.String(v)).(pulumi.StringOutput), nil
 }
 
 // TrySecretObject loads a configuration value by its key into the output variable,
@@ -81,12 +82,13 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 {{if .GenerateConfig}}
 // TrySecret{{.Name}} loads an optional configuration value by its key, as a {{.Type}},
 // or returns an error if it doesn't exist.
-func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.{{.Name}}Output, error) {
 	v, err := Try{{.Name}}(ctx, key)
 	if err != nil {
-		return nil, err
+		var empty pulumi.{{.Name}}Output
+		return empty, err
 	}
-	return pulumi.ToSecret(pulumi.{{.Name}}(v)), nil
+	return pulumi.ToSecret(pulumi.{{.Name}}(v)).(pulumi.{{.Name}}Output), nil
 }
 
 {{end}}

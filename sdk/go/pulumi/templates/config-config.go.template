@@ -102,7 +102,7 @@ func (c *Config) Try{{.Name}}(key string) ({{.Type}}, error) {
 {{end}}
 // GetSecret loads an optional configuration value by its key 
 // or "" if it doesn't exist, and returns it wrapped in a secret Output.
-func (c *Config) GetSecret(key string) pulumi.Output {
+func (c *Config) GetSecret(key string) pulumi.StringOutput {
 	return GetSecret(c.ctx, c.fullKey(key))
 }
 
@@ -116,7 +116,7 @@ func (c *Config) GetSecretObject(key string, output interface{}) (pulumi.Output,
 {{if .GenerateConfig}}
 // GetSecret{{.Name}} loads an optional {{.Type}} configuration value by its key 
 // or {{.DefaultConfig}} if it doesn't exist, and returns it wrapped in a secret Output.
-func (c *Config) GetSecret{{.Name}}(key string) pulumi.Output {
+func (c *Config) GetSecret{{.Name}}(key string) pulumi.{{.Name}}Output {
 	return GetSecret{{.Name}}(c.ctx, c.fullKey(key))
 }
 
@@ -124,7 +124,7 @@ func (c *Config) GetSecret{{.Name}}(key string) pulumi.Output {
 {{end}}
 // RequireSecret loads a configuration value by its key
 // and returns it wrapped in a secret output, or panics if it doesn't exist.
-func (c *Config) RequireSecret(key string) pulumi.Output {
+func (c *Config) RequireSecret(key string) pulumi.StringOutput {
 	return RequireSecret(c.ctx, c.fullKey(key))
 }
 
@@ -138,14 +138,14 @@ func (c *Config) RequireSecretObject(key string, output interface{}) pulumi.Outp
 {{if .GenerateConfig}}
 // RequireSecret{{.Name}} loads a {{.Type}} configuration value by its key
 // and returns is wrapped in a secret Output, or panics if it doesn't exist.
-func (c *Config) RequireSecret{{.Name}}(key string) pulumi.Output {
+func (c *Config) RequireSecret{{.Name}}(key string) pulumi.{{.Name}}Output {
 	return RequireSecret{{.Name}}(c.ctx, c.fullKey(key))
 }
 
 {{end}}
 {{end}}
 // TrySecret loads a configuration value by its key, returning a non-nil error if it doesn't exist.
-func (c *Config) TrySecret(key string) (pulumi.Output, error) {
+func (c *Config) TrySecret(key string) (pulumi.StringOutput, error) {
 	return TrySecret(c.ctx, c.fullKey(key))
 }
 
@@ -158,7 +158,7 @@ func (c *Config) TrySecretObject(key string, output interface{}) (pulumi.Output,
 {{if .GenerateConfig}}
 // TrySecret{{.Name}} loads an optional {{.Type}} configuration value by its key into a secret Output, 
 // or returns an error if it doesn't exist.
-func (c *Config) TrySecret{{.Name}}(key string) (pulumi.Output, error) {
+func (c *Config) TrySecret{{.Name}}(key string) (pulumi.{{.Name}}Output, error) {
 	return TrySecret{{.Name}}(c.ctx, c.fullKey(key))
 }
 

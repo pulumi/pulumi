@@ -121,8 +121,8 @@ func RequireUint8(ctx *pulumi.Context, key string) uint8 {
 
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
-func RequireSecret(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(Require(ctx, key))
+func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
+	return pulumi.ToSecret(Require(ctx, key)).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
@@ -134,78 +134,78 @@ func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pu
 
 // RequireSecretBool loads an optional configuration value by its key,
 // as a bool wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretBool(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireBool(ctx, key))
+func RequireSecretBool(ctx *pulumi.Context, key string) pulumi.BoolOutput {
+	return pulumi.ToSecret(RequireBool(ctx, key)).(pulumi.BoolOutput)
 }
 
 // RequireSecretFloat32 loads an optional configuration value by its key,
 // as a float32 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretFloat32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireFloat32(ctx, key))
+func RequireSecretFloat32(ctx *pulumi.Context, key string) pulumi.Float32Output {
+	return pulumi.ToSecret(RequireFloat32(ctx, key)).(pulumi.Float32Output)
 }
 
 // RequireSecretFloat64 loads an optional configuration value by its key,
 // as a float64 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretFloat64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireFloat64(ctx, key))
+func RequireSecretFloat64(ctx *pulumi.Context, key string) pulumi.Float64Output {
+	return pulumi.ToSecret(RequireFloat64(ctx, key)).(pulumi.Float64Output)
 }
 
 // RequireSecretInt loads an optional configuration value by its key,
 // as a int wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretInt(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireInt(ctx, key))
+func RequireSecretInt(ctx *pulumi.Context, key string) pulumi.IntOutput {
+	return pulumi.ToSecret(RequireInt(ctx, key)).(pulumi.IntOutput)
 }
 
 // RequireSecretInt16 loads an optional configuration value by its key,
 // as a int16 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretInt16(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireInt16(ctx, key))
+func RequireSecretInt16(ctx *pulumi.Context, key string) pulumi.Int16Output {
+	return pulumi.ToSecret(RequireInt16(ctx, key)).(pulumi.Int16Output)
 }
 
 // RequireSecretInt32 loads an optional configuration value by its key,
 // as a int32 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretInt32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireInt32(ctx, key))
+func RequireSecretInt32(ctx *pulumi.Context, key string) pulumi.Int32Output {
+	return pulumi.ToSecret(RequireInt32(ctx, key)).(pulumi.Int32Output)
 }
 
 // RequireSecretInt64 loads an optional configuration value by its key,
 // as a int64 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretInt64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireInt64(ctx, key))
+func RequireSecretInt64(ctx *pulumi.Context, key string) pulumi.Int64Output {
+	return pulumi.ToSecret(RequireInt64(ctx, key)).(pulumi.Int64Output)
 }
 
 // RequireSecretInt8 loads an optional configuration value by its key,
 // as a int8 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretInt8(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireInt8(ctx, key))
+func RequireSecretInt8(ctx *pulumi.Context, key string) pulumi.Int8Output {
+	return pulumi.ToSecret(RequireInt8(ctx, key)).(pulumi.Int8Output)
 }
 
 // RequireSecretUint loads an optional configuration value by its key,
 // as a uint wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretUint(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireUint(ctx, key))
+func RequireSecretUint(ctx *pulumi.Context, key string) pulumi.UintOutput {
+	return pulumi.ToSecret(RequireUint(ctx, key)).(pulumi.UintOutput)
 }
 
 // RequireSecretUint16 loads an optional configuration value by its key,
 // as a uint16 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretUint16(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireUint16(ctx, key))
+func RequireSecretUint16(ctx *pulumi.Context, key string) pulumi.Uint16Output {
+	return pulumi.ToSecret(RequireUint16(ctx, key)).(pulumi.Uint16Output)
 }
 
 // RequireSecretUint32 loads an optional configuration value by its key,
 // as a uint32 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretUint32(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireUint32(ctx, key))
+func RequireSecretUint32(ctx *pulumi.Context, key string) pulumi.Uint32Output {
+	return pulumi.ToSecret(RequireUint32(ctx, key)).(pulumi.Uint32Output)
 }
 
 // RequireSecretUint64 loads an optional configuration value by its key,
 // as a uint64 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretUint64(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireUint64(ctx, key))
+func RequireSecretUint64(ctx *pulumi.Context, key string) pulumi.Uint64Output {
+	return pulumi.ToSecret(RequireUint64(ctx, key)).(pulumi.Uint64Output)
 }
 
 // RequireSecretUint8 loads an optional configuration value by its key,
 // as a uint8 wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecretUint8(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(RequireUint8(ctx, key))
+func RequireSecretUint8(ctx *pulumi.Context, key string) pulumi.Uint8Output {
+	return pulumi.ToSecret(RequireUint8(ctx, key)).(pulumi.Uint8Output)
 }
