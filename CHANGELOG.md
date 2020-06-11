@@ -6,6 +6,9 @@ CHANGELOG
 - Improve typing for Go SDK secret config values
  [#4800](https://github.com/pulumi/pulumi/pull/4800)
 
+- Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
+  [#4808](https://github.com/pulumi/pulumi/pull/4808)
+
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)
