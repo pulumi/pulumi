@@ -131,6 +131,9 @@ func relPathToRelImport(relPath string) string {
 	// Convert relative path to relative import e.g. "../.." -> "..."
 	// https://realpython.com/absolute-vs-relative-python-imports/#relative-imports
 	relImport := "."
+	if relPath == "." {
+		return relImport
+	}
 	for _, component := range strings.Split(relPath, "/") {
 		if component == ".." {
 			relImport += "."

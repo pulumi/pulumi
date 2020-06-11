@@ -6,6 +6,7 @@ var pathTests = []struct {
 	input    string
 	expected string
 }{
+	{".", "."},
 	{"", "."},
 	{"../", ".."},
 	{"../..", "..."},
