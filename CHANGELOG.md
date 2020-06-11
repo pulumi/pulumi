@@ -2,9 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
 
----
+- Improve typing for Go SDK secret config values
+ [#4800](https://github.com/pulumi/pulumi/pull/4800)
 
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors

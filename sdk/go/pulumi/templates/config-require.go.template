@@ -53,8 +53,8 @@ func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
 {{end}}
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
-func RequireSecret(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(Require(ctx, key))
+func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
+	return pulumi.ToSecret(Require(ctx, key)).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
@@ -68,8 +68,8 @@ func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pu
 {{if .GenerateConfig}}
 // RequireSecret{{.Name}} loads an optional configuration value by its key,
 // as a {{.Type}} wrapped in a secret Output, or panics if it doesn't exist.
-func RequireSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.Output {
-	return pulumi.ToSecret(Require{{.Name}}(ctx, key))
+func RequireSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.{{.Name}}Output {
+	return pulumi.ToSecret(Require{{.Name}}(ctx, key)).(pulumi.{{.Name}}Output)
 }
 {{end}}
 {{end}}
