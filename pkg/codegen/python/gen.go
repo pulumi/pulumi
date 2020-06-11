@@ -1269,7 +1269,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Create the config module if necessary.
-	if len(pkg.Config) > 0 {
+	if len(pkg.Config) > 0 &&
+		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
 		_ = getMod("config")
 	}
 
