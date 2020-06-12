@@ -9,6 +9,9 @@ CHANGELOG
 - Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
   [#4808](https://github.com/pulumi/pulumi/pull/4808)
 
+- Fix GitHub Actions environment detection for PRs.
+  [#4817](https://github.com/pulumi/pulumi/pull/4817)
+
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)
