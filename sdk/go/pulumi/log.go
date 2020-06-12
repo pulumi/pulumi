@@ -17,6 +17,8 @@
 package pulumi
 
 import (
+	"strings"
+
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"golang.org/x/net/context"
 )
@@ -90,7 +92,7 @@ func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc
 
 	logRequest := &pulumirpc.LogRequest{
 		Severity:  severity,
-		Message:   message,
+		Message:   strings.ToValidUTF8(message, "�"),
 		Urn:       urn,
 		StreamId:  args.StreamID,
 		Ephemeral: args.Ephemeral,

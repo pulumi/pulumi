@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Handle invalid UTF-8 characters before RPC calls
+ [#4816](https://github.com/pulumi/pulumi/pull/4816)
+
 - Improve typing for Go SDK secret config values
  [#4800](https://github.com/pulumi/pulumi/pull/4800)
 
