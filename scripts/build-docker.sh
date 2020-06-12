@@ -34,7 +34,7 @@ test_containers() {
     # Run the container tests, note that we also build the binaries into /tmp for the next step.
     TEST_BIN_DIRECTORY=$(mktemp -d)
     pushd ${ROOT}/tests
-    GOOS=linux go test -c -o ${TEST_BIN_DIRECTORY} ${ROOT}/tests/containers/...
+    GOOS=linux go test -c -o "${TEST_BIN_DIRECTORY}/" ${ROOT}/tests/containers/...
     popd
 
     # Run tests _within_ the "pulumi" container, ensuring that the CLI is installed
