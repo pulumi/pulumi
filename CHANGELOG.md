@@ -13,6 +13,9 @@ CHANGELOG
   [#4812](https://github.com/pulumi/pulumi/pull/4812)
   
 
+- Fix `pylint(no-member)` when accessing `resource.id`.
+  [#4813](https://github.com/pulumi/pulumi/pull/4813)
+
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)
