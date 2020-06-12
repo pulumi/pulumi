@@ -8,6 +8,10 @@ CHANGELOG
 
 - Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
   [#4808](https://github.com/pulumi/pulumi/pull/4808)
+  
+- Ensure GitHub Action authenticates to GCR when `$GOOGLE_CREDENTIALS` specified
+  [#4812](https://github.com/pulumi/pulumi/pull/4812)
+  
 
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
