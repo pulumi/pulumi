@@ -1738,3 +1738,36 @@ func TestLargeResourceDotNet(t *testing.T) {
 		Dir:          filepath.Join("large_resource", "dotnet"),
 	})
 }
+
+// Test to ensure Pylint is clean.
+func TestPythonPylint(t *testing.T) {
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "pylint"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomURN := stack.Outputs["random_urn"].(string)
+			assert.NotEmpty(t, randomURN)
+
+			randomID := stack.Outputs["random_id"].(string)
+			randomVal := stack.Outputs["random_val"].(string)
+			assert.Equal(t, randomID, randomVal)
+
+			cwd := stack.Outputs["cwd"].(string)
+			assert.NotEmpty(t, cwd)
+
+			pylint := filepath.Join("venv", "bin", "pylint")
+			if runtime.GOOS == WindowsOS {
+				pylint = filepath.Join("venv", "Scripts", "pylint")
+			}
+
+			err := integration.RunCommand(t, "pylint", []string{pylint, "__main__.py"}, cwd, opts)
+			assert.NoError(t, err)
+		},
+		Quick:                  true,
+		UseAutomaticVirtualEnv: true,
+	}
+	integration.ProgramTest(t, opts)
+}
