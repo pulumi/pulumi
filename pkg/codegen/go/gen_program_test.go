@@ -28,6 +28,7 @@ func TestGenProgram(t *testing.T) {
 		}
 		// TODO: include all test files
 		if filepath.Base(f.Name()) != "aws-s3-logging.pp" &&
+			filepath.Base(f.Name()) != "aws-s3-folder.pp" &&
 			filepath.Base(f.Name()) != "aws-fargate.pp" {
 			continue
 		}
@@ -63,7 +64,7 @@ func TestGenProgram(t *testing.T) {
 			files, diags, err := GenerateProgram(program)
 			assert.NoError(t, err)
 			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
+				t.Fatalf("failed to generate program: %v", diags)
 			}
 			assert.Equal(t, string(expected), string(files["main.go"]))
 		})
@@ -119,6 +120,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 			program:            program,
 			jsonTempSpiller:    &jsonSpiller{},
 			ternaryTempSpiller: &tempSpiller{},
+			readDirTempSpiller: &readDirSpiller{},
 		}
 		g.Formatter = format.NewFormatter(g)
 		return g

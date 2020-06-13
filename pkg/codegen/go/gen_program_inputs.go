@@ -58,7 +58,8 @@ func modifyInputs(
 			return x
 		}
 		switch expr.Name {
-
+		case "mimeType":
+			return modf(x)
 		case hcl2.IntrinsicConvert:
 			switch rt := expr.Signature.ReturnType.(type) {
 			case *model.UnionType:
