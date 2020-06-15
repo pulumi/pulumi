@@ -75,9 +75,9 @@ func (t githubActionsCI) DetectVars() Vars {
 }
 
 // TryGetEvent returns the GitHub webhook payload found in the GitHub Actions environment.
-// GitHub stores the JSON payload of the webhook that triggered the  workflow in a path.
+// GitHub stores the JSON payload of the webhook that triggered the workflow in a path.
 // The path is set as the value of the env var GITHUB_EVENT_PATH. Returns nil if an error
-// is encountered of the GITHUB_EVENT_PATH is not set.
+// is encountered or the GITHUB_EVENT_PATH is not set.
 func (t githubActionsCI) GetPREvent() *githubActionsPullRequestEvent {
 	eventPath := os.Getenv("GITHUB_EVENT_PATH")
 	if eventPath == "" {
