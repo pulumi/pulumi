@@ -16,20 +16,30 @@ package config
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
+func ensureKey(ctx *pulumi.Context, key string) string {
+	if !strings.Contains(key, ":") {
+		key = ctx.Project() + ":" + key
+	}
+	return key
+}
+
 // Get loads an optional configuration value by its key, or returns "" if it doesn't exist.
 func Get(ctx *pulumi.Context, key string) string {
+	key = ensureKey(ctx, key)
 	v, _ := ctx.GetConfig(key)
 	return v
 }
 
 // GetObject attempts to load an optional configuration value by its key into the specified output variable.
 func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
+	key = ensureKey(ctx, key)
 	if v, ok := ctx.GetConfig(key); ok {
 		return json.Unmarshal([]byte(v), output)
 	}
@@ -41,6 +51,7 @@ func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
 {{if .GenerateConfig}}
 // Get{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns {{.DefaultConfig}} if it doesn't exist.
 func Get{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
+	key = ensureKey(ctx, key)
 	if v, ok := ctx.GetConfig(key); ok {
 		return cast.To{{.Name}}(v)
 	}
@@ -51,12 +62,14 @@ func Get{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
 {{end}}
 // GetSecret loads an optional configuration value by its key, or "" if it does not exist, into a secret Output.
 func GetSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
+	key = ensureKey(ctx, key)
 	v, _ := ctx.GetConfig(key)
 	return pulumi.ToSecret(pulumi.String(v)).(pulumi.StringOutput)
 }
 
 // GetSecretObject attempts to load an optional configuration value by its key into the specified output variable.
 func GetSecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
+	key = ensureKey(ctx, key)
 	if err := GetObject(ctx, key, output); err != nil {
 		return nil, err
 	}
@@ -69,6 +82,7 @@ func GetSecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 // GetSecret{{.Name}} loads an optional {{.Type}} configuration value by its key,
 // or false if it does not exist, into a secret Output.
 func GetSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.{{.Name}}Output {
+	key = ensureKey(ctx, key)
 	return pulumi.ToSecret(Get{{.Name}}(ctx, key)).(pulumi.{{.Name}}Output)
 }
 {{end}}

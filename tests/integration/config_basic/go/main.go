@@ -57,6 +57,11 @@ func main() {
 			if value != test.Expected {
 				return fmt.Errorf("%q not the expected value; got %q", test.Key, value)
 			}
+			// config-less form
+			value = config.Require(ctx, test.Key)
+			if value != test.Expected {
+				return fmt.Errorf("%q not the expected value; got %q", test.Key, value)
+			}
 		}
 
 		return nil

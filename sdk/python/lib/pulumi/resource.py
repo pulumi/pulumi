@@ -18,7 +18,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 import copy
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs, read_resource
+from .runtime.resource import _register_resource, register_resource_outputs, _read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -706,9 +706,18 @@ class Resource:
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            read_resource(cast('CustomResource', self), t, name, props, opts)
+            res = cast('CustomResource', self)
+            result = _read_resource(res, t, name, props, opts)
+            res.urn = result.urn
+            assert result.id is not None
+            res.id = result.id
         else:
-            register_resource(self, t, name, custom, props, opts)
+            result = _register_resource(self, t, name, custom, props, opts)
+            self.urn = result.urn
+            if custom:
+                assert result.id is not None
+                res = cast('CustomResource', self)
+                res.id = result.id
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
