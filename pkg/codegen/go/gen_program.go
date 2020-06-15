@@ -309,13 +309,13 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case hcl2.Invoke:
-			g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+			g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
 		}
 	default:
-		g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+		g.Fgenf(w, "%s := %.3v;\n", name, expr)
 
 	}
 
