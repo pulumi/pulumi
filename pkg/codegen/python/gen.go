@@ -404,14 +404,17 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.Comment != "" {
 			doc := prop.Comment
 
-			seenTypes := codegen.Set{}
-			nested := nestedStructure(prop.Type, seenTypes)
-			if len(nested) > 0 {
-				doc = fmt.Sprintf("%s\n", doc)
+			// Exclude nested docs in kubernetes provider
+			if mod.compatibility != kubernetes20 {
+				seenTypes := codegen.Set{}
+				nested := nestedStructure(prop.Type, seenTypes)
+				if len(nested) > 0 {
+					doc = fmt.Sprintf("%s\n", doc)
 
-				b := &bytes.Buffer{}
-				mod.genNestedStructureBullets(b, nested, "  ", false /*wrapInput*/)
-				doc = fmt.Sprintf("%s%s", doc, b.String())
+					b := &bytes.Buffer{}
+					mod.genNestedStructureBullets(b, nested, "  ", false /*wrapInput*/)
+					doc = fmt.Sprintf("%s%s", doc, b.String())
+				}
 			}
 
 			printComment(w, doc, "    ")
@@ -960,8 +963,11 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 		mod.genPropDocstring(b, prop, true /*wrapInput*/)
 	}
 
-	// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-	mod.genNestedStructuresDocstring(b, res.InputProperties, true /*wrapInput*/)
+	// Exclude nested docs in kubernetes provider
+	if mod.compatibility != kubernetes20 {
+		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
+		mod.genNestedStructuresDocstring(b, res.InputProperties, true /*wrapInput*/)
+	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
