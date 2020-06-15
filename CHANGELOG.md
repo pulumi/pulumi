@@ -19,6 +19,9 @@ CHANGELOG
 - Fix `pylint(no-member)` when accessing `resource.id`.
   [#4813](https://github.com/pulumi/pulumi/pull/4813)
 
+- Fix GitHub Actions environment detection for PRs.
+  [#4817](https://github.com/pulumi/pulumi/pull/4817)
+
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)

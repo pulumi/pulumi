@@ -17,6 +17,7 @@ package ciutil
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -26,45 +27,72 @@ type githubActionsCI struct {
 	baseCI
 }
 
+type githubPRHead struct {
+	SHA string `json:"sha"`
+	Ref string `json:"ref"`
+}
+
 // githubPR represents the `pull_request` payload posted by GitHub to trigger
 // workflows for PRs. Note that this is only a partial representation as we
 // don't need anything other than the PR number.
 // See https://developer.github.com/webhooks/event-payloads/#pull_request.
 type githubPR struct {
-	Action string `json:"action"`
-	Number int64  `json:"number"`
+	Head githubPRHead `json:"head"`
 }
 
 // githubActionsPullRequestEvent represents the webhook payload for a pull_request event.
 // https://help.github.com/en/actions/reference/events-that-trigger-workflows#pull-request-event-pull_request
 type githubActionsPullRequestEvent struct {
+	Action      string   `json:"action"`
+	Number      int64    `json:"number"`
 	PullRequest githubPR `json:"pull_request"`
 }
 
 // DetectVars detects the GitHub Actions env vars.
-// nolint: lll
-// See https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables.
+// See https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables.
 func (t githubActionsCI) DetectVars() Vars {
 	v := Vars{Name: GitHubActions}
 	v.BuildID = os.Getenv("GITHUB_RUN_ID")
 	v.BuildNumber = os.Getenv("GITHUB_RUN_NUMBER")
 	v.BuildType = os.Getenv("GITHUB_EVENT_NAME")
-	v.SHA = os.Getenv("GITHUB_SHA")
 	v.BranchName = os.Getenv("GITHUB_REF")
 	repoSlug := os.Getenv("GITHUB_REPOSITORY")
 	if repoSlug != "" && v.BuildID != "" {
 		v.BuildURL = fmt.Sprintf("https://github.com/%s/actions/runs/%s", repoSlug, v.BuildID)
 	}
 
-	// Try to use the pull_request webhook payload to extract the PR number.
-	// For Pull Requests, GitHub stores the payload of the webhook that triggered the
-	// workflow in a path. The path is identified by GITHUB_EVENT_PATH.
+	v.SHA = os.Getenv("GITHUB_SHA")
 	if v.BuildType == "pull_request" {
-		eventPath := os.Getenv("GITHUB_EVENT_PATH")
-		var prEvent githubActionsPullRequestEvent
-		if err := json.Unmarshal([]byte(eventPath), &prEvent); err == nil {
-			v.PRNumber = strconv.FormatInt(prEvent.PullRequest.Number, 10)
+		event := t.GetPREvent()
+		if event != nil {
+			prNumber := strconv.FormatInt(event.Number, 10)
+			v.PRNumber = prNumber
+			v.SHA = event.PullRequest.Head.SHA
+			v.BranchName = event.PullRequest.Head.Ref
 		}
 	}
 	return v
+}
+
+// TryGetEvent returns the GitHub webhook payload found in the GitHub Actions environment.
+// GitHub stores the JSON payload of the webhook that triggered the workflow in a path.
+// The path is set as the value of the env var GITHUB_EVENT_PATH. Returns nil if an error
+// is encountered or the GITHUB_EVENT_PATH is not set.
+func (t githubActionsCI) GetPREvent() *githubActionsPullRequestEvent {
+	eventPath := os.Getenv("GITHUB_EVENT_PATH")
+	if eventPath == "" {
+		return nil
+	}
+
+	b, err := ioutil.ReadFile(eventPath)
+	if err != nil {
+		return nil
+	}
+
+	var prEvent githubActionsPullRequestEvent
+	if err := json.Unmarshal(b, &prEvent); err != nil {
+		return nil
+	}
+
+	return &prEvent
 }
