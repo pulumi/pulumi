@@ -77,7 +77,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		taskExecRolePolicyAttachment, err := iam.NewRolePolicyAttachment(ctx, "taskExecRolePolicyAttachment", &iam.RolePolicyAttachmentArgs{
+		_, err = iam.NewRolePolicyAttachment(ctx, "taskExecRolePolicyAttachment", &iam.RolePolicyAttachmentArgs{
 			Role:      taskExecRole.Name,
 			PolicyArn: pulumi.String("arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"),
 		})
@@ -146,7 +146,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		appService, err := ecs.NewService(ctx, "appService", &ecs.ServiceArgs{
+		_, err = ecs.NewService(ctx, "appService", &ecs.ServiceArgs{
 			Cluster:        cluster.Arn,
 			DesiredCount:   pulumi.Int(5),
 			LaunchType:     pulumi.String("FARGATE"),

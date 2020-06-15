@@ -31,7 +31,7 @@ func main() {
 			fileNames0[i0] = val0.Name()
 		}
 		for i0, val0 := range fileNames0 {
-			_, err := s3.NewBucketObject(ctx, "files-"+string(i0), &s3.BucketObjectArgs{
+			_, err = s3.NewBucketObject(ctx, "files-"+string(i0), &s3.BucketObjectArgs{
 				Bucket:      siteBucket.ID(),
 				Key:         pulumi.String(val0),
 				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v%v%v", siteDir, "/", val0)),
@@ -41,7 +41,7 @@ func main() {
 				return err
 			}
 		}
-		bucketPolicy, err := s3.NewBucketPolicy(ctx, "bucketPolicy", &s3.BucketPolicyArgs{
+		_, err = s3.NewBucketPolicy(ctx, "bucketPolicy", &s3.BucketPolicyArgs{
 			Bucket: siteBucket.ID(),
 			Policy: siteBucket.ID().ApplyT(func(id string) (pulumi.String, error) {
 				var _zero pulumi.String

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
@@ -117,10 +118,11 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		}
 
 		g := &generator{
-			program:            program,
-			jsonTempSpiller:    &jsonSpiller{},
-			ternaryTempSpiller: &tempSpiller{},
-			readDirTempSpiller: &readDirSpiller{},
+			program:             program,
+			jsonTempSpiller:     &jsonSpiller{},
+			ternaryTempSpiller:  &tempSpiller{},
+			readDirTempSpiller:  &readDirSpiller{},
+			scopeTraversalRoots: codegen.NewStringSet(),
 		}
 		g.Formatter = format.NewFormatter(g)
 		return g

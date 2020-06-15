@@ -19,11 +19,12 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program            *hcl2.Program
-	diagnostics        hcl.Diagnostics
-	jsonTempSpiller    *jsonSpiller
-	ternaryTempSpiller *tempSpiller
-	readDirTempSpiller *readDirSpiller
+	program             *hcl2.Program
+	diagnostics         hcl.Diagnostics
+	jsonTempSpiller     *jsonSpiller
+	ternaryTempSpiller  *tempSpiller
+	readDirTempSpiller  *readDirSpiller
+	scopeTraversalRoots codegen.StringSet
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -31,16 +32,21 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program:            program,
-		jsonTempSpiller:    &jsonSpiller{},
-		ternaryTempSpiller: &tempSpiller{},
-		readDirTempSpiller: &readDirSpiller{},
+		program:             program,
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
 	}
 
 	g.Formatter = format.NewFormatter(g)
 
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
+
+	for _, n := range nodes {
+		g.collectScopeRoots(n)
+	}
 
 	for _, n := range nodes {
 		g.genNode(&index, n)
@@ -58,6 +64,16 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
+}
+
+func (g *generator) collectScopeRoots(n hcl2.Node) {
+	diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+		if st, ok := n.(*model.ScopeTraversalExpression); ok {
+			g.scopeTraversalRoots.Add(st.RootName)
+		}
+		return n, nil
+	})
+	contract.Assert(len(diags) == 0)
 }
 
 // genPreamble generates package decl, imports, and opens the main func
@@ -167,7 +183,12 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	instantiate := func(varName, resourceName string) {
-		g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
+		if g.scopeTraversalRoots.Has(varName) {
+			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
+		} else {
+			g.Fgenf(w, "_, err = %s.New%s(ctx, %s, ", mod, typ, resourceName)
+		}
+
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
 			for _, attr := range r.Inputs {
@@ -280,6 +301,10 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	isInput := false
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
+	name := v.Name()
+	if !g.scopeTraversalRoots.Has(name) {
+		name = "_"
+	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
