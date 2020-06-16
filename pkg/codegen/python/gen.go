@@ -69,6 +69,7 @@ type modContext struct {
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
 	tool                 string
+	extraSourceFiles     []string
 
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
@@ -1304,9 +1305,20 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	files := fs{}
 	for p, f := range extraFiles {
-		files.add(p, f)
+		if path.Ext(p) != ".py" {
+			continue
+		}
 
+		modName := path.Dir(p)
+		if modName == "/" || modName == "." {
+			modName = ""
+		}
+		mod := getMod(modName)
+		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
+
+		files.add(filepath.Join(pyPack(pkg.Name), p), f)
 	}
+
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
 			return nil, err
