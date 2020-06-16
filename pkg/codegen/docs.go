@@ -184,6 +184,7 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 					nextGrandchild = grandchild.NextSibling()
 					node.InsertBefore(node, c, grandchild)
 				}
+				node.RemoveChild(node, c)
 			}
 		}
 	}
