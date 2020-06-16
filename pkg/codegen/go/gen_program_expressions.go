@@ -130,7 +130,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	switch expr.Name {
 	case hcl2.IntrinsicInput:
 		isInput := true
+		// bypass passthrough __convert expressions that might require prefix: "pulumi.*"
+		if c, ok := expr.Args[0].(*model.FunctionCallExpression); ok && c.Name == hcl2.IntrinsicConvert {
+			switch c := c.Args[0].(type) {
+			case *model.RelativeTraversalExpression, *model.ScopeTraversalExpression:
+				expr.Args[0] = c
+				g.GenFunctionCallExpression(w, expr)
+				return
+			}
+		}
 		switch arg := expr.Args[0].(type) {
+		case *model.RelativeTraversalExpression:
+			g.genRelativeTraversalExpression(w, arg, isInput)
 		case *model.ScopeTraversalExpression:
 			g.genScopeTraversalExpression(w, arg, isInput)
 		default:
@@ -179,6 +190,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case hcl2.Invoke:
 		_, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
+		if module == "" {
+			module = "aws"
+		}
 		name := fmt.Sprintf("%s.%s", module, fn)
 
 		optionsBag := ""
@@ -215,8 +229,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	}
 }
 
-// GenIndexExpression generates code for an IndexExpression.
-func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) { /*TODO*/ }
+func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
+	g.Fgenf(w, "%.20v[%.v]", expr.Collection, expr.Key)
+}
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
 	g.genLiteralValueExpression(w, expr, expr.Type())
@@ -335,12 +350,40 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		}
 
 		g.Fgenf(w, "}")
+	} else {
+		g.Fgenf(w, "nil")
+	}
+}
+
+func (g *generator) genRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression, isInput bool) {
+
+	if _, ok := expr.Parts[0].(*model.PromiseType); ok {
+		isInput = false
+	}
+	if _, ok := expr.Parts[0].(*hcl2.Resource); ok {
+		isInput = false
+	}
+	if isInput {
+		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
+	}
+	g.GenRelativeTraversalExpression(w, expr)
+	if isInput {
+		g.Fgenf(w, ")")
 	}
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
 	g.Fgenf(w, "%.20v", expr.Source)
-	g.genRelativeTraversal(w, expr.Traversal, expr.Parts, nil)
+	isRootResource := false
+	if ie, ok := expr.Source.(*model.IndexExpression); ok {
+		if se, ok := ie.Collection.(*model.ScopeTraversalExpression); ok {
+			if _, ok := se.Parts[0].(*hcl2.Resource); ok {
+				isRootResource = true
+			}
+			isRootResource = true
+		}
+	}
+	g.genRelativeTraversal(w, expr.Traversal, expr.Parts, isRootResource)
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
@@ -350,18 +393,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression, isInput bool) {
 	rootName := expr.RootName
-	// TODO splat
-	// if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
-	// 	rootName = "__item"
-	// }
+
+	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
+		rootName = "val0"
+	}
 
 	genIDCall := false
 
-	var objType *schema.ObjectType
 	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
 		isInput = false
 		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
-			objType, _ = schemaType.(*schema.ObjectType)
+			_, _ = schemaType.(*schema.ObjectType)
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
 			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
@@ -382,13 +424,14 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		case "value":
 			g.Fgenf(w, "val0")
 		case "key":
-			g.Fgenf(w, "key0")
+			g.Fgenf(w, "i0")
 		default:
 			contract.Failf("unexpected traversal on range expression: %s", part)
 		}
 	} else {
 		g.Fgen(w, rootName)
-		g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+		isRootResource := false
+		g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts[1:], isRootResource)
 	}
 
 	if isInput {
@@ -401,7 +444,9 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 }
 
 // GenSplatExpression generates code for a SplatExpression.
-func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) { /*TODO*/ }
+func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {
+	contract.Failf("unlowered splat expression @ %v", expr.SyntaxNode().Range())
+}
 
 // GenTemplateExpression generates code for a TemplateExpression.
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
@@ -533,9 +578,15 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 			return destType.Name
 		}
 	case *model.ObjectType:
+		if isInput {
+			return "pulumi.Map"
+		}
 		return "map[string]interface{}"
 	case *model.MapType:
 		valType := argumentTypeName(nil, destType.ElementType, isInput)
+		if isInput {
+			return fmt.Sprintf("pulumi.%sMap", Title(valType))
+		}
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
 		argTypeName := argumentTypeName(nil, destType.ElementType, isInput)
@@ -588,10 +639,9 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 	return ""
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer,
-	traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType) {
+func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable, isRootResource bool) {
 
-	for _, part := range traversal {
+	for i, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {
 		case hcl.TraverseAttr:
@@ -609,7 +659,15 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 
 		switch key.Type() {
 		case cty.String:
-			g.Fgenf(w, ".%s", Title(key.AsString()))
+			shouldConvert := isRootResource
+			if _, ok := parts[i].(*model.OutputType); ok {
+				shouldConvert = true
+			}
+			if key.AsString() == "id" && shouldConvert {
+				g.Fgenf(w, ".ID()")
+			} else {
+				g.Fgenf(w, ".%s", Title(key.AsString()))
+			}
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
 			g.Fgenf(w, "[%d]", idx)
@@ -626,7 +684,7 @@ func (nameInfo) Format(name string) string {
 	return name
 }
 
-// lowerExpression amends the expression with intrinsics for C# generation.
+// lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []interface{}) {
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
@@ -634,6 +692,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
+	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 
 	if isInput {
 		expr = rewriteInputs(expr)
@@ -648,9 +707,13 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	for _, t := range rTemps {
 		temps = append(temps, t)
 	}
+	for _, t := range sTemps {
+		temps = append(temps, t)
+	}
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
 	diags = append(diags, readDirDiags...)
+	diags = append(diags, splatDiags...)
 	contract.Assert(len(diags) == 0)
 	return expr, temps
 }
@@ -681,7 +744,14 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		// If we only have a single output, just generate a normal `.Apply`
 		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
 	} else {
-		// TODO
+		g.Fgenf(w, "pulumi.All(%.v", applyArgs[0])
+		applyArgs = applyArgs[1:]
+		for _, a := range applyArgs {
+			g.Fgenf(w, ",%.v", a)
+		}
+		// TODO need lowering step to rewrite then arugment references
+		// in terms of scope traversal from all result: val[i] etc.
+		g.Fgenf(w, ").Apply(%.v)%s", then, typeAssertion)
 	}
 }
 
