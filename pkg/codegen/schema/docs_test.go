@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pgavlin/goldmark/ast"
+	"github.com/pgavlin/goldmark/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/testutil"
 )
 
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")

@@ -389,8 +389,8 @@ github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFSt
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-buffruneio v0.2.0/go.mod h1:JkE26KsDizTr40EUHkXVtNPvgGtbSNq5BcowyYOWdKo=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
-github.com/pgavlin/goldmark v1.1.33-0.20200616164752-aaa9ff3e1d61 h1:iAG3OKZggV42MhJXxcSAtyMNlG+Emxes2m/+K6up6S0=
-github.com/pgavlin/goldmark v1.1.33-0.20200616164752-aaa9ff3e1d61/go.mod h1:ZRWjhQQgWI+UsiBXcU/Y0CVUxKPh86WM9EoJ07KW5fs=
+github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386 h1:LoCV5cscNVWyK5ChN/uCoIFJz8jZD63VQiGJIRgr6uo=
+github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386/go.mod h1:MRxHTJrf9FhdfNQ8Hdeh9gmHevC9RJE/fu8M3JIGjoE=
 github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM8aXeqhl0I=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

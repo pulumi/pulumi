@@ -6,11 +6,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/pgavlin/goldmark"
+	"github.com/pgavlin/goldmark/ast"
+	"github.com/pgavlin/goldmark/parser"
+	"github.com/pgavlin/goldmark/text"
+	"github.com/pgavlin/goldmark/util"
 )
 
 // Shortcode represents a shortcode element and its contents, e.g. `{{% examples %}}`.

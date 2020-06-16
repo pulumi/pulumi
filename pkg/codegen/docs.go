@@ -17,7 +17,7 @@ package codegen
 import (
 	"regexp"
 
-	"github.com/yuin/goldmark/ast"
+	"github.com/pgavlin/goldmark/ast"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"

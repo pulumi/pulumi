@@ -6,11 +6,11 @@ import (
 	"io"
 	"net/url"
 
+	"github.com/pgavlin/goldmark/ast"
+	"github.com/pgavlin/goldmark/renderer"
+	"github.com/pgavlin/goldmark/renderer/markdown"
+	"github.com/pgavlin/goldmark/util"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/markdown"
-	"github.com/yuin/goldmark/util"
 )
 
 // A RendererOption controls the behavior of a Renderer.
