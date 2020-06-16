@@ -16,7 +16,6 @@ package codegen
 
 import (
 	"regexp"
-	"strings"
 
 	"github.com/yuin/goldmark/ast"
 
@@ -114,12 +113,6 @@ func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][
 	}
 
 	return groups
-}
-
-// isEmpty returns true if the provided string is effectively
-// empty.
-func isEmpty(s string) bool {
-	return strings.Replace(s, "\n", "", 1) == ""
 }
 
 // ExtractExamplesSection returns the content available between the first {{% examples %}} shortcode.

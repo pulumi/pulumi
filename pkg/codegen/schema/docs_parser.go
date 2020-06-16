@@ -32,7 +32,7 @@ func (s *Shortcode) Dump(w io.Writer, source []byte, level int) {
 var KindShortcode = ast.NewNodeKind("Shortcode")
 
 // Kind implements ast.Node.Kind.
-func (l *Shortcode) Kind() ast.NodeKind {
+func (*Shortcode) Kind() ast.NodeKind {
 	return KindShortcode
 }
 
