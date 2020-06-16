@@ -188,10 +188,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case hcl2.Invoke:
-		_, module, fn, diags := functionName(expr.Args[0])
+		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module == "" {
-			module = "aws"
+			module = pkg
 		}
 		name := fmt.Sprintf("%s.%s", module, fn)
 
@@ -401,8 +401,7 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
 		isInput = false
-		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
-			_, _ = schemaType.(*schema.ObjectType)
+		if _, ok := hcl2.GetSchemaForType(resource.InputType); ok {
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
 			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
