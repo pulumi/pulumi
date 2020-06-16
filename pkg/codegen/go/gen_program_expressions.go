@@ -563,7 +563,7 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 				return "pulumi.Float64"
 			}
 			return "float64"
-		case model.StringType:
+		case model.StringType, model.DynamicType:
 			if isInput {
 				return "pulumi.String"
 			}
