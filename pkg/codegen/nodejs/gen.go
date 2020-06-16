@@ -547,7 +547,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				if err != nil {
 					return err
 				}
-				arg = fmt.Sprintf("(%s) || %s", arg, dv)
+				arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
 			}
 
 			// provider properties must be marshaled as JSON strings.
@@ -893,7 +893,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			if err != nil {
 				return err
 			}
-			configFetch += " || " + v
+			configFetch += " ?? " + v
 		}
 
 		fmt.Fprintf(w, "export let %s: %s = %s;\n",
