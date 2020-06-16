@@ -22,8 +22,7 @@ import (
 
 func TestExtractExamplesSection(t *testing.T) {
 	t.Run("NonEmptyContent", func(t *testing.T) {
-		expectedContent := `
-something here
+		expectedContent := `something here
 
 and here
 
@@ -31,23 +30,23 @@ and here
 
 ..some..more here..
 `
-		description := `{{% examples %}}` + expectedContent + `{{% /examples %}}`
+		description := "{{% examples %}}\n" + expectedContent + `{{% /examples %}}`
 
-		actualContent := ExtractExamplesSection(description)
-		assert.NotNil(t, actualContent, "content could not be extracted")
-		assert.Equal(t, expectedContent, *actualContent, "strings don't match")
+		actualContent, ok := ExtractExamplesSection(description)
+		assert.True(t, ok, "content could not be extracted")
+		assert.Equal(t, expectedContent, actualContent, "strings don't match")
 	})
 
 	t.Run("EmptyContent", func(t *testing.T) {
 		description := `{{% examples %}}
 {{% /examples %}}`
 
-		actualContent := ExtractExamplesSection(description)
-		assert.Nil(t, actualContent, "expected content to be nil")
+		_, ok := ExtractExamplesSection(description)
+		assert.False(t, ok, "expected content to be nil")
 	})
 }
 
-var codeFence = "```"
+const codeFence = "```"
 
 func TestStripNonRelevantExamples(t *testing.T) {
 	tsCodeSnippet := `### Example 1
@@ -110,10 +109,10 @@ func fakeFunc() {
 ` + codeFence
 
 	example1 := `### Example 1
-	` + tsCodeSnippet + "\n" + goCodeSnippet
+` + tsCodeSnippet + "\n" + goCodeSnippet
 
 	example2 := `### Example 2
-	` + tsCodeSnippet
+` + tsCodeSnippet
 
 	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
 	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`

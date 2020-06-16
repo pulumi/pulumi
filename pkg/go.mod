@@ -44,8 +44,9 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.0.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
+	github.com/yuin/goldmark v1.1.32
 	github.com/zclconf/go-cty v1.3.1
 	gocloud.dev v0.19.1-0.20200517170643-46480dc2c3dd
 	gocloud.dev/secrets/hashivault v0.19.1-0.20200517170643-46480dc2c3dd
@@ -61,3 +62,5 @@ require (
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 )
+
+replace github.com/yuin/goldmark => github.com/pgavlin/goldmark v1.1.33-0.20200616164752-aaa9ff3e1d61
