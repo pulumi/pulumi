@@ -1,13 +1,14 @@
 # syntax = docker/dockerfile:experimental
-FROM debian:buster-slim AS builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as builder
 ARG PULUMI_VERSION=latest
-RUN apt-get update -y && \
-      apt-get upgrade -y && \
-      apt-get install -y \
+RUN --mount=target=/var/cache/yum,type=cache \
+      microdnf install -y \
       curl \
-      build-essential \
-      git
-
+      make \
+      gcc \
+      git \
+      tar \
+      gcc-c++
 # Install the Pulumi SDK, including the CLI and language runtimes.
 RUN if [ "$PULUMI_VERSION" = "latest" ]; then \
     curl -fsSL https://get.pulumi.com/ | bash; \
@@ -17,16 +18,14 @@ RUN if [ "$PULUMI_VERSION" = "latest" ]; then \
 
 # The runtime container
 # This is our base container, so let's copy all the runtimes to .pulumi/bin
-FROM debian:buster-slim
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 WORKDIR /pulumi
 COPY --from=builder /root/.pulumi/bin bin
 
-RUN --mount=target=/var/lib/apt/lists,type=cache \
-    --mount=target=/var/cache/apt,type=cache \
-    apt-get update -y && \
-    apt-get upgrade -y && \
-    apt-get install -y \
+RUN --mount=target=/var/cache/yum,type=cache \
+    microdnf install -y \
     git \
+    tar \
     ca-certificates
 
 ENV PATH "/pulumi/bin:${PATH}"

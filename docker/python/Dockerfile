@@ -2,15 +2,19 @@
 # Interim container so we can copy pulumi binaries
 # Must be defined first
 ARG PULUMI_VERSION=latest
-ARG PULUMI_IMAGE=pulumi/pulumi-sdk-base
+ARG RUNTIME_VERSION=3.7.7
+ARG PULUMI_IMAGE=pulumi/pulumi-base
 FROM ${PULUMI_IMAGE}:${PULUMI_VERSION} as pulumi
 
 # The runtime container
-FROM registry.access.redhat.com/ubi8/python-38:latest
+FROM python:${RUNTIME_VERSION}-slim-buster
 WORKDIR /pulumi/projects
 
 # Install needed tools, like git
-RUN microdnf install -y \
+RUN --mount=target=/var/lib/apt/lists,type=cache \
+    --mount=target=/var/cache/apt,type=cache \
+    apt-get update -y && \
+    apt-get install -y \
     git \
     ca-certificates
 

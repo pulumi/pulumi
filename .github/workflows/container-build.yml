@@ -4,14 +4,15 @@ on:
     types:
       - docker-build
 
+env:
+  VERSION: ${{ github.event.client_payload.ref }}
+
 jobs:
   base:
-    name: Build Pulumi SDK Base Image
+    name: base sdk image build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        pulumi_version: ["latest", "${{ github.event.client_payload.ref }}"]
     steps:
       - uses: actions/checkout@master
       - name: Build base image
@@ -19,21 +20,40 @@ jobs:
         with:
           repository: pulumi/pulumi-base
           buildkit: true
-          username: ${{ github.actor }}
+          username: "pulumibot"
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          dockerfile: base/Dockerfile
-          additional-tags: ${{ matrix.pulumi_version }}
-          build-args: PULUMI_VERSION=${{ matrix.pulumi_version }}
+          dockerfile: docker/base/Dockerfile
+          additional-tags: ${{ env.VERSION }}
+          tag-latest: true
+          build-args: PULUMI_VERSION=${{ env.VERSION }}
+  base_os:
+    name: os base sdk image build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubi", "debian", "alpine" ]
+    steps:
+      - uses: actions/checkout@master
+      - name: Build base image
+        uses: jaxxstorm/action-docker-build@release/v3.beta
+        with:
+          repository: pulumi/pulumi-base
+          buildkit: true
+          username: "pulumibot"
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          dockerfile: docker/base/Dockerfile.${{ matrix.os }}
+          additional-tags: ${{ env.VERSION }}-${{ matrix.os }}
+          tag-latest: false
+          build-args: PULUMI_VERSION=${{ env.VERSION }}
   sdk:
-    name: Build Pulumi SDK Images
+    name: language sdk image
     runs-on: ubuntu-latest
     needs: base
     strategy:
-      max-parallel: 6
       fail-fast: false
       matrix:
         sdk: [ "nodejs", "python", "dotnet", "go" ]
-        pulumi_version: ["latest", "${{ github.event.client_payload.ref }}"]
     steps:
       - uses: actions/checkout@master
       - name: Build image
@@ -41,8 +61,48 @@ jobs:
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
-          username: ${{ github.actor }}
+          username: "pulumibot"
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          dockerfile: ${{ matrix.sdk }}/Dockerfile
-          additional-tags: ${{ matrix.pulumi_version }}
-          build-args: PULUMI_VERSION=${{ matrix.pulumi_version }}
+          dockerfile: docker/${{ matrix.sdk }}/Dockerfile
+          additional-tags: ${{ env.VERSION }}
+          build-args: PULUMI_VERSION=${{ env.VERSION }}
+
+  os_sdk:
+    name: os language sdk image
+    runs-on: ubuntu-latest
+    needs: base_os
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [ "nodejs", "python", "dotnet", "go" ]
+        os: [ "ubi", "debian", "alpine" ]
+    steps:
+      - uses: actions/checkout@master
+      - name: Build image
+        uses: jaxxstorm/action-docker-build@release/v3.beta
+        with:
+          repository: pulumi/pulumi-${{matrix.sdk}}
+          buildkit: true
+          username: "pulumibot"
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          dockerfile: docker/${{ matrix.sdk }}/Dockerfile.${{ matrix.os }}
+          additional-tags: ${{ env.VERSION }}-${{ matrix.os }}
+          build-args: PULUMI_VERSION=${{ env.VERSION }}
+
+  image-scan:
+    name: scan container images
+    runs-on: ubuntu-latest
+    needs: os_sdk
+    strategy:
+      matrix:
+        image: [ "base", "nodejs", "python", "go" ]
+        os: [ "ubi" ]
+    steps:
+      - uses: actions/checkout@master
+      - name: Run Snyk to check Docker images for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: pulumi/pulumi-${{matrix.image}}:${{ env.VERSION }}-${{ matrix.os }}
+          args: --severity-threshold=high --file=docker/${{matrix.image}}/Dockerfile.${{ matrix.os }}
