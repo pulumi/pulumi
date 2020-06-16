@@ -380,7 +380,6 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 			if _, ok := se.Parts[0].(*hcl2.Resource); ok {
 				isRootResource = true
 			}
-			isRootResource = true
 		}
 	}
 	g.genRelativeTraversal(w, expr.Traversal, expr.Parts, isRootResource)
@@ -639,7 +638,8 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 	return ""
 }
 
-func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, parts []model.Traversable, isRootResource bool) {
+func (g *generator) genRelativeTraversal(w io.Writer,
+	traversal hcl.Traversal, parts []model.Traversable, isRootResource bool) {
 
 	for i, part := range traversal {
 		var key cty.Value
@@ -749,7 +749,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		for _, a := range applyArgs {
 			g.Fgenf(w, ",%.v", a)
 		}
-		// TODO need lowering step to rewrite then arugment references
+		// TODO need lowering step to rewrite then argument references
 		// in terms of scope traversal from all result: val[i] etc.
 		g.Fgenf(w, ").Apply(%.v)%s", then, typeAssertion)
 	}
