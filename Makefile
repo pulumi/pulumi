@@ -79,6 +79,7 @@ publish_tgz:
 publish_packages:
 	$(call STEP_MESSAGE)
 	./scripts/publish_packages.sh
+	pulumictl create containers ${VERSION}
 
 # Run the integration tests for our DockerHub containers. We do so only via the
 # "Travis Cron" job type, because (1) the tests can only be ran _after_ we publish
