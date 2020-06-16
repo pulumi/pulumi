@@ -73,7 +73,11 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	isInput := isInputty(expr.Signature.ReturnType)
 	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
-	g.Fgenf(w, "return %v, nil", expr.Body)
+
+	body, temps := g.lowerExpression(expr.Body, expr.Signature.ReturnType, isInput)
+	g.genTempsMultiReturn(w, temps, retType)
+
+	g.Fgenf(w, "return %v, nil", body)
 	g.Fgenf(w, "\n}")
 }
 
@@ -171,8 +175,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case hcl2.Invoke:
 		_, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
@@ -200,14 +203,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readFile":
 		g.genNYI(w, "ReadFile")
 	case "readDir":
-		// TODO
-		g.genNYI(w, "call %v", expr.Name)
-		// C# for reference
-		// g.Fgenf(w, "Directory.GetFiles(%.v).Select(Path.GetFileName)", expr.Args[0])
+		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
+	case "mimeType":
+		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -373,8 +375,21 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	if isInput {
 		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
 	}
-	g.Fgen(w, rootName)
-	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+
+	if rootName == "range" {
+		part := expr.Traversal[1].(hcl.TraverseAttr).Name
+		switch part {
+		case "value":
+			g.Fgenf(w, "val0")
+		case "key":
+			g.Fgenf(w, "key0")
+		default:
+			contract.Failf("unexpected traversal on range expression: %s", part)
+		}
+	} else {
+		g.Fgen(w, rootName)
+		g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+	}
 
 	if isInput {
 		g.Fgenf(w, ")")
@@ -395,9 +410,15 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 			g.GenLiteralValueExpression(w, lit)
 			return
 		}
+	} else {
+		fmtMaker := make([]string, len(expr.Parts)+1)
+		fmtStr := strings.Join(fmtMaker, "%v")
+		g.Fgenf(w, "fmt.Sprintf(\"%s\"", fmtStr)
+		for _, v := range expr.Parts {
+			g.Fgenf(w, ", %.v", v)
+		}
+		g.Fgenf(w, ")")
 	}
-
-	g.genNYI(w, "TODO multi part template expressions")
 }
 
 // GenTemplateJoinExpression generates code for a TemplateJoinExpression.
@@ -608,10 +629,11 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []interface{}) {
-	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
-	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
+	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
+	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
+	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
 
 	if isInput {
 		expr = rewriteInputs(expr)
@@ -623,8 +645,12 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	for _, t := range jTemps {
 		temps = append(temps, t)
 	}
+	for _, t := range rTemps {
+		temps = append(temps, t)
+	}
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
+	diags = append(diags, readDirDiags...)
 	contract.Assert(len(diags) == 0)
 	return expr, temps
 }
@@ -646,7 +672,10 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	isInput := false
 	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
+	if !strings.HasPrefix(retType, "pulumi.") {
+		typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	}
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
@@ -744,7 +773,9 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 }
 
 var functionPackages = map[string][]string{
-	"toJSON": {"encoding/json"},
+	"toJSON":   {"encoding/json"},
+	"readDir":  {"io/ioutil"},
+	"mimeType": {"mime", "path"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {

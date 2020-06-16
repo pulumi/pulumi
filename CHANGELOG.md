@@ -3,8 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen improvements (resource range, readDir, fileArchive)
+  [#4818](https://github.com/pulumi/pulumi/pull/4818)
+
 - Set default config namespace for Get/Try/Require methods in Go SDK.
-  [4802](https://github.com/pulumi/pulumi/pull/4802)
+  [#4802](https://github.com/pulumi/pulumi/pull/4802)
 
 - Improve typing for Go SDK secret config values
  [#4800](https://github.com/pulumi/pulumi/pull/4800)

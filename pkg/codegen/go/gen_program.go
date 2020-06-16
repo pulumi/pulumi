@@ -19,10 +19,12 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program            *hcl2.Program
-	diagnostics        hcl.Diagnostics
-	jsonTempSpiller    *jsonSpiller
-	ternaryTempSpiller *tempSpiller
+	program             *hcl2.Program
+	diagnostics         hcl.Diagnostics
+	jsonTempSpiller     *jsonSpiller
+	ternaryTempSpiller  *tempSpiller
+	readDirTempSpiller  *readDirSpiller
+	scopeTraversalRoots codegen.StringSet
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -30,15 +32,21 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	g := &generator{
-		program:            program,
-		jsonTempSpiller:    &jsonSpiller{},
-		ternaryTempSpiller: &tempSpiller{},
+		program:             program,
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
 	}
 
 	g.Formatter = format.NewFormatter(g)
 
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
+
+	for _, n := range nodes {
+		g.collectScopeRoots(n)
+	}
 
 	for _, n := range nodes {
 		g.genNode(&index, n)
@@ -56,6 +64,16 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
+}
+
+func (g *generator) collectScopeRoots(n hcl2.Node) {
+	diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+		if st, ok := n.(*model.ScopeTraversalExpression); ok {
+			g.scopeTraversalRoots.Add(st.RootName)
+		}
+		return n, nil
+	})
+	contract.Assert(len(diags) == 0)
 }
 
 // genPreamble generates package decl, imports, and opens the main func
@@ -114,6 +132,11 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 					stdImports.Add(fnPkg)
 				}
 			}
+			if t, ok := n.(*model.TemplateExpression); ok {
+				if len(t.Parts) > 1 {
+					stdImports.Add("fmt")
+				}
+			}
 			return n, nil
 		})
 		contract.Assert(len(diags) == 0)
@@ -159,21 +182,41 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	g.Fgenf(w, "%s, err := %s.New%s(ctx, \"%[1]s\", ", resName, mod, typ)
-	if len(r.Inputs) > 0 {
-		g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
-		for _, attr := range r.Inputs {
-			g.Fgenf(w, "%s: ", strings.Title(attr.Name))
-			g.Fgenf(w, "%.v,\n", attr.Value)
-
+	instantiate := func(varName, resourceName string) {
+		if g.scopeTraversalRoots.Has(varName) {
+			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
+		} else {
+			g.Fgenf(w, "_, err = %s.New%s(ctx, %s, ", mod, typ, resourceName)
 		}
-		g.Fgenf(w, "})\n")
-	} else {
-		g.Fgenf(w, "nil)\n")
+
+		if len(r.Inputs) > 0 {
+			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
+			for _, attr := range r.Inputs {
+				g.Fgenf(w, "%s: ", strings.Title(attr.Name))
+				g.Fgenf(w, "%.v,\n", attr.Value)
+
+			}
+			g.Fgenf(w, "})\n")
+		} else {
+			g.Fgenf(w, "nil)\n")
+		}
+		g.Fgenf(w, "if err != nil {\n")
+		g.Fgenf(w, "return err\n")
+		g.Fgenf(w, "}\n")
 	}
-	g.Fgenf(w, "if err != nil {\n")
-	g.Fgenf(w, "return err\n")
-	g.Fgenf(w, "}\n")
+
+	if r.Options != nil && r.Options.Range != nil {
+		rangeType := model.ResolveOutputs(r.Options.Range.Type())
+		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType, false)
+		g.genTemps(w, temps)
+
+		g.Fgenf(w, "for i0, val0 := range %.v {\n", rangeExpr)
+		instantiate("_", fmt.Sprintf("\"%s-\"+ string(i0)", resName))
+		g.Fgenf(w, "}\n")
+
+	} else {
+		instantiate(resName, fmt.Sprintf("\"%s\"", resName))
+	}
 
 }
 
@@ -183,8 +226,30 @@ func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
 }
-
 func (g *generator) genTemps(w io.Writer, temps []interface{}) {
+	singleReturn := ""
+	g.genTempsMultiReturn(w, temps, singleReturn)
+}
+
+func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroValueType string) {
+	genZeroValueDecl := false
+
+	if zeroValueType != "" {
+		for _, t := range temps {
+			switch t.(type) {
+			case *jsonTemp, *readDirTemp:
+				genZeroValueDecl = true
+			default:
+			}
+		}
+		if genZeroValueDecl {
+			// TODO add entropy to var name
+			// currently only used inside anonymous functions (no scope collisions)
+			g.Fgenf(w, "var _zero %s\n", zeroValueType)
+		}
+
+	}
+
 	for _, t := range temps {
 		switch t := t.(type) {
 		case *ternaryTemp:
@@ -202,9 +267,32 @@ func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 			args := stripInputs(t.Value.Args[0])
 			g.Fgenf(w, "%.v)\n", args)
 			g.Fgenf(w, "if err != nil {\n")
-			g.Fgenf(w, "return err\n")
+			if genZeroValueDecl {
+				g.Fgenf(w, "return _zero, err\n")
+			} else {
+				g.Fgenf(w, "return err\n")
+			}
 			g.Fgenf(w, "}\n")
 			g.Fgenf(w, "%s := string(%s)\n", t.Name, bytesVar)
+		case *readDirTemp:
+			tmpSuffix := strings.Split(t.Name, "files")[1]
+			g.Fgenf(w, "%s, err := ioutil.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
+			g.Fgenf(w, "if err != nil {\n")
+			if genZeroValueDecl {
+				g.Fgenf(w, "return _zero, err\n")
+			} else {
+				g.Fgenf(w, "return err\n")
+			}
+			g.Fgenf(w, "}\n")
+			namesVar := fmt.Sprintf("fileNames%s", tmpSuffix)
+			g.Fgenf(w, "%s := make([]string, len(%s))\n", namesVar, t.Name)
+			iVar := fmt.Sprintf("i%s", tmpSuffix)
+			valVar := fmt.Sprintf("val%s", tmpSuffix)
+			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
+			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
+			g.Fgenf(w, "}\n")
+		default:
+			contract.Failf("unexpected temp type: %v", t)
 		}
 	}
 }
@@ -213,17 +301,21 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	isInput := false
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
+	name := v.Name()
+	if !g.scopeTraversalRoots.Has(name) {
+		name = "_"
+	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case hcl2.Invoke:
-			g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+			g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
 		}
 	default:
-		g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+		g.Fgenf(w, "%s := %.3v;\n", name, expr)
 
 	}
 
