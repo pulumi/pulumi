@@ -1302,6 +1302,21 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		return nil, errors.New("this provider has a `types` module which is reserved for input/output types")
 	}
 
+	// Add python source files to the corresponding modules. Note that we only add the file names; the contents are
+	// still laid out manually in GeneratePackage.
+	for p := range extraFiles {
+		if path.Ext(p) != ".py" {
+			continue
+		}
+
+		modName := path.Dir(p)
+		if modName == "/" || modName == "." {
+			modName = ""
+		}
+		mod := getMod(modName)
+		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
+	}
+
 	return modules, nil
 }
 
@@ -1353,24 +1368,13 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["python"].(PackageInfo)
 
-	modules, err := generateModuleContextMap(tool, pkg, info, nil)
+	modules, err := generateModuleContextMap(tool, pkg, info, extraFiles)
 	if err != nil {
 		return nil, err
 	}
 
 	files := fs{}
 	for p, f := range extraFiles {
-		if path.Ext(p) != ".py" {
-			continue
-		}
-
-		modName := path.Dir(p)
-		if modName == "/" || modName == "." {
-			modName = ""
-		}
-		mod := getMod(modName)
-		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
-
 		files.add(filepath.Join(pyPack(pkg.Name), p), f)
 	}
 
