@@ -170,19 +170,19 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 						break
 					}
 				}
-				if !hasCode {
-					node.RemoveChild(node, c)
-				}
-			case "examples":
-				hasExamples := false
-				for gc := c.FirstChild(); gc != nil; gc = gc.NextSibling() {
-					if shortcode, ok := gc.(*schema.Shortcode); ok && string(shortcode.Name) == "example" {
-						hasExamples = true
-						break
+				if hasCode {
+					var grandchild, nextGrandchild ast.Node
+					for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+						nextGrandchild = grandchild.NextSibling()
+						node.InsertBefore(node, c, grandchild)
 					}
 				}
-				if !hasExamples {
-					node.RemoveChild(node, c)
+				node.RemoveChild(node, c)
+			case "examples":
+				var grandchild, nextGrandchild ast.Node
+				for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+					nextGrandchild = grandchild.NextSibling()
+					node.InsertBefore(node, c, grandchild)
 				}
 			}
 		}
