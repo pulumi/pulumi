@@ -99,12 +99,12 @@ func processExamples(descriptionWithExamples string) ([]exampleSection, error) {
 	}
 
 	// Get the content enclosing the outer examples short code.
-	examplesContent := codegen.ExtractExamplesSection(descriptionWithExamples)
-	if examplesContent == nil {
+	examplesContent, ok := codegen.ExtractExamplesSection(descriptionWithExamples)
+	if !ok {
 		return nil, nil
 	}
 
 	// Within the examples section, identify each example section
 	// which is wrapped in a {{% example %}} shortcode.
-	return getExampleSections(*examplesContent), nil
+	return getExampleSections(examplesContent), nil
 }

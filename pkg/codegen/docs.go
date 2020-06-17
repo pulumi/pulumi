@@ -16,9 +16,11 @@ package codegen
 
 import (
 	"regexp"
-	"strings"
+
+	"github.com/pgavlin/goldmark/ast"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 var (
@@ -30,9 +32,6 @@ var (
 	// SurroundingTextRE is regexp to match the content between the {{% examples %}} short-code
 	// including the short-codes themselves.
 	SurroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
-	// ExamplesSectionRE is a regexp to match just the content between the {{% examples %}} short-codes.
-	ExamplesSectionRE = regexp.MustCompile(
-		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
 	// IndividualExampleRE is a regexp to match a single example section surrounded by the {{% example %}} short-code.
 	IndividualExampleRE = regexp.MustCompile(
 		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
@@ -68,11 +67,6 @@ type DocLanguageHelper interface {
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
 	// GetModuleDocLink returns the display name and the link for a module (including root modules) in a given package.
 	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)
-}
-
-type exampleParts struct {
-	Title   string
-	Snippet string
 }
 
 // GetFirstMatchedGroupsFromRegex returns the groups for the first match of a regexp.
@@ -118,63 +112,83 @@ func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][
 	return groups
 }
 
-// isEmpty returns true if the provided string is effectively
-// empty.
-func isEmpty(s string) bool {
-	return strings.Replace(s, "\n", "", 1) == ""
+// ExtractExamplesSection returns the content available between the first {{% examples %}} shortcode.
+// If no such section exists, the second return value will be false.
+func ExtractExamplesSection(description string) (string, bool) {
+	if description == "" {
+		return "", false
+	}
+
+	source := []byte(description)
+	parsed := schema.ParseDocs(source)
+
+	var examples ast.Node
+	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
+		if shortcode, ok := n.(*schema.Shortcode); ok && string(shortcode.Name) == schema.ExamplesShortcode {
+			examples = shortcode
+			return ast.WalkStop, nil
+		}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoError(err)
+
+	if examples == nil || !examples.HasChildren() {
+		return "", false
+	}
+
+	doc := ast.NewDocument()
+
+	var c, next ast.Node
+	for c = examples.FirstChild(); c != nil; c = next {
+		next = c.NextSibling()
+		doc.AppendChild(doc, c)
+	}
+	return schema.RenderDocsToString(source, doc), true
 }
 
-// ExtractExamplesSection returns the content available between the {{% examples %}} shortcode.
-// Otherwise returns nil.
-func ExtractExamplesSection(description string) *string {
-	examples := GetFirstMatchedGroupsFromRegex(ExamplesSectionRE, description)
-	if content, ok := examples["examples_content"]; ok && !isEmpty(content) {
-		return &content
-	}
-	return nil
-}
+func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
+	var c, next ast.Node
+	for c = node.FirstChild(); c != nil; c = next {
+		stripNonRelevantExamples(source, c, lang)
 
-func extractExampleParts(exampleContent string, lang string) *exampleParts {
-	codeFence := "```" + lang
-	langSnippetIndex := strings.Index(exampleContent, codeFence)
-	// If there is no snippet for the provided language in this example,
-	// then just return nil.
-	if langSnippetIndex < 0 {
-		return nil
-	}
-
-	var snippet string
-	switch lang {
-	case "csharp":
-		snippet = CSharpCodeSnippetRE.FindString(exampleContent)
-	case "go":
-		snippet = GoCodeSnippetRE.FindString(exampleContent)
-	case "python":
-		snippet = PythonCodeSnippetRE.FindString(exampleContent)
-	case "typescript":
-		snippet = TSCodeSnippetRE.FindString(exampleContent)
-	}
-
-	return &exampleParts{
-		Title:   H3TitleRE.FindString(exampleContent),
-		Snippet: snippet,
-	}
-}
-
-func getExamplesForLang(examplesContent string, lang string) []exampleParts {
-	examples := make([]exampleParts, 0)
-	exampleMatches := GetAllMatchedGroupsFromRegex(IndividualExampleRE, examplesContent)
-	if matchedExamples, ok := exampleMatches["example_content"]; ok {
-		for _, ex := range matchedExamples {
-			exampleParts := extractExampleParts(ex, lang)
-			if exampleParts == nil || exampleParts.Snippet == "" {
-				continue
+		next = c.NextSibling()
+		switch c := c.(type) {
+		case *ast.FencedCodeBlock:
+			if string(c.Language(source)) != lang {
+				node.RemoveChild(node, c)
 			}
+		case *schema.Shortcode:
+			switch string(c.Name) {
+			case schema.ExampleShortcode:
+				hasCode := false
+				for gc := c.FirstChild(); gc != nil; gc = gc.NextSibling() {
+					if gc.Kind() == ast.KindFencedCodeBlock {
+						hasCode = true
+						break
+					}
+				}
+				if hasCode {
+					var grandchild, nextGrandchild ast.Node
+					for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+						nextGrandchild = grandchild.NextSibling()
+						node.InsertBefore(node, c, grandchild)
+					}
+				}
+				node.RemoveChild(node, c)
+			case schema.ExamplesShortcode:
+				if first := c.FirstChild(); first != nil {
+					first.SetBlankPreviousLines(c.HasBlankPreviousLines())
+				}
 
-			examples = append(examples, *exampleParts)
+				var grandchild, nextGrandchild ast.Node
+				for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+					nextGrandchild = grandchild.NextSibling()
+					node.InsertBefore(node, c, grandchild)
+				}
+				node.RemoveChild(node, c)
+			}
 		}
 	}
-	return examples
 }
 
 // StripNonRelevantExamples strips the non-relevant language snippets from a resource's description.
@@ -183,34 +197,8 @@ func StripNonRelevantExamples(description string, lang string) string {
 		return ""
 	}
 
-	// Replace the entire section (including the shortcodes themselves) enclosing the
-	// examples section, with a placeholder, which itself will be replaced appropriately
-	// later.
-	newDescription := SurroundingTextRE.ReplaceAllString(description, "{{ .Examples }}")
-
-	// Get the content enclosing the outer examples short code.
-	examplesContent := ExtractExamplesSection(description)
-	if examplesContent == nil {
-		return strings.ReplaceAll(newDescription, "{{ .Examples }}", "")
-	}
-
-	// Within the examples section, identify each example.
-	builder := strings.Builder{}
-	examples := getExamplesForLang(*examplesContent, lang)
-	numExamples := len(examples)
-	if numExamples > 0 {
-		builder.WriteString("## Example Usage\n\n")
-	}
-	for i, ex := range examples {
-		builder.WriteString(ex.Title + "\n\n")
-		builder.WriteString(ex.Snippet + "\n")
-
-		// Print an extra new-line character as long as this is not
-		// the last example.
-		if i != numExamples-1 {
-			builder.WriteString("\n")
-		}
-	}
-
-	return strings.ReplaceAll(newDescription, "{{ .Examples }}", builder.String())
+	source := []byte(description)
+	parsed := schema.ParseDocs(source)
+	stripNonRelevantExamples(source, parsed, lang)
+	return schema.RenderDocsToString(source, parsed)
 }

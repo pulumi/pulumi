@@ -35,6 +35,7 @@ require (
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
+	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/sdk/v2 v2.0.0
 	github.com/rjeczalik/notify v0.9.2
@@ -44,7 +45,7 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.0.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.3.1
 	gocloud.dev v0.19.1-0.20200517170643-46480dc2c3dd
