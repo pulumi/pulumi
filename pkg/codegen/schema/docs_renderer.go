@@ -107,7 +107,7 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 		util.Prioritized(md, 200),
 	}
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...))
-	return r.Render(w, []byte(source), node)
+	return r.Render(w, source, node)
 }
 
 // RenderDocsToString is like RenderDocs, but renders to a string instead of a Writer.
