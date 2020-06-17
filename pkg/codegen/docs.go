@@ -179,6 +179,10 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 				}
 				node.RemoveChild(node, c)
 			case "examples":
+				if first := c.FirstChild(); first != nil {
+					first.SetBlankPreviousLines(c.HasBlankPreviousLines())
+				}
+
 				var grandchild, nextGrandchild ast.Node
 				for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
 					nextGrandchild = grandchild.NextSibling()
