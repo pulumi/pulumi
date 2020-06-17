@@ -15,14 +15,15 @@
 package provider
 
 import (
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.
@@ -71,7 +72,7 @@ func (host *HostClient) log(
 	}
 	_, err := host.client.Log(context, &lumirpc.LogRequest{
 		Severity:  rpcsev,
-		Message:   msg,
+		Message:   strings.ToValidUTF8(msg, "�"),
 		Urn:       string(urn),
 		Ephemeral: ephemeral,
 	})

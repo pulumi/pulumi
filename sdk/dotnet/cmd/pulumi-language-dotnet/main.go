@@ -454,7 +454,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 func (w *logWriter) LogToUser(val string) (int, error) {
 	if w.logToUser {
 		_, err := w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
-			Message:   val,
+			Message:   strings.ToValidUTF8(val, "�"),
 			Urn:       "",
 			Ephemeral: true,
 			StreamId:  w.streamID,

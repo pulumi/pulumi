@@ -9,8 +9,11 @@ CHANGELOG
 - Set default config namespace for Get/Try/Require methods in Go SDK.
   [#4802](https://github.com/pulumi/pulumi/pull/4802)
 
+- Handle invalid UTF-8 characters before RPC calls
+  [#4816](https://github.com/pulumi/pulumi/pull/4816)
+
 - Improve typing for Go SDK secret config values
- [#4800](https://github.com/pulumi/pulumi/pull/4800)
+  [#4800](https://github.com/pulumi/pulumi/pull/4800)
 
 - Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
   [#4808](https://github.com/pulumi/pulumi/pull/4808)
