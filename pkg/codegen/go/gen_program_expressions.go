@@ -208,7 +208,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%.v", expr.Args[1])
 		g.Fgenf(w, "%v)", optionsBag)
 	case "length":
-		g.Fgenf(w, "%.20v.Length", expr.Args[0])
+		g.genNYI(w, "call %v", expr.Name)
+		// g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
 		g.genNYI(w, "Lookup")
 	case "range":
@@ -219,7 +220,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readDir":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "split":
-		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+		g.genNYI(w, "call %v", expr.Name)
+		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
@@ -416,13 +418,16 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
 	}
 
+	// TODO: this isn't exhaustively correct as "range" could be a legit var name
+	// instead we should probably use a fn call expression here for entries/range
+	// similar to other languages
 	if rootName == "range" {
 		part := expr.Traversal[1].(hcl.TraverseAttr).Name
 		switch part {
 		case "value":
 			g.Fgenf(w, "val0")
 		case "key":
-			g.Fgenf(w, "i0")
+			g.Fgenf(w, "key0")
 		default:
 			contract.Failf("unexpected traversal on range expression: %s", part)
 		}

@@ -214,8 +214,8 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 		g.Fgenf(w, "var %s []*%s.%s\n", resName, mod, typ)
 
-		g.Fgenf(w, "for i0, val0 := range %.v {\n", rangeExpr)
-		instantiate("_res", fmt.Sprintf("\"%s-\"+ string(i0)", resName))
+		g.Fgenf(w, "for key0, val0 := range %.v {\n", rangeExpr)
+		instantiate("_res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName))
 		g.Fgenf(w, "%s = append(%s, _res)\n", resName, resName)
 		g.Fgenf(w, "}\n")
 
@@ -291,7 +291,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 			namesVar := fmt.Sprintf("fileNames%s", tmpSuffix)
 			g.Fgenf(w, "%s := make([]string, len(%s))\n", namesVar, t.Name)
-			iVar := fmt.Sprintf("i%s", tmpSuffix)
+			iVar := fmt.Sprintf("key%s", tmpSuffix)
 			valVar := fmt.Sprintf("val%s", tmpSuffix)
 			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
 			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
