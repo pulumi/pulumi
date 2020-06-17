@@ -32,9 +32,6 @@ var (
 	// SurroundingTextRE is regexp to match the content between the {{% examples %}} short-code
 	// including the short-codes themselves.
 	SurroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
-	// ExamplesSectionRE is a regexp to match just the content between the {{% examples %}} short-codes.
-	ExamplesSectionRE = regexp.MustCompile(
-		"(?P<examples_start>{{% examples %}})(?P<examples_content>(.|\n)*?)(?P<examples_end>{{% /examples %}})")
 	// IndividualExampleRE is a regexp to match a single example section surrounded by the {{% example %}} short-code.
 	IndividualExampleRE = regexp.MustCompile(
 		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
@@ -127,7 +124,7 @@ func ExtractExamplesSection(description string) (string, bool) {
 
 	var examples ast.Node
 	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
-		if shortcode, ok := n.(*schema.Shortcode); ok && string(shortcode.Name) == "examples" {
+		if shortcode, ok := n.(*schema.Shortcode); ok && string(shortcode.Name) == schema.ExamplesShortcode {
 			examples = shortcode
 			return ast.WalkStop, nil
 		}
@@ -162,7 +159,7 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 			}
 		case *schema.Shortcode:
 			switch string(c.Name) {
-			case "example":
+			case schema.ExampleShortcode:
 				hasCode := false
 				for gc := c.FirstChild(); gc != nil; gc = gc.NextSibling() {
 					if gc.Kind() == ast.KindFencedCodeBlock {
@@ -178,7 +175,7 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 					}
 				}
 				node.RemoveChild(node, c)
-			case "examples":
+			case schema.ExamplesShortcode:
 				if first := c.FirstChild(); first != nil {
 					first.SetBlankPreviousLines(c.HasBlankPreviousLines())
 				}

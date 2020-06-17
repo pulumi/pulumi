@@ -13,6 +13,15 @@ import (
 	"github.com/pgavlin/goldmark/util"
 )
 
+const (
+	// ExamplesShortcode is the name for the `{{% examples %}}` shortcode, which demarcates a set of example sections.
+	ExamplesShortcode = "examples"
+
+	// ExampleShortcode is the name for the `{{% example %}}` shortcode, which demarcates the content for a single
+	// example.
+	ExampleShortcode = "example"
+)
+
 // Shortcode represents a shortcode element and its contents, e.g. `{{% examples %}}`.
 type Shortcode struct {
 	ast.BaseBlock
