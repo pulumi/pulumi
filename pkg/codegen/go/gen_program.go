@@ -138,9 +138,9 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 				panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", r.Token))
 			}
 
-			vPath := fmt.Sprintf("/v%d", version)
-			if version <= 1 {
-				vPath = ""
+			var vPath string
+			if version > 1 {
+				vPath = fmt.Sprintf("/v%d", version)
 			}
 
 			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
@@ -168,9 +168,9 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 						panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", token))
 					}
 
-					vPath := fmt.Sprintf("/v%d", version)
-					if version <= 1 {
-						vPath = ""
+					var vPath string
+					if version > 1 {
+						vPath = fmt.Sprintf("/v%d", version)
 					}
 
 					// namespaceless invokes "aws:index:..."
@@ -389,6 +389,13 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 
 }
 
+// nolint: lll
+// uselookupInvokeForm takes a token for an invoke and determines whether to use the
+// .Get or .Lookup form. The Go SDK has collisions in .Get methods that require renaming.
+// For instance, gen.go creates a resource getter for AWS VPCs that collides with a function:
+// GetVPC resource getter: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
+// LookupVPC function: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
+// Given that the naming here is not consisten, we must reverse the process from gen.go.
 func (g *generator) useLookupInvokeForm(token string) bool {
 	pkg, module, member, _ := hcl2.DecomposeToken(token, *new(hcl.Range))
 	modSplit := strings.Split(module, "/")
