@@ -15,7 +15,9 @@ RUN --mount=target=/var/cache/yum,type=cache \
     git \
     tar \
     python3 \
-    ca-certificates
+    python3-pip \
+    ca-certificates && \
+    pip3 install --user pipenv
 
 # Uses the workdir, copies from pulumi interim container
 COPY --from=pulumi /pulumi/bin/pulumi /pulumi/bin/pulumi
