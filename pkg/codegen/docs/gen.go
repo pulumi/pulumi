@@ -44,6 +44,7 @@ import (
 
 var (
 	supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
+	snippetLanguages   = []string{"csharp", "go", "python", "typescript"}
 	templates          *template.Template
 	packagedTemplates  map[string][]byte
 	docHelpers         map[string]codegen.DocLanguageHelper

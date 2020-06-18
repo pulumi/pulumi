@@ -46,8 +46,7 @@ func decomposeDocstring(docstring string) docInfo {
 		return docInfo{}
 	}
 
-	languages := codegen.NewStringSet(supportedLanguages...)
-	languages.Add("typescript")
+	languages := codegen.NewStringSet(snippetLanguages...)
 
 	source := []byte(docstring)
 	parsed := schema.ParseDocs(source)
