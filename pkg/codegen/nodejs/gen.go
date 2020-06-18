@@ -366,7 +366,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
+	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
 	baseType := "CustomResource"
 	if r.IsProvider {
@@ -616,7 +616,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	name := tokenToFunctionName(fun.Token)
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.StripNonRelevantExamples(fun.Comment, "typescript"), "", "")
+	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)

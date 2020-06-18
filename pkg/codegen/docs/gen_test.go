@@ -388,9 +388,8 @@ func TestExamplesProcessing(t *testing.T) {
 	initTestPackageSpec(t)
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
-	examplesSection, err := processExamples(description)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, examplesSection)
+	docInfo := decomposeDocstring(description)
+	examplesSection := docInfo.examples
 
 	// The resource under test has two examples and both have TS and Python examples.
 	assert.Equal(t, 2, len(examplesSection))

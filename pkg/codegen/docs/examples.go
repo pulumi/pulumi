@@ -21,7 +21,11 @@ package docs
 import (
 	"strings"
 
+	"github.com/pgavlin/goldmark/ast"
+
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 const defaultMissingExampleSnippetPlaceholder = "Coming soon!"
@@ -32,79 +36,87 @@ type exampleSection struct {
 	Snippets map[string]string
 }
 
-// extractExampleCodeSnippets returns a map of code snippets by language.
-// For any language that was missing in the provided example content, a
-// placeholder snippet is set.
-func extractExampleCodeSnippets(exampleContent string) map[string]string {
-	snippets := map[string]string{}
-	for _, lang := range supportedLanguages {
-		var snippet string
-		if lang == "nodejs" {
-			lang = "typescript"
-		}
-		codeFence := "```" + lang
-		langSnippetIndex := strings.Index(exampleContent, codeFence)
-		// If there is no snippet for the provided language in this example,
-		// then use a placeholder text for it.
-		if langSnippetIndex < 0 {
-			snippets[lang] = defaultMissingExampleSnippetPlaceholder
-			continue
-		}
-
-		switch lang {
-		case "csharp":
-			snippet = codegen.CSharpCodeSnippetRE.FindString(exampleContent)
-		case "go":
-			snippet = codegen.GoCodeSnippetRE.FindString(exampleContent)
-		case "python":
-			snippet = codegen.PythonCodeSnippetRE.FindString(exampleContent)
-		case "typescript":
-			snippet = codegen.TSCodeSnippetRE.FindString(exampleContent)
-		}
-
-		snippets[lang] = snippet
-	}
-
-	return snippets
+type docInfo struct {
+	description string
+	examples    []exampleSection
 }
 
-// getExampleSections returns a slice of all example sections organized
-// by title and the code snippets. Returns an empty slice if examples
-// were not detected due to bad formatting or otherwise.
-func getExampleSections(examplesContent string) []exampleSection {
-	examples := make([]exampleSection, 0)
-	exampleMatches := codegen.GetAllMatchedGroupsFromRegex(codegen.IndividualExampleRE, examplesContent)
-	if matchedExamples, ok := exampleMatches["example_content"]; ok {
-		for _, ex := range matchedExamples {
-			snippets := extractExampleCodeSnippets(ex)
-			if snippets == nil || len(snippets) == 0 {
-				continue
+func decomposeDocstring(docstring string) docInfo {
+	if docstring == "" {
+		return docInfo{}
+	}
+
+	languages := codegen.NewStringSet(supportedLanguages...)
+	languages.Add("typescript")
+
+	source := []byte(docstring)
+	parsed := schema.ParseDocs(source)
+
+	var examplesShortcode *schema.Shortcode
+	var exampleShortcode *schema.Shortcode
+	var title string
+	var snippets map[string]string
+	var examples []exampleSection
+	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
+		if shortcode, ok := n.(*schema.Shortcode); ok {
+			name := string(shortcode.Name)
+			switch name {
+			case schema.ExamplesShortcode:
+				if examplesShortcode == nil {
+					examplesShortcode = shortcode
+				}
+			case schema.ExampleShortcode:
+				if exampleShortcode == nil {
+					exampleShortcode, title, snippets = shortcode, "", map[string]string{}
+				} else if !enter && shortcode == exampleShortcode {
+					for _, l := range supportedLanguages {
+						if _, ok := snippets[l]; !ok {
+							snippets[l] = defaultMissingExampleSnippetPlaceholder
+						}
+					}
+
+					examples = append(examples, exampleSection{
+						Title:    title,
+						Snippets: snippets,
+					})
+
+					exampleShortcode = nil
+				}
+			}
+			return ast.WalkContinue, nil
+		}
+
+		switch n := n.(type) {
+		case *ast.Heading:
+			if n.Level == 3 && title == "" {
+				title = strings.TrimSpace(schema.RenderDocsToString(source, n))
+			}
+		case *ast.FencedCodeBlock:
+			language := string(n.Language(source))
+			if !languages.Has(language) {
+				return ast.WalkContinue, nil
+			}
+			if _, ok := snippets[language]; ok {
+				return ast.WalkContinue, nil
 			}
 
-			examples = append(examples, exampleSection{
-				Title:    codegen.H3TitleRE.FindString(ex),
-				Snippets: snippets,
-			})
+			snippet := schema.RenderDocsToString(source, n)
+			snippets[language] = snippet
 		}
-	}
-	return examples
-}
 
-// processExamples extracts the examples section from a resource or a function description
-// and individually wraps in {{% example lang %}} short-codes. It also adds placeholder
-// short-codes for missing languages.
-func processExamples(descriptionWithExamples string) ([]exampleSection, error) {
-	if descriptionWithExamples == "" {
-		return nil, nil
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoError(err)
+
+	if examplesShortcode != nil {
+		p := examplesShortcode.Parent()
+		p.RemoveChild(p, examplesShortcode)
 	}
 
-	// Get the content enclosing the outer examples short code.
-	examplesContent, ok := codegen.ExtractExamplesSection(descriptionWithExamples)
-	if !ok {
-		return nil, nil
-	}
+	description := schema.RenderDocsToString(source, parsed)
 
-	// Within the examples section, identify each example section
-	// which is wrapped in a {{% example %}} shortcode.
-	return getExampleSections(examplesContent), nil
+	return docInfo{
+		description: description,
+		examples:    examples,
+	}
 }

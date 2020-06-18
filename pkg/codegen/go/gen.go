@@ -311,7 +311,7 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 }
 
 func printComment(w io.Writer, comment string, indent bool) int {
-	comment = codegen.StripNonRelevantExamples(comment, "go")
+	comment = codegen.FilterExamples(comment, "go")
 
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {

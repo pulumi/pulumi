@@ -20,35 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractExamplesSection(t *testing.T) {
-	t.Run("NonEmptyContent", func(t *testing.T) {
-		expectedContent := `something here
-
-and here
-
-.... and there
-
-..some..more here..
-`
-		description := "{{% examples %}}\n" + expectedContent + `{{% /examples %}}`
-
-		actualContent, ok := ExtractExamplesSection(description)
-		assert.True(t, ok, "content could not be extracted")
-		assert.Equal(t, expectedContent, actualContent, "strings don't match")
-	})
-
-	t.Run("EmptyContent", func(t *testing.T) {
-		description := `{{% examples %}}
-{{% /examples %}}`
-
-		_, ok := ExtractExamplesSection(description)
-		assert.False(t, ok, "expected content to be nil")
-	})
-}
-
 const codeFence = "```"
 
-func TestStripNonRelevantExamples(t *testing.T) {
+func TestFilterExamples(t *testing.T) {
 	tsCodeSnippet := `### Example 1
 ` + codeFence + `typescript
 import * as path from path;
@@ -74,7 +48,7 @@ func fakeFunc() {
 {{% /examples %}}`
 
 	t.Run("ContainsRelevantCodeSnippet", func(t *testing.T) {
-		strippedDescription := StripNonRelevantExamples(description, "typescript")
+		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
 	})
@@ -83,14 +57,14 @@ func fakeFunc() {
 	// the description contains only one Example without any Python code snippet,
 	// we should expect an empty string in this test.
 	t.Run("DoesNotContainRelevantSnippet", func(t *testing.T) {
-		strippedDescription := StripNonRelevantExamples(description, "python")
+		strippedDescription := FilterExamples(description, "python")
 		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
 		// Should not contain any examples sections.
 		assert.NotContains(t, strippedDescription, "### ", "expected to not have any examples but found at least one")
 	})
 }
 
-func TestTestStripNonRelevantExamplesFromMultipleExampleSections(t *testing.T) {
+func TestTestFilterExamplesFromMultipleExampleSections(t *testing.T) {
 	tsCodeSnippet := codeFence + `typescript
 import * as path from path;
 
@@ -119,14 +93,14 @@ func fakeFunc() {
 	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
-		strippedDescription := StripNonRelevantExamples(description, "typescript")
+		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.Contains(t, strippedDescription, "Example 2", "expected Example 2 section")
 	})
 
 	t.Run("SomeExamplesHaveRelevantCodeSnippet", func(t *testing.T) {
-		strippedDescription := StripNonRelevantExamples(description, "go")
+		strippedDescription := FilterExamples(description, "go")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.NotContains(t, strippedDescription, "Example 2",
