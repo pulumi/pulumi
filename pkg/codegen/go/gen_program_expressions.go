@@ -305,7 +305,11 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	g.genObjectConsExpression(w, expr, expr.Type(), isInput)
 }
 
-func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type, isInput bool) {
+func (g *generator) genObjectConsExpression(
+	w io.Writer, expr *model.ObjectConsExpression,
+	destType model.Type,
+	isInput bool,
+) {
 	if len(expr.Items) > 0 {
 		var temps []interface{}
 		isInput = isInput || isInputty(destType)
