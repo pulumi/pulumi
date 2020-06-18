@@ -84,7 +84,7 @@ jobs:
           pass: ${{ secrets.DOCKER_HUB_TOKEN }}
           slug: pulumi/pulumi-${{matrix.sdk}}
           readme: docker/README.md
-          description: Pulumi CLI container for ${{ matrix.os }}
+          description: Pulumi CLI container for ${{ matrix.sdk }}
 
   os_sdk:
     name: os language sdk image
