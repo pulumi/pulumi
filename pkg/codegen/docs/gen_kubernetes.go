@@ -39,6 +39,11 @@ func (mod *modContext) isKubernetesOverlayModule() bool {
 		strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
 }
 
+func (mod *modContext) isComponentResource() bool {
+	// TODO: Support this more generally. For now, only the Helm and YAML overlays use ComponentResources.
+	return strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
+}
+
 // getKubernetesOverlayPythonFormalParams returns the formal params to render
 // for a Kubernetes overlay resource. These resources do not follow convention
 // that other resources do, so it is best to manually set these.
