@@ -3,9 +3,12 @@ on:
   repository_dispatch:
     types:
       - docker-build
+  pull_request:
+    branches: [ "master" ]
 
 env:
-  VERSION: ${{ github.event.client_payload.ref }}
+  VERSION: "2.4.0"
+  # VERSION: ${{ github.event.client_payload.ref }}
 
 jobs:
   base:
@@ -31,7 +34,7 @@ jobs:
           user: "pulumibot"
           pass: ${{ secrets.DOCKER_HUB_TOKEN }}
           slug: pulumi/pulumi-base
-          readme: docker/base/readme.md
+          readme: docker/README.md
           description: Pulumi CLI container - bring your own SDK
 
   base_os:
@@ -80,7 +83,7 @@ jobs:
           user: "pulumibot"
           pass: ${{ secrets.DOCKER_HUB_TOKEN }}
           slug: pulumi/pulumi-${{matrix.sdk}}
-          readme: docker/${{ matrix.sdk }}/readme.md
+          readme: docker/README.md
           description: Pulumi CLI container for ${{ matrix.os }}
 
   os_sdk:
