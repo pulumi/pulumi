@@ -98,7 +98,7 @@ func writeCommandOutput(commandName, runDir string, output []byte) (string, erro
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
-	if err := ioutil.WriteFile(logFile, output, 0644); err != nil {
+	if err := ioutil.WriteFile(logFile, output, 0600); err != nil {
 		return "", errors.Wrapf(err, "Failed to write '%s'", logFile)
 	}
 

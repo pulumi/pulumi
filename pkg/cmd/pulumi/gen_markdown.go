@@ -81,7 +81,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// We do this because we're already including the command as the front matter title.
 				result := replaceH2Pattern.ReplaceAllString(string(b), "")
 
-				if err := ioutil.WriteFile(file, []byte(result), 0666); err != nil {
+				if err := ioutil.WriteFile(file, []byte(result), 0600); err != nil {
 					return err
 				}
 			}

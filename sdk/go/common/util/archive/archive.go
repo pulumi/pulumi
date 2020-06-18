@@ -103,6 +103,9 @@ func UnTGZ(tarball []byte, dir string) error {
 				return errors.Wrapf(err, "opening file %s for untar", path)
 			}
 			defer contract.IgnoreClose(dst)
+
+			// We're not concerned with potential tarbombs, so disable gosec.
+			//nolint: gosec
 			if _, err = io.Copy(dst, r); err != nil {
 				return errors.Wrapf(err, "untarring file %s", path)
 			}
