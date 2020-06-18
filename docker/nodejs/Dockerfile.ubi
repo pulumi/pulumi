@@ -17,7 +17,8 @@ RUN --mount=target=/var/cache/yum,type=cache \
     git \
     tar \
     nodejs \
-    ca-certificates
+    ca-certificates && \
+    npm install -g yarn
 
 # Uses the workdir, copies from pulumi interim container
 COPY --from=pulumi /pulumi/bin/pulumi /pulumi/bin/pulumi
