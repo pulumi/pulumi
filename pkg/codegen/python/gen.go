@@ -1232,13 +1232,7 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	return defaultValue, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode python-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["python"].(PackageInfo)
-
+func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo, extraFiles map[string][]byte) (map[string]*modContext, error) {
 	// Build case mapping tables
 	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
 	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase)
@@ -1308,8 +1302,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return nil, errors.New("this provider has a `types` module which is reserved for input/output types")
 	}
 
-	files := fs{}
-	for p, f := range extraFiles {
+	// Add python source files to the corresponding modules. Note that we only add the file names; the contents are
+	// still laid out manually in GeneratePackage.
+	for p := range extraFiles {
 		if path.Ext(p) != ".py" {
 			continue
 		}
@@ -1320,7 +1315,66 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 		mod := getMod(modName)
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
+	}
 
+	return modules, nil
+}
+
+// LanguageResource is derived from the schema and can be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
+
+	Name    string // The resource name (e.g. Deployment)
+	Package string // The package name (e.g. pulumi_kubernetes.apps.v1)
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	resources := map[string]LanguageResource{}
+
+	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["python"].(PackageInfo)
+
+	modules, err := generateModuleContextMap(tool, pkg, info, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for modName, mod := range modules {
+		if modName == "" {
+			continue
+		}
+		for _, r := range mod.resources {
+			packagePath := strings.Replace(modName, "/", ".", -1)
+			lr := LanguageResource{
+				Resource: r,
+				Package:  packagePath,
+				Name:     pyClassName(tokenToName(r.Token)),
+			}
+			resources[r.Token] = lr
+		}
+	}
+
+	return resources, nil
+}
+
+func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	// Decode python-specific info
+	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["python"].(PackageInfo)
+
+	modules, err := generateModuleContextMap(tool, pkg, info, extraFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	files := fs{}
+	for p, f := range extraFiles {
 		files.add(filepath.Join(pyPack(pkg.Name), p), f)
 	}
 
