@@ -85,6 +85,9 @@ func decomposeDocstring(docstring string) docInfo {
 			}
 			return ast.WalkContinue, nil
 		}
+		if exampleShortcode == nil {
+			return ast.WalkContinue, nil
+		}
 
 		switch n := n.(type) {
 		case *ast.Heading:
