@@ -342,7 +342,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
 		}
 
 		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
@@ -390,7 +390,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	if !res.IsProvider && res.DeprecationMessage != "" {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)", escaped)
+		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
 
 	name := pyClassName(tokenToName(res.Token))
@@ -426,7 +426,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	if res.DeprecationMessage != "" {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
 	// Now generate an initializer with arguments for all input properties.
 	fmt.Fprintf(w, "    def __init__(__self__, resource_name, opts=None")
