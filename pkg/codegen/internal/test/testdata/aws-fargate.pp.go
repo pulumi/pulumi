@@ -18,7 +18,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		subnets, err := ec2.LookupSubnetIds(ctx, &ec2.LookupSubnetIdsArgs{
+		subnets, err := ec2.GetSubnetIds(ctx, &ec2.GetSubnetIdsArgs{
 			VpcId: vpc.Id,
 		}, nil)
 		if err != nil {

@@ -66,12 +66,12 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, argumentTypeName(nil, param.Type, isInput))
+		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
 		leadingSep = ", "
 	}
 
 	isInput := isInputty(expr.Signature.ReturnType)
-	retType := argumentTypeName(nil, expr.Signature.ReturnType, isInput)
+	retType := g.argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
 
 	body, temps := g.lowerExpression(expr.Body, expr.Signature.ReturnType, isInput)
@@ -145,7 +145,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.ScopeTraversalExpression:
 			g.genScopeTraversalExpression(w, arg, isInput)
 		default:
-			argType := argumentTypeName(arg, arg.Type(), isInput)
+			argType := g.argumentTypeName(arg, arg.Type(), isInput)
 			g.Fgenf(w, "%s(%v", argType, arg)
 			g.Fgenf(w, ")")
 		}
@@ -188,7 +188,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case hcl2.Invoke:
-		pkg, module, fn, diags := functionName(expr.Args[0])
+		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module == "" {
 			module = pkg
@@ -240,7 +240,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression, destType model.Type) {
-	argTypeName := argumentTypeName(expr, destType, false)
+	argTypeName := g.argumentTypeName(expr, destType, false)
 	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
 
 	switch destType := destType.(type) {
@@ -305,12 +305,12 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) > 0 {
 		var temps []interface{}
 		isInput := isInputty(destType)
-		typeName := argumentTypeName(expr, destType, isInput)
+		typeName := g.argumentTypeName(expr, destType, isInput)
 		if strings.HasSuffix(typeName, "Args") {
 			isInput = true
 		}
 		// invokes are not inputty
-		if strings.Contains(typeName, ".Lookup") {
+		if strings.Contains(typeName, ".Lookup") || strings.Contains(typeName, ".Get") {
 			isInput = false
 		}
 		isMap := strings.HasPrefix(typeName, "map[")
@@ -330,7 +330,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		}
 		g.genTemps(w, temps)
 
-		if isMap {
+		if isMap || !strings.HasSuffix(typeName, "Args") {
 			g.Fgenf(w, "%s", typeName)
 		} else {
 			g.Fgenf(w, "&%s", typeName)
@@ -366,7 +366,7 @@ func (g *generator) genRelativeTraversalExpression(w io.Writer, expr *model.Rela
 		isInput = false
 	}
 	if isInput {
-		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
+		g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
 	}
 	g.GenRelativeTraversalExpression(w, expr)
 	if isInput {
@@ -415,7 +415,7 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
 	if isInput {
-		g.Fgenf(w, "%s(", argumentTypeName(expr, expr.Type(), isInput))
+		g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
 	}
 
 	// TODO: this isn't exhaustively correct as "range" could be a legit var name
@@ -488,7 +488,7 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		expr.Expressions[i] = item
 	}
 	g.genTemps(w, temps)
-	argType := argumentTypeName(expr, destType, isInput)
+	argType := g.argumentTypeName(expr, destType, isInput)
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
@@ -514,7 +514,7 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 }
 
 // argumentTypeName computes the go type for the given expression and model type.
-func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
+func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) string {
 	var tokenRange hcl.Range
 	if expr != nil {
 		node := expr.SyntaxNode()
@@ -526,22 +526,39 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		switch schemaType := schemaType.(type) {
 		case *schema.ArrayType:
 			token := schemaType.ElementType.(*schema.ObjectType).Token
-			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			// namespaceless invokes
+			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
+				module = pkg
+			}
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
 			fmtString := "[]%s.%s"
 			if isInput {
+				member = Title(member)
+				if strings.HasPrefix(member, "Get") {
+					if g.useLookupInvokeForm(token) {
+						member = strings.Replace(member, "Get", "Lookup", 1)
+					}
+					return fmt.Sprintf("[]%s.%s", importPrefix, member)
+				}
 				fmtString = "%s.%sArray"
 			}
 			return fmt.Sprintf(fmtString, importPrefix, member)
 		case *schema.ObjectType:
 			token := schemaType.Token
-			_, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+			// namespaceless invokes
+			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
+				module = pkg
+			}
 			importPrefix := strings.Split(module, "/")[0]
 			contract.Assert(len(diags) == 0)
 			member = Title(member)
 			if strings.HasPrefix(member, "Get") {
-				member = strings.Replace(member, "Get", "Lookup", 1)
+				if g.useLookupInvokeForm(token) {
+					member = strings.Replace(member, "Get", "Lookup", 1)
+				}
 				return fmt.Sprintf("%s.%s", importPrefix, member)
 			}
 			fmtString := "%s.%s"
@@ -586,13 +603,13 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		}
 		return "map[string]interface{}"
 	case *model.MapType:
-		valType := argumentTypeName(nil, destType.ElementType, isInput)
+		valType := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if isInput {
 			return fmt.Sprintf("pulumi.%sMap", Title(valType))
 		}
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
-		argTypeName := argumentTypeName(nil, destType.ElementType, isInput)
+		argTypeName := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if strings.HasPrefix(argTypeName, "pulumi.") {
 			return fmt.Sprintf("%sArray", argTypeName)
 		}
@@ -613,7 +630,7 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		}
 
 		if elmType != nil {
-			argTypeName := argumentTypeName(nil, elmType, isInput)
+			argTypeName := g.argumentTypeName(nil, elmType, isInput)
 			if strings.HasPrefix(argTypeName, "pulumi.") {
 				return fmt.Sprintf("%sArray", argTypeName)
 			}
@@ -626,16 +643,16 @@ func argumentTypeName(expr model.Expression, destType model.Type, isInput bool) 
 		return "[]interface{}"
 	case *model.OutputType:
 		isInput = true
-		return argumentTypeName(expr, destType.ElementType, isInput)
+		return g.argumentTypeName(expr, destType.ElementType, isInput)
 	case *model.UnionType:
 		for _, ut := range destType.ElementTypes {
 			if _, isOpaqueType := ut.(*model.OpaqueType); isOpaqueType {
-				return argumentTypeName(expr, ut, isInput)
+				return g.argumentTypeName(expr, ut, isInput)
 			}
 		}
 		return "interface{}"
 	case *model.PromiseType:
-		return argumentTypeName(expr, destType.ElementType, isInput)
+		return g.argumentTypeName(expr, destType.ElementType, isInput)
 	default:
 		contract.Failf("unexpected destType type %T", destType)
 	}
@@ -737,7 +754,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	applyArgs, then := hcl2.ParseApplyCall(expr)
 	then = stripInputs(then).(*model.AnonymousFunctionExpression)
 	isInput := false
-	retType := argumentTypeName(nil, then.Signature.ReturnType, isInput)
+	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
 	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
 	if !strings.HasPrefix(retType, "pulumi.") {
@@ -760,18 +777,9 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 }
 
 func (g *generator) genStringLiteral(w io.Writer, v string) {
-	// TODO more robust and go-specific handling of strings
-	newlines := strings.Contains(v, "\n")
-	if !newlines {
-		// This string does not contain newlines so we'll generate a regular string literal. Quotes and backslashes
-		// will be escaped in conformance with
-		// https://golang.org/ref/spec#String_literals
-		g.Fgen(w, "\"")
-		g.Fgen(w, g.escapeString(v))
-		g.Fgen(w, "\"")
-	} else {
-		g.genNYI(w, "TODO multiline strings")
-	}
+	g.Fgen(w, "\"")
+	g.Fgen(w, g.escapeString(v))
+	g.Fgen(w, "\"")
 }
 
 func (g *generator) escapeString(v string) string {
@@ -779,6 +787,11 @@ func (g *generator) escapeString(v string) string {
 	for _, c := range v {
 		if c == '"' || c == '\\' {
 			builder.WriteRune('\\')
+		}
+		if c == '\n' {
+			builder.WriteRune('\\')
+			builder.WriteRune('n')
+			continue
 		}
 		builder.WriteRune(c)
 	}
@@ -831,7 +844,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 }
 
 // functionName computes the go package, module, and name for the given function token.
-func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
+func (g *generator) functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
@@ -841,7 +854,9 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	// TODO figure out how to deal with get/lookup ambiguity
 	// https://github.com/pulumi/pulumi/blob/adfa8116fbf61ad328568fe4b53e32c751f30553/pkg/codegen/go/gen.go#L1171
 	if strings.HasPrefix(member, "get") {
-		member = strings.Replace(member, "get", "lookup", 1)
+		if g.useLookupInvokeForm(token) {
+			member = strings.Replace(member, "get", "lookup", 1)
+		}
 	}
 	return pkg, strings.Replace(module, "/", ".", -1), Title(member), diagnostics
 }

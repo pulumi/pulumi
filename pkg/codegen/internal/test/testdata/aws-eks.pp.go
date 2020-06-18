@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/eks"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/iam"
@@ -48,7 +49,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		zones, err := aws.LookupAvailabilityZones(ctx, nil, nil)
+		zones, err := aws.GetAvailabilityZones(ctx, nil, nil)
 		if err != nil {
 			return err
 		}
