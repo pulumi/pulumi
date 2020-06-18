@@ -3,12 +3,9 @@ on:
   repository_dispatch:
     types:
       - docker-build
-  pull_request:
-    branches: [ "master" ]
-
+      - 
 env:
-  VERSION: "2.4.0"
-  # VERSION: ${{ github.event.client_payload.ref }}
+  VERSION: ${{ github.event.client_payload.ref }}
 
 jobs:
   base:
@@ -30,6 +27,7 @@ jobs:
           tag-latest: true
           build-args: PULUMI_VERSION=${{ env.VERSION }}
       - uses: meeDamian/sync-readme@v1.0.6
+        name: Sync readme to Docker Hub
         with:
           user: "pulumibot"
           pass: ${{ secrets.DOCKER_HUB_TOKEN }}
@@ -79,6 +77,7 @@ jobs:
           additional-tags: ${{ env.VERSION }}
           build-args: PULUMI_VERSION=${{ env.VERSION }}
       - uses: meeDamian/sync-readme@v1.0.6
+        name: Sync readme to Docker Hub
         with:
           user: "pulumibot"
           pass: ${{ secrets.DOCKER_HUB_TOKEN }}
