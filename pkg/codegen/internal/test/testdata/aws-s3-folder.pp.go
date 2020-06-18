@@ -27,11 +27,12 @@ func main() {
 			return err
 		}
 		fileNames0 := make([]string, len(files0))
-		for i0, val0 := range files0 {
-			fileNames0[i0] = val0.Name()
+		for key0, val0 := range files0 {
+			fileNames0[key0] = val0.Name()
 		}
-		for i0, val0 := range fileNames0 {
-			_, err = s3.NewBucketObject(ctx, "files-"+string(i0), &s3.BucketObjectArgs{
+		var files []*s3.BucketObject
+		for key0, val0 := range fileNames0 {
+			_res, err := s3.NewBucketObject(ctx, fmt.Sprintf("files-%v", key0), &s3.BucketObjectArgs{
 				Bucket:      siteBucket.ID(),
 				Key:         pulumi.String(val0),
 				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v%v%v", siteDir, "/", val0)),
@@ -40,6 +41,7 @@ func main() {
 			if err != nil {
 				return err
 			}
+			files = append(files, _res)
 		}
 		_, err = s3.NewBucketPolicy(ctx, "bucketPolicy", &s3.BucketPolicyArgs{
 			Bucket: siteBucket.ID(),

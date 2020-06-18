@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen improvements (splat, all, index, traversal, range)
+  [#4831](https://github.com/pulumi/pulumi/pull/4831)
+
 - Go program gen improvements (resource range, readDir, fileArchive)
   [#4818](https://github.com/pulumi/pulumi/pull/4818)
 

@@ -30,6 +30,7 @@ func TestGenProgram(t *testing.T) {
 		// TODO: include all test files
 		if filepath.Base(f.Name()) != "aws-s3-logging.pp" &&
 			filepath.Base(f.Name()) != "aws-s3-folder.pp" &&
+			filepath.Base(f.Name()) != "aws-eks.pp" &&
 			filepath.Base(f.Name()) != "aws-fargate.pp" {
 			continue
 		}
@@ -122,6 +123,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 			jsonTempSpiller:     &jsonSpiller{},
 			ternaryTempSpiller:  &tempSpiller{},
 			readDirTempSpiller:  &readDirSpiller{},
+			splatSpiller:        &splatSpiller{},
 			scopeTraversalRoots: codegen.NewStringSet(),
 		}
 		g.Formatter = format.NewFormatter(g)
