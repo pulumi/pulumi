@@ -15,39 +15,9 @@
 package codegen
 
 import (
-	"regexp"
-
 	"github.com/pgavlin/goldmark/ast"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-)
-
-var (
-	// IMPORTANT! The following regexp's contain named capturing groups.
-	// It's the `?P<group_name>` where group_name can be any name.
-	// When changing the group names, be sure to change the reference to
-	// the corresponding group name below where they are used as well.
-
-	// SurroundingTextRE is regexp to match the content between the {{% examples %}} short-code
-	// including the short-codes themselves.
-	SurroundingTextRE = regexp.MustCompile("({{% examples %}}(.|\n)*?{{% /examples %}})")
-	// IndividualExampleRE is a regexp to match a single example section surrounded by the {{% example %}} short-code.
-	IndividualExampleRE = regexp.MustCompile(
-		"(?P<example_start>{{% example %}})(?P<example_content>(.|\n)*?)(?P<example_end>{{% /example %}})")
-	// H3TitleRE is a regexp to match an h3 title tag.
-	H3TitleRE = regexp.MustCompile("(### .*)")
-
-	// The following regexp's match the code snippet blocks in a single example section.
-
-	// TSCodeSnippetRE is a regexp to match a TypeScript code snippet.
-	TSCodeSnippetRE = regexp.MustCompile("(```(typescript))((.|\n)*?)(```)")
-	// GoCodeSnippetRE is a regexp to match a Go code snippet.
-	GoCodeSnippetRE = regexp.MustCompile("(```(go))((.|\n)*?)(```)")
-	// PythonCodeSnippetRE is a regexp to match a Python code snippet.
-	PythonCodeSnippetRE = regexp.MustCompile("(```(python))((.|\n)*?)(```)")
-	// CSharpCodeSnippetRE is a regexp to match a C# code snippet.
-	CSharpCodeSnippetRE = regexp.MustCompile("(```(csharp))((.|\n)*?)(```)")
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
@@ -69,87 +39,10 @@ type DocLanguageHelper interface {
 	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)
 }
 
-// GetFirstMatchedGroupsFromRegex returns the groups for the first match of a regexp.
-func GetFirstMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string]string {
-	groups := map[string]string{}
-
-	// Get all matching groups.
-	matches := regex.FindAllStringSubmatch(str, -1)
-	if len(matches) == 0 {
-		return groups
-	}
-
-	firstMatch := matches[0]
-	// Get the named groups in our regex.
-	groupNames := regex.SubexpNames()
-
-	for i, value := range firstMatch {
-		groups[groupNames[i]] = value
-	}
-
-	return groups
-}
-
-// GetAllMatchedGroupsFromRegex returns all matches and the respective groups for a regexp.
-func GetAllMatchedGroupsFromRegex(regex *regexp.Regexp, str string) map[string][]string {
-	// Get all matching groups.
-	matches := regex.FindAllStringSubmatch(str, -1)
-	// Get the named groups in our regex.
-	groupNames := regex.SubexpNames()
-
-	groups := map[string][]string{}
-	for _, match := range matches {
-		for j, value := range match {
-			if existing, ok := groups[groupNames[j]]; ok {
-				existing = append(existing, value)
-				groups[groupNames[j]] = existing
-				continue
-			}
-			groups[groupNames[j]] = []string{value}
-		}
-	}
-
-	return groups
-}
-
-// ExtractExamplesSection returns the content available between the first {{% examples %}} shortcode.
-// If no such section exists, the second return value will be false.
-func ExtractExamplesSection(description string) (string, bool) {
-	if description == "" {
-		return "", false
-	}
-
-	source := []byte(description)
-	parsed := schema.ParseDocs(source)
-
-	var examples ast.Node
-	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
-		if shortcode, ok := n.(*schema.Shortcode); ok && string(shortcode.Name) == schema.ExamplesShortcode {
-			examples = shortcode
-			return ast.WalkStop, nil
-		}
-		return ast.WalkContinue, nil
-	})
-	contract.AssertNoError(err)
-
-	if examples == nil || !examples.HasChildren() {
-		return "", false
-	}
-
-	doc := ast.NewDocument()
-
-	var c, next ast.Node
-	for c = examples.FirstChild(); c != nil; c = next {
-		next = c.NextSibling()
-		doc.AppendChild(doc, c)
-	}
-	return schema.RenderDocsToString(source, doc), true
-}
-
-func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
+func filterExamples(source []byte, node ast.Node, lang string) {
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {
-		stripNonRelevantExamples(source, c, lang)
+		filterExamples(source, c, lang)
 
 		next = c.NextSibling()
 		switch c := c.(type) {
@@ -191,14 +84,14 @@ func stripNonRelevantExamples(source []byte, node ast.Node, lang string) {
 	}
 }
 
-// StripNonRelevantExamples strips the non-relevant language snippets from a resource's description.
-func StripNonRelevantExamples(description string, lang string) string {
+// FilterExamples filters the code snippets in a schema docstring to include only those that target the given language.
+func FilterExamples(description string, lang string) string {
 	if description == "" {
 		return ""
 	}
 
 	source := []byte(description)
 	parsed := schema.ParseDocs(source)
-	stripNonRelevantExamples(source, parsed, lang)
+	filterExamples(source, parsed, lang)
 	return schema.RenderDocsToString(source, parsed)
 }

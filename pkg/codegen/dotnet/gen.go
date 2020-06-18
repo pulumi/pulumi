@@ -624,7 +624,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, codegen.StripNonRelevantExamples(r.Comment, "csharp"), "    ")
+	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
 	className := name
