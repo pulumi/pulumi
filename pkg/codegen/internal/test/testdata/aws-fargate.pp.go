@@ -12,8 +12,9 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		bool0 := true
 		vpc, err := ec2.LookupVpc(ctx, &ec2.LookupVpcArgs{
-			Default: true,
+			Default: &bool0,
 		}, nil)
 		if err != nil {
 			return err
@@ -84,8 +85,13 @@ func main() {
 		if err != nil {
 			return err
 		}
+
+		var array0 pulumi.StringArray
+		for _, val0 := range subnets.Ids {
+			array0 = append(array0, pulumi.String(val0))
+		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: pulumi.StringArray(subnets.Ids),
+			Subnets: array0,
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -153,7 +159,7 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        pulumi.StringArray(subnets.Ids),
+				Subnets:        array0,
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},
