@@ -62,6 +62,10 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 
 // GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
 func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) {
+	g.genAnonymousFunctionExpression(w, expr, nil)
+}
+
+func (g *generator) genAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression, bodyPreamble []string) {
 	g.Fgenf(w, "func(")
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
@@ -73,6 +77,10 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	isInput := isInputty(expr.Signature.ReturnType)
 	retType := g.argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
+
+	for _, decl := range bodyPreamble {
+		g.Fgenf(w, "%s\n", decl)
+	}
 
 	body, temps := g.lowerExpression(expr.Body, expr.Signature.ReturnType, isInput)
 	g.genTempsMultiReturn(w, temps, retType)
@@ -774,15 +782,50 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		// If we only have a single output, just generate a normal `.Apply`
 		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
 	} else {
+		// TODO
+		// redeclare variables at the top of apply call with type assertions.
+		// 2. rewrite the scope traversal expressions a0 -> args[0], a1 -> ...
+		// 3. Any type coercion that may be required
 		g.Fgenf(w, "pulumi.All(%.v", applyArgs[0])
 		applyArgs = applyArgs[1:]
 		for _, a := range applyArgs {
 			g.Fgenf(w, ",%.v", a)
 		}
-		// TODO need lowering step to rewrite then argument references
-		// in terms of scope traversal from all result: val[i] etc.
-		g.Fgenf(w, ").ApplyT(%.v)%s", then, typeAssertion)
+		allApplyThen, typeConvDecls := g.rewriteThenForAllApply(then)
+		g.Fgenf(w, ").ApplyT(")
+		g.genAnonymousFunctionExpression(w, allApplyThen, typeConvDecls)
+		g.Fgenf(w, ")%s", typeAssertion)
 	}
+}
+
+func (g *generator) rewriteThenForAllApply(then *model.AnonymousFunctionExpression) (*model.AnonymousFunctionExpression, []string) {
+	var typeConvDecls []string
+	for i, v := range then.Parameters {
+		typ := g.argumentTypeName(nil, v.VariableType, false)
+		decl := fmt.Sprintf("%s := args[%d].(%s)", v.Name, i, typ)
+		typeConvDecls = append(typeConvDecls, decl)
+	}
+	then.Parameters = []*model.Variable{
+		{
+			Name: "args",
+			VariableType: &model.TupleType{
+				ElementTypes: []model.Type{
+					model.BoolType, model.StringType, model.IntType,
+				},
+			},
+		},
+	}
+	then.Signature.Parameters = []model.Parameter{{
+		Name: "args",
+		Type: &model.TupleType{
+			ElementTypes: []model.Type{
+				model.BoolType, model.StringType, model.IntType,
+			},
+		},
+	}}
+
+	// TODO construct the list of assertions that need to be made here.
+	return then, typeConvDecls
 }
 
 func (g *generator) genStringLiteral(w io.Writer, v string) {
