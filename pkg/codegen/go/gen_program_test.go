@@ -27,13 +27,6 @@ func TestGenProgram(t *testing.T) {
 		if filepath.Ext(f.Name()) != ".pp" {
 			continue
 		}
-		// TODO: include all test files
-		if filepath.Base(f.Name()) != "aws-s3-logging.pp" &&
-			filepath.Base(f.Name()) != "aws-s3-folder.pp" &&
-			filepath.Base(f.Name()) != "aws-eks.pp" &&
-			filepath.Base(f.Name()) != "aws-fargate.pp" {
-			continue
-		}
 
 		t.Run(f.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, f.Name())

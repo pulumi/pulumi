@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen improvements (multiline strings, get/lookup disambiguation, invoke improvements)
+  [#4850](https://github.com/pulumi/pulumi/pull/4850)
+
 - Go program gen improvements (splat, all, index, traversal, range)
   [#4831](https://github.com/pulumi/pulumi/pull/4831)
 

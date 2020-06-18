@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/eks"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/iam"
@@ -17,8 +18,8 @@ func main() {
 			InstanceTenancy:    pulumi.String("default"),
 			EnableDnsHostnames: pulumi.Bool(true),
 			EnableDnsSupport:   pulumi.Bool(true),
-			Tags: map[string]interface{}{
-				"Name": "pulumi-eks-vpc",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-eks-vpc"),
 			},
 		})
 		if err != nil {
@@ -26,8 +27,8 @@ func main() {
 		}
 		eksIgw, err := ec2.NewInternetGateway(ctx, "eksIgw", &ec2.InternetGatewayArgs{
 			VpcId: eksVpc.ID(),
-			Tags: map[string]interface{}{
-				"Name": "pulumi-vpc-ig",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-vpc-ig"),
 			},
 		})
 		if err != nil {
@@ -41,14 +42,14 @@ func main() {
 					GatewayId: eksIgw.ID(),
 				},
 			},
-			Tags: map[string]interface{}{
-				"Name": "pulumi-vpc-rt",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-vpc-rt"),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		zones, err := aws.LookupAvailabilityZones(ctx, nil, nil)
+		zones, err := aws.GetAvailabilityZones(ctx, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -60,8 +61,8 @@ func main() {
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
 				CidrBlock:                   pulumi.String(fmt.Sprintf("%v%v%v", "10.100.", key0, ".0/24")),
 				AvailabilityZone:            pulumi.String(val0),
-				Tags: map[string]interface{}{
-					"Name": fmt.Sprintf("%v%v", "pulumi-sn-", val0),
+				Tags: pulumi.Map{
+					"Name": pulumi.String(fmt.Sprintf("%v%v", "pulumi-sn-", val0)),
 				},
 			})
 			if err != nil {
@@ -88,8 +89,8 @@ func main() {
 		eksSecurityGroup, err := ec2.NewSecurityGroup(ctx, "eksSecurityGroup", &ec2.SecurityGroupArgs{
 			VpcId:       eksVpc.ID(),
 			Description: pulumi.String("Allow all HTTP(s) traffic to EKS Cluster"),
-			Tags: map[string]interface{}{
-				"Name": "pulumi-cluster-sg",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-cluster-sg"),
 			},
 			Ingress: ec2.SecurityGroupIngressArray{
 				&ec2.SecurityGroupIngressArgs{
@@ -198,8 +199,8 @@ func main() {
 		}
 		eksCluster, err := eks.NewCluster(ctx, "eksCluster", &eks.ClusterArgs{
 			RoleArn: eksRole.Arn,
-			Tags: map[string]interface{}{
-				"Name": "pulumi-eks-cluster",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-eks-cluster"),
 			},
 			VpcConfig: &eks.ClusterVpcConfigArgs{
 				PublicAccessCidrs: pulumi.StringArray{
@@ -219,8 +220,8 @@ func main() {
 			NodeGroupName: pulumi.String("pulumi-eks-nodegroup"),
 			NodeRoleArn:   ec2Role.Arn,
 			SubnetIds:     subnetIds,
-			Tags: map[string]interface{}{
-				"Name": "pulumi-cluster-nodeGroup",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("pulumi-cluster-nodeGroup"),
 			},
 			ScalingConfig: &eks.NodeGroupScalingConfigArgs{
 				DesiredSize: pulumi.Int(2),
@@ -232,7 +233,7 @@ func main() {
 			return err
 		}
 		ctx.Export("clusterName", eksCluster.Name)
-		ctx.Export("kubeconfig", pulumi.All(eksCluster.Endpoint, eksCluster.CertificateAuthority, eksCluster.Name).Apply(func(endpoint string, certificateAuthority eks.ClusterCertificateAuthority, name string) (pulumi.String, error) {
+		ctx.Export("kubeconfig", pulumi.All(eksCluster.Endpoint, eksCluster.CertificateAuthority, eksCluster.Name).ApplyT(func(endpoint string, certificateAuthority eks.ClusterCertificateAuthority, name string) (pulumi.String, error) {
 			var _zero pulumi.String
 			tmpJSON2, err := json.Marshal(map[string]interface{}{
 				"apiVersion": "v1",
