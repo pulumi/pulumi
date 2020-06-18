@@ -776,7 +776,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		}
 		// TODO need lowering step to rewrite then argument references
 		// in terms of scope traversal from all result: val[i] etc.
-		g.Fgenf(w, ").Apply(%.v)%s", then, typeAssertion)
+		g.Fgenf(w, ").ApplyT(%.v)%s", then, typeAssertion)
 	}
 }
 

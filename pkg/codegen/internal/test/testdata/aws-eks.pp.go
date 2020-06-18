@@ -233,7 +233,7 @@ func main() {
 			return err
 		}
 		ctx.Export("clusterName", eksCluster.Name)
-		ctx.Export("kubeconfig", pulumi.All(eksCluster.Endpoint, eksCluster.CertificateAuthority, eksCluster.Name).Apply(func(endpoint string, certificateAuthority eks.ClusterCertificateAuthority, name string) (pulumi.String, error) {
+		ctx.Export("kubeconfig", pulumi.All(eksCluster.Endpoint, eksCluster.CertificateAuthority, eksCluster.Name).ApplyT(func(endpoint string, certificateAuthority eks.ClusterCertificateAuthority, name string) (pulumi.String, error) {
 			var _zero pulumi.String
 			tmpJSON2, err := json.Marshal(map[string]interface{}{
 				"apiVersion": "v1",
