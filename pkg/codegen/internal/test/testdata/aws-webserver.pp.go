@@ -43,8 +43,8 @@ func main() {
 			return err
 		}
 		server, err := ec2.NewInstance(ctx, "server", &ec2.InstanceArgs{
-			Tags: map[string]interface{}{
-				"Name": "web-server-www",
+			Tags: pulumi.Map{
+				"Name": pulumi.String("web-server-www"),
 			},
 			InstanceType: pulumi.String("t2.micro"),
 			SecurityGroups: pulumi.StringArray{

@@ -83,6 +83,7 @@ func modifyInputs(
 		for _, item := range expr.Items {
 			item.Value = modifyInputs(item.Value, modf)
 		}
+		x = modf(x)
 	case *model.TupleConsExpression:
 		for i, item := range expr.Expressions {
 			expr.Expressions[i] = modifyInputs(item, modf)

@@ -144,6 +144,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genRelativeTraversalExpression(w, arg, isInput)
 		case *model.ScopeTraversalExpression:
 			g.genScopeTraversalExpression(w, arg, isInput)
+		case *model.ObjectConsExpression:
+			g.genObjectConsExpression(w, arg, expr.Type(), isInput)
 		default:
 			argType := g.argumentTypeName(arg, arg.Type(), isInput)
 			g.Fgenf(w, "%s(%v", argType, arg)
@@ -154,7 +156,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
 		case *model.ObjectConsExpression:
-			g.genObjectConsExpression(w, arg, expr.Type())
+			isInput := false
+			g.genObjectConsExpression(w, arg, expr.Type(), isInput)
 		case *model.LiteralValueExpression:
 			g.genLiteralValueExpression(w, arg, expr.Type())
 		default:
@@ -298,13 +301,14 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
-	g.genObjectConsExpression(w, expr, expr.Type())
+	isInput := false
+	g.genObjectConsExpression(w, expr, expr.Type(), isInput)
 }
 
-func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
+func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type, isInput bool) {
 	if len(expr.Items) > 0 {
 		var temps []interface{}
-		isInput := isInputty(destType)
+		isInput = isInput || isInputty(destType)
 		typeName := g.argumentTypeName(expr, destType, isInput)
 		if strings.HasSuffix(typeName, "Args") {
 			isInput = true
@@ -339,7 +343,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 		for _, item := range expr.Items {
 			if lit, ok := g.literalKey(item.Key); ok {
-				if isMap {
+				if isMap || strings.HasSuffix(typeName, "Map") {
 					g.Fgenf(w, "\"%s\"", lit)
 				} else {
 					g.Fgenf(w, "%s", Title(lit))
