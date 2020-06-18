@@ -68,7 +68,7 @@ func decomposeDocstring(docstring string) docInfo {
 				if exampleShortcode == nil {
 					exampleShortcode, title, snippets = shortcode, "", map[string]string{}
 				} else if !enter && shortcode == exampleShortcode {
-					for _, l := range supportedLanguages {
+					for _, l := range snippetLanguages {
 						if _, ok := snippets[l]; !ok {
 							snippets[l] = defaultMissingExampleSnippetPlaceholder
 						}
