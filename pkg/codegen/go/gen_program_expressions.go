@@ -850,9 +850,6 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	// GetResource -> LookupResource
-	// TODO figure out how to deal with get/lookup ambiguity
-	// https://github.com/pulumi/pulumi/blob/adfa8116fbf61ad328568fe4b53e32c751f30553/pkg/codegen/go/gen.go#L1171
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {
 			member = strings.Replace(member, "get", "lookup", 1)
