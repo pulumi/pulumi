@@ -119,7 +119,7 @@ func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte,
 			return nil, err
 		}
 
-		err = ioutil.WriteFile(filepath.Join(dir, name), file.contents, 0644)
+		err = ioutil.WriteFile(filepath.Join(dir, name), file.contents, 0600)
 		if err != nil {
 			return nil, err
 		}

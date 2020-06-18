@@ -56,7 +56,7 @@ func WriteYarnRCForTest(root string) error {
 	// https://github.com/yarnpkg/yarn/issues/4563 as well
 	return ioutil.WriteFile(
 		filepath.Join(root, ".yarnrc"),
-		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0600)
 }
 
 // NewGoEnvironment returns a new Environment object, located in a GOPATH temp directory.

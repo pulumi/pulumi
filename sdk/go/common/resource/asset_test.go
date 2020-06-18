@@ -382,6 +382,7 @@ func TestArchiveZipFiles(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+//nolint: gosec
 func TestNestedArchive(t *testing.T) {
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
@@ -421,6 +422,7 @@ func TestNestedArchive(t *testing.T) {
 	assert.Equal(t, "fake.txt", files[2].Name)
 }
 
+//nolint: gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
