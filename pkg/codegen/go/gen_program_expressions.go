@@ -62,6 +62,14 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 
 // GenAnonymousFunctionExpression generates code for an AnonymousFunctionExpression.
 func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) {
+	g.genAnonymousFunctionExpression(w, expr, nil)
+}
+
+func (g *generator) genAnonymousFunctionExpression(
+	w io.Writer,
+	expr *model.AnonymousFunctionExpression,
+	bodyPreamble []string,
+) {
 	g.Fgenf(w, "func(")
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
@@ -73,6 +81,10 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	isInput := isInputty(expr.Signature.ReturnType)
 	retType := g.argumentTypeName(nil, expr.Signature.ReturnType, isInput)
 	g.Fgenf(w, ") (%s, error) {\n", retType)
+
+	for _, decl := range bodyPreamble {
+		g.Fgenf(w, "%s\n", decl)
+	}
 
 	body, temps := g.lowerExpression(expr.Body, expr.Signature.ReturnType, isInput)
 	g.genTempsMultiReturn(w, temps, retType)
@@ -779,10 +791,45 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		for _, a := range applyArgs {
 			g.Fgenf(w, ",%.v", a)
 		}
-		// TODO need lowering step to rewrite then argument references
-		// in terms of scope traversal from all result: val[i] etc.
-		g.Fgenf(w, ").ApplyT(%.v)%s", then, typeAssertion)
+		allApplyThen, typeConvDecls := g.rewriteThenForAllApply(then)
+		g.Fgenf(w, ").ApplyT(")
+		g.genAnonymousFunctionExpression(w, allApplyThen, typeConvDecls)
+		g.Fgenf(w, ")%s", typeAssertion)
 	}
+}
+
+// rewriteThenForAllApply rewrites an apply func after a .All replacing params with []interface{}
+// other languages like javascript take advantage of destructuring to simplify All.Apply
+// by generating something like [a1, a2, a3]
+// Go doesn't support this syntax so we create a set of var decls with type assertions
+// to prepend to the body: a1 := _args[0].(string) ... etc.
+func (g *generator) rewriteThenForAllApply(
+	then *model.AnonymousFunctionExpression,
+) (*model.AnonymousFunctionExpression, []string) {
+	var typeConvDecls []string
+	for i, v := range then.Parameters {
+		typ := g.argumentTypeName(nil, v.VariableType, false)
+		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)
+		typeConvDecls = append(typeConvDecls, decl)
+	}
+
+	// dummy type that will produce []interface{} for argumentTypeName
+	interfaceArrayType := &model.TupleType{
+		ElementTypes: []model.Type{
+			model.BoolType, model.StringType, model.IntType,
+		},
+	}
+
+	then.Parameters = []*model.Variable{{
+		Name:         "_args",
+		VariableType: interfaceArrayType,
+	}}
+	then.Signature.Parameters = []model.Parameter{{
+		Name: "_args",
+		Type: interfaceArrayType,
+	}}
+
+	return then, typeConvDecls
 }
 
 func (g *generator) genStringLiteral(w io.Writer, v string) {
