@@ -1279,7 +1279,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
-		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
+		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
 		_ = getMod("config")
 	}
 

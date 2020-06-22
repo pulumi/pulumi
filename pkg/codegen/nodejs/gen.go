@@ -547,7 +547,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				if err != nil {
 					return err
 				}
+				// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
+				// Specifically, this doesn't work right if the first value is set to false but the default value
+				// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
 				arg = fmt.Sprintf("(%s) || %s", arg, dv)
+				if mod.compatibility == kubernetes20 {
+					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
+				}
 			}
 
 			// provider properties must be marshaled as JSON strings.
@@ -893,6 +899,9 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			if err != nil {
 				return err
 			}
+			// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
+			// Specifically, this doesn't work right if the first value is set to false but the default value
+			// is true.
 			configFetch += " || " + v
 		}
 
@@ -1378,7 +1387,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
-		info.Compatibility != kubernetes20 { // TODO: k8s SDK currently doesn't use config. This should be standardized.
+		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
 		_ = getMod("config")
 	}
 
