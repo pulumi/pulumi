@@ -18,6 +18,8 @@ CHANGELOG
 - Add support for extracting jar files in archive resources
   [#5150](https://github.com/pulumi/pulumi/pull/5150)
 
+- SDK changes to support Python input/output classes
+  [#5033](https://github.com/pulumi/pulumi/pull/5033)
 
 ## 2.8.2 (2020-08-07)
 

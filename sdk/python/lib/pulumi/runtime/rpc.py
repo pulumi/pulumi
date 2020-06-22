@@ -15,15 +15,17 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
+import sys
 import asyncio
 import functools
 import inspect
-from typing import List, Any, Callable, Dict, Optional, TYPE_CHECKING, cast
+from typing import List, Any, Callable, Dict, Mapping, Optional, Tuple, Union, TYPE_CHECKING, cast, get_type_hints
 
 from google.protobuf import struct_pb2
 import six
 from . import known_types, settings
 from .. import log
+from .. import _types
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
@@ -182,11 +184,20 @@ async def serialize_property(value: 'Input[Any]',
             }
         return value
 
-    if isinstance(value, dict):
+    transform_keys = True
+
+    # If value is an input type, convert it to a dict, and set transform_keys to False to prevent
+    # transforming the keys of the resulting dict as the keys should already be the final names.
+    value_cls = type(value)
+    if _types.is_input_type(value_cls):
+        value = _types.input_type_to_dict(value)
+        transform_keys = False
+
+    if isinstance(value, Mapping):
         obj = {}
         for k, v in value.items():
             transformed_key = k
-            if input_transformer is not None:
+            if transform_keys and input_transformer is not None:
                 transformed_key = input_transformer(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
             obj[transformed_key] = await serialize_property(v, deps, input_transformer)
@@ -362,10 +373,13 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
     return resolvers
 
 
-def translate_output_properties(res: 'Resource', output: Any) -> Any:
+def translate_output_properties(res: 'Resource', output: Any, typ: Optional[type] = None) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
     convention specified by the resource's implementation of `translate_output_property`.
+
+    Additionally, if output is a `dict` and `typ` is an output type, instantiate the output type,
+    passing the dict as an argument to the output type's __init__() method.
 
     If output is a `dict`, every key is translated using `translate_output_property` while every value is transformed
     by recursing.
@@ -374,11 +388,49 @@ def translate_output_properties(res: 'Resource', output: Any) -> Any:
 
     If output is a primitive (i.e. not a dict or list), the value is returned without modification.
     """
+
+    # Unwrap optional types.
+    typ = _types.unwrap_optional_type(typ) if typ else typ
+
     if isinstance(output, dict):
-        return {res.translate_output_property(k): translate_output_properties(res, v) for k, v in output.items()}
+        # Function called to lookup a type for a given key.
+        # The default always returns None.
+        get_type: Callable[[str], Optional[type]] = lambda k: None
+
+        if typ and _types.is_output_type(typ):
+            # If typ is an output type, get its types, so we can pass
+            # the type along for each property.
+            types = _types.output_type_types(typ)
+            get_type = lambda k: types.get(k) # pylint: disable=unnecessary-lambda
+        elif typ:
+            # If typ is a dict, get the type for its values, to pass
+            # along for each key.
+            origin = _types.get_origin(typ)
+            if origin is dict or Dict:
+                args = _types.get_args(typ)
+                if len(args) == 2 and args[0] is str:
+                    get_type = lambda k: args[1]
+        translated = {
+            res.translate_output_property(k):
+                translate_output_properties(res, v, get_type(k))
+            for k, v in output.items()
+        }
+        # If typ is an output type, instantiate it, passing the translated dict as an
+        # arg to the output type's __init__() method, otherwise, return the translated
+        # dict.
+        return typ(translated) if typ and _types.is_output_type(typ) else translated
 
     if isinstance(output, list):
-        return [translate_output_properties(res, v) for v in output]
+        element_type: Optional[type] = None
+        if typ:
+            # If typ is a list, get the type for its values, to pass
+            # along for each item.
+            origin = _types.get_origin(typ)
+            if origin is list or List:
+                args = _types.get_args(typ)
+                if len(args) == 1:
+                    element_type = args[0]
+        return [translate_output_properties(res, v, element_type) for v in output]
 
     return output
 
@@ -407,10 +459,13 @@ async def resolve_outputs(res: 'Resource',
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
+    # Get the resource's output types, so we can convert dicts from the engine into actual
+    # instantiated output types as needed.
+    types = _types.resource_types(type(res))
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = res.translate_output_property(key)
-        translated_value = translate_output_properties(res, value)
+        translated_value = translate_output_properties(res, value, types.get(key))
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
@@ -421,7 +476,7 @@ async def resolve_outputs(res: 'Resource',
             if translated_key not in all_properties:
                 # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
                 # the user.
-                all_properties[translated_key] = translate_output_properties(res, deserialize_property(value))
+                all_properties[translated_key] = translate_output_properties(res, deserialize_property(value), types.get(key))
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
