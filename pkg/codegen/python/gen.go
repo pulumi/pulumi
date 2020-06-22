@@ -379,7 +379,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	return awaitableName
 }
 
-func (mod *modContext) genResource(res *schema.Resource) (string, error) {
+func (mod *modContext) genResource(res *schema.Resource) (str string, err error) {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, true)
 
@@ -465,6 +465,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	ins := stringSet{}
 	for _, prop := range res.InputProperties {
 		pname := PyName(prop.Name)
+		var arg interface{}
 
 		// Fill in computed defaults for arguments.
 		if prop.DefaultValue != nil {
@@ -491,7 +492,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 
 		// And add it to the dictionary.
-		arg := pname
+		arg = pname
+
+		if prop.ConstValue != nil {
+			arg, err = getConstValue(prop.ConstValue)
+			if err != nil {
+				return "", err
+			}
+		}
 
 		// If this resource is a provider then, regardless of the schema of the underlying provider
 		// type, we must project all properties as strings. For all properties that are not strings,
@@ -1195,6 +1203,13 @@ func getPrimitiveValue(value interface{}) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported default value of type %T", value)
 	}
+}
+
+func getConstValue(cv interface{}) (string, error) {
+	if cv == nil {
+		return "", nil
+	}
+	return getPrimitiveValue(cv)
 }
 
 func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
