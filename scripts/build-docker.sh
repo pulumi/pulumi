@@ -85,6 +85,9 @@ publish_containers() {
     done
 
     docker logout
+
+    # This publishes the SDK specific containers and uses a dispatch event to trigger a GitHub Action
+    pulumictl create containers ${CLI_VERSION}
 }
 
 echo_header "Building Pulumi containers (${CLI_VERSION})"
