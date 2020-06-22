@@ -512,6 +512,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 
 	var argsType string
 	var argsDocLink string
+	optsType := "CustomResourceOptions"
 	// The args type for k8s package differs from the rest depending on whether we are dealing with
 	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
@@ -527,6 +528,10 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			argsType = name
 			// The args types themselves are all under the input types module path, so use the input type link for the args type.
 			argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
+		}
+
+		if mod.isComponentResource() {
+			optsType = "ComponentResourceOptions"
 		}
 	} else {
 		argsType = name + "Args"
@@ -561,8 +566,8 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			Name:         "opts",
 			OptionalFlag: "?",
 			Type: propertyType{
-				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "CustomResourceOptions"),
+				Name: optsType,
+				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, optsType),
 			},
 			Comment: ctorOptsArgComment,
 		},
@@ -631,6 +636,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	var argLangTypeName string
+	optsType := "CustomResourceOptions"
+
 	// Constructor argument types in the k8s package for C# use a different namespace path.
 	// K8s overlay resources are in the same namespace path as the resource itself.
 	if isKubernetesPackage(mod.pkg) {
@@ -648,6 +655,10 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			}
 		} else {
 			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
+		}
+
+		if mod.isComponentResource() {
+			optsType = "ComponentResourceOptions"
 		}
 	} else {
 		argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
@@ -687,8 +698,8 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			DefaultValue: " = null",
 			Type: propertyType{
-				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.CustomResourceOptions"),
+				Name: optsType,
+				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, fmt.Sprintf("Pulumi.%s", optsType)),
 			},
 			Comment: ctorOptsArgComment,
 		},
