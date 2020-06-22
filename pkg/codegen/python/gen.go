@@ -255,7 +255,7 @@ func (mod *modContext) genInit(exports []string) string {
 
 		fmt.Fprintf(w, "import importlib\n")
 		fmt.Fprintf(w, "# Make subpackages available:\n")
-		fmt.Fprintf(w, "__all__ = [")
+		fmt.Fprintf(w, "submodules = [")
 		for i, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
@@ -271,7 +271,7 @@ func (mod *modContext) genInit(exports []string) string {
 			fmt.Fprintf(w, "'%s'", PyName(child))
 		}
 		fmt.Fprintf(w, "]\n")
-		fmt.Fprintf(w, "for pkg in __all__:\n")
+		fmt.Fprintf(w, "for pkg in submodules:\n")
 		fmt.Fprintf(w, "    if pkg != 'config':\n")
 		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
 	}
