@@ -18,7 +18,7 @@ from typing import Any, Optional
 from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
 from pulumi.runtime import rpc, known_types, settings
-from pulumi.output import Output, UNKNOWN
+from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
     RemoteAsset,
@@ -27,6 +27,7 @@ from pulumi.asset import (
     FileArchive,
     RemoteArchive
 )
+import pulumi
 
 
 class FakeCustomResource:
@@ -911,3 +912,49 @@ class DeserializationTests(unittest.TestCase):
         self.assertEqual(val["listWithMap"][rpc._special_sig_key], rpc._special_secret_sig)
         self.assertEqual(val["listWithMap"]["value"][0]["regular"], "a normal value")
         self.assertEqual(val["listWithMap"]["value"][0]["secret"], "a secret value")
+
+
+@input_type
+class FooArgs:
+    first_arg: Input[str] = pulumi.property("firstArg")
+    second_arg: Optional[Input[float]] = pulumi.property("secondArg")
+
+    def __init__(self, first_arg: Input[str], second_arg: Optional[Input[float]]=None):
+        pulumi.set(self, "firstArg", first_arg)
+        pulumi.set(self, "secondArg", second_arg)
+
+
+@input_type
+class BarArgs:
+    tag_args: Input[dict] = pulumi.property("tagArgs")
+
+    def __init__(self, tag_args: Input[dict]):
+        pulumi.set(self, "tagArgs", tag_args)
+
+
+class InputTypeSerializationTests(unittest.TestCase):
+    @async_test
+    async def test_simple_input_type(self):
+        it = FooArgs(first_arg="hello", second_arg=42)
+        prop = await rpc.serialize_property(it, [])
+        self.assertDictEqual(prop, {"firstArg": "hello", "secondArg": 42})
+
+    @async_test
+    async def test_input_type_with_dict_property(self):
+        def transformer(prop: str) -> str:
+            return {
+                "tag_args": "a",
+                "tagArgs": "b",
+                "foo_bar": "c",
+            }.get(prop) or prop
+
+        it = BarArgs({"foo_bar": "hello", "foo_baz": "world"})
+        prop = await rpc.serialize_property(it, [], transformer)
+        # Input type keys are not be transformed, but keys of nested
+        # dicts are still transformed.
+        self.assertDictEqual(prop, {
+            "tagArgs": {
+                "c": "hello",
+                "foo_baz": "world",
+            },
+        })
