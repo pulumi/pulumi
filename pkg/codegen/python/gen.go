@@ -901,6 +901,14 @@ func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCase
 			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
 		}
 	}
+	for _, typ := range pkg.Types {
+		typ, ok := typ.(*schema.ObjectType)
+		if ok {
+			for _, prop := range typ.Properties {
+				recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			}
+		}
+	}
 }
 
 func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
