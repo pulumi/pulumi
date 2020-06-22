@@ -379,7 +379,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	return awaitableName
 }
 
-func (mod *modContext) genResource(res *schema.Resource) (str string, err error) {
+func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, true)
 
@@ -466,6 +466,7 @@ func (mod *modContext) genResource(res *schema.Resource) (str string, err error)
 	for _, prop := range res.InputProperties {
 		pname := PyName(prop.Name)
 		var arg interface{}
+		var err error
 
 		// Fill in computed defaults for arguments.
 		if prop.DefaultValue != nil {
