@@ -217,6 +217,11 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 		name := PyName(tokenToName(r.Token))
+		if mod.compatibility == kubernetes20 {
+			// To maintain backward compatibility for kubernetes, the file names
+			// need to be CamelCase instead of the standard snake_case.
+			name = tokenToName(r.Token)
+		}
 		if r.IsProvider {
 			name = "provider"
 		}
@@ -283,7 +288,13 @@ func (mod *modContext) genInit(exports []string) string {
 
 		fmt.Fprintf(w, "# Export this package's modules as members:\n")
 		for _, exp := range exports {
-			fmt.Fprintf(w, "from .%s import *\n", PyName(exp))
+			name := PyName(exp)
+			if mod.compatibility == kubernetes20 {
+				// To maintain backward compatibility for kubernetes, the file names
+				// need to be CamelCase instead of the standard snake_case.
+				name = exp
+			}
+			fmt.Fprintf(w, "from .%s import *\n", name)
 		}
 	}
 
