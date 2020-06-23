@@ -735,6 +735,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr, g.jsonTempSpiller)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
+	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
 	if isInput {
 		expr = rewriteInputs(expr)
@@ -752,10 +753,14 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInp
 	for _, t := range sTemps {
 		temps = append(temps, t)
 	}
+	for _, t := range oTemps {
+		temps = append(temps, t)
+	}
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
 	diags = append(diags, readDirDiags...)
 	diags = append(diags, splatDiags...)
+	diags = append(diags, optDiags...)
 	contract.Assert(len(diags) == 0)
 	return expr, temps
 }
