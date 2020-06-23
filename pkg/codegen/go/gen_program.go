@@ -27,6 +27,7 @@ type generator struct {
 	ternaryTempSpiller  *tempSpiller
 	readDirTempSpiller  *readDirSpiller
 	splatSpiller        *splatSpiller
+	optionalSpiller     *optionalSpiller
 	scopeTraversalRoots codegen.StringSet
 }
 
@@ -47,6 +48,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		ternaryTempSpiller:  &tempSpiller{},
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 	}
 
@@ -359,6 +361,8 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")
+		case *optionalTemp:
+			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
 		default:
 			contract.Failf("unexpected temp type: %v", t)
 		}

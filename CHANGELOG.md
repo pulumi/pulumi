@@ -3,6 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen handling for prompt optional primitives
+  [#4875](https://github.com/pulumi/pulumi/pull/4875)
+
+- Go program gen All().Apply rewriter
+  [#4858](https://github.com/pulumi/pulumi/pull/4858)
+
 - Go program gen improvements (multiline strings, get/lookup disambiguation, invoke improvements)
   [#4850](https://github.com/pulumi/pulumi/pull/4850)
 
