@@ -16,9 +16,14 @@
 
 from setuptools import setup, find_packages
 
+
 def readme():
-    with open('README.md', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('README.md', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return ''
+
 
 setup(name='pulumi',
       version='${VERSION}',
