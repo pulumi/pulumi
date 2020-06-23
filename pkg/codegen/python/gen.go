@@ -247,6 +247,10 @@ func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false)
 
+	if len(mod.children) > 0 {
+		fmt.Fprintf(w, "import importlib\n\n")
+	}
+
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
 		sort.Slice(exports, func(i, j int) bool {
@@ -271,8 +275,7 @@ func (mod *modContext) genInit(exports []string) string {
 			return PyName(mod.children[i].mod) < PyName(mod.children[j].mod)
 		})
 
-		fmt.Fprintf(w, "\nimport importlib\n")
-		fmt.Fprintf(w, "# Make subpackages available:\n")
+		fmt.Fprintf(w, "\n# Make subpackages available:\n")
 		fmt.Fprintf(w, "submodules = [\n")
 		for i, mod := range mod.children {
 			child := mod.mod
