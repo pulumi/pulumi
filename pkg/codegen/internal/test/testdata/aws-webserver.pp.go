@@ -25,6 +25,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		opt0 := true
 		ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
 			Filters: []aws.GetAmiFilter{
 				aws.GetAmiFilter{
@@ -37,7 +38,7 @@ func main() {
 			Owners: []string{
 				"137112412989",
 			},
-			MostRecent: true,
+			MostRecent: &opt0,
 		}, nil)
 		if err != nil {
 			return err

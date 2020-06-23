@@ -117,6 +117,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 			ternaryTempSpiller:  &tempSpiller{},
 			readDirTempSpiller:  &readDirSpiller{},
 			splatSpiller:        &splatSpiller{},
+			optionalSpiller:     &optionalSpiller{},
 			scopeTraversalRoots: codegen.NewStringSet(),
 		}
 		g.Formatter = format.NewFormatter(g)
