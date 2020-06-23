@@ -88,5 +88,4 @@ import importlib
 # Make subpackages available.
 submodules = ['runtime', 'dynamic', 'policy']
 for pkg in submodules:
-    if pkg != 'config':
-        importlib.import_module(f'{__name__}.{pkg}')
+    importlib.import_module(f'{__name__}.{pkg}')
