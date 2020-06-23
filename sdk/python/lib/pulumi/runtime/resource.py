@@ -165,7 +165,7 @@ def _read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', o
     # that we are populating the Resource object with properties associated with an already-live resource.
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
-    log.debug(f"preparing read resource for RPC")
+    log.debug("preparing read resource for RPC")
     urn_future: asyncio.Future[Any] = asyncio.Future()
     urn_known: asyncio.Future[bool] = asyncio.Future()
     urn_secret: asyncio.Future[bool] = asyncio.Future()
@@ -299,7 +299,7 @@ def _register_resource(res: 'Resource',
     # Simply initialize the URN property and get prepared to resolve it later on.
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
-    log.debug(f"preparing resource for RPC")
+    log.debug("preparing resource for RPC")
     urn_future: asyncio.Future[Any] = asyncio.Future()
     urn_known: asyncio.Future[bool] = asyncio.Future()
     urn_secret: asyncio.Future[bool] = asyncio.Future()
