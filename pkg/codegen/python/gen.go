@@ -248,7 +248,7 @@ func (mod *modContext) genInit(exports []string) string {
 	mod.genHeader(w, false)
 
 	if len(mod.children) > 0 {
-		fmt.Fprintf(w, "import importlib\n\n")
+		fmt.Fprintf(w, "import importlib\n")
 	}
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
