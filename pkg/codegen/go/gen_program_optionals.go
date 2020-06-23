@@ -72,6 +72,7 @@ func (os *optionalSpiller) spillExpressionHelper(
 					for _, p := range primitives {
 						if p == v.Type {
 							isPrimitive = true
+							break
 						}
 					}
 					if isPrimitive && !v.IsRequired {
