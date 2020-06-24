@@ -242,46 +242,27 @@ func (mod *modContext) gen(fs fs) error {
 	return nil
 }
 
+func (mod *modContext) submodulesExist() bool {
+	if len(mod.children) <= 0 {
+		return false
+	}
+	if len(mod.children) == 1 && mod.children[0].mod == "config" {
+		return false
+	}
+	return true
+}
+
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false)
 
-	// If there are subpackages, export them in the __all__ variable.
-	if len(mod.children) > 0 {
-		sort.Slice(mod.children, func(i, j int) bool {
-			return PyName(mod.children[i].mod) < PyName(mod.children[j].mod)
-		})
-
+	if mod.submodulesExist() {
 		fmt.Fprintf(w, "import importlib\n")
-		fmt.Fprintf(w, "# Make subpackages available:\n")
-		fmt.Fprintf(w, "__all__ = [")
-		for i, mod := range mod.children {
-			child := mod.mod
-			if mod.compatibility == kubernetes20 {
-				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
-				// Example: apps/v1beta1 -> v1beta1
-				if match := k8sVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
-					child = child[match[2]:match[3]]
-				}
-			}
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "'%s'", PyName(child))
-		}
-		fmt.Fprintf(w, "]\n")
-		fmt.Fprintf(w, "for pkg in __all__:\n")
-		fmt.Fprintf(w, "    if pkg != 'config':\n")
-		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
 	}
 
-	// Now, import anything to export flatly that is a direct export rather than sub-module.
+	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
-		if len(mod.children) > 0 {
-			fmt.Fprintf(w, "\n")
-		}
-
 		sort.Slice(exports, func(i, j int) bool {
 			return PyName(exports[i]) < PyName(exports[j])
 		})
@@ -296,6 +277,34 @@ func (mod *modContext) genInit(exports []string) string {
 			}
 			fmt.Fprintf(w, "from .%s import *\n", name)
 		}
+	}
+
+	// If there are subpackages, import them with importlib.
+	if mod.submodulesExist() {
+		sort.Slice(mod.children, func(i, j int) bool {
+			return PyName(mod.children[i].mod) < PyName(mod.children[j].mod)
+		})
+
+		fmt.Fprintf(w, "\n# Make subpackages available:\n")
+		fmt.Fprintf(w, "_submodules = [\n")
+		for i, mod := range mod.children {
+			child := mod.mod
+			if mod.compatibility == kubernetes20 {
+				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
+				// Example: apps/v1beta1 -> v1beta1
+				if match := k8sVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
+					child = child[match[2]:match[3]]
+				}
+			}
+			if i > 0 {
+				fmt.Fprintf(w, ",\n")
+			}
+			fmt.Fprintf(w, "    '%s'", PyName(child))
+		}
+		fmt.Fprintf(w, ",\n]\n")
+		fmt.Fprintf(w, "for pkg in _submodules:\n")
+		fmt.Fprintf(w, "    if pkg != 'config':\n")
+		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
 	}
 
 	return w.String()

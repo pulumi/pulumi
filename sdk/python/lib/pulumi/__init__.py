@@ -18,8 +18,7 @@ providers and libraries in the Pulumi ecosystem use to create and manage
 resources.
 """
 
-# Make subpackages available.
-__all__ = ['runtime', 'dynamic', 'policy']
+import importlib
 
 # Make all module members inside of this package available as package members.
 from .asset import (
@@ -86,3 +85,7 @@ from .log import (
 from .stack_reference import (
     StackReference,
 )
+
+# Make subpackages available.
+for pkg in ['runtime', 'dynamic', 'policy']:
+    importlib.import_module(f'{__name__}.{pkg}')
