@@ -45,6 +45,7 @@ func TestLiteralExpression(t *testing.T) {
 }
 
 func TestBinaryOpExpression(t *testing.T) {
+	t.Skip("Skipping test due to https://github.com/pulumi/pulumi/issues/4885")
 	env := environment(map[string]interface{}{
 		"a": model.BoolType,
 		"b": model.BoolType,
