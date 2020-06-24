@@ -29,6 +29,7 @@ type generator struct {
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
 	scopeTraversalRoots codegen.StringSet
+	arrayHelpers        map[string]*promptToInputArrayHelper
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -50,6 +51,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -212,6 +214,14 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 	g.Fprint(w, "return nil\n")
 	g.Fprintf(w, "})\n")
 	g.Fprintf(w, "}\n")
+
+	g.genHelpers(w)
+}
+
+func (g *generator) genHelpers(w io.Writer) {
+	for _, v := range g.arrayHelpers {
+		v.generateHelperMethod(w)
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n hcl2.Node) {
@@ -243,7 +253,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	instantiate := func(varName, resourceName string) {
+	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "_") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
 		} else {
@@ -273,13 +283,24 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 		g.Fgenf(w, "var %s []*%s.%s\n", resName, mod, typ)
 
-		g.Fgenf(w, "for key0, val0 := range %.v {\n", rangeExpr)
-		instantiate("_res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName))
+		// ahead of range statement declaration generate the resource instantiation
+		// to detect and removed unused k,v variables
+		var buf bytes.Buffer
+		instantiate("_res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
+		instantiation := buf.String()
+		isValUsed := strings.Contains(instantiation, "val0")
+		valVar := "_"
+		if isValUsed {
+			valVar = "val0"
+		}
+
+		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
+		g.Fgen(w, instantiation)
 		g.Fgenf(w, "%s = append(%s, _res)\n", resName, resName)
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("\"%s\"", resName))
+		instantiate(resName, fmt.Sprintf("\"%s\"", resName), w)
 	}
 
 }
@@ -357,7 +378,11 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each, t.Value.Each.Type(), false)
-			g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
+			if strings.Contains(argTyp, ".") {
+				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
+			} else {
+				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
+			}
 			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")

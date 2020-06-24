@@ -71,7 +71,7 @@ func main() {
 			vpcSubnet = append(vpcSubnet, _res)
 		}
 		var rta []*ec2.RouteTableAssociation
-		for key0, val0 := range zones.Names {
+		for key0, _ := range zones.Names {
 			_res, err := ec2.NewRouteTableAssociation(ctx, fmt.Sprintf("rta-%v", key0), &ec2.RouteTableAssociationArgs{
 				RouteTableId: eksRouteTable.ID(),
 				SubnetId:     vpcSubnet[key0].ID(),
@@ -81,7 +81,7 @@ func main() {
 			}
 			rta = append(rta, _res)
 		}
-		var splat0 []pulumi.String
+		var splat0 pulumi.StringArray
 		for _, val0 := range vpcSubnet {
 			splat0 = append(splat0, val0.ID())
 		}

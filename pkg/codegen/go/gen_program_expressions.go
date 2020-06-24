@@ -436,7 +436,24 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
 	if isInput {
-		g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
+		argType := g.argumentTypeName(expr, expr.Type(), isInput)
+		if strings.HasSuffix(argType, "Array") {
+			// use a helper to transform prompt arrays into inputty arrays
+			var helper *promptToInputArrayHelper
+			if h, ok := g.arrayHelpers[argType]; ok {
+				helper = h
+			} else {
+				// helpers are emitted at the end in the postamble step
+				helper = &promptToInputArrayHelper{
+					destType: argType,
+				}
+				g.arrayHelpers[argType] = helper
+			}
+			g.Fgenf(w, "%s(", helper.getFnName())
+		} else {
+			g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
+		}
+
 	}
 
 	// TODO: this isn't exhaustively correct as "range" could be a legit var name

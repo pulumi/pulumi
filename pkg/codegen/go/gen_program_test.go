@@ -119,6 +119,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 			splatSpiller:        &splatSpiller{},
 			optionalSpiller:     &optionalSpiller{},
 			scopeTraversalRoots: codegen.NewStringSet(),
+			arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		}
 		g.Formatter = format.NewFormatter(g)
 		return g
