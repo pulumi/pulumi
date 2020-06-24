@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen: prompt array conversion, unused range vars, id handling
+  [#4884](https://github.com/pulumi/pulumi/pull/4884)
+
 - Go program gen handling for prompt optional primitives
   [#4875](https://github.com/pulumi/pulumi/pull/4875)
 

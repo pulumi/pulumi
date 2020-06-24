@@ -86,7 +86,7 @@ func main() {
 			return err
 		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: pulumi.StringArray(subnets.Ids),
+			Subnets: toPulumiStringArray(subnets.Ids),
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -154,7 +154,7 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        pulumi.StringArray(subnets.Ids),
+				Subnets:        toPulumiStringArray(subnets.Ids),
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},
@@ -173,4 +173,11 @@ func main() {
 		ctx.Export("url", webLoadBalancer.DnsName)
 		return nil
 	})
+}
+func toPulumiStringArray(arr []string) pulumi.StringArray {
+	var pulumiArr pulumi.StringArray
+	for _, v := range arr {
+		pulumiArr = append(pulumiArr, pulumi.String(v))
+	}
+	return pulumiArr
 }
