@@ -43,6 +43,9 @@ CHANGELOG
 - Adding language sdk specific docker containers.
   [#4837](https://github.com/pulumi/pulumi/pull/4837)
 
+- Workaround bug in grcpio v1.30.0 by excluding this version from required dependencies.
+  [#4883](https://github.com/pulumi/pulumi/pull/4883)
+
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
  [#4794](https://github.com/pulumi/pulumi/pull/4794)

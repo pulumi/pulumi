@@ -67,7 +67,7 @@ class RPCManager:
                 result = await rpc
                 exception = None
             except Exception as exn:
-                log.debug(f"RPC failed with exception:")
+                log.debug("RPC failed with exception:")
                 log.debug(traceback.format_exc())
                 if self.unhandled_exception is None:
                     self.unhandled_exception = exn

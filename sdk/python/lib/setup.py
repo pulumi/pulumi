@@ -36,6 +36,6 @@ setup(name='pulumi',
       install_requires=[
           'protobuf>=3.6.0',
           'dill>=0.3.0',
-          'grpcio>=1.9.1'
+          'grpcio>=1.9.1,!=1.30.0'
       ],
       zip_safe=False)
