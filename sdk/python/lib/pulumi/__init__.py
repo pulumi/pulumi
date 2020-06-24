@@ -87,6 +87,5 @@ from .stack_reference import (
 )
 
 # Make subpackages available.
-submodules = ['runtime', 'dynamic', 'policy']
-for pkg in submodules:
+for pkg in ['runtime', 'dynamic', 'policy']:
     importlib.import_module(f'{__name__}.{pkg}')

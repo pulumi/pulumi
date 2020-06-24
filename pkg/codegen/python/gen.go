@@ -242,12 +242,22 @@ func (mod *modContext) gen(fs fs) error {
 	return nil
 }
 
+func (mod *modContext) submodulesExist() bool {
+	if len(mod.children) <= 0 {
+		return false
+	}
+	if len(mod.children) == 1 && mod.children[0].mod == "config" {
+		return false
+	}
+	return true
+}
+
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false)
 
-	if len(mod.children) > 0 {
+	if mod.submodulesExist() {
 		fmt.Fprintf(w, "import importlib\n")
 	}
 
@@ -270,13 +280,13 @@ func (mod *modContext) genInit(exports []string) string {
 	}
 
 	// If there are subpackages, import them with importlib.
-	if len(mod.children) > 0 {
+	if mod.submodulesExist() {
 		sort.Slice(mod.children, func(i, j int) bool {
 			return PyName(mod.children[i].mod) < PyName(mod.children[j].mod)
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
-		fmt.Fprintf(w, "submodules = [\n")
+		fmt.Fprintf(w, "_submodules = [\n")
 		for i, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
@@ -292,7 +302,7 @@ func (mod *modContext) genInit(exports []string) string {
 			fmt.Fprintf(w, "    '%s'", PyName(child))
 		}
 		fmt.Fprintf(w, ",\n]\n")
-		fmt.Fprintf(w, "for pkg in submodules:\n")
+		fmt.Fprintf(w, "for pkg in _submodules:\n")
 		fmt.Fprintf(w, "    if pkg != 'config':\n")
 		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
 	}
