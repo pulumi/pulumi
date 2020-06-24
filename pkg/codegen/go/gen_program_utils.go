@@ -35,18 +35,14 @@ func (p *promptToInputArrayHelper) generateHelperMethod(w io.Writer) {
 
 func (p *promptToInputArrayHelper) getFnName() string {
 	parts := strings.Split(p.destType, ".")
-	if len(parts) != 2 {
-		contract.Failf("promptToInputArrayHelper destType expected to have two parts.")
-	}
+	contract.Assertf(len(parts) == 2, "promptToInputArrayHelper destType expected to have two parts.")
 	return fmt.Sprintf("to%s%s", Title(parts[0]), Title(parts[1]))
 }
 
 func (p *promptToInputArrayHelper) getPromptItemType() string {
 	inputType := p.getInputItemType()
 	parts := strings.Split(inputType, ".")
-	if len(parts) != 2 {
-		contract.Failf("promptToInputArrayHelper destType expected to have two parts.")
-	}
+	contract.Assertf(len(parts) == 2, "promptToInputArrayHelper destType expected to have two parts.")
 	typ := parts[1]
 	if t, ok := primitives[typ]; ok {
 		return t

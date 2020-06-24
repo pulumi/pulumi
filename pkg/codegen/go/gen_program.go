@@ -300,7 +300,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("\"%s\"", resName), w)
+		instantiate(resName, fmt.Sprintf("%q", resName), w)
 	}
 
 }
