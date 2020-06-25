@@ -52,7 +52,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 	case pkg.Name == "" && modName != "":
 		path = modName
 	case pkg.Name != "" && modName == "":
-		path = pkg.Name
+		path = fmt.Sprintf("pulumi_%s", pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, typeName)
 }
