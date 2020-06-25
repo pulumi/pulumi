@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+
+## 2.5.0 (2020-06-25)
+
 - Go program gen: prompt array conversion, unused range vars, id handling
   [#4884](https://github.com/pulumi/pulumi/pull/4884)
 
@@ -32,10 +35,9 @@ CHANGELOG
 
 - Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
   [#4808](https://github.com/pulumi/pulumi/pull/4808)
-  
+
 - Ensure GitHub Action authenticates to GCR when `$GOOGLE_CREDENTIALS` specified
   [#4812](https://github.com/pulumi/pulumi/pull/4812)
-  
 
 - Fix `pylint(no-member)` when accessing `resource.id`.
   [#4813](https://github.com/pulumi/pulumi/pull/4813)
