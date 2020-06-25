@@ -951,7 +951,7 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 		containsOneUnderscore := strings.Count(snakeCaseName, "_") == 1
 		endsWithUnderscore := strings.HasSuffix(snakeCaseName, "_")
 		singleWordProp := containsOneUnderscore && endsWithUnderscore
-		if !(singleWordProp) {
+		if !singleWordProp {
 			if snakeCaseToCamelCase != nil {
 				snakeCaseToCamelCase[snakeCaseName] = prop.Name
 			}
