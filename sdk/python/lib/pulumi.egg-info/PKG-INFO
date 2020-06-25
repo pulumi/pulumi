@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: pulumi
+Version: -VERSION-
+Summary: Pulumi's Python SDK
+Home-page: https://github.com/pulumi/pulumi
+License: Apache 2.0
+Description: UNKNOWN
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
