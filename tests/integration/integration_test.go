@@ -78,6 +78,7 @@ func TestEmptyPython(t *testing.T) {
 
 // TestEmptyPythonVenv simply tests that we can run an empty Python project using automatic virtual environment support.
 func TestEmptyPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python_venv"),
 		Dependencies: []string{
@@ -1101,6 +1102,7 @@ func TestConfigBasicPython(t *testing.T) {
 
 // Tests basic configuration from the perspective of a Pulumi program using automatic virtual environment support.
 func TestConfigBasicPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "python_venv"),
 		Dependencies: []string{
@@ -1491,6 +1493,7 @@ func TestDynamicPython(t *testing.T) {
 
 // Tests dynamic provider in Python using automatic virtual environment support.
 func TestDynamicPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python_venv"),
@@ -1741,6 +1744,7 @@ func TestLargeResourceDotNet(t *testing.T) {
 
 // Test to ensure Pylint is clean.
 func TestPythonPylint(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "pylint"),
