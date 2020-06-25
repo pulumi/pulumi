@@ -3,7 +3,7 @@ LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go
 VERSION          := $(shell ../../scripts/get-version HEAD)
 PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/...| grep -v /vendor/ | grep -v templates)
 
-TESTPARALLELISM := 5
+TESTPARALLELISM := 10
 
 include ../../build/common.mk
 
