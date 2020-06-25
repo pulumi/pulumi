@@ -7,7 +7,7 @@ PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
 TESTS_PKGS      := $(shell cd ./tests && go list ./... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell scripts/get-version HEAD)
 
-TESTPARALLELISM := 10
+TESTPARALLELISM := 5
 
 ensure::
 	$(call STEP_MESSAGE)
