@@ -96,5 +96,5 @@ test_containers_cron:
 .PHONY: travis_cron travis_push travis_pull_request travis_api
 travis_cron: all
 travis_push: only_build publish_tgz only_test publish_packages
-travis_pull_request: all
+travis_pull_request: only_build only_test
 travis_api: all
