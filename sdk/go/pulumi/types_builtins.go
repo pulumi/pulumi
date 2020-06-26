@@ -1894,6 +1894,9 @@ type BoolInput interface {
 
 	ToBoolOutput() BoolOutput
 	ToBoolOutputWithContext(ctx context.Context) BoolOutput
+
+	ToBoolPtrOutput() BoolPtrOutput
+	ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 }
 
 // Bool is an input type for bool values.
@@ -2198,6 +2201,9 @@ type Float32Input interface {
 
 	ToFloat32Output() Float32Output
 	ToFloat32OutputWithContext(ctx context.Context) Float32Output
+
+	ToFloat32PtrOutput() Float32PtrOutput
+	ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput
 }
 
 // Float32 is an input type for float32 values.
@@ -2502,6 +2508,9 @@ type Float64Input interface {
 
 	ToFloat64Output() Float64Output
 	ToFloat64OutputWithContext(ctx context.Context) Float64Output
+
+	ToFloat64PtrOutput() Float64PtrOutput
+	ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput
 }
 
 // Float64 is an input type for float64 values.
@@ -2806,6 +2815,9 @@ type IDInput interface {
 
 	ToIDOutput() IDOutput
 	ToIDOutputWithContext(ctx context.Context) IDOutput
+
+	ToIDPtrOutput() IDPtrOutput
+	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
 }
 
 // ElementType returns the element type of this Input (ID).
@@ -3317,6 +3329,9 @@ type IntInput interface {
 
 	ToIntOutput() IntOutput
 	ToIntOutputWithContext(ctx context.Context) IntOutput
+
+	ToIntPtrOutput() IntPtrOutput
+	ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput
 }
 
 // Int is an input type for int values.
@@ -3621,6 +3636,9 @@ type Int16Input interface {
 
 	ToInt16Output() Int16Output
 	ToInt16OutputWithContext(ctx context.Context) Int16Output
+
+	ToInt16PtrOutput() Int16PtrOutput
+	ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput
 }
 
 // Int16 is an input type for int16 values.
@@ -3925,6 +3943,9 @@ type Int32Input interface {
 
 	ToInt32Output() Int32Output
 	ToInt32OutputWithContext(ctx context.Context) Int32Output
+
+	ToInt32PtrOutput() Int32PtrOutput
+	ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput
 }
 
 // Int32 is an input type for int32 values.
@@ -4229,6 +4250,9 @@ type Int64Input interface {
 
 	ToInt64Output() Int64Output
 	ToInt64OutputWithContext(ctx context.Context) Int64Output
+
+	ToInt64PtrOutput() Int64PtrOutput
+	ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput
 }
 
 // Int64 is an input type for int64 values.
@@ -4533,6 +4557,9 @@ type Int8Input interface {
 
 	ToInt8Output() Int8Output
 	ToInt8OutputWithContext(ctx context.Context) Int8Output
+
+	ToInt8PtrOutput() Int8PtrOutput
+	ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput
 }
 
 // Int8 is an input type for int8 values.
@@ -4837,6 +4864,9 @@ type StringInput interface {
 
 	ToStringOutput() StringOutput
 	ToStringOutputWithContext(ctx context.Context) StringOutput
+
+	ToStringPtrOutput() StringPtrOutput
+	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
 // String is an input type for string values.
@@ -5141,6 +5171,9 @@ type URNInput interface {
 
 	ToURNOutput() URNOutput
 	ToURNOutputWithContext(ctx context.Context) URNOutput
+
+	ToURNPtrOutput() URNPtrOutput
+	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
 }
 
 // ElementType returns the element type of this Input (URN).
@@ -5460,6 +5493,9 @@ type UintInput interface {
 
 	ToUintOutput() UintOutput
 	ToUintOutputWithContext(ctx context.Context) UintOutput
+
+	ToUintPtrOutput() UintPtrOutput
+	ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput
 }
 
 // Uint is an input type for uint values.
@@ -5764,6 +5800,9 @@ type Uint16Input interface {
 
 	ToUint16Output() Uint16Output
 	ToUint16OutputWithContext(ctx context.Context) Uint16Output
+
+	ToUint16PtrOutput() Uint16PtrOutput
+	ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput
 }
 
 // Uint16 is an input type for uint16 values.
@@ -6068,6 +6107,9 @@ type Uint32Input interface {
 
 	ToUint32Output() Uint32Output
 	ToUint32OutputWithContext(ctx context.Context) Uint32Output
+
+	ToUint32PtrOutput() Uint32PtrOutput
+	ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput
 }
 
 // Uint32 is an input type for uint32 values.
@@ -6372,6 +6414,9 @@ type Uint64Input interface {
 
 	ToUint64Output() Uint64Output
 	ToUint64OutputWithContext(ctx context.Context) Uint64Output
+
+	ToUint64PtrOutput() Uint64PtrOutput
+	ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput
 }
 
 // Uint64 is an input type for uint64 values.
@@ -6676,6 +6721,9 @@ type Uint8Input interface {
 
 	ToUint8Output() Uint8Output
 	ToUint8OutputWithContext(ctx context.Context) Uint8Output
+
+	ToUint8PtrOutput() Uint8PtrOutput
+	ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput
 }
 
 // Uint8 is an input type for uint8 values.
