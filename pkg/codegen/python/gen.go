@@ -1343,6 +1343,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	getModFromToken := func(token string) *modContext {
 		canonicalModName := pkg.TokenToModule(token)
 		modName := PyName(canonicalModName)
+		if strings.HasSuffix(modName, "_") {
+			// PyName adds an underscore to the end of protected python keywords like 'lambda',
+			// but we don't want this behavior for module names.
+			modName = strings.TrimRight(modName, "_")
+		}
 		if override, ok := info.ModuleNameOverrides[canonicalModName]; ok {
 			modName = override
 		}
