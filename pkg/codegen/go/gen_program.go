@@ -146,8 +146,11 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 			if version > 1 {
 				vPath = fmt.Sprintf("/v%d", version)
 			}
-
-			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+			if mod == "" {
+				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
+			} else {
+				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+			}
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
