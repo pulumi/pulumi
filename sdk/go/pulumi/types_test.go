@@ -219,6 +219,17 @@ func (i arrayLenInput) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	}).(IntOutput)
 }
 
+func (i arrayLenInput) ToIntPtrOutput() IntPtrOutput {
+	return i.ToIntPtrOutputWithContext(context.Background())
+}
+
+func (i arrayLenInput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
+	return ToOutput(i).ApplyT(func(arr []interface{}) *int {
+		v := len(arr)
+		return &v
+	}).(IntPtrOutput)
+}
+
 // Test that ToOutput converts inputs appropriately.
 func TestToOutputConvert(t *testing.T) {
 	out := ToOutput(nestedTypeInputs{Foo: ID("bar"), Bar: arrayLenInput{Int(42)}})
