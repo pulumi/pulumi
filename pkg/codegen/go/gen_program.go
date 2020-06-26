@@ -241,7 +241,10 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	resName := r.Name()
-	_, mod, typ, _ := r.DecomposeToken()
+	pkg, mod, typ, _ := r.DecomposeToken()
+	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+		mod = pkg
+	}
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
