@@ -192,6 +192,9 @@ CHANGELOG
 - Treat config values set with `--path` that start with '0' as strings rather than numbers.
   [#4393](https://github.com/pulumi/pulumi/pull/4393)
 
+- Remove `{Apply,To*Output}WithContext` methods from the Go SDK.
+  [#4396](https://github.com/pulumi/pulumi/pull/4396)
+
 - Switch .NET projects to .NET Core 3.1
   [#4400](https://github.com/pulumi/pulumi/pull/4400)
 

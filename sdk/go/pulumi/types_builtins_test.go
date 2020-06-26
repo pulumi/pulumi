@@ -16,7 +16,6 @@
 package pulumi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -136,21 +135,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyArchiveWithContext(context.Background(), func(_ context.Context, v int) Archive { return *new(Archive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveArray", func(t *testing.T) {
 			o2 := out.ApplyArchiveArray(func(v int) []Archive { return *new([]Archive) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyArchiveArrayWithContext(context.Background(), func(_ context.Context, v int) []Archive { return *new([]Archive) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -160,21 +149,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyArchiveMapWithContext(context.Background(), func(_ context.Context, v int) map[string]Archive { return *new(map[string]Archive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveArrayMap", func(t *testing.T) {
 			o2 := out.ApplyArchiveArrayMap(func(v int) map[string][]Archive { return *new(map[string][]Archive) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyArchiveArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]Archive { return *new(map[string][]Archive) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -184,21 +163,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyArchiveMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]Archive { return *new([]map[string]Archive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAsset", func(t *testing.T) {
 			o2 := out.ApplyAsset(func(v int) Asset { return *new(Asset) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetWithContext(context.Background(), func(_ context.Context, v int) Asset { return *new(Asset) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -208,21 +177,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetArrayWithContext(context.Background(), func(_ context.Context, v int) []Asset { return *new([]Asset) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetMap", func(t *testing.T) {
 			o2 := out.ApplyAssetMap(func(v int) map[string]Asset { return *new(map[string]Asset) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetMapWithContext(context.Background(), func(_ context.Context, v int) map[string]Asset { return *new(map[string]Asset) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -232,21 +191,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]Asset { return *new(map[string][]Asset) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetMapArray", func(t *testing.T) {
 			o2 := out.ApplyAssetMapArray(func(v int) []map[string]Asset { return *new([]map[string]Asset) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]Asset { return *new([]map[string]Asset) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -256,21 +205,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetOrArchiveWithContext(context.Background(), func(_ context.Context, v int) AssetOrArchive { return *new(AssetOrArchive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveArray", func(t *testing.T) {
 			o2 := out.ApplyAssetOrArchiveArray(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetOrArchiveArrayWithContext(context.Background(), func(_ context.Context, v int) []AssetOrArchive { return *new([]AssetOrArchive) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -280,21 +219,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetOrArchiveMapWithContext(context.Background(), func(_ context.Context, v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveArrayMap", func(t *testing.T) {
 			o2 := out.ApplyAssetOrArchiveArrayMap(func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetOrArchiveArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -304,21 +233,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyAssetOrArchiveMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBool", func(t *testing.T) {
 			o2 := out.ApplyBool(func(v int) bool { return *new(bool) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolWithContext(context.Background(), func(_ context.Context, v int) bool { return *new(bool) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -328,21 +247,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolPtrWithContext(context.Background(), func(_ context.Context, v int) *bool { return *new(*bool) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolArray", func(t *testing.T) {
 			o2 := out.ApplyBoolArray(func(v int) []bool { return *new([]bool) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolArrayWithContext(context.Background(), func(_ context.Context, v int) []bool { return *new([]bool) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -352,21 +261,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolMapWithContext(context.Background(), func(_ context.Context, v int) map[string]bool { return *new(map[string]bool) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolArrayMap", func(t *testing.T) {
 			o2 := out.ApplyBoolArrayMap(func(v int) map[string][]bool { return *new(map[string][]bool) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]bool { return *new(map[string][]bool) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -376,21 +275,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyBoolMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]bool { return *new([]map[string]bool) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat32", func(t *testing.T) {
 			o2 := out.ApplyFloat32(func(v int) float32 { return *new(float32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32WithContext(context.Background(), func(_ context.Context, v int) float32 { return *new(float32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -400,21 +289,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32PtrWithContext(context.Background(), func(_ context.Context, v int) *float32 { return *new(*float32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat32Array", func(t *testing.T) {
 			o2 := out.ApplyFloat32Array(func(v int) []float32 { return *new([]float32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32ArrayWithContext(context.Background(), func(_ context.Context, v int) []float32 { return *new([]float32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -424,21 +303,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32MapWithContext(context.Background(), func(_ context.Context, v int) map[string]float32 { return *new(map[string]float32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat32ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyFloat32ArrayMap(func(v int) map[string][]float32 { return *new(map[string][]float32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]float32 { return *new(map[string][]float32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -448,21 +317,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat32MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]float32 { return *new([]map[string]float32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64", func(t *testing.T) {
 			o2 := out.ApplyFloat64(func(v int) float64 { return *new(float64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64WithContext(context.Background(), func(_ context.Context, v int) float64 { return *new(float64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -472,21 +331,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64PtrWithContext(context.Background(), func(_ context.Context, v int) *float64 { return *new(*float64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64Array", func(t *testing.T) {
 			o2 := out.ApplyFloat64Array(func(v int) []float64 { return *new([]float64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64ArrayWithContext(context.Background(), func(_ context.Context, v int) []float64 { return *new([]float64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -496,21 +345,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64MapWithContext(context.Background(), func(_ context.Context, v int) map[string]float64 { return *new(map[string]float64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyFloat64ArrayMap(func(v int) map[string][]float64 { return *new(map[string][]float64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]float64 { return *new(map[string][]float64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -520,21 +359,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyFloat64MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]float64 { return *new([]map[string]float64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyID", func(t *testing.T) {
 			o2 := out.ApplyID(func(v int) ID { return *new(ID) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIDWithContext(context.Background(), func(_ context.Context, v int) ID { return *new(ID) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -544,21 +373,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIDPtrWithContext(context.Background(), func(_ context.Context, v int) *ID { return *new(*ID) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDArray", func(t *testing.T) {
 			o2 := out.ApplyIDArray(func(v int) []ID { return *new([]ID) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIDArrayWithContext(context.Background(), func(_ context.Context, v int) []ID { return *new([]ID) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -568,21 +387,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIDMapWithContext(context.Background(), func(_ context.Context, v int) map[string]ID { return *new(map[string]ID) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDArrayMap", func(t *testing.T) {
 			o2 := out.ApplyIDArrayMap(func(v int) map[string][]ID { return *new(map[string][]ID) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIDArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]ID { return *new(map[string][]ID) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -592,21 +401,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIDMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]ID { return *new([]map[string]ID) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArray", func(t *testing.T) {
 			o2 := out.ApplyArray(func(v int) []interface{} { return *new([]interface{}) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyArrayWithContext(context.Background(), func(_ context.Context, v int) []interface{} { return *new([]interface{}) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -616,21 +415,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyMapWithContext(context.Background(), func(_ context.Context, v int) map[string]interface{} { return *new(map[string]interface{}) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArrayMap", func(t *testing.T) {
 			o2 := out.ApplyArrayMap(func(v int) map[string][]interface{} { return *new(map[string][]interface{}) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]interface{} { return *new(map[string][]interface{}) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -640,21 +429,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]interface{} { return *new([]map[string]interface{}) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt", func(t *testing.T) {
 			o2 := out.ApplyInt(func(v int) int { return *new(int) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIntWithContext(context.Background(), func(_ context.Context, v int) int { return *new(int) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -664,21 +443,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIntPtrWithContext(context.Background(), func(_ context.Context, v int) *int { return *new(*int) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntArray", func(t *testing.T) {
 			o2 := out.ApplyIntArray(func(v int) []int { return *new([]int) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIntArrayWithContext(context.Background(), func(_ context.Context, v int) []int { return *new([]int) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -688,21 +457,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIntMapWithContext(context.Background(), func(_ context.Context, v int) map[string]int { return *new(map[string]int) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntArrayMap", func(t *testing.T) {
 			o2 := out.ApplyIntArrayMap(func(v int) map[string][]int { return *new(map[string][]int) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyIntArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int { return *new(map[string][]int) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -712,21 +471,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyIntMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int { return *new([]map[string]int) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt16", func(t *testing.T) {
 			o2 := out.ApplyInt16(func(v int) int16 { return *new(int16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16WithContext(context.Background(), func(_ context.Context, v int) int16 { return *new(int16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -736,21 +485,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16PtrWithContext(context.Background(), func(_ context.Context, v int) *int16 { return *new(*int16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt16Array", func(t *testing.T) {
 			o2 := out.ApplyInt16Array(func(v int) []int16 { return *new([]int16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16ArrayWithContext(context.Background(), func(_ context.Context, v int) []int16 { return *new([]int16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -760,21 +499,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16MapWithContext(context.Background(), func(_ context.Context, v int) map[string]int16 { return *new(map[string]int16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt16ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyInt16ArrayMap(func(v int) map[string][]int16 { return *new(map[string][]int16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int16 { return *new(map[string][]int16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -784,21 +513,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt16MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int16 { return *new([]map[string]int16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt32", func(t *testing.T) {
 			o2 := out.ApplyInt32(func(v int) int32 { return *new(int32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32WithContext(context.Background(), func(_ context.Context, v int) int32 { return *new(int32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -808,21 +527,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32PtrWithContext(context.Background(), func(_ context.Context, v int) *int32 { return *new(*int32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt32Array", func(t *testing.T) {
 			o2 := out.ApplyInt32Array(func(v int) []int32 { return *new([]int32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32ArrayWithContext(context.Background(), func(_ context.Context, v int) []int32 { return *new([]int32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -832,21 +541,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32MapWithContext(context.Background(), func(_ context.Context, v int) map[string]int32 { return *new(map[string]int32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt32ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyInt32ArrayMap(func(v int) map[string][]int32 { return *new(map[string][]int32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int32 { return *new(map[string][]int32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -856,21 +555,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt32MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int32 { return *new([]map[string]int32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt64", func(t *testing.T) {
 			o2 := out.ApplyInt64(func(v int) int64 { return *new(int64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64WithContext(context.Background(), func(_ context.Context, v int) int64 { return *new(int64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -880,21 +569,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64PtrWithContext(context.Background(), func(_ context.Context, v int) *int64 { return *new(*int64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt64Array", func(t *testing.T) {
 			o2 := out.ApplyInt64Array(func(v int) []int64 { return *new([]int64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64ArrayWithContext(context.Background(), func(_ context.Context, v int) []int64 { return *new([]int64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -904,21 +583,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64MapWithContext(context.Background(), func(_ context.Context, v int) map[string]int64 { return *new(map[string]int64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt64ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyInt64ArrayMap(func(v int) map[string][]int64 { return *new(map[string][]int64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int64 { return *new(map[string][]int64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -928,21 +597,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt64MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int64 { return *new([]map[string]int64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt8", func(t *testing.T) {
 			o2 := out.ApplyInt8(func(v int) int8 { return *new(int8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8WithContext(context.Background(), func(_ context.Context, v int) int8 { return *new(int8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -952,21 +611,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8PtrWithContext(context.Background(), func(_ context.Context, v int) *int8 { return *new(*int8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt8Array", func(t *testing.T) {
 			o2 := out.ApplyInt8Array(func(v int) []int8 { return *new([]int8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8ArrayWithContext(context.Background(), func(_ context.Context, v int) []int8 { return *new([]int8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -976,21 +625,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8MapWithContext(context.Background(), func(_ context.Context, v int) map[string]int8 { return *new(map[string]int8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt8ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyInt8ArrayMap(func(v int) map[string][]int8 { return *new(map[string][]int8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int8 { return *new(map[string][]int8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1000,21 +639,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyInt8MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int8 { return *new([]map[string]int8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyString", func(t *testing.T) {
 			o2 := out.ApplyString(func(v int) string { return *new(string) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyStringWithContext(context.Background(), func(_ context.Context, v int) string { return *new(string) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1024,21 +653,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyStringPtrWithContext(context.Background(), func(_ context.Context, v int) *string { return *new(*string) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringArray", func(t *testing.T) {
 			o2 := out.ApplyStringArray(func(v int) []string { return *new([]string) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyStringArrayWithContext(context.Background(), func(_ context.Context, v int) []string { return *new([]string) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1048,21 +667,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyStringMapWithContext(context.Background(), func(_ context.Context, v int) map[string]string { return *new(map[string]string) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringArrayMap", func(t *testing.T) {
 			o2 := out.ApplyStringArrayMap(func(v int) map[string][]string { return *new(map[string][]string) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyStringArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]string { return *new(map[string][]string) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1072,21 +681,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyStringMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]string { return *new([]map[string]string) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURN", func(t *testing.T) {
 			o2 := out.ApplyURN(func(v int) URN { return *new(URN) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyURNWithContext(context.Background(), func(_ context.Context, v int) URN { return *new(URN) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1096,21 +695,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyURNPtrWithContext(context.Background(), func(_ context.Context, v int) *URN { return *new(*URN) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNArray", func(t *testing.T) {
 			o2 := out.ApplyURNArray(func(v int) []URN { return *new([]URN) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyURNArrayWithContext(context.Background(), func(_ context.Context, v int) []URN { return *new([]URN) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1120,21 +709,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyURNMapWithContext(context.Background(), func(_ context.Context, v int) map[string]URN { return *new(map[string]URN) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNArrayMap", func(t *testing.T) {
 			o2 := out.ApplyURNArrayMap(func(v int) map[string][]URN { return *new(map[string][]URN) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyURNArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]URN { return *new(map[string][]URN) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1144,21 +723,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyURNMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]URN { return *new([]map[string]URN) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint", func(t *testing.T) {
 			o2 := out.ApplyUint(func(v int) uint { return *new(uint) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUintWithContext(context.Background(), func(_ context.Context, v int) uint { return *new(uint) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1168,21 +737,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUintPtrWithContext(context.Background(), func(_ context.Context, v int) *uint { return *new(*uint) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUintArray", func(t *testing.T) {
 			o2 := out.ApplyUintArray(func(v int) []uint { return *new([]uint) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUintArrayWithContext(context.Background(), func(_ context.Context, v int) []uint { return *new([]uint) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1192,21 +751,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUintMapWithContext(context.Background(), func(_ context.Context, v int) map[string]uint { return *new(map[string]uint) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUintArrayMap", func(t *testing.T) {
 			o2 := out.ApplyUintArrayMap(func(v int) map[string][]uint { return *new(map[string][]uint) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUintArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]uint { return *new(map[string][]uint) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1216,21 +765,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUintMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint { return *new([]map[string]uint) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint16", func(t *testing.T) {
 			o2 := out.ApplyUint16(func(v int) uint16 { return *new(uint16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16WithContext(context.Background(), func(_ context.Context, v int) uint16 { return *new(uint16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1240,21 +779,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16PtrWithContext(context.Background(), func(_ context.Context, v int) *uint16 { return *new(*uint16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint16Array", func(t *testing.T) {
 			o2 := out.ApplyUint16Array(func(v int) []uint16 { return *new([]uint16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16ArrayWithContext(context.Background(), func(_ context.Context, v int) []uint16 { return *new([]uint16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1264,21 +793,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16MapWithContext(context.Background(), func(_ context.Context, v int) map[string]uint16 { return *new(map[string]uint16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint16ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyUint16ArrayMap(func(v int) map[string][]uint16 { return *new(map[string][]uint16) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]uint16 { return *new(map[string][]uint16) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1288,21 +807,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint16MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint16 { return *new([]map[string]uint16) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint32", func(t *testing.T) {
 			o2 := out.ApplyUint32(func(v int) uint32 { return *new(uint32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32WithContext(context.Background(), func(_ context.Context, v int) uint32 { return *new(uint32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1312,21 +821,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32PtrWithContext(context.Background(), func(_ context.Context, v int) *uint32 { return *new(*uint32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint32Array", func(t *testing.T) {
 			o2 := out.ApplyUint32Array(func(v int) []uint32 { return *new([]uint32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32ArrayWithContext(context.Background(), func(_ context.Context, v int) []uint32 { return *new([]uint32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1336,21 +835,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32MapWithContext(context.Background(), func(_ context.Context, v int) map[string]uint32 { return *new(map[string]uint32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint32ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyUint32ArrayMap(func(v int) map[string][]uint32 { return *new(map[string][]uint32) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]uint32 { return *new(map[string][]uint32) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1360,21 +849,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint32MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint32 { return *new([]map[string]uint32) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint64", func(t *testing.T) {
 			o2 := out.ApplyUint64(func(v int) uint64 { return *new(uint64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64WithContext(context.Background(), func(_ context.Context, v int) uint64 { return *new(uint64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1384,21 +863,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64PtrWithContext(context.Background(), func(_ context.Context, v int) *uint64 { return *new(*uint64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint64Array", func(t *testing.T) {
 			o2 := out.ApplyUint64Array(func(v int) []uint64 { return *new([]uint64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64ArrayWithContext(context.Background(), func(_ context.Context, v int) []uint64 { return *new([]uint64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1408,21 +877,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64MapWithContext(context.Background(), func(_ context.Context, v int) map[string]uint64 { return *new(map[string]uint64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint64ArrayMap", func(t *testing.T) {
 			o2 := out.ApplyUint64ArrayMap(func(v int) map[string][]uint64 { return *new(map[string][]uint64) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]uint64 { return *new(map[string][]uint64) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1432,21 +891,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint64MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint64 { return *new([]map[string]uint64) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint8", func(t *testing.T) {
 			o2 := out.ApplyUint8(func(v int) uint8 { return *new(uint8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8WithContext(context.Background(), func(_ context.Context, v int) uint8 { return *new(uint8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1456,21 +905,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8PtrWithContext(context.Background(), func(_ context.Context, v int) *uint8 { return *new(*uint8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint8Array", func(t *testing.T) {
 			o2 := out.ApplyUint8Array(func(v int) []uint8 { return *new([]uint8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8ArrayWithContext(context.Background(), func(_ context.Context, v int) []uint8 { return *new([]uint8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -1480,11 +919,6 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8MapWithContext(context.Background(), func(_ context.Context, v int) map[string]uint8 { return *new(map[string]uint8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint8ArrayMap", func(t *testing.T) {
@@ -1492,21 +926,11 @@ func TestOutputApply(t *testing.T) {
 			_, known, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]uint8 { return *new(map[string][]uint8) })
-			_, known, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyUint8MapArray", func(t *testing.T) {
 			o2 := out.ApplyUint8MapArray(func(v int) []map[string]uint8 { return *new([]map[string]uint8) })
 			_, known, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.ApplyUint8MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint8 { return *new([]map[string]uint8) })
-			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -4290,18 +3714,6 @@ func TestToArchiveOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToArchiveOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArchiveOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToArchiveArrayOutput(t *testing.T) {
@@ -4314,18 +3726,6 @@ func TestToArchiveArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToArchiveArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToArchiveArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4346,18 +3746,6 @@ func TestToArchiveMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToArchiveMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArchiveMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToArchiveArrayMapOutput(t *testing.T) {
@@ -4370,18 +3758,6 @@ func TestToArchiveArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToArchiveArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToArchiveArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4402,18 +3778,6 @@ func TestToArchiveMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToArchiveMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArchiveMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToAssetOutput(t *testing.T) {
@@ -4426,18 +3790,6 @@ func TestToAssetOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToAssetOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4458,18 +3810,6 @@ func TestToAssetArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToAssetArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToAssetMapOutput(t *testing.T) {
@@ -4482,18 +3822,6 @@ func TestToAssetMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToAssetMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4514,18 +3842,6 @@ func TestToAssetArrayMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToAssetArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToAssetMapArrayOutput(t *testing.T) {
@@ -4538,18 +3854,6 @@ func TestToAssetMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetMapArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToAssetMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetMapArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4570,18 +3874,6 @@ func TestToAssetOrArchiveOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToAssetOrArchiveOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOrArchiveOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToAssetOrArchiveArrayOutput(t *testing.T) {
@@ -4594,18 +3886,6 @@ func TestToAssetOrArchiveArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToAssetOrArchiveArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOrArchiveArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4626,18 +3906,6 @@ func TestToAssetOrArchiveMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToAssetOrArchiveMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOrArchiveMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
@@ -4650,18 +3918,6 @@ func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4682,18 +3938,6 @@ func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToBoolOutput(t *testing.T) {
@@ -4706,18 +3950,6 @@ func TestToBoolOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToBoolOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToBoolOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4738,18 +3970,6 @@ func TestToBoolPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToBoolPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToBoolArrayOutput(t *testing.T) {
@@ -4762,18 +3982,6 @@ func TestToBoolArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToBoolArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToBoolArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4794,18 +4002,6 @@ func TestToBoolMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToBoolMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToBoolArrayMapOutput(t *testing.T) {
@@ -4818,18 +4014,6 @@ func TestToBoolArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToBoolArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToBoolArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4850,18 +4034,6 @@ func TestToBoolMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToBoolMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToBoolMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat32Output(t *testing.T) {
@@ -4874,18 +4046,6 @@ func TestToFloat32Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat32Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat32OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4906,18 +4066,6 @@ func TestToFloat32PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat32ArrayOutput(t *testing.T) {
@@ -4930,18 +4078,6 @@ func TestToFloat32ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat32ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat32ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4962,18 +4098,6 @@ func TestToFloat32MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat32ArrayMapOutput(t *testing.T) {
@@ -4986,18 +4110,6 @@ func TestToFloat32ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat32ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat32ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5018,18 +4130,6 @@ func TestToFloat32MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat64Output(t *testing.T) {
@@ -5042,18 +4142,6 @@ func TestToFloat64Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat64Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat64OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5074,18 +4162,6 @@ func TestToFloat64PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat64ArrayOutput(t *testing.T) {
@@ -5098,18 +4174,6 @@ func TestToFloat64ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat64ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat64ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5130,18 +4194,6 @@ func TestToFloat64MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToFloat64ArrayMapOutput(t *testing.T) {
@@ -5154,18 +4206,6 @@ func TestToFloat64ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat64ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToFloat64ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5186,18 +4226,6 @@ func TestToFloat64MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToFloat64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToFloat64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIDOutput(t *testing.T) {
@@ -5210,18 +4238,6 @@ func TestToIDOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIDOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIDOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5242,18 +4258,6 @@ func TestToIDPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIDPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIDArrayOutput(t *testing.T) {
@@ -5266,18 +4270,6 @@ func TestToIDArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIDArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIDArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5298,18 +4290,6 @@ func TestToIDMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIDMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIDArrayMapOutput(t *testing.T) {
@@ -5322,18 +4302,6 @@ func TestToIDArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIDArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIDArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5354,18 +4322,6 @@ func TestToIDMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIDMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIDMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToArrayOutput(t *testing.T) {
@@ -5378,18 +4334,6 @@ func TestToArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5410,18 +4354,6 @@ func TestToMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToArrayMapOutput(t *testing.T) {
@@ -5434,18 +4366,6 @@ func TestToArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5466,18 +4386,6 @@ func TestToMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIntOutput(t *testing.T) {
@@ -5490,18 +4398,6 @@ func TestToIntOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIntOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIntOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5522,18 +4418,6 @@ func TestToIntPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIntPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIntArrayOutput(t *testing.T) {
@@ -5546,18 +4430,6 @@ func TestToIntArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIntArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIntArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5578,18 +4450,6 @@ func TestToIntMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIntMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToIntArrayMapOutput(t *testing.T) {
@@ -5602,18 +4462,6 @@ func TestToIntArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToIntArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToIntArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5634,18 +4482,6 @@ func TestToIntMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToIntMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToIntMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt16Output(t *testing.T) {
@@ -5658,18 +4494,6 @@ func TestToInt16Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt16Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt16OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5690,18 +4514,6 @@ func TestToInt16PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt16PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt16ArrayOutput(t *testing.T) {
@@ -5714,18 +4526,6 @@ func TestToInt16ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt16ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt16ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5746,18 +4546,6 @@ func TestToInt16MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt16MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt16ArrayMapOutput(t *testing.T) {
@@ -5770,18 +4558,6 @@ func TestToInt16ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt16ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt16ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5802,18 +4578,6 @@ func TestToInt16MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt16MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt16MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt32Output(t *testing.T) {
@@ -5826,18 +4590,6 @@ func TestToInt32Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt32Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt32OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5858,18 +4610,6 @@ func TestToInt32PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt32ArrayOutput(t *testing.T) {
@@ -5882,18 +4622,6 @@ func TestToInt32ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt32ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt32ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5914,18 +4642,6 @@ func TestToInt32MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt32ArrayMapOutput(t *testing.T) {
@@ -5938,18 +4654,6 @@ func TestToInt32ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt32ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt32ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5970,18 +4674,6 @@ func TestToInt32MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt64Output(t *testing.T) {
@@ -5994,18 +4686,6 @@ func TestToInt64Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt64Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt64OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6026,18 +4706,6 @@ func TestToInt64PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt64ArrayOutput(t *testing.T) {
@@ -6050,18 +4718,6 @@ func TestToInt64ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt64ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt64ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6082,18 +4738,6 @@ func TestToInt64MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt64ArrayMapOutput(t *testing.T) {
@@ -6106,18 +4750,6 @@ func TestToInt64ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt64ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt64ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6138,18 +4770,6 @@ func TestToInt64MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt8Output(t *testing.T) {
@@ -6162,18 +4782,6 @@ func TestToInt8Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt8Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt8OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6194,18 +4802,6 @@ func TestToInt8PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt8PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt8ArrayOutput(t *testing.T) {
@@ -6218,18 +4814,6 @@ func TestToInt8ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt8ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt8ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6250,18 +4834,6 @@ func TestToInt8MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt8MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToInt8ArrayMapOutput(t *testing.T) {
@@ -6274,18 +4846,6 @@ func TestToInt8ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt8ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToInt8ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6306,18 +4866,6 @@ func TestToInt8MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToInt8MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToInt8MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToStringOutput(t *testing.T) {
@@ -6330,18 +4878,6 @@ func TestToStringOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToStringOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6362,18 +4898,6 @@ func TestToStringPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToStringPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToStringArrayOutput(t *testing.T) {
@@ -6386,18 +4910,6 @@ func TestToStringArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToStringArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6418,18 +4930,6 @@ func TestToStringMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToStringMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToStringArrayMapOutput(t *testing.T) {
@@ -6442,18 +4942,6 @@ func TestToStringArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToStringArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6474,18 +4962,6 @@ func TestToStringMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToStringMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToStringMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToURNOutput(t *testing.T) {
@@ -6498,18 +4974,6 @@ func TestToURNOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToURNOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToURNOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6530,18 +4994,6 @@ func TestToURNPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToURNPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToURNArrayOutput(t *testing.T) {
@@ -6554,18 +5006,6 @@ func TestToURNArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToURNArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToURNArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6586,18 +5026,6 @@ func TestToURNMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToURNMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToURNArrayMapOutput(t *testing.T) {
@@ -6610,18 +5038,6 @@ func TestToURNArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToURNArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToURNArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6642,18 +5058,6 @@ func TestToURNMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToURNMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToURNMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUintOutput(t *testing.T) {
@@ -6666,18 +5070,6 @@ func TestToUintOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUintOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUintOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6698,18 +5090,6 @@ func TestToUintPtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUintPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintPtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUintArrayOutput(t *testing.T) {
@@ -6722,18 +5102,6 @@ func TestToUintArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUintArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUintArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6754,18 +5122,6 @@ func TestToUintMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUintMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUintArrayMapOutput(t *testing.T) {
@@ -6778,18 +5134,6 @@ func TestToUintArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUintArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUintArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6810,18 +5154,6 @@ func TestToUintMapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUintMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUintMapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint16Output(t *testing.T) {
@@ -6834,18 +5166,6 @@ func TestToUint16Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint16Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint16OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6866,18 +5186,6 @@ func TestToUint16PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint16PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint16ArrayOutput(t *testing.T) {
@@ -6890,18 +5198,6 @@ func TestToUint16ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint16ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint16ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6922,18 +5218,6 @@ func TestToUint16MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint16MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint16ArrayMapOutput(t *testing.T) {
@@ -6946,18 +5230,6 @@ func TestToUint16ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint16ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint16ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6978,18 +5250,6 @@ func TestToUint16MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint16MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint16MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint32Output(t *testing.T) {
@@ -7002,18 +5262,6 @@ func TestToUint32Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint32Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint32OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7034,18 +5282,6 @@ func TestToUint32PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint32ArrayOutput(t *testing.T) {
@@ -7058,18 +5294,6 @@ func TestToUint32ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint32ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint32ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7090,18 +5314,6 @@ func TestToUint32MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint32ArrayMapOutput(t *testing.T) {
@@ -7114,18 +5326,6 @@ func TestToUint32ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint32ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint32ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7146,18 +5346,6 @@ func TestToUint32MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint32MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint64Output(t *testing.T) {
@@ -7170,18 +5358,6 @@ func TestToUint64Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint64Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint64OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7202,18 +5378,6 @@ func TestToUint64PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint64ArrayOutput(t *testing.T) {
@@ -7226,18 +5390,6 @@ func TestToUint64ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint64ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint64ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7258,18 +5410,6 @@ func TestToUint64MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint64ArrayMapOutput(t *testing.T) {
@@ -7282,18 +5422,6 @@ func TestToUint64ArrayMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint64ArrayMapOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint64ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64ArrayMapOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7314,18 +5442,6 @@ func TestToUint64MapArrayOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint64MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint8Output(t *testing.T) {
@@ -7338,18 +5454,6 @@ func TestToUint8Output(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint8Output()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint8OutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8OutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7370,18 +5474,6 @@ func TestToUint8PtrOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint8PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8PtrOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint8ArrayOutput(t *testing.T) {
@@ -7394,18 +5486,6 @@ func TestToUint8ArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint8ArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint8ArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8ArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7426,18 +5506,6 @@ func TestToUint8MapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint8MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8MapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint8ArrayMapOutput(t *testing.T) {
@@ -7454,18 +5522,6 @@ func TestToUint8ArrayMapOutput(t *testing.T) {
 	_, known, _, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
-
-	out = in.ToUint8ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8ArrayMapOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
 }
 
 func TestToUint8MapArrayOutput(t *testing.T) {
@@ -7478,18 +5534,6 @@ func TestToUint8MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint8MapArrayOutput()
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = in.ToUint8MapArrayOutputWithContext(context.Background())
-
-	_, known, _, err = await(out)
-	assert.True(t, known)
-	assert.NoError(t, err)
-
-	out = out.ToUint8MapArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)

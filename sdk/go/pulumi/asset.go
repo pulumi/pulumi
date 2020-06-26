@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"golang.org/x/net/context"
 )
 
 // AssetOrArchive represents either an Asset or an Archive.
@@ -33,7 +32,6 @@ type Asset interface {
 	AssetInput
 
 	ToAssetOrArchiveOutput() AssetOrArchiveOutput
-	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Path returns the filesystem path, for file-based assets.
 	Path() string
@@ -85,7 +83,6 @@ type Archive interface {
 	ArchiveInput
 
 	ToAssetOrArchiveOutput() AssetOrArchiveOutput
-	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Assets returns a map of named assets or archives, for collections.
 	Assets() map[string]interface{}

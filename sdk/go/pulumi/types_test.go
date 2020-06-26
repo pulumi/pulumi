@@ -210,10 +210,6 @@ func (arrayLenInput) ElementType() reflect.Type {
 }
 
 func (i arrayLenInput) ToIntOutput() IntOutput {
-	return i.ToIntOutputWithContext(context.Background())
-}
-
-func (i arrayLenInput) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	return ToOutput(i).ApplyT(func(arr []interface{}) int {
 		return len(arr)
 	}).(IntOutput)
