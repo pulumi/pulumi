@@ -78,7 +78,8 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 
 		// Build the case mapping table.
 		camelCaseToSnakeCase := map[string]string{}
-		buildCaseMappingTables(p, nil, camelCaseToSnakeCase)
+		seenTypes := codegen.Set{}
+		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
 
 		// Annotate nested types to indicate they are dictionaries.

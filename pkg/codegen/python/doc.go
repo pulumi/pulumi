@@ -125,13 +125,13 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 }
 
 // GenPropertyCaseMap generates the case maps for a property.
-func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
+func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
 		return
 	}
 
-	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 }
 
 // GetPropertyName is not implemented for Python because property names in Python must use

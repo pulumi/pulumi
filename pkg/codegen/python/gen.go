@@ -937,28 +937,28 @@ func (mod *modContext) genPropertyConversionTables() string {
 //
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
-func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
+func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
 	for _, r := range pkg.Resources {
 		// Calculate casing tables. We do this up front because our docstring generator (which is run during
 		// genResource) requires them.
 		for _, prop := range r.Properties {
-			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 		}
 		for _, prop := range r.InputProperties {
-			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 		}
 	}
 	for _, typ := range pkg.Types {
 		typ, ok := typ.(*schema.ObjectType)
 		if ok {
 			for _, prop := range typ.Properties {
-				recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase)
+				recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 			}
 		}
 	}
 }
 
-func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string) {
+func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
 	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
 		mapCase = python.(PropertyInfo).MapCase
@@ -984,16 +984,13 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 	}
 
 	if obj, ok := prop.Type.(*schema.ObjectType); ok {
-		for _, p := range obj.Properties {
-			// Skip the nested type's property if the property's type is the same
-			// as that of the nested type itself.
-			// For example, the JSONSchemaProps type in Kubernetes has properties whose
-			// type is itself. This can lead to infinite recursion.
-			if p.Type == prop.Type {
-				continue
-			}
+		if !seenTypes.Has(prop.Type) {
+			// Avoid infinite calls in case of recursive types.
+			seenTypes.Add(prop.Type)
 
-			recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+			for _, p := range obj.Properties {
+				recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
+			}
 		}
 	}
 }
@@ -1307,7 +1304,8 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo, extraFiles map[string][]byte) (map[string]*modContext, error) {
 	// Build case mapping tables
 	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
-	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase)
+	seenTypes := codegen.Set{}
+	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 
 	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
