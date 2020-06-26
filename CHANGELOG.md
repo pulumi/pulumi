@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go SDK: Input type interfaces should declare pointer type impls where appropriate
+  [#4911](https://github.com/pulumi/pulumi/pull/4911)
 
 ## 2.5.0 (2020-06-25)
 
