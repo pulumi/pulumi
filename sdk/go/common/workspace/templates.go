@@ -257,7 +257,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 	}
 
 	var fullPath string
-	if fullPath, err = RetrieveTemplate(rawurl, temp); err != nil {
+	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -332,8 +332,8 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	}, nil
 }
 
-// RetrieveTemplate downloads the repo to path and returns the full path on disk.
-func RetrieveTemplate(rawurl string, path string) (string, error) {
+// RetrieveGitFolder downloads the repo to path and returns the full path on disk.
+func RetrieveGitFolder(rawurl string, path string) (string, error) {
 	url, urlPath, err := gitutil.ParseGitRepoURL(rawurl)
 	if err != nil {
 		return "", err
