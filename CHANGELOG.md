@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Go program gen: Improved handling for pulumi.Map types
+  [#491](https://github.com/pulumi/pulumi/pull/4914)
+
 - Go SDK: Input type interfaces should declare pointer type impls where appropriate
   [#4911](https://github.com/pulumi/pulumi/pull/4911)
 
