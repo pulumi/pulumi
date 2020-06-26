@@ -18,7 +18,7 @@ func main() {
 			InstanceTenancy:    pulumi.String("default"),
 			EnableDnsHostnames: pulumi.Bool(true),
 			EnableDnsSupport:   pulumi.Bool(true),
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-eks-vpc"),
 			},
 		})
@@ -27,7 +27,7 @@ func main() {
 		}
 		eksIgw, err := ec2.NewInternetGateway(ctx, "eksIgw", &ec2.InternetGatewayArgs{
 			VpcId: eksVpc.ID(),
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-vpc-ig"),
 			},
 		})
@@ -42,7 +42,7 @@ func main() {
 					GatewayId: eksIgw.ID(),
 				},
 			},
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-vpc-rt"),
 			},
 		})
@@ -61,7 +61,7 @@ func main() {
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
 				CidrBlock:                   pulumi.String(fmt.Sprintf("%v%v%v", "10.100.", key0, ".0/24")),
 				AvailabilityZone:            pulumi.String(val0),
-				Tags: pulumi.Map{
+				Tags: pulumi.StringMap{
 					"Name": pulumi.String(fmt.Sprintf("%v%v", "pulumi-sn-", val0)),
 				},
 			})
@@ -89,7 +89,7 @@ func main() {
 		eksSecurityGroup, err := ec2.NewSecurityGroup(ctx, "eksSecurityGroup", &ec2.SecurityGroupArgs{
 			VpcId:       eksVpc.ID(),
 			Description: pulumi.String("Allow all HTTP(s) traffic to EKS Cluster"),
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-cluster-sg"),
 			},
 			Ingress: ec2.SecurityGroupIngressArray{
@@ -199,7 +199,7 @@ func main() {
 		}
 		eksCluster, err := eks.NewCluster(ctx, "eksCluster", &eks.ClusterArgs{
 			RoleArn: eksRole.Arn,
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-eks-cluster"),
 			},
 			VpcConfig: &eks.ClusterVpcConfigArgs{
@@ -220,7 +220,7 @@ func main() {
 			NodeGroupName: pulumi.String("pulumi-eks-nodegroup"),
 			NodeRoleArn:   ec2Role.Arn,
 			SubnetIds:     subnetIds,
-			Tags: pulumi.Map{
+			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-cluster-nodeGroup"),
 			},
 			ScalingConfig: &eks.NodeGroupScalingConfigArgs{

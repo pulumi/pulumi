@@ -636,7 +636,22 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			return destType.Name
 		}
 	case *model.ObjectType:
+
 		if isInput {
+			// check for element type uniformity and return appropriate type if so
+			allSameType := true
+			var elmType string
+			for _, v := range destType.Properties {
+				valType := g.argumentTypeName(nil, v, true)
+				if elmType != "" && elmType != valType {
+					allSameType = false
+					break
+				}
+				elmType = valType
+			}
+			if allSameType && elmType != "" {
+				return fmt.Sprintf("%sMap", elmType)
+			}
 			return "pulumi.Map"
 		}
 		return "map[string]interface{}"
