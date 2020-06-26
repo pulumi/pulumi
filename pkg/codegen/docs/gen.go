@@ -54,6 +54,7 @@ var (
 	// casing.
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
+	seenCasingTypes      codegen.Set
 
 	// The language-specific info objects for a certain package (provider).
 	goPkgInfo     go_gen.GoPackageInfo
@@ -129,6 +130,7 @@ func init() {
 
 	snakeCaseToCamelCase = map[string]string{}
 	camelCaseToSnakeCase = map[string]string{}
+	seenCasingTypes = codegen.Set{}
 	langModuleNameLookup = map[string]string{}
 }
 
@@ -1698,14 +1700,14 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 	return mod
 }
 
-func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource) {
+func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource, seenTypes codegen.Set) {
 	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
 	for _, p := range r.Properties {
-		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 	}
 
 	for _, p := range r.InputProperties {
-		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase)
+		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 	}
 }
 
@@ -1738,7 +1740,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 		mod := getMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
-		generatePythonPropertyCaseMaps(mod, r)
+		generatePythonPropertyCaseMaps(mod, r, seenCasingTypes)
 	}
 
 	scanK8SResource := func(r *schema.Resource) {
