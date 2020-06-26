@@ -971,10 +971,14 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 		singleWordProp := containsOneUnderscore && endsWithUnderscore
 		if !singleWordProp {
 			if snakeCaseToCamelCase != nil {
-				snakeCaseToCamelCase[snakeCaseName] = prop.Name
+				if _, ok := snakeCaseToCamelCase[snakeCaseName]; !ok {
+					snakeCaseToCamelCase[snakeCaseName] = prop.Name
+				}
 			}
 			if camelCaseToSnakeCase != nil {
-				camelCaseToSnakeCase[prop.Name] = snakeCaseName
+				if _, ok := camelCaseToSnakeCase[prop.Name]; !ok {
+					camelCaseToSnakeCase[prop.Name] = snakeCaseName
+				}
 			}
 		}
 	}
