@@ -119,9 +119,9 @@ func PyName(name string) string {
 				continue
 			}
 
-			// We want to fold digits immediately following an acronym into the same
-			// component as the acronym.
-			if unicode.IsDigit(char) {
+			// We want to fold digits or the lowercase letter 's' immediately following
+			// an acronym into the same component as the acronym.
+			if unicode.IsDigit(char) || char == 's' {
 				// stateAcronym -> stateLowerOrNumber
 				state = stateLowerOrNumber
 				currentComponent.WriteRune(char)
