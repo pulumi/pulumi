@@ -243,7 +243,7 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
-	resName := r.Name()
+	resName := makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -404,8 +404,8 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	isInput := false
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
-	name := v.Name()
-	if !g.scopeTraversalRoots.Has(name) {
+	name := makeValidIdentifier(v.Name())
+	if !g.scopeTraversalRoots.Has(v.Name()) {
 		name = "_"
 	}
 	switch expr := expr.(type) {
