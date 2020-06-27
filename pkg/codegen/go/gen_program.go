@@ -261,7 +261,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "_") {
+		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
 		} else {
 			assignment := ":="
@@ -298,7 +298,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
-		instantiate("_res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
+		instantiate("__res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
 		instantiation := buf.String()
 		isValUsed := strings.Contains(instantiation, "val0")
 		valVar := "_"
@@ -308,7 +308,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, _res)\n", resName, resName)
+		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
 		g.Fgenf(w, "}\n")
 
 	} else {

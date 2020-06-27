@@ -55,7 +55,7 @@ func main() {
 		}
 		var vpcSubnet []*ec2.Subnet
 		for key0, val0 := range zones.Names {
-			_res, err := ec2.NewSubnet(ctx, fmt.Sprintf("vpcSubnet-%v", key0), &ec2.SubnetArgs{
+			__res, err := ec2.NewSubnet(ctx, fmt.Sprintf("vpcSubnet-%v", key0), &ec2.SubnetArgs{
 				AssignIpv6AddressOnCreation: pulumi.Bool(false),
 				VpcId:                       eksVpc.ID(),
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
@@ -68,18 +68,18 @@ func main() {
 			if err != nil {
 				return err
 			}
-			vpcSubnet = append(vpcSubnet, _res)
+			vpcSubnet = append(vpcSubnet, __res)
 		}
 		var rta []*ec2.RouteTableAssociation
 		for key0, _ := range zones.Names {
-			_res, err := ec2.NewRouteTableAssociation(ctx, fmt.Sprintf("rta-%v", key0), &ec2.RouteTableAssociationArgs{
+			__res, err := ec2.NewRouteTableAssociation(ctx, fmt.Sprintf("rta-%v", key0), &ec2.RouteTableAssociationArgs{
 				RouteTableId: eksRouteTable.ID(),
 				SubnetId:     vpcSubnet[key0].ID(),
 			})
 			if err != nil {
 				return err
 			}
-			rta = append(rta, _res)
+			rta = append(rta, __res)
 		}
 		var splat0 pulumi.StringArray
 		for _, val0 := range vpcSubnet {
