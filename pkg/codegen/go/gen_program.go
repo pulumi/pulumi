@@ -30,6 +30,7 @@ type generator struct {
 	optionalSpiller     *optionalSpiller
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
+	isErrAssigned       bool
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -263,8 +264,13 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "_") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
 		} else {
-			g.Fgenf(w, "_, err = %s.New%s(ctx, %s, ", mod, typ, resourceName)
+			assignment := ":="
+			if g.isErrAssigned {
+				assignment = "="
+			}
+			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, mod, typ, resourceName)
 		}
+		g.isErrAssigned = true
 
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
@@ -405,14 +411,19 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
 	name := makeValidIdentifier(v.Name())
+	assignment := ":="
 	if !g.scopeTraversalRoots.Has(v.Name()) {
 		name = "_"
+		if g.isErrAssigned {
+			assignment = "="
+		}
 	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case hcl2.Invoke:
-			g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
+			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
+			g.isErrAssigned = true
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
