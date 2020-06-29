@@ -14,7 +14,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = s3.NewBucket(ctx, "bucket1", nil, pulumi.Provider(provider), pulumi.DependsOn([]string{
+		_, err = s3.NewBucket(ctx, "bucket1", nil, pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{
 			provider,
 		}), pulumi.Protect(true), pulumi.IgnoreChanges([]string{
 			"bucket",

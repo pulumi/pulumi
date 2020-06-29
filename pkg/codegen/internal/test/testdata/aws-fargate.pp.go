@@ -166,7 +166,7 @@ func main() {
 					ContainerPort:  pulumi.Int(80),
 				},
 			},
-		}, pulumi.DependsOn([]string{
+		}, pulumi.DependsOn([]pulumi.Resource{
 			webListener,
 		}))
 		if err != nil {

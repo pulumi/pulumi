@@ -243,6 +243,8 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
+var resourceType = model.MustNewOpaqueType("pulumi.Resource")
+
 func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Block, []interface{}) {
 	if opts == nil {
 		return nil, nil
@@ -275,7 +277,7 @@ func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Blo
 		appendOption("Provider", opts.Provider, model.DynamicType)
 	}
 	if opts.DependsOn != nil {
-		appendOption("DependsOn", opts.DependsOn, model.NewListType(model.DynamicType))
+		appendOption("DependsOn", opts.DependsOn, model.NewListType(resourceType))
 	}
 	if opts.Protect != nil {
 		appendOption("Protect", opts.Protect, model.BoolType)
