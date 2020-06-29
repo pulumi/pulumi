@@ -248,13 +248,13 @@ func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Blo
 		appendOption("provider", opts.Provider)
 	}
 	if opts.DependsOn != nil {
-		appendOption("dependsOn", opts.DependsOn)
+		appendOption("depends_on", opts.DependsOn)
 	}
 	if opts.Protect != nil {
 		appendOption("protect", opts.Protect)
 	}
 	if opts.IgnoreChanges != nil {
-		appendOption("ignoreChanges", opts.IgnoreChanges)
+		appendOption("ignore_changes", opts.IgnoreChanges)
 	}
 
 	return block, temps
