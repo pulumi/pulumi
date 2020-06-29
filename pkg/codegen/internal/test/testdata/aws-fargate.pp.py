@@ -83,5 +83,6 @@ app_service = aws.ecs.Service("appService",
         "target_group_arn": web_target_group.arn,
         "container_name": "my-app",
         "containerPort": 80,
-    }])
+    }],
+    opts=ResourceOptions(depends_on=[web_listener]))
 pulumi.export("url", web_load_balancer.dns_name)

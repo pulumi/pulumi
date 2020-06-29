@@ -149,7 +149,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
 	if attr.Name == "ignoreChanges" {
-		obj, ok := s.resource.InputType.(*model.ObjectType)
+		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
 		}
@@ -297,6 +297,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
 						model.NewMapType(model.DynamicType))
 					resourceOptions.Range = item.Value
+				case "parent":
+					t = model.DynamicType
+					resourceOptions.Parent = item.Value
 				case "provider":
 					t = model.DynamicType
 					resourceOptions.Provider = item.Value

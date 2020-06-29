@@ -177,11 +177,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
-	// case intrinsicAwait:
-	// g.genNYI(w, "call %v", expr.Name)
-	// g.Fgenf(w, "await %.17v", expr.Args[0])
-	// case intrinsicOutput:
-	// g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])
 	case "element":
 		g.genNYI(w, "element")
 	case "entries":
@@ -663,7 +658,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
 		argTypeName := g.argumentTypeName(nil, destType.ElementType, isInput)
-		if strings.HasPrefix(argTypeName, "pulumi.") {
+		if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
 			return fmt.Sprintf("%sArray", argTypeName)
 		}
 		return fmt.Sprintf("[]%s", argTypeName)
@@ -684,7 +679,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 
 		if elmType != nil {
 			argTypeName := g.argumentTypeName(nil, elmType, isInput)
-			if strings.HasPrefix(argTypeName, "pulumi.") {
+			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
 				return fmt.Sprintf("%sArray", argTypeName)
 			}
 			return fmt.Sprintf("[]%s", argTypeName)
@@ -761,6 +756,7 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []interface{}) {
+	expr = hcl2.RewritePropertyReferences(expr)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)

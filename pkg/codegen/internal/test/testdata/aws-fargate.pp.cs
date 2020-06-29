@@ -162,6 +162,12 @@ class MyStack : Stack
                     ContainerPort = 80,
                 },
             },
+        }, new CustomResourceOptions
+        {
+            DependsOn = 
+            {
+                webListener,
+            },
         });
         this.Url = webLoadBalancer.DnsName;
     }

@@ -27,6 +27,7 @@ func (g *generator) lowerExpression(expr model.Expression) model.Expression {
 	if g.asyncMain {
 		expr = g.awaitInvokes(expr)
 	}
+	expr = hcl2.RewritePropertyReferences(expr)
 	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr

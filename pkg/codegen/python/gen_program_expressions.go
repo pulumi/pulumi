@@ -26,6 +26,7 @@ func (nameInfo) Format(name string) string {
 func (g *generator) lowerExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
 	// TODO(pdg): diagnostics
 
+	expr = hcl2.RewritePropertyReferences(expr)
 	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
 	expr, _ = g.lowerProxyApplies(expr)
 	expr, quotes, _ := g.rewriteQuotes(expr)
