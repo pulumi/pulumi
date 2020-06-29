@@ -162,7 +162,8 @@ class MyStack : Stack
                     ContainerPort = 80,
                 },
             },
-        }, new CustomResourceOptions {
+        }, new CustomResourceOptions
+        {
             DependsOn = 
             {
                 webListener,

@@ -11,7 +11,8 @@ class MyStack : Stack
         });
         var bucket1 = new Aws.S3.Bucket("bucket1", new Aws.S3.BucketArgs
         {
-        }, new CustomResourceOptions {
+        }, new CustomResourceOptions
+        {
             Provider = provider,
             DependsOn = 
             {

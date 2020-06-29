@@ -354,7 +354,7 @@ func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
 	var result bytes.Buffer
 	appendOption := func(name string, value model.Expression) {
 		if result.Len() == 0 {
-			_, err := fmt.Fprint(&result, ", new CustomResourceOptions {")
+			_, err := fmt.Fprintf(&result, ", new CustomResourceOptions\n%s{", g.Indent)
 			g.Indent += "    "
 			contract.IgnoreError(err)
 		}
