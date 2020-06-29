@@ -746,6 +746,7 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type, isInput bool) (
 	model.Expression, []interface{}) {
+	expr = hcl2.RewritePropertyReferences(expr)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr = hcl2.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)

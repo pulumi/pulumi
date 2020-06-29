@@ -93,5 +93,7 @@ const appService = new aws.ecs.Service("appService", {
         containerName: "my-app",
         containerPort: 80,
     }],
+}, {
+    dependsOn: [webListener],
 });
 export const url = webLoadBalancer.dnsName;

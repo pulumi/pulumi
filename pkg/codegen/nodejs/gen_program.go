@@ -227,6 +227,51 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
+func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
+	if opts == nil {
+		return ""
+	}
+
+	// Turn the resource options into an ObjectConsExpression and generate it.
+	var object *model.ObjectConsExpression
+	appendOption := func(name string, value model.Expression) {
+		if object == nil {
+			object = &model.ObjectConsExpression{}
+		}
+		object.Items = append(object.Items, model.ObjectConsItem{
+			Key: &model.LiteralValueExpression{
+				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
+				Value:  cty.StringVal(name),
+			},
+			Value: value,
+		})
+	}
+
+	if opts.Parent != nil {
+		appendOption("parent", opts.Parent)
+	}
+	if opts.Provider != nil {
+		appendOption("provider", opts.Provider)
+	}
+	if opts.DependsOn != nil {
+		appendOption("dependsOn", opts.DependsOn)
+	}
+	if opts.Protect != nil {
+		appendOption("protect", opts.Protect)
+	}
+	if opts.IgnoreChanges != nil {
+		appendOption("ignoreChanges", opts.IgnoreChanges)
+	}
+
+	if object == nil {
+		return ""
+	}
+
+	var buffer bytes.Buffer
+	g.Fgenf(&buffer, ", %v", g.lowerExpression(object))
+	return buffer.String()
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
@@ -238,7 +283,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := ""
+	optionsBag := g.genResourceOptions(r.Options)
 
 	name := r.Name()
 	variableName := makeValidIdentifier(name)

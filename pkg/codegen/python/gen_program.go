@@ -216,6 +216,72 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf(`f"%s-{%s}"`, baseName, count)
 }
 
+func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Block, []*quoteTemp) {
+	if opts == nil {
+		return nil, nil
+	}
+
+	var block *model.Block
+	var temps []*quoteTemp
+	appendOption := func(name string, value model.Expression) {
+		if block == nil {
+			block = &model.Block{
+				Type: "options",
+				Body: &model.Body{},
+			}
+		}
+
+		value, valueTemps := g.lowerExpression(value)
+		temps = append(temps, valueTemps...)
+
+		block.Body.Items = append(block.Body.Items, &model.Attribute{
+			Tokens: syntax.NewAttributeTokens(name),
+			Name:   name,
+			Value:  value,
+		})
+	}
+
+	if opts.Parent != nil {
+		appendOption("parent", opts.Parent)
+	}
+	if opts.Provider != nil {
+		appendOption("provider", opts.Provider)
+	}
+	if opts.DependsOn != nil {
+		appendOption("dependsOn", opts.DependsOn)
+	}
+	if opts.Protect != nil {
+		appendOption("protect", opts.Protect)
+	}
+	if opts.IgnoreChanges != nil {
+		appendOption("ignoreChanges", opts.IgnoreChanges)
+	}
+
+	return block, temps
+}
+
+func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInputs bool) {
+	if block == nil {
+		return
+	}
+
+	prefix := " "
+	if hasInputs {
+		prefix = "\n" + g.Indent
+	}
+	g.Fprintf(w, ",%sopts=ResourceOptions(", prefix)
+	g.Indented(func() {
+		for i, item := range block.Body.Items {
+			if i > 0 {
+				g.Fprintf(w, ",\n%s", g.Indent)
+			}
+			attr := item.(*model.Attribute)
+			g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+		}
+	})
+	g.Fprint(w, ")")
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
@@ -225,7 +291,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := ""
+	optionsBag, temps := g.lowerResourceOptions(r.Options)
 
 	name := PyName(r.Name())
 
@@ -236,16 +302,16 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	casingTable := g.casingTables[pkg]
+	for _, attr := range r.Inputs {
+		g.lowerObjectKeys(attr.Value, casingTable)
+
+		value, valueTemps := g.lowerExpression(attr.Value)
+		temps = append(temps, valueTemps...)
+		attr.Value = value
+	}
+	g.genTemps(w, temps)
+
 	instantiate := func(resName string) {
-		var temps []*quoteTemp
-		for _, attr := range r.Inputs {
-			g.lowerObjectKeys(attr.Value, casingTable)
-
-			value, valueTemps := g.lowerExpression(attr.Value)
-			temps = append(temps, valueTemps...)
-			attr.Value = value
-		}
-
 		g.Fgenf(w, "%s(%s", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
 		if len(r.Inputs) > 1 {
@@ -260,8 +326,9 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, attr.Value)
 				}
 			}
+			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0)
 		})
-		g.Fgenf(w, "%s)", optionsBag)
+		g.Fprint(w, ")")
 	}
 
 	if r.Options != nil && r.Options.Range != nil {

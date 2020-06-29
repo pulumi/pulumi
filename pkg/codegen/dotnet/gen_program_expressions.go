@@ -38,6 +38,7 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
+	expr = hcl2.RewritePropertyReferences(expr)
 	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
 	contract.Assert(len(diags) == 0)
 	expr = hcl2.RewriteConversions(expr, typ)

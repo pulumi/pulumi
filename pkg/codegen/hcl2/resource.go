@@ -28,6 +28,8 @@ type ResourceOptions struct {
 
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
+	// The resource's parent, if any.
+	Parent model.Expression
 	// The provider to use.
 	Provider model.Expression
 	// The explicit dependencies of the resource.

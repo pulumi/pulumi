@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -129,7 +130,11 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 	stdImports := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
-			pkg, mod, _, _ := r.DecomposeToken()
+			pkg, mod, name, _ := r.DecomposeToken()
+			if pkg == "pulumi" && mod == "providers" {
+				pkg = name
+			}
+
 			version := -1
 			for _, p := range program.Packages() {
 				if p.Name == pkg {
@@ -238,10 +243,69 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
+func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Block, []interface{}) {
+	if opts == nil {
+		return nil, nil
+	}
+
+	var block *model.Block
+	var temps []interface{}
+	appendOption := func(name string, value model.Expression, destType model.Type) {
+		if block == nil {
+			block = &model.Block{
+				Type: "options",
+				Body: &model.Body{},
+			}
+		}
+
+		value, valueTemps := g.lowerExpression(value, destType, false)
+		temps = append(temps, valueTemps...)
+
+		block.Body.Items = append(block.Body.Items, &model.Attribute{
+			Tokens: syntax.NewAttributeTokens(name),
+			Name:   name,
+			Value:  value,
+		})
+	}
+
+	if opts.Parent != nil {
+		appendOption("Parent", opts.Parent, model.DynamicType)
+	}
+	if opts.Provider != nil {
+		appendOption("Provider", opts.Provider, model.DynamicType)
+	}
+	if opts.DependsOn != nil {
+		appendOption("DependsOn", opts.DependsOn, model.NewListType(model.DynamicType))
+	}
+	if opts.Protect != nil {
+		appendOption("Protect", opts.Protect, model.BoolType)
+	}
+	if opts.IgnoreChanges != nil {
+		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
+	}
+
+	return block, temps
+}
+
+func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
+	if block == nil {
+		return
+	}
+
+	for _, item := range block.Body.Items {
+		attr := item.(*model.Attribute)
+		g.Fgenf(w, ", pulumi.%s(%v)", attr.Name, attr.Value)
+	}
+}
+
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	resName := r.Name()
 	_, mod, typ, _ := r.DecomposeToken()
+
+	// Compute resource options
+	options, temps := g.lowerResourceOptions(r.Options)
+	g.genTemps(w, temps)
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
@@ -267,10 +331,12 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				g.Fgenf(w, "%.v,\n", attr.Value)
 
 			}
-			g.Fgenf(w, "})\n")
+			g.Fprint(w, "}")
 		} else {
-			g.Fgenf(w, "nil)\n")
+			g.Fprint(w, "nil")
 		}
+		g.genResourceOptions(w, options)
+		g.Fprint(w, ")\n")
 		g.Fgenf(w, "if err != nil {\n")
 		g.Fgenf(w, "return err\n")
 		g.Fgenf(w, "}\n")

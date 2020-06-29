@@ -346,6 +346,47 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("$\"%s-{%s}\"", baseName, count)
 }
 
+func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
+	if opts == nil {
+		return ""
+	}
+
+	var result bytes.Buffer
+	appendOption := func(name string, value model.Expression) {
+		if result.Len() == 0 {
+			_, err := fmt.Fprint(&result, ", new CustomResourceOptions {")
+			g.Indent += "    "
+			contract.IgnoreError(err)
+		}
+
+		g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+	}
+
+	if opts.Parent != nil {
+		appendOption("Parent", opts.Parent)
+	}
+	if opts.Provider != nil {
+		appendOption("Provider", opts.Provider)
+	}
+	if opts.DependsOn != nil {
+		appendOption("DependsOn", opts.DependsOn)
+	}
+	if opts.Protect != nil {
+		appendOption("Protect", opts.Protect)
+	}
+	if opts.IgnoreChanges != nil {
+		appendOption("IgnoreChanges", opts.IgnoreChanges)
+	}
+
+	if result.Len() != 0 {
+		g.Indent = g.Indent[:len(g.Indent)-4]
+		_, err := fmt.Fprintf(&result, "\n%s}", g.Indent)
+		contract.IgnoreError(err)
+	}
+
+	return result.String()
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
@@ -356,8 +397,6 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.diagnostics = append(g.diagnostics, diagnostics...)
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
-
-	optionsBag := ""
 
 	name := r.Name()
 	variableName := makeValidIdentifier(name)
@@ -377,7 +416,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				g.Fgenf(w, " %.v,\n", attr.Value)
 			}
 		})
-		g.Fgenf(w, "%s}%s)", g.Indent, optionsBag)
+		g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options))
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
