@@ -11,7 +11,7 @@ using Pulumi.Serialization;
 namespace Pulumi
 {
     /// <summary>
-    /// Useful static utility methods for both creating and working wit <see cref="Output{T}"/>s.
+    /// Useful static utility methods for both creating and working with <see cref="Output{T}"/>s.
     /// </summary>
     public static partial class Output
     {

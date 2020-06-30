@@ -347,6 +347,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "fs.readFileSync(%v)", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "fs.readDirSync(%v)", expr.Args[0])
+	case "secret":
+		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.split(%v)", expr.Args[1], expr.Args[0])
 	case "toJSON":

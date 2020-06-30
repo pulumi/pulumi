@@ -274,6 +274,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "(lambda path: open(path).read())(%.v)", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
+	case "secret":
+		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toJSON":
