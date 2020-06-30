@@ -231,6 +231,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genNYI(w, "ReadFile")
 	case "readDir":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
+	case "secret":
+		// TODO: generate an appropriate type assertion
+		g.Fgenf(w, "pulumi.ToSecret(%v)", expr.Args[0])
 	case "split":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
