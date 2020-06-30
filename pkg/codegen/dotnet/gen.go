@@ -1507,7 +1507,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			lr := LanguageResource{
 				Resource: r,
 				Package:  namespaceName(info.Namespaces, modName),
-				Name:    tokenToName(r.Token),
+				Name:     tokenToName(r.Token),
 			}
 			resources[r.Token] = lr
 		}
