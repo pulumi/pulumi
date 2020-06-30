@@ -91,12 +91,13 @@ func printComment(w io.Writer, comment string, indent string) {
 		return
 	}
 
+	replacer := strings.NewReplacer(`"""`, `\"\"\"`, `\x`, `\\x`)
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
 	for _, l := range lines {
 		if l == "" {
 			fmt.Fprintf(w, "\n")
 		} else {
-			escaped := strings.ReplaceAll(l, `"""`, `\"\"\"`)
+			escaped := replacer.Replace(l)
 			fmt.Fprintf(w, "%s%s\n", indent, escaped)
 		}
 	}
