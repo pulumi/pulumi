@@ -1338,13 +1338,15 @@ func computePropertyNames(props []*schema.Property, names map[*schema.Property]s
 	}
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode .NET-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+// LanguageResource is derived from the schema and can be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
 
+	Name    string // The resource name (e.g. Deployment)
+	Package string // The package name (e.g. Apps.V1)
+}
+
+func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPackageInfo) (map[string]*modContext, error) {
 	propertyNames := map[*schema.Property]string{}
 	computePropertyNames(pkg.Config, propertyNames)
 	computePropertyNames(pkg.Provider.InputProperties, propertyNames)
@@ -1479,6 +1481,55 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
+	return modules, nil
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	// Decode .NET-specific info
+	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+
+	modules, err := generateModuleContextMap(tool, pkg, info)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := map[string]LanguageResource{}
+	for modName, mod := range modules {
+		if modName == "" {
+			continue
+		}
+		for _, r := range mod.resources {
+			lr := LanguageResource{
+				Resource: r,
+				Package:  namespaceName(info.Namespaces, modName),
+				Name:     tokenToName(r.Token),
+			}
+			resources[r.Token] = lr
+		}
+	}
+
+	return resources, nil
+}
+
+func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	// Decode .NET-specific info
+	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+		return nil, err
+	}
+	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+
+	modules, err := generateModuleContextMap(tool, pkg, info)
+	if err != nil {
+		return nil, err
+	}
+
+	assemblyName := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
+
 	// Generate each module.
 	files := fs{}
 	for p, f := range extraFiles {
@@ -1491,7 +1542,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
-	// Finally emit the package metadata (NPM, TypeScript, and so on).
+	// Finally emit the package metadata.
 	if err := genPackageMetadata(pkg, assemblyName, info.PackageReferences, files); err != nil {
 		return nil, err
 	}
