@@ -1343,7 +1343,7 @@ type LanguageResource struct {
 	*schema.Resource
 
 	Name    string // The resource name (e.g. Deployment)
-	Package string // The package name (e.g. Pulumi.Kubernetes.Apps.V1)
+	Package string // The package name (e.g. Apps.V1)
 }
 
 func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPackageInfo) (map[string]*modContext, error) {
