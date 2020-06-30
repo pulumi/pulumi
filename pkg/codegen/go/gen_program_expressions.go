@@ -232,8 +232,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readDir":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "secret":
-		// TODO: generate an appropriate type assertion
-		g.Fgenf(w, "pulumi.ToSecret(%v)", expr.Args[0])
+		outputTypeName := "pulumi.Any"
+		if model.ResolveOutputs(expr.Type()) != model.DynamicType {
+			outputTypeName = g.argumentTypeName(nil, expr.Type(), false)
+		}
+		g.Fgenf(w, "pulumi.ToSecret(%v).(%sOutput)", expr.Args[0], outputTypeName)
 	case "split":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
@@ -622,7 +625,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				return "pulumi.Float64"
 			}
 			return "float64"
-		case model.StringType, model.DynamicType:
+		case model.StringType:
 			if isInput {
 				return "pulumi.String"
 			}
@@ -632,6 +635,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				return "pulumi.Bool"
 			}
 			return "bool"
+		case model.DynamicType:
+			if isInput {
+				return "pulumi.Any"
+			}
+			return "interface{}"
 		default:
 			return destType.Name
 		}

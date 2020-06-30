@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err = rds.NewCluster(ctx, "dbCluster", &rds.ClusterArgs{
-			MasterPassword: pulumi.ToSecret("foobar"),
+			MasterPassword: pulumi.ToSecret("foobar").(pulumi.StringOutput),
 		})
 		if err != nil {
 			return err
