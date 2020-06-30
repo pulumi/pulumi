@@ -31,6 +31,7 @@ type generator struct {
 	optionalSpiller     *optionalSpiller
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
+	isErrAssigned       bool
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -151,8 +152,11 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 			if version > 1 {
 				vPath = fmt.Sprintf("/v%d", version)
 			}
-
-			pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+			if mod == "" {
+				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
+			} else {
+				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
+			}
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -302,8 +306,11 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
-	resName := r.Name()
-	_, mod, typ, _ := r.DecomposeToken()
+	resName := makeValidIdentifier(r.Name())
+	pkg, mod, typ, _ := r.DecomposeToken()
+	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+		mod = pkg
+	}
 
 	// Compute resource options
 	options, temps := g.lowerResourceOptions(r.Options)
@@ -320,11 +327,16 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "_") {
+		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
 		} else {
-			g.Fgenf(w, "_, err = %s.New%s(ctx, %s, ", mod, typ, resourceName)
+			assignment := ":="
+			if g.isErrAssigned {
+				assignment = "="
+			}
+			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, mod, typ, resourceName)
 		}
+		g.isErrAssigned = true
 
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
@@ -354,7 +366,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
-		instantiate("_res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
+		instantiate("__res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
 		instantiation := buf.String()
 		isValUsed := strings.Contains(instantiation, "val0")
 		valVar := "_"
@@ -364,7 +376,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, _res)\n", resName, resName)
+		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
 		g.Fgenf(w, "}\n")
 
 	} else {
@@ -466,15 +478,20 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	isInput := false
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type(), isInput)
 	g.genTemps(w, temps)
-	name := v.Name()
-	if !g.scopeTraversalRoots.Has(name) {
+	name := makeValidIdentifier(v.Name())
+	assignment := ":="
+	if !g.scopeTraversalRoots.Has(v.Name()) {
 		name = "_"
+		if g.isErrAssigned {
+			assignment = "="
+		}
 	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case hcl2.Invoke:
-			g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
+			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
+			g.isErrAssigned = true
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")

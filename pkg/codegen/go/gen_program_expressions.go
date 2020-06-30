@@ -17,6 +17,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const keywordRange = "range"
+
 func (g *generator) GetPrecedence(expr model.Expression) int {
 	// TODO: Current values copied from Node, update based on
 	// https://golang.org/ref/spec
@@ -222,7 +224,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
 		g.genNYI(w, "Lookup")
-	case "range":
+	case keywordRange:
 		g.genNYI(w, "call %v", expr.Name)
 		// g.genRange(w, expr, false)
 	case "readFile":
@@ -454,7 +456,7 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	// TODO: this isn't exhaustively correct as "range" could be a legit var name
 	// instead we should probably use a fn call expression here for entries/range
 	// similar to other languages
-	if rootName == "range" {
+	if rootName == keywordRange {
 		part := expr.Traversal[1].(hcl.TraverseAttr).Name
 		switch part {
 		case "value":
@@ -465,7 +467,7 @@ func (g *generator) genScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 			contract.Failf("unexpected traversal on range expression: %s", part)
 		}
 	} else {
-		g.Fgen(w, rootName)
+		g.Fgen(w, makeValidIdentifier(rootName))
 		isRootResource := false
 		g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts[1:], isRootResource)
 	}
