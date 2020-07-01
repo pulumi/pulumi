@@ -398,7 +398,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.CustomResourceOptions): %s {\n", stateParam, name)
-		if r.DeprecationMessage != "" {
+		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        return new %s(name, %s{ ...opts, id: id });\n", name, stateRef)
@@ -499,7 +499,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
 				argsType, stateType)
 		}
-		if r.DeprecationMessage != "" {
+		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
@@ -652,7 +652,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		retty = title(name) + "Result"
 	}
 	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n", name, argsig, retty)
-	if fun.DeprecationMessage != "" {
+	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
 	}
 
