@@ -15,7 +15,8 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi/client"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -23,11 +24,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configFile string) (secrets.Manager, error) {
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+func newServiceSecretsManager(stackID backend.StackIdentifier, configFile string,
+	apiClient *client.Client) (secrets.Manager, error) {
+
+	contract.Assertf(stackID.Stack != "", "stackID.Stack %v", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(tokens.QName(stackID.Stack))
 		if err != nil {
 			return nil, err
 		}
@@ -39,9 +42,6 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 		return nil, err
 	}
 
-	client := s.Backend().(httpstate.Backend).Client()
-	id := s.StackIdentifier()
-
 	// We should only save the ProjectStack at this point IF we have changed the
 	// secrets provider. To change the secrets provider to a serviceSecretsManager
 	// we would need to ensure that there are no remnants of the old secret manager
@@ -51,12 +51,16 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 	// reload the configuration file to be sorted or an empty {} when creating a stack
 	// this is not the desired behaviour.
 	if changeProjectStackSecretDetails(info) {
-		if err := workspace.SaveProjectStack(stackName, info); err != nil {
+		if err := workspace.SaveProjectStack(tokens.QName(stackID.Stack), info); err != nil {
 			return nil, err
 		}
 	}
 
-	return service.NewServiceSecretsManager(client, id)
+	return service.NewServiceSecretsManager(apiClient, client.StackIdentifier{
+		Owner:   stackID.Owner,
+		Project: stackID.Project,
+		Stack:   stackID.Stack,
+	})
 }
 
 // A passphrase secrets provider has an encryption salt, therefore, changing

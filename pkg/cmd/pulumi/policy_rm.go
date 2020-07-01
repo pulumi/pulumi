@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +43,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			// Attempt to remove the Policy Pack.
-			return policyPack.Remove(commandContext(), backend.PolicyPackOperation{
+			return policyPack.Remove(commandContext(), cli.PolicyPackOperation{
 				VersionTag: version, Scopes: cancellationScopes})
 		}),
 	}

@@ -36,13 +36,13 @@ import (
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
 	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
@@ -81,23 +81,27 @@ func skipConfirmations() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_CONFIRMATIONS"))
 }
 
-// backendInstance is used to inject a backend mock from tests.
-var backendInstance backend.Backend
+// clientInstance is used to inject a client mock from tests.
+var clientInstance backend.Client
 
-func currentBackend(opts display.Options) (backend.Backend, error) {
-	if backendInstance != nil {
-		return backendInstance, nil
+func loginToBackend(url string, displayOptions display.Options) (*cli.Backend, error) {
+	client := clientInstance
+	if client == nil {
+		c, err := loginToClient(url, displayOptions)
+		if err != nil {
+			return nil, err
+		}
+		client = c
 	}
+	return cli.NewBackend(cmdutil.Diag(), client)
+}
 
+func currentBackend(opts display.Options) (*cli.Backend, error) {
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get cloud url")
 	}
-
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
-	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
+	return loginToBackend(url, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -119,7 +123,7 @@ func commandContext() context.Context {
 	return ctx
 }
 
-func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
+func createSecretsManager(b *cli.Backend, stackID backend.StackIdentifier, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -127,34 +131,25 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
-	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
-		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = passphrase.Type
+	if isDefaultSecretsProvider {
+		secretsProvider = b.Client().DefaultSecretsManager()
 	}
 
-	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(commandContext(), b)
-		if err != nil {
-			return err
-		}
-		if stack == nil {
-			// This means this is the first time we are initiating a stack
-			// there is no way a stack will exist here so we need to just return nil
-			// this will mean the "old" default behaviour will work for us
-			return nil
-		}
-		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
-			return serviceSecretsErr
-		}
-	}
-
-	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+	switch secretsProvider {
+	case passphrase.Type:
+		if _, pharseErr := newPassphraseSecretsManager(stackID, stackConfigFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
-	} else if !isDefaultSecretsProvider {
+	case service.Type:
+		client, ok := b.Client().(*pulumi.Client)
+		if !ok {
+			return errors.Errorf("only the service backend supports service-managed secrets")
+		}
+		if _, err := newServiceSecretsManager(stackID, stackConfigFile, client.APIClient()); err != nil {
+			return err
+		}
+	default:
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
 
@@ -172,7 +167,7 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 			}
 		}
 
-		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stackID, stackConfigFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
@@ -181,14 +176,13 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
-	secretsProvider string) (backend.Stack, error) {
+func createStack(b *cli.Backend, stackID backend.StackIdentifier, setCurrent bool,
+	secretsProvider string) (*cli.Stack, error) {
 
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	stack, err := b.CreateStack(commandContext(), stackID)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
-		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
+		if _, ok := err.(backend.StackAlreadyExistsError); ok {
 			return nil, err
 		}
 		if _, ok := err.(*backend.OverStackLimitError); ok {
@@ -197,13 +191,13 @@ func createStack(
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err := createSecretsManager(b, stackRef, secretsProvider,
+	if err := createSecretsManager(b, stackID, secretsProvider,
 		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(stack.Ref().String()); err != nil {
+		if err = b.SetCurrentStack(stackID); err != nil {
 			return nil, err
 		}
 	}
@@ -215,7 +209,7 @@ func createStack(
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
 func requireStack(
-	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+	stackName string, offerNew bool, opts display.Options, setCurrent bool) (*cli.Stack, error) {
 	if stackName == "" {
 		return requireCurrentStack(offerNew, opts, setCurrent)
 	}
@@ -225,12 +219,12 @@ func requireStack(
 		return nil, err
 	}
 
-	stackRef, err := b.ParseStackReference(stackName)
+	stackID, err := b.ParseStackIdentifier(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	stack, err := b.GetStack(commandContext(), stackRef)
+	stack, err := b.GetStack(commandContext(), stackID)
 	if err != nil {
 		return nil, err
 	}
@@ -248,19 +242,19 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(b, stackID, setCurrent, "")
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (*cli.Stack, error) {
 	// Search for the current stack.
 	b, err := currentBackend(opts)
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(commandContext(), b)
+	stack, err := b.CurrentStack(commandContext())
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -274,7 +268,7 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(
-	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+	b *cli.Backend, offerNew bool, opts display.Options, setCurrent bool) (*cli.Stack, error) {
 	ctx := commandContext()
 
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
@@ -286,6 +280,12 @@ func chooseStack(
 	}
 	if !cmdutil.Interactive() {
 		return nil, errors.New(chooseStackErr)
+	}
+
+	// Fetch the current user.
+	currentUser, err := b.CurrentUser()
+	if err != nil {
+		currentUser = ""
 	}
 
 	proj, err := workspace.DetectProject()
@@ -302,8 +302,12 @@ func chooseStack(
 
 	var options []string
 	for _, summary := range summaries {
-		name := summary.Name().String()
-		options = append(options, name)
+		id := backend.StackIdentifier{
+			Owner:   summary.OrgName,
+			Project: summary.ProjectName,
+			Stack:   summary.StackName,
+		}
+		options = append(options, id.FriendlyName(currentUser, project))
 	}
 	sort.Strings(options)
 
@@ -318,10 +322,10 @@ func chooseStack(
 
 	// If a stack is already selected, make that the default.
 	var current string
-	currStack, currErr := state.CurrentStack(ctx, b)
+	currStack, currErr := b.CurrentStack(ctx)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
-		current = currStack.Ref().String()
+		current = currStack.ID().FriendlyName(currentUser, project)
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -358,31 +362,31 @@ func chooseStack(
 			return nil, readErr
 		}
 
-		stackRef, parseErr := b.ParseStackReference(stackName)
+		stackID, parseErr := b.ParseStackIdentifier(stackName)
 		if parseErr != nil {
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(b, stackID, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.
-	stackRef, err := b.ParseStackReference(option)
+	stackID, err := b.ParseStackIdentifier(option)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing selected stack")
 	}
 	// GetStack may return (nil, nil) if the stack isn't found.
-	stack, err := b.GetStack(ctx, stackRef)
+	stack, err := b.GetStack(ctx, stackID)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting selected stack")
 	}
 	if stack == nil {
-		return nil, errors.Errorf("no stack named '%s' found", stackRef)
+		return nil, errors.Errorf("no stack named '%s' found", stackID)
 	}
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if setCurrent {
-		if err = state.SetCurrentStack(stackRef.String()); err != nil {
+		if err = b.SetCurrentStack(stackID); err != nil {
 			return nil, err
 		}
 	}
@@ -392,7 +396,7 @@ func chooseStack(
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(s *cli.Stack, configArray []string, path bool) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -513,8 +517,8 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root, execKind string) (*backend.UpdateMetadata, error) {
-	m := &backend.UpdateMetadata{
+func getUpdateMetadata(msg, root, execKind string) (*cli.UpdateMetadata, error) {
+	m := &cli.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
@@ -531,7 +535,7 @@ func getUpdateMetadata(msg, root, execKind string) (*backend.UpdateMetadata, err
 }
 
 // addGitMetadata populate's the environment metadata bag with Git-related values.
-func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
+func addGitMetadata(repoRoot string, m *cli.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
@@ -589,7 +593,7 @@ func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error 
 	return nil
 }
 
-func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
+func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *cli.UpdateMetadata) error {
 	// When running in a CI/CD environment, the current git repo may be running from a
 	// detached HEAD and may not have have the latest commit message. We fall back to
 	// CI-system specific environment variables when possible.
@@ -711,9 +715,9 @@ func (s *cancellationScope) Close() {
 
 type cancellationScopeSource int
 
-var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
+var cancellationScopes = cli.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) cli.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -767,13 +771,13 @@ func printJSON(v interface{}) error {
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
 // is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
+func updateFlagsToOptions(interactive, skipPreview, yes bool) (cli.UpdateOptions, error) {
 	if !interactive && !yes {
-		return backend.UpdateOptions{},
+		return cli.UpdateOptions{},
 			errors.New("--yes must be passed in non-interactive mode")
 	}
 
-	return backend.UpdateOptions{
+	return cli.UpdateOptions{
 		AutoApprove: yes,
 		SkipPreview: skipPreview,
 	}, nil

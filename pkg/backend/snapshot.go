@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"reflect"
 	"sort"
 	"time"
@@ -23,22 +24,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/version"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
-
-// SnapshotPersister is an interface implemented by our backends that implements snapshot
-// persistence. In order to fit into our current model, snapshot persisters have two functions:
-// saving snapshots and invalidating already-persisted snapshots.
-type SnapshotPersister interface {
-	// Persists the given snapshot. Returns an error if the persistence failed.
-	Save(snapshot *deploy.Snapshot) error
-	// Gets the secrets manager used by this persister.
-	SecretsManager() secrets.Manager
-}
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
 // mutations on the global snapshot object serially. This implementation maintains two bits of state: the "base"
@@ -56,15 +48,17 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
+	context          context.Context          // The context associated with this deployment.
+	update           Update                   // The update responsible for persisting snapshots.
+	secrets          secrets.Manager          // The secrets manager for this deployment.
+	baseSnapshot     *deploy.Snapshot         // The base snapshot for this deployment.
+	resources        []*resource.State        // The list of resources operated upon by this deployment
+	operations       []resource.Operation     // The set of operations known to be outstanding in this deployment
+	dones            map[*resource.State]bool // The set of resources that have been processed by this deployment
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
+	cancel           func()                   // The cancellation function for this deployment.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 }
 
@@ -76,7 +70,7 @@ type mutationRequest struct {
 }
 
 func (sm *SnapshotManager) Close() error {
-	close(sm.cancel)
+	sm.cancel()
 	return <-sm.done
 }
 
@@ -102,7 +96,7 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 	select {
 	case sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
 		return <-result
-	case <-sm.cancel:
+	case <-sm.context.Done():
 		return errors.New("snapshot manager closed")
 	}
 }
@@ -581,7 +575,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, sm.persister.SecretsManager(), resources, operations)
+	return deploy.NewSnapshot(manifest, sm.secrets, resources, operations)
 }
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
@@ -590,7 +584,11 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := snap.NormalizeURNReferences(); err != nil {
 		return errors.Wrap(err, "failed to normalize URN references")
 	}
-	if err := sm.persister.Save(snap); err != nil {
+	deployment, err := stack.SerializeDeployment(snap, sm.secrets, false /* showSecrets */)
+	if err != nil {
+		return errors.Wrap(err, "serializing deployment")
+	}
+	if err := sm.update.PatchCheckpoint(sm.context, deployment); err != nil {
 		return errors.Wrap(err, "failed to save snapshot")
 	}
 	if sm.doVerify {
@@ -601,17 +599,21 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	return nil
 }
 
-// NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
-// and base snapshot.
+// NewSnapshotManager creates a new SnapshotManager for the given update, secrets manager, and base snaposhot.
 //
 // It is *very important* that the baseSnap pointer refers to the same Snapshot
 // given to the engine! The engine will mutate this object and correctness of the
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
-func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
-	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
+func NewSnapshotManager(ctx context.Context, update Update, secrets secrets.Manager,
+	baseSnap *deploy.Snapshot) *SnapshotManager {
+
+	cancelContext, cancel := context.WithCancel(ctx)
+	mutationRequests, done := make(chan mutationRequest), make(chan error)
 
 	manager := &SnapshotManager{
-		persister:        persister,
+		context:          cancelContext,
+		update:           update,
+		secrets:          secrets,
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
 		completeOps:      make(map[*resource.State]bool),
@@ -638,7 +640,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 					hasElidedWrites = true
 				}
 				request.result <- err
-			case <-cancel:
+			case <-cancelContext.Done():
 				break serviceLoop
 			}
 		}

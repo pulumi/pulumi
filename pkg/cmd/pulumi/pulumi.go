@@ -38,8 +38,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi/client"
 	"github.com/pulumi/pulumi/pkg/v2/version"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
@@ -272,7 +272,7 @@ func getCLIVersionInfo() (semver.Version, semver.Version, error) {
 		return latest, oldest, err
 	}
 
-	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
+	client := client.NewClient(pulumi.DefaultURL(), "", cmdutil.Diag())
 	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err

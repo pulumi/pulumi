@@ -18,9 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -65,17 +62,7 @@ func newLogoutCmd() *cobra.Command {
 				}
 			}
 
-			var be backend.Backend
-			var err error
-			if filestate.IsFileStateBackendURL(cloudURL) {
-				return workspace.DeleteAccount(cloudURL)
-			}
-
-			be, err = httpstate.New(cmdutil.Diag(), cloudURL)
-			if err != nil {
-				return err
-			}
-			return be.Logout()
+			return workspace.DeleteAccount(cloudURL)
 		}),
 	}
 

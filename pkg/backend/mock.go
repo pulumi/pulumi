@@ -16,438 +16,295 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-//
-// Mock backend.
-//
+// Mock client.
+type MockClient struct {
+	NameF                  func() string
+	URLF                   func() string
+	UserF                  func(ctx context.Context) (string, error)
+	DefaultSecretsManagerF func() string
 
-type MockBackend struct {
-	NameF                   func() string
-	URLF                    func() string
-	GetPolicyPackF          func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
-	SupportsOrganizationsF  func() bool
-	ParseStackReferenceF    func(s string) (StackReference, error)
-	ValidateStackNameF      func(s string) error
-	DoesProjectExistF       func(context.Context, string) (bool, error)
-	GetStackF               func(context.Context, StackReference) (Stack, error)
-	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
-	RemoveStackF            func(context.Context, Stack, bool) (bool, error)
-	ListStacksF             func(context.Context, ListStacksFilter) ([]StackSummary, error)
-	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
-	GetStackCrypterF        func(StackReference) (config.Crypter, error)
-	QueryF                  func(context.Context, QueryOperation) result.Result
-	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
-	GetHistoryF             func(context.Context, StackReference) ([]UpdateInfo, error)
-	GetStackTagsF           func(context.Context, Stack) (map[apitype.StackTagName]string, error)
-	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
-	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
-	LogoutF                 func() error
-	CurrentUserF            func() (string, error)
-	PreviewF                func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
-	UpdateF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
-	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (engine.ResourceChanges, result.Result)
-	RefreshF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
-	DestroyF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
-	WatchF func(context.Context, Stack,
-		UpdateOperation) result.Result
-	GetLogsF func(context.Context, Stack, StackConfiguration,
-		operations.LogQuery) ([]operations.LogEntry, error)
+	DoesProjectExistF func(ctx context.Context, owner, projectName string) (bool, error)
+	StackConsoleURLF  func(stackID StackIdentifier) (string, error)
+
+	ListStacksF      func(ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error)
+	GetStackF        func(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error)
+	CreateStackF     func(ctx context.Context, stackID StackIdentifier, tags map[string]string) (apitype.Stack, error)
+	DeleteStackF     func(ctx context.Context, stackID StackIdentifier, force bool) (bool, error)
+	RenameStackF     func(ctx context.Context, currentID, newID StackIdentifier) error
+	UpdateStackTagsF func(ctx context.Context, stackID StackIdentifier, tags map[string]string) error
+
+	GetStackHistoryF       func(ctx context.Context, stackID StackIdentifier) ([]apitype.UpdateInfo, error)
+	GetLatestStackConfigF  func(ctx context.Context, stackID StackIdentifier) (config.Map, error)
+	ExportStackDeploymentF func(ctx context.Context, stackID StackIdentifier,
+		version *int) (apitype.UntypedDeployment, error)
+	ImportStackDeploymentF func(ctx context.Context, stackID StackIdentifier,
+		deployment *apitype.UntypedDeployment) error
+
+	StartUpdateF func(ctx context.Context, kind apitype.UpdateKind, stackID StackIdentifier, proj *workspace.Project,
+		cfg config.Map, metadata apitype.UpdateMetadata, opts engine.UpdateOptions, tags map[string]string,
+		dryRun bool) (Update, error)
+	CancelCurrentUpdateF func(ctx context.Context, stackID StackIdentifier) error
+
+	GetPolicyPackF       func(ctx context.Context, location string) ([]byte, error)
+	GetPolicyPackSchemaF func(ctx context.Context, orgName, policyPackName,
+		versionTag string) (*apitype.GetPolicyPackConfigSchemaResponse, error)
+
+	PublishPolicyPackF func(ctx context.Context, orgName string, analyzerInfo plugin.AnalyzerInfo,
+		dirArchive io.Reader) (string, error)
+	DeletePolicyPackF func(ctx context.Context, orgName, policyPackName, versionTag string) error
+
+	EnablePolicyPackF func(ctx context.Context, orgName, policyGroup, policyPackName, versionTag string,
+		policyPackConfig map[string]*json.RawMessage) error
+	DisablePolicyPackF func(ctx context.Context, orgName, policyGroup, policyPackName, versionTag string) error
 }
 
-var _ Backend = (*MockBackend)(nil)
+var _ Client = (*MockClient)(nil)
 
-func (be *MockBackend) Name() string {
-	if be.NameF != nil {
-		return be.NameF()
+func (c *MockClient) Name() string {
+	if c.NameF != nil {
+		return c.NameF()
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) URL() string {
-	if be.URLF != nil {
-		return be.URLF()
+func (c *MockClient) URL() string {
+	if c.URLF != nil {
+		return c.URLF()
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyGroups(context.Context, string) (apitype.ListPolicyGroupsResponse, error) {
-	panic("not implemented")
-}
-
-func (be *MockBackend) ListPolicyPacks(context.Context, string) (apitype.ListPolicyPacksResponse, error) {
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetPolicyPack(
-	ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error) {
-
-	if be.GetPolicyPackF != nil {
-		return be.GetPolicyPackF(ctx, policyPack, d)
+func (c *MockClient) User(ctx context.Context) (string, error) {
+	if c.UserF != nil {
+		return c.UserF(ctx)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) SupportsOrganizations() bool {
-	if be.SupportsOrganizationsF != nil {
-		return be.SupportsOrganizationsF()
+func (c *MockClient) DefaultSecretsManager() string {
+	if c.DefaultSecretsManagerF != nil {
+		return c.DefaultSecretsManagerF()
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
-	if be.ParseStackReferenceF != nil {
-		return be.ParseStackReferenceF(s)
+func (c *MockClient) DoesProjectExist(ctx context.Context, owner, projectName string) (bool, error) {
+	if c.DoesProjectExistF != nil {
+		return c.DoesProjectExistF(ctx, owner, projectName)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) ValidateStackName(s string) error {
-	if be.ValidateStackNameF != nil {
-		return be.ValidateStackNameF(s)
+func (c *MockClient) StackConsoleURL(stackID StackIdentifier) (string, error) {
+	if c.StackConsoleURLF != nil {
+		return c.StackConsoleURLF(stackID)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	if be.DoesProjectExistF != nil {
-		return be.DoesProjectExistF(ctx, projectName)
+func (c *MockClient) ListStacks(ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error) {
+	if c.ListStacksF != nil {
+		return c.ListStacksF(ctx, filter)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (Stack, error) {
-	if be.GetStackF != nil {
-		return be.GetStackF(ctx, stackRef)
+func (c *MockClient) GetStack(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
+	if c.GetStackF != nil {
+		return c.GetStackF(ctx, stackID)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference, opts interface{}) (Stack, error) {
-	if be.CreateStackF != nil {
-		return be.CreateStackF(ctx, stackRef, opts)
+func (c *MockClient) CreateStack(ctx context.Context, stackID StackIdentifier,
+	tags map[string]string) (apitype.Stack, error) {
+
+	if c.CreateStackF != nil {
+		return c.CreateStackF(ctx, stackID, tags)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error) {
-	if be.RemoveStackF != nil {
-		return be.RemoveStackF(ctx, stack, force)
+func (c *MockClient) DeleteStack(ctx context.Context, stackID StackIdentifier, force bool) (bool, error) {
+	if c.DeleteStackF != nil {
+		return c.DeleteStackF(ctx, stackID, force)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error) {
-	if be.ListStacksF != nil {
-		return be.ListStacksF(ctx, filter)
+func (c *MockClient) RenameStack(ctx context.Context, currentID, newID StackIdentifier) error {
+	if c.RenameStackF != nil {
+		return c.RenameStackF(ctx, currentID, newID)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) RenameStack(ctx context.Context, stack Stack,
-	newName tokens.QName) (StackReference, error) {
-	if be.RenameStackF != nil {
-		return be.RenameStackF(ctx, stack, newName)
+func (c *MockClient) UpdateStackTags(ctx context.Context, stackID StackIdentifier, tags map[string]string) error {
+	if c.UpdateStackTagsF != nil {
+		return c.UpdateStackTagsF(ctx, stackID, tags)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter, error) {
-	if be.GetStackCrypterF != nil {
-		return be.GetStackCrypterF(stackRef)
+func (c *MockClient) GetStackHistory(ctx context.Context, stackID StackIdentifier) ([]apitype.UpdateInfo, error) {
+	if c.GetStackHistoryF != nil {
+		return c.GetStackHistoryF(ctx, stackID)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
-
-	if be.PreviewF != nil {
-		return be.PreviewF(ctx, stack, op)
+func (c *MockClient) GetLatestStackConfig(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
+	if c.GetLatestStackConfigF != nil {
+		return c.GetLatestStackConfigF(ctx, stackID)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Update(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (c *MockClient) ExportStackDeployment(ctx context.Context, stackID StackIdentifier,
+	version *int) (apitype.UntypedDeployment, error) {
 
-	if be.UpdateF != nil {
-		return be.UpdateF(ctx, stack, op)
+	if c.ExportStackDeploymentF != nil {
+		return c.ExportStackDeploymentF(ctx, stackID, version)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Import(ctx context.Context, stack Stack,
-	op UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
-
-	if be.ImportF != nil {
-		return be.ImportF(ctx, stack, op, imports)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
-
-	if be.RefreshF != nil {
-		return be.RefreshF(ctx, stack, op)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
-
-	if be.DestroyF != nil {
-		return be.DestroyF(ctx, stack, op)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation) result.Result {
-
-	if be.WatchF != nil {
-		return be.WatchF(ctx, stack, op)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) Query(ctx context.Context, op QueryOperation) result.Result {
-
-	if be.QueryF != nil {
-		return be.QueryF(ctx, op)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error) {
-	if be.GetHistoryF != nil {
-		return be.GetHistoryF(ctx, stackRef)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-
-	if be.GetLogsF != nil {
-		return be.GetLogsF(ctx, stack, cfg, query)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
-	stack Stack) (config.Map, error) {
-
-	if be.GetLatestConfigurationF != nil {
-		return be.GetLatestConfigurationF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetStackTags(ctx context.Context,
-	stack Stack) (map[apitype.StackTagName]string, error) {
-
-	if be.GetStackTagsF != nil {
-		return be.GetStackTagsF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) UpdateStackTags(ctx context.Context, stack Stack,
-	tags map[apitype.StackTagName]string) error {
-
-	if be.UpdateStackTagsF != nil {
-		return be.UpdateStackTagsF(ctx, stack, tags)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) ExportDeployment(ctx context.Context,
-	stack Stack) (*apitype.UntypedDeployment, error) {
-
-	if be.ExportDeploymentF != nil {
-		return be.ExportDeploymentF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) ImportDeployment(ctx context.Context, stack Stack,
+func (c *MockClient) ImportStackDeployment(ctx context.Context, stackID StackIdentifier,
 	deployment *apitype.UntypedDeployment) error {
 
-	if be.ImportDeploymentF != nil {
-		return be.ImportDeploymentF(ctx, stack, deployment)
+	if c.ImportStackDeploymentF != nil {
+		return c.ImportStackDeploymentF(ctx, stackID, deployment)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) Logout() error {
-	if be.LogoutF != nil {
-		return be.LogoutF()
+func (c *MockClient) StartUpdate(ctx context.Context, kind apitype.UpdateKind, stackID StackIdentifier,
+	proj *workspace.Project, cfg config.Map, metadata apitype.UpdateMetadata, opts engine.UpdateOptions,
+	tags map[string]string, dryRun bool) (Update, error) {
+
+	if c.StartUpdateF != nil {
+		return c.StartUpdateF(ctx, kind, stackID, proj, cfg, metadata, opts, tags, dryRun)
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) CurrentUser() (string, error) {
-	if be.CurrentUserF != nil {
-		return be.CurrentUserF()
+func (c *MockClient) CancelCurrentUpdate(ctx context.Context, stackID StackIdentifier) error {
+	if c.CancelCurrentUpdateF != nil {
+		return c.CancelCurrentUpdateF(ctx, stackID)
 	}
 	panic("not implemented")
 }
 
-//
-// Mock stack.
-//
-
-type MockStack struct {
-	RefF      func() StackReference
-	ConfigF   func() config.Map
-	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
-	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	ImportF   func(ctx context.Context, op UpdateOperation,
-		imports []deploy.Import) (engine.ResourceChanges, result.Result)
-	RefreshF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	DestroyF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	WatchF   func(ctx context.Context, op UpdateOperation) result.Result
-	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
-	RemoveF  func(ctx context.Context, force bool) (bool, error)
-	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
-	GetLogsF func(ctx context.Context, cfg StackConfiguration,
-		query operations.LogQuery) ([]operations.LogEntry, error)
-	ExportDeploymentF func(ctx context.Context) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF func(ctx context.Context, deployment *apitype.UntypedDeployment) error
-}
-
-var _ Stack = (*MockStack)(nil)
-
-func (ms *MockStack) Ref() StackReference {
-	if ms.RefF != nil {
-		return ms.RefF()
+func (c *MockClient) GetPolicyPack(ctx context.Context, location string) ([]byte, error) {
+	if c.GetPolicyPackF != nil {
+		return c.GetPolicyPackF(ctx, location)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Config() config.Map {
-	if ms.ConfigF != nil {
-		return ms.ConfigF()
+func (c *MockClient) GetPolicyPackSchema(ctx context.Context, orgName, policyPackName,
+	versionTag string) (*apitype.GetPolicyPackConfigSchemaResponse, error) {
+
+	if c.GetPolicyPackSchemaF != nil {
+		return c.GetPolicyPackSchemaF(ctx, orgName, policyPackName, versionTag)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
-	if ms.SnapshotF != nil {
-		return ms.SnapshotF(ctx)
+func (c *MockClient) PublishPolicyPack(ctx context.Context, orgName string, analyzerInfo plugin.AnalyzerInfo,
+	dirArchive io.Reader) (string, error) {
+
+	if c.PublishPolicyPackF != nil {
+		return c.PublishPolicyPackF(ctx, orgName, analyzerInfo, dirArchive)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Backend() Backend {
-	if ms.BackendF != nil {
-		return ms.BackendF()
+func (c *MockClient) DeletePolicyPack(ctx context.Context, orgName, policyPackName, versionTag string) error {
+	if c.DeletePolicyPackF != nil {
+		return c.DeletePolicyPackF(ctx, orgName, policyPackName, versionTag)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	if ms.PreviewF != nil {
-		return ms.PreviewF(ctx, op)
+func (c *MockClient) EnablePolicyPack(ctx context.Context, orgName, policyGroup, policyPackName, versionTag string,
+	policyPackConfig map[string]*json.RawMessage) error {
+
+	if c.EnablePolicyPackF != nil {
+		return c.EnablePolicyPackF(ctx, orgName, policyGroup, policyPackName, versionTag, policyPackConfig)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	if ms.UpdateF != nil {
-		return ms.UpdateF(ctx, op)
+func (c *MockClient) DisablePolicyPack(ctx context.Context, orgName, policyGroup, policyPackName,
+	versionTag string) error {
+
+	if c.DisablePolicyPackF != nil {
+		return c.DisablePolicyPackF(ctx, orgName, policyGroup, policyPackName, versionTag)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
-	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
-	if ms.ImportF != nil {
-		return ms.ImportF(ctx, op, imports)
+// Mock update.
+type MockUpdate struct {
+	ProgressURLF  func() string
+	PermalinkURLF func() string
+
+	RequiredPoliciesF func() []apitype.RequiredPolicy
+
+	RecordEventF     func(ctx context.Context, event apitype.EngineEvent) error
+	PatchCheckpointF func(ctx context.Context, deployment *apitype.DeploymentV3) error
+	CompleteF        func(ctx context.Context, status apitype.UpdateStatus) error
+}
+
+func (u *MockUpdate) ProgressURL() string {
+	if u.ProgressURLF != nil {
+		return u.ProgressURLF()
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	if ms.RefreshF != nil {
-		return ms.RefreshF(ctx, op)
+func (u *MockUpdate) PermalinkURL() string {
+	if u.PermalinkURLF != nil {
+		return u.PermalinkURL()
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
-	if ms.DestroyF != nil {
-		return ms.DestroyF(ctx, op)
+func (u *MockUpdate) RequiredPolicies() []apitype.RequiredPolicy {
+	if u.RequiredPoliciesF != nil {
+		return u.RequiredPoliciesF()
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation) result.Result {
-	if ms.WatchF != nil {
-		return ms.WatchF(ctx, op)
+func (u *MockUpdate) RecordEvent(ctx context.Context, event apitype.EngineEvent) error {
+	if u.RecordEventF != nil {
+		return u.RecordEventF(ctx, event)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Query(ctx context.Context, op UpdateOperation) result.Result {
-	if ms.QueryF != nil {
-		return ms.QueryF(ctx, op)
+func (u *MockUpdate) PatchCheckpoint(ctx context.Context, deployment *apitype.DeploymentV3) error {
+	if u.PatchCheckpointF != nil {
+		return u.PatchCheckpointF(ctx, deployment)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Remove(ctx context.Context, force bool) (bool, error) {
-	if ms.RemoveF != nil {
-		return ms.RemoveF(ctx, force)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) (StackReference, error) {
-	if ms.RenameF != nil {
-		return ms.RenameF(ctx, newName)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) GetLogs(ctx context.Context, cfg StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	if ms.GetLogsF != nil {
-		return ms.GetLogsF(ctx, cfg, query)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
-	if ms.ExportDeploymentF != nil {
-		return ms.ExportDeploymentF(ctx)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	if ms.ImportDeploymentF != nil {
-		return ms.ImportDeploymentF(ctx, deployment)
+func (u *MockUpdate) Complete(ctx context.Context, status apitype.UpdateStatus) error {
+	if u.CompleteF != nil {
+		return u.CompleteF(ctx, status)
 	}
 	panic("not implemented")
 }

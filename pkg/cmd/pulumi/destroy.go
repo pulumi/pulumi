@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -132,7 +132,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableProviderPreview: disableProviderPreview(),
 			}
 
-			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
+			_, res := s.Destroy(commandContext(), cli.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -145,7 +145,7 @@ func newDestroyCmd() *cobra.Command {
 			if res == nil && len(*targets) == 0 {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
-					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
+					"completely, run 'pulumi stack rm %s'.\n", s.FriendlyName())
 			} else if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
@@ -75,7 +76,7 @@ func newUpCmd() *cobra.Command {
 	var targetDependents bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
+	upWorkingDirectory := func(opts cli.UpdateOptions) result.Result {
 		s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
 		if err != nil {
 			return result.FromError(err)
@@ -134,7 +135,7 @@ func newUpCmd() *cobra.Command {
 			TargetDependents:       targetDependents,
 		}
 
-		changes, res := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), cli.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -156,7 +157,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
+	upTemplateNameOrURL := func(templateNameOrURL string, opts cli.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -205,7 +206,7 @@ func newUpCmd() *cobra.Command {
 		// If a stack was specified via --stack, see if it already exists.
 		var name string
 		var description string
-		var s backend.Stack
+		var s *cli.Stack
 		if stack != "" {
 			if s, name, description, err = getStack(stack, opts.Display); err != nil {
 				return result.FromError(err)
@@ -296,7 +297,7 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, res := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(commandContext(), cli.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -500,7 +501,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
-	s backend.Stack,
+	s *cli.Stack,
 	templateNameOrURL string,
 	template workspace.Template,
 	configArray []string,
@@ -509,7 +510,7 @@ func handleConfig(
 	opts display.Options) error {
 
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-	stackConfig, err := backend.GetLatestConfiguration(commandContext(), s)
+	stackConfig, err := s.Backend().GetLatestConfiguration(commandContext(), s)
 	if err != nil && err != backend.ErrNoPreviousDeployment {
 		return err
 	}

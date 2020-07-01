@@ -15,20 +15,19 @@
 package main
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 )
 
-func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
+func getStackEncrypter(s *cli.Stack) (config.Encrypter, error) {
 	sm, err := getStackSecretsManager(s)
 	if err != nil {
 		return nil, err
@@ -37,7 +36,7 @@ func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
 	return sm.Encrypter()
 }
 
-func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
+func getStackDecrypter(s *cli.Stack) (config.Decrypter, error) {
 	sm, err := getStackSecretsManager(s)
 	if err != nil {
 		return nil, err
@@ -46,31 +45,38 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 	return sm.Decrypter()
 }
 
-func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
+func getStackSecretsManager(s *cli.Stack) (secrets.Manager, error) {
 	ps, err := loadProjectStack(s)
 	if err != nil {
 		return nil, err
 	}
 
 	sm, err := func() (secrets.Manager, error) {
-		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
+		secretsProvider := ps.SecretsProvider
+		if ps.SecretsProvider == "default" || ps.SecretsProvider == "" {
+			secretsProvider = s.Backend().Client().DefaultSecretsManager()
 		}
 
-		if ps.EncryptionSalt != "" {
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
+		switch secretsProvider {
+		case passphrase.Type:
+			return newPassphraseSecretsManager(s.ID(), stackConfigFile,
 				false /* rotatePassphraseSecretsProvider */)
-		}
+		case service.Type:
+			// If there's already an encryption salt, use the passphrase secrets manager.
+			if ps.EncryptionSalt != "" {
+				return newPassphraseSecretsManager(s.ID(), stackConfigFile,
+					false /* rotatePassphraseSecretsProvider */)
+			}
 
-		switch s.(type) {
-		case filestate.Stack:
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
-		case httpstate.Stack:
-			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
+			// Ensure that this stack is bound to an API server.
+			client, ok := s.Backend().Client().(*pulumi.Client)
+			if !ok {
+				return nil, errors.Errorf("only the service backend supports service-managed secrets")
+			}
+			return newServiceSecretsManager(s.ID(), stackConfigFile, client.APIClient())
+		default:
+			return newCloudSecretsManager(s.ID(), stackConfigFile, ps.SecretsProvider)
 		}
-
-		return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
 	}()
 	if err != nil {
 		return nil, err

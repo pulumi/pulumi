@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package cli
 
 import (
 	"bytes"
@@ -35,19 +35,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 )
 
-// ApplierOptions is a bag of configuration settings for an Applier.
-type ApplierOptions struct {
+// applierOptions is a bag of configuration settings for an Applier.
+type applierOptions struct {
 	// DryRun indicates if the update should not change any resource state and instead just preview changes.
 	DryRun bool
 	// ShowLink indicates if a link to the update persisted result can be displayed.
 	ShowLink bool
 }
 
-// Applier applies the changes specified by this update operation against the target stack.
-type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
+// applier applies the changes specified by this update operation against the target stack.
+type applier func(ctx context.Context, kind apitype.UpdateKind, stack *Stack, op UpdateOperation,
+	opts applierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
 
-func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
+func actionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
 	contract.Assert(v.previewText != "")
 	contract.Assert(v.text != "")
@@ -79,8 +79,8 @@ const (
 	details response = "details"
 )
 
-func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+func previewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack *Stack,
+	op UpdateOperation, apply applier) (engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -107,7 +107,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// We perform the preview (DryRun), but don't display the cloud link since the
 	// thing the user cares about would be the link to the actual update if they
 	// confirm the prompt.
-	opts := ApplierOptions{
+	opts := applierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
@@ -131,7 +131,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
+func confirmBeforeUpdating(kind apitype.UpdateKind, stack *Stack,
 	events []engine.Event, opts UpdateOptions) result.Result {
 	for {
 		var response string
@@ -192,12 +192,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 	}
 }
 
-func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+func previewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack *Stack,
+	op UpdateOperation, apply applier) (engine.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		changes, res := previewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
@@ -205,7 +205,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 
 	// Perform the change (!DryRun) and show the cloud link to the result.
 	// We don't care about the events it issues, so just pass a nil channel along.
-	opts := ApplierOptions{
+	opts := applierOptions{
 		DryRun:   false,
 		ShowLink: true,
 	}

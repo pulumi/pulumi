@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package cli
 
 import (
 	"context"
@@ -32,9 +32,8 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {
-
-	opts := ApplierOptions{
+func Watch(ctx context.Context, b *Backend, stack *Stack, op UpdateOperation, apply applier) result.Result {
+	opts := applierOptions{
 		DryRun:   false,
 		ShowLink: false,
 	}
@@ -71,7 +70,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
+		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.id)
 
 	for range events {
 		display.PrintfWithWatchPrefix(time.Now(), "",
@@ -90,7 +89,6 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 			display.PrintfWithWatchPrefix(time.Now(), "",
 				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 		}
-
 	}
 
 	return nil

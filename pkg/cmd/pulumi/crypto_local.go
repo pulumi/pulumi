@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
@@ -57,12 +58,12 @@ func readPassphrase(prompt string) (phrase string, interactive bool, err error) 
 	return phrase, true, err
 }
 
-func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
+func newPassphraseSecretsManager(stackID backend.StackIdentifier, configFile string,
 	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+	contract.Assertf(stackID.Stack != "", "stackID.Stack %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(tokens.QName(stackID.Stack))
 		if err != nil {
 			return nil, err
 		}

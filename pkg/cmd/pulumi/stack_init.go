@@ -111,13 +111,12 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			stackRef, err := b.ParseStackReference(stackName)
+			stackID, err := b.ParseStackIdentifier(stackName)
 			if err != nil {
 				return err
 			}
 
-			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			newStack, err := createStack(b, stackID, true /*setCurrent*/, secretsProvider)
 			if err != nil {
 				return err
 			}

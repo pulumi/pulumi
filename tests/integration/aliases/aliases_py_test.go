@@ -10,15 +10,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 )
 
-var dirs = []string{
-	"rename",
-	"adopt_into_component",
-	"rename_component_and_child",
-	"retype_component",
-	"rename_component",
-}
-
 func TestPythonAliases(t *testing.T) {
+	var dirs = []string{
+		"rename",
+		"adopt_into_component",
+		"rename_component_and_child",
+		"retype_component",
+		"rename_component",
+	}
+
 	for _, dir := range dirs {
 		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {

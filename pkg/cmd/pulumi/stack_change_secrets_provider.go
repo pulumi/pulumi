@@ -18,7 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
@@ -94,7 +95,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			secretsProvider := args[0]
 			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
+			if err := createSecretsManager(b, currentStack.ID(), secretsProvider, rotatePassphraseProvider); err != nil {
 				return err
 			}
 
@@ -107,8 +108,9 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 	return cmd
 }
 
-func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, currentStack backend.Stack,
+func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, currentStack *cli.Stack,
 	currentConfig config.Map, decrypter config.Decrypter) error {
+
 	// The order of operations here should be to load the secrets manager current stack
 	// Get the newly created secrets manager for the stack
 	newSecretsManager, err := getStackSecretsManager(currentStack)
@@ -151,7 +153,10 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	}
 	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
 	if err != nil {
-		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
+		return checkDeploymentVersionError(err, currentStack.ID().Stack)
+	}
+	if err != nil {
+		return err
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager

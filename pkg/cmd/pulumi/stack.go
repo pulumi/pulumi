@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -62,29 +62,27 @@ func newStackCmd() *cobra.Command {
 			}
 
 			if showStackName {
-				fmt.Printf("%s\n", s.Ref().Name())
+				fmt.Printf("%s\n", s.ID().Stack)
 				return nil
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Ref())
+			fmt.Printf("Current stack is %s:\n", s.FriendlyName())
 
-			be := s.Backend()
-			cloudBe, isCloud := be.(httpstate.Backend)
-			if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
-				fmt.Printf("    Managed by %s\n", be.Name())
+			b := s.Backend()
+			pulumiClient, isPulumiClient := b.Client().(*pulumi.Client)
+			if !isPulumiClient || pulumiClient.URL() != pulumi.PulumiCloudURL {
+				fmt.Printf("    Managed by %s\n", pulumiClient.Name())
 			}
-			if isCloud {
-				if cs, ok := s.(httpstate.Stack); ok {
-					fmt.Printf("    Owner: %s\n", cs.OrgName())
-					// If there is an in-flight operation, provide info.
-					if currentOp := cs.CurrentOperation(); currentOp != nil {
-						fmt.Printf("    Update in progress:\n")
-						startTime = humanize.Time(time.Unix(currentOp.Started, 0))
-						fmt.Printf("	Started: %v\n", startTime)
-						fmt.Printf("	Requested By: %s\n", currentOp.Author)
-					}
-				}
+			if s.OrgName() != "" {
+				fmt.Printf("    Owner: %s\n", s.OrgName())
+			}
+			// If there is an in-flight operation, provide info.
+			if currentOp := s.CurrentOperation(); currentOp != nil {
+				fmt.Printf("    Update in progress:\n")
+				startTime = humanize.Time(time.Unix(currentOp.Started, 0))
+				fmt.Printf("	Started: %v\n", startTime)
+				fmt.Printf("	Requested By: %s\n", currentOp.Author)
 			}
 
 			if snap != nil {
@@ -143,11 +141,9 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if cs, ok := s.(httpstate.Stack); ok {
-				if consoleURL, err := cs.ConsoleURL(); err == nil {
-					fmt.Printf("\n")
-					fmt.Printf("More information at: %s\n", consoleURL)
-				}
+			if consoleURL, err := s.ConsoleURL(); err == nil {
+				fmt.Printf("\n")
+				fmt.Printf("More information at: %s\n", consoleURL)
 			}
 
 			fmt.Printf("\n")

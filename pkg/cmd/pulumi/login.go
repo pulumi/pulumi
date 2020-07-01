@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -123,13 +123,7 @@ func newLoginCmd() *cobra.Command {
 				}
 			}
 
-			var be backend.Backend
-			var err error
-			if filestate.IsFileStateBackendURL(cloudURL) {
-				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
-			} else {
-				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
-			}
+			be, err := loginToBackend(cloudURL, displayOptions)
 			if err != nil {
 				return errors.Wrapf(err, "problem logging in")
 			}
@@ -148,6 +142,18 @@ func newLoginCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
+}
+
+func loginToClient(url string, displayOptions display.Options) (backend.Client, error) {
+	if filestate.IsFileStateBackendURL(url) {
+		be, err := filestate.Login(cmdutil.Diag(), url)
+		if err != nil {
+			return nil, err
+		}
+		return filestate.NewClient(cmdutil.Diag(), be.URL())
+	}
+
+	return pulumi.Login(commandContext(), cmdutil.Diag(), url, displayOptions)
 }
 
 func validateCloudBackendType(typ string) error {

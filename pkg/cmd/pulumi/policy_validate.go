@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +51,7 @@ func newPolicyValidateCmd() *cobra.Command {
 			}
 
 			err = policyPack.Validate(commandContext(),
-				backend.PolicyPackOperation{
+				cli.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     cancellationScopes,
 					Config:     config,

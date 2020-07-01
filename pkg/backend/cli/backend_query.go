@@ -1,10 +1,11 @@
-package backend
+package cli
 
 import (
 	"context"
 
 	opentracing "github.com/opentracing/opentracing-go"
 
+	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
@@ -13,7 +14,7 @@ import (
 type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)
 
 // RunQuery executes a query program against the resource outputs of a locally hosted stack.
-func RunQuery(ctx context.Context, b Backend, op QueryOperation,
+func RunQuery(ctx context.Context, b *Backend, op QueryOperation,
 	callerEventsOpt chan<- engine.Event, newQuery MakeQuery) result.Result {
 	q, err := newQuery(ctx, op)
 	if err != nil {
@@ -46,7 +47,7 @@ func RunQuery(ctx context.Context, b Backend, op QueryOperation,
 	engineCtx := &engine.Context{
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
-		BackendClient: NewBackendClient(b),
+		BackendClient: backend.NewBackendClient(b.client),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()

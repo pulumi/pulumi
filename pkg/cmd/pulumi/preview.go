@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -142,7 +142,7 @@ func newPreviewCmd() *cobra.Command {
 				replaceURNs = append(replaceURNs, resource.URN(tr))
 			}
 
-			opts := backend.UpdateOptions{
+			opts := cli.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					LocalPolicyPacks:       engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:               parallel,
@@ -157,7 +157,7 @@ func newPreviewCmd() *cobra.Command {
 				Display: displayOpts,
 			}
 
-			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			changes, res := s.Preview(commandContext(), cli.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

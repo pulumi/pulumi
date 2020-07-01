@@ -19,7 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -47,7 +47,7 @@ func newQueryCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			interactive := cmdutil.Interactive()
 
-			opts := backend.UpdateOptions{}
+			opts := cli.UpdateOptions{}
 			opts.Display = display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: interactive,
@@ -66,7 +66,7 @@ func newQueryCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{}
 
-			res := b.Query(commandContext(), backend.QueryOperation{
+			res := b.Query(commandContext(), cli.QueryOperation{
 				Proj:   proj,
 				Root:   root,
 				Opts:   opts,

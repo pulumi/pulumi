@@ -42,7 +42,7 @@ This command displays data about previous updates for a stack.`,
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref())
+			updates, err := b.GetHistory(commandContext(), s.ID())
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
