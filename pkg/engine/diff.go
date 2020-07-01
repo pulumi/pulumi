@@ -60,7 +60,7 @@ func printStepHeader(b io.StringWriter, step StepEventMetadata) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
-	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN.Type()), step.Op, extra))
 }
 
 func GetIndentationString(indent int) string {

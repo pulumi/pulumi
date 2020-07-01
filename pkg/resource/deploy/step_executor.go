@@ -173,8 +173,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// or 2) promote RRE to be step-like so that it can be scheduled as if it were a step. Neither
 			// of these are particularly appealing right now.
 			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
-			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
-			se.plan.Diag().Errorf(diagMsg)
+			diagMsg := diag.RawMessage(reg.Res().URN, outErr.Error())
+			se.plan.diag().Errorf(diagMsg)
 			se.cancelDueToError()
 			return
 		}
@@ -213,13 +213,13 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
-			se.log(workerID, "step %v on %v canceled", step.Op(), step.URN())
+			se.log(workerID, "step %v on %v canceled", step.Op(), step.Res().URN)
 			return
 		default:
 		}
 
 		if err := se.executeStep(workerID, step); err != nil {
-			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
+			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.Res().URN)
 			se.cancelDueToError()
 			if err != errStepApplyFailed {
 				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
@@ -227,8 +227,8 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 				//
 				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
-				diagMsg := diag.RawMessage(step.URN(), err.Error())
-				se.plan.Diag().Errorf(diagMsg)
+				diagMsg := diag.RawMessage(step.Res().URN, err.Error())
+				se.plan.diag().Errorf(diagMsg)
 			}
 			return
 		}
@@ -262,23 +262,23 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		var err error
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
-			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
+			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.Res().URN, err)
 			return errors.Wrap(err, "pre-step event returned an error")
 		}
 	}
 
-	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
+	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.Res().URN, se.preview)
 	status, stepComplete, err := step.Apply(se.preview)
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if prior, has := se.pendingNews.Load(step.URN()); has {
+			if prior, has := se.pendingNews.Load(step.Res().URN); has {
 				return errors.Errorf(
-					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+					"resource '%s' registered twice (%s and %s)", step.Res().URN, prior.(Step).Op(), step.Op())
 			}
 
-			se.pendingNews.Store(step.URN(), step)
+			se.pendingNews.Store(step.Res().URN, step)
 		}
 	}
 
@@ -294,7 +294,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
-			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
+			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.Res().URN, postErr)
 			return errors.Wrap(postErr, "post-step event returned an error")
 		}
 	}
@@ -302,12 +302,12 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
 	// of the step in the snapshot, so we are ready to go.
 	if stepComplete != nil {
-		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
+		se.log(workerID, "step %v on %v retired", step.Op(), step.Res().URN)
 		stepComplete()
 	}
 
 	if err != nil {
-		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
+		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.Res().URN, err)
 		return errStepApplyFailed
 	}
 
