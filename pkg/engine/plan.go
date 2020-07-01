@@ -266,7 +266,7 @@ func newPlanActions(opts planOptions) *planActions {
 
 func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	acts.MapLock.Lock()
-	acts.Seen[step.URN()] = step
+	acts.Seen[step.Res().URN] = step
 	acts.MapLock.Unlock()
 
 	// Skip reporting if necessary.
@@ -292,7 +292,7 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 		// global message.
 		reportedURN := resource.URN("")
 		if reportStep {
-			reportedURN = step.URN()
+			reportedURN = step.Res().URN
 		}
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
@@ -354,10 +354,10 @@ func (acts *planActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDia
 }
 
 func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
-	_, has := seen[step.URN()]
-	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
+	_, has := seen[step.Res().URN]
+	contract.Assertf(has, "URN '%v' had not been marked as seen", step.Res().URN)
 }
 
 func isDefaultProviderStep(step deploy.Step) bool {
-	return providers.IsDefaultProvider(step.URN())
+	return providers.IsDefaultProvider(step.Res().URN)
 }

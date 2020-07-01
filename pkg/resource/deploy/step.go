@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
@@ -45,8 +44,6 @@ type Step interface {
 	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
 	Op() StepOp           // the operation performed by this step.
-	URN() resource.URN    // the resource URN (for before and after).
-	Type() tokens.Type    // the type affected by this step.
 	Provider() string     // the provider reference for this step.
 	Old() *resource.State // the state of the resource before performing this step.
 	New() *resource.State // the state of the resource after performing this step.
@@ -112,9 +109,7 @@ func NewSkippedCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.S
 
 func (s *SameStep) Op() StepOp           { return OpSame }
 func (s *SameStep) Plan() *Plan          { return s.plan }
-func (s *SameStep) Type() tokens.Type    { return s.new.Type }
 func (s *SameStep) Provider() string     { return s.new.Provider }
-func (s *SameStep) URN() resource.URN    { return s.new.URN }
 func (s *SameStep) Old() *resource.State { return s.old }
 func (s *SameStep) New() *resource.State { return s.new }
 func (s *SameStep) Res() *resource.State { return s.new }
@@ -196,9 +191,7 @@ func (s *CreateStep) Op() StepOp {
 	return OpCreate
 }
 func (s *CreateStep) Plan() *Plan                                  { return s.plan }
-func (s *CreateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *CreateStep) Provider() string                             { return s.new.Provider }
-func (s *CreateStep) URN() resource.URN                            { return s.new.URN }
 func (s *CreateStep) Old() *resource.State                         { return s.old }
 func (s *CreateStep) New() *resource.State                         { return s.new }
 func (s *CreateStep) Res() *resource.State                         { return s.new }
@@ -218,7 +211,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create)
+			id, outs, rst, err := prov.Create(s.new.URN, s.new.Inputs, s.new.CustomTimeouts.Create)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
 					return rst, nil, err
@@ -316,9 +309,7 @@ func (s *DeleteStep) Op() StepOp {
 	return OpDelete
 }
 func (s *DeleteStep) Plan() *Plan          { return s.plan }
-func (s *DeleteStep) Type() tokens.Type    { return s.old.Type }
 func (s *DeleteStep) Provider() string     { return s.old.Provider }
-func (s *DeleteStep) URN() resource.URN    { return s.old.URN }
 func (s *DeleteStep) Old() *resource.State { return s.old }
 func (s *DeleteStep) New() *resource.State { return nil }
 func (s *DeleteStep) Res() *resource.State { return s.old }
@@ -340,7 +331,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+			if rst, err := prov.Delete(s.old.URN, s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -367,9 +358,7 @@ func (s *RemovePendingReplaceStep) Op() StepOp {
 	return OpRemovePendingReplace
 }
 func (s *RemovePendingReplaceStep) Plan() *Plan          { return s.plan }
-func (s *RemovePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
 func (s *RemovePendingReplaceStep) Provider() string     { return s.old.Provider }
-func (s *RemovePendingReplaceStep) URN() resource.URN    { return s.old.URN }
 func (s *RemovePendingReplaceStep) Old() *resource.State { return s.old }
 func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
@@ -422,9 +411,7 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 
 func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
 func (s *UpdateStep) Plan() *Plan                                  { return s.plan }
-func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
-func (s *UpdateStep) URN() resource.URN                            { return s.new.URN }
 func (s *UpdateStep) Old() *resource.State                         { return s.old }
 func (s *UpdateStep) New() *resource.State                         { return s.new }
 func (s *UpdateStep) Res() *resource.State                         { return s.new }
@@ -447,7 +434,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			}
 
 			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
+			outs, rst, upderr := prov.Update(s.old.URN, s.old.ID, s.old.Outputs, s.new.Inputs,
 				s.new.CustomTimeouts.Update, s.ignoreChanges)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
@@ -515,9 +502,7 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 
 func (s *ReplaceStep) Op() StepOp                                   { return OpReplace }
 func (s *ReplaceStep) Plan() *Plan                                  { return s.plan }
-func (s *ReplaceStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ReplaceStep) Provider() string                             { return s.new.Provider }
-func (s *ReplaceStep) URN() resource.URN                            { return s.new.URN }
 func (s *ReplaceStep) Old() *resource.State                         { return s.old }
 func (s *ReplaceStep) New() *resource.State                         { return s.new }
 func (s *ReplaceStep) Res() *resource.State                         { return s.new }
@@ -596,9 +581,7 @@ func (s *ReadStep) Op() StepOp {
 }
 
 func (s *ReadStep) Plan() *Plan          { return s.plan }
-func (s *ReadStep) Type() tokens.Type    { return s.new.Type }
 func (s *ReadStep) Provider() string     { return s.new.Provider }
-func (s *ReadStep) URN() resource.URN    { return s.new.URN }
 func (s *ReadStep) Old() *resource.State { return s.old }
 func (s *ReadStep) New() *resource.State { return s.new }
 func (s *ReadStep) Res() *resource.State { return s.new }
@@ -683,9 +666,7 @@ func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
 
 func (s *RefreshStep) Op() StepOp           { return OpRefresh }
 func (s *RefreshStep) Plan() *Plan          { return s.plan }
-func (s *RefreshStep) Type() tokens.Type    { return s.old.Type }
 func (s *RefreshStep) Provider() string     { return s.old.Provider }
-func (s *RefreshStep) URN() resource.URN    { return s.old.URN }
 func (s *RefreshStep) Old() *resource.State { return s.old }
 func (s *RefreshStep) New() *resource.State { return s.new }
 func (s *RefreshStep) Res() *resource.State { return s.old }
@@ -738,7 +719,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			//    `pulumi up` will surface them to the user.
 			err = nil
 			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
-			s.Plan().Diag().Warningf(diag.RawMessage(s.URN(), msg))
+			s.plan.diag().Warningf(diag.RawMessage(s.old.URN, msg))
 		}
 	}
 	outputs := refreshed.Outputs
@@ -826,9 +807,7 @@ func (s *ImportStep) Op() StepOp {
 }
 
 func (s *ImportStep) Plan() *Plan                                  { return s.plan }
-func (s *ImportStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ImportStep) Provider() string                             { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN                            { return s.new.URN }
 func (s *ImportStep) Old() *resource.State                         { return s.old }
 func (s *ImportStep) New() *resource.State                         { return s.new }
 func (s *ImportStep) Res() *resource.State                         { return s.new }
@@ -1051,16 +1030,16 @@ func (op StepOp) Suffix() string {
 
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
-	if providers.IsProviderType(s.Type()) {
+	if providers.IsProviderType(s.Res().URN.Type()) {
 		return s.Plan().providers, nil
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
-		return nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		return nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.Res().URN, err)
 	}
 	provider, ok := s.Plan().GetProvider(ref)
 	if !ok {
-		return nil, errors.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
+		return nil, errors.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.Res().URN)
 	}
 	return provider, nil
 }

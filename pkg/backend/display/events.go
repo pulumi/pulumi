@@ -175,8 +175,8 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 
 	return apitype.StepEventMetadata{
 		Op:   string(md.Op),
-		URN:  string(md.URN),
-		Type: string(md.Type),
+		URN:  string(md.Res.URN),
+		Type: string(md.Res.URN.Type()),
 
 		Old: convertStepEventStateMetadata(md.Old),
 		New: convertStepEventStateMetadata(md.New),

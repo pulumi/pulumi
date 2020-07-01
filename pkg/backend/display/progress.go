@@ -185,13 +185,13 @@ func simplifyTypeName(typ tokens.Type) string {
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
 	if event.Type == engine.ResourcePreEvent {
 		payload := event.Payload.(engine.ResourcePreEventPayload)
-		return payload.Metadata.URN, &payload.Metadata
+		return payload.Metadata.Res.URN, &payload.Metadata
 	} else if event.Type == engine.ResourceOutputsEvent {
 		payload := event.Payload.(engine.ResourceOutputsEventPayload)
-		return payload.Metadata.URN, &payload.Metadata
+		return payload.Metadata.Res.URN, &payload.Metadata
 	} else if event.Type == engine.ResourceOperationFailed {
 		payload := event.Payload.(engine.ResourceOperationFailedPayload)
-		return payload.Metadata.URN, &payload.Metadata
+		return payload.Metadata.Res.URN, &payload.Metadata
 	} else if event.Type == engine.DiagEvent {
 		return event.Payload.(engine.DiagEventPayload).URN, nil
 	} else if event.Type == engine.PolicyViolationEvent {
@@ -922,7 +922,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	}
 
 	// First time we're hearing about this resource. Create an initial nearly-empty status for it.
-	step := engine.StepEventMetadata{URN: urn, Op: deploy.OpSame}
+	step := engine.StepEventMetadata{Res: &engine.StepEventStateMetadata{URN: urn}, Op: deploy.OpSame}
 	if metadata != nil {
 		step = *metadata
 	}
@@ -1054,7 +1054,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
-		if step.URN == display.stackUrn {
+		if step.Res.URN == display.stackUrn {
 			display.seenStackOutputs = true
 		}
 
