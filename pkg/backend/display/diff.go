@@ -332,7 +332,7 @@ func renderDiffResourcePreEvent(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
 
-	seen[payload.Metadata.URN] = payload.Metadata
+	seen[payload.Metadata.Res.URN] = payload.Metadata
 	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
 		return ""
 	}
@@ -360,7 +360,7 @@ func renderDiffResourceOutputsEvent(
 		indent := engine.GetIndent(payload.Metadata, seen)
 
 		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+		if m, has := seen[payload.Metadata.Res.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true
 			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
