@@ -918,7 +918,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
 	relRoot := path.Dir(filepath.ToSlash(rel))
-	if nested {
+	if nested && len(mod.types) > 0 {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
 	}
