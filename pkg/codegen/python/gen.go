@@ -427,7 +427,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		baseType = "pulumi.ProviderResource"
 	}
 
-	if !res.IsProvider && res.DeprecationMessage != "" {
+	if !res.IsProvider && res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
@@ -463,7 +463,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 	}
 
-	if res.DeprecationMessage != "" {
+	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
@@ -479,7 +479,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// compatibility, we still emit them, but we don't emit documentation for them.
 	fmt.Fprintf(w, ", __props__=None, __name__=None, __opts__=None):\n")
 	mod.genInitDocstring(w, res)
-	if res.DeprecationMessage != "" {
+	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, res.DeprecationMessage)
 	}
 	fmt.Fprintf(w, "        if __name__ is not None:\n")
