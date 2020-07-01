@@ -28,7 +28,6 @@ import (
 )
 
 // TODO:
-// - Secret properties
 // - Providerless packages
 // - Adjustments to accommodate docs + cross-lang packages (e.g references to resources from POD types)
 
@@ -230,6 +229,8 @@ type Property struct {
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the property.
 	Language map[string]interface{}
+	// Secret is true if the property is secret (default false).
+	Secret bool
 }
 
 // Alias describes an alias for a Pulumi resource.
@@ -581,6 +582,8 @@ type PropertySpec struct {
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the property.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
+	// Secret specifies if the property is secret (default false).
+	Secret bool `json:"secret,omitempty"`
 }
 
 // ObjectTypeSpec is the serializable form of an object type.
@@ -1046,6 +1049,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 			DefaultValue:       dv,
 			DeprecationMessage: spec.DeprecationMessage,
 			Language:           language,
+			Secret:             spec.Secret,
 		}
 
 		propertyMap[name], result = p, append(result, p)
