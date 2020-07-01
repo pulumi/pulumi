@@ -878,9 +878,9 @@ func (mod *modContext) configGetter(v *schema.Property) (string, string) {
 
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
 	imports := map[string]codegen.StringSet{}
-	mod.getImports(variables, imports)
+	referencesNestedTypes := mod.getImports(variables, imports)
 
-	mod.genHeader(w, mod.sdkImports(true, true), imports)
+	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), imports)
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "let __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
@@ -918,7 +918,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
 	relRoot := path.Dir(filepath.ToSlash(rel))
-	if nested && len(mod.types) > 0 {
+	if nested {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
 	}
