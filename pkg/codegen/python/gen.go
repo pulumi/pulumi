@@ -262,10 +262,6 @@ func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false, false)
 
-	if mod.submodulesExist() {
-		fmt.Fprintf(w, "import importlib\n")
-	}
-
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
 		sort.Slice(exports, func(i, j int) bool {
@@ -291,7 +287,7 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
-		fmt.Fprintf(w, "_submodules = [\n")
+		fmt.Fprintf(w, "from . import (\n")
 		for i, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
@@ -304,12 +300,9 @@ func (mod *modContext) genInit(exports []string) string {
 			if i > 0 {
 				fmt.Fprintf(w, ",\n")
 			}
-			fmt.Fprintf(w, "    '%s'", PyName(child))
+			fmt.Fprintf(w, "    %s", PyName(child))
 		}
-		fmt.Fprintf(w, ",\n]\n")
-		fmt.Fprintf(w, "for pkg in _submodules:\n")
-		fmt.Fprintf(w, "    if pkg != 'config':\n")
-		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
+		fmt.Fprintf(w, ",\n)\n")
 	}
 
 	return w.String()
