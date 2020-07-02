@@ -303,6 +303,8 @@ type Package struct {
 	Repository string
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string
+	// ProviderURL is the URL to use to acquire the provider binary, if any.
+	ProviderURL string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -681,6 +683,8 @@ type PackageSpec struct {
 	Repository string `json:"repository,omitempty"`
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string `json:"logoUrl,omitempty"`
+	// ProviderURL is the URL to use to acquire the provider binary, if any.
+	ProviderURL string `json:"providerURL,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty"`
@@ -783,6 +787,7 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		License:      spec.License,
 		Attribution:  spec.Attribution,
 		Repository:   spec.Repository,
+		ProviderURL:  spec.ProviderURL,
 		Config:       config,
 		Types:        typeList,
 		Provider:     provider,
