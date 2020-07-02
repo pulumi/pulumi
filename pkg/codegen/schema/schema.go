@@ -684,7 +684,7 @@ type PackageSpec struct {
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string `json:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
-	PluginDownloadURLURL string `json:"pluginDownloadURL,omitempty"`
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty"`
