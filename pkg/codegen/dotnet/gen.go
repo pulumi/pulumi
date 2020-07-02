@@ -641,6 +641,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
+	var secretProps []string
 	// Emit all output properties.
 	for _, prop := range r.Properties {
 		// Write the property attribute
@@ -655,6 +656,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			if !prop.IsRequired {
 				propertyType += "?"
 			}
+		}
+
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
 		}
 
 		printComment(w, prop.Comment, "        ")
@@ -758,17 +763,24 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "            var defaultOptions = new %s\n", optionsType)
 	fmt.Fprintf(w, "            {\n")
-	fmt.Fprintf(w, "                Version = Utilities.Version,")
+	fmt.Fprintf(w, "                Version = Utilities.Version,\n")
 
-	switch len(r.Aliases) {
-	case 0:
-		fmt.Fprintf(w, "\n")
-	default:
-		fmt.Fprintf(w, "\n                Aliases =\n")
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "                Aliases =\n")
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
 			genAlias(w, alias)
+			fmt.Fprintf(w, ",\n")
+		}
+		fmt.Fprintf(w, "                },\n")
+	}
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, "                AdditionalSecretOutputs =\n")
+		fmt.Fprintf(w, "                {\n")
+		for _, sp := range secretProps {
+			fmt.Fprintf(w, "                    ")
+			fmt.Fprintf(w, "%q", sp)
 			fmt.Fprintf(w, ",\n")
 		}
 		fmt.Fprintf(w, "                },\n")

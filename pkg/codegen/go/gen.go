@@ -667,9 +667,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	} else {
 		fmt.Fprintf(w, "\tpulumi.CustomResourceState\n\n")
 	}
+	var secretProps []string
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type, !p.IsRequired), p.Name)
+
+		if p.Secret {
+			secretProps = append(secretProps, p.Name)
+		}
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -741,6 +746,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
+	}
+	// Set any defined additionalSecretOutputs.
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
+		for _, sp := range secretProps {
+			fmt.Fprintf(w, "\t\t\t%q,\n", sp)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
 	}
 
 	// Finally make the call to registration.
