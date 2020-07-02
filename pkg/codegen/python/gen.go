@@ -128,7 +128,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, needsJSON bool) {
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
 		fmt.Fprintf(w, "from typing import Union\n")
-		fmt.Fprintf(w, "from %s import utilities, tables\n", relImport)
+		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
 		fmt.Fprintf(w, "\n")
 	}
 }
@@ -184,7 +184,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, false, false)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(filepath.Join(dir, "utilities.py"), buffer.Bytes())
+		fs.add(filepath.Join(dir, "_utilities.py"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["python"].(PackageInfo).Readme
@@ -493,7 +493,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
-	fmt.Fprintf(w, "            opts.version = utilities.get_version()\n")
+	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
 	fmt.Fprintf(w, "        if opts.id is None:\n")
 	fmt.Fprintf(w, "            if __props__ is not None:\n")
 	fmt.Fprintf(w, "                raise TypeError(")
@@ -637,10 +637,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// camel case when interacting with tfbridge.
 	fmt.Fprintf(w,
 		`    def translate_output_property(self, prop):
-        return tables._CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
     def translate_input_property(self, prop):
-        return tables._SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
+        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 `)
 
 	return w.String(), nil
@@ -734,7 +734,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "    if opts is None:\n")
 	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
 	fmt.Fprintf(w, "    if opts.version is None:\n")
-	fmt.Fprintf(w, "        opts.version = utilities.get_version()\n")
+	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
 
 	// Now simply invoke the runtime function with the arguments.
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts).value\n", fun.Token)
@@ -933,7 +933,7 @@ func (mod *modContext) genPropertyConversionTables() string {
 	}
 	sort.Strings(allKeys)
 
-	fmt.Fprintf(w, "_SNAKE_TO_CAMEL_CASE_TABLE = {\n")
+	fmt.Fprintf(w, "SNAKE_TO_CAMEL_CASE_TABLE = {\n")
 	for _, key := range allKeys {
 		value := mod.snakeCaseToCamelCase[key]
 		if key != value {
@@ -941,7 +941,7 @@ func (mod *modContext) genPropertyConversionTables() string {
 		}
 	}
 	fmt.Fprintf(w, "}\n")
-	fmt.Fprintf(w, "\n_CAMEL_TO_SNAKE_CASE_TABLE = {\n")
+	fmt.Fprintf(w, "\nCAMEL_TO_SNAKE_CASE_TABLE = {\n")
 	for _, value := range allKeys {
 		key := mod.snakeCaseToCamelCase[value]
 		if key != value {
@@ -1297,14 +1297,14 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	}
 
 	if len(dv.Environment) > 0 {
-		envFunc := "utilities.get_env"
+		envFunc := "_utilities.get_env"
 		switch t {
 		case schema.BoolType:
-			envFunc = "utilities.get_env_bool"
+			envFunc = "_utilities.get_env_bool"
 		case schema.IntType:
-			envFunc = "utilities.get_env_int"
+			envFunc = "_utilities.get_env_int"
 		case schema.NumberType:
-			envFunc = "utilities.get_env_float"
+			envFunc = "_utilities.get_env_float"
 		}
 
 		envVars := fmt.Sprintf("'%s'", dv.Environment[0])
@@ -1475,7 +1475,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Emit casing tables.
-	files.add(filepath.Join(pyPack(pkg.Name), "tables.py"), []byte(modules[""].genPropertyConversionTables()))
+	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
 	// Finally emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, info.Requires)
@@ -1537,7 +1537,7 @@ def get_env_float(*args):
 
 def get_version():
     # __name__ is set to the fully-qualified name of the current module, In our case, it will be
-    # <some module>.utilities. <some module> is the module we want to query the version for.
+    # <some module>._utilities. <some module> is the module we want to query the version for.
     root_package, *rest = __name__.split('.')
 
     # pkg_resources uses setuptools to inspect the set of installed packages. We use it here to ask
