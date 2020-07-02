@@ -774,10 +774,10 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	fmt.Fprintf(w, "    def run(self):\n")
 	fmt.Fprintf(w, "        install.run(self)\n")
 	fmt.Fprintf(w, "        try:\n")
-	if pkg.ProviderURL == "" {
+	if pkg.PluginDownloadURL == "" {
 		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}'])\n", pkg.Name)
 	} else {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}', '--server', '%s'])\n", pkg.Name, pkg.ProviderURL)
+		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}', '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
 	}
 	fmt.Fprintf(w, "        except OSError as error:\n")
 	fmt.Fprintf(w, "            if error.errno == errno.ENOENT:\n")

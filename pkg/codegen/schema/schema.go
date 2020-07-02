@@ -303,8 +303,8 @@ type Package struct {
 	Repository string
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string
-	// ProviderURL is the URL to use to acquire the provider binary, if any.
-	ProviderURL string
+	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
+	PluginDownloadURL string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -683,8 +683,8 @@ type PackageSpec struct {
 	Repository string `json:"repository,omitempty"`
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string `json:"logoUrl,omitempty"`
-	// ProviderURL is the URL to use to acquire the provider binary, if any.
-	ProviderURL string `json:"providerURL,omitempty"`
+	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
+	PluginDownloadURLURL string `json:"pluginDownloadURL,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty"`
@@ -778,22 +778,22 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	}
 
 	pkg := &Package{
-		moduleFormat: moduleFormatRegexp,
-		Name:         spec.Name,
-		Version:      version,
-		Description:  spec.Description,
-		Keywords:     spec.Keywords,
-		Homepage:     spec.Homepage,
-		License:      spec.License,
-		Attribution:  spec.Attribution,
-		Repository:   spec.Repository,
-		ProviderURL:  spec.ProviderURL,
-		Config:       config,
-		Types:        typeList,
-		Provider:     provider,
-		Resources:    resources,
-		Functions:    functions,
-		Language:     language,
+		moduleFormat:      moduleFormatRegexp,
+		Name:              spec.Name,
+		Version:           version,
+		Description:       spec.Description,
+		Keywords:          spec.Keywords,
+		Homepage:          spec.Homepage,
+		License:           spec.License,
+		Attribution:       spec.Attribution,
+		Repository:        spec.Repository,
+		PluginDownloadURL: spec.PluginDownloadURL,
+		Config:            config,
+		Types:             typeList,
+		Provider:          provider,
+		Resources:         resources,
+		Functions:         functions,
+		Language:          language,
 	}
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, err

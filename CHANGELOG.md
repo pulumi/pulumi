@@ -3,7 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Add providerURL field to package definition
+- Add pluginDownloadURL field to package definition
   [#4947](https://github.com/pulumi/pulumi/pull/4947)
 
 - Go program gen: Improved handling for pulumi.Map types

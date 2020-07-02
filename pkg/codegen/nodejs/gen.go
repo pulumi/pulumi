@@ -1221,8 +1221,8 @@ type npmPackage struct {
 }
 
 type npmPulumiManifest struct {
-	Resource    bool   `json:"resource,omitempty"`
-	ProviderURL string `json:"providerURL,omitempty"`
+	Resource          bool   `json:"resource,omitempty"`
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -1254,8 +1254,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
-			Resource:    true,
-			ProviderURL: pkg.ProviderURL,
+			Resource:          true,
+			PluginDownloadURL: pkg.PluginDownloadURL,
 		},
 	}
 
