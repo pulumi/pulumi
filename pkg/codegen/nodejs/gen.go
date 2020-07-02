@@ -563,6 +563,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 	}
+	var secretProps []string
 	for _, prop := range r.Properties {
 		prefix := "            "
 		if r.StateInputs == nil {
@@ -570,6 +571,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
+		}
+
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
 		}
 	}
 	if r.StateInputs != nil {
@@ -596,6 +601,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		fmt.Fprintf(w, "] };\n")
 		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, aliasOpts) : aliasOpts;\n")
+	}
+
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, "        const secretOpts = { additionalSecretOutputs: [")
+		for i, sp := range secretProps {
+			if i > 0 {
+				fmt.Fprintf(w, ", ")
+			}
+			fmt.Fprintf(w, "%q", sp)
+		}
+		fmt.Fprintf(w, "] };\n")
+		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
 	}
 
 	fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)

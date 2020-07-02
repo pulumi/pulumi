@@ -555,11 +555,16 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		ins.add(prop.Name)
 	}
 
+	var secretProps []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins.has(prop.Name) {
 			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
+		}
+
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
 		}
 	}
 
@@ -575,6 +580,20 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		fmt.Fprintf(w, "])\n")
 		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, alias_opts)\n")
+	}
+
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=[`)
+
+		for i, sp := range secretProps {
+			if i > 0 {
+				fmt.Fprintf(w, ", ")
+			}
+			fmt.Fprintf(w, "%q", sp)
+		}
+
+		fmt.Fprintf(w, "])\n")
+		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
