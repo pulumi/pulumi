@@ -33,15 +33,17 @@ func isKubernetesPackage(pkg *schema.Package) bool {
 
 func (mod *modContext) isKubernetesOverlayModule() bool {
 	// The CustomResource overlay resource is directly under the apiextensions module
-	// and not under a version, so we include that. The resources under helm and yaml are
-	// always under a version.
-	return mod.mod == "apiextensions" ||
+	// and not under a version, so we include that. The Directory overlay resource is directly under the
+	// kustomize module. The resources under helm and yaml are always under a version.
+	return mod.mod == "apiextensions" || mod.mod == "kustomize" ||
 		strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
 }
 
 func (mod *modContext) isComponentResource() bool {
-	// TODO: Support this more generally. For now, only the Helm and YAML overlays use ComponentResources.
-	return strings.HasPrefix(mod.mod, "helm") || strings.HasPrefix(mod.mod, "yaml")
+	// TODO: Support this more generally. For now, only the Helm, Kustomize, and YAML overlays use ComponentResources.
+	return strings.HasPrefix(mod.mod, "helm") ||
+		strings.HasPrefix(mod.mod, "kustomize") ||
+		strings.HasPrefix(mod.mod, "yaml")
 }
 
 // getKubernetesOverlayPythonFormalParams returns the formal params to render
@@ -57,6 +59,24 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 			},
 			{
 				Name:         "opts",
+				DefaultValue: "=None",
+			},
+		}
+	case "kustomize":
+		params = []formalParam{
+			{
+				Name: "directory",
+			},
+			{
+				Name:         "opts",
+				DefaultValue: "=None",
+			},
+			{
+				Name:         "transformations",
+				DefaultValue: "=None",
+			},
+			{
+				Name:         "resource_prefix",
 				DefaultValue: "=None",
 			},
 		}
