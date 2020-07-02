@@ -288,7 +288,7 @@ func (mod *modContext) genInit(exports []string) string {
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
 		fmt.Fprintf(w, "from . import (\n")
-		for i, mod := range mod.children {
+		for _, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
 				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
@@ -297,12 +297,11 @@ func (mod *modContext) genInit(exports []string) string {
 					child = child[match[2]:match[3]]
 				}
 			}
-			if i > 0 {
-				fmt.Fprintf(w, ",\n")
+			if child != "config" {
+				fmt.Fprintf(w, "    %s,\n", PyName(child))
 			}
-			fmt.Fprintf(w, "    %s", PyName(child))
 		}
-		fmt.Fprintf(w, ",\n)\n")
+		fmt.Fprintf(w, ")\n")
 	}
 
 	return w.String()
