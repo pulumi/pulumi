@@ -15,6 +15,9 @@ CHANGELOG
 - Better performance for stacks with many resources using the .NET SDK
   [#5015](https://github.com/pulumi/pulumi/pull/5015)
 
+- Output PDB files and enable SourceLink integration for .NET assemblies
+  [#4967](https://github.com/pulumi/pulumi/pull/4967)
+
 ## 2.6.1 (2020-07-09)
 
 - Fix a panic in the display during CLI operations
