@@ -82,6 +82,8 @@ if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
     # Check if GOOGLE_CREDENTIALS is base64 encoded 
     if [[ $GOOGLE_CREDENTIALS =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
         echo "$GOOGLE_CREDENTIALS"|base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+        # unset for other gcloud commands using this variable.
+        unset GOOGLE_CREDENTIALS
     else
         echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
     fi
