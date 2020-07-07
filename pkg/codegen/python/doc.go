@@ -54,7 +54,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 	case pkg.Name != "" && modName == "":
 		path = fmt.Sprintf("pulumi_%s", pkg.Name)
 	}
-	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, typeName)
+	return fmt.Sprintf("/docs/reference/pkg/python/%[1]s/#%[1]s.%[2]s", path, typeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
