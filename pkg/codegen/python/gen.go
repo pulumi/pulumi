@@ -347,7 +347,8 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	baseName := pyClassName(tokenToName(obj.Token))
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprintf(w, "\nclass %s:\n", baseName)
+	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
 	// Now generate an initializer with properties for all inputs.
@@ -378,7 +379,8 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	awaitableName := "Awaitable" + baseName
 
 	// Produce an awaitable subclass.
-	fmt.Fprintf(w, "\n\nclass %s(%s):\n", awaitableName, baseName)
+	fmt.Fprint(w, "\n\n")
+	fmt.Fprintf(w, "class %s(%s):\n", awaitableName, baseName)
 
 	// Emit __await__ and __iter__ in order to make this type awaitable.
 	//
@@ -438,7 +440,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprintf(w, "\nclass %s(%s):\n", name, baseType)
+	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	for _, prop := range res.Properties {
 		name := PyName(prop.Name)
 		ty := pyType(prop.Type)
@@ -693,9 +696,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// Write out the function signature.
-	fmt.Fprintf(w, "\ndef %s(", name)
+	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "def %s(", name)
 	for _, arg := range args {
-		fmt.Fprintf(w, "%s=None,", PyName(arg.Name))
+		fmt.Fprintf(w, "%s=None, ", PyName(arg.Name))
 	}
 	fmt.Fprintf(w, "opts=None")
 	fmt.Fprintf(w, "):\n")
@@ -724,7 +728,6 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// Copy the function arguments into a dictionary.
 	fmt.Fprintf(w, "    __args__ = dict()\n")
-	fmt.Fprintf(w, "\n")
 	for _, arg := range args {
 		// TODO: args validation.
 		fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
