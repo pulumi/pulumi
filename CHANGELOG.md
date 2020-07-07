@@ -9,6 +9,9 @@ CHANGELOG
 - Go SDK: Input type interfaces should declare pointer type impls where appropriate
   [#4911](https://github.com/pulumi/pulumi/pull/4911)
 
+- Fixes issue where base64-encoded GOOGLE_CREDENTIALS causes problems with other commands
+  [#4972](https://github.com/pulumi/pulumi/pull/4972)
+
 ## 2.5.0 (2020-06-25)
 
 - Go program gen: prompt array conversion, unused range vars, id handling
