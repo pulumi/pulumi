@@ -1,0 +1,5 @@
+config:
+  testproj:bar: abc
+  testproj:buzz:
+    secure: AAABAFsbAkkUS48YqOOVLD3+LZgzaH1SvgwVe5uR6iow4O4=
+  testproj:foo: abc
