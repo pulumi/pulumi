@@ -1556,6 +1556,7 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpenBrace(len(x.Items)))
 
 	// Print the items.
+	isMultiLine, trailingNewline := false, false
 	p.indented(func() {
 		items := x.Tokens.GetItems(len(x.Items))
 		for i, item := range x.Items {
@@ -1564,13 +1565,26 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 				tokens = items[i]
 			}
 
-			if !item.Key.HasLeadingTrivia() {
+			if item.Key.HasLeadingTrivia() {
+				if _, i := item.Key.GetLeadingTrivia().Index("\n"); i != -1 {
+					isMultiLine = true
+				}
+			} else if len(items) > 1 {
+				isMultiLine = true
 				p.fprintf(w, "\n%s", p.indent)
 			}
 			p.fprintf(w, "%v% v% v", item.Key, tokens.Equals, item.Value)
 
 			if tokens.Comma != nil {
 				p.fprintf(w, "%v", tokens.Comma)
+			}
+
+			if isMultiLine && i == len(items)-1 {
+				trailingTrivia := item.Value.GetTrailingTrivia()
+				if tokens.Comma != nil {
+					trailingTrivia = tokens.Comma.TrailingTrivia
+				}
+				trailingNewline = trailingTrivia.EndsOnNewLine()
 			}
 		}
 
@@ -1585,7 +1599,11 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	})
 
 	if x.Tokens != nil {
-		p.fprintf(w, "%v%)", x.Tokens.CloseBrace, x.Tokens.Parentheses)
+		pre := ""
+		if isMultiLine && !trailingNewline {
+			pre = "\n" + p.indent
+		}
+		p.fprintf(w, "%s%v%)", pre, x.Tokens.CloseBrace, x.Tokens.Parentheses)
 	} else {
 		p.fprintf(w, "\n%s}", p.indent)
 	}

@@ -1,8 +1,11 @@
 package syntax
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -108,6 +111,33 @@ func (trivia TriviaList) CollapseWhitespace() TriviaList {
 		}
 	}
 	return result
+}
+
+func (trivia TriviaList) EndsOnNewLine() bool {
+	for _, trivia := range trivia {
+		b := trivia.Bytes()
+		for len(b) > 0 {
+			r, sz := utf8.DecodeLastRune(b)
+			if r == '\n' {
+				return true
+			}
+			if !unicode.IsSpace(r) {
+				return false
+			}
+			b = b[:len(b)-sz]
+		}
+	}
+	return false
+}
+
+func (trivia TriviaList) Index(sep string) (Trivia, int) {
+	s := []byte(sep)
+	for _, trivia := range trivia {
+		if i := bytes.Index(trivia.Bytes(), s); i != -1 {
+			return trivia, i
+		}
+	}
+	return nil, -1
 }
 
 func (trivia TriviaList) Format(f fmt.State, c rune) {
