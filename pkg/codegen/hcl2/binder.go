@@ -30,7 +30,7 @@ import (
 
 type bindOptions struct {
 	allowMissingVariables bool
-	host                  plugin.Host
+	loader                schema.Loader
 	packageCache          *PackageCache
 }
 
@@ -59,8 +59,12 @@ func AllowMissingVariables(options *bindOptions) {
 }
 
 func PluginHost(host plugin.Host) BindOption {
+	return Loader(schema.NewPluginLoader(host))
+}
+
+func Loader(loader schema.Loader) BindOption {
 	return func(options *bindOptions) {
-		options.host = host
+		options.loader = loader
 	}
 }
 
@@ -78,7 +82,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		o(&options)
 	}
 
-	if options.host == nil {
+	if options.loader == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return nil, nil, err
@@ -87,7 +91,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		options.host = ctx.Host
+		options.loader = schema.NewPluginLoader(ctx.Host)
 
 		defer contract.IgnoreClose(ctx)
 	}
