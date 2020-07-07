@@ -181,6 +181,10 @@ type resourceOptions struct {
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
 	Transformations []ResourceTransformation
+	// An optional version, corresponding to the version of the provider plugin that should be used when operating on
+	// this resource. This version overrides the version information inferred from the current package and should
+	// rarely be used.
+	Version string
 }
 
 type invokeOptions struct {
@@ -312,6 +316,15 @@ func Import(o IDInput) ResourceOption {
 func Timeouts(o *CustomTimeouts) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.CustomTimeouts = o
+	})
+}
+
+// An optional version, corresponding to the version of the provider plugin that should be used when operating on
+// this resource. This version overrides the version information inferred from the current package and should
+// rarely be used.
+func Version(o string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Version = o
 	})
 }
 
