@@ -128,7 +128,7 @@ func (p PropertyPath) Get(v PropertyValue) (PropertyValue, bool) {
 	return v, true
 }
 
-// Set attempts to set the location inside a PropertyValue indicated by the PropertyPath to the given value If any
+// Set attempts to set the location inside a PropertyValue indicated by the PropertyPath to the given value. If any
 // component of the path besides the last component does not exist, this function will return false.
 func (p PropertyPath) Set(dest, v PropertyValue) bool {
 	if len(p) == 0 {
@@ -158,6 +158,63 @@ func (p PropertyPath) Set(dest, v PropertyValue) bool {
 		return false
 	}
 	return true
+}
+
+// Add sets the location inside a PropertyValue indicated by the PropertyPath to the given value. Any components
+// referred to by the path that do not exist will be created. If there is a mismatch between the type of an existing
+// component and a key that traverses that component, this function will return false.
+func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
+	if len(p) == 0 {
+		return PropertyValue{}, false
+	}
+
+	rv := dest
+	set := func(v PropertyValue) {
+		dest, rv = v, v
+	}
+	for _, key := range p {
+		switch key := key.(type) {
+		case int:
+			switch {
+			case dest.IsNull():
+				dest = NewArrayProperty(make([]PropertyValue, key+1))
+				set(dest)
+			case dest.IsArray():
+				arr := dest.ArrayValue()
+				if key >= len(arr) {
+					arr = append(make([]PropertyValue, key+1-len(arr)), arr...)
+					v.V = arr
+				}
+			default:
+				return PropertyValue{}, false
+			}
+			destV := dest
+			set = func(v PropertyValue) {
+				destV.ArrayValue()[key] = v
+			}
+			dest = destV.ArrayValue()[key]
+		case string:
+			switch {
+			case dest.IsNull():
+				dest = NewObjectProperty(PropertyMap{})
+				set(dest)
+			case dest.IsObject():
+				// OK
+			default:
+				return PropertyValue{}, false
+			}
+			destV := dest
+			set = func(v PropertyValue) {
+				destV.ObjectValue()[PropertyKey(key)] = v
+			}
+			dest = destV.ObjectValue()[PropertyKey(key)]
+		default:
+			return PropertyValue{}, false
+		}
+	}
+
+	set(v)
+	return rv, true
 }
 
 // Delete attempts to delete the value located by the PropertyPath inside the given PropertyValue. If any component
