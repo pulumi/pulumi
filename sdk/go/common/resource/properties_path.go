@@ -162,12 +162,14 @@ func (p PropertyPath) Set(dest, v PropertyValue) bool {
 
 // Add sets the location inside a PropertyValue indicated by the PropertyPath to the given value. Any components
 // referred to by the path that do not exist will be created. If there is a mismatch between the type of an existing
-// component and a key that traverses that component, this function will return false.
+// component and a key that traverses that component, this function will return false. If the destination is a null
+// property value, this function will create and return a new property value.
 func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 	if len(p) == 0 {
 		return PropertyValue{}, false
 	}
 
+	// set sets the destination referred to by the last element of the path to the given value.
 	rv := dest
 	set := func(v PropertyValue) {
 		dest, rv = v, v
@@ -175,11 +177,16 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 	for _, key := range p {
 		switch key := key.(type) {
 		case int:
+			// This key is an int, so we expect an array.
 			switch {
 			case dest.IsNull():
+				// If the destination array does not exist, create a new array with enough room to store the value at
+				// the requested index.
 				dest = NewArrayProperty(make([]PropertyValue, key+1))
 				set(dest)
 			case dest.IsArray():
+				// If the destination array does exist, ensure that it is large enough to accommodate the requested
+				// index.
 				arr := dest.ArrayValue()
 				if key >= len(arr) {
 					arr = append(make([]PropertyValue, key+1-len(arr)), arr...)
@@ -188,14 +195,16 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			default:
 				return PropertyValue{}, false
 			}
-			destV := dest
+			destV := dest.ArrayValue()
 			set = func(v PropertyValue) {
-				destV.ArrayValue()[key] = v
+				destV[key] = v
 			}
-			dest = destV.ArrayValue()[key]
+			dest = destV[key]
 		case string:
+			// This key is a string, so we expect an object.
 			switch {
 			case dest.IsNull():
+				// If the destination does not exist, create a new object.
 				dest = NewObjectProperty(PropertyMap{})
 				set(dest)
 			case dest.IsObject():
@@ -203,11 +212,11 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			default:
 				return PropertyValue{}, false
 			}
-			destV := dest
+			destV := dest.ObjectValue()
 			set = func(v PropertyValue) {
-				destV.ObjectValue()[PropertyKey(key)] = v
+				destV[PropertyKey(key)] = v
 			}
-			dest = destV.ObjectValue()[PropertyKey(key)]
+			dest = destV[PropertyKey(key)]
 		default:
 			return PropertyValue{}, false
 		}
