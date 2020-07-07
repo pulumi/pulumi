@@ -1556,6 +1556,7 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	p.fprintf(w, "%(%v", x.Tokens.GetParentheses(), x.Tokens.GetOpenBrace(len(x.Items)))
 
 	// Print the items.
+	trailingNewline := false
 	p.indented(func() {
 		items := x.Tokens.GetItems(len(x.Items))
 		for i, item := range x.Items {
@@ -1568,9 +1569,15 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 				p.fprintf(w, "\n%s", p.indent)
 			}
 			p.fprintf(w, "%v% v% v", item.Key, tokens.Equals, item.Value)
+			if item.Value.GetTrailingTrivia().EndsOnNewLine() {
+				trailingNewline = true
+			}
 
 			if tokens.Comma != nil {
 				p.fprintf(w, "%v", tokens.Comma)
+				if tokens.Comma.TrailingTrivia.EndsOnNewLine() {
+					trailingNewline = true
+				}
 			}
 		}
 
@@ -1585,7 +1592,11 @@ func (x *ObjectConsExpression) print(w io.Writer, p *printer) {
 	})
 
 	if x.Tokens != nil {
-		p.fprintf(w, "%v%)", x.Tokens.CloseBrace, x.Tokens.Parentheses)
+		pre := ""
+		if !trailingNewline {
+			pre = "\n" + p.indent
+		}
+		p.fprintf(w, "%s%v%)", pre, x.Tokens.CloseBrace, x.Tokens.Parentheses)
 	} else {
 		p.fprintf(w, "\n%s}", p.indent)
 	}
