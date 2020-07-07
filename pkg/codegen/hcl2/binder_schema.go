@@ -21,12 +21,9 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -60,29 +57,13 @@ func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
 // GetSchema method.
 //
 // TODO: schema and provider versions
-func (c *PackageCache) loadPackageSchema(host plugin.Host, name string) (*packageSchema, error) {
+func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*packageSchema, error) {
 	if s, ok := c.getPackageSchema(name); ok {
 		return s, nil
 	}
 
-	providerVersion := (*semver.Version)(nil)
-	provider, err := host.Provider(tokens.Package(name), providerVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	schemaFormatVersion := 0
-	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	var spec schema.PackageSpec
-	if err := jsoniter.Unmarshal(schemaBytes, &spec); err != nil {
-		return nil, err
-	}
-
-	pkg, err := schema.ImportSpec(spec, nil)
+	version := (*semver.Version)(nil)
+	pkg, err := loader.LoadPackage(name, version)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +134,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if _, ok := b.referencedPackages[name]; ok {
 			continue
 		}
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.host, name)
+		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name)
 		if err != nil {
 			return err
 		}
