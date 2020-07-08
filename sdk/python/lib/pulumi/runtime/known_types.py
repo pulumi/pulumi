@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The known_types module lazy loads classes defined in the parent module to
+The known_types module lazily loads classes defined in the parent module to
 allow for type checking.
 
 Python strictly disallows circular references between imported packages.
@@ -21,8 +21,8 @@ it is not allowed for `pulumi.runtime` to reach back to the `pulumi` top-level
 to reference types that are defined there.
 
 In order to break this circular reference, and to be clear about what types
-the runtime knows about and treats specially, we lazy load the types within the
-functions themselves.
+the runtime knows about and treats specially, we defer loading of the types from
+within the functions themselves.
 
 This implementation allows for overriding types used as stubs for testing
 (see test/test_next_serialize.py)
