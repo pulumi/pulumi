@@ -159,9 +159,9 @@ func typeRank(t schema.Type) int {
 		return 3
 	case schema.StringType:
 		return 4
-	case schema.ArchiveType:
-		return 5
 	case schema.AssetType:
+		return 5
+	case schema.ArchiveType:
 		return 6
 	case schema.JSONType:
 		return 7
@@ -206,6 +206,7 @@ func simplerType(t, u schema.Type) bool {
 		return false
 	}
 
+	// At this point we know that t and u have the same concrete type.
 	switch t := t.(type) {
 	case *schema.TokenType:
 		u := u.(*schema.TokenType)
@@ -216,7 +217,7 @@ func simplerType(t, u schema.Type) bool {
 	case *schema.ArrayType:
 		return simplerType(t.ElementType, u.(*schema.ArrayType).ElementType)
 	case *schema.MapType:
-		return simplerType(t.ElementType, u.(*schema.ArrayType).ElementType)
+		return simplerType(t.ElementType, u.(*schema.MapType).ElementType)
 	case *schema.ObjectType:
 		// Count how many of T's required properties are simpler than U's required properties and vice versa.
 		uu := u.(*schema.ObjectType)
@@ -258,17 +259,17 @@ func simplerType(t, u schema.Type) bool {
 	case *schema.UnionType:
 		// Pick whichever has the simplest element type.
 		var simplestElementType schema.Type
-		for _, t := range t.ElementTypes {
-			if simplestElementType == nil || simplerType(t, simplestElementType) {
-				simplestElementType = t
-			}
-		}
 		for _, u := range u.(*schema.UnionType).ElementTypes {
 			if simplestElementType == nil || simplerType(u, simplestElementType) {
-				return false
+				simplestElementType = u
 			}
 		}
-		return true
+		for _, t := range t.ElementTypes {
+			if simplestElementType == nil || simplerType(t, simplestElementType) {
+				return true
+			}
+		}
+		return false
 	default:
 		return false
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -271,4 +272,61 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSimplerType(t *testing.T) {
+	types := []schema.Type{
+		schema.BoolType,
+		schema.IntType,
+		schema.NumberType,
+		schema.StringType,
+		schema.AssetType,
+		schema.ArchiveType,
+		schema.JSONType,
+		&schema.ArrayType{ElementType: schema.BoolType},
+		&schema.ArrayType{ElementType: schema.IntType},
+		&schema.MapType{ElementType: schema.BoolType},
+		&schema.MapType{ElementType: schema.IntType},
+		&schema.ObjectType{},
+		&schema.ObjectType{
+			Properties: []*schema.Property{
+				{
+					Name:       "foo",
+					Type:       schema.BoolType,
+					IsRequired: true,
+				},
+			},
+		},
+		&schema.ObjectType{
+			Properties: []*schema.Property{
+				{
+					Name:       "foo",
+					Type:       schema.IntType,
+					IsRequired: true,
+				},
+			},
+		},
+		&schema.ObjectType{
+			Properties: []*schema.Property{
+				{
+					Name:       "foo",
+					Type:       schema.IntType,
+					IsRequired: true,
+				},
+				{
+					Name:       "bar",
+					Type:       schema.IntType,
+					IsRequired: true,
+				},
+			},
+		},
+		&schema.UnionType{ElementTypes: []schema.Type{schema.BoolType, schema.IntType}},
+		&schema.UnionType{ElementTypes: []schema.Type{schema.IntType, schema.JSONType}},
+		&schema.UnionType{ElementTypes: []schema.Type{schema.NumberType, schema.StringType}},
+		schema.AnyType,
+	}
+
+	assert.True(t, sort.SliceIsSorted(types, func(i, j int) bool {
+		return simplerType(types[i], types[j])
+	}))
 }
