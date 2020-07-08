@@ -37,12 +37,8 @@ type Expression interface {
 	// NodeTokens returns the syntax.Tokens associated with the expression.
 	NodeTokens() syntax.NodeTokens
 
-	// GetLeadingTrivia returns the leading trivia associated with the expression.
-	GetLeadingTrivia() syntax.TriviaList
 	// SetLeadingTrivia sets the leading trivia associated with the expression.
 	SetLeadingTrivia(syntax.TriviaList)
-	// GetTrailingTrivia returns the trailing trivia associated with the expression.
-	GetTrailingTrivia() syntax.TriviaList
 	// SetTrailingTrivia sets the trailing trivia associated with the expression.
 	SetTrailingTrivia(syntax.TriviaList)
 
