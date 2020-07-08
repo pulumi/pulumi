@@ -18,10 +18,7 @@ Assets are the Pulumi notion of data blobs that can be passed to resources.
 from os import PathLike, fspath
 from typing import Dict, Union
 
-from .runtime import known_types
 
-
-@known_types.asset
 class Asset:
     """
     Asset represents a single blob of text or data that is managed as a first
@@ -29,11 +26,10 @@ class Asset:
     """
 
 
-@known_types.file_asset
 class FileAsset(Asset):
     """
     A FileAsset is a kind of asset produced from a given path to a file on
-    the local filesysetm.
+    the local filesystem.
     """
     path: str
 
@@ -44,7 +40,6 @@ class FileAsset(Asset):
         self.path = fspath(path)
 
 
-@known_types.string_asset
 class StringAsset(Asset):
     """
     A StringAsset is a kind of asset produced from an in-memory UTF-8 encoded string.
@@ -57,7 +52,6 @@ class StringAsset(Asset):
         self.text = text
 
 
-@known_types.remote_asset
 class RemoteAsset(Asset):
     """
     A RemoteAsset is a kind of asset produced from a given URI string. The URI's scheme
@@ -73,14 +67,12 @@ class RemoteAsset(Asset):
         self.uri = uri
 
 
-@known_types.archive
 class Archive:
     """
     Archive represents a collection of named assets.
     """
 
 
-@known_types.asset_archive
 class AssetArchive(Archive):
     """
     An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
@@ -98,7 +90,6 @@ class AssetArchive(Archive):
         self.assets = assets
 
 
-@known_types.file_archive
 class FileArchive(Archive):
     """
     A FileArchive is a file-based archive, or collection of file-based assets.  This can be
@@ -112,7 +103,6 @@ class FileArchive(Archive):
         self.path = path
 
 
-@known_types.remote_archive
 class RemoteArchive(Archive):
     """
     A RemoteArchive is a file-based archive fetched from a remote location.  The URI's scheme dictates

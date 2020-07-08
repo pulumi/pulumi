@@ -211,31 +211,32 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
+        from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive
         if props_struct[_special_sig_key] == _special_asset_sig:
             # This is an asset. Re-hydrate this object into an Asset.
             if "path" in props_struct:
-                return known_types.new_file_asset(props_struct["path"])
+                return FileAsset(props_struct["path"])
             if "text" in props_struct:
-                return known_types.new_string_asset(props_struct["text"])
+                return StringAsset(props_struct["text"])
             if "uri" in props_struct:
-                return known_types.new_remote_asset(props_struct["uri"])
-            raise AssertionError("Invalid asset encountered when unmarshaling resource property")
+                return RemoteAsset(props_struct["uri"])
+            raise AssertionError("Invalid asset encountered when unmarshalling resource property")
         if props_struct[_special_sig_key] == _special_archive_sig:
             # This is an archive. Re-hydrate this object into an Archive.
             if "assets" in props_struct:
-                return known_types.new_asset_archive(deserialize_property(props_struct["assets"]))
+                return AssetArchive(deserialize_property(props_struct["assets"]))
             if "path" in props_struct:
-                return known_types.new_file_archive(props_struct["path"])
+                return FileArchive(props_struct["path"])
             if "uri" in props_struct:
-                return known_types.new_remote_archive(props_struct["uri"])
-            raise AssertionError("Invalid archive encountered when unmarshaling resource property")
+                return RemoteArchive(props_struct["uri"])
+            raise AssertionError("Invalid archive encountered when unmarshalling resource property")
         if props_struct[_special_sig_key] == _special_secret_sig:
             return {
                 _special_sig_key: _special_secret_sig,
                 "value": deserialize_property(props_struct["value"])
             }
 
-        raise AssertionError("Unrecognized signature when unmarshaling resource property")
+        raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
@@ -269,8 +270,9 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
     """
+    from ..output import Unknown
     if value == UNKNOWN:
-        return known_types.new_unknown() if settings.is_dry_run() or keep_unknowns else None
+        return Unknown() if settings.is_dry_run() or keep_unknowns else None
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
@@ -321,6 +323,7 @@ result in the exception being re-thrown.
 
 
 def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]:
+    from .. import Output
     resolvers: Dict[str, Resolver] = {}
     for name in props.keys():
         if name in ["id", "urn"]:
@@ -354,7 +357,7 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
         resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known, resolve_is_secret)
-        res.__setattr__(name, known_types.new_output({res}, resolve_value, resolve_is_known, resolve_is_secret))
+        res.__setattr__(name, Output({res}, resolve_value, resolve_is_known, resolve_is_secret))
 
     return resolvers
 

@@ -27,7 +27,6 @@ from .settings import Settings, configure, get_stack, get_project, get_root_reso
 from .sync_await import _sync_await
 from ..runtime.proto import engine_pb2, engine_pb2_grpc, provider_pb2, resource_pb2, resource_pb2_grpc
 from ..runtime.stack import Stack, run_pulumi_func
-from ..output import Output
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -35,6 +34,7 @@ if TYPE_CHECKING:
 
 def test(fn):
     def wrapper(*args, **kwargs):
+        from .. import Output
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 

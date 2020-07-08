@@ -13,17 +13,19 @@
 # limitations under the License.
 import asyncio
 import sys
-from typing import Any, Awaitable
+from typing import Any, Awaitable, TYPE_CHECKING
 import grpc
 
 from .. import log
-from ..output import Inputs
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 from .settings import get_monitor
 from .sync_await import _sync_await
+
+if TYPE_CHECKING:
+    from .. import Inputs
 
 # This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
 # exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
@@ -57,7 +59,7 @@ class InvokeResult:
 
     __iter__ = __await__
 
-def invoke(tok: str, props: Inputs, opts: InvokeOptions = None) -> InvokeResult:
+def invoke(tok: str, props: 'Inputs', opts: InvokeOptions = None) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that

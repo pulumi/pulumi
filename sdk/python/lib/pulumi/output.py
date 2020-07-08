@@ -30,7 +30,6 @@ from typing import (
 )
 
 from . import runtime
-from .runtime import known_types
 from .runtime import rpc
 
 if TYPE_CHECKING:
@@ -43,7 +42,6 @@ Input = Union[T, Awaitable[T], 'Output[T]']
 Inputs = Mapping[str, Input[Any]]
 
 
-@known_types.output
 class Output(Generic[T]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -371,7 +369,6 @@ class Output(Generic[T]):
         return Output.all(*transformed_items).apply("".join) # type: ignore
 
 
-@known_types.unknown
 class Unknown:
     """
     Unknown represents a value that is unknown.

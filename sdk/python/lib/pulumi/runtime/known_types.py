@@ -71,235 +71,58 @@ _output_type: Optional[type] = None
 _unknown_type: Optional[type] = None
 """The type of unknown. Filled-in as the Pulumi package is initializing."""
 
-def asset(class_obj: type) -> type:
-    """
-    Decorator to annotate the Asset class. Registers the decorated class
-    as the Asset known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _asset_resource_type
-    _asset_resource_type = class_obj
-    return class_obj
-
-
-def file_asset(class_obj: type) -> type:
-    """
-    Decorator to annotate the FileAsset class. Registers the decorated class
-    as the FileAsset known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _file_asset_resource_type
-    _file_asset_resource_type = class_obj
-    return class_obj
-
-
-def string_asset(class_obj: type) -> type:
-    """
-    Decorator to annotate the StringAsset class. Registers the decorated class
-    as the StringAsset known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _string_asset_resource_type
-    _string_asset_resource_type = class_obj
-    return class_obj
-
-
-def remote_asset(class_obj: type) -> type:
-    """
-    Decorator to annotate the RemoteAsset class. Registers the decorated class
-    as the RemoteAsset known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _remote_asset_resource_type
-    _remote_asset_resource_type = class_obj
-    return class_obj
-
-
-def archive(class_obj: type) -> type:
-    """
-    Decorator to annotate the Archive class. Registers the decorated class
-    as the Archive known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _archive_resource_type
-    _archive_resource_type = class_obj
-    return class_obj
-
-
-def asset_archive(class_obj: type) -> type:
-    """
-    Decorator to annotate the AssetArchive class. Registers the decorated class
-    as the AssetArchive known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _asset_archive_resource_type
-    _asset_archive_resource_type = class_obj
-    return class_obj
-
-
-def file_archive(class_obj: type) -> type:
-    """
-    Decorator to annotate the FileArchive class. Registers the decorated class
-    as the FileArchive known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _file_archive_resource_type
-    _file_archive_resource_type = class_obj
-    return class_obj
-
-
-def remote_archive(class_obj: type) -> type:
-    """
-    Decorator to annotate the RemoteArchive class. Registers the decorated class
-    as the RemoteArchive known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _remote_archive_resource_type
-    _remote_archive_resource_type = class_obj
-    return class_obj
-
-
-def custom_resource(class_obj: type) -> type:
-    """
-    Decorator to annotate the CustomResource class. Registers the decorated class
-    as the CustomResource known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _custom_resource_type
-    _custom_resource_type = class_obj
-    return class_obj
-
-def custom_timeouts(class_obj: type) -> type:
-    """
-    Decorator to annotate the CustomTimeouts class. Registers the decorated class
-    as the CustomTimeouts known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _custom_timeouts_type
-    _custom_timeouts_type = class_obj
-    return class_obj
-
-def stack(class_obj: type) -> type:
-    """
-    Decorator to annotate the Stack class. Registers the decorated class
-    as the Stack known type.
-    """
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _stack_resource_type
-    _stack_resource_type = class_obj
-    return class_obj
-
-
-def output(class_obj: type) -> type:
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _output_type
-    _output_type = class_obj
-    return class_obj
-
-
-def unknown(class_obj: type) -> type:
-    assert isinstance(class_obj, type), "class_obj is not a Class"
-    global _unknown_type
-    _unknown_type = class_obj
-    return class_obj
-
-
-def new_file_asset(*args: Any) -> Any:
-    """
-    Instantiates a new FileAsset, passing the given arguments to the constructor.
-    """
-    return _file_asset_resource_type(*args) # type: ignore
-
-
-def new_string_asset(*args: Any) -> Any:
-    """
-    Instantiates a new StringAsset, passing the given arguments to the constructor.
-    """
-    return _string_asset_resource_type(*args) # type: ignore
-
-
-def new_remote_asset(*args: Any) -> Any:
-    """
-    Instantiates a new StringAsset, passing the given arguments to the constructor.
-    """
-    return _remote_asset_resource_type(*args) # type: ignore
-
-
-def new_asset_archive(*args: Any) -> Any:
-    """
-    Instantiates a new AssetArchive, passing the given arguments to the constructor.
-    """
-    return _asset_archive_resource_type(*args) # type: ignore
-
-
-def new_file_archive(*args: Any) -> Any:
-    """
-    Instantiates a new FileArchive, passing the given arguments to the constructor.
-    """
-    return _file_archive_resource_type(*args) # type: ignore
-
-
-def new_remote_archive(*args: Any) -> Any:
-    """
-    Instantiates a new StringArchive, passing the given arguments to the constructor.
-    """
-    return _remote_archive_resource_type(*args) # type: ignore
-
-
-def new_output(*args: Any) -> Any:
-    """
-    Instantiates a new Output, passing the given arguments to the constructor.
-    """
-    return _output_type(*args) # type: ignore
-
-
-def new_unknown(*args: Any) -> Any:
-    """
-    Instantiates a new Unknown, passing the given arguments to the constructor.
-    """
-    return _unknown_type(*args) # type: ignore
-
 
 def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
     """
-    return _asset_resource_type is not None and isinstance(obj, _asset_resource_type)
+    from .. import Asset
+    return isinstance(obj, _asset_resource_type or Asset)
 
 
 def is_archive(obj: Any) -> bool:
     """
     Returns true if the given type is an Archive, false otherwise.
     """
-    return _archive_resource_type is not None and isinstance(obj, _archive_resource_type)
+    from .. import Archive
+    return isinstance(obj, _archive_resource_type or Archive)
 
 
 def is_custom_resource(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomResource, false otherwise.
     """
-    return _custom_resource_type is not None and isinstance(obj, _custom_resource_type)
+    from .. import CustomResource
+    return isinstance(obj, _custom_resource_type or CustomResource)
+
 
 def is_custom_timeouts(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomTimeouts, false otherwise.
     """
-    return _custom_timeouts_type is not None and isinstance(obj, _custom_timeouts_type)
+    from .. import CustomTimeouts
+    return isinstance(obj, _custom_timeouts_type or CustomTimeouts)
+
 
 def is_stack(obj: Any) -> bool:
     """
     Returns true if the given type is an Output, false otherwise.
     """
-    return _stack_resource_type is not None and isinstance(obj, _stack_resource_type)
+    from .stack import Stack
+    return isinstance(obj, _stack_resource_type or Stack)
+
 
 def is_output(obj: Any) -> bool:
     """
     Returns true if the given type is an Output, false otherwise.
     """
-    return _output_type is not None and isinstance(obj, _output_type)
+    from .. import Output
+    return isinstance(obj, _output_type or Output)
+
 
 def is_unknown(obj: Any) -> bool:
     """
     Returns true if the given object is an Unknown, false otherwise.
     """
-    return _unknown_type is not None and isinstance(obj, _unknown_type)
+    from ..output import Unknown
+    return isinstance(obj, _unknown_type or Unknown)

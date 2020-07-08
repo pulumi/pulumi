@@ -17,21 +17,15 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 
 import copy
 
-from .runtime import known_types
 from .runtime.resource import _register_resource, register_resource_outputs, _read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
 
-from .output import Output
-
 if TYPE_CHECKING:
-    from .output import Input, Inputs
-    from .runtime.stack import Stack
+    from .output import Input, Inputs, Output
 
 
-
-@known_types.custom_timeouts
 class CustomTimeouts:
     create: Optional[str]
     """
@@ -81,6 +75,7 @@ def inherited_child_alias(
 #   * parentAliasName: "app"
 #   * aliasName: "app-function"
 #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+    from . import Output
     alias_name = Output.from_input(child_name)
     if child_name.startswith(parent_name):
         alias_name = Output.from_input(parent_alias).apply(
@@ -187,6 +182,7 @@ def collapse_alias_to_urn(
     """
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
+    from . import Output
 
     def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
         if isinstance(inner, str):
@@ -206,7 +202,7 @@ def collapse_alias_to_urn(
 
         return create_urn(name, type_, parent, project, stack)
 
-    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
+    inputAlias: 'Output[Union[Alias, str]]' = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 class ResourceTransformationArgs:
@@ -621,8 +617,8 @@ class Resource:
         elif not isinstance(opts, ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
 
-        # Before anything else - if there are transformations registered, give them a chance to run to modify the user provided
-        # properties and options assigned to this resource.
+        # Before anything else - if there are transformations registered, give them a chance to run to modify the user
+        # provided properties and options assigned to this resource.
         parent = opts.parent
         if parent is None:
             parent = get_root_resource()
@@ -667,7 +663,7 @@ class Resource:
             for parent_alias in opts.parent._aliases:
                 child_alias = inherited_child_alias(
                     name, opts.parent._name, parent_alias, t)
-                opts.aliases.append(cast(Output[Union[str, Alias]], child_alias))
+                opts.aliases.append(cast('Output[Union[str, Alias]]', child_alias))
 
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
@@ -776,7 +772,6 @@ class Resource:
         return self._providers.get(pkg)
 
 
-@known_types.custom_resource
 class CustomResource(Resource):
     """
     CustomResource is a resource whose create, read, update, and delete (CRUD) operations are
@@ -886,8 +881,9 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
+    from .runtime.stack import Stack
     res = cast('Stack', get_root_resource())
-    if known_types.is_stack(res):
+    if isinstance(res, Stack):
         res.output(name, value)
     else:
         raise Exception("Failed to export output. Root resource is not an instance of 'Stack'")
@@ -903,8 +899,8 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-
-    parent_prefix: Optional[Output[str]] = None
+    from . import Output
+    parent_prefix: Optional['Output[str]'] = None
     if parent is not None:
         parent_urn = None
         if isinstance(parent, Resource):
