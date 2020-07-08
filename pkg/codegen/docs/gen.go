@@ -895,12 +895,41 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 	return docProperties
 }
 
+func getDockerImagePythonFormalParams() []formalParam {
+	return []formalParam{
+		{
+			Name: "image_name",
+		},
+		{
+			Name: "build",
+		},
+		{
+			Name:         "local_image_name",
+			DefaultValue: "=None",
+		},
+		{
+			Name:         "registry",
+			DefaultValue: "=None",
+		},
+		{
+			Name:         "skip_push",
+			DefaultValue: "=None",
+		},
+		{
+			Name:         "opts",
+			DefaultValue: "=None",
+		},
+	}
+}
+
 // Returns the rendered HTML for the resource's constructor, as well as the specific arguments.
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) (map[string]string, map[string][]formalParam) {
 	renderedParams := make(map[string]string)
 	formalParams := make(map[string][]formalParam)
 	isK8sOverlayMod := mod.isKubernetesOverlayModule()
 	isK8sPackage := isKubernetesPackage(mod.pkg)
+	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
+
 	for _, lang := range supportedLanguages {
 		var (
 			paramTemplate string
@@ -926,6 +955,9 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			// Kubernetes overlay resources use a different ordering of formal params in Python.
 			if isK8sOverlayMod {
 				params = getKubernetesOverlayPythonFormalParams(mod.mod)
+				break
+			} else if isDockerImageResource {
+				params = getDockerImagePythonFormalParams()
 				break
 			}
 

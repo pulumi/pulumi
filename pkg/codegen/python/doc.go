@@ -39,22 +39,28 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 
 // GetDocLinkForResourceType returns the Python API doc for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modName, typeName string) string {
-	var path string
 	// The k8s module names contain the domain names. For now we are stripping them off manually so they link correctly.
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, ".k8s.io", "")
 		modName = strings.ReplaceAll(modName, ".apiserver", "")
 		modName = strings.ReplaceAll(modName, ".authorization", "")
 	}
+
+	var path string
+	var fqdnTypeName string
 	switch {
 	case pkg.Name != "" && modName != "":
 		path = fmt.Sprintf("pulumi_%s/%s", pkg.Name, modName)
+		fqdnTypeName = fmt.Sprintf("pulumi_%s.%s.%s", pkg.Name, modName, typeName)
 	case pkg.Name == "" && modName != "":
 		path = modName
+		fqdnTypeName = fmt.Sprintf("%s.%s", modName, typeName)
 	case pkg.Name != "" && modName == "":
-		path = pkg.Name
+		path = fmt.Sprintf("pulumi_%s", pkg.Name)
+		fqdnTypeName = fmt.Sprintf("pulumi_%s.%s", pkg.Name, typeName)
 	}
-	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, typeName)
+
+	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, fqdnTypeName)
 }
 
 // GetDocLinkForResourceInputOrOutputType is not implemented at this time for Python.
