@@ -211,7 +211,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
-        from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive
+        from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive  # pylint: disable=import-outside-toplevel
         if props_struct[_special_sig_key] == _special_asset_sig:
             # This is an asset. Re-hydrate this object into an Asset.
             if "path" in props_struct:
@@ -270,7 +270,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
     """
-    from ..output import Unknown
+    from ..output import Unknown  # pylint: disable=import-outside-toplevel
     if value == UNKNOWN:
         return Unknown() if settings.is_dry_run() or keep_unknowns else None
 
@@ -323,7 +323,7 @@ result in the exception being re-thrown.
 
 
 def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]:
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
     resolvers: Dict[str, Resolver] = {}
     for name in props.keys():
         if name in ["id", "urn"]:

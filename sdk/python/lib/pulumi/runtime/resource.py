@@ -72,7 +72,7 @@ async def prepare_resource(res: 'Resource',
                            custom: bool,
                            props: 'Inputs',
                            opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
     log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
@@ -152,7 +152,7 @@ class _ResourceResult(NamedTuple):
 # pylint: disable=too-many-locals,too-many-statements
 
 def _read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> _ResourceResult:
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
@@ -235,7 +235,7 @@ def _read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', o
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            from ..resource import create_urn # pylint: disable=import-outside-toplevel
+            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -292,7 +292,7 @@ def _register_resource(res: 'Resource',
                        opts: Optional['ResourceOptions']) -> _ResourceResult:
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
     monitor = settings.get_monitor()
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
 
     # Prepare the resource.
 

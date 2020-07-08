@@ -29,6 +29,7 @@ from .. import log
 if TYPE_CHECKING:
     from .. import Output
 
+
 async def run_pulumi_func(func: Callable):
     try:
         func()
@@ -72,6 +73,7 @@ async def run_pulumi_func(func: Callable):
     if RPC_MANAGER.unhandled_exception is not None:
         raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
+
 async def run_in_stack(func: Callable):
     """
     Run the given function inside of a new stack resource.  This ensures that any stack export calls
@@ -112,6 +114,7 @@ class Stack(ComponentResource):
         """
         self.outputs[name] = value
 
+
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
 def massage(attr: Any, seen: List[Any]):
@@ -122,8 +125,7 @@ def massage(attr: Any, seen: List[Any]):
     lists or dictionaries as appropriate.  In general, iterable things are turned into lists, and
     dictionary-like things are turned into dictionaries.
     """
-
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
 
     # Basic primitive types (numbers, booleans, strings, etc.) don't need any special handling.
     if is_primitive(attr):
@@ -207,6 +209,7 @@ def is_primitive(attr: Any) -> bool:
         pass
 
     return True
+
 
 def register_stack_transformation(t: ResourceTransformation):
     """

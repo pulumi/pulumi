@@ -25,6 +25,7 @@ from .metadata import get_project, get_stack
 
 if TYPE_CHECKING:
     from .output import Input, Inputs, Output
+    from .runtime.stack import Stack
 
 
 class CustomTimeouts:
@@ -76,7 +77,7 @@ def inherited_child_alias(
 #   * parentAliasName: "app"
 #   * aliasName: "app-function"
 #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    from . import Output
+    from . import Output  # pylint: disable=import-outside-toplevel
     alias_name = Output.from_input(child_name)
     if child_name.startswith(parent_name):
         alias_name = Output.from_input(parent_alias).apply(
@@ -159,7 +160,7 @@ class Alias:
     """
 
     # Ignoring type errors associated with the ellipsis constant being assigned to a string value.
-    # We use it as a internal sentinal value, and don't need to expose this in the user facing type system.
+    # We use it as a internal sentinel value, and don't need to expose this in the user facing type system.
     # https://docs.python.org/3/library/constants.html#Ellipsis
     def __init__(self,
                  name: Optional[str] = ..., # type: ignore
@@ -183,7 +184,7 @@ def collapse_alias_to_urn(
     """
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
-    from . import Output
+    from . import Output  # pylint: disable=import-outside-toplevel
 
     def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
         if isinstance(inner, str):
@@ -205,6 +206,7 @@ def collapse_alias_to_urn(
 
     inputAlias: 'Output[Union[Alias, str]]' = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
+
 
 class ResourceTransformationArgs:
     """
@@ -248,6 +250,7 @@ class ResourceTransformationArgs:
         self.props = props
         self.opts = opts
 
+
 class ResourceTransformationResult:
     """
     ResourceTransformationResult is the result that must be returned by a resource transformation
@@ -271,6 +274,7 @@ class ResourceTransformationResult:
         self.props = props
         self.opts = opts
 
+
 ResourceTransformation = Callable[[ResourceTransformationArgs], Optional[ResourceTransformationResult]]
 """
 ResourceTransformation is the callback signature for the `transformations` resource option.  A
@@ -280,6 +284,7 @@ actually being created.  The effect will be as though those props and opts were 
 of the original call to the `Resource` constructor.  If the transformation returns undefined,
 this indicates that the resource will not be transformed.
 """
+
 
 class ResourceOptions:
     """
@@ -455,7 +460,7 @@ class ResourceOptions:
             values from each options object. Both original collections in each options object will
             be unchanged.
 
-        2. Simple scaler values from `opts2` (i.e. strings, numbers, bools) will replace the values
+        2. Simple scalar values from `opts2` (i.e. strings, numbers, bools) will replace the values
             from `opts1`.
 
         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
@@ -547,6 +552,7 @@ def _merge_lists(dest, source):
         return dest
 
     return dest + source
+
 
 # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
 # works properly for it.
@@ -899,7 +905,7 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-    from . import Output
+    from . import Output  # pylint: disable=import-outside-toplevel
     parent_prefix: Optional['Output[str]'] = None
     if parent is not None:
         parent_urn = None

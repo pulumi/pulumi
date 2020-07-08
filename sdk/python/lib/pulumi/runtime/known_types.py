@@ -73,7 +73,7 @@ def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
     """
-    from .. import Asset
+    from .. import Asset  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _asset_resource_type or Asset)
 
 
@@ -81,7 +81,7 @@ def is_archive(obj: Any) -> bool:
     """
     Returns true if the given type is an Archive, false otherwise.
     """
-    from .. import Archive
+    from .. import Archive  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _archive_resource_type or Archive)
 
 
@@ -89,7 +89,7 @@ def is_custom_resource(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomResource, false otherwise.
     """
-    from .. import CustomResource
+    from .. import CustomResource  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _custom_resource_type or CustomResource)
 
 
@@ -97,7 +97,7 @@ def is_custom_timeouts(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomTimeouts, false otherwise.
     """
-    from .. import CustomTimeouts
+    from .. import CustomTimeouts  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _custom_timeouts_type or CustomTimeouts)
 
 
@@ -105,7 +105,7 @@ def is_stack(obj: Any) -> bool:
     """
     Returns true if the given type is an Output, false otherwise.
     """
-    from .stack import Stack
+    from .stack import Stack  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _stack_resource_type or Stack)
 
 
@@ -113,7 +113,7 @@ def is_output(obj: Any) -> bool:
     """
     Returns true if the given type is an Output, false otherwise.
     """
-    from .. import Output
+    from .. import Output  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _output_type or Output)
 
 
@@ -121,5 +121,5 @@ def is_unknown(obj: Any) -> bool:
     """
     Returns true if the given object is an Unknown, false otherwise.
     """
-    from ..output import Unknown
+    from ..output import Unknown  # pylint: disable=import-outside-toplevel
     return isinstance(obj, _unknown_type or Unknown)

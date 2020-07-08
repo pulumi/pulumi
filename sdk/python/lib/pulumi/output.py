@@ -221,7 +221,6 @@ class Output(Generic[T]):
         """
         return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
 
-
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
         Syntax sugar for looking up attributes dynamically off of outputs.
@@ -377,10 +376,12 @@ class Unknown:
     def __init__(self):
         pass
 
+
 UNKNOWN = Unknown()
 """
 UNKNOWN is the singleton unknown value.
 """
+
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)

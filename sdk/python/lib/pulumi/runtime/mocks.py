@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 def test(fn):
     def wrapper(*args, **kwargs):
-        from .. import Output
+        from .. import Output  # pylint: disable=import-outside-toplevel
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
@@ -119,11 +119,11 @@ class MockMonitor:
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
-        #pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         return type('SupportsFeatureResponse', (object,), {'hasSupport' : True})
 
 
