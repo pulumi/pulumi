@@ -163,11 +163,11 @@ class Alias:
     # We use it as a internal sentinel value, and don't need to expose this in the user facing type system.
     # https://docs.python.org/3/library/constants.html#Ellipsis
     def __init__(self,
-                 name: Optional[str] = ..., # type: ignore
-                 type_: Optional[str] = ..., # type: ignore
-                 parent: Optional[Union['Resource', 'Input[str]']] = ..., # type: ignore
-                 stack: Optional['Input[str]'] = ..., # type: ignore
-                 project: Optional['Input[str]'] = ...) -> None: # type: ignore
+                 name: Optional[str] = ...,  # type: ignore
+                 type_: Optional[str] = ...,  # type: ignore
+                 parent: Optional[Union['Resource', 'Input[str]']] = ...,  # type: ignore
+                 stack: Optional['Input[str]'] = ...,  # type: ignore
+                 project: Optional['Input[str]'] = ...) -> None:  # type: ignore
 
         self.name = name
         self.type_ = type_
@@ -186,7 +186,7 @@ def collapse_alias_to_urn(
     """
     from . import Output  # pylint: disable=import-outside-toplevel
 
-    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> 'Output[str]':
+    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
         if isinstance(inner, str):
             return Output.from_input(inner)
 
@@ -204,7 +204,7 @@ def collapse_alias_to_urn(
 
         return create_urn(name, type_, parent, project, stack)
 
-    inputAlias: 'Output[Union[Alias, str]]' = Output.from_input(alias)
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
@@ -906,7 +906,7 @@ def create_urn(
     parent, optional project and optional stack.
     """
     from . import Output  # pylint: disable=import-outside-toplevel
-    parent_prefix: Optional['Output[str]'] = None
+    parent_prefix: Optional[Output[str]] = None
     if parent is not None:
         parent_urn = None
         if isinstance(parent, Resource):
