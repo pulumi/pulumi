@@ -17,6 +17,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 
 import copy
 
+from .runtime import known_types
 from .runtime.resource import _register_resource, register_resource_outputs, _read_resource
 from .runtime.settings import get_root_resource
 
@@ -881,9 +882,8 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
-    from .runtime.stack import Stack
     res = cast('Stack', get_root_resource())
-    if isinstance(res, Stack):
+    if known_types.is_stack(res):
         res.output(name, value)
     else:
         raise Exception("Failed to export output. Root resource is not an instance of 'Stack'")
