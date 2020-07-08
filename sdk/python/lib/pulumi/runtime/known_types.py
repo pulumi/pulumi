@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The known_types module contains state for keeping track of types that
-are known to be special in the Pulumi type system.
+The known_types module lazy loads classes defined in the parent module to
+allow for type checking.
 
 Python strictly disallows circular references between imported packages.
 Because the Pulumi top-level module depends on the `pulumi.runtime` submodule,
@@ -21,55 +21,52 @@ it is not allowed for `pulumi.runtime` to reach back to the `pulumi` top-level
 to reference types that are defined there.
 
 In order to break this circular reference, and to be clear about what types
-the runtime knows about and treats specially, this module exports a number of
-"known type" decorators that can be applied to types in `pulumi` to indicate
-that they are specially treated.
+the runtime knows about and treats specially, we lazy load the types within the
+functions themselves.
 
-The implementation of this mechanism is that, for every known type, that type
-is stashed away in a global variable. Whenever the runtime wants to do a type
-test using that type (or instantiate an instance of this type), it uses the
-functions defined in this module to do so.
+This implementation allows for overriding types used as stubs for testing
+(see test/test_next_serialize.py)
 """
 from typing import Any, Optional
 
 _custom_resource_type: Optional[type] = None
-"""The type of CustomResource. Filled-in as the Pulumi package is initializing."""
+"""The type of CustomResource."""
 
 _custom_timeouts_type: Optional[type] = None
-"""The type of CustomTimeouts. Filled-in as the Pulumi package is initializing."""
+"""The type of CustomTimeouts."""
 
 _asset_resource_type: Optional[type] = None
-"""The type of Asset. Filled-in as the Pulumi package is initializing."""
+"""The type of Asset."""
 
 _file_asset_resource_type: Optional[type] = None
-"""The type of FileAsset. Filled-in as the Pulumi package is initializing."""
+"""The type of FileAsset."""
 
 _string_asset_resource_type: Optional[type] = None
-"""The type of StringAsset. Filled-in as the Pulumi package is initializing."""
+"""The type of StringAsset."""
 
 _remote_asset_resource_type: Optional[type] = None
-"""The type of RemoteAsset. Filled-in as the Pulumi package is initializing."""
+"""The type of RemoteAsset."""
 
 _archive_resource_type: Optional[type] = None
-"""The type of Archive. Filled-in as the Pulumi package is initializing."""
+"""The type of Archive."""
 
 _asset_archive_resource_type: Optional[type] = None
-"""The type of AssetArchive. Filled-in as the Pulumi package is initializing."""
+"""The type of AssetArchive."""
 
 _file_archive_resource_type: Optional[type] = None
-"""The type of FileArchive. Filled-in as the Pulumi package is initializing."""
+"""The type of FileArchive."""
 
 _remote_archive_resource_type: Optional[type] = None
-"""The type of RemoteArchive. Filled-in as the Pulumi package is initializing."""
+"""The type of RemoteArchive."""
 
 _stack_resource_type: Optional[type] = None
-"""The type of Stack. Filled-in as the Pulumi package is initializing."""
+"""The type of Stack."""
 
 _output_type: Optional[type] = None
-"""The type of Output. Filled-in as the Pulumi package is initializing."""
+"""The type of Output."""
 
 _unknown_type: Optional[type] = None
-"""The type of unknown. Filled-in as the Pulumi package is initializing."""
+"""The type of unknown."""
 
 
 def is_asset(obj: Any) -> bool:
