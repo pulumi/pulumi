@@ -248,13 +248,7 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 func (mod *modContext) submodulesExist() bool {
-	if len(mod.children) <= 0 {
-		return false
-	}
-	if len(mod.children) == 1 && mod.children[0].mod == "config" {
-		return false
-	}
-	return true
+	return len(mod.children) > 0
 }
 
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
@@ -297,9 +291,7 @@ func (mod *modContext) genInit(exports []string) string {
 					child = child[match[2]:match[3]]
 				}
 			}
-			if child != "config" {
-				fmt.Fprintf(w, "    %s,\n", PyName(child))
-			}
+			fmt.Fprintf(w, "    %s,\n", PyName(child))
 		}
 		fmt.Fprintf(w, ")\n")
 	}
