@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.6.0 (2020-07-08)
 
 - Go program gen: Improved handling for pulumi.Map types
   [#491](https://github.com/pulumi/pulumi/pull/4914)
