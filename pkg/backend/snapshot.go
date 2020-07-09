@@ -127,7 +127,7 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 // intent to mutate before the mutation occurs.
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Require(step != nil, "step != nil")
-	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.Res().URN)
+	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
 	switch step.Op() {
 	case deploy.OpSame:
@@ -280,7 +280,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 }
 
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.Res().URN)
+	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
 		return true
@@ -324,7 +324,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.Res().URN)
+	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
 		return true
@@ -354,7 +354,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.Res().URN)
+	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
 		return true
@@ -395,7 +395,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 }
 
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.Res().URN)
+	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeReading)
 		return true
@@ -460,7 +460,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 }
 
 func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.Res().URN)
+	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
 		return true

@@ -41,11 +41,11 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Proj    *workspace.Project // the package metadata.
-	Pwd     string             // the package's working directory.
-	Program string             // the path to the program.
-	Args    []string           // any arguments to pass to the package.
-	Target  *Target            // the target being deployed into.
+	Proj    *workspace.Project `json:"proj" yaml:"proj"`                         // the package metadata.
+	Pwd     string             `json:"pwd" yaml:"pwd"`                           // the package's working directory.
+	Program string             `json:"program" yaml:"program"`                   // the path to the program.
+	Args    []string           `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
+	Target  *Target            `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -77,6 +77,13 @@ func (src *evalSource) Close() error {
 func (src *evalSource) Project() tokens.PackageName {
 	return src.runinfo.Proj.Name
 }
+
+// Stack is the name of the stack being targeted by this evaluation source.
+func (src *evalSource) Stack() tokens.QName {
+	return src.runinfo.Target.Name
+}
+
+func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(

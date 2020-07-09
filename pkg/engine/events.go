@@ -119,6 +119,8 @@ type ResourcePreEventPayload struct {
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
 	Op           deploy.StepOp                  // the operation performed by this step.
+	URN          resource.URN                   // the resource URN (for before and after).
+	Type         tokens.Type                    // the type affected by this step.
 	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
 	New          *StepEventStateMetadata        // the state of the resource after performing this step.
 	Res          *StepEventStateMetadata        // the latest state for the resource that is known (worst case, old).
@@ -272,6 +274,8 @@ func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepE
 
 	return StepEventMetadata{
 		Op:           op,
+		URN:          step.URN(),
+		Type:         step.Type(),
 		Keys:         keys,
 		Diffs:        diffs,
 		DetailedDiff: detailedDiff,
