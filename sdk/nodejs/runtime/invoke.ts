@@ -104,7 +104,7 @@ export async function streamInvoke(
             queue.push(live);
         });
         call.on("error", (err: any) => {
-            if (err.code === 1 && err.details === "Cancelled") {
+            if (err.code === 1) {
                 return;
             }
             throw err;
