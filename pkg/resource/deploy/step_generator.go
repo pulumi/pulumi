@@ -111,7 +111,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil, /* customTimeouts */
 		"",  /* importID */
 	)
-	old, hasOld := sg.plan.olds[urn]
+	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -176,9 +176,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				// Give a particular error in that case to let them know.  Also mark that we're
 				// in an error state so that we eventually will error out of the entire
 				// application run.
-				d := diag.GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(step.Res().URN)
+				d := diag.GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(step.URN())
 
-				sg.plan.diag().Errorf(d, step.Res().URN, urn)
+				sg.plan.Diag().Errorf(d, step.URN(), urn)
 				sg.sawError = true
 
 				if !sg.plan.preview {
@@ -209,7 +209,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	if sg.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		sg.plan.diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
+		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	sg.urns[urn] = true
 
@@ -221,14 +221,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var old *resource.State
 	var hasOld bool
 	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
-		old, hasOld = sg.plan.olds[urnOrAlias]
+		old, hasOld = sg.plan.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
 			oldOutputs = old.Outputs
 			if urnOrAlias != urn {
 				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
 					invalid = true
-					sg.plan.diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+					sg.plan.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
 				}
 				sg.aliased[urnOrAlias] = urn
 			}
@@ -725,7 +725,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	if allowedResourcesToDelete != nil {
 		filtered := []Step{}
 		for _, step := range dels {
-			if _, has := allowedResourcesToDelete[step.Res().URN]; has {
+			if _, has := allowedResourcesToDelete[step.URN()]; has {
 				filtered = append(filtered, step)
 			}
 		}
@@ -735,7 +735,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 
 	deletingUnspecifiedTarget := false
 	for _, step := range dels {
-		urn := step.Res().URN
+		urn := step.URN()
 		if targetsOpt != nil && !targetsOpt[urn] && !sg.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
 
@@ -744,7 +744,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 			// re-running the operation.
 			//
 			// Mark that step generation entered an error state so that the entire app run fails.
-			sg.plan.diag().Errorf(d, urn)
+			sg.plan.Diag().Errorf(d, urn)
 			sg.sawError = true
 
 			deletingUnspecifiedTarget = true
@@ -814,7 +814,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			}
 
 			if _, has := resourcesToDelete[res.Parent]; has {
-				sg.plan.diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
+				sg.plan.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
 					res.Parent, res.URN)
 				return nil, result.Bail()
 			}
@@ -1084,10 +1084,10 @@ func issueCheckErrors(plan *Plan, new *resource.State, urn resource.URN, failure
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			plan.diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			plan.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			plan.diag().Errorf(
+			plan.Diag().Errorf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
@@ -1150,12 +1150,12 @@ func (sg *stepGenerator) loadResourceProvider(
 	contract.Assert(provider != "")
 	ref, refErr := providers.ParseReference(provider)
 	if refErr != nil {
-		sg.plan.diag().Errorf(diag.GetBadProviderError(urn), provider, urn, refErr)
+		sg.plan.Diag().Errorf(diag.GetBadProviderError(urn), provider, urn, refErr)
 		return nil, result.Bail()
 	}
 	p, ok := sg.plan.GetProvider(ref)
 	if !ok {
-		sg.plan.diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn)
+		sg.plan.Diag().Errorf(diag.GetUnknownProviderError(urn), provider, urn)
 		return nil, result.Bail()
 	}
 	return p, nil
@@ -1340,7 +1340,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 				}
 			}
 			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.plan.target.Name, sg.plan.source.Project())
+				urn = resource.DefaultRootStackURN(sg.plan.Target().Name, sg.plan.source.Project())
 			}
 			sg.opts.Events.OnPolicyViolation(urn, d)
 		}

@@ -147,7 +147,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 
 				step := &previewStep{
 					Op:             m.Op,
-					URN:            m.Res.URN,
+					URN:            m.URN,
 					Provider:       m.Provider,
 					DiffReasons:    m.Diffs,
 					ReplaceReasons: m.Keys,

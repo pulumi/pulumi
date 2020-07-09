@@ -504,7 +504,7 @@ func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateA
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
-	acts.Seen[step.Res().URN] = step
+	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
 	// Skip reporting if necessary.
@@ -540,7 +540,7 @@ func (acts *updateActions) OnResourceStepPost(
 
 		errorURN := resource.URN("")
 		if reportStep {
-			errorURN = step.Res().URN
+			errorURN = step.URN()
 		}
 
 		// Issue a true, bonafide error.
@@ -589,7 +589,7 @@ func (acts *updateActions) OnResourceStepPost(
 	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
 		logging.V(7).Infof(
 			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
-			step.Res().URN)
+			step.URN())
 		new := step.New()
 		old := step.Old()
 		contract.Assert(new != nil)

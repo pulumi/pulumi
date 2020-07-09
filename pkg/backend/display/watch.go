@@ -62,20 +62,20 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		case engine.ResourcePreEvent:
 			p := e.Payload.(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.Res.URN.Name()),
-					"%s %s\n", p.Metadata.Op, p.Metadata.Res.URN.Type())
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload.(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.Res.URN.Name()),
-					"done %s %s\n", p.Metadata.Op, p.Metadata.Res.URN.Type())
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOperationFailed:
 			p := e.Payload.(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.Res.URN.Name()),
-					"failed %s %s\n", p.Metadata.Op, p.Metadata.Res.URN.Type())
+				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
