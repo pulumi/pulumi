@@ -248,23 +248,13 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 func (mod *modContext) submodulesExist() bool {
-	if len(mod.children) <= 0 {
-		return false
-	}
-	if len(mod.children) == 1 && mod.children[0].mod == "config" {
-		return false
-	}
-	return true
+	return len(mod.children) > 0
 }
 
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false, false)
-
-	if mod.submodulesExist() {
-		fmt.Fprintf(w, "import importlib\n")
-	}
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -291,8 +281,8 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
-		fmt.Fprintf(w, "_submodules = [\n")
-		for i, mod := range mod.children {
+		fmt.Fprintf(w, "from . import (\n")
+		for _, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
 				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
@@ -301,15 +291,9 @@ func (mod *modContext) genInit(exports []string) string {
 					child = child[match[2]:match[3]]
 				}
 			}
-			if i > 0 {
-				fmt.Fprintf(w, ",\n")
-			}
-			fmt.Fprintf(w, "    '%s'", PyName(child))
+			fmt.Fprintf(w, "    %s,\n", PyName(child))
 		}
-		fmt.Fprintf(w, ",\n]\n")
-		fmt.Fprintf(w, "for pkg in _submodules:\n")
-		fmt.Fprintf(w, "    if pkg != 'config':\n")
-		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
+		fmt.Fprintf(w, ")\n")
 	}
 
 	return w.String()
