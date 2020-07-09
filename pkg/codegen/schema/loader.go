@@ -73,7 +73,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	if p, ok := l.entries[pkg]; ok {
 		return p, nil
 	}
-	l.entries[pkg] = p
+	l.entries[key] = p
 
 	return p, nil
 }
