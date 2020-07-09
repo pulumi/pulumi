@@ -4,10 +4,15 @@ CHANGELOG
 ## HEAD (Unreleased)
 _(none)_
 
+## 2.6.1 (2020-07-09)
+
+- Fix a panic in the display during CLI operations
+  [#4987](https://github.com/pulumi/pulumi/pull/4987)
+
 ## 2.6.0 (2020-07-08)
 
 - Go program gen: Improved handling for pulumi.Map types
-  [#491](https://github.com/pulumi/pulumi/pull/4914)
+  [#4914](https://github.com/pulumi/pulumi/pull/4914)
 
 - Go SDK: Input type interfaces should declare pointer type impls where appropriate
   [#4911](https://github.com/pulumi/pulumi/pull/4911)
