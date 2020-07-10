@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -73,6 +74,15 @@ func (s *Stack) initOrSelectStack() (UpResult, error) {
 
 const secretSentinel = "[secret]"
 
+func (s *Stack) GetOutputs() (map[string]interface{}, map[string]interface{}, error) {
+	_, err := s.initOrSelectStack()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not initialize or select stack")
+	}
+
+	return s.getOutputs()
+}
+
 //getOutputs returns a set of plain outputs, secret outputs, and an error
 func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, error) {
 	// standard outputs
@@ -107,6 +117,14 @@ func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, er
 	}
 
 	return outputs, secrets, nil
+}
+
+func (s *Stack) GetUser() (string, error) {
+	outStdout, outStderr, err := s.runCmd("pulumi", "whoami")
+	if err != nil {
+		return "", errors.Wrapf(err, "could not detect user: stderr: %s", outStderr)
+	}
+	return strings.TrimSpace(outStdout), nil
 }
 
 //summary - call history and get last item
