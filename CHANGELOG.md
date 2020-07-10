@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Add support for streamInvoke during update
+  [#4990](https://github.com/pulumi/pulumi/pull/4990)
 
 ## 2.6.1 (2020-07-09)
 

@@ -582,7 +582,51 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) StreamInvoke(
 	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
-	return fmt.Errorf("the resource monitor does not implement streaming invokes")
+	tok := tokens.ModuleMember(req.GetTok())
+	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
+
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return err
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return err
+	}
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	if err != nil {
+		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
+	// streaming operation completes!
+	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
+	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
+		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal return")
+		}
+
+		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+	})
+	if err != nil {
+		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+
+	if len(chkfails) > 0 {
+		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
+	}
+	return nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.
