@@ -149,6 +149,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if mod == pkg.mod {
 		return name
 	}
+	if mod == "" {
+		mod = components[0]
+	}
 	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
