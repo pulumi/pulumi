@@ -9,18 +9,20 @@ import (
 )
 
 func (s *Stack) Up() (UpResult, error) {
-	// TODO setup - merge pulumi.yaml, set config, etc.
-
 	var upResult UpResult
-	cmd := exec.Command("pulumi", "up", "--yes")
-	cmd.Dir = s.Project.SourcePath
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+
+	// TODO setup - merge pulumi.yaml, set config, etc.
+	res, err := s.initOrSelectStack()
 	if err != nil {
-		return upResult, errors.Wrapf(err, "stderr: %s", stderr.String())
+		return res, errors.Wrap(err, "could not initialize or select stack")
+	}
+
+	stdout, stderr, err := s.runCmd("pulumi", "up", "--yes")
+	if err != nil {
+		return UpResult{
+			StdErr: stderr,
+			StdOut: stdout,
+		}, errors.Wrapf(err, "stderr: %s", stderr)
 	}
 
 	outs, secrets, err := s.getOutputs()
@@ -31,8 +33,8 @@ func (s *Stack) Up() (UpResult, error) {
 	// TODO - last histroy item.
 
 	return UpResult{
-		StdOut:        stdout.String(),
-		StdErr:        stderr.String(),
+		StdOut:        stdout,
+		StdErr:        stderr,
 		Outputs:       outs,
 		SecretOutputs: secrets,
 	}, nil
@@ -41,48 +43,59 @@ func (s *Stack) Up() (UpResult, error) {
 type UpResult struct {
 	StdOut        string
 	StdErr        string
-	Outputs       map[string]string
-	SecretOutputs map[string]string
+	Outputs       map[string]interface{}
+	SecretOutputs map[string]interface{}
 	Summary       map[string]interface{}
+}
+
+func (s *Stack) initOrSelectStack() (UpResult, error) {
+	var upResult UpResult
+
+	_, _, err := s.runCmd("pulumi", "stack", "select", s.Name)
+	if err != nil {
+		initStdout, initStderr, err := s.runCmd("pulumi", "stack", "init", s.Name)
+		if err != nil {
+			return UpResult{
+				StdErr: initStderr,
+				StdOut: initStdout,
+			}, errors.Wrapf(err, "unable to select or init stack: %s", initStderr)
+		}
+	}
+
+	// now parse pulumi.yaml, pulumi.stack.yaml,
+	// merge with our model
+	// re-write
+	// pulumi config set, config set --secrets`
+
+	// TODO consider storing hash of the yaml files so we don't have to do this for every 'up'
+	return upResult, nil
 }
 
 const secretSentinel = "[secret]"
 
 //getOutputs returns a set of plain outputs, secret outputs, and an error
-func (s *Stack) getOutputs() (map[string]string, map[string]string, error) {
+func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, error) {
 	// standard outputs
-	outCmd := exec.Command("pulumi", "stack", "output", "--json")
-	outCmd.Dir = s.Project.SourcePath
-	var outStdout bytes.Buffer
-	var outStderr bytes.Buffer
-	outCmd.Stdout = &outStdout
-	outCmd.Stderr = &outStderr
-	err := outCmd.Run()
+	outStdout, outStderr, err := s.runCmd("pulumi", "stack", "output", "--json")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "could not get outputs: stderr: %s", outStderr.String())
+		return nil, nil, errors.Wrapf(err, "could not get outputs: stderr: %s", outStderr)
 	}
 
 	// secret outputs
-	secretOutCmd := exec.Command("pulumi", "stack", "output", "--json", "--show-secrets")
-	secretOutCmd.Dir = s.Project.SourcePath
-	var secretStdout bytes.Buffer
-	var secretStderr bytes.Buffer
-	secretOutCmd.Stdout = &secretStdout
-	secretOutCmd.Stderr = &secretStderr
-	err = secretOutCmd.Run()
+	secretStdout, secretStderr, err := s.runCmd("pulumi", "stack", "output", "--json", "--show-secrets")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "could not get secret outputs: stderr: %s", secretStderr.String())
+		return nil, nil, errors.Wrapf(err, "could not get secret outputs: stderr: %s", secretStderr)
 	}
 
-	var outputs map[string]string
-	var secrets map[string]string
+	var outputs map[string]interface{}
+	var secrets map[string]interface{}
 
-	if err = json.Unmarshal(outStdout.Bytes(), &outputs); err != nil {
-		return nil, nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr.String())
+	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
+		return nil, nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
 	}
 
-	if err = json.Unmarshal(secretStdout.Bytes(), &secrets); err != nil {
-		return nil, nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr.String())
+	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
+		return nil, nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
 	}
 
 	for k, v := range outputs {
@@ -99,3 +112,16 @@ func (s *Stack) getOutputs() (map[string]string, map[string]string, error) {
 //summary - call history and get last item
 
 // configure - write the pulumi.yaml, pulumi.<stack>.yaml, set config & secrets
+
+// runCmd execs the given command with appropriate stack context
+// returning stdout, stderr, and an error value
+func (s *Stack) runCmd(name string, arg ...string) (string, string, error) {
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = s.Project.SourcePath
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return stdout.String(), stderr.String(), err
+}
