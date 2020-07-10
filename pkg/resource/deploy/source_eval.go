@@ -583,7 +583,7 @@ func (rm *resmon) StreamInvoke(
 	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
 	tok := tokens.ModuleMember(req.GetTok())
-	label := fmt.Sprintf("QueryResourceMonitor.StreamInvoke(%s)", tok)
+	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
 	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
 	if err != nil {
