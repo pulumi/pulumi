@@ -79,7 +79,7 @@ fi
 # For Google, we need to authenticate with a service principal for certain authentication operations.
 if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
     export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp).json"
-    # Check if GOOGLE_CREDENTIALS is base64 encoded 
+    # Check if GOOGLE_CREDENTIALS is base64 encoded
     if [[ $GOOGLE_CREDENTIALS =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
         echo "$GOOGLE_CREDENTIALS"|base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
         # unset for other gcloud commands using this variable.
@@ -118,7 +118,16 @@ fi
 
 # If the user is running the Python SDK, we will need to install their requirements as well.
 if [ -e requirements.txt ]; then
-    pip3 install -r requirements.txt
+    # Check if should use venv
+    PULUMI_VENV=$(cat $ROOT/Pulumi.yaml | grep "virtualenv:" | cut -d':' -f2)
+    if [ -z $PULUMI_VENV ]; then
+        python3 -m venv $PULUMI_VENV
+        source $PULUMI_VENV/bin/activate
+        pip3 install -r requirements.txt
+        deactivate
+    else
+        pip3 install -r requirements.txt
+    fi
 fi
 
 # Now just pass along all arguments to the Pulumi CLI, sending the output to a file for
