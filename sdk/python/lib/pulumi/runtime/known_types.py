@@ -24,49 +24,13 @@ In order to break this circular reference, and to be clear about what types
 the runtime knows about and treats specially, we defer loading of the types from
 within the functions themselves.
 
-This implementation allows for overriding types used as stubs for testing
-(see test/test_next_serialize.py)
+This implementation allows for overriding the CustomResource type used as a stub
+for testing (see test/test_next_serialize.py)
 """
 from typing import Any, Optional
 
 _custom_resource_type: Optional[type] = None
 """The type of CustomResource."""
-
-_custom_timeouts_type: Optional[type] = None
-"""The type of CustomTimeouts."""
-
-_asset_resource_type: Optional[type] = None
-"""The type of Asset."""
-
-_file_asset_resource_type: Optional[type] = None
-"""The type of FileAsset."""
-
-_string_asset_resource_type: Optional[type] = None
-"""The type of StringAsset."""
-
-_remote_asset_resource_type: Optional[type] = None
-"""The type of RemoteAsset."""
-
-_archive_resource_type: Optional[type] = None
-"""The type of Archive."""
-
-_asset_archive_resource_type: Optional[type] = None
-"""The type of AssetArchive."""
-
-_file_archive_resource_type: Optional[type] = None
-"""The type of FileArchive."""
-
-_remote_archive_resource_type: Optional[type] = None
-"""The type of RemoteArchive."""
-
-_stack_resource_type: Optional[type] = None
-"""The type of Stack."""
-
-_output_type: Optional[type] = None
-"""The type of Output."""
-
-_unknown_type: Optional[type] = None
-"""The type of unknown."""
 
 
 def is_asset(obj: Any) -> bool:
@@ -74,7 +38,7 @@ def is_asset(obj: Any) -> bool:
     Returns true if the given type is an Asset, false otherwise.
     """
     from .. import Asset  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _asset_resource_type or Asset)
+    return isinstance(obj, Asset)
 
 
 def is_archive(obj: Any) -> bool:
@@ -82,7 +46,7 @@ def is_archive(obj: Any) -> bool:
     Returns true if the given type is an Archive, false otherwise.
     """
     from .. import Archive  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _archive_resource_type or Archive)
+    return isinstance(obj, Archive)
 
 
 def is_custom_resource(obj: Any) -> bool:
@@ -98,7 +62,7 @@ def is_custom_timeouts(obj: Any) -> bool:
     Returns true if the given type is a CustomTimeouts, false otherwise.
     """
     from .. import CustomTimeouts  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _custom_timeouts_type or CustomTimeouts)
+    return isinstance(obj, CustomTimeouts)
 
 
 def is_stack(obj: Any) -> bool:
@@ -106,7 +70,7 @@ def is_stack(obj: Any) -> bool:
     Returns true if the given type is an Output, false otherwise.
     """
     from .stack import Stack  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _stack_resource_type or Stack)
+    return isinstance(obj, Stack)
 
 
 def is_output(obj: Any) -> bool:
@@ -114,7 +78,7 @@ def is_output(obj: Any) -> bool:
     Returns true if the given type is an Output, false otherwise.
     """
     from .. import Output  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _output_type or Output)
+    return isinstance(obj, Output)
 
 
 def is_unknown(obj: Any) -> bool:
@@ -122,4 +86,4 @@ def is_unknown(obj: Any) -> bool:
     Returns true if the given object is an Unknown, false otherwise.
     """
     from ..output import Unknown  # pylint: disable=import-outside-toplevel
-    return isinstance(obj, _unknown_type or Unknown)
+    return isinstance(obj, Unknown)
