@@ -119,7 +119,7 @@ fi
 # If the user is running the Python SDK, we will need to install their requirements as well.
 if [ -e requirements.txt ]; then
     # Check if should use venv
-    PULUMI_VENV=$(cat $ROOT/Pulumi.yaml | grep "virtualenv:" | cut -d':' -f2)
+    PULUMI_VENV=$(cat Pulumi.yaml | grep "virtualenv:" | cut -d':' -f2)
     if [ -z $PULUMI_VENV ]; then
         python3 -m venv $PULUMI_VENV
         source $PULUMI_VENV/bin/activate
