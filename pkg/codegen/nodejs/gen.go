@@ -460,8 +460,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "     * @param opts A bag of options that control this resource's behavior.\n")
 	fmt.Fprintf(w, "     */\n")
 
-	// k8s provider "get" methods don't require args, so make args optional.
-	if mod.compatibility == kubernetes20 {
+	// If "get" methods don't require args, make args optional.
+	if r.StateInputs == nil {
 		allOptionalInputs = true
 	}
 
