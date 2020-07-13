@@ -27,8 +27,8 @@ within the functions themselves.
 from typing import Any, Optional
 
 
-# We override this global in test/test_next_serialize.py to stub the CustomResource
-# type. TODO: Rework the test to remove the need for this global.
+# We override this global in test/test_next_serialize.py to stub the CustomResource type.
+# TODO: Rework the test to remove the need for this global. https://github.com/pulumi/pulumi/issues/5000
 _custom_resource_type: Optional[type] = None
 """The type of CustomResource."""
 
