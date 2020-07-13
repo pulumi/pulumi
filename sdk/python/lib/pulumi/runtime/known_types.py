@@ -23,12 +23,12 @@ to reference types that are defined there.
 In order to break this circular reference, and to be clear about what types
 the runtime knows about and treats specially, we defer loading of the types from
 within the functions themselves.
-
-This implementation allows for overriding the CustomResource type used as a stub
-for testing (see test/test_next_serialize.py)
 """
 from typing import Any, Optional
 
+
+# We override this global in test/test_next_serialize.py to stub the CustomResource
+# type. TODO: Rework the test to remove the need for this global.
 _custom_resource_type: Optional[type] = None
 """The type of CustomResource."""
 
