@@ -80,23 +80,23 @@ func TestApplyRewriter(t *testing.T) {
 		},
 		{
 			input: `toJSON({
-								Version = "2012-10-17"
-								Statement = [{
-									Effect = "Allow"
-									Principal = "*"
-									Action = [ "s3:GetObject" ]
-									Resource = [ "arn:aws:s3:::${resource.id}/*" ]
-								}]
-							})`,
+										Version = "2012-10-17"
+										Statement = [{
+											Effect = "Allow"
+											Principal = "*"
+											Action = [ "s3:GetObject" ]
+											Resource = [ "arn:aws:s3:::${resource.id}/*" ]
+										}]
+									})`,
 			output: `__apply(resource.id,eval(id, toJSON({
-								Version = "2012-10-17"
-								Statement = [{
-									Effect = "Allow"
-									Principal = "*"
-									Action = [ "s3:GetObject" ]
-									Resource = [ "arn:aws:s3:::${id}/*" ]
-								}]
-							})))`,
+										Version = "2012-10-17"
+										Statement = [{
+											Effect = "Allow"
+											Principal = "*"
+											Action = [ "s3:GetObject" ]
+											Resource = [ "arn:aws:s3:::${id}/*" ]
+										}]
+									})))`,
 		},
 		{
 			input:  `getPromise().property`,
@@ -115,6 +115,10 @@ func TestApplyRewriter(t *testing.T) {
 			input:        `getPromise().object.foo`,
 			output:       `getPromise().object.foo`,
 			skipPromises: true,
+		},
+		{
+			input:  `getPromise(resource.id).property`,
+			output: `__apply(__apply(resource.id,eval(id, getPromise(id))), eval(getPromise, getPromise.property))`,
 		},
 	}
 
@@ -150,6 +154,10 @@ func TestApplyRewriter(t *testing.T) {
 	scope.DefineFunction("element", pulumiBuiltins["element"])
 	scope.DefineFunction("toJSON", pulumiBuiltins["toJSON"])
 	scope.DefineFunction("getPromise", model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "p",
+			Type: model.NewOptionalType(model.StringType),
+		}},
 		ReturnType: model.NewPromiseType(model.NewObjectType(map[string]model.Type{
 			"property": model.StringType,
 			"object": model.NewObjectType(map[string]model.Type{
