@@ -478,9 +478,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsProvider {
 		trailingBrace, optionsType = " {", "ResourceOptions"
 	}
-	if r.StateInputs == nil {
-		trailingBrace = " {"
-	}
 
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
@@ -498,27 +495,34 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			// conditional state into sensible variables using dynamic type tests.
 			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
 				argsType, stateType)
+		} else {
+			// Otherwise, write out a constructor with no state and required opts, then another with all optional params.
+			fmt.Fprintf(w, "    constructor(name: string, state: undefined, opts: pulumi.CustomResourceOptions)\n")
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s, opts?: pulumi.CustomResourceOptions) {\n",
+				argsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+
 		if r.StateInputs != nil {
 			// The lookup case:
 			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
-			for _, prop := range r.Properties {
+			for _, prop := range r.StateInputs.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
-			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
+		} else {
+			// The creation case:
+			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
 		}
+		fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 	} else {
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		if r.StateInputs != nil {
-			fmt.Fprintf(w, "        {\n")
-		}
+		fmt.Fprintf(w, "        {\n")
 	}
 	for _, prop := range r.InputProperties {
 		if prop.IsRequired {
@@ -531,10 +535,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
 
 		prefix := "            "
-		if r.StateInputs == nil {
-			prefix = "        "
-		}
-
 		if prop.ConstValue != nil {
 			cv, err := mod.getConstValue(prop.ConstValue)
 			if err != nil {
@@ -566,9 +566,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	var secretProps []string
 	for _, prop := range r.Properties {
 		prefix := "            "
-		if r.StateInputs == nil {
-			prefix = "        "
-		}
 		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
 		}
@@ -577,9 +574,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			secretProps = append(secretProps, prop.Name)
 		}
 	}
-	if r.StateInputs != nil {
-		fmt.Fprintf(w, "        }\n")
-	}
+	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "        if (!opts) {\n")
