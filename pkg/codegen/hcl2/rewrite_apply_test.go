@@ -20,6 +20,7 @@ func (nameInfo) Format(name string) string {
 func TestApplyRewriter(t *testing.T) {
 	cases := []struct {
 		input, output string
+		skipPromises  bool
 	}{
 		{
 			input:  `"v: ${resource.foo.bar}"`,
@@ -97,6 +98,24 @@ func TestApplyRewriter(t *testing.T) {
 								}]
 							})))`,
 		},
+		{
+			input:  `getPromise().property`,
+			output: `__apply(getPromise(), eval(getPromise, getPromise.property))`,
+		},
+		{
+			input:  `getPromise().object.foo`,
+			output: `__apply(getPromise(), eval(getPromise, getPromise.object.foo))`,
+		},
+		{
+			input:        `getPromise().property`,
+			output:       `getPromise().property`,
+			skipPromises: true,
+		},
+		{
+			input:        `getPromise().object.foo`,
+			output:       `getPromise().object.foo`,
+			skipPromises: true,
+		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{
@@ -130,14 +149,24 @@ func TestApplyRewriter(t *testing.T) {
 	})
 	scope.DefineFunction("element", pulumiBuiltins["element"])
 	scope.DefineFunction("toJSON", pulumiBuiltins["toJSON"])
+	scope.DefineFunction("getPromise", model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.NewPromiseType(model.NewObjectType(map[string]model.Type{
+			"property": model.StringType,
+			"object": model.NewObjectType(map[string]model.Type{
+				"foo": model.StringType,
+			}),
+		})),
+	}))
 
 	for _, c := range cases {
-		expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		t.Run(c.input, func(t *testing.T) {
+			expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
+			assert.Len(t, diags, 0)
 
-		expr, diags = RewriteApplies(expr, nameInfo(0), true)
-		assert.Len(t, diags, 0)
+			expr, diags = RewriteApplies(expr, nameInfo(0), !c.skipPromises)
+			assert.Len(t, diags, 0)
 
-		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
+			assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
+		})
 	}
 }
