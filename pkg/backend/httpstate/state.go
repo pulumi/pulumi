@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -210,8 +211,9 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		persistEvents, persistEventsDone)
 
 	for e := range events {
+		eventCopy := deepcopy.Copy(e).(engine.Event)
 		displayEvents <- e
-		persistEvents <- e
+		persistEvents <- eventCopy
 
 		// We stop reading from the event stream as soon as we see the CancelEvent,
 		// which will also signal the display/persist components to shutdown too.
