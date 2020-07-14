@@ -203,6 +203,26 @@ type TemplateDelimiter struct {
 	bytes []byte
 }
 
+// NewTemplateDelimiter creates a new TemplateDelimiter value with the given delimiter type. If the token type is not a
+// template delimiter, this function will panic.
+func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
+	var s string
+	switch typ {
+	case hclsyntax.TokenTemplateInterp:
+		s = "${"
+	case hclsyntax.TokenTemplateControl:
+		s = "%{"
+	case hclsyntax.TokenTemplateSeqEnd:
+		s = "}"
+	default:
+		panic(fmt.Errorf("%v is not a template delimiter", typ))
+	}
+	return TemplateDelimiter{
+		Type:  typ,
+		bytes: []byte(s),
+	}
+}
+
 // Range returns the range of the delimiter in the source file.
 func (t TemplateDelimiter) Range() hcl.Range {
 	return t.rng
