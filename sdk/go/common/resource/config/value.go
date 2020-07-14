@@ -240,6 +240,53 @@ func isSecureValue(v interface{}) (bool, string) {
 	return false, ""
 }
 
+func encryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (interface{}, error) {
+	encryptIt := func(val interface{}) (interface{}, error) {
+		if isSecure, secureVal := isSecureValue(val); isSecure {
+			newVal := NewSecureValue(secureVal)
+			raw, err := newVal.Value(decrypter)
+			if err != nil {
+				return nil, err
+			}
+
+			encVal, err := encrypter.EncryptValue(raw)
+			if err != nil {
+				return nil, err
+			}
+
+			m := make(map[string]string)
+			m["secure"] = encVal
+
+			return m, nil
+		}
+		return encryptObject(val, decrypter, encrypter)
+	}
+
+	switch t := v.(type) {
+	case map[string]interface{}:
+		m := make(map[string]interface{})
+		for key, val := range t {
+			encrypted, err := encryptIt(val)
+			if err != nil {
+				return nil, err
+			}
+			m[key] = encrypted
+		}
+		return m, nil
+	case []interface{}:
+		a := make([]interface{}, len(t))
+		for i, val := range t {
+			encrypted, err := encryptIt(val)
+			if err != nil {
+				return nil, err
+			}
+			a[i] = encrypted
+		}
+		return a, nil
+	}
+	return v, nil
+}
+
 // decryptObject returns a new object with all secure values in the object converted to decrypted strings.
 func decryptObject(v interface{}, decrypter Decrypter) (interface{}, error) {
 	decryptIt := func(val interface{}) (interface{}, error) {

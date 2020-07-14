@@ -37,7 +37,7 @@ func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
 	return sm.Encrypter()
 }
 
-func getStackDencrypter(s backend.Stack) (config.Decrypter, error) {
+func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 	sm, err := getStackSecretsManager(s)
 	if err != nil {
 		return nil, err

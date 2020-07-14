@@ -5,6 +5,9 @@ CHANGELOG
 
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
+  
+- Add ability to copy configuration values between stacks
+  [#4971](https://github.com/pulumi/pulumi/pull/4971)
 
 ## 2.6.1 (2020-07-09)
 
