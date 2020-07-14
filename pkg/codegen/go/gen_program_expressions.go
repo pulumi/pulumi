@@ -207,18 +207,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		name := fmt.Sprintf("%s.%s", module, fn)
 
-		optionsBag := ""
-		var buf bytes.Buffer
-		if len(expr.Args) == 3 {
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
-		} else {
-			g.Fgenf(&buf, ", nil")
+		g.Fprintf(w, "%s(ctx", name)
+		for _, a := range expr.Args {
+			g.Fgenf(w, ", %.v", a)
 		}
-		optionsBag = buf.String()
-
-		g.Fgenf(w, "%s(ctx, ", name)
-		g.Fgenf(w, "%.v", expr.Args[1])
-		g.Fgenf(w, "%v)", optionsBag)
+		for i := 0; i < 2-len(expr.Args); i++ {
+			g.Fprint(w, ", nil")
+		}
+		g.Fprint(w, ")")
+	case "join":
+		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Length", expr.Args[0])
@@ -240,6 +238,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "split":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case "toJSON":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
@@ -961,9 +961,11 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"toJSON":   {"encoding/json"},
-	"readDir":  {"io/ioutil"},
+	"join":     {"strings"},
 	"mimeType": {"mime", "path"},
+	"readDir":  {"io/ioutil"},
+	"toBase64": {"encoding/base64"},
+	"toJSON":   {"encoding/json"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {

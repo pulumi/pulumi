@@ -15,7 +15,6 @@
 package dotnet
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"io"
@@ -289,14 +288,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case hcl2.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		optionsBag := ""
-		if len(expr.Args) == 3 {
-			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
-			optionsBag = buf.String()
+		g.Fprintf(w, "%s.InvokeAsync(", name)
+		if len(expr.Args) >= 2 {
+			g.Fgenf(w, "%.v", expr.Args[1])
 		}
-
-		g.Fgenf(w, "%s.InvokeAsync(%.v%v)", name, expr.Args[1], optionsBag)
+		if len(expr.Args) == 3 {
+			g.Fgenf(w, ", %.v", expr.Args[2])
+		}
+		g.Fprint(w, ")")
+	case "join":
+		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
 	case "length":
 		g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
@@ -314,6 +315,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "Output.CreateSecret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgen(w, "Convert.ToBase64String(%v)", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionary(w, expr.Args[0])
