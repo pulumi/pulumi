@@ -1054,8 +1054,10 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 func (mod *modContext) gen(fs fs) error {
 	files := append([]string(nil), mod.extraSourceFiles...)
 
+	modDir := strings.ToLower(mod.mod)
+
 	addFile := func(name, contents string) {
-		p := path.Join(mod.mod, name)
+		p := path.Join(modDir, name)
 		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
@@ -1066,7 +1068,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(path.Join(mod.mod, "utilities.ts"), buffer.Bytes())
+		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
@@ -1085,7 +1087,7 @@ func (mod *modContext) gen(fs fs) error {
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
-		fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
+		fs.add(path.Join(modDir, "README.md"), []byte(readme))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
@@ -1135,12 +1137,12 @@ func (mod *modContext) gen(fs fs) error {
 	// Nested types
 	if len(mod.types) > 0 {
 		input, output := mod.genTypes()
-		fs.add(path.Join(mod.mod, "input.ts"), []byte(input))
-		fs.add(path.Join(mod.mod, "output.ts"), []byte(output))
+		fs.add(path.Join(modDir, "input.ts"), []byte(input))
+		fs.add(path.Join(modDir, "output.ts"), []byte(output))
 	}
 
 	// Index
-	fs.add(path.Join(mod.mod, "index.ts"), []byte(mod.genIndex(files)))
+	fs.add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
 	return nil
 }
 
@@ -1151,10 +1153,11 @@ func (mod *modContext) genIndex(exports []string) string {
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
+		modDir := strings.ToLower(mod.mod)
 		fmt.Fprintf(w, "// Export members:\n")
 		sort.Strings(exports)
 		for _, exp := range exports {
-			rel, err := filepath.Rel(mod.mod, exp)
+			rel, err := filepath.Rel(modDir, exp)
 			contract.Assert(err == nil)
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
@@ -1166,7 +1169,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
-		child := mod.mod
+		child := strings.ToLower(mod.mod)
 		if mod.compatibility == kubernetes20 {
 			// Extract version suffix from child modules. Nested versions will have their own index.ts file.
 			// Example: apps/v1beta1 -> v1beta1

@@ -1347,7 +1347,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	getModFromToken := func(token string) *modContext {
 		canonicalModName := pkg.TokenToModule(token)
-		modName := PyName(canonicalModName)
+		modName := PyName(strings.ToLower(canonicalModName))
 		if override, ok := info.ModuleNameOverrides[canonicalModName]; ok {
 			modName = override
 		}
