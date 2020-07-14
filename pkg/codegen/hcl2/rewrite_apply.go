@@ -150,6 +150,10 @@ func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 	case *model.ForExpression:
 		return r.hasEventualElements(x.Collection)
 	case *model.FunctionCallExpression:
+		_, isEventual := r.isEventualType(x.Signature.ReturnType)
+		if isEventual {
+			return true
+		}
 		for i, arg := range x.Args {
 			if r.hasEventualValues(arg) && r.isPromptArg(x.Signature.Parameters[i].Type, arg) {
 				return true
