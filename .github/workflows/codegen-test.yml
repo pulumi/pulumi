@@ -1,5 +1,4 @@
 name: Downstream Codegen Tests
-cu
 on:
   pull_request:
     paths:
