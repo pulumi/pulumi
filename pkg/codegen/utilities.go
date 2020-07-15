@@ -84,22 +84,15 @@ func SortedKeys(m interface{}) []string {
 }
 
 // CleanDir removes all existing files from a directory except those in the exclusions list.
-func CleanDir(dirPath string, exclusions *[]string) error {
+func CleanDir(dirPath string, exclusions StringSet) error {
 	subPaths, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return err
 	}
 
-	exclusionSet := StringSet{}
-	if exclusions != nil {
-		for _, excluded := range *exclusions {
-			exclusionSet.Add(excluded)
-		}
-	}
-
 	if len(subPaths) > 0 {
 		for _, path := range subPaths {
-			if !exclusionSet.Has(path.Name()) {
+			if !exclusions.Has(path.Name()) {
 				err = os.RemoveAll(filepath.Join(dirPath, path.Name()))
 				if err != nil {
 					return err

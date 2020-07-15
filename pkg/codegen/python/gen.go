@@ -1475,11 +1475,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
-func PrepareOutDir(outDir string, pkgName string) error {
-	pythonOutDir := filepath.Join(outDir, pyPack(pkgName))
-	return codegen.CleanDir(pythonOutDir, nil)
-}
-
 const utilitiesFile = `
 import os
 import pkg_resources

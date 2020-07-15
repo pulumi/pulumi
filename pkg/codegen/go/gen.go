@@ -24,7 +24,6 @@ import (
 	"go/format"
 	"io"
 	"path"
-	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1372,11 +1371,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	return files, nil
-}
-
-func PrepareOutDir(outDir string, pkgName string) error {
-	goOutDir := filepath.Join(outDir, pkgName)
-	return codegen.CleanDir(goOutDir, nil)
 }
 
 const utilitiesFile = `
