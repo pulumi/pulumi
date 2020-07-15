@@ -72,6 +72,46 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 	return decrypter.DecryptValue(c.value)
 }
 
+func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
+	var val Value
+	raw, err := c.Value(decrypter)
+	if err != nil {
+		return Value{}, err
+	}
+	if c.Secure() {
+		if c.Object() {
+			objVal, err := c.ToObject()
+			if err != nil {
+				return Value{}, err
+			}
+			encryptedObj, err := reencryptObject(objVal, decrypter, encrypter)
+			if err != nil {
+				return Value{}, err
+			}
+			json, err := json.Marshal(encryptedObj)
+			if err != nil {
+				return Value{}, err
+			}
+
+			val = NewSecureObjectValue(string(json))
+		} else {
+			enc, eerr := encrypter.EncryptValue(raw)
+			if eerr != nil {
+				return Value{}, eerr
+			}
+			val = NewSecureValue(enc)
+		}
+	} else {
+		if c.Object() {
+			val = NewObjectValue(raw)
+		} else {
+			val = NewValue(raw)
+		}
+	}
+
+	return val, nil
+}
+
 func (c Value) SecureValues(decrypter Decrypter) ([]string, error) {
 	d := NewTrackingDecrypter(decrypter)
 	if _, err := c.Value(d); err != nil {
@@ -240,8 +280,8 @@ func isSecureValue(v interface{}) (bool, string) {
 	return false, ""
 }
 
-func encryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (interface{}, error) {
-	encryptIt := func(val interface{}) (interface{}, error) {
+func reencryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (interface{}, error) {
+	reencryptIt := func(val interface{}) (interface{}, error) {
 		if isSecure, secureVal := isSecureValue(val); isSecure {
 			newVal := NewSecureValue(secureVal)
 			raw, err := newVal.Value(decrypter)
@@ -259,14 +299,14 @@ func encryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (int
 
 			return m, nil
 		}
-		return encryptObject(val, decrypter, encrypter)
+		return reencryptObject(val, decrypter, encrypter)
 	}
 
 	switch t := v.(type) {
 	case map[string]interface{}:
 		m := make(map[string]interface{})
 		for key, val := range t {
-			encrypted, err := encryptIt(val)
+			encrypted, err := reencryptIt(val)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +316,7 @@ func encryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (int
 	case []interface{}:
 		a := make([]interface{}, len(t))
 		for i, val := range t {
-			encrypted, err := encryptIt(val)
+			encrypted, err := reencryptIt(val)
 			if err != nil {
 				return nil, err
 			}

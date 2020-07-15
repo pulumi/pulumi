@@ -46,40 +46,9 @@ func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
 	newConfig := make(Map)
 	for k, c := range m {
-		var val Value
-		raw, err := c.Value(decrypter)
+		val, err := c.Copy(decrypter, encrypter)
 		if err != nil {
 			return nil, err
-		}
-		if c.Secure() {
-			if c.Object() {
-				objVal, err := c.ToObject()
-				if err != nil {
-					return nil, err
-				}
-				encryptedObj, err := encryptObject(objVal, decrypter, encrypter)
-				if err != nil {
-					return nil, err
-				}
-				json, err := json.Marshal(encryptedObj)
-				if err != nil {
-					return nil, err
-				}
-
-				val = NewSecureObjectValue(string(json))
-			} else {
-				enc, eerr := encrypter.EncryptValue(raw)
-				if eerr != nil {
-					return nil, eerr
-				}
-				val = NewSecureValue(enc)
-			}
-		} else {
-			if c.Object() {
-				val = NewObjectValue(raw)
-			} else {
-				val = NewValue(raw)
-			}
 		}
 
 		newConfig[k] = val

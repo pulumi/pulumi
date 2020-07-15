@@ -106,7 +106,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				return err
 			}
 			if currentStack.Ref().Name().String() == destinationStackName {
-				return errors.New("config must be copied to a different destination stack than currently using")
+				return errors.New("current stack and destination stack are the same")
 			}
 			currentProjectStack, err := loadProjectStack(currentStack)
 			if err != nil {
@@ -138,7 +138,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to set")
 	cpCommand.PersistentFlags().StringVarP(
-		&destinationStackName, "new-stack", "", "",
+		&destinationStackName, "dest", "d", "",
 		"The name of the new stack to copy the config to")
 
 	return cpCommand
@@ -155,7 +155,8 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 
 	v, ok, err := currentProjectStack.Config.Get(key, path)
 	if err != nil {
-		return err
+		return errors.Errorf(
+			"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 	}
 	if ok {
 		if v.Secure() {
@@ -167,28 +168,17 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 			decrypter = config.NewPanicCrypter()
 		}
 
-		raw, err := v.Value(decrypter)
+		encrypter, cerr := getStackEncrypter(destinationStack)
+		if cerr != nil {
+			return cerr
+		}
+
+		val, err := v.Copy(decrypter, encrypter)
 		if err != nil {
-			return errors.Wrap(err, "could not decrypt configuration value")
+			return err
 		}
 
-		// now we start the work to copy it - if it was encrypted before then we need to do the same again
-		if v.Secure() {
-			// it was encrypted before, now we need to re-encrypt
-			c, cerr := getStackEncrypter(destinationStack)
-			if cerr != nil {
-				return cerr
-			}
-			enc, eerr := c.EncryptValue(raw)
-			if eerr != nil {
-				return eerr
-			}
-			v = config.NewSecureValue(enc)
-		} else {
-			v = config.NewValue(raw)
-		}
-
-		err = destinationProjectStack.Config.Set(key, v, path)
+		err = destinationProjectStack.Config.Set(key, val, path)
 		if err != nil {
 			return err
 		}
@@ -225,17 +215,24 @@ func copyEntireConfigMap(currentStack backend.Stack,
 		return err
 	}
 
+	var requiresSaving bool
 	for key, val := range newProjectConfig {
 		err = destinationProjectStack.Config.Set(key, val, false)
 		if err != nil {
 			return err
 		}
+		requiresSaving = true
+	}
 
-		err = saveProjectStack(destinationStack, destinationProjectStack)
+	// The use of `requiresSaving` here ensures that there was actually some config
+	// that needed saved, otherwise it's an unnecessary save call
+	if requiresSaving {
+		err := saveProjectStack(destinationStack, destinationProjectStack)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
