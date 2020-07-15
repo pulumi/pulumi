@@ -185,6 +185,7 @@ func (mod *modContext) gen(fs fs) error {
 		mod.genHeader(buffer, false, false)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
 		fs.add(filepath.Join(dir, "_utilities.py"), buffer.Bytes())
+		fs.add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["python"].(PackageInfo).Readme

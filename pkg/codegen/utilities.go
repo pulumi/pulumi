@@ -15,6 +15,9 @@
 package codegen
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 
@@ -78,4 +81,28 @@ func SortedKeys(m interface{}) []string {
 	sort.Strings(keys)
 
 	return keys
+}
+
+// CleanDir removes all existing files from a directory except those in the exclusions list.
+// Note: The exclusions currently don't function recursively, so you cannot exclude a single file
+// in a subdirectory, only entire subdirectories. This function will need improvements to be able to
+// target that use-case.
+func CleanDir(dirPath string, exclusions StringSet) error {
+	subPaths, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	if len(subPaths) > 0 {
+		for _, path := range subPaths {
+			if !exclusions.Has(path.Name()) {
+				err = os.RemoveAll(filepath.Join(dirPath, path.Name()))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
