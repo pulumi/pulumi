@@ -9,6 +9,9 @@ CHANGELOG
 - Add logic to parce pulumi venv on github action
   [#4994](https://github.com/pulumi/pulumi/pull/4994)
 
+- Better performance for stacks with many resources using the .NET SDK
+  [#5015](https://github.com/pulumi/pulumi/pull/5015)
+
 ## 2.6.1 (2020-07-09)
 
 - Fix a panic in the display during CLI operations
