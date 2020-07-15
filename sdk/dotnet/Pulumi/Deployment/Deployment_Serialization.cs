@@ -12,7 +12,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal static bool _excessiveDebugOutput = true;
+        internal static bool _excessiveDebugOutput = false;
 
         /// <summary>
         /// <see cref="SerializeResourcePropertiesAsync"/> walks the props object passed in,

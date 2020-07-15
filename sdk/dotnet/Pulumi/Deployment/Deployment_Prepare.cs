@@ -21,26 +21,26 @@ namespace Pulumi
             var type = res.GetResourceType();
             var name = res.GetResourceName();
 
-            Log.Debug($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
             var explicitDirectDependencies = new HashSet<Resource>(
                 await GatherExplicitDependenciesAsync(options.DependsOn).ConfigureAwait(false));
-            Log.Debug($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}");
 
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-            Log.Debug($"Serializing properties: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Serializing properties: t={type}, name={name}, custom={custom}");
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
             var (serializedProps, propertyToDirectDependencies) =
                 await SerializeResourcePropertiesAsync(label, dictionary).ConfigureAwait(false);
-            Log.Debug($"Serialized properties: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}");
 
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
-            Log.Debug($"Getting parent urn: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}");
             var parentURN = options.Parent != null
                 ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
-            Log.Debug($"Got parent urn: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}");
 
             string? providerRef = null;
             if (custom)
@@ -89,6 +89,12 @@ namespace Pulumi
                 allDirectDependencyURNs,
                 propertyToDirectDependencyURNs,
                 aliases);
+
+            void LogExcessive(string message)
+            {
+                if (_excessiveDebugOutput)
+                    Log.Debug(message);
+            }
         }
 
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
