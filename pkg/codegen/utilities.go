@@ -84,6 +84,9 @@ func SortedKeys(m interface{}) []string {
 }
 
 // CleanDir removes all existing files from a directory except those in the exclusions list.
+// Note: The exclusions currently don't function recursively, so you cannot exclude a single file
+// in a subdirectory, only entire subdirectories. This function will need improvements to be able to
+// target that use-case.
 func CleanDir(dirPath string, exclusions StringSet) error {
 	subPaths, err := ioutil.ReadDir(dirPath)
 	if err != nil {
