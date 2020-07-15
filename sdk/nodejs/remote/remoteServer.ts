@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
 import * as child_process from "child_process";
-import * as grpc from "grpc";
 import * as readline from "readline";
 import * as runtime from "../runtime";
 import * as settings from "../runtime/settings";

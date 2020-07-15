@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as grpc from "grpc";
+import * as grpc from "@grpc/grpc-js";
 import * as runtime from "../../runtime";
 
 //tslint:disable
