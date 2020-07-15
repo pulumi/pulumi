@@ -17,8 +17,12 @@ func (s *Stack) writeProject() error {
 	if err == nil {
 		proj = wp
 	}
-	merged := mergeProjects(proj, s.Project.Overrides.Project)
-	err = merged.Save(filepath.Join(s.Project.SourcePath, "Pulumi.yaml"))
+
+	if s.Project.Overrides != nil && s.Project.Overrides.Project != nil {
+		proj = mergeProjects(proj, s.Project.Overrides.Project)
+	}
+
+	err = proj.Save(filepath.Join(s.Project.SourcePath, "Pulumi.yaml"))
 	if err != nil {
 		return errors.Wrap(err, "unable to write project file Pulumi.yaml.")
 	}
@@ -92,9 +96,13 @@ func (s *Stack) writeStack() error {
 	if err == nil {
 		stack = ws
 	}
-	merged := mergeStacks(stack, s.Overrides.ProjectStack)
+
+	if s.Overrides != nil && s.Overrides.ProjectStack != nil {
+		stack = mergeStacks(stack, s.Overrides.ProjectStack)
+	}
+
 	fName := fmt.Sprintf("Pulumi.%s.yaml", s.Name)
-	err = merged.Save(filepath.Join(s.Project.SourcePath, fName))
+	err = stack.Save(filepath.Join(s.Project.SourcePath, fName))
 	if err != nil {
 		return errors.Wrap(err, "unable to write project file Pulumi.yaml.")
 	}

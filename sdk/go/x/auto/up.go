@@ -12,10 +12,29 @@ import (
 func (s *Stack) Up() (UpResult, error) {
 	var upResult UpResult
 
-	// TODO setup - merge pulumi.yaml, set config, etc.
 	res, err := s.initOrSelectStack()
 	if err != nil {
 		return res, errors.Wrap(err, "could not initialize or select stack")
+	}
+
+	err = s.writeProject()
+	if err != nil {
+		return upResult, err
+	}
+
+	err = s.writeStack()
+	if err != nil {
+		return upResult, err
+	}
+
+	_, cfgStderr, err := s.setConfig()
+	if err != nil {
+		return upResult, errors.Wrapf(err, "unable to set config: %s", cfgStderr)
+	}
+
+	_, secretsStderr, err := s.setSecrets()
+	if err != nil {
+		return upResult, errors.Wrapf(err, "unable to set secrets: %s", secretsStderr)
 	}
 
 	stdout, stderr, err := s.runCmd("pulumi", "up", "--yes")
@@ -125,6 +144,44 @@ func (s *Stack) GetUser() (string, error) {
 		return "", errors.Wrapf(err, "could not detect user: stderr: %s", outStderr)
 	}
 	return strings.TrimSpace(outStdout), nil
+}
+
+// TODO need to refactor to have a public and private endpoint for construction vs everyday use
+func (s *Stack) setConfig() (string, string, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	for k, v := range s.Overrides.Config {
+		// TODO verify escaping
+		outstr, errstr, err := s.runCmd("pulumi", "config", "set", k, v)
+		stdout.WriteString(outstr)
+		stderr.WriteString(errstr)
+		if err != nil {
+			return stdout.String(), stderr.String(), err
+		}
+	}
+
+	return stdout.String(), stderr.String(), nil
+
+}
+
+// TODO need to refactor to have a public and private endpoint for construction vs everyday use
+func (s *Stack) setSecrets() (string, string, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	for k, v := range s.Overrides.Secrets {
+		// TODO verify escaping
+		outstr, errstr, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
+		stdout.WriteString(outstr)
+		stderr.WriteString(errstr)
+		if err != nil {
+			return stdout.String(), stderr.String(), err
+		}
+	}
+
+	return stdout.String(), stderr.String(), nil
+
 }
 
 //summary - call history and get last item
