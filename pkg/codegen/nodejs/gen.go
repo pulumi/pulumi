@@ -1571,6 +1571,10 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
+func PrepareOutDir(outDir string) error {
+	return codegen.CleanDir(outDir, &[]string{"tests"})
+}
+
 const utilitiesFile = `
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {

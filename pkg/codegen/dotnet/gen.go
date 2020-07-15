@@ -1560,3 +1560,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	return files, nil
 }
+
+func PrepareOutDir(outDir string) error {
+	return codegen.CleanDir(outDir, nil)
+}
