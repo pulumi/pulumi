@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO JSON errors produce diagnostics, not STD err
+
 func (s *Stack) Up() (UpResult, error) {
 	var upResult UpResult
 
@@ -50,13 +52,17 @@ func (s *Stack) Up() (UpResult, error) {
 		return upResult, err
 	}
 
-	// TODO - last histroy item.
+	lastResult, err := s.lastResult()
+	if err != nil {
+		return upResult, err
+	}
 
 	return UpResult{
 		StdOut:        stdout,
 		StdErr:        stderr,
 		Outputs:       outs,
 		SecretOutputs: secrets,
+		Summary:       lastResult,
 	}, nil
 }
 
@@ -65,7 +71,7 @@ type UpResult struct {
 	StdErr        string
 	Outputs       map[string]interface{}
 	SecretOutputs map[string]interface{}
-	Summary       map[string]interface{}
+	Summary       UpdateSummary
 }
 
 func (s *Stack) initOrSelectStack() (UpResult, error) {
@@ -139,6 +145,10 @@ func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, er
 }
 
 func (s *Stack) GetUser() (string, error) {
+	_, err := s.initOrSelectStack()
+	if err != nil {
+		return "", errors.Wrap(err, "could not initialize or select stack")
+	}
 	outStdout, outStderr, err := s.runCmd("pulumi", "whoami")
 	if err != nil {
 		return "", errors.Wrapf(err, "could not detect user: stderr: %s", outStderr)
@@ -184,9 +194,50 @@ func (s *Stack) setSecrets() (string, string, error) {
 
 }
 
-//summary - call history and get last item
+func (s *Stack) LastResult() (UpdateSummary, error) {
+	var zero UpdateSummary
+	_, err := s.initOrSelectStack()
+	if err != nil {
+		return zero, errors.Wrap(err, "could not initialize or select stack")
+	}
 
-// configure - write the pulumi.yaml, pulumi.<stack>.yaml, set config & secrets
+	return s.lastResult()
+}
+
+// lifted from https://github.com/pulumi/pulumi/blob/66bd3f4aa8f9a90d3de667828dda4bed6e115f6b/pkg/cmd/pulumi/history.go#L91
+type UpdateSummary struct {
+	Kind        string                 `json:"kind"`
+	StartTime   string                 `json:"startTime"`
+	Message     string                 `json:"message"`
+	Environment map[string]string      `json:"environment"`
+	Config      map[string]interface{} `json:"config"`
+	Result      string                 `json:"result,omitempty"`
+
+	// These values are only present once the update finishes
+	EndTime         *string         `json:"endTime,omitempty"`
+	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+}
+
+func (s *Stack) lastResult() (UpdateSummary, error) {
+	var res UpdateSummary
+	histOut, histErr, err := s.runCmd("pulumi", "history", "--json")
+	if err != nil {
+		// TODO JSON errors produce diagnostics, not STD err
+		return res, errors.Wrapf(err, "could not get outputs: stderr: %s", histErr)
+	}
+
+	var history []UpdateSummary
+	err = json.Unmarshal([]byte(histOut), &history)
+	if err != nil {
+		return res, errors.Wrap(err, "unable to unmarshal history result")
+	}
+
+	if len(history) != 0 {
+		res = history[0]
+	}
+
+	return res, nil
+}
 
 // runCmd execs the given command with appropriate stack context
 // returning stdout, stderr, and an error value

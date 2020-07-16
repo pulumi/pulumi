@@ -31,4 +31,6 @@ func TestUpBasic(t *testing.T) {
 	assert.Equal(t, "foo", res.Outputs["exp_static"])
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"])
 	assert.Equal(t, "secret", res.SecretOutputs["exp_secret"])
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
 }
