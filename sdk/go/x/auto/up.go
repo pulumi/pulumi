@@ -24,6 +24,10 @@ func (s *Stack) Up() (UpResult, error) {
 		return upResult, err
 	}
 
+	// Open question -
+	// when to do run setup methods?
+	// Should this be done for each lifecycle method?
+	// Perhaps just once upon NewStack()...?
 	err = s.writeStack()
 	if err != nil {
 		return upResult, err
@@ -81,6 +85,7 @@ func (s *Stack) initOrSelectStack() (UpResult, error) {
 	if err != nil {
 		initStdout, initStderr, err := s.runCmd("pulumi", "stack", "init", s.Name)
 		if err != nil {
+			// TODO this is not the right type
 			return UpResult{
 				StdErr: initStderr,
 				StdOut: initStdout,

@@ -33,4 +33,13 @@ func TestUpBasic(t *testing.T) {
 	assert.Equal(t, "secret", res.SecretOutputs["exp_secret"])
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
