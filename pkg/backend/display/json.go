@@ -110,12 +110,12 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		// Events ocurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
-			digest.Config = e.Payload.(engine.PreludeEventPayload).Config
+			digest.Config = e.Payload().(engine.PreludeEventPayload).Config
 
 		// Events throughout the execution:
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload.(engine.DiagEventPayload)
+			p := e.Payload().(engine.DiagEventPayload)
 			if !p.Ephemeral && p.Severity != diag.Debug {
 				digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 					URN:      p.URN,
@@ -125,7 +125,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			}
 		case engine.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
-			p := e.Payload.(engine.StdoutEventPayload)
+			p := e.Payload().(engine.StdoutEventPayload)
 			digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 				Message:  colors.Never.Colorize(p.Message),
 				Severity: diag.Info,
@@ -133,7 +133,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		case engine.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
-			if m := e.Payload.(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
 				var detailedDiff map[string]propertyDiff
 				if m.DetailedDiff != nil {
 					detailedDiff = make(map[string]propertyDiff)
@@ -183,7 +183,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		// Events ocurring late:
 		case engine.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
-			p := e.Payload.(engine.SummaryEventPayload)
+			p := e.Payload().(engine.SummaryEventPayload)
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt

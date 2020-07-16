@@ -1050,7 +1050,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
-					p := e.Payload.(DiagEventPayload)
+					p := e.Payload().(DiagEventPayload)
 					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
 						found = true
 						break
@@ -1457,7 +1457,7 @@ func TestCheckFailureRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = msg == "oh no, check had an error\n" && e.Severity == diag.Error
 					}
@@ -1507,7 +1507,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = strings.Contains(msg, "field is not valid") && e.Severity == diag.Error
 						if sawFailure {
@@ -2090,7 +2090,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
 						if sawExitCode {
@@ -3159,7 +3159,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -3494,7 +3494,7 @@ func TestAliases(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -3803,7 +3803,7 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN {
 						assert.Equal(t, deploy.OpUpdate, p.Op)
 						found = true
@@ -3824,7 +3824,7 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN {
 						assert.Equal(t, deploy.OpSame, p.Op)
 						found = true
@@ -3884,7 +3884,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN && p.Op == deploy.OpReplace {
 						found = true
 					}
@@ -5566,7 +5566,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}

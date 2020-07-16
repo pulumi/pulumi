@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -211,9 +210,8 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		persistEvents, persistEventsDone)
 
 	for e := range events {
-		eventCopy := deepcopy.Copy(e).(engine.Event)
 		displayEvents <- e
-		persistEvents <- eventCopy
+		persistEvents <- e
 
 		// We stop reading from the event stream as soon as we see the CancelEvent,
 		// which will also signal the display/persist components to shutdown too.
@@ -303,7 +301,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 }
 
 func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
+	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
 }
 
 type engineEventBatch struct {
