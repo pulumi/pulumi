@@ -98,7 +98,8 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(action, event.Payload().(engine.SummaryEventPayload), false /* wroteDiagnosticHeader */, opts)
+		const wroteDiagnosticHeader = false
+		return renderSummaryEvent(action, event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
