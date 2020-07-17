@@ -155,8 +155,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 
 	v, ok, err := currentProjectStack.Config.Get(key, path)
 	if err != nil {
-		return errors.Errorf(
-			"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+		return err
 	}
 	if ok {
 		if v.Secure() {
@@ -186,7 +185,8 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		return saveProjectStack(destinationStack, destinationProjectStack)
 	}
 
-	return nil
+	return errors.Errorf(
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,

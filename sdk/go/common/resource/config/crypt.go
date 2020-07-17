@@ -210,7 +210,7 @@ func decryptAES256GCM(ciphertext []byte, key []byte, nonce []byte) (string, erro
 }
 
 // Crypter that just adds a prefix to the plaintext string when encrypting,
-// and removes the prefix from the ciphertext when decrypting.
+// and removes the prefix from the ciphertext when decrypting, for use in tests.
 type prefixCrypter struct {
 	prefix string
 }
