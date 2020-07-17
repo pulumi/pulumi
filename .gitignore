@@ -1,3 +1,4 @@
+.DS_store
 *.swp
 **/vendor/
 **/node_modules/
