@@ -8,7 +8,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 )
 
-// Lifted from https://github.com/pulumi/pulumi/blob/45d2fa95d60be71d170d15c6d9a24274b80ddc91/pkg/backend/display/json.go#L229
+// Lifted from
+// https://github.com/pulumi/pulumi/blob/45d2fa95d60be71d170d15c6d9a24274b80ddc91/pkg/backend/display/json.go#L229
+
 type PreviewStep struct {
 	// Op is the kind of operation being performed.
 	Op string `json:"op"`

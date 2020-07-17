@@ -24,7 +24,13 @@ func TestUpBasic(t *testing.T) {
 		},
 	}
 
+	// initialize
 	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
 	// -- pulumi up --
 	res, err := s.Up()
 	if err != nil {

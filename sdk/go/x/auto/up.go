@@ -140,8 +140,7 @@ func (s *stack) setConfig(config map[string]string) error {
 		_, errstr, err := s.runCmd("pulumi", "config", "set", k, v)
 		stderr.WriteString(errstr)
 		if err != nil {
-			errors.Wrapf(err, "unable to set config, stderr: %s", errstr)
-			return err
+			return errors.Wrapf(err, "unable to set config, stderr: %s", errstr)
 		}
 	}
 
@@ -166,8 +165,7 @@ func (s *stack) setSecrets(secrets map[string]string) error {
 		_, errstr, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
 		stderr.WriteString(errstr)
 		if err != nil {
-			errors.Wrapf(err, "unable to set secret config, stderr: %s", errstr)
-			return err
+			return errors.Wrapf(err, "unable to set secret config, stderr: %s", errstr)
 		}
 	}
 
