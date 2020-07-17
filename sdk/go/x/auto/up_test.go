@@ -20,6 +20,7 @@ func TestUpBasic(t *testing.T) {
 			Secrets: map[string]string{"buzz": "secret"},
 		},
 	}
+	// -- pulumi up --
 	res, err := s.Up()
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
@@ -34,6 +35,29 @@ func TestUpBasic(t *testing.T) {
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
+	// -- pulumi preview --
+
+	prev, err := s.Preview()
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+
+	ref, err := s.Refresh()
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+
 	dRes, err := s.Destroy()
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
@@ -42,6 +66,8 @@ func TestUpBasic(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
 
 	err = s.Remove()
 	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
