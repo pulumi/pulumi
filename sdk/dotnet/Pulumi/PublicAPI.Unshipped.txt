@@ -1,3 +1,4 @@
-Pulumi.ResourceTransformationArgs.Name.get => string
+Pulumi.ResourceTransformationArgs.Name.get -> string
+Pulumi.ResourceTransformationResult.Name.get -> string
 Pulumi.ResourceTransformationArgs.ResourceTransformationArgs(Pulumi.Resource resource, string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(string name, Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
