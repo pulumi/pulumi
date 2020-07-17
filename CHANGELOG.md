@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add name transformation support
+  [#5021](https://github.com/pulumi/pulumi/pull/5021)
+
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
   
