@@ -131,7 +131,7 @@ type StackOverrides struct {
 	// Secrets is an optional config bag to `pulumi config set --secret`
 	Secrets map[string]string
 	// TODO we should use a limited struct that prevents setting config directly
-	// We want users to explicilty handle config/secrets through above param
+	// We want users to explicitly handle config/secrets through above param
 	// ProjectStack is the optional set of overrides
 	ProjectStack *workspace.ProjectStack
 }
