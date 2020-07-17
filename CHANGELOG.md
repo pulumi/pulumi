@@ -9,7 +9,7 @@ CHANGELOG
 - Add ability to copy configuration values between stacks
   [#4971](https://github.com/pulumi/pulumi/pull/4971)
 
-- Add logic to parce pulumi venv on github action
+- Add logic to parse pulumi venv on github action
   [#4994](https://github.com/pulumi/pulumi/pull/4994)
 
 ## 2.6.1 (2020-07-09)
