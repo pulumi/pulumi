@@ -5,6 +5,9 @@ CHANGELOG
 
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
+  
+- Add ability to copy configuration values between stacks
+  [#4971](https://github.com/pulumi/pulumi/pull/4971)
 
 - Add logic to parce pulumi venv on github action
   [#4994](https://github.com/pulumi/pulumi/pull/4994)

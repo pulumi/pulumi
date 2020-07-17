@@ -43,6 +43,20 @@ func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
 	return r, nil
 }
 
+func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
+	newConfig := make(Map)
+	for k, c := range m {
+		val, err := c.Copy(decrypter, encrypter)
+		if err != nil {
+			return nil, err
+		}
+
+		newConfig[k] = val
+	}
+
+	return newConfig, nil
+}
+
 // HasSecureValue returns true if the config map contains a secure (encrypted) value.
 func (m Map) HasSecureValue() bool {
 	for _, v := range m {

@@ -1170,6 +1170,82 @@ func TestSetFail(t *testing.T) {
 	}
 }
 
+func TestCopyMap(t *testing.T) {
+	tests := []struct {
+		Config   Map
+		Expected Map
+	}{
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("testValue"),
+			},
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewValue("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
+			},
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewSecureValue("stackBsecurevalue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`{"inner":{"secure":"stackAsecurevalue"}}`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`{"inner":{"secure":"stackBsecurevalue"}}`),
+			},
+		},
+		{
+			Config: Map{
+				//nolint:lll
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackAsecurevalue"}},{"secure":"stackAsecurevalue2"}]`),
+			},
+			Expected: Map{
+				//nolint:lll
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackBsecurevalue"}},{"secure":"stackBsecurevalue2"}]`),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+			},
+			Expected: Map{
+				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			newConfig, err := test.Config.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.Expected, newConfig)
+		})
+	}
+
+}
+
 func roundtripMapYAML(m Map) (Map, error) {
 	return roundtripMap(m, yaml.Marshal, yaml.Unmarshal)
 }
