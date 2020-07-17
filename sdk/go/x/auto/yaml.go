@@ -11,7 +11,7 @@ import (
 
 var exts = []string{".yaml", ".yml", ".json"}
 
-func (s *Stack) writeProject() error {
+func (s *StackSpec) writeProject() error {
 	var proj *workspace.Project = &workspace.Project{}
 	wp, err := parsePulumiProject(s.Project.SourcePath)
 	if err == nil {
@@ -90,7 +90,7 @@ func mergeProjects(src *workspace.Project, overrides *workspace.Project) *worksp
 	return &res
 }
 
-func (s *Stack) writeStack() error {
+func (s *StackSpec) writeStack() error {
 	var stack *workspace.ProjectStack = &workspace.ProjectStack{}
 	ws, err := parsePulumiStack(s.Project.SourcePath, s.Name)
 	if err == nil {

@@ -9,38 +9,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO JSON errors produce diagnostics, not STD err
-
-func (s *Stack) Up() (UpResult, error) {
+func (s *stack) Up() (UpResult, error) {
 	var upResult UpResult
 
-	res, err := s.initOrSelectStack()
+	err := s.initOrSelectStack()
 	if err != nil {
-		return res, errors.Wrap(err, "could not initialize or select stack")
-	}
-
-	err = s.writeProject()
-	if err != nil {
-		return upResult, err
-	}
-
-	// Open question -
-	// when to do run setup methods?
-	// Should this be done for each lifecycle method?
-	// Perhaps just once upon NewStack()...?
-	err = s.writeStack()
-	if err != nil {
-		return upResult, err
-	}
-
-	_, cfgStderr, err := s.setConfig()
-	if err != nil {
-		return upResult, errors.Wrapf(err, "unable to set config: %s", cfgStderr)
-	}
-
-	_, secretsStderr, err := s.setSecrets()
-	if err != nil {
-		return upResult, errors.Wrapf(err, "unable to set secrets: %s", secretsStderr)
+		return upResult, errors.Wrap(err, "could not initialize or select stack")
 	}
 
 	stdout, stderr, err := s.runCmd("pulumi", "up", "--yes")
@@ -51,12 +25,12 @@ func (s *Stack) Up() (UpResult, error) {
 		}, errors.Wrapf(err, "stderr: %s", stderr)
 	}
 
-	outs, secrets, err := s.getOutputs()
+	outs, secrets, err := s.outputs()
 	if err != nil {
 		return upResult, err
 	}
 
-	lastResult, err := s.lastResult()
+	summary, err := s.summary()
 	if err != nil {
 		return upResult, err
 	}
@@ -66,7 +40,7 @@ func (s *Stack) Up() (UpResult, error) {
 		StdErr:        stderr,
 		Outputs:       outs,
 		SecretOutputs: secrets,
-		Summary:       lastResult,
+		Summary:       summary,
 	}, nil
 }
 
@@ -78,43 +52,31 @@ type UpResult struct {
 	Summary       UpdateSummary
 }
 
-func (s *Stack) initOrSelectStack() (UpResult, error) {
-	var upResult UpResult
-
+func (s *stack) initOrSelectStack() error {
 	_, _, err := s.runCmd("pulumi", "stack", "select", s.Name)
 	if err != nil {
-		initStdout, initStderr, err := s.runCmd("pulumi", "stack", "init", s.Name)
+		_, initStderr, err := s.runCmd("pulumi", "stack", "init", s.Name)
 		if err != nil {
-			// TODO this is not the right type
-			return UpResult{
-				StdErr: initStderr,
-				StdOut: initStdout,
-			}, errors.Wrapf(err, "unable to select or init stack: %s", initStderr)
+			return errors.Wrapf(err, "unable to select or init stack: %s", initStderr)
 		}
 	}
 
-	// now parse pulumi.yaml, pulumi.stack.yaml,
-	// merge with our model
-	// re-write
-	// pulumi config set, config set --secrets`
-
-	// TODO consider storing hash of the yaml files so we don't have to do this for every 'up'
-	return upResult, nil
+	return nil
 }
 
 const secretSentinel = "[secret]"
 
-func (s *Stack) GetOutputs() (map[string]interface{}, map[string]interface{}, error) {
-	_, err := s.initOrSelectStack()
+func (s *stack) Outputs() (map[string]interface{}, map[string]interface{}, error) {
+	err := s.initOrSelectStack()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not initialize or select stack")
 	}
 
-	return s.getOutputs()
+	return s.outputs()
 }
 
-//getOutputs returns a set of plain outputs, secret outputs, and an error
-func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, error) {
+// outputs returns a set of plain outputs, secret outputs, and an error
+func (s *stack) outputs() (map[string]interface{}, map[string]interface{}, error) {
 	// standard outputs
 	outStdout, outStderr, err := s.runCmd("pulumi", "stack", "output", "--json")
 	if err != nil {
@@ -149,8 +111,8 @@ func (s *Stack) getOutputs() (map[string]interface{}, map[string]interface{}, er
 	return outputs, secrets, nil
 }
 
-func (s *Stack) GetUser() (string, error) {
-	_, err := s.initOrSelectStack()
+func (s *stack) User() (string, error) {
+	err := s.initOrSelectStack()
 	if err != nil {
 		return "", errors.Wrap(err, "could not initialize or select stack")
 	}
@@ -161,69 +123,69 @@ func (s *Stack) GetUser() (string, error) {
 	return strings.TrimSpace(outStdout), nil
 }
 
-// TODO need to refactor to have a public and private endpoint for construction vs everyday use
-func (s *Stack) setConfig() (string, string, error) {
-	var stdout bytes.Buffer
+func (s *stack) SetConfig(config map[string]string) error {
+	err := s.initOrSelectStack()
+	if err != nil {
+		return errors.Wrap(err, "could not initialize or select stack")
+	}
+
+	return s.setConfig(config)
+}
+
+func (s *stack) setConfig(config map[string]string) error {
 	var stderr bytes.Buffer
 
-	for k, v := range s.Overrides.Config {
+	for k, v := range config {
 		// TODO verify escaping
-		outstr, errstr, err := s.runCmd("pulumi", "config", "set", k, v)
-		stdout.WriteString(outstr)
+		_, errstr, err := s.runCmd("pulumi", "config", "set", k, v)
 		stderr.WriteString(errstr)
 		if err != nil {
-			return stdout.String(), stderr.String(), err
+			errors.Wrapf(err, "unable to set config, stderr: %s", errstr)
+			return err
 		}
 	}
 
-	return stdout.String(), stderr.String(), nil
+	return nil
 
 }
 
-// TODO need to refactor to have a public and private endpoint for construction vs everyday use
-func (s *Stack) setSecrets() (string, string, error) {
-	var stdout bytes.Buffer
+func (s *stack) SetSecrets(secrets map[string]string) error {
+	err := s.initOrSelectStack()
+	if err != nil {
+		return errors.Wrap(err, "could not initialize or select stack")
+	}
+
+	return s.setSecrets(secrets)
+}
+
+func (s *stack) setSecrets(secrets map[string]string) error {
 	var stderr bytes.Buffer
 
-	for k, v := range s.Overrides.Secrets {
+	for k, v := range secrets {
 		// TODO verify escaping
-		outstr, errstr, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
-		stdout.WriteString(outstr)
+		_, errstr, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
 		stderr.WriteString(errstr)
 		if err != nil {
-			return stdout.String(), stderr.String(), err
+			errors.Wrapf(err, "unable to set secret config, stderr: %s", errstr)
+			return err
 		}
 	}
 
-	return stdout.String(), stderr.String(), nil
+	return nil
 
 }
 
-func (s *Stack) LastResult() (UpdateSummary, error) {
+func (s *stack) Summary() (UpdateSummary, error) {
 	var zero UpdateSummary
-	_, err := s.initOrSelectStack()
+	err := s.initOrSelectStack()
 	if err != nil {
 		return zero, errors.Wrap(err, "could not initialize or select stack")
 	}
 
-	return s.lastResult()
+	return s.summary()
 }
 
-// lifted from https://github.com/pulumi/pulumi/blob/66bd3f4aa8f9a90d3de667828dda4bed6e115f6b/pkg/cmd/pulumi/history.go#L91
-type UpdateSummary struct {
-	Kind        string                 `json:"kind"`
-	StartTime   string                 `json:"startTime"`
-	Message     string                 `json:"message"`
-	Environment map[string]string      `json:"environment"`
-	Config      map[string]interface{} `json:"config"`
-	Result      string                 `json:"result,omitempty"`
-
-	// These values are only present once the update finishes
-	EndTime         *string         `json:"endTime,omitempty"`
-	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
-}
-
-func (s *Stack) lastResult() (UpdateSummary, error) {
+func (s *stack) summary() (UpdateSummary, error) {
 	var res UpdateSummary
 	histOut, histErr, err := s.runCmd("pulumi", "history", "--json")
 	if err != nil {
@@ -244,11 +206,27 @@ func (s *Stack) lastResult() (UpdateSummary, error) {
 	return res, nil
 }
 
+// lifted from:
+// https://github.com/pulumi/pulumi/blob/66bd3f4aa8f9a90d3de667828dda4bed6e115f6b/pkg/cmd/pulumi/history.go#L91
+
+type UpdateSummary struct {
+	Kind        string                 `json:"kind"`
+	StartTime   string                 `json:"startTime"`
+	Message     string                 `json:"message"`
+	Environment map[string]string      `json:"environment"`
+	Config      map[string]interface{} `json:"config"`
+	Result      string                 `json:"result,omitempty"`
+
+	// These values are only present once the update finishes
+	EndTime         *string         `json:"endTime,omitempty"`
+	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+}
+
 // runCmd execs the given command with appropriate stack context
 // returning stdout, stderr, and an error value
-func (s *Stack) runCmd(name string, arg ...string) (string, string, error) {
+func (s *stack) runCmd(name string, arg ...string) (string, string, error) {
 	cmd := exec.Command(name, arg...)
-	cmd.Dir = s.Project.SourcePath
+	cmd.Dir = s.SourcePath
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -2,11 +2,10 @@ package auto
 
 import "github.com/pkg/errors"
 
-func (s *Stack) Refresh() (RefreshResult, error) {
+func (s *stack) Refresh() (RefreshResult, error) {
 	var dResult RefreshResult
 
-	// TODO figure out setup method lifecycle
-	_, err := s.initOrSelectStack()
+	err := s.initOrSelectStack()
 	if err != nil {
 		return dResult, errors.Wrap(err, "could not initialize or select stack")
 	}
@@ -19,7 +18,7 @@ func (s *Stack) Refresh() (RefreshResult, error) {
 		}, errors.Wrapf(err, "stderr: %s", stderr)
 	}
 
-	lastResult, err := s.lastResult()
+	summary, err := s.summary()
 	if err != nil {
 		return dResult, err
 	}
@@ -27,7 +26,7 @@ func (s *Stack) Refresh() (RefreshResult, error) {
 	return RefreshResult{
 		StdOut:  stdout,
 		StdErr:  stderr,
-		Summary: lastResult,
+		Summary: summary,
 	}, nil
 }
 

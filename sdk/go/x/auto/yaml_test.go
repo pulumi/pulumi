@@ -10,7 +10,7 @@ import (
 
 func TestParseProject(t *testing.T) {
 	overrideDesc := "abcdef"
-	p := Project{
+	p := ProjectSpec{
 		Name:       "testproj",
 		SourcePath: filepath.Join(".", "test", "testproj"),
 		Overrides: &ProjectOverrides{
@@ -19,7 +19,7 @@ func TestParseProject(t *testing.T) {
 			},
 		},
 	}
-	s := &Stack{
+	s := &StackSpec{
 		Name:    "int_test",
 		Project: p,
 		Overrides: &StackOverrides{
@@ -48,31 +48,31 @@ func TestParseProject(t *testing.T) {
 	assert.Equal(t, expMergeRes, merged)
 }
 
-func TestWriteProject(t *testing.T) {
-	overrideDesc := "abcdef"
-	p := Project{
-		Name:       "testproj",
-		SourcePath: filepath.Join(".", "test", "testproj"),
-		Overrides: &ProjectOverrides{
-			Project: &workspace.Project{
-				Description: &overrideDesc,
-			},
-		},
-	}
-	s := &Stack{
-		Name:    "int_test",
-		Project: p,
-		Overrides: &StackOverrides{
-			Config:  map[string]string{"bar": "abc"},
-			Secrets: map[string]string{"buzz": "secret"},
-		},
-	}
-
-	err := s.writeProject()
-	assert.Nil(t, err)
-}
-
 // TODO tests useful for development but not reproducible
+
+// func TestWriteProject(t *testing.T) {
+// 	overrideDesc := "abcdef"
+// 	p := ProjectSpec{
+// 		Name:       "testproj",
+// 		SourcePath: filepath.Join(".", "test", "testproj"),
+// 		Overrides: &ProjectOverrides{
+// 			Project: &workspace.Project{
+// 				Description: &overrideDesc,
+// 			},
+// 		},
+// 	}
+// 	s := &StackSpec{
+// 		Name:    "int_test",
+// 		Project: p,
+// 		Overrides: &StackOverrides{
+// 			Config:  map[string]string{"bar": "abc"},
+// 			Secrets: map[string]string{"buzz": "secret"},
+// 		},
+// 	}
+
+// 	err := s.writeProject()
+// 	assert.Nil(t, err)
+// }
 
 // func TestParseStack(t *testing.T) {
 // 	p := Project{

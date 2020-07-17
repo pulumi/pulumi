@@ -41,17 +41,17 @@ type PreviewResult struct {
 	ChangeSummary map[string]int `json:"changeSummary"`
 }
 
-func (s *Stack) Preview() (PreviewResult, error) {
+func (s *stack) Preview() (PreviewResult, error) {
 	var pResult PreviewResult
 
-	_, err := s.initOrSelectStack()
+	err := s.initOrSelectStack()
 	if err != nil {
 		return pResult, errors.Wrap(err, "could not initialize or select stack")
 	}
 	return s.preview()
 }
 
-func (s *Stack) preview() (PreviewResult, error) {
+func (s *stack) preview() (PreviewResult, error) {
 	var pResult PreviewResult
 
 	stdout, _, err := s.runCmd("pulumi", "preview", "--json")

@@ -1,6 +1,8 @@
 package auto
 
 import (
+	"fmt"
+	"math/rand"
 	"path/filepath"
 	"testing"
 
@@ -8,18 +10,21 @@ import (
 )
 
 func TestUpBasic(t *testing.T) {
-	p := Project{
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
 		Name:       "testproj",
 		SourcePath: filepath.Join(".", "test", "testproj"),
 	}
-	s := &Stack{
-		Name:    "int_test",
-		Project: p,
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
 		Overrides: &StackOverrides{
 			Config:  map[string]string{"bar": "abc"},
 			Secrets: map[string]string{"buzz": "secret"},
 		},
 	}
+
+	s, err := NewStack(ss)
 	// -- pulumi up --
 	res, err := s.Up()
 	if err != nil {
@@ -71,4 +76,8 @@ func TestUpBasic(t *testing.T) {
 
 	err = s.Remove()
 	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func rangeIn(low, hi int) int {
+	return low + rand.Intn(hi-low)
 }
