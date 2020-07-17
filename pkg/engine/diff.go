@@ -232,25 +232,32 @@ func PrintObject(
 	}
 }
 
-func massageStackPreviewAdd(p resource.PropertyValue) {
+func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case p.IsArray():
-		for _, v := range p.ArrayValue() {
-			massageStackPreviewAdd(v)
+		arr := make([]resource.PropertyValue, len(p.ArrayValue()))
+		for i, v := range p.ArrayValue() {
+			arr[i] = massageStackPreviewAdd(v)
 		}
+		return resource.NewArrayProperty(arr)
 	case p.IsObject():
-		delete(p.ObjectValue(), "@isPulumiResource")
-		for _, v := range p.ObjectValue() {
-			massageStackPreviewAdd(v)
+		obj := resource.PropertyMap{}
+		for k, v := range p.ObjectValue() {
+			if k != "@isPulumiResource" {
+				obj[k] = massageStackPreviewAdd(v)
+			}
 		}
+		return resource.NewObjectProperty(obj)
+	default:
+		return p
 	}
 }
 
 func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
 	switch {
 	case diff.Array != nil:
-		for _, p := range diff.Array.Adds {
-			massageStackPreviewAdd(p)
+		for i, p := range diff.Array.Adds {
+			diff.Array.Adds[i] = massageStackPreviewAdd(p)
 		}
 		for _, d := range diff.Array.Updates {
 			massageStackPreviewDiff(d, inResource)
@@ -278,8 +285,8 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 		}
 	}
 
-	for _, p := range diff.Adds {
-		massageStackPreviewAdd(p)
+	for i, p := range diff.Adds {
+		diff.Adds[i] = massageStackPreviewAdd(p)
 	}
 	for k, d := range diff.Updates {
 		if isResource && d.New.IsComputed() && !shouldPrintPropertyValue(d.Old, false) {
