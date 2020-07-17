@@ -19,16 +19,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
@@ -85,7 +85,8 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 
 	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
 		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
-		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts)
+		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts,
+		s.ImportID)
 }
 
 // ShowJSONEvents renders engine events from a preview into a well-formed JSON document. Note that this does not
@@ -109,12 +110,12 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		// Events ocurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
-			digest.Config = e.Payload.(engine.PreludeEventPayload).Config
+			digest.Config = e.Payload().(engine.PreludeEventPayload).Config
 
 		// Events throughout the execution:
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload.(engine.DiagEventPayload)
+			p := e.Payload().(engine.DiagEventPayload)
 			if !p.Ephemeral && p.Severity != diag.Debug {
 				digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 					URN:      p.URN,
@@ -124,7 +125,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			}
 		case engine.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
-			p := e.Payload.(engine.StdoutEventPayload)
+			p := e.Payload().(engine.StdoutEventPayload)
 			digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 				Message:  colors.Never.Colorize(p.Message),
 				Severity: diag.Info,
@@ -132,7 +133,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		case engine.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
-			if m := e.Payload.(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
 				var detailedDiff map[string]propertyDiff
 				if m.DetailedDiff != nil {
 					detailedDiff = make(map[string]propertyDiff)
@@ -155,7 +156,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter())
+					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -164,7 +165,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter())
+					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.NewState = &res
 					} else {
@@ -182,7 +183,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 		// Events ocurring late:
 		case engine.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
-			p := e.Payload.(engine.SummaryEventPayload)
+			p := e.Payload().(engine.SummaryEventPayload)
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt

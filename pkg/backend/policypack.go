@@ -16,11 +16,11 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/workspace"
-
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.
@@ -36,6 +36,7 @@ type PolicyPackOperation struct {
 	// If nil, the latest version is assumed.
 	VersionTag *string
 	Scopes     CancellationScopeSource
+	Config     map[string]*json.RawMessage
 }
 
 // PolicyPack is a set of policies associated with a particular backend implementation.
@@ -53,6 +54,9 @@ type PolicyPack interface {
 	// Disable the PolicyPack for a Policy Group in an organization. If Policy Group is
 	// empty, it disables it for the default Policy Group.
 	Disable(ctx context.Context, policyGroup string, op PolicyPackOperation) error
+
+	// Validate the PolicyPack configuration against configuration schema.
+	Validate(ctx context.Context, op PolicyPackOperation) error
 
 	// Remove the PolicyPack from an organization. The Policy Pack must be removed from
 	// all Policy Groups before it can be removed.

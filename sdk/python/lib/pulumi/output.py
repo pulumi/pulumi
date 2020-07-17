@@ -30,7 +30,6 @@ from typing import (
 )
 
 from . import runtime
-from .runtime import known_types
 from .runtime import rpc
 
 if TYPE_CHECKING:
@@ -43,7 +42,6 @@ Input = Union[T, Awaitable[T], 'Output[T]']
 Inputs = Mapping[str, Input[Any]]
 
 
-@known_types.output
 class Output(Generic[T]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -64,7 +62,7 @@ class Output(Generic[T]):
 
     _is_secret: Awaitable[bool]
     """
-    Where or not this 'Output' should be treated as containing secret data. Secret outputs are tagged when
+    Whether or not this 'Output' should be treated as containing secret data. Secret outputs are tagged when
     flowing across the RPC interface to the resource monitor, such that when they are persisted to disk in
     our state file, they are encrypted instead of being in plaintext.
     """
@@ -155,16 +153,16 @@ class Output(Generic[T]):
                 value = await self._future
 
                 if runtime.is_dry_run():
-                    # During previews only perform the apply if the engine was able togive us an actual value for this
+                    # During previews only perform the apply if the engine was able to give us an actual value for this
                     # Output or if the caller is able to tolerate unknown values.
                     apply_during_preview = is_known or run_with_unknowns
 
                     if not apply_during_preview:
                         # We didn't actually run the function, our new Output is definitely
-                        # **not** known and **not** secret
+                        # **not** known.
                         result_resources.set_result(resources)
                         result_is_known.set_result(False)
-                        result_is_secret.set_result(False)
+                        result_is_secret.set_result(is_secret)
                         return cast(U, None)
 
                     # If we are running with unknown values and the value is explicitly unknown but does not actually
@@ -187,16 +185,16 @@ class Output(Generic[T]):
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):
-                    # Since transformed is not an Output, it is both known and not a secret.
+                    # Since transformed is not an Output, it is known.
                     result_resources.set_result(resources)
                     result_is_known.set_result(True)
-                    result_is_secret.set_result(False)
+                    result_is_secret.set_result(is_secret)
                     return await cast(Awaitable[U], transformed)
 
                 #  3. transformed is U. It is trivially known.
                 result_resources.set_result(resources)
                 result_is_known.set_result(True)
-                result_is_secret.set_result(False)
+                result_is_secret.set_result(is_secret)
                 return cast(U, transformed)
             finally:
                 # Always resolve the future if it hasn't been done already.
@@ -223,7 +221,6 @@ class Output(Generic[T]):
         """
         return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
 
-
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
         Syntax sugar for looking up attributes dynamically off of outputs.
@@ -237,8 +234,8 @@ class Output(Generic[T]):
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
         """
-        Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values as necessary
-        given the type.
+        Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values through nested
+        lists and dicts.  Nested objects of other types (including Resources) are not deeply unwrapped.
 
         :param Input[T] val: An Input to be converted to an Output.
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
@@ -300,7 +297,7 @@ class Output(Generic[T]):
         return Output(o._resources, o._future, o._is_known, is_secret)
 
     @staticmethod
-    def all(*args: List[Input[T]]) -> 'Output[List[T]]':
+    def all(*args: Input[T]) -> 'Output[List[T]]':
         """
         Produces an Output of Lists from a List of Inputs.
 
@@ -308,7 +305,7 @@ class Output(Generic[T]):
         Output which can then be used as the target of `apply`. Resource dependencies
         are preserved in the returned Output.
 
-        :param List[Input[T]] args: A list of Inputs to convert.
+        :param Input[T] args: A list of Inputs to convert.
         :return: An output of lists, converted from an Input to prompt values.
         :rtype: Output[List[T]]
         """
@@ -338,7 +335,7 @@ class Output(Generic[T]):
         async def gather_futures(outputs):
             value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
             return await asyncio.gather(*value_futures)
-        from_input = cast(Callable[[List[Union[T, Awaitable[T], Output[T]]]], Output[T]], Output.from_input)
+        from_input = cast(Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input)
         # First, map all inputs to outputs using `from_input`.
         all_outputs = list(map(from_input, args))
 
@@ -352,7 +349,7 @@ class Output(Generic[T]):
         return Output(resources_futures, value_futures, known_futures, secret_futures)
 
     @staticmethod
-    def concat(*args: List[Input[str]]) -> 'Output[str]':
+    def concat(*args: Input[str]) -> 'Output[str]':
         """
         Concatenates a collection of Input[str] into a single Output[str].
 
@@ -361,7 +358,7 @@ class Output(Generic[T]):
 
             url = Output.concat("http://", server.hostname, ":", loadBalancer.port)
 
-        :param List[Input[str]] args: A list of string Inputs to concatenate.
+        :param Input[str] args: A list of string Inputs to concatenate.
         :return: A concatenated output string.
         :rtype: Output[str]
         """
@@ -371,7 +368,6 @@ class Output(Generic[T]):
         return Output.all(*transformed_items).apply("".join) # type: ignore
 
 
-@known_types.unknown
 class Unknown:
     """
     Unknown represents a value that is unknown.
@@ -380,10 +376,12 @@ class Unknown:
     def __init__(self):
         pass
 
+
 UNKNOWN = Unknown()
 """
 UNKNOWN is the singleton unknown value.
 """
+
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)

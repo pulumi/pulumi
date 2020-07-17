@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -35,25 +36,25 @@ import (
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/edit"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/util/validation"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/display"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/operations"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/edit"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v2/util/validation"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -72,6 +73,7 @@ type localBackend struct {
 	url         string
 
 	bucket Bucket
+	mutex  sync.Mutex
 }
 
 type localBackendReference struct {
@@ -180,7 +182,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while building the absolute path")
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -655,7 +657,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager)
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "serializing deployment")
 	}

@@ -16,10 +16,9 @@ package tests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"github.com/stretchr/testify/assert"
-
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
 )
 
 // deleteIfNotFailed deletes the files in the testing environment if the testcase has
@@ -73,7 +72,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		// Update the history-test stack.
-		e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "-m", "this is an updated stack")
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.
 		out, err := e.RunCommand("pulumi", "history")
 		assert.Equal(t, "", err)

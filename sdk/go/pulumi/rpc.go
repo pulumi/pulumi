@@ -18,11 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -69,35 +70,11 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		return pmap, pdeps, depURNs, nil
 	}
 
-	pv := reflect.ValueOf(props)
-	if pv.Kind() == reflect.Ptr {
-		pv = pv.Elem()
-	}
-	pt := pv.Type()
-	contract.Assert(pt.Kind() == reflect.Struct)
-
-	// We use the resolved type to decide how to convert inputs to outputs.
-	rt := props.ElementType()
-	if rt.Kind() == reflect.Ptr {
-		rt = rt.Elem()
-	}
-	contract.Assert(rt.Kind() == reflect.Struct)
-
-	getMappedField := mapStructTypes(pt, rt)
-
-	// Now, marshal each field in the input.
-	numFields := pt.NumField()
-	for i := 0; i < numFields; i++ {
-		destField, _ := getMappedField(reflect.Value{}, i)
-		tag := destField.Tag.Get("pulumi")
-		if tag == "" {
-			continue
-		}
-
+	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
-		v, resourceDeps, err := marshalInput(pv.Field(i).Interface(), destField.Type, true)
+		v, resourceDeps, err := marshalInput(pv, pt, true)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("awaiting input property %s: %w", tag, err)
+			return fmt.Errorf("awaiting input property %s: %w", pname, err)
 		}
 
 		// Record all dependencies accumulated from reading this property.
@@ -106,7 +83,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		for _, dep := range resourceDeps {
 			depURN, _, _, err := dep.URN().awaitURN(context.TODO())
 			if err != nil {
-				return nil, nil, nil, err
+				return err
 			}
 			if !pdepset[depURN] {
 				deps = append(deps, depURN)
@@ -118,12 +95,63 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			}
 		}
 		if len(deps) > 0 {
-			pdeps[tag] = deps
+			pdeps[pname] = deps
 		}
 
 		if !v.IsNull() || len(deps) > 0 {
-			pmap[resource.PropertyKey(tag)] = v
+			pmap[resource.PropertyKey(pname)] = v
 		}
+		return nil
+	}
+
+	pv := reflect.ValueOf(props)
+	if pv.Kind() == reflect.Ptr {
+		if pv.IsNil() {
+			return pmap, pdeps, depURNs, nil
+		}
+		pv = pv.Elem()
+	}
+	pt := pv.Type()
+
+	rt := props.ElementType()
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
+
+	switch pt.Kind() {
+	case reflect.Struct:
+		contract.Assert(rt.Kind() == reflect.Struct)
+		// We use the resolved type to decide how to convert inputs to outputs.
+		rt := props.ElementType()
+		if rt.Kind() == reflect.Ptr {
+			rt = rt.Elem()
+		}
+		getMappedField := mapStructTypes(pt, rt)
+		// Now, marshal each field in the input.
+		numFields := pt.NumField()
+		for i := 0; i < numFields; i++ {
+			destField, _ := getMappedField(reflect.Value{}, i)
+			tag := destField.Tag.Get("pulumi")
+			if tag == "" {
+				continue
+			}
+			err := marshalProperty(tag, pv.Field(i).Interface(), destField.Type)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		}
+	case reflect.Map:
+		contract.Assert(rt.Key().Kind() == reflect.String)
+		for _, key := range pv.MapKeys() {
+			keyname := key.Interface().(string)
+			val := pv.MapIndex(key).Interface()
+			err := marshalProperty(keyname, val, rt.Elem())
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		}
+	default:
+		return nil, nil, nil, fmt.Errorf("cannot marshal Input that is not a struct or map, saw type %s", pt.String())
 	}
 
 	return pmap, pdeps, depURNs, nil
@@ -153,12 +181,12 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 func marshalInputAndDetermineSecret(v interface{},
 	destType reflect.Type,
 	await bool) (resource.PropertyValue, []Resource, bool, error) {
+	secret := false
 	for {
 		valueType := reflect.TypeOf(v)
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		var deps []Resource
-		secret := false
 		if input, ok := v.(Input); ok {
 			valueType = input.ElementType()
 
@@ -263,7 +291,10 @@ func marshalInputAndDetermineSecret(v interface{},
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, secret, nil
 			}
-			v, destType = rv.Elem().Interface(), destType.Elem()
+			if destType.Kind() == reflect.Ptr {
+				destType = destType.Elem()
+			}
+			v = rv.Elem().Interface()
 			continue
 		case reflect.String:
 			return resource.NewStringProperty(rv.String()), deps, secret, nil
@@ -523,6 +554,10 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		result := reflect.MakeMap(dest.Type())
 		secret := false
 		for k, e := range v.ObjectValue() {
+			// ignore properties internal to the pulumi engine
+			if strings.HasPrefix(string(k), "__") {
+				continue
+			}
 			elem := reflect.New(elemType).Elem()
 			esecret, err := unmarshalOutput(e, elem)
 			if err != nil {

@@ -27,11 +27,11 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"google.golang.org/grpc"
 )
 
@@ -46,7 +46,9 @@ var (
 // LanguageRuntimeServer RPC endpoint.
 func main() {
 	var tracing string
+	var binary string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+	flag.StringVar(&binary, "binary", "", "A relative or an absolute path to a precompiled .NET assembly to execute")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -82,7 +84,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(dotnetExec, engineAddress, tracing)
+			host := newLanguageHost(dotnetExec, engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -106,14 +108,16 @@ type dotnetLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+	binary        string
 }
 
-func newLanguageHost(exec, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(exec, engineAddress, tracing string, binary string) pulumirpc.LanguageRuntimeServer {
 
 	return &dotnetLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		binary:        binary,
 	}
 }
 
@@ -124,8 +128,17 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 	logging.V(5).Infof("GetRequiredPlugins: %v", req.GetProgram())
 
+	if host.binary != "" {
+		logging.V(5).Infof("GetRequiredPlugins: no plugins can be listed when a binary is specified")
+		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+	}
+
 	// Make a connection to the real engine that we will log messages to.
-	conn, err := grpc.Dial(host.engineAddress, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "language host could not make connection to engine")
 	}
@@ -201,7 +214,7 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 	// expected output should be like so:
 	//
 	//    Project 'Aliases' has the following package references
-	//    [netcoreapp3.0]:
+	//    [netcoreapp3.1]:
 	//    Top-level Package      Requested                        Resolved
 	//    > Pulumi               1.5.0-preview-alpha.1572911568   1.5.0-preview-alpha.1572911568
 	//
@@ -441,7 +454,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 func (w *logWriter) LogToUser(val string) (int, error) {
 	if w.logToUser {
 		_, err := w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
-			Message:   val,
+			Message:   strings.ToValidUTF8(val, "�"),
 			Urn:       "",
 			Ephemeral: true,
 			StreamId:  w.streamID,
@@ -464,10 +477,16 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	args := []string{"run"}
+	args := []string{}
 
-	if req.GetProgram() != "" {
-		args = append(args, req.GetProgram())
+	if host.binary != "" {
+		args = append(args, host.binary)
+	} else {
+		args = append(args, "run")
+
+		if req.GetProgram() != "" {
+			args = append(args, req.GetProgram())
+		}
 	}
 
 	if logging.V(5) {

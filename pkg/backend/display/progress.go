@@ -30,15 +30,15 @@ import (
 	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -183,22 +183,23 @@ func simplifyTypeName(typ tokens.Type) string {
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
-	if event.Type == engine.ResourcePreEvent {
-		payload := event.Payload.(engine.ResourcePreEventPayload)
+	switch event.Type {
+	case engine.ResourcePreEvent:
+		payload := event.Payload().(engine.ResourcePreEventPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	} else if event.Type == engine.ResourceOutputsEvent {
-		payload := event.Payload.(engine.ResourceOutputsEventPayload)
+	case engine.ResourceOutputsEvent:
+		payload := event.Payload().(engine.ResourceOutputsEventPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	} else if event.Type == engine.ResourceOperationFailed {
-		payload := event.Payload.(engine.ResourceOperationFailedPayload)
+	case engine.ResourceOperationFailed:
+		payload := event.Payload().(engine.ResourceOperationFailedPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	} else if event.Type == engine.DiagEvent {
-		return event.Payload.(engine.DiagEventPayload).URN, nil
-	} else if event.Type == engine.PolicyViolationEvent {
-		return event.Payload.(engine.PolicyViolationEventPayload).ResourceURN, nil
+	case engine.DiagEvent:
+		return event.Payload().(engine.DiagEventPayload).URN, nil
+	case engine.PolicyViolationEvent:
+		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
+	default:
+		return "", nil
 	}
-
-	return "", nil
 }
 
 // Converts the colorization tags in a progress message and then actually writes the progress
@@ -812,12 +813,13 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			c = colors.SpecError
 		}
 
-		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s)",
+		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s: %s)",
 			c, policyEvent.EnforcementLevel,
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Name())
+			policyEvent.ResourceURN.Name(),
+			policyEvent.ResourceURN.Type())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.
@@ -961,18 +963,15 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
-		payload := event.Payload.(engine.PreludeEventPayload)
+		payload := event.Payload().(engine.PreludeEventPayload)
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
-			display.processNormalEvent(engine.Event{
-				Type: engine.DiagEvent,
-				Payload: engine.DiagEventPayload{
-					Ephemeral: false,
-					Severity:  diag.Info,
-					Color:     cmdutil.GetGlobalColorization(),
-					Message:   preludeEventString,
-				},
-			})
+			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+				Ephemeral: false,
+				Severity:  diag.Info,
+				Color:     cmdutil.GetGlobalColorization(),
+				Message:   preludeEventString,
+			}))
 		} else {
 			display.writeSimpleMessage(preludeEventString)
 		}
@@ -980,16 +979,16 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.SummaryEvent:
 		// keep track of the summary event so that we can display it after all other
 		// resource-related events we receive.
-		payload := event.Payload.(engine.SummaryEventPayload)
+		payload := event.Payload().(engine.SummaryEventPayload)
 		display.summaryEventPayload = &payload
 		return
 	case engine.DiagEvent:
-		msg := display.renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), true /*includePrefix:*/)
+		msg := display.renderProgressDiagEvent(event.Payload().(engine.DiagEventPayload), true /*includePrefix:*/)
 		if msg == "" {
 			return
 		}
 	case engine.StdoutColorEvent:
-		display.handleSystemEvent(event.Payload.(engine.StdoutEventPayload))
+		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return
 	}
 
@@ -1011,15 +1010,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(engine.Event{
-				Type: engine.DiagEvent,
-				Payload: engine.DiagEventPayload{
-					Ephemeral: true,
-					Severity:  diag.Info,
-					Color:     cmdutil.GetGlobalColorization(),
-					Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
-				},
-			})
+			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+				Ephemeral: true,
+				Severity:  diag.Info,
+				Color:     cmdutil.GetGlobalColorization(),
+				Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
+			}))
 			return
 		}
 	}
@@ -1046,11 +1042,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 
 	if event.Type == engine.ResourcePreEvent {
-		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
+		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
-		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {

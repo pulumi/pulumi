@@ -3,7 +3,7 @@ package deploy
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -10,9 +10,8 @@
     },
     "dependencies": {
         "@pulumi/query": "^0.3.0",
-        "deasync": "^0.1.15",
+        "@grpc/grpc-js": "^0.6.15",
         "google-protobuf": "^3.5.0",
-        "grpc": "1.24.2",
         "minimist": "^1.2.0",
         "normalize-package-data": "^2.4.0",
         "protobufjs": "^6.8.6",
@@ -20,12 +19,11 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "ts-node": "8.5.4",
+        "ts-node": "^7.0.1",
         "typescript": "~3.7.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
-        "@types/deasync": "^0.1.0",
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^2.2.42",
         "@types/node": "^12.0.0",
@@ -34,13 +32,12 @@
         "@types/semver": "^5.5.0",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
-        "node-gyp": "^3.6.2",
         "tslint": "^5.11.0"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": ">=8.0.0"
+        "node": ">=8.13.0 || >=10.10.0"
     }
 }

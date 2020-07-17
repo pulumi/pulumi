@@ -3,10 +3,11 @@ package display
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {

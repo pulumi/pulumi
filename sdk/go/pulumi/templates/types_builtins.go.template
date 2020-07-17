@@ -43,6 +43,10 @@ type {{.Name}}Input interface {
 
 	To{{.Name}}Output() {{.Name}}Output
 	To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output
+	{{if .ImplementsPtrType}}
+	To{{.Name}}PtrOutput() {{.Name}}PtrOutput
+	To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput
+	{{end}}
 }
 {{if .DefineInputType}}
 // {{.Name}} is an input type for {{.Type}} values.

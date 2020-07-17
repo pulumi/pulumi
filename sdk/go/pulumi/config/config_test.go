@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
 type TestStruct struct {
@@ -221,13 +221,13 @@ func TestSecretConfig(t *testing.T) {
 	testStruct5 := TestStruct{}
 	testStruct6 := TestStruct{}
 
-	s1, err = cfg.TrySecretObject("obj", &testStruct4)
+	s4, err := cfg.TrySecretObject("obj", &testStruct4)
 	assert.Nil(t, err)
-	s2 = cfg.RequireSecretObject("obj", &testStruct5)
-	s3, err = cfg.GetSecretObject("obj", &testStruct6)
+	s5 := cfg.RequireSecretObject("obj", &testStruct5)
+	s6, err := cfg.GetSecretObject("obj", &testStruct6)
 	assert.Nil(t, err)
 
-	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s4, s5, s6).ApplyT(func(v []interface{}) ([]interface{}, error) {
 		for _, val := range v {
 			ts := val.(*TestStruct)
 			if reflect.DeepEqual(expectedTestStruct, *ts) {
@@ -250,15 +250,15 @@ func TestSecretConfig(t *testing.T) {
 		}
 	}
 
-	s1, err = cfg.TrySecretBool("bbb")
-	s2 = cfg.RequireSecretBool("bbb")
-	s3 = cfg.GetSecretBool("bbb")
+	s7, err := cfg.TrySecretBool("bbb")
+	s8 := cfg.RequireSecretBool("bbb")
+	s9 := cfg.GetSecretBool("bbb")
 	assert.Nil(t, err)
 
 	errChan = make(chan error)
 	resultBool := make(chan bool)
 
-	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s7, s8, s9).ApplyT(func(v []interface{}) ([]interface{}, error) {
 		for _, val := range v {
 			if val == true {
 				resultBool <- val.(bool)
@@ -281,15 +281,15 @@ func TestSecretConfig(t *testing.T) {
 		}
 	}
 
-	s1, err = cfg.TrySecretInt("intint")
-	s2 = cfg.RequireSecretInt("intint")
-	s3 = cfg.GetSecretInt("intint")
+	s10, err := cfg.TrySecretInt("intint")
+	s11 := cfg.RequireSecretInt("intint")
+	s12 := cfg.GetSecretInt("intint")
 	assert.Nil(t, err)
 
 	errChan = make(chan error)
 	resultInt := make(chan int)
 
-	pulumi.All(s1, s2, s3).ApplyT(func(v []interface{}) ([]interface{}, error) {
+	pulumi.All(s10, s11, s12).ApplyT(func(v []interface{}) ([]interface{}, error) {
 		for _, val := range v {
 			if val == 42 {
 				resultInt <- val.(int)

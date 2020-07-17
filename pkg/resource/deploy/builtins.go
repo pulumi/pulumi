@@ -3,15 +3,16 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 type builtinProvider struct {
@@ -208,6 +209,11 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 			secretOutputs = append(secretOutputs, resource.NewStringProperty(string(k)))
 		}
 	}
+
+	// Sort the secret outputs so the order is deterministic, to avoid spurious diffs during updates.
+	sort.Slice(secretOutputs, func(i, j int) bool {
+		return secretOutputs[i].String() < secretOutputs[j].String()
+	})
 
 	return resource.PropertyMap{
 		"name":              name,

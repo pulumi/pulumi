@@ -12,12 +12,31 @@ type StackReference struct {
 	Outputs MapOutput `pulumi:"outputs"`
 }
 
+// GetOutput returns a stack output keyed by the given name as an AnyOutput
 func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 	return All(name, s.Outputs).
 		ApplyT(func(args []interface{}) interface{} {
 			n, outs := args[0].(string), args[1].(map[string]interface{})
 			return outs[n]
 		}).(AnyOutput)
+}
+
+// GetStringOutput returns a stack output keyed by the given name as an StringOutput
+func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
+	return s.GetOutput(name).ApplyString(func(out interface{}) string {
+		var res string
+		if out != nil {
+			res = out.(string)
+		}
+		return res
+	})
+}
+
+// GetIDOutput returns a stack output keyed by the given name as an IDOutput
+func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
+	return s.GetStringOutput(name).ApplyID(func(out string) ID {
+		return ID(out)
+	})
 }
 
 type stackReferenceArgs struct {

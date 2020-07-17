@@ -8,11 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/pulumi/pulumi/pkg/resource"
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 )
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
@@ -44,7 +43,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	}
 
 	e.RunCommand("pulumi", "up", "--target", strings.TrimSpace(urn), "--non-interactive", "--skip-preview", "--yes")
-	e.RunCommand("pulumi", "refresh")
+	e.RunCommand("pulumi", "refresh", "--non-interactive", "--yes")
 
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")

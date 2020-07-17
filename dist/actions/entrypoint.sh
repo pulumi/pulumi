@@ -3,6 +3,12 @@
 
 set -e
 
+# The default backend URL is the Pulumi Managed Service.
+# To use one of the alternate supported backends, set the
+# PULUMI_BACKEND_URL env var according to:
+# https://www.pulumi.com/docs/intro/concepts/state/#to-a-self-managed-backend.
+pulumi login $PULUMI_BACKEND_URL
+
 # If the PULUMI_CI variable is set, we'll do some extra things to make common tasks easier.
 if [ ! -z "$PULUMI_CI" ]; then
     # Capture the PWD before we go and potentially change it.
@@ -73,8 +79,16 @@ fi
 # For Google, we need to authenticate with a service principal for certain authentication operations.
 if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
     export GOOGLE_APPLICATION_CREDENTIALS="$(mktemp).json"
-    echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    # Check if GOOGLE_CREDENTIALS is base64 encoded
+    if [[ $GOOGLE_CREDENTIALS =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
+        echo "$GOOGLE_CREDENTIALS"|base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+        # unset for other gcloud commands using this variable.
+        unset GOOGLE_CREDENTIALS
+    else
+        echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    fi
     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+    gcloud --quiet auth configure-docker
 fi
 
 # Next, run npm install. We always call this, as
@@ -94,13 +108,26 @@ if [ -e package.json ]; then
         if [ ! -z "$NPM_AUTH_TOKEN" ]; then
             echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" > ~/.npmrc
         fi
-        npm install
+        if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+          npm ci
+        else
+          npm install
+        fi
     fi
 fi
 
 # If the user is running the Python SDK, we will need to install their requirements as well.
 if [ -e requirements.txt ]; then
-    pip3 install -r requirements.txt
+    # Check if should use venv
+    PULUMI_VENV=$(cat Pulumi.yaml | grep "virtualenv:" | cut -d':' -f2)
+    if [ -z $PULUMI_VENV ]; then
+        python3 -m venv $PULUMI_VENV
+        source $PULUMI_VENV/bin/activate
+        pip3 install -r requirements.txt
+        deactivate
+    else
+        pip3 install -r requirements.txt
+    fi
 fi
 
 # Now just pass along all arguments to the Pulumi CLI, sending the output to a file for

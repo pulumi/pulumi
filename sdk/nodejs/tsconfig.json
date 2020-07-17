@@ -51,6 +51,7 @@
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
+        "runtime/mocks.ts",
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",
@@ -63,7 +64,6 @@
         "cmd/run-policy-pack/run.ts",
 
         "tests/config.spec.ts",
-        "tests/deasync.spec.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/options.spec.ts",

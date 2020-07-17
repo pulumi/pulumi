@@ -1,0 +1,3 @@
+name: large_resource_js
+runtime: nodejs
+description: A Node.js program with a >4mb string resource

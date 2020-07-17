@@ -28,6 +28,11 @@ from pulumi.dynamic import ResourceProvider
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
 
+# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
+_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+
+
 def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
     return dill.loads(byts)
@@ -143,6 +148,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {"version": "0.1.0"}
         return proto.PluginInfo(**fields)
 
+    def GetSchema(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("GetSchema is not implemented by the dynamic provider")
+        raise NotImplementedError("GetSchema is not implemented by the dynamic provider")
+
     def Read(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
@@ -163,7 +173,10 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
 def main():
     monitor = DynamicResourceProviderServicer()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=4),
+        options=_GRPC_CHANNEL_OPTIONS
+    )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
     server.start()

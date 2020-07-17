@@ -12,16 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
-import * as grpc from "grpc";
 import * as path from "path";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
+const provproto = require("../proto/provider_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
+const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+
+// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -51,7 +57,25 @@ export interface Options {
 /**
  * options are the current deployment options being used for this entire session.
  */
-const options = loadOptions();
+let options = loadOptions();
+
+
+export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean) {
+    options = {
+        project: project || options.project || "project",
+        stack: stack || options.stack || "stack",
+        dryRun: preview,
+        queryMode: options.queryMode,
+        parallel: options.parallel,
+        monitorAddr: options.monitorAddr,
+        engineAddr: options.engineAddr,
+        testModeEnabled: true,
+        legacyApply: options.legacyApply,
+        syncDir: options.syncDir,
+    };
+
+    monitor = mockMonitor;
+}
 
 /** @internal Used only for testing purposes. */
 export function _setIsDryRun(val: boolean) {
@@ -64,7 +88,7 @@ export function _setIsDryRun(val: boolean) {
  * and therefore certain output properties will never be resolved.
  */
 export function isDryRun(): boolean {
-    return options.dryRun === true || isTestModeEnabled();
+    return options.dryRun === true;
 }
 
 /** @internal Used only for testing purposes */
@@ -119,7 +143,7 @@ export function getProject(): string {
     requireTestModeEnabled();
 
     // And now an error if test mode is enabled, instructing how to manually configure the project:
-    throw new Error("Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT");
+    throw new Error("Missing project name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 
 /** @internal Used only for testing purposes. */
@@ -167,7 +191,11 @@ export function getMonitor(): Object | undefined {
         const addr = options.monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
-            monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure());
+            monitor = new resrpc.ResourceMonitorClient(
+                addr,
+                grpc.credentials.createInsecure(),
+                grpcChannelOptions,
+            );
         } else {
             // If test mode isn't enabled, we can't run the program without an engine.
             requireTestModeEnabled();
@@ -208,7 +236,11 @@ export function getEngine(): Object | undefined {
         const addr = options.engineAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the engine.
-            engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure());
+            engine = new engrpc.EngineClient(
+                addr,
+                grpc.credentials.createInsecure(),
+                grpcChannelOptions,
+            );
         }
     }
     return engine;

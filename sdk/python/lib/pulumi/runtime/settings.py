@@ -18,7 +18,7 @@ Runtime settings and configuration.
 import asyncio
 import os
 import sys
-from typing import Optional, Awaitable, TYPE_CHECKING
+from typing import Optional, Awaitable, Union, Any, TYPE_CHECKING
 
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
@@ -27,10 +27,13 @@ from ..errors import RunError
 if TYPE_CHECKING:
     from ..resource import Resource
 
+# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
+_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
 
 class Settings:
-    monitor: Optional[resource_pb2_grpc.ResourceMonitorStub]
-    engine: Optional[engine_pb2_grpc.EngineStub]
+    monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
+    engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
     project: Optional[str]
     stack: Optional[str]
     parallel: Optional[str]
@@ -42,8 +45,8 @@ class Settings:
     A bag of properties for configuring the Pulumi Python language runtime.
     """
     def __init__(self,
-                 monitor: Optional[str] = None,
-                 engine: Optional[str] = None,
+                 monitor: Optional[Union[str, Any]] = None,
+                 engine: Optional[Union[str, Any]] = None,
                  project: Optional[str] = None,
                  stack: Optional[str] = None,
                  parallel: Optional[str] = None,
@@ -64,13 +67,24 @@ class Settings:
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
 
+
         # Actually connect to the monitor/engine over gRPC.
-        if monitor:
-            self.monitor = resource_pb2_grpc.ResourceMonitorStub(grpc.insecure_channel(monitor))
+        if monitor is not None:
+            if isinstance(monitor, str):
+                self.monitor = resource_pb2_grpc.ResourceMonitorStub(
+                    grpc.insecure_channel(monitor, options=_GRPC_CHANNEL_OPTIONS),
+                )
+            else:
+                self.monitor = monitor
         else:
             self.monitor = None
         if engine:
-            self.engine = engine_pb2_grpc.EngineStub(grpc.insecure_channel(engine))
+            if isinstance(engine, str):
+                self.engine = engine_pb2_grpc.EngineStub(
+                    grpc.insecure_channel(engine, options=_GRPC_CHANNEL_OPTIONS),
+                )
+            else:
+                self.engine = engine
         else:
             self.engine = None
 
@@ -124,7 +138,7 @@ def get_project() -> str:
     project = SETTINGS.project
     if not project:
         require_test_mode_enabled()
-        raise RunError('Missing project name; for test mode, please set PULUMI_NODEJS_PROJECT')
+        raise RunError('Missing project name; for test mode, please call `pulumi.runtime.set_mocks`')
     return project
 
 
@@ -153,7 +167,7 @@ def _set_stack(v: Optional[str]):
     SETTINGS.stack = v
 
 
-def get_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
+def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]:
     """
     Returns the current resource monitoring service client for RPC communications.
     """
@@ -163,7 +177,7 @@ def get_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
     return monitor
 
 
-def get_engine() -> Optional[engine_pb2_grpc.EngineStub]:
+def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     """
     Returns the current engine service client for RPC communications.
     """

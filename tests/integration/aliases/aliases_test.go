@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 )
 
 var dirs = []string{
@@ -86,9 +86,11 @@ func TestGoAliases(t *testing.T) {
 		d := filepath.Join("go", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          filepath.Join(d, "step1"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
+				Dir: filepath.Join(d, "step1"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v2",
+				},
+				Quick: true,
 				EditDirs: []integration.EditDir{
 					{
 						Dir:             filepath.Join(d, "step2"),

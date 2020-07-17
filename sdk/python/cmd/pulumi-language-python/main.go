@@ -30,18 +30,20 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 	"google.golang.org/grpc"
 )
 
@@ -57,7 +59,9 @@ const (
 // LanguageRuntimeServer RPC endpoint.
 func main() {
 	var tracing string
+	var virtualenv string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -101,7 +105,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, virtualenv)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -125,13 +129,15 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+	virtualenv    string
 }
 
-func newLanguageHost(exec, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(exec, engineAddress, tracing, virtualenv string) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		virtualenv:    virtualenv,
 	}
 }
 
@@ -160,36 +166,39 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	var pythonCmds []string
-	var pythonPath string
-
-	if pythonCmd := os.Getenv("PULUMI_PYTHON_CMD"); pythonCmd != "" {
-		pythonCmds = []string{pythonCmd}
+	var cmd *exec.Cmd
+	var virtualenv string
+	if host.virtualenv != "" {
+		virtualenv = host.virtualenv
+		if !path.IsAbs(virtualenv) {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return nil, errors.Wrap(err, "getting the working directory")
+			}
+			virtualenv = filepath.Join(cwd, virtualenv)
+		}
+		if !python.IsVirtualEnv(virtualenv) {
+			return nil, errors.Errorf("%q doesn't appear to be a virtual environment", virtualenv)
+		}
+		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
 	} else {
-		// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-		// distributions (in particular the default python.org Windows installation) do not include
-		// a `python3` binary.
-		pythonCmds = []string{"python3", "python"}
-	}
-
-	for _, pythonCmd := range pythonCmds {
-		pythonPath, err = exec.LookPath(pythonCmd)
-		// Break on the first cmd we find on the path (if any)
-		if err == nil {
-			break
+		cmd, err = python.Command(args...)
+		if err != nil {
+			return nil, err
 		}
 	}
-	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
-	}
 
-	cmd := exec.Command(pythonPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if config != "" {
-		cmd.Env = append(os.Environ(), pulumiConfigVar+"="+config)
+	if virtualenv != "" || config != "" {
+		env := os.Environ()
+		if virtualenv != "" {
+			env = python.ActivateVirtualEnv(env, virtualenv)
+		}
+		if config != "" {
+			env = append(env, pulumiConfigVar+"="+config)
+		}
+		cmd.Env = env
 	}
 	if err := cmd.Run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we

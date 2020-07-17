@@ -18,7 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/blang/semver"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,4 +72,34 @@ func TestConfig(t *testing.T) {
 		assert.NoError(tt, err)
 		assert.JSONEq(tt, "{}", str)
 	})
+}
+
+func TestCompatibleVersions(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a          string
+		b          string
+		compatible bool
+		errmsg     string
+	}{
+		{"0.17.1", "0.16.2", false, "Differing major or minor versions are not supported."},
+		{"0.17.1", "1.0.0", true, ""},
+		{"1.0.0", "0.17.1", true, ""},
+		{"1.13.0", "1.13.0", true, ""},
+		{"1.1.1", "1.13.0", true, ""},
+		{"1.13.0", "1.1.1", true, ""},
+		{"1.1.0", "2.1.0", true, ""},
+		{"2.1.0", "1.1.0", true, ""},
+		{"1.1.0", "2.0.0-beta1", true, ""},
+		{"2.0.0-beta1", "1.1.0", true, ""},
+		{"2.1.0", "3.1.0", false, "Differing major versions are not supported."},
+		{"0.16.1", "1.0.0", false, "Differing major or minor versions are not supported."},
+	}
+
+	for _, c := range cases {
+		compatible, errmsg := compatibleVersions(semver.MustParse(c.a), semver.MustParse(c.b))
+		assert.Equal(t, c.errmsg, errmsg)
+		assert.Equal(t, c.compatible, compatible)
+	}
 }

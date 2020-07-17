@@ -15,9 +15,9 @@
 package filestate
 
 import (
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
 
 // localSnapshotManager is a simple SnapshotManager implementation that persists snapshots

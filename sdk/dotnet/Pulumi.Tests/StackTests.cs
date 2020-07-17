@@ -10,15 +10,15 @@ using Xunit.Sdk;
 
 namespace Pulumi.Tests
 {
-    public class StackTests
+    public class StackTests : IDisposable
     {
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> ExplicitName { get; }
+            public Output<string> ExplicitName { get; set; }
 
             [Output]
-            public Output<string> ImplicitName { get; }
+            public Output<string> ImplicitName { get; set; }
 
             public ValidStack()
             {
@@ -51,7 +51,7 @@ namespace Pulumi.Tests
             }
             catch (RunException ex)
             {
-                Assert.Contains("foo", ex.Message);
+                Assert.Contains("Output(s) 'foo' have no value assigned", ex.ToString());
                 return;
             }
 
@@ -61,7 +61,7 @@ namespace Pulumi.Tests
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]
-            public string Foo { get; }
+            public string Foo { get; set; }
 
             public InvalidOutputTypeStack()
             {
@@ -78,7 +78,7 @@ namespace Pulumi.Tests
             }
             catch (RunException ex)
             {
-                Assert.Contains("foo", ex.Message);
+                Assert.Contains("Output(s) 'foo' have incorrect type", ex.ToString());
                 return;
             }
 
@@ -98,7 +98,7 @@ namespace Pulumi.Tests
             mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
                 .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
 
-            Deployment.Instance = mock.Object;
+            Deployment.Instance = new DeploymentInstance(mock.Object);
 
             // Act
             var stack = new T();
@@ -108,6 +108,13 @@ namespace Pulumi.Tests
             Assert.NotNull(outputs);
             var values = await outputs!.DataTask;
             return (stack, values.Value);
+        }
+
+        public void Dispose()
+        {
+            // Always reset the instance after each of these tests as other tests elsewhere
+            // expect it to be initially null.
+            Deployment.Instance = null!;
         }
     }
 }

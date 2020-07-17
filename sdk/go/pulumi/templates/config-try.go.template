@@ -20,11 +20,12 @@ import (
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
 // Try loads a configuration value by its key, returning a non-nil error if it doesn't exist.
 func Try(ctx *pulumi.Context, key string) (string, error) {
+	key = ensureKey(ctx, key)
 	v, ok := ctx.GetConfig(key)
 	if !ok {
 		return "",
@@ -36,6 +37,7 @@ func Try(ctx *pulumi.Context, key string) (string, error) {
 // TryObject loads an optional configuration value by its key into the output variable,
 // or returns an error if unable to do so.
 func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
+	key = ensureKey(ctx, key)
 	v, err := Try(ctx, key)
 	if err != nil {
 		return err
@@ -47,6 +49,7 @@ func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
 {{if .GenerateConfig}}
 // Try{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns an error if it doesn't exist.
 func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
+	key = ensureKey(ctx, key)
 	v, err := Try(ctx, key)
 	if err != nil {
 		return {{.DefaultConfig}}, err
@@ -58,17 +61,20 @@ func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
 {{end}}
 
 // TrySecret loads a configuration value by its key, returning a non-nil error if it doesn't exist.
-func TrySecret(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+func TrySecret(ctx *pulumi.Context, key string) (pulumi.StringOutput, error) {
+	key = ensureKey(ctx, key)
 	v, err := Try(ctx, key)
 	if err != nil {
-		return nil, err
+		var empty pulumi.StringOutput
+		return empty, err
 	}
-	return pulumi.ToSecret(pulumi.String(v)), nil
+	return pulumi.ToSecret(pulumi.String(v)).(pulumi.StringOutput), nil
 }
 
 // TrySecretObject loads a configuration value by its key into the output variable,
 // or returns an error if unable to do so.
 func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
+	key = ensureKey(ctx, key)
 	err := TryObject(ctx, key, output)
 	if err != nil {
 		return nil, err
@@ -81,12 +87,14 @@ func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulum
 {{if .GenerateConfig}}
 // TrySecret{{.Name}} loads an optional configuration value by its key, as a {{.Type}},
 // or returns an error if it doesn't exist.
-func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.Output, error) {
+func TrySecret{{.Name}}(ctx *pulumi.Context, key string) (pulumi.{{.Name}}Output, error) {
+	key = ensureKey(ctx, key)
 	v, err := Try{{.Name}}(ctx, key)
 	if err != nil {
-		return nil, err
+		var empty pulumi.{{.Name}}Output
+		return empty, err
 	}
-	return pulumi.ToSecret(pulumi.{{.Name}}(v)), nil
+	return pulumi.ToSecret(pulumi.{{.Name}}(v)).(pulumi.{{.Name}}Output), nil
 }
 
 {{end}}

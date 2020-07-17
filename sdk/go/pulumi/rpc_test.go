@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -264,7 +264,7 @@ type testResource struct {
 
 func TestResourceState(t *testing.T) {
 	var theResource testResource
-	state := makeResourceState("", "", &theResource, nil, nil)
+	state := makeResourceState("", "", &theResource, nil, nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -396,6 +396,22 @@ func TestUnmarshalSecret(t *testing.T) {
 	assert.True(t, isSecret)
 }
 
+func TestUnmarshalInternalMapValue(t *testing.T) {
+	m := make(map[string]interface{})
+	m["foo"] = "bar"
+	m["__default"] = "buzz"
+	pmap := resource.NewObjectProperty(resource.NewPropertyMapFromMap(m))
+
+	var mv map[string]string
+	_, err := unmarshalOutput(pmap, reflect.ValueOf(&mv).Elem())
+	assert.Nil(t, err)
+	val, ok := mv["foo"]
+	assert.True(t, ok)
+	assert.Equal(t, "bar", val)
+	_, ok = mv["__default"]
+	assert.False(t, ok)
+}
+
 // TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {
@@ -473,6 +489,58 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 				assert.Equal(t, "foo", res["h"])
 				assert.Equal(t, nil, res["i"])
 			}
+		}
+	}
+}
+
+type simpleResource struct {
+	CustomResourceState
+}
+
+type UntypedArgs map[string]interface{}
+
+func (UntypedArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
+}
+
+func TestMapInputMarhsalling(t *testing.T) {
+	var theResource simpleResource
+	out := newOutput(reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
+	out.resolve("outputty", true, false)
+
+	inputs1 := Map(map[string]Input{
+		"prop": out,
+		"nested": Map(map[string]Input{
+			"foo": String("foo"),
+			"bar": Int(42),
+		}),
+	})
+
+	inputs2 := UntypedArgs(map[string]interface{}{
+		"prop": "outputty",
+		"nested": map[string]interface{}{
+			"foo": "foo",
+			"bar": 42,
+		},
+	})
+
+	cases := []struct {
+		inputs  Input
+		depUrns []string
+	}{
+		{inputs: inputs1, depUrns: []string{""}},
+		{inputs: inputs2, depUrns: nil},
+	}
+
+	for _, c := range cases {
+		resolved, _, depUrns, err := marshalInputs(c.inputs)
+		assert.NoError(t, err)
+		assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		assert.Equal(t, "foo", resolved["nested"].ObjectValue()["foo"].StringValue())
+		assert.Equal(t, 42.0, resolved["nested"].ObjectValue()["bar"].NumberValue())
+		assert.Equal(t, len(c.depUrns), len(depUrns))
+		for i := range c.depUrns {
+			assert.Equal(t, URN(c.depUrns[i]), depUrns[i])
 		}
 	}
 }

@@ -8,7 +8,6 @@ namespace Pulumi
 {
     internal interface IDeploymentInternal : IDeployment
     {
-        Options Options { get; }
         string? GetConfig(string fullKey);
 
         Stack Stack { get; set; }

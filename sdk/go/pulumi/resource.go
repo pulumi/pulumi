@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 package pulumi
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type (
 	// ID is a unique identifier assigned by a resource provider to a resource.
@@ -36,6 +38,8 @@ type ResourceState struct {
 	aliases []URNOutput
 
 	name string
+
+	transformations []ResourceTransformation
 }
 
 func (s ResourceState) URN() URNOutput {
@@ -56,6 +60,14 @@ func (s ResourceState) getAliases() []URNOutput {
 
 func (s ResourceState) getName() string {
 	return s.name
+}
+
+func (s ResourceState) getTransformations() []ResourceTransformation {
+	return s.transformations
+}
+
+func (s *ResourceState) addTransformation(t ResourceTransformation) {
+	s.transformations = append(s.transformations, t)
 }
 
 func (ResourceState) isResource() {}
@@ -98,6 +110,12 @@ type Resource interface {
 
 	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
 	isResource()
+
+	// getTransformations returns the transformations for the resource.
+	getTransformations() []ResourceTransformation
+
+	// addTransformation adds a single transformation to the resource.
+	addTransformation(t ResourceTransformation)
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
@@ -159,6 +177,14 @@ type resourceOptions struct {
 	Aliases []Alias
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
+	// Transformations is an optional list of transformations to apply to this resource during construction.
+	// The transformations are applied in order, and are applied prior to transformation and to parents
+	// walking from the resource up to the stack.
+	Transformations []ResourceTransformation
+	// An optional version, corresponding to the version of the provider plugin that should be used when operating on
+	// this resource. This version overrides the version information inferred from the current package and should
+	// rarely be used.
+	Version string
 }
 
 type invokeOptions struct {
@@ -197,6 +223,17 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(nil, opts)
 }
 
+// merging is handled by each functional options call
+// properties that are arrays/maps are always appened/merged together
+// last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
+func merge(opts ...ResourceOption) *resourceOptions {
+	options := &resourceOptions{}
+	for _, o := range opts {
+		o.applyResourceOption(options)
+	}
+	return options
+}
+
 // Parent sets the parent resource to which this resource or invoke belongs.
 func Parent(r Resource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
@@ -214,7 +251,7 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			ro.Provider = r
+			Providers(r).applyResourceOption(ro)
 		case io != nil:
 			io.Provider = r
 		}
@@ -282,23 +319,39 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 	})
 }
 
+// An optional version, corresponding to the version of the provider plugin that should be used when operating on
+// this resource. This version overrides the version information inferred from the current package and should
+// rarely be used.
+func Version(o string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Version = o
+	})
+}
+
 // Ignore changes to any of the specified properties.
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.IgnoreChanges = o
+		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
 	})
 }
 
 // Aliases applies a list of identifiers to find and use existing resources.
 func Aliases(o []Alias) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Aliases = o
+		ro.Aliases = append(ro.Aliases, o...)
 	})
 }
 
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
 func AdditionalSecretOutputs(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.AdditionalSecretOutputs = o
+		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, o...)
+	})
+}
+
+// Transformations is an optional list of transformations to be applied to the resource.
+func Transformations(o []ResourceTransformation) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Transformations = append(ro.Transformations, o...)
 	})
 }

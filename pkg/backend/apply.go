@@ -25,13 +25,14 @@ import (
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/result"
+	"github.com/pulumi/pulumi/pkg/v2/backend/display"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 )
 
 // ApplierOptions is a bag of configuration settings for an Applier.
@@ -160,6 +161,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
 		}
+
+		cmdutil.EndKeypadTransmitMode()
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
 		if err := survey.AskOne(&survey.Select{

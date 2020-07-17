@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
 )
 
 func main() {
@@ -54,6 +54,11 @@ func main() {
 
 		for _, test := range tests {
 			value := cfg.Require(test.Key)
+			if value != test.Expected {
+				return fmt.Errorf("%q not the expected value; got %q", test.Key, value)
+			}
+			// config-less form
+			value = config.Require(ctx, test.Key)
 			if value != test.Expected {
 				return fmt.Errorf("%q not the expected value; got %q", test.Key, value)
 			}

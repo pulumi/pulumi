@@ -25,11 +25,8 @@ from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
 from ..metadata import get_project, get_stack
 
-from ..output import Output
-
 if TYPE_CHECKING:
-    from .. import Resource, ResourceOptions, CustomResource
-    from ..output import Inputs
+    from .. import Resource, ResourceOptions, CustomResource, Inputs, Output
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -75,6 +72,7 @@ async def prepare_resource(res: 'Resource',
                            custom: bool,
                            props: 'Inputs',
                            opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+    from .. import Output  # pylint: disable=import-outside-toplevel
     log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
@@ -139,10 +137,22 @@ async def prepare_resource(res: 'Resource',
         aliases,
     )
 
+
+class _ResourceResult(NamedTuple):
+    urn: 'Output[str]'
+    """
+    The URN of the resource.
+    """
+    id: Optional['Output[str]'] = None
+    """
+    The id of the resource, if it's a CustomResource, otherwise None.
+    """
+
+
 # pylint: disable=too-many-locals,too-many-statements
 
-
-def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions'):
+def _read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> _ResourceResult:
+    from .. import Output  # pylint: disable=import-outside-toplevel
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
@@ -154,7 +164,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     # that we are populating the Resource object with properties associated with an already-live resource.
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
-    log.debug(f"preparing read resource for RPC")
+    log.debug("preparing read resource for RPC")
     urn_future: asyncio.Future[Any] = asyncio.Future()
     urn_known: asyncio.Future[bool] = asyncio.Future()
     urn_secret: asyncio.Future[bool] = asyncio.Future()
@@ -162,7 +172,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
     resolve_urn_exn = urn_future.set_exception
-    res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
+    result_urn = Output({res}, urn_future, urn_known, urn_secret)
 
     # Furthermore, since resources being Read must always be custom resources (enforced in the
     # Resource constructor), we'll need to set up the ID field which will be populated at the end of
@@ -174,7 +184,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     resolve_value: asyncio.Future[Any] = asyncio.Future()
     resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
     resolve_secret: asyncio.Future[bool] = asyncio.Future()
-    res.id = known_types.new_output(
+    result_id = Output(
         {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
     def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
@@ -225,7 +235,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            from ..resource import create_urn # pylint: disable=import-outside-toplevel
+            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -263,25 +273,33 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
+    return _ResourceResult(result_urn, result_id)
+
+def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
+    result = _read_resource(res, ty, name, props, opts)
+    res.urn = result.urn
+    assert result.id is not None
+    res.id = result.id
+
+
 # pylint: disable=too-many-locals,too-many-statements
 
-
-def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']):
-    """
-    registerResource registers a new resource object with a given type t and name.  It returns the
-    auto-generated URN and the ID that will resolve after the deployment has completed.  All
-    properties will be initialized to property objects that the registration operation will resolve
-    at the right time (or remain unresolved for deployments).
-    """
+def _register_resource(res: 'Resource',
+                       ty: str,
+                       name: str,
+                       custom: bool,
+                       props: 'Inputs',
+                       opts: Optional['ResourceOptions']) -> _ResourceResult:
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
     monitor = settings.get_monitor()
+    from .. import Output  # pylint: disable=import-outside-toplevel
 
     # Prepare the resource.
 
     # Simply initialize the URN property and get prepared to resolve it later on.
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
-    log.debug(f"preparing resource for RPC")
+    log.debug("preparing resource for RPC")
     urn_future: asyncio.Future[Any] = asyncio.Future()
     urn_known: asyncio.Future[bool] = asyncio.Future()
     urn_secret: asyncio.Future[bool] = asyncio.Future()
@@ -289,17 +307,17 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
     urn_secret.set_result(False)
     resolve_urn = urn_future.set_result
     resolve_urn_exn = urn_future.set_exception
-    res.urn = known_types.new_output({res}, urn_future, urn_known, urn_secret)
+    result_urn = Output({res}, urn_future, urn_known, urn_secret)
 
     # If a custom resource, make room for the ID property.
+    result_id = None
     resolve_id: Optional[Callable[[
         Any, bool, Optional[Exception]], None]] = None
     if custom:
-        res = cast('CustomResource', res)
         resolve_value: asyncio.Future[Any] = asyncio.Future()
         resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
         resolve_secret: asyncio.Future[bool] = asyncio.Future()
-        res.id = known_types.new_output(
+        result_id = Output(
             {res}, resolve_value, resolve_perform_apply, resolve_secret)
 
         def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
@@ -432,6 +450,22 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())
+
+    return _ResourceResult(result_urn, result_id)
+
+def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']) -> None:
+    """
+    Registers a new resource object with a given type t and name.  It returns the
+    auto-generated URN and the ID that will resolve after the deployment has completed.  All
+    properties will be initialized to property objects that the registration operation will resolve
+    at the right time (or remain unresolved for deployments).
+    """
+    result = _register_resource(res, ty, name, custom, props, opts)
+    res.urn = result.urn
+    if custom:
+        assert result.id is not None
+        res = cast('CustomResource', res)
+        res.id = result.id
 
 
 def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[Inputs]]'):

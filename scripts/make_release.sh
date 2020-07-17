@@ -24,10 +24,11 @@ run_go_build() {
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    go build \
-       -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" \
+    pushd "$2" > /dev/null && go build \
+       -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" \
        -o "${PUBDIR}/bin/${output_name}${bin_suffix}" \
        "$1"
+    popd > /dev/null
 }
 
 # usage: copy_package <path-to-module> <module-name>
@@ -44,18 +45,20 @@ copy_package() {
     fi
 }
 
+readonly PULUMI_ROOT=$PWD
 
 # Build binaries
-run_go_build "${ROOT}"
-run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-language-nodejs"
-run_go_build "${ROOT}/sdk/python/cmd/pulumi-language-python"
-run_go_build "${ROOT}/sdk/dotnet/cmd/pulumi-language-dotnet"
-run_go_build "${ROOT}/sdk/go/pulumi-language-go"
+run_go_build "${PULUMI_ROOT}/pkg/cmd/pulumi" "pkg"
+run_go_build "${PULUMI_ROOT}/sdk/nodejs/cmd/pulumi-language-nodejs" "sdk"
+run_go_build "${PULUMI_ROOT}/sdk/python/cmd/pulumi-language-python" "sdk"
+run_go_build "${PULUMI_ROOT}/sdk/dotnet/cmd/pulumi-language-dotnet" "sdk"
+run_go_build "${PULUMI_ROOT}/sdk/go/pulumi-language-go" "sdk"
 
 # Copy over the language and dynamic resource providers.
 cp "${ROOT}/sdk/nodejs/dist/pulumi-resource-pulumi-nodejs" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/python/dist/pulumi-resource-pulumi-python" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/nodejs/dist/pulumi-analyzer-policy" "${PUBDIR}/bin/"
+cp "${ROOT}/sdk/python/dist/pulumi-analyzer-policy-python" "${PUBDIR}/bin/"
 cp "${ROOT}/sdk/python/cmd/pulumi-language-python-exec" "${PUBDIR}/bin/"
 
 # Copy packages

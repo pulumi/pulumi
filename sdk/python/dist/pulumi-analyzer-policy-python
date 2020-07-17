@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Parse the -virtualenv command line argument.
+virtualenv=""
+for arg in "$@"
+do
+    case $arg in
+        -virtualenv=*)
+        virtualenv="${arg#*=}"
+        break
+        ;;
+    esac
+done
+
+if [ -n "${virtualenv:-}" ] ; then
+    # Remove trailing slash.
+    virtualenv=${virtualenv%/}
+
+    # Make the path absolute (if not already).
+    case $virtualenv in
+        /*) : ;;
+        *) virtualenv=$PWD/$virtualenv;;
+    esac
+
+    # If python exists in the virtual environment, set PATH and run it.
+    if [ -f "$virtualenv/bin/python" ]; then
+        # Update PATH and unset PYTHONHOME.
+        PATH="$virtualenv/bin:$PATH"
+        export PATH
+        if [ -n "${PYTHONHOME:-}" ] ; then
+            unset PYTHONHOME
+        fi
+
+        # Run python from the virtual environment.
+        "$virtualenv/bin/python" -u -m pulumi.policy "$1" "$2"
+    else
+        echo "\"$virtualenv\" doesn't appear to be a virtual environment"
+        exit 1
+    fi
+else
+    # Otherwise, just run python3.
+    python3 -u -m pulumi.policy "$1" "$2"
+fi

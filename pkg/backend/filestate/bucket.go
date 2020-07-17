@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"gocloud.dev/blob"
 )
 
@@ -40,7 +40,9 @@ func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
 }
 
 func (b *wrappedBucket) List(opts *blob.ListOptions) *blob.ListIterator {
-	return b.bucket.List(opts)
+	optsCopy := *opts
+	optsCopy.Prefix = filepath.ToSlash(opts.Prefix)
+	return b.bucket.List(&optsCopy)
 }
 
 func (b *wrappedBucket) SignedURL(ctx context.Context, key string, opts *blob.SignedURLOptions) (string, error) {
@@ -83,7 +85,7 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 	return files, nil
 }
 
-// objectName returns the filename of a ListObject (an object from a bucket)
+// objectName returns the filename of a ListObject (an object from a bucket).
 func objectName(obj *blob.ListObject) string {
 	_, filename := path.Split(obj.Key)
 	return filename

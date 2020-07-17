@@ -21,10 +21,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
@@ -84,9 +84,10 @@ func TestDeploymentSerialization(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		"",
 	)
 
-	dep, err := SerializeResource(res, config.NopEncrypter)
+	dep, err := SerializeResource(res, config.NopEncrypter, false /* showSecrets */)
 	assert.NoError(t, err)
 
 	// assert some things about the deployment record:
@@ -182,7 +183,7 @@ func TestUnsupportedSecret(t *testing.T) {
 	rawProp := map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 	}
-	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.Error(t, err)
 }
 
@@ -190,7 +191,7 @@ func TestUnknownSig(t *testing.T) {
 	rawProp := map[string]interface{}{
 		resource.SigKey: "foobar",
 	}
-	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.Error(t, err)
 }
 
@@ -288,7 +289,7 @@ func TestCustomSerialization(t *testing.T) {
 	// Using stack.SerializeProperties will get the correct behavior and should be used
 	// whenever persisting resources into some durable form.
 	t.Run("SerializeProperties", func(t *testing.T) {
-		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter)
+		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter, false /* showSecrets */)
 		assert.NoError(t, err)
 
 		// Now JSON encode the results?

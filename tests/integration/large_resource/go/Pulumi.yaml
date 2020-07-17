@@ -1,0 +1,3 @@
+name: large_resource_go
+runtime: go
+description: A Go program with >4mb string resource

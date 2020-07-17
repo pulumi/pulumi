@@ -15,31 +15,71 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/buildutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
+
+func findProgram(binary string) (*exec.Cmd, error) {
+	// we default to execution via `go run`
+	// the user can explicitly opt in to using a binary executable by specifying
+	// runtime.options.binary in the Pulumi.yaml
+	if binary != "" {
+		program, err := executable.FindExecutable(binary)
+		if err != nil {
+			return nil, errors.Wrap(err, "expected to find prebuilt executable")
+		}
+		return exec.Command(program), nil
+	}
+
+	// Fall back to 'go run' style executions
+	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via 'go run'")
+	program, err := executable.FindExecutable("go")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get current working directory")
+	}
+
+	goFileSearchPattern := filepath.Join(cwd, "*.go")
+	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
+		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
+	}
+
+	return exec.Command(program, "run", cwd), nil
+}
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
 	var tracing string
+	var binary string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
 
 	flag.Parse()
 	args := flag.Args()
@@ -55,7 +95,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing)
+			host := newLanguageHost(engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -77,55 +117,120 @@ func main() {
 type goLanguageHost struct {
 	engineAddress string
 	tracing       string
+	binary        string
 }
 
-func newLanguageHost(engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		binary:        binary,
 	}
+}
+
+// modInfo is the useful portion of the output from `go list -m -json all`
+// with respect to plugin acquisition
+type modInfo struct {
+	Path    string
+	Version string
+}
+
+func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	if !strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
+		return nil, errors.New("module is not a pulumi provider")
+	}
+
+	// github.com/pulumi/pulumi-aws/sdk/... => aws
+	pluginPart := strings.Split(m.Path, "/")[2]
+	name := strings.SplitN(pluginPart, "-", 2)[1]
+
+	v, err := semver.ParseTolerant(m.Version)
+	if err != nil {
+		return nil, errors.New("module does not have semver compatible version")
+	}
+	version := m.Version
+
+	// psuedoversions are commits that don't have a corresponding tag at the specified git hash
+	// https://golang.org/cmd/go/#hdr-Pseudo_versions
+	// pulumi-aws v1.29.1-0.20200403140640-efb5e2a48a86 (first commit after 1.29.0 release)
+	if buildutil.IsPseudoVersion(version) {
+		// no prior tag means there was never a release build
+		if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
+			return nil, errors.New("invalid pseduoversion with no prior tag")
+		}
+		// patch is typically bumped from the previous tag when using pseudo version
+		// downgrade the patch by 1 to make sure we match a release that exists
+		patch := v.Patch
+		if patch > 0 {
+			patch--
+		}
+		version = fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, patch)
+	}
+
+	plugin := &pulumirpc.PluginDependency{
+		Name:    name,
+		Version: version,
+		Kind:    "resource",
+	}
+
+	return plugin, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+// We're lenient here as this relies on the `go list` command and the use of modules.
+// If the consumer insists on using some other form of dependency management tool like
+// dep or glide, the list command fails with "go list -m: not using modules"
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
-}
 
-const unableToFindProgramTemplate = "unable to find program: %s"
+	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-// findProgram attempts to find the needed program in various locations on the
-// filesystem, eventually resorting to searching in $PATH.
-func findProgram(program string) (string, error) {
-
-	// look in the same directory
-	cwd, err := os.Getwd()
+	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get current working directory")
+		return nil, errors.Wrap(err, "couldn't find go binary")
 	}
 
-	cwdProgram := filepath.Join(cwd, program)
-	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-		logging.V(5).Infof("program %s found in CWD", program)
-		return cwdProgram, nil
+	// don't wire up stderr so non-module users don't see error output from list
+	cmd := exec.Command(gobin, "list", "-m", "-json", "all")
+	cmd.Env = os.Environ()
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		// will err if the project isn't using modules
+		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements: %s", err.Error())
+		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
 
-	// look in $GOPATH/bin
-	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		goPathProgram := filepath.Join(goPath, "bin", program)
-		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
-			return goPathProgram, nil
+	plugins := []*pulumirpc.PluginDependency{}
+
+	dec := json.NewDecoder(bytes.NewReader(stdout))
+	for {
+		var m modInfo
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			logging.V(5).Infof("GetRequiredPlugins: Error parsing list output: %s", err.Error())
+			return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		}
+
+		plugin, err := m.getPlugin()
+		if err == nil {
+			logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
+			plugins = append(plugins, plugin)
+		} else {
+			logging.V(5).Infof(
+				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
+				m.Path,
+				m.Version,
+				err.Error(),
+			)
 		}
 	}
 
-	// look in the $PATH somewhere
-	if fullPath, err := exec.LookPath(program); err == nil {
-		logging.V(5).Infof("program %s found in $PATH", program)
-		return fullPath, nil
-	}
-
-	return "", errors.Errorf(unableToFindProgramTemplate, program)
+	return &pulumirpc.GetRequiredPluginsResponse{
+		Plugins: plugins,
+	}, nil
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
@@ -137,54 +242,14 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
-	// by default we try to run a named executable on the path, but we will fallback to 'go run' style execution
-	goRunInvoke := false
-
-	// The program to execute is simply the name of the project.  This ensures good Go toolability, whereby
-	// you can simply run `go install .` to build a Pulumi program prior to running it, among other benefits.
-	// For ease of use, if we don't find a pre-built program, we attempt to invoke via 'go run' on behalf of the user.
-	program, err := findProgram(req.GetProject())
+	cmd, err := findProgram(host.binary)
 	if err != nil {
-		const message = "problem executing program (could not run language executor)"
-		if err.Error() == fmt.Sprintf(unableToFindProgramTemplate, req.GetProject()) {
-			logging.V(5).Infof("Unable to find program %s in $PATH, attempting invocation via 'go run'", program)
-			program, err = findProgram("go")
-			if err != nil {
-				return nil, errors.Wrap(err, message)
-			}
-			goRunInvoke = true
-		} else {
-			return nil, errors.Wrap(err, message)
-		}
+		return nil, err
 	}
-
-	logging.V(5).Infof("language host launching process: %s", program)
-
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	var errResult string
-	var cmd *exec.Cmd
-
-	if goRunInvoke {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to get current working directory")
-		}
-
-		goFileSearchPattern := filepath.Join(cwd, "*.go")
-		if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
-			return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
-		}
-
-		args := []string{"run", cwd}
-		// go run $cwd
-		cmd = exec.Command(program, args...)
-	} else {
-		cmd = exec.Command(program)
-	}
-
 	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+
+	var errResult string
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user

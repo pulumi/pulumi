@@ -25,18 +25,12 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
-
-// IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
-// users.
-func IsInternalPropertyKey(key resource.PropertyKey) bool {
-	return strings.HasPrefix(string(key), "__")
-}
 
 // GetIndent computes a step's parent indentation.
 func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) int {
@@ -231,32 +225,39 @@ func PrintObject(
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; !IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, planning) {
+		if v := props[k]; !resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, planning) {
 			printPropertyTitle(b, string(k), maxkey, indent, op, prefix)
 			printPropertyValue(b, v, planning, indent, op, prefix, debug)
 		}
 	}
 }
 
-func massageStackPreviewAdd(p resource.PropertyValue) {
+func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case p.IsArray():
-		for _, v := range p.ArrayValue() {
-			massageStackPreviewAdd(v)
+		arr := make([]resource.PropertyValue, len(p.ArrayValue()))
+		for i, v := range p.ArrayValue() {
+			arr[i] = massageStackPreviewAdd(v)
 		}
+		return resource.NewArrayProperty(arr)
 	case p.IsObject():
-		delete(p.ObjectValue(), "@isPulumiResource")
-		for _, v := range p.ObjectValue() {
-			massageStackPreviewAdd(v)
+		obj := resource.PropertyMap{}
+		for k, v := range p.ObjectValue() {
+			if k != "@isPulumiResource" {
+				obj[k] = massageStackPreviewAdd(v)
+			}
 		}
+		return resource.NewObjectProperty(obj)
+	default:
+		return p
 	}
 }
 
 func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
 	switch {
 	case diff.Array != nil:
-		for _, p := range diff.Array.Adds {
-			massageStackPreviewAdd(p)
+		for i, p := range diff.Array.Adds {
+			diff.Array.Adds[i] = massageStackPreviewAdd(p)
 		}
 		for _, d := range diff.Array.Updates {
 			massageStackPreviewDiff(d, inResource)
@@ -284,8 +285,8 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 		}
 	}
 
-	for _, p := range diff.Adds {
-		massageStackPreviewAdd(p)
+	for i, p := range diff.Adds {
+		diff.Adds[i] = massageStackPreviewAdd(p)
 	}
 	for k, d := range diff.Updates {
 		if isResource && d.New.IsComputed() && !shouldPrintPropertyValue(d.Old, false) {
@@ -355,7 +356,7 @@ func GetResourceOutputsPropertiesString(
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
-		outputDiff = step.Old.Outputs.Diff(outs, IsInternalPropertyKey)
+		outputDiff = step.Old.Outputs.Diff(outs, resource.IsInternalPropertyKey)
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
@@ -387,9 +388,9 @@ func GetResourceOutputsPropertiesString(
 		// - a property with the same key is not present in the inputs
 		// - the property that is present in the inputs is different
 		// - we are doing a refresh, in which case we always want to show state differences
-		if outputDiff != nil || (!IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
+		if outputDiff != nil || (!resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
 			if in, has := ins[k]; has && !refresh {
-				if out.Diff(in, IsInternalPropertyKey) == nil {
+				if out.Diff(in, resource.IsInternalPropertyKey) == nil {
 					continue
 				}
 			}
@@ -551,7 +552,7 @@ func printOldNewDiffs(
 	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news, IsInternalPropertyKey); diff != nil {
+	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
 		PrintObjectDiff(b, *diff, include, planning, indent, summary, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render

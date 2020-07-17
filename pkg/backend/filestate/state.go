@@ -18,30 +18,31 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
 
 	"github.com/pkg/errors"
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
@@ -171,13 +172,13 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	chk, err := stack.SerializeCheckpoint(name, snap, sm)
+	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
 		return "", errors.Wrap(err, "serializaing checkpoint")
 	}
 	byts, err := m.Marshal(chk)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred while marshalling the checkpoint")
 	}
 
 	// Back up the existing file if it already exists.
@@ -185,7 +186,36 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
-		return "", errors.Wrap(err, "An IO error occurred during the current operation")
+
+		b.mutex.Lock()
+		defer b.mutex.Unlock()
+
+		// FIXME: Would be nice to make these configurable
+		delay, _ := time.ParseDuration("1s")
+		maxDelay, _ := time.ParseDuration("30s")
+		backoff := 1.2
+
+		// Retry the write 10 times in case of upstream bucket errors
+		_, _, err = retry.Until(context.TODO(), retry.Acceptor{
+			Delay:    &delay,
+			MaxDelay: &maxDelay,
+			Backoff:  &backoff,
+			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+				// And now write out the new snapshot file, overwriting that location.
+				err := b.bucket.WriteAll(context.TODO(), file, byts, nil)
+				if err != nil {
+					logging.V(7).Infof("Error while writing snapshot to: %s (attempt=%d, error=%s)", file, try, err)
+					if try > 10 {
+						return false, nil, errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
+					}
+					return false, nil, nil
+				}
+				return true, nil, nil
+			},
+		})
+		if err != nil {
+			return "", err
+		}
 	}
 
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
@@ -193,7 +223,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
-			return "", errors.Wrap(err, "An IO error occurred during the current operation")
+			return "", errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
 		}
 	}
 

@@ -1,7 +1,6 @@
 # Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-from pulumi import ComponentResource, Resource, ResourceOptions
-from pulumi.resource import CustomTimeouts
+from pulumi import ComponentResource, CustomTimeouts, Resource, ResourceOptions
 
 class Resource1(ComponentResource):
     def __init__(self, name, opts=None):

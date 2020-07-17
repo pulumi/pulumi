@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on watch
@@ -52,7 +52,7 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 			continue
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload.(engine.DiagEventPayload)
+			p := e.Payload().(engine.DiagEventPayload)
 			resourceName := ""
 			if p.URN != "" {
 				resourceName = string(p.URN.Name())
@@ -60,19 +60,19 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 			PrintfWithWatchPrefix(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
 		case engine.ResourcePreEvent:
-			p := e.Payload.(engine.ResourcePreEventPayload)
+			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOutputsEvent:
-			p := e.Payload.(engine.ResourceOutputsEventPayload)
+			p := e.Payload().(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOperationFailed:
-			p := e.Payload.(engine.ResourceOperationFailedPayload)
+			p := e.Payload().(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())

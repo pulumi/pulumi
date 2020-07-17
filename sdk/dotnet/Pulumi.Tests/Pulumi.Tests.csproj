@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
@@ -16,6 +16,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pulumi\Pulumi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Unfortunately, we depend on static state. So we configure xUnit's runner to disable parallelization. -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

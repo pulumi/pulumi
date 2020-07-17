@@ -18,11 +18,11 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.
@@ -43,7 +43,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	deployment, err := stack.SerializeDeployment(snapshot, persister.sm)
+	deployment, err := stack.SerializeDeployment(snapshot, persister.sm, false /* showSecrets */)
 	if err != nil {
 		return errors.Wrap(err, "serializing deployment")
 	}

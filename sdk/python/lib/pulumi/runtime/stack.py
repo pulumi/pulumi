@@ -18,24 +18,21 @@ Support for automatic stack components.
 import asyncio
 import collections
 from inspect import isawaitable
-from typing import Callable, Any, Dict, List
+from typing import Callable, Any, Dict, List, TYPE_CHECKING
 
 from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
 from .rpc_manager import RPC_MANAGER
+from .sync_await import _all_tasks, _get_current_task
 from .. import log
-from . import known_types
 
-from ..output import Output
+if TYPE_CHECKING:
+    from .. import Output
 
-async def run_in_stack(func: Callable):
-    """
-    Run the given function inside of a new stack resource.  This ensures that any stack export calls
-    will end up as output properties on the resulting stack component in the checkpoint file.  This
-    is meant for internal runtime use only and is used by the Python SDK entrypoint program.
-    """
+
+async def run_pulumi_func(func: Callable):
     try:
-        Stack(func)
+        func()
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
@@ -60,9 +57,9 @@ async def run_in_stack(func: Callable):
         # We will occasionally start tasks deliberately that we know will never complete. We must
         # cancel them before shutting down the event loop.
         log.debug("Canceling all outstanding tasks")
-        for task in asyncio.Task.all_tasks():
+        for task in _all_tasks():
             # Don't kill ourselves, that would be silly.
-            if task == asyncio.Task.current_task():
+            if task == _get_current_task():
                 continue
             task.cancel()
 
@@ -71,12 +68,21 @@ async def run_in_stack(func: Callable):
         await asyncio.sleep(0)
 
         # Once we get scheduled again, all tasks have exited and we're good to go.
-        log.debug("run_in_stack completed")
+        log.debug("run_pulumi_func completed")
 
     if RPC_MANAGER.unhandled_exception is not None:
         raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
-@known_types.stack
+
+async def run_in_stack(func: Callable):
+    """
+    Run the given function inside of a new stack resource.  This ensures that any stack export calls
+    will end up as output properties on the resulting stack component in the checkpoint file.  This
+    is meant for internal runtime use only and is used by the Python SDK entrypoint program.
+    """
+    await run_pulumi_func(lambda: Stack(func))
+
+
 class Stack(ComponentResource):
     """
     A synthetic stack component that automatically parents resources as the program runs.
@@ -108,6 +114,7 @@ class Stack(ComponentResource):
         """
         self.outputs[name] = value
 
+
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
 def massage(attr: Any, seen: List[Any]):
@@ -118,9 +125,9 @@ def massage(attr: Any, seen: List[Any]):
     lists or dictionaries as appropriate.  In general, iterable things are turned into lists, and
     dictionary-like things are turned into dictionaries.
     """
+    from .. import Output  # pylint: disable=import-outside-toplevel
 
     # Basic primitive types (numbers, booleans, strings, etc.) don't need any special handling.
-
     if is_primitive(attr):
         return attr
 
@@ -202,6 +209,7 @@ def is_primitive(attr: Any) -> bool:
         pass
 
     return True
+
 
 def register_stack_transformation(t: ResourceTransformation):
     """

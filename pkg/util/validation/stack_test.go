@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,2 +1,31 @@
 #!/bin/sh
-python3 -u -m pulumi.dynamic $@
+
+if [ -n "${PULUMI_RUNTIME_VIRTUALENV:-}" ] ; then
+    # Remove trailing slash.
+    PULUMI_RUNTIME_VIRTUALENV=${PULUMI_RUNTIME_VIRTUALENV%/}
+
+    # Make the path absolute (if not already).
+    case $PULUMI_RUNTIME_VIRTUALENV in
+        /*) : ;;
+        *) PULUMI_RUNTIME_VIRTUALENV=$PWD/$PULUMI_RUNTIME_VIRTUALENV;;
+    esac
+
+    # If python exists in the virtual environment, set PATH and run it.
+    if [ -f "$PULUMI_RUNTIME_VIRTUALENV/bin/python" ]; then
+        # Update PATH and unset PYTHONHOME.
+        PATH="$PULUMI_RUNTIME_VIRTUALENV/bin:$PATH"
+        export PATH
+        if [ -n "${PYTHONHOME:-}" ] ; then
+            unset PYTHONHOME
+        fi
+
+        # Run python from the virtual environment.
+        "$PULUMI_RUNTIME_VIRTUALENV/bin/python" -u -m pulumi.dynamic $@
+    else
+        echo "\"$PULUMI_RUNTIME_VIRTUALENV\" doesn't appear to be a virtual environment"
+        exit 1
+    fi
+else
+    # Otherwise, just run python3.
+    python3 -u -m pulumi.dynamic $@
+fi

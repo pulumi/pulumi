@@ -1,10 +1,9 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Grpc.Core;
-using Microsoft.Win32.SafeHandles;
-using Pulumirpc;
+using Pulumi.Testing;
 
 namespace Pulumi
 {
@@ -33,22 +32,22 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
-        private static IDeployment? _instance;
+        private static DeploymentInstance? _instance;
+        private static readonly object _instanceLock = new object();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function
         /// passed to <see cref="Deployment.RunAsync(Action)"/> (or its overloads).
         /// </summary>
-        public static IDeployment Instance
+        public static DeploymentInstance Instance
         {
             get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
-            internal set => _instance = (value ?? throw new ArgumentNullException(nameof(value)));
+            internal set => _instance = value;
         }
 
         internal static IDeploymentInternal InternalInstance
-            => (IDeploymentInternal)Instance;
+            => Instance.Internal;
 
-        private readonly Options _options;
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
@@ -56,8 +55,8 @@ namespace Pulumi
         private readonly ILogger _logger;
         private readonly IRunner _runner;
 
-        internal Engine.EngineClient Engine { get; }
-        internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
+        internal IEngine Engine { get; }
+        internal IMonitor Monitor { get; }
 
         internal Stack? _stack;
         internal Stack Stack
@@ -93,18 +92,29 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            _options = new Options(
-                queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
-                monitor: monitor, engine: engine, tracing: tracing);
-
             Serilog.Log.Debug("Creating Deployment Engine.");
-            this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
+            this.Engine = new GrpcEngine(engine);
             Serilog.Log.Debug("Created Deployment Engine.");
 
             Serilog.Log.Debug("Creating Deployment Monitor.");
-            this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
+            this.Monitor = new GrpcMonitor(monitor);
             Serilog.Log.Debug("Created Deployment Monitor.");
 
+            _runner = new Runner(this);
+            _logger = new Logger(this, this.Engine);
+        }
+
+        /// <summary>
+        /// This constructor is called from <see cref="TestAsync{TStack}"/> with
+        /// a mocked monitor and dummy values for project and stack.
+        /// </summary>
+        private Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
+        {
+            _isDryRun = options?.IsPreview ?? true;
+            _stackName = options?.StackName ?? "stack";
+            _projectName = options?.ProjectName ?? "project";
+            this.Engine = engine;
+            this.Monitor = monitor;
             _runner = new Runner(this);
             _logger = new Logger(this, this.Engine);
         }
@@ -113,7 +123,6 @@ namespace Pulumi
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
-        Options IDeploymentInternal.Options => _options;
         ILogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 

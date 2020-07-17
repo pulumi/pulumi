@@ -22,11 +22,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 type testPluginHost struct {
@@ -484,7 +484,7 @@ func TestCRUD(t *testing.T) {
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, plugin.DiffResult{}, diff)
+		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The old provider should still be registered.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
@@ -613,13 +613,13 @@ func TestCRUDPreview(t *testing.T) {
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, plugin.DiffResult{}, diff)
+		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
-		// The new provider should be registered.
+		// The original provider should be used because the config did not change.
 		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
 		assert.True(t, ok)
-		assert.False(t, p2 == old)
-		assert.True(t, p2 == p)
+		assert.True(t, p2 == old)
+		assert.False(t, p2 == p)
 	}
 
 	// Replace the existing provider for the last entry in olds.

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // Output helps encode the relationship between resources in a Pulumi application. Specifically an output property
@@ -385,7 +385,11 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 
 		// If we have a known value, run the applier to transform it.
-		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(v)})
+		val := reflect.ValueOf(v)
+		if !val.IsValid() {
+			val = reflect.Zero(o.elementType())
+		}
+		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
 		if len(results) == 2 && !results[1].IsNil() {
 			result.reject(results[1].Interface().(error))
 			return
@@ -432,6 +436,10 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 }
 
 func gatherDependencies(v interface{}) []Resource {
+	if v == nil {
+		return nil
+	}
+
 	depSet := make(map[Resource]struct{})
 	gatherDependencySet(reflect.ValueOf(v), depSet)
 
@@ -446,6 +454,8 @@ func gatherDependencies(v interface{}) []Resource {
 	return deps
 }
 
+var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+
 func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
@@ -453,6 +463,14 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 			output := v.Convert(outputType).Interface().(Output)
 			for _, d := range output.dependencies() {
 				deps[d] = struct{}{}
+			}
+			return
+		}
+		// Check for an actual Resource.
+		if v.Type().Implements(resourceType) {
+			if v.CanInterface() {
+				resource := v.Convert(resourceType).Interface().(Resource)
+				deps[resource] = struct{}{}
 			}
 			return
 		}
@@ -557,7 +575,11 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 				return known, secret, err
 			}
 			if !assignInput {
-				resolved.Set(reflect.ValueOf(e))
+				val := reflect.ValueOf(e)
+				if !val.IsValid() {
+					val = reflect.Zero(output.ElementType())
+				}
+				resolved.Set(val)
 			} else {
 				resolved.Set(reflect.ValueOf(input))
 			}
@@ -571,6 +593,15 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, er
 		}
 
 		v, isInput = reflect.ValueOf(input), true
+
+		// We require that the kind of an `Input`'s `ElementType` agrees with the kind of the `Input`'s underlying value.
+		// This requirement is trivially (and unintentionally) violated by `*T` if `*T` does not define `ElementType`,
+		// but `T` does (https://golang.org/ref/spec#Method_sets).
+		// In this case, dereference the pointer to get at its actual value.
+		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
+			v = v.Elem()
+			contract.Assert(v.Interface().(Input).ElementType() == valueType)
+		}
 
 		// If we are assigning the input value itself, update the value type.
 		if assignInput {
@@ -697,6 +728,11 @@ func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) O
 
 	result := newOutput(resultType, gatherDependencies(v)...)
 	go func() {
+		if v == nil {
+			result.fulfill(nil, true, false, nil)
+			return
+		}
+
 		element := reflect.New(resolvedType).Elem()
 
 		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), element)
@@ -785,6 +821,10 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	// Return an output that resolves when all nested inputs have resolved.
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
+		if v == nil {
+			out.fulfill(nil, true, false, nil)
+			return
+		}
 		var result interface{}
 		known, secret, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
 		out.fulfill(result, known, secret, err)
@@ -852,4 +892,17 @@ func convert(v interface{}, to reflect.Type) interface{} {
 		panic(fmt.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
 	}
 	return rv.Convert(to).Interface()
+}
+
+// TODO: ResourceOutput and the init() should probably be code generated.
+// ResourceOutput is an Output that returns Resource values.
+type ResourceOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (Resource).
+func (ResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Resource)(nil)).Elem()
+}
+
+func init() {
+	RegisterOutputType(ResourceOutput{})
 }

@@ -18,9 +18,6 @@ providers and libraries in the Pulumi ecosystem use to create and manage
 resources.
 """
 
-# Make subpackages available.
-__all__ = ['runtime', 'dynamic']
-
 # Make all module members inside of this package available as package members.
 from .asset import (
     Asset,
@@ -56,6 +53,7 @@ from .resource import (
     Alias,
     Resource,
     CustomResource,
+    CustomTimeouts,
     ComponentResource,
     ProviderResource,
     ResourceOptions,
@@ -85,3 +83,5 @@ from .log import (
 from .stack_reference import (
     StackReference,
 )
+
+from . import runtime, dynamic, policy

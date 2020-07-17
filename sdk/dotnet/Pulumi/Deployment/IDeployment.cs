@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Pulumi
 {
-    public interface IDeployment
+    internal interface IDeployment
     {
         /// <summary>
         /// Returns the current stack name.

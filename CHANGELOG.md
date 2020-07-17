@@ -1,8 +1,391 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Add support for streamInvoke during update
+  [#4990](https://github.com/pulumi/pulumi/pull/4990)
+  
+- Add ability to copy configuration values between stacks
+  [#4971](https://github.com/pulumi/pulumi/pull/4971)
+
+- Add logic to parce pulumi venv on github action
+  [#4994](https://github.com/pulumi/pulumi/pull/4994)
+
+## 2.6.1 (2020-07-09)
+
+- Fix a panic in the display during CLI operations
+  [#4987](https://github.com/pulumi/pulumi/pull/4987)
+
+## 2.6.0 (2020-07-08)
+
+- Go program gen: Improved handling for pulumi.Map types
+  [#4914](https://github.com/pulumi/pulumi/pull/4914)
+
+- Go SDK: Input type interfaces should declare pointer type impls where appropriate
+  [#4911](https://github.com/pulumi/pulumi/pull/4911)
+
+- Fixes issue where base64-encoded GOOGLE_CREDENTIALS causes problems with other commands
+  [#4972](https://github.com/pulumi/pulumi/pull/4972)
+
+## 2.5.0 (2020-06-25)
+
+- Go program gen: prompt array conversion, unused range vars, id handling
+  [#4884](https://github.com/pulumi/pulumi/pull/4884)
+
+- Go program gen handling for prompt optional primitives
+  [#4875](https://github.com/pulumi/pulumi/pull/4875)
+
+- Go program gen All().Apply rewriter
+  [#4858](https://github.com/pulumi/pulumi/pull/4858)
+
+- Go program gen improvements (multiline strings, get/lookup disambiguation, invoke improvements)
+  [#4850](https://github.com/pulumi/pulumi/pull/4850)
+
+- Go program gen improvements (splat, all, index, traversal, range)
+  [#4831](https://github.com/pulumi/pulumi/pull/4831)
+
+- Go program gen improvements (resource range, readDir, fileArchive)
+  [#4818](https://github.com/pulumi/pulumi/pull/4818)
+
+- Set default config namespace for Get/Try/Require methods in Go SDK.
+  [#4802](https://github.com/pulumi/pulumi/pull/4802)
+
+- Handle invalid UTF-8 characters before RPC calls
+  [#4816](https://github.com/pulumi/pulumi/pull/4816)
+
+- Improve typing for Go SDK secret config values
+  [#4800](https://github.com/pulumi/pulumi/pull/4800)
+
+- Fix panic on `pulumi up` prompt after preview when filtering and hitting arrow keys.
+  [#4808](https://github.com/pulumi/pulumi/pull/4808)
+
+- Ensure GitHub Action authenticates to GCR when `$GOOGLE_CREDENTIALS` specified
+  [#4812](https://github.com/pulumi/pulumi/pull/4812)
+
+- Fix `pylint(no-member)` when accessing `resource.id`.
+  [#4813](https://github.com/pulumi/pulumi/pull/4813)
+
+- Fix GitHub Actions environment detection for PRs.
+  [#4817](https://github.com/pulumi/pulumi/pull/4817)
+
+- Adding language sdk specific docker containers.
+  [#4837](https://github.com/pulumi/pulumi/pull/4837)
+
+- Workaround bug in grcpio v1.30.0 by excluding this version from required dependencies.
+  [#4883](https://github.com/pulumi/pulumi/pull/4883)
+
+## 2.4.0 (2020-06-10)
+- Turn program generation NYIs into diagnostic errors
+ [#4794](https://github.com/pulumi/pulumi/pull/4794)
+
+- Improve dev version detection logic
+ [#4732](https://github.com/pulumi/pulumi/pull/4732)
+
+- Export `CustomTimeouts` in the Python SDK
+ [#4747](https://github.com/pulumi/pulumi/pull/4747)
+
+- Add GitHub Actions CI detection
+ [#4758](https://github.com/pulumi/pulumi/pull/4758)
+
+- Allow users to specify base64 encoded strings as GOOGLE_CREDENTIALS
+ [#4773](https://github.com/pulumi/pulumi/pull/4773)
+
+- Install and use dependencies automatically for new Python projects.
+  [#4775](https://github.com/pulumi/pulumi/pull/4775)
+
+## 2.3.0 (2020-05-27)
+- Add F# operators for InputUnion.
+ [#4699](https://github.com/pulumi/pulumi/pull/4699)
+
+- Add support for untagged outputs in Go SDK.
+ [#4640](https://github.com/pulumi/pulumi/pull/4640)
+
+- Update go-cloud to support all Azure regions
+ [#4643](https://github.com/pulumi/pulumi/pull/4643)
+
+- Fix a Regression in .NET unit testing.
+ [#4656](https://github.com/pulumi/pulumi/pull/4656)
+
+- Allow `pulumi.export` calls from Python unit tests.
+  [#4670](https://github.com/pulumi/pulumi/pull/4670)
+
+- Add support for publishing Python policy packs.
+  [#4644](https://github.com/pulumi/pulumi/pull/4644)
+
+- Improve download perf by fetching plugins from a CDN.
+  [#4692](https://github.com/pulumi/pulumi/pull/4692)
+
+## 2.2.1 (2020-05-13)
+- Add new brew target to fix homebrew builds
+ [#4633](https://github.com/pulumi/pulumi/pull/4633)
+
+## 2.2.0 (2020-05-13)
+
+- Fixed ResourceOptions issue with stack references in Python SDK
+ [#4553](https://github.com/pulumi/pulumi/pull/4553)
+
+- Add runTask to F# Deployment module
+  [#3858](https://github.com/pulumi/pulumi/pull/3858)
+
+- Add support for generating Fish completions
+  [#4401](https://github.com/pulumi/pulumi/pull/4401)
+
+- Support map-typed inputs in RegisterResource for Go SDK
+  [#4522](https://github.com/pulumi/pulumi/pull/4522)
+
+- Don't call IMocks.NewResourceAsync for the root stack resource
+  [#4527](https://github.com/pulumi/pulumi/pull/4527)
+
+- Add ResourceOutput type to Go SDK
+  [#4575](https://github.com/pulumi/pulumi/pull/4575)
+
+- Allow secrets to be decrypted when exporting a stack
+  [#4046](https://github.com/pulumi/pulumi/pull/4046)
+
+- Commands checking for a confirmation or requiring a `--yes` flag can now be
+  skipped by setting `PULUMI_SKIP_CONFIRMATIONS` to `1` or `true`.
+  [#4477](https://github.com/pulumi/pulumi/pull/4477)
+
+## 2.1.1 (2020-05-11)
+
+- Add retry support when writing to state buckets
+  [#4494](https://github.com/pulumi/pulumi/pull/4494)
+
+## 2.1.0 (2020-04-28)
+
+- Fix infinite recursion bug for Go SDK
+  [#4516](https://github.com/pulumi/pulumi/pull/4516)
+
+- Order secretOutputNames when used in stack references
+  [#4489](https://github.com/pulumi/pulumi/pull/4489)
+
+- Add support for a `PULUMI_CONSOLE_DOMAIN` environment variable to override the
+  behavior for how URLs to the Pulumi Console are generated.
+  [#4410](https://github.com/pulumi/pulumi/pull/4410)
+
+- Protect against panic when unprotecting non-existant resources
+  [#4441](https://github.com/pulumi/pulumi/pull/4441)
+
+- Add flag to `pulumi stack` to output only the stack name
+  [#4450](https://github.com/pulumi/pulumi/pull/4450)
+
+- Ensure Go accessor methods correctly support nested fields of optional outputs
+  [#4456](https://github.com/pulumi/pulumi/pull/4456)
+
+- Improve `ResourceOptions.merge` type in Python SDK
+  [#4484](https://github.com/pulumi/pulumi/pull/4484)
+
+- Ensure generated Python module names are keyword-safe.
+  [#4473](https://github.com/pulumi/pulumi/pull/4473)
+
+- Explicitly set XDG_CONFIG_HOME and XDG_CACHE_HOME env vars for helm in the
+  pulumi docker image
+  [#4474](https://github.com/pulumi/pulumi/pull/4474)
+
+- Increase the MaxCallRecvMsgSize for all RPC calls.
+  [#4455](https://github.com/pulumi/pulumi/pull/4455)
+
+## 2.0.0 (2020-04-16)
+
+- CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
+  another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
+  explicitly required to proceed in non-interactive scenarios. This affects:
+   * `pulumi destroy`
+   * `pulumi new`
+   * `pulumi refresh`
+   * `pulumi up`
+
+- Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
+  another library.
+
+- @pulumi/pulumi now requires Node.js version >=10.10.0.
+
+- All data-source invocations are now asynchronous (Promise-returning) by default.
+
+- C# code generation switched to schema.
+
+- .NET API: replace `IDeployment` interface with `DeploymentInstance` class.
+
+- Fix Go SDK secret propagation for Resource inputs/outputs.
+  [#4387](https://github.com/pulumi/pulumi/pull/4387)
+
+- Fix Go codegen to emit config packages
+  [#4388](https://github.com/pulumi/pulumi/pull/4388)
+
+- Treat config values set with `--path` that start with '0' as strings rather than numbers.
+  [#4393](https://github.com/pulumi/pulumi/pull/4393)
+
+- Switch .NET projects to .NET Core 3.1
+  [#4400](https://github.com/pulumi/pulumi/pull/4400)
+
+- Avoid unexpected replace on resource with `import` applied on second update.
+  [#4403](https://github.com/pulumi/pulumi/pull/4403)
+
+## 1.14.1 (2020-04-13)
+- Propagate `additionalSecretOutputs` opt to Read in NodeJS.
+  [#4307](https://github.com/pulumi/pulumi/pull/4307)
+
+- Fix handling of `nil` values in Outputs in Go.
+  [#4268](https://github.com/pulumi/pulumi/pull/4268)
+
+- Include usage hints for Input types in Go SDK
+  [#4279](https://github.com/pulumi/pulumi/pull/4279)
+
+- Fix secretness propagation in Python `apply`.
+  [#4273](https://github.com/pulumi/pulumi/pull/4273)
+
+- Fix the `call` mock in Python.
+  [#4274](https://github.com/pulumi/pulumi/pull/4274)
+
+- Fix handling of secret values in mock-based tests.
+  [#4272](https://github.com/pulumi/pulumi/pull/4272)
+
+- Automatic plugin acquisition for Go
+  [#4297](https://github.com/pulumi/pulumi/pull/4297)
+
+- Define merge behavior for resource options in Go SDK
+  [#4316](https://github.com/pulumi/pulumi/pull/4316)
+
+- Add overloads to Output.All in .NET
+  [#4321](https://github.com/pulumi/pulumi/pull/4321)
+
+- Make prebuilt executables opt-in only for the Go SDK
+  [#4338](https://github.com/pulumi/pulumi/pull/4338)
+
+- Support the `binary` option (prebuilt executables) for the .NET SDK
+  [#4355](https://github.com/pulumi/pulumi/pull/4355)
+
+- Add helper methods for stack outputs in the Go SDK
+  [#4341](https://github.com/pulumi/pulumi/pull/4341)
+
+- Add additional overloads to Deployment.RunAsync in .NET API.
+  [#4286](https://github.com/pulumi/pulumi/pull/4286)
+
+- Automate execution of `go mod download` for `pulumi new` Go templates
+  [#4353](https://github.com/pulumi/pulumi/pull/4353)
+
+- Fix `pulumi up -r -t $URN` not refreshing only the target
+  [#4217](https://github.com/pulumi/pulumi/pull/4217)
+
+- Fix logout with file backend when state is deleted
+  [#4218](https://github.com/pulumi/pulumi/pull/4218)
+
+- Fix specific flags for `pulumi stack` being global
+  [#4294](https://github.com/pulumi/pulumi/pull/4294)
+
+- Fix error when setting config without value in non-interactive mode
+  [#4358](https://github.com/pulumi/pulumi/pull/4358)
+
+- Propagate unknowns in Go SDK during marshal operations
+  [#4369](https://github.com/pulumi/pulumi/pull/4369/files)
+
+- Fix Go SDK stack reference helpers to handle nil values
+  [#4370](https://github.com/pulumi/pulumi/pull/4370)
+
+- Fix propagation of unknown status for secrets
+  [#4377](https://github.com/pulumi/pulumi/pull/4377)
+
+## 1.14.0 (2020-04-01)
+- Fix error related to side-by-side versions of `@pulumi/pulumi`.
+  [#4235](https://github.com/pulumi/pulumi/pull/4235)
+
+- Allow users to specify an alternate backend URL when using the GitHub Actions container with the env var `PULUMI_BACKEND_URL`.
+  [#4243](https://github.com/pulumi/pulumi/pull/4243)
+
+## 1.13.1 (2020-03-27)
+- Move to a multi-module repo to enable modules for the Go SDK
+  [#4109](https://github.com/pulumi/pulumi/pull/4109)
+
+- Report compile time errors for Go programs during plugin acquisition.
+  [#4141](https://github.com/pulumi/pulumi/pull/4141)
+
+- Add missing builtin `MapArray` to Go SDK.
+  [#4144](https://github.com/pulumi/pulumi/pull/4144)
+
+- Add aliases to Go SDK codegen pkg.
+  [#4157](https://github.com/pulumi/pulumi/pull/4157)
+
+- Discontinue testing on Node 8 (which has been end-of-life since January 2020), and start testing on Node 13.
+  [#4156](https://github.com/pulumi/pulumi/pull/4156)
+
+- Add support for enabling Policy Packs with configuration.
+  [#3756](https://github.com/pulumi/pulumi/pull/4127)
+
+- Remove obsolete .NET serialization attributes.
+  [#4190](https://github.com/pulumi/pulumi/pull/4190)
+
+- Add support for validating Policy Pack configuration.
+  [#4179](https://github.com/pulumi/pulumi/pull/4186)
+
+## 1.13.0 (2020-03-18)
+- Add support for plugin acquisition for Go programs
+  [#4060](https://github.com/pulumi/pulumi/pull/4060)
+
+- Display resource type in PAC violation output
+  [#4061](https://github.com/pulumi/pulumi/issues/4061)
+
+- Update to Helm v3 in pulumi Docker image
+  [#4090](https://github.com/pulumi/pulumi/pull/4090)
+
+- Add ArrayMap builtin types to Go SDK
+  [#4086](https://github.com/pulumi/pulumi/pull/4086)
+
+- Improve documentation of URL formats for `pulumi login`
+  [#4059](https://github.com/pulumi/pulumi/pull/4059)
+
+- Add support for stack transformations in the .NET SDK.
+  [#4008](https://github.com/pulumi/pulumi/pull/4008)
+
+- Fix `pulumi stack ls` on Windows
+  [#4094](https://github.com/pulumi/pulumi/pull/4094)
+
+- Add support for running Python policy packs.
+  [#4057](https://github.com/pulumi/pulumi/pull/4057)
+
+## 1.12.1 (2020-03-11)
+- Fix Kubernetes YAML parsing error in .NET.
+  [#4023](https://github.com/pulumi/pulumi/pull/4023)
+
+- Avoid projects beginning with `Pulumi` to stop cyclic imports
+  [#4013](https://github.com/pulumi/pulumi/pull/4013)
+
+- Ensure we can locate Go created application binaries on Windows
+  [#4030](https://github.com/pulumi/pulumi/pull/4030)
+
+- Ensure Python overlays work as part of our SDK generation
+  [#4043](https://github.com/pulumi/pulumi/pull/4043)
+
+- Fix terminal gets into a state where UP/DOWN don't work with prompts.
+  [#4042](https://github.com/pulumi/pulumi/pull/4042)
+
+- Ensure old provider is not used when configuration has changed
+  [#4051](https://github.com/pulumi/pulumi/pull/4051)
+
+- Support for unit testing and mocking in the .NET SDK.
+  [#3696](https://github.com/pulumi/pulumi/pull/3696)
+
+## 1.12.0 (2020-03-04)
+- Avoid Configuring providers which are not used during preview.
+  [#4004](https://github.com/pulumi/pulumi/pull/4004)
+
 - Fix missing module import on Windows platform.
   [#3983](https://github.com/pulumi/pulumi/pull/3983)
+
+- Add support for mocking the resource monitor to the NodeJS and Python SDKs.
+  [#3738](https://github.com/pulumi/pulumi/pull/3738)
+
+- Reinstate caching of TypeScript compilation.
+  [#4007](https://github.com/pulumi/pulumi/pull/4007)
+
+- Remove the need to set PULUMI_EXPERIMENTAL to use the policy and watch commands.
+  [#4001](https://github.com/pulumi/pulumi/pull/4001)
+
+- Fix type annotations for `Output.all` and `Output.concat` in Python SDK.
+  [#4016](https://github.com/pulumi/pulumi/pull/4016)
+
+- Add support for configuring policies.
+  [#4015](https://github.com/pulumi/pulumi/pull/4015)
 
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
@@ -10,9 +393,12 @@ CHANGELOG
 
 - Avoid panic when displaying failed stack policies.
   [#3960](https://github.com/pulumi/pulumi/pull/3960)
-  
+
 - Add support for secrets in the Go SDK.
   [3938](https://github.com/pulumi/pulumi/pull/3938)
+
+- Add support for transformations in the Go SDK.
+  [3978](https://github.com/pulumi/pulumi/pull/3938)
 
 ## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.
@@ -1573,4 +1959,3 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
-

@@ -5,10 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
 )
 
 // Tests that the stack export that included secrets in step1 is read into a secret output.
@@ -22,7 +20,7 @@ func main() {
 		stackRef, err := pulumi.NewStackReference(ctx, slug, nil)
 
 		if err != nil {
-			return errors.Wrap(err, "Error reading stack reference.")
+			return fmt.Errorf("error reading stack reference: %v", err)
 		}
 
 		val := pulumi.StringArrayOutput(stackRef.GetOutput(pulumi.String("val2")))
@@ -34,8 +32,8 @@ func main() {
 		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
 
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
-				errChan <- errors.Errorf("Invalid result")
-				return nil, errors.Errorf("Invalid result")
+				errChan <- fmt.Errorf("invalid result")
+				return nil, fmt.Errorf("invalid result")
 			}
 			results <- v
 			return v, nil
@@ -44,7 +42,7 @@ func main() {
 			select {
 			case s := <-secret:
 				if !s {
-					return errors.Errorf("Error, stack export should be marked as secret!!!")
+					return fmt.Errorf("error, stack export should be marked as secret")
 				}
 				break
 			case err = <-errChan:

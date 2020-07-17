@@ -2,12 +2,13 @@ package display
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
@@ -27,7 +28,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		apiEvent.CancelEvent = &apitype.CancelEvent{}
 
 	case engine.StdoutColorEvent:
-		p, ok := e.Payload.(engine.StdoutEventPayload)
+		p, ok := e.Payload().(engine.StdoutEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -37,7 +38,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.DiagEvent:
-		p, ok := e.Payload.(engine.DiagEventPayload)
+		p, ok := e.Payload().(engine.DiagEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -51,7 +52,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.PolicyViolationEvent:
-		p, ok := e.Payload.(engine.PolicyViolationEventPayload)
+		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -67,7 +68,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.PreludeEvent:
-		p, ok := e.Payload.(engine.PreludeEventPayload)
+		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -81,7 +82,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.SummaryEvent:
-		p, ok := e.Payload.(engine.SummaryEventPayload)
+		p, ok := e.Payload().(engine.SummaryEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -98,7 +99,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourcePreEvent:
-		p, ok := e.Payload.(engine.ResourcePreEventPayload)
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -108,7 +109,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourceOutputsEvent:
-		p, ok := e.Payload.(engine.ResourceOutputsEventPayload)
+		p, ok := e.Payload().(engine.ResourceOutputsEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -118,7 +119,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourceOperationFailed:
-		p, ok := e.Payload.(engine.ResourceOperationFailedPayload)
+		p, ok := e.Payload().(engine.ResourceOperationFailedPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -199,10 +200,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 	}
 
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(md.Inputs, encrypter)
+	inputs, err := stack.SerializeProperties(md.Inputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(md.Outputs, encrypter)
+	outputs, err := stack.SerializeProperties(md.Outputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{

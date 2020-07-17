@@ -129,6 +129,7 @@ default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
+brew:: $(SUB_PROJECTS:%=%_brew)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -152,15 +153,7 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-ifeq ($(NOPROXY), true)
-	@echo "GO111MODULE=on go mod tidy"; GO111MODULE=on go mod tidy
-	@echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor
-else
-	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
-endif
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
-
 build::
 	$(call STEP_MESSAGE)
 
@@ -177,6 +170,9 @@ install::
 	@mkdir -p $(PULUMI_NUGET)
 
 dist::
+	$(call STEP_MESSAGE)
+
+brew::
 	$(call STEP_MESSAGE)
 
 test_all::
@@ -226,6 +222,8 @@ $(SUB_PROJECTS:%=%_only_test_fast):
 	@$(MAKE) -C ./$(@:%_only_test_fast=%) only_test_fast
 $(SUB_PROJECTS:%=%_dist):
 	@$(MAKE) -C ./$(@:%_dist=%) dist
+$(SUB_PROJECTS:%=%_brew):
+	@$(MAKE) -C ./$(@:%_brew=%) brew
 endif
 
 # As a convinece, we provide a format target that folks can build to

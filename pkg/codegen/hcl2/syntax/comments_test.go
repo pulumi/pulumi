@@ -3,11 +3,14 @@ package syntax
 import (
 	"bytes"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 )
 
 func commentString(trivia []Trivia) string {
@@ -15,26 +18,36 @@ func commentString(trivia []Trivia) string {
 	for _, t := range trivia {
 		if comment, ok := t.(Comment); ok {
 			for _, l := range comment.Lines {
-				s += l
+				s += strings.Replace(l, "✱", "*", -1)
 			}
 		}
 	}
 	return s
 }
 
-func validateTokenTrivia(t *testing.T, token Token) {
-	leadingText := commentString(token.LeadingTrivia)
-	if leadingText != "TODO" {
-		if !assert.Equal(t, string(token.Raw.Bytes), leadingText) {
-			t.Logf("leading trivia mismatch for token @ %v", token.Range())
-		}
+func validateTokenLeadingTrivia(t *testing.T, token Token) {
+	// There is nowhere to attach leading trivia to template control sequences.
+	if token.Raw.Type == hclsyntax.TokenTemplateControl {
+		assert.Len(t, token.LeadingTrivia, 0)
+		return
 	}
 
-	if trailingText := commentString(token.TrailingTrivia); trailingText != "" && trailingText != "TODO" {
-		if !assert.Equal(t, string(token.Raw.Bytes), trailingText) {
-			t.Logf("trailing trivia mismatch for token @ %v", token.Range())
-		}
+	leadingText := commentString(token.LeadingTrivia)
+	if !assert.Equal(t, string(token.Raw.Bytes), leadingText) {
+		t.Logf("leading trivia mismatch for token @ %v", token.Range())
 	}
+}
+
+func validateTokenTrailingTrivia(t *testing.T, token Token) {
+	trailingText := commentString(token.TrailingTrivia)
+	if trailingText != "" && !assert.Equal(t, string(token.Raw.Bytes), trailingText) {
+		t.Logf("trailing trivia mismatch for token @ %v", token.Range())
+	}
+}
+
+func validateTokenTrivia(t *testing.T, token Token) {
+	validateTokenLeadingTrivia(t, token)
+	validateTokenTrailingTrivia(t, token)
 }
 
 func validateTrivia(t *testing.T, tokens ...interface{}) {
@@ -57,9 +70,9 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 		case []TraverserTokens:
 			for _, tt := range te {
 				switch token := tt.(type) {
-				case DotTraverserTokens:
+				case *DotTraverserTokens:
 					validateTrivia(t, token.Dot, token.Index)
-				case BracketTraverserTokens:
+				case *BracketTraverserTokens:
 					validateTrivia(t, token.OpenBracket, token.Index, token.CloseBracket)
 				}
 			}
@@ -67,84 +80,134 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 	}
 }
 
+func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr, n *hclsyntax.LiteralValueExpr,
+	tokens *LiteralValueTokens) {
+
+	index := -1
+	for i := range template.Parts {
+		if template.Parts[i] == n {
+			index = i
+			break
+		}
+	}
+	assert.NotEqual(t, -1, index)
+
+	v, err := convert.Convert(n.Val, cty.String)
+	assert.NoError(t, err)
+	if v.AsString() == "" || !assert.Len(t, tokens.Value, 1) {
+		return
+	}
+
+	value := tokens.Value[0]
+	if index == 0 {
+		assert.Len(t, value.LeadingTrivia, 0)
+	} else {
+		delim, ok := value.LeadingTrivia[0].(TemplateDelimiter)
+		assert.True(t, ok)
+		assert.Equal(t, hclsyntax.TokenTemplateSeqEnd, delim.Type)
+	}
+	if index == len(template.Parts)-1 {
+		assert.Len(t, value.TrailingTrivia, 0)
+	} else if len(value.TrailingTrivia) != 0 {
+		if !assert.Len(t, value.TrailingTrivia, 1) {
+			return
+		}
+		delim, ok := value.TrailingTrivia[0].(TemplateDelimiter)
+		assert.True(t, ok)
+		assert.Equal(t, hclsyntax.TokenTemplateInterp, delim.Type)
+	}
+}
+
 type validator struct {
-	t          *testing.T
-	tokens     TokenMap
-	inTemplate bool
+	t      *testing.T
+	tokens TokenMap
+	stack  []hclsyntax.Node
 }
 
 func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {
 	switch n := n.(type) {
 	case *hclsyntax.Attribute:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(AttributeTokens)
-		validateTrivia(v.t, ts.Name, ts.Equals)
+		tokens := v.tokens.ForNode(n).(*AttributeTokens)
+		validateTrivia(v.t, tokens.Name, tokens.Equals)
 	case *hclsyntax.BinaryOpExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(BinaryOpTokens)
-		validateTrivia(v.t, ts.Operator)
+		tokens := v.tokens.ForNode(n).(*BinaryOpTokens)
+		validateTrivia(v.t, tokens.Operator)
 	case *hclsyntax.Block:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(BlockTokens)
-		validateTrivia(v.t, ts.Type, ts.Labels, ts.OpenBrace, ts.CloseBrace)
+		tokens := v.tokens.ForNode(n).(*BlockTokens)
+		validateTrivia(v.t, tokens.Type, tokens.Labels, tokens.OpenBrace, tokens.CloseBrace)
 	case *hclsyntax.ConditionalExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(ConditionalTokens)
-		validateTrivia(v.t, ts.QuestionMark, ts.Colon)
+		switch tokens := v.tokens.ForNode(n).(type) {
+		case *ConditionalTokens:
+			validateTrivia(v.t, tokens.QuestionMark, tokens.Colon)
+		case *TemplateConditionalTokens:
+			validateTrivia(v.t, tokens.OpenIf, tokens.If, tokens.CloseIf, tokens.OpenElse, tokens.Else, tokens.CloseElse,
+				tokens.OpenEndif, tokens.Endif, tokens.CloseEndif)
+		default:
+			v.t.Errorf("unexpected tokens of type %T for conditional expression", tokens)
+		}
 	case *hclsyntax.ForExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(ForTokens)
-		validateTrivia(v.t, ts.Open, ts.For, ts.Key, ts.Comma, ts.Value, ts.In, ts.Colon, ts.Arrow, ts.Group, ts.If, ts.Close)
+		switch tokens := v.tokens.ForNode(n).(type) {
+		case *ForTokens:
+			validateTrivia(v.t, tokens.Open, tokens.For, tokens.Key, tokens.Comma, tokens.Value, tokens.In, tokens.Colon,
+				tokens.Arrow, tokens.Group, tokens.If, tokens.Close)
+		case *TemplateForTokens:
+			validateTrivia(v.t, tokens.OpenFor, tokens.For, tokens.CloseFor, tokens.Key, tokens.Comma, tokens.Value, tokens.In,
+				tokens.OpenEndfor, tokens.Endfor, tokens.CloseEndfor)
+		default:
+			v.t.Errorf("unexpected tokens of type %T for for expression", tokens)
+		}
 	case *hclsyntax.FunctionCallExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(FunctionCallTokens)
-		validateTrivia(v.t, ts.Name, ts.OpenParen, ts.CloseParen)
+		tokens := v.tokens.ForNode(n).(*FunctionCallTokens)
+		validateTrivia(v.t, tokens.Name, tokens.OpenParen, tokens.CloseParen)
 	case *hclsyntax.IndexExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(IndexTokens)
-		validateTrivia(v.t, ts.OpenBracket, ts.CloseBracket)
+		tokens := v.tokens.ForNode(n).(*IndexTokens)
+		validateTrivia(v.t, tokens.OpenBracket, tokens.CloseBracket)
 	case *hclsyntax.LiteralValueExpr:
-		// TODO(pdg): validate string literals
-		if !v.inTemplate {
-			tokens, _ := v.tokens.ForNode(n)
-			ts := tokens.(LiteralValueTokens)
-			validateTrivia(v.t, ts.Value)
+		template, isTemplateString := (*hclsyntax.TemplateExpr)(nil), false
+		if len(v.stack) > 0 && n.Val.Type().Equals(cty.String) {
+			template, isTemplateString = v.stack[len(v.stack)-1].(*hclsyntax.TemplateExpr)
+		}
+
+		tokens := v.tokens.ForNode(n).(*LiteralValueTokens)
+		if isTemplateString {
+			validateTemplateStringTrivia(v.t, template, n, tokens)
+		} else {
+			validateTrivia(v.t, tokens.Value)
 		}
 	case *hclsyntax.ObjectConsExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(ObjectConsTokens)
-		validateTrivia(v.t, ts.OpenBrace, ts.Items, ts.CloseBrace)
+		tokens := v.tokens.ForNode(n).(*ObjectConsTokens)
+		validateTrivia(v.t, tokens.OpenBrace, tokens.Items, tokens.CloseBrace)
 	case *hclsyntax.RelativeTraversalExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(RelativeTraversalTokens)
-		validateTrivia(v.t, ts.Traversal)
+		tokens := v.tokens.ForNode(n).(*RelativeTraversalTokens)
+		validateTrivia(v.t, tokens.Traversal)
 	case *hclsyntax.ScopeTraversalExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(ScopeTraversalTokens)
-		validateTrivia(v.t, ts.Root, ts.Traversal)
+		tokens := v.tokens.ForNode(n).(*ScopeTraversalTokens)
+		validateTrivia(v.t, tokens.Root, tokens.Traversal)
 	case *hclsyntax.SplatExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(SplatTokens)
-		validateTrivia(v.t, ts.Open, ts.Star, ts.Close)
+		tokens := v.tokens.ForNode(n).(*SplatTokens)
+		validateTrivia(v.t, tokens.Open, tokens.Star, tokens.Close)
 	case *hclsyntax.TemplateExpr:
-		// TODO(pdg): validate template tokens.
-		v.inTemplate = true
+		tokens := v.tokens.ForNode(n).(*TemplateTokens)
+
+		validateTokenLeadingTrivia(v.t, tokens.Open)
+		assert.Equal(v.t, "", commentString(tokens.Open.TrailingTrivia))
+
+		validateTokenTrailingTrivia(v.t, tokens.Close)
+		assert.Equal(v.t, "", commentString(tokens.Close.LeadingTrivia))
 	case *hclsyntax.TupleConsExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(TupleConsTokens)
-		validateTrivia(v.t, ts.OpenBracket, ts.Commas, ts.CloseBracket)
+		tokens := v.tokens.ForNode(n).(*TupleConsTokens)
+		validateTrivia(v.t, tokens.OpenBracket, tokens.Commas, tokens.CloseBracket)
 	case *hclsyntax.UnaryOpExpr:
-		tokens, _ := v.tokens.ForNode(n)
-		ts := tokens.(UnaryOpTokens)
-		validateTrivia(v.t, ts.Operator)
+		tokens := v.tokens.ForNode(n).(*UnaryOpTokens)
+		validateTrivia(v.t, tokens.Operator)
 	}
+
+	v.stack = append(v.stack, n)
 	return nil
 }
 
 func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
-	if _, isTemplate := n.(*hclsyntax.TemplateExpr); isTemplate {
-		v.inTemplate = false
-	}
+	v.stack = v.stack[:len(v.stack)-1]
 	return nil
 }
 

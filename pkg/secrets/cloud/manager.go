@@ -26,8 +26,8 @@ import (
 	_ "gocloud.dev/secrets/gcpkms"        // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
 
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 )
 
 // Type is the type of secrets managed by this secrets provider

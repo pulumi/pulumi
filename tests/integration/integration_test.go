@@ -12,17 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 const WindowsOS = "windows"
@@ -77,10 +76,26 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
+// TestEmptyPythonVenv simply tests that we can run an empty Python project using automatic virtual environment support.
+func TestEmptyPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("empty", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:                  true,
+		UseAutomaticVirtualEnv: true,
+	})
+}
+
 // TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "go"),
+		Dir: filepath.Join("empty", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
 		Quick: true,
 	})
 }
@@ -88,7 +103,10 @@ func TestEmptyGo(t *testing.T) {
 // TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
 func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "gorun"),
+		Dir: filepath.Join("empty", "gorun"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
 		Quick: true,
 	})
 }
@@ -96,7 +114,10 @@ func TestEmptyGoRun(t *testing.T) {
 // TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
 func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("empty", "gorun_main"),
+		Dir: filepath.Join("empty", "gorun_main"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
 		Quick: true,
 	})
 }
@@ -180,7 +201,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		assert.Equal(t, "Updating (main-abs):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -196,7 +217,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--skip-preview")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		assert.Equal(t, "Updating (main-parent):\n \n", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -278,7 +299,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--non-interactive", "--yes")
@@ -366,7 +387,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
-	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	stdout, _ := e.RunCommand("pulumi", "stack", "output", "--json")
 	assert.Equal(t, `{
   "foo": 42,
@@ -794,6 +815,104 @@ func TestConfigPaths(t *testing.T) {
 			TopLevelKey:           "wayInner",
 			TopLevelExpectedValue: `{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":false}}}}}}}}}}}`,
 		},
+		{
+			Key:                   "foo1[0]",
+			Value:                 "false",
+			Path:                  true,
+			TopLevelKey:           "foo1",
+			TopLevelExpectedValue: `[false]`,
+		},
+		{
+			Key:                   "foo2[0]",
+			Value:                 "true",
+			Path:                  true,
+			TopLevelKey:           "foo2",
+			TopLevelExpectedValue: `[true]`,
+		},
+		{
+			Key:                   "foo3[0]",
+			Value:                 "10",
+			Path:                  true,
+			TopLevelKey:           "foo3",
+			TopLevelExpectedValue: `[10]`,
+		},
+		{
+			Key:                   "foo4[0]",
+			Value:                 "0",
+			Path:                  true,
+			TopLevelKey:           "foo4",
+			TopLevelExpectedValue: `[0]`,
+		},
+		{
+			Key:                   "foo5[0]",
+			Value:                 "00",
+			Path:                  true,
+			TopLevelKey:           "foo5",
+			TopLevelExpectedValue: `["00"]`,
+		},
+		{
+			Key:                   "foo6[0]",
+			Value:                 "01",
+			Path:                  true,
+			TopLevelKey:           "foo6",
+			TopLevelExpectedValue: `["01"]`,
+		},
+		{
+			Key:                   "foo7[0]",
+			Value:                 "0123456",
+			Path:                  true,
+			TopLevelKey:           "foo7",
+			TopLevelExpectedValue: `["0123456"]`,
+		},
+		{
+			Key:                   "bar1.inner",
+			Value:                 "false",
+			Path:                  true,
+			TopLevelKey:           "bar1",
+			TopLevelExpectedValue: `{"inner":false}`,
+		},
+		{
+			Key:                   "bar2.inner",
+			Value:                 "true",
+			Path:                  true,
+			TopLevelKey:           "bar2",
+			TopLevelExpectedValue: `{"inner":true}`,
+		},
+		{
+			Key:                   "bar3.inner",
+			Value:                 "10",
+			Path:                  true,
+			TopLevelKey:           "bar3",
+			TopLevelExpectedValue: `{"inner":10}`,
+		},
+		{
+			Key:                   "bar4.inner",
+			Value:                 "0",
+			Path:                  true,
+			TopLevelKey:           "bar4",
+			TopLevelExpectedValue: `{"inner":0}`,
+		},
+		{
+			Key:                   "bar5.inner",
+			Value:                 "00",
+			Path:                  true,
+			TopLevelKey:           "bar5",
+			TopLevelExpectedValue: `{"inner":"00"}`,
+		},
+		{
+			Key:                   "bar6.inner",
+			Value:                 "01",
+			Path:                  true,
+			TopLevelKey:           "bar6",
+			TopLevelExpectedValue: `{"inner":"01"}`,
+		},
+		{
+			Key:                   "bar7.inner",
+			Value:                 "0123456",
+			Path:                  true,
+			TopLevelKey:           "bar7",
+			TopLevelExpectedValue: `{"inner":"0123456"}`,
+		},
 
 		// Overwriting a top-level string value is allowed.
 		{
@@ -981,10 +1100,45 @@ func TestConfigBasicPython(t *testing.T) {
 	})
 }
 
+// Tests basic configuration from the perspective of a Pulumi program using automatic virtual environment support.
+func TestConfigBasicPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("config_basic", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a Pythonic value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+		UseAutomaticVirtualEnv: true,
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:   filepath.Join("config_basic", "go"),
+		Dir: filepath.Join("config_basic", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
 		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
@@ -1256,7 +1410,10 @@ func TestStackReferenceGo(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir:   filepath.Join("stack_reference", "go"),
+		Dir: filepath.Join("stack_reference", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
 		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
@@ -1331,6 +1488,29 @@ func TestDynamicPython(t *testing.T) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
 			},
 		}},
+	})
+}
+
+// Tests dynamic provider in Python using automatic virtual environment support.
+func TestDynamicPythonVenv(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python_venv"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
+		UseAutomaticVirtualEnv: true,
 	})
 }
 
@@ -1434,15 +1614,26 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 }
 
 func TestCloudSecretProvider(t *testing.T) {
-	kmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
-	if kmsKeyAlias == "" {
+	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
+	if awsKmsKeyAlias == "" {
 		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
 	}
 
+	azureKeyVault := os.Getenv("PULUMI_TEST_AZURE_KEY")
+	if azureKeyVault == "" {
+		t.Skipf("Skipping: PULUMI_TEST_AZURE_KEY is not set")
+	}
+
+	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
+	if azureKeyVault == "" {
+		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
+	}
+
+	// Generic test options for all providers
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", kmsKeyAlias),
+		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
@@ -1466,11 +1657,26 @@ func TestCloudSecretProvider(t *testing.T) {
 		CloudURL: "file://~",
 	})
 
+	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
+		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
+	})
+
+	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
+		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+	})
+
 	// Run with default Pulumi service backend
 	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
 
+	// Check Azure secrets provider
+	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
+
+	// Check gcloud secrets provider
+	t.Run("gcp", func(t *testing.T) { integration.ProgramTest(t, &gcpTestOptions) })
+
 	// Also run with local backend
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
+
 }
 
 func TestPartialValuesNode(t *testing.T) {
@@ -1492,4 +1698,80 @@ func TestPartialValuesPython(t *testing.T) {
 		},
 		AllowEmptyPreviewChanges: true,
 	})
+}
+
+// The following 4 tests are testing to ensure that we can make RPC calls >4mb
+// Issue: https://github.com/pulumi/pulumi/issues/4155
+
+//Tests a resource with a large (>4mb) string prop in Node.js
+func TestLargeResourceNode(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("large_resource", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in Python
+func TestLargeResourcePython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Dir: filepath.Join("large_resource", "python"),
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in Go
+func TestLargeResourceGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v2",
+		},
+		Dir: filepath.Join("large_resource", "go"),
+	})
+}
+
+// Tests a resource with a large (>4mb) string prop in .Net
+func TestLargeResourceDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{"Pulumi"},
+		Dir:          filepath.Join("large_resource", "dotnet"),
+	})
+}
+
+// Test to ensure Pylint is clean.
+func TestPythonPylint(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "pylint"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomURN := stack.Outputs["random_urn"].(string)
+			assert.NotEmpty(t, randomURN)
+
+			randomID := stack.Outputs["random_id"].(string)
+			randomVal := stack.Outputs["random_val"].(string)
+			assert.Equal(t, randomID, randomVal)
+
+			cwd := stack.Outputs["cwd"].(string)
+			assert.NotEmpty(t, cwd)
+
+			pylint := filepath.Join("venv", "bin", "pylint")
+			if runtime.GOOS == WindowsOS {
+				pylint = filepath.Join("venv", "Scripts", "pylint")
+			}
+
+			err := integration.RunCommand(t, "pylint", []string{pylint, "__main__.py"}, cwd, opts)
+			assert.NoError(t, err)
+		},
+		Quick:                  true,
+		UseAutomaticVirtualEnv: true,
+	}
+	integration.ProgramTest(t, opts)
 }

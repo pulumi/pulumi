@@ -30,23 +30,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cancel"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/pkg/workspace"
-	"github.com/pulumi/pulumi/sdk/go/pulumi"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 
 	combinations "github.com/mxschmitt/golang-combinations"
 )
@@ -1050,7 +1050,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
-					p := e.Payload.(DiagEventPayload)
+					p := e.Payload().(DiagEventPayload)
 					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
 						found = true
 						break
@@ -1457,7 +1457,7 @@ func TestCheckFailureRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = msg == "oh no, check had an error\n" && e.Severity == diag.Error
 					}
@@ -1507,7 +1507,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = strings.Contains(msg, "field is not valid") && e.Severity == diag.Error
 						if sawFailure {
@@ -2090,7 +2090,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
 						if sawExitCode {
@@ -3159,7 +3159,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -3494,7 +3494,7 @@ func TestAliases(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -3803,7 +3803,7 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN {
 						assert.Equal(t, deploy.OpUpdate, p.Op)
 						found = true
@@ -3824,7 +3824,7 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN {
 						assert.Equal(t, deploy.OpSame, p.Op)
 						found = true
@@ -3884,7 +3884,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
+					p := e.Payload().(ResourcePreEventPayload).Metadata
 					if p.URN == resURN && p.Op == deploy.OpReplace {
 						found = true
 					}
@@ -4135,6 +4135,103 @@ func TestImport(t *testing.T) {
 					case deploy.OpDiscardReplaced:
 						assert.Equal(t, importID, entry.Step.Old().ID)
 					}
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			return res
+		})
+	assert.Nil(t, res)
+}
+
+// TestImportWithDifferingImportIdentifierFormat tests importing a resource that has a different format of identifier
+// for the import input than for the ID property, ensuring that a second update does not result in a replace.
+func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if olds["foo"].DeepEquals(news["foo"]) {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+						DetailedDiff: map[string]plugin.PropertyDiff{
+							"foo": {Kind: plugin.DiffUpdate},
+						},
+					}, nil
+				},
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+
+					return plugin.ReadResult{
+						// This ID is deliberately not the same as the ID used to import.
+						ID: "id",
+						Inputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
+			// The import ID is deliberately not the same as the ID returned from Read.
+			ImportID: resource.ID("import-id"),
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update. The import should succeed.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case provURN:
+					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+				case resURN:
+					assert.Equal(t, deploy.OpImport, entry.Step.Op())
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			return res
+		})
+	assert.Nil(t, res)
+	assert.Len(t, snap.Resources, 2)
+
+	// Now, run another update. The update should succeed and there should be no diffs.
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
+			for _, entry := range j.Entries {
+				switch urn := entry.Step.URN(); urn {
+				case provURN, resURN:
+					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				default:
 					t.Fatalf("unexpected resource %v", urn)
 				}
@@ -5216,6 +5313,202 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+// Inspired by transformations_test.go.
+func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN,
+					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	newResource := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
+		var res testResource
+		return ctx.RegisterResource("pkgA:m:typA", name, &testResourceInputs{
+			Foo: pulumi.String("bar"),
+		}, &res, opts...)
+	}
+
+	newComponent := func(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) error {
+		var res testResource
+		err := ctx.RegisterComponentResource("pkgA:m:typA", name, &res, opts...)
+		if err != nil {
+			return err
+		}
+
+		var resChild testResource
+		return ctx.RegisterResource("pkgA:m:typA", name+"Child", &testResourceInputs{
+			Foo: pulumi.String("bar"),
+		}, &resChild, pulumi.Parent(&res))
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		assert.NoError(t, err)
+
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			// Scenario #1 - apply a transformation to a CustomResource
+			res1Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				// TODO[pulumi/pulumi#3846] We should use a mergeOptions-style API here.
+				return &pulumi.ResourceTransformationResult{
+					Props: args.Props,
+					Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output"})),
+				}
+			}
+			assert.NoError(t, newResource(ctx, "res1",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res1Transformation})))
+
+			// Scenario #2 - apply a transformation to a Component to transform its children
+			res2Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				if args.Name == "res2Child" {
+					// TODO[pulumi/pulumi#3846] We should use a mergeOptions-style API here.
+					return &pulumi.ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  append(args.Opts, pulumi.AdditionalSecretOutputs([]string{"output", "output2"})),
+					}
+				}
+
+				return nil
+			}
+			assert.NoError(t, newComponent(ctx, "res2",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res2Transformation})))
+
+			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
+			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				// Props might be nil.
+				var props *testResourceInputs
+				if args.Props == nil {
+					props = &testResourceInputs{}
+				} else {
+					props = args.Props.(*testResourceInputs)
+				}
+				props.Foo = pulumi.String("baz")
+
+				return &pulumi.ResourceTransformationResult{
+					Props: props,
+					Opts:  args.Opts,
+				}
+			}
+			assert.NoError(t, ctx.RegisterStackTransformation(res3Transformation))
+			assert.NoError(t, newResource(ctx, "res3"))
+
+			// Scenario #4 - transformations are applied in order of decreasing specificity
+			// 1. (not in this example) Child transformation
+			// 2. First parent transformation
+			// 3. Second parent transformation
+			// 4. Stack transformation
+			res4Transformation1 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				if args.Name == "res4Child" {
+					props := args.Props.(*testResourceInputs)
+					props.Foo = pulumi.String("baz1")
+
+					return &pulumi.ResourceTransformationResult{
+						Props: props,
+						Opts:  args.Opts,
+					}
+				}
+				return nil
+			}
+			res4Transformation2 := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+				if args.Name == "res4Child" {
+					props := args.Props.(*testResourceInputs)
+					props.Foo = pulumi.String("baz2")
+
+					return &pulumi.ResourceTransformationResult{
+						Props: props,
+						Opts:  args.Opts,
+					}
+				}
+				return nil
+			}
+			assert.NoError(t, newComponent(ctx, "res4",
+				pulumi.Transformations([]pulumi.ResourceTransformation{res4Transformation1, res4Transformation2})))
+
+			return nil
+		})
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+	p.Steps = []TestStep{{
+		Op: Update,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			_ []Event, res result.Result) result.Result {
+
+			foundRes1 := false
+			foundRes2 := false
+			foundRes2Child := false
+			foundRes3 := false
+			foundRes4Child := false
+			// foundRes5Child1 := false
+			for _, res := range j.Snap(target.Snapshot).Resources {
+				// "res1" has a transformation which adds additionalSecretOutputs
+				if res.URN.Name() == "res1" {
+					foundRes1 = true
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
+				}
+				// "res2" has a transformation which adds additionalSecretOutputs to it's "child"
+				if res.URN.Name() == "res2" {
+					foundRes2 = true
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.NotContains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
+				}
+				if res.URN.Name() == "res2Child" {
+					foundRes2Child = true
+					assert.Equal(t, res.Parent.Name(), tokens.QName("res2"))
+					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
+					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output2"))
+				}
+				// "res3" is impacted by a global stack transformation which sets
+				// Foo to "baz"
+				if res.URN.Name() == "res3" {
+					foundRes3 = true
+					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
+					assert.Len(t, res.Aliases, 0)
+				}
+				// "res4" is impacted by two component parent transformations which set
+				// Foo to "baz1" and then "baz2" and also a global stack
+				// transformation which sets optionalDefault to "baz".  The end
+				// result should be "baz".
+				if res.URN.Name() == "res4Child" {
+					foundRes4Child = true
+					assert.Equal(t, res.Parent.Name(), tokens.QName("res4"))
+					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
+				}
+			}
+
+			assert.True(t, foundRes1)
+			assert.True(t, foundRes2)
+			assert.True(t, foundRes2Child)
+			assert.True(t, foundRes3)
+			assert.True(t, foundRes4Child)
+			return res
+		},
+	}}
+
+	p.Run(t, nil)
+}
+
 // This test validates the wiring of the IgnoreChanges prop in the go SDK.
 // It doesn't attempt to validate underlying behavior.
 func TestIgnoreChangesGolangLifecycle(t *testing.T) {
@@ -5273,7 +5566,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -5345,8 +5638,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		assert.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-			var provider pulumi.ProviderResourceState
-			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, &provider)
+			provider := &pulumi.ProviderResourceState{}
+			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, provider)
 			assert.NoError(t, err)
 
 			var res pulumi.CustomResourceState
@@ -5557,34 +5850,34 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				}, &providerBOverride)
 			assert.NoError(t, err)
 			parentProviders := make(map[string]pulumi.ProviderResource)
-			parentProviders["pkgA"] = providerA
-			parentProviders["pkgB"] = providerB
+			parentProviders["pkgA"] = &providerA
+			parentProviders["pkgB"] = &providerB
 			// create a parent resource that uses provider map
 			var parentResource pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgA:m:typA", "resA", nil, &parentResource, pulumi.ProviderMap(parentProviders))
 			assert.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider := parentResource.GetProvider("pkgA:m:typA")
-			assert.Equal(t, providerA, parentResultProvider)
+			assert.Equal(t, &providerA, parentResultProvider)
 
 			// create a child resource
 			var childResource pulumi.CustomResourceState
-			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(parentResource))
+			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider := childResource.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerB, childResultProvider)
+			assert.Equal(t, &providerB, childResultProvider)
 
 			// create a child with a provider specified
 			var childWithOverride pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgB:m:typB", "resBChildOverride", nil, &childWithOverride,
-				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider := childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, &providerBOverride, childWithOverrideProvider)
 
 			// pass in a fake ID
 			testID := pulumi.ID("testID")
@@ -5594,42 +5887,42 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			assert.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider = parentResource.GetProvider("pkgA:m:typA")
-			assert.Equal(t, providerA, parentResultProvider)
+			assert.Equal(t, &providerA, parentResultProvider)
 
 			// read a child resource
-			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(parentResource))
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider = childResource.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerB, childResultProvider)
+			assert.Equal(t, &providerB, childResultProvider)
 
 			// read a child with a provider specified
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &childWithOverride,
-				pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider = childWithOverride.GetProvider("pkgB:m:typB")
-			assert.Equal(t, providerBOverride, childWithOverrideProvider)
+			assert.Equal(t, &providerBOverride, childWithOverrideProvider)
 
 			// invoke with specific provider
 			var invokeResult struct{}
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
-			}, &invokeResult, pulumi.Provider(providerBOverride))
+			}, &invokeResult, pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// invoke with parent
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bar: "2",
-			}, &invokeResult, pulumi.Parent(parentResource))
+			}, &invokeResult, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// invoke with parent and provider
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
-			}, &invokeResult, pulumi.Parent(parentResource), pulumi.Provider(providerBOverride))
+			}, &invokeResult, pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			return nil

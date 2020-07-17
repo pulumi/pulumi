@@ -22,12 +22,12 @@ import (
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
@@ -295,15 +295,22 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
+	if diff.Changes == plugin.DiffUnknown {
+		if olds.DeepEquals(news) {
+			diff.Changes = plugin.DiffNone
+		} else {
+			diff.Changes = plugin.DiffSome
+		}
+	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	//
-	// If the diff does not require replacement and we are running a preview, register it under its current ID so that
-	// references to the provider from other resources will resolve properly.
-	if len(diff.ReplaceKeys) != 0 {
+	// If the diff does not require replacement but does have changes, and we are running a preview, register it under
+	// its current ID so that references to the provider from other resources will resolve properly.
+	if diff.Replace() {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-	} else if r.isPreview {
+	} else if r.isPreview && diff.Changes == plugin.DiffSome {
 		r.setProvider(mustNewReference(urn, id), provider)
 	}
 

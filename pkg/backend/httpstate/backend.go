@@ -34,36 +34,29 @@ import (
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/display"
-	"github.com/pulumi/pulumi/pkg/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/secrets"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/util/retry"
-	"github.com/pulumi/pulumi/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/display"
+	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/operations"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 const (
-	// PulumiCloudURL is the Cloud URL used if no environment or explicit cloud is chosen.
-	PulumiCloudURL = "https://" + defaultAPIDomainPrefix + "pulumi.com"
-	// defaultAPIDomainPrefix is the assumed Cloud URL prefix for typical Pulumi Cloud API endpoints.
-	defaultAPIDomainPrefix = "api."
-	// defaultConsoleDomainPrefix is the assumed Cloud URL prefix typically used for the Pulumi Console.
-	defaultConsoleDomainPrefix = "app."
-
 	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
 	defaultURLEnvVar = "PULUMI_API"
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
@@ -709,7 +702,7 @@ func (b *cloudBackend) CreateStack(
 			// A 409 error response is returned when per-stack organizations are over their limit,
 			// so we need to look at the message to differentiate.
 			if strings.Contains(errResp.Message, "already exists") {
-				return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
+				return nil, &backend.StackAlreadyExistsError{StackName: stackID.String()}
 			}
 			if strings.Contains(errResp.Message, "you are using") {
 				return nil, &backend.OverStackLimitError{Message: errResp.Message}
@@ -787,11 +780,16 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 		return err
 	}
 
-	// Transferring stack ownership is available to Pulumi admins, but isn't quite ready
-	// for general use yet.
 	if stackID.Owner != newIdentity.Owner {
+		url := "."
+
+		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
+			url = ":\n" + consoleURL + "/settings/options"
+		}
 		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
-			"of a stack to another organization, please contact support@pulumi.com."
+			"of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
+			"\"Settings\" page of the stack and then clicking the \"Transfer Stack\" button" + url
+
 		return errors.Errorf(errMsg)
 	}
 

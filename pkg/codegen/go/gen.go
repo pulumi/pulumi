@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ package gen
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io"
 	"path"
 	"reflect"
@@ -30,8 +31,10 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -59,9 +62,15 @@ type typeDetails struct {
 	mapElement   bool
 }
 
-func title(s string) string {
+// Title converts the input string to a title case
+// where only the initial letter is upper-cased.
+// It also removes $-prefix if any.
+func Title(s string) string {
 	if s == "" {
 		return ""
+	}
+	if s[0] == '$' {
+		return Title(s[1:])
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
@@ -83,17 +92,31 @@ func camel(s string) string {
 	return string(res)
 }
 
+func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string) string {
+	mod := pkg.TokenToModule(tok)
+	if override, ok := overrides[mod]; ok {
+		mod = override
+	}
+	return strings.ToLower(mod)
+}
+
 type pkgContext struct {
-	pkg           *schema.Package
-	mod           string
-	typeDetails   map[*schema.ObjectType]*typeDetails
-	types         []*schema.ObjectType
-	resources     []*schema.Resource
-	functions     []*schema.Function
-	names         stringSet
-	functionNames map[*schema.Function]string
-	needsUtils    bool
-	tool          string
+	pkg            *schema.Package
+	mod            string
+	importBasePath string
+	typeDetails    map[*schema.ObjectType]*typeDetails
+	types          []*schema.ObjectType
+	resources      []*schema.Resource
+	functions      []*schema.Function
+	names          stringSet
+	functionNames  map[*schema.Function]string
+	needsUtils     bool
+	tool           string
+	packages       map[string]*pkgContext
+
+	// Name overrides set in GoPackageInfo
+	modToPkg         map[string]string // Module name -> package name
+	pkgImportAliases map[string]string // Package name -> import alias
 }
 
 func (pkg *pkgContext) details(t *schema.ObjectType) *typeDetails {
@@ -105,28 +128,48 @@ func (pkg *pkgContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
+func (pkg *pkgContext) tokenToPackage(tok string) string {
+	return tokenToPackage(pkg.pkg, pkg.modToPkg, tok)
+}
+
 func (pkg *pkgContext) tokenToType(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
 	contract.Assert(len(components) == 3)
+	if pkg == nil {
+		panic(fmt.Errorf("pkg is nil. token %s", tok))
+	}
+	if pkg.pkg == nil {
+		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
+	}
 
-	mod, name := pkg.pkg.TokenToModule(tok), components[2]
+	mod, name := pkg.tokenToPackage(tok), components[2]
+
+	// If the package containing the type's token already has a resource with the
+	// same name, add a `Type` suffix.
+	modPkg, ok := pkg.packages[mod]
+	contract.Assert(ok)
+
+	name = Title(name)
+	if modPkg.names.has(name) {
+		name += "Type"
+	}
+
 	if mod == pkg.mod {
-		name := title(name)
-		if pkg.names.has(name) {
-			name += "Type"
-		}
 		return name
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + title(name)
+	if mod == "" {
+		mod = components[0]
+	}
+	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assert(len(components) == 3)
-	return title(components[2])
+	return Title(components[2])
 }
 
 func resourceName(r *schema.Resource) string {
@@ -168,6 +211,8 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 			return "pulumi.Archive"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchive"
+		case schema.JSONType:
+			fallthrough
 		case schema.AnyType:
 			return "interface{}"
 		}
@@ -213,6 +258,8 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 			return "pulumi.ArchiveInput"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchiveInput"
+		case schema.JSONType:
+			fallthrough
 		case schema.AnyType:
 			return "pulumi.Input"
 		}
@@ -264,6 +311,8 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 			return "pulumi.ArchiveOutput"
 		case schema.AssetType:
 			return "pulumi.AssetOrArchiveOutput"
+		case schema.JSONType:
+			fallthrough
 		case schema.AnyType:
 			return "pulumi.AnyOutput"
 		}
@@ -275,7 +324,9 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 	return typ + "Output"
 }
 
-func printComment(w io.Writer, comment string, indent bool) {
+func printComment(w io.Writer, comment string, indent bool) int {
+	comment = codegen.FilterExamples(comment, "go")
+
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
@@ -290,14 +341,74 @@ func printComment(w io.Writer, comment string, indent bool) {
 			fmt.Fprintf(w, "// %s\n", l)
 		}
 	}
+	return len(lines)
+}
+
+func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage string, indent bool) {
+	lines := printComment(w, comment, indent)
+	if deprecationMessage != "" {
+		if lines > 0 {
+			fmt.Fprintf(w, "//\n")
+		}
+		printComment(w, fmt.Sprintf("Deprecated: %s", deprecationMessage), indent)
+	}
 }
 
 func genInputInterface(w io.Writer, name string) {
+	printComment(w, getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
-	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", title(name), name)
-	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", title(name), name)
+	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
+	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", Title(name), name)
 	fmt.Fprintf(w, "}\n\n")
+}
+
+func getInputUsage(name string) string {
+	if strings.HasSuffix(name, "Array") {
+		baseTypeName := name[:strings.LastIndex(name, "Array")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
+
+	}
+
+	if strings.HasSuffix(name, "Map") {
+		baseTypeName := name[:strings.LastIndex(name, "Map")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %s{ \"key\": %sArgs{...} }", name, baseTypeName),
+			" ",
+		}, "\n")
+	}
+
+	if strings.HasSuffix(name, "Ptr") {
+		baseTypeName := name[:strings.LastIndex(name, "Ptr")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
+			"",
+			" or:",
+			"",
+			"\t\t nil",
+			" ",
+		}, "\n")
+	}
+
+	return strings.Join([]string{
+		fmt.Sprintf("%sInput is an input type that accepts %sArgs and %sOutput values.", name, name, name),
+		fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+		"",
+		fmt.Sprintf("\t\t %sArgs{...}", name),
+		" ",
+	}, "\n")
 }
 
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods bool) {
@@ -305,31 +416,33 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, title(name), name)
-	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", title(name))
+	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
+	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, title(name), name)
+	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
 	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
 	if ptrMethods {
-		fmt.Fprintf(w, "func (i %s) To%sPtrOutput() %sPtrOutput {\n", receiverType, title(name), name)
-		fmt.Fprintf(w, "\treturn i.To%sPtrOutputWithContext(context.Background())\n", title(name))
+		fmt.Fprintf(w, "func (i %s) To%sPtrOutput() %sPtrOutput {\n", receiverType, Title(name), name)
+		fmt.Fprintf(w, "\treturn i.To%sPtrOutputWithContext(context.Background())\n", Title(name))
 		fmt.Fprintf(w, "}\n\n")
 
-		fmt.Fprintf(w, "func (i %s) To%sPtrOutputWithContext(ctx context.Context) %sPtrOutput {\n", receiverType, title(name), name)
+		fmt.Fprintf(w, "func (i %s) To%sPtrOutputWithContext(ctx context.Context) %sPtrOutput {\n", receiverType, Title(name), name)
 		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%[1]sOutput).To%[1]sPtrOutputWithContext(ctx)\n", name)
 		fmt.Fprintf(w, "}\n\n")
 	}
 }
 
-func (pkg *pkgContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property) {
-	printComment(w, comment, false)
+func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
+	properties []*schema.Property) {
+
+	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
-		printComment(w, p.Comment, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", title(p.Name), pkg.plainType(p.Type, !p.IsRequired), p.Name)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.plainType(p.Type, !p.IsRequired), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 }
@@ -343,8 +456,8 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range t.Properties {
-		printComment(w, p.Comment, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", title(p.Name), pkg.inputType(p.Type, !p.IsRequired), p.Name)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.inputType(p.Type, !p.IsRequired), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -389,11 +502,11 @@ func genOutputMethods(w io.Writer, name, elementType string) {
 	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[1]sOutput {\n", name, title(name))
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[1]sOutput {\n", name, Title(name))
 	fmt.Fprintf(w, "\treturn o\n")
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutputWithContext(ctx context.Context) %[1]sOutput {\n", name, title(name))
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutputWithContext(ctx context.Context) %[1]sOutput {\n", name, Title(name))
 	fmt.Fprintf(w, "\treturn o\n")
 	fmt.Fprintf(w, "}\n\n")
 }
@@ -407,11 +520,11 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	genOutputMethods(w, name, name)
 
 	if details.ptrElement {
-		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, title(name))
-		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", title(name))
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
+		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
 		fmt.Fprintf(w, "}\n\n")
 
-		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, title(name))
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, Title(name))
 		fmt.Fprintf(w, "\treturn o.ApplyT(func(v %[1]s) *%[1]s {\n", name)
 		fmt.Fprintf(w, "\t\treturn &v\n")
 		fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", name)
@@ -419,16 +532,16 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	}
 
 	for _, p := range t.Properties {
-		printComment(w, p.Comment, false)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		outputType, applyType := pkg.outputType(p.Type, !p.IsRequired), pkg.plainType(p.Type, !p.IsRequired)
 
-		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, title(p.Name), outputType)
-		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, title(p.Name), outputType)
+		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, Title(p.Name), outputType)
+		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, Title(p.Name), outputType)
 		fmt.Fprintf(w, "}\n\n")
 	}
 
 	if details.ptrElement {
-		fmt.Fprintf(w, "type %sPtrOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sPtrOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Ptr", "*"+name)
 
@@ -437,17 +550,28 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 		fmt.Fprintf(w, "}\n\n")
 
 		for _, p := range t.Properties {
-			printComment(w, p.Comment, false)
-			outputType, applyType := pkg.outputType(p.Type, !p.IsRequired), pkg.plainType(p.Type, !p.IsRequired)
+			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
+			deref := ""
+			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
+			// to derference it.
+			if p.IsRequired && applyType[0] == '*' {
+				deref = "&"
+			}
 
-			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, title(p.Name), outputType)
-			fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, title(p.Name), outputType)
+			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, Title(p.Name), outputType)
+			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
+			fmt.Fprintf(w, "\t\tif v == nil {\n")
+			fmt.Fprintf(w, "\t\t\treturn nil\n")
+			fmt.Fprintf(w, "\t\t}\n")
+			fmt.Fprintf(w, "\t\treturn %sv.%s\n", deref, Title(p.Name))
+			fmt.Fprintf(w, "\t}).(%s)\n", outputType)
 			fmt.Fprintf(w, "}\n\n")
 		}
 	}
 
 	if details.arrayElement {
-		fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Array", "[]"+name)
 
@@ -459,7 +583,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 	}
 
 	if details.mapElement {
-		fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState}\n\n", name)
+		fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState }\n\n", name)
 
 		genOutputMethods(w, name+"Map", "map[string]"+name)
 
@@ -494,6 +618,19 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported default value of type %T", value)
 	}
+}
+
+func (pkg *pkgContext) getConstValue(cv interface{}) (string, error) {
+	var val string
+	if cv != nil {
+		v, err := goPrimitiveValue(cv)
+		if err != nil {
+			return "", err
+		}
+		val = v
+	}
+
+	return val, nil
 }
 
 func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
@@ -536,7 +673,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	name := resourceName(r)
 
-	printComment(w, r.Comment, false)
+	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
 	if r.IsProvider {
@@ -544,9 +681,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	} else {
 		fmt.Fprintf(w, "\tpulumi.CustomResourceState\n\n")
 	}
+	var secretProps []string
 	for _, p := range r.Properties {
-		printComment(w, p.Comment, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", title(p.Name), pkg.outputType(p.Type, !p.IsRequired), p.Name)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type, !p.IsRequired), p.Name)
+
+		if p.Secret {
+			secretProps = append(secretProps, p.Name)
+		}
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -558,8 +700,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Ensure required arguments are present.
 	for _, p := range r.InputProperties {
 		if p.IsRequired {
-			fmt.Fprintf(w, "\tif args == nil || args.%s == nil {\n", title(p.Name))
-			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"missing required argument '%s'\")\n", title(p.Name))
+			fmt.Fprintf(w, "\tif args == nil || args.%s == nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"missing required argument '%s'\")\n", Title(p.Name))
 			fmt.Fprintf(w, "\t}\n")
 		}
 	}
@@ -569,6 +711,19 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\t\targs = &%sArgs{}\n", name)
 	fmt.Fprintf(w, "\t}\n")
 	for _, p := range r.InputProperties {
+		if p.ConstValue != nil {
+			v, err := pkg.getConstValue(p.ConstValue)
+			if err != nil {
+				return err
+			}
+
+			t := strings.TrimSuffix(pkg.inputType(p.Type, !p.IsRequired), "Input")
+			if t == "pulumi." {
+				t = "pulumi.Any"
+			}
+
+			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+		}
 		if p.DefaultValue != nil {
 			v, err := pkg.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
@@ -580,10 +735,40 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 				t = "pulumi.Any"
 			}
 
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", title(p.Name), t, v)
+			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
 			fmt.Fprintf(w, "\t}\n")
 		}
+	}
+
+	// Set any defined aliases.
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
+		for _, alias := range r.Aliases {
+			s := "\t\t{\n"
+			if alias.Name != nil {
+				s += fmt.Sprintf("\t\t\tName: pulumi.String(%q),\n", *alias.Name)
+			}
+			if alias.Project != nil {
+				s += fmt.Sprintf("\t\t\tProject: pulumi.String(%q),\n", *alias.Project)
+			}
+			if alias.Type != nil {
+				s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", *alias.Type)
+			}
+			s += "\t\t},\n"
+			fmt.Fprint(w, s)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
+	}
+	// Set any defined additionalSecretOutputs.
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
+		for _, sp := range secretProps {
+			fmt.Fprintf(w, "\t\t\t%q,\n", sp)
+		}
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
 	}
 
 	// Finally make the call to registration.
@@ -613,15 +798,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "// Input properties used for looking up and filtering %s resources.\n", name)
 		fmt.Fprintf(w, "type %sState struct {\n", camel(name))
 		for _, p := range r.Properties {
-			printComment(w, p.Comment, true)
-			fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", title(p.Name), pkg.plainType(p.Type, true), p.Name)
+			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+			fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.plainType(p.Type, true), p.Name)
 		}
 		fmt.Fprintf(w, "}\n\n")
 
 		fmt.Fprintf(w, "type %sState struct {\n", name)
 		for _, p := range r.Properties {
-			printComment(w, p.Comment, true)
-			fmt.Fprintf(w, "\t%s %s\n", title(p.Name), pkg.inputType(p.Type, true))
+			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+			fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.inputType(p.Type, true))
 		}
 		fmt.Fprintf(w, "}\n\n")
 
@@ -633,16 +818,16 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", camel(name))
 	for _, p := range r.InputProperties {
-		printComment(w, p.Comment, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", title(p.Name), pkg.plainType(p.Type, !p.IsRequired), p.Name)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.plainType(p.Type, !p.IsRequired), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "// The set of arguments for constructing a %s resource.\n", name)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
-		printComment(w, p.Comment, true)
-		fmt.Fprintf(w, "\t%s %s\n", title(p.Name), pkg.inputType(p.Type, !p.IsRequired))
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.inputType(p.Type, !p.IsRequired))
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -657,7 +842,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	name := pkg.functionNames[f]
 
-	printComment(w, f.Comment, false)
+	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
 	// Now, emit the function signature.
 	argsig := "ctx *pulumi.Context"
@@ -706,21 +891,21 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If there are argument and/or return types, emit them.
 	if f.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		pkg.genPlainType(w, fmt.Sprintf("%sArgs", name), f.Inputs.Comment, f.Inputs.Properties)
+		pkg.genPlainType(w, fmt.Sprintf("%sArgs", name), f.Inputs.Comment, "", f.Inputs.Properties)
 	}
 	if f.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		pkg.genPlainType(w, fmt.Sprintf("%sResult", name), f.Outputs.Comment, f.Outputs.Properties)
+		pkg.genPlainType(w, fmt.Sprintf("%sResult", name), f.Outputs.Comment, "", f.Outputs.Properties)
 	}
 }
 
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
-	pkg.genPlainType(w, pkg.tokenToType(obj.Token), obj.Comment, obj.Properties)
+	pkg.genPlainType(w, pkg.tokenToType(obj.Token), obj.Comment, "", obj.Properties)
 	pkg.genInputTypes(w, obj, pkg.details(obj))
 	pkg.genOutputTypes(w, obj, pkg.details(obj))
 }
 
-func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
+func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "func init() {\n")
 	for _, obj := range types {
 		name, details := pkg.tokenToType(obj.Token), pkg.details(obj)
@@ -739,36 +924,45 @@ func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "}\n")
 }
 
-func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet) {
+func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet, seen map[schema.Type]struct{}) {
+	if _, ok := seen[t]; ok {
+		return
+	}
+	seen[t] = struct{}{}
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		pkg.getTypeImports(t.ElementType, imports)
+		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.MapType:
-		pkg.getTypeImports(t.ElementType, imports)
+		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.ObjectType:
-		mod := pkg.pkg.TokenToModule(t.Token)
+		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
-			imports.add(path.Join(pkg.pkg.Repository, mod))
+			imports.add(path.Join(pkg.importBasePath, mod))
 		}
 
 		for _, p := range t.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			if recurse {
+				pkg.getTypeImports(p.Type, recurse, imports, seen)
+			}
 		}
 	case *schema.UnionType:
-		// TODO(pdg): union types
+		for _, e := range t.ElementTypes {
+			pkg.getTypeImports(e, recurse, imports, seen)
+		}
 	}
 }
 
 func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
+	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
-		pkg.getTypeImports(member, imports)
+		pkg.getTypeImports(member, true, imports, seen)
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 		}
 		for _, p := range member.InputProperties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 
 			if p.IsRequired {
 				imports.add("github.com/pkg/errors")
@@ -776,20 +970,20 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			pkg.getTypeImports(member.Inputs, imports)
+			pkg.getTypeImports(member.Inputs, false, imports, seen)
 		}
 		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, imports)
+			pkg.getTypeImports(member.Outputs, false, imports, seen)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, false, imports, seen)
 		}
 	default:
 		return
 	}
 
-	imports.add("github.com/pulumi/pulumi/sdk/go/pulumi")
+	imports.add("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
 }
 
 func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackages stringSet) {
@@ -803,7 +997,6 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 		pkgName = path.Base(pkg.mod)
 	}
 
-	fmt.Fprintf(w, "// nolint: lll\n")
 	fmt.Fprintf(w, "package %s\n\n", pkgName)
 
 	var imports []string
@@ -812,6 +1005,12 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 			imports = append(imports, k)
 		}
 		sort.Strings(imports)
+
+		for i, k := range imports {
+			if alias, ok := pkg.pkgImportAliases[k]; ok {
+				imports[i] = fmt.Sprintf(`%s "%s"`, alias, k)
+			}
+		}
 	}
 
 	if len(goImports) > 0 {
@@ -826,7 +1025,11 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 			if i == "" {
 				fmt.Fprintf(w, "\n")
 			} else {
-				fmt.Fprintf(w, "\t\"%s\"\n", i)
+				if strings.Contains(i, `"`) { // Imports with aliases already include quotes.
+					fmt.Fprintf(w, "\t%s\n", i)
+				} else {
+					fmt.Fprintf(w, "\t%q\n", i)
+				}
 			}
 		}
 		fmt.Fprintf(w, ")\n\n")
@@ -834,7 +1037,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 }
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	imports := newStringSet("github.com/pulumi/pulumi/sdk/go/pulumi/config")
+	imports := newStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi/config")
 	pkg.getImports(variables, imports)
 
 	pkg.genHeader(w, nil, imports)
@@ -855,10 +1058,10 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			getType, funcType = "string", ""
 		}
 
-		printComment(w, p.Comment, false)
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name, camel(p.Name))
 
-		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", title(p.Name), getType)
+		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", Title(p.Name), getType)
 		if p.DefaultValue != nil {
 			defaultValue, err := pkg.getDefaultValue(p.DefaultValue, p.Type)
 			if err != nil {
@@ -879,50 +1082,79 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	// group resources, types, and functions into Go packages
+// generatePackageContextMap groups resources, types, and functions into Go packages.
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
-	getPkg := func(token string) *pkgContext {
-		mod := pkg.TokenToModule(token)
+	getPkg := func(mod string) *pkgContext {
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:           pkg,
-				mod:           mod,
-				typeDetails:   map[*schema.ObjectType]*typeDetails{},
-				names:         stringSet{},
-				functionNames: map[*schema.Function]string{},
-				tool:          tool,
+				pkg:              pkg,
+				mod:              mod,
+				importBasePath:   goInfo.ImportBasePath,
+				typeDetails:      map[*schema.ObjectType]*typeDetails{},
+				names:            stringSet{},
+				functionNames:    map[*schema.Function]string{},
+				tool:             tool,
+				modToPkg:         goInfo.ModuleToPackage,
+				pkgImportAliases: goInfo.PackageImportAliases,
+				packages:         packages,
 			}
 			packages[mod] = pack
 		}
 		return pack
 	}
 
-	for _, t := range pkg.Types {
-		switch t := t.(type) {
-		case *schema.ArrayType:
-			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
-				getPkg(obj.Token).details(obj).arrayElement = true
-			}
-		case *schema.MapType:
-			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
-				getPkg(obj.Token).details(obj).mapElement = true
-			}
-		case *schema.ObjectType:
-			pkg := getPkg(t.Token)
-			pkg.types = append(pkg.types, t)
+	getPkgFromToken := func(token string) *pkgContext {
+		return getPkg(tokenToPackage(pkg, goInfo.ModuleToPackage, token))
+	}
 
-			for _, p := range t.Properties {
-				if obj, ok := p.Type.(*schema.ObjectType); ok && !p.IsRequired {
-					getPkg(obj.Token).details(obj).ptrElement = true
+	if len(pkg.Config) > 0 {
+		_ = getPkg("config")
+	}
+
+	// For any optional properties, we must generate a pointer type for the corresponding property type.
+	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
+	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
+	// those nested types.
+	var markOptionalPropertyTypesAsRequiringPtr func(seen stringSet, props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(seen stringSet, props []*schema.Property, parentOptional bool) {
+		for _, p := range props {
+			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
+				if seen.has(obj.Token) {
+					continue
 				}
+
+				seen.add(obj.Token)
+				getPkgFromToken(obj.Token).details(obj).ptrElement = true
+				markOptionalPropertyTypesAsRequiringPtr(seen, obj.Properties, true)
 			}
 		}
 	}
 
+	// Use a string set to track object types that have already been processed.
+	// This avoids recursively processing the same type. For example, in the
+	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
+	seenMap := stringSet{}
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *schema.ArrayType:
+			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
+				getPkgFromToken(obj.Token).details(obj).arrayElement = true
+			}
+		case *schema.MapType:
+			if obj, ok := t.ElementType.(*schema.ObjectType); ok {
+				getPkgFromToken(obj.Token).details(obj).mapElement = true
+			}
+		case *schema.ObjectType:
+			pkg := getPkgFromToken(t.Token)
+			pkg.types = append(pkg.types, t)
+			markOptionalPropertyTypesAsRequiringPtr(seenMap, t.Properties, false)
+		}
+	}
+
 	scanResource := func(r *schema.Resource) {
-		pkg := getPkg(r.Token)
+		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
 
 		pkg.names.add(resourceName(r))
@@ -935,16 +1167,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.names.add("Get" + resourceName(r))
 		}
 
-		for _, p := range r.InputProperties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
-		for _, p := range r.Properties {
-			if obj, ok := p.Type.(*schema.ObjectType); ok && (!r.IsProvider || !p.IsRequired) {
-				getPkg(obj.Token).details(obj).ptrElement = true
-			}
-		}
+		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.InputProperties, !r.IsProvider)
+		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.Properties, !r.IsProvider)
 	}
 
 	scanResource(pkg.Provider)
@@ -953,7 +1177,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	for _, f := range pkg.Functions {
-		pkg := getPkg(f.Token)
+		pkg := getPkgFromToken(f.Token)
 		pkg.functions = append(pkg.functions, f)
 
 		name := tokenToName(f.Token)
@@ -976,6 +1200,65 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 	}
 
+	return packages
+}
+
+// LanguageResource is derived from the schema and can be used by downstream codegen.
+type LanguageResource struct {
+	*schema.Resource
+
+	Alias   string // The package alias (e.g. appsv1)
+	Name    string // The resource name (e.g. Deployment)
+	Package string // The package name (e.g. github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/apps/v1)
+}
+
+// LanguageResources returns a map of resources that can be used by downstream codegen. The map
+// key is the resource schema token.
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	resources := map[string]LanguageResource{}
+
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		return nil, err
+	}
+
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
+	packages := generatePackageContextMap(tool, pkg, goInfo)
+
+	// emit each package
+	var pkgMods []string
+	for mod := range packages {
+		pkgMods = append(pkgMods, mod)
+	}
+	sort.Strings(pkgMods)
+
+	for _, mod := range pkgMods {
+		if mod == "" {
+			continue
+		}
+		pkg := packages[mod]
+
+		for _, r := range pkg.resources {
+			packagePath := path.Join(goInfo.ImportBasePath, pkg.mod)
+			resources[r.Token] = LanguageResource{
+				Resource: r,
+				Alias:    goInfo.PackageImportAliases[packagePath],
+				Name:     tokenToName(r.Token),
+				Package:  packagePath,
+			}
+		}
+	}
+
+	return resources, nil
+}
+
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		return nil, err
+	}
+
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
+	packages := generatePackageContextMap(tool, pkg, goInfo)
+
 	// emit each package
 	var pkgMods []string
 	for mod := range packages {
@@ -989,7 +1272,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
-		files[relPath] = []byte(contents)
+
+		// Run Go formatter on the code before saving to disk
+		formattedSource, err := format.Source([]byte(contents))
+		if err != nil {
+			panic(errors.Errorf("invalid Go source code:\n\n%s", contents))
+		}
+
+		files[relPath] = formattedSource
 	}
 
 	name := pkg.Name
@@ -1000,13 +1290,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		switch mod {
 		case "":
 			buffer := &bytes.Buffer{}
-			fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.", pkg.pkg.Name)
-			fmt.Fprintf(buffer, "//\n")
 			if pkg.pkg.Description != "" {
 				printComment(buffer, pkg.pkg.Description, false)
 				fmt.Fprintf(buffer, "//\n")
+			} else {
+				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", pkg.pkg.Name)
+				fmt.Fprintf(buffer, "//\n")
 			}
-			fmt.Fprintf(buffer, "// nolint: lll\n")
 			fmt.Fprintf(buffer, "package %s\n", name)
 
 			setFile(path.Join(mod, "doc.go"), buffer.String())
@@ -1064,7 +1354,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				pkg.genType(buffer, t)
 			}
 
-			pkg.genInitFn(buffer, pkg.types)
+			pkg.genTypeRegistrations(buffer, pkg.types)
 
 			setFile(path.Join(mod, "pulumiTypes.go"), buffer.String())
 		}

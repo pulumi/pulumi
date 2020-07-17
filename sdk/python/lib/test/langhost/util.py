@@ -33,6 +33,9 @@ from google.protobuf import empty_pb2, struct_pb2
 # test output. Just turn it off.
 logging.disable(level=logging.CRITICAL)
 
+# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
+_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
 
 class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
     """
@@ -213,7 +216,7 @@ class LanghostTest(unittest.TestCase):
             langhost = self._create_language_host(monitor.port)
 
             # Run the program with the langhost we just launched.
-            with grpc.insecure_channel("localhost:%d" % langhost.port) as channel:
+            with grpc.insecure_channel("localhost:%d" % langhost.port, options=_GRPC_CHANNEL_OPTIONS) as channel:
                 grpc.channel_ready_future(channel).result()
                 stub = language_pb2_grpc.LanguageRuntimeStub(channel)
                 result = self._run_program(stub, monitor, project, stack,
@@ -297,7 +300,7 @@ class LanghostTest(unittest.TestCase):
     def _create_mock_resource_monitor(self, dryrun):
         monitor = LanghostMockResourceMonitor(self, dryrun)
         engine = MockEngine()
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=4), options=_GRPC_CHANNEL_OPTIONS)
 
         resource_pb2_grpc.add_ResourceMonitorServicer_to_server(monitor, server)
         engine_pb2_grpc.add_EngineServicer_to_server(engine, server)

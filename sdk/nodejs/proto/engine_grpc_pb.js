@@ -16,7 +16,7 @@
 // limitations under the License.
 //
 'use strict';
-var grpc = require('grpc');
+var grpc = require('@grpc/grpc-js');
 var engine_pb = require('./engine_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 
@@ -92,7 +92,7 @@ function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
 // that can't store their own global state.
 var EngineService = exports.EngineService = {
   // Log logs a global message in the engine, including errors and warnings.
-  log: {
+log: {
     path: '/pulumirpc.Engine/Log',
     requestStream: false,
     responseStream: false,
@@ -104,8 +104,8 @@ var EngineService = exports.EngineService = {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // GetRootResource gets the URN of the root resource, the resource that should be the root of all
-  // otherwise-unparented resources.
-  getRootResource: {
+// otherwise-unparented resources.
+getRootResource: {
     path: '/pulumirpc.Engine/GetRootResource',
     requestStream: false,
     responseStream: false,
@@ -117,7 +117,7 @@ var EngineService = exports.EngineService = {
     responseDeserialize: deserialize_pulumirpc_GetRootResourceResponse,
   },
   // SetRootResource sets the URN of the root resource.
-  setRootResource: {
+setRootResource: {
     path: '/pulumirpc.Engine/SetRootResource',
     requestStream: false,
     responseStream: false,

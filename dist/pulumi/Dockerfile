@@ -4,6 +4,9 @@ LABEL "repository"="https://github.com/pulumi/pulumi"
 LABEL "homepage"="https://pulumi.com/"
 LABEL "maintainer"="Pulumi Team <team@pulumi.com>"
 
+ENV GOLANG_VERSION 1.13.10
+ENV GOLANG_SHA256 8a4cbc9f2b95d114c38f6cbe94a45372d48c604b707db2057c787398dfbf8e7f
+
 # Install deps all in one step
 RUN apt-get update -y && \
   apt-get install -y \
@@ -25,7 +28,7 @@ RUN apt-get update -y && \
   curl -fsSLo /usr/bin/aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator && \
   chmod +x /usr/bin/aws-iam-authenticator && \
   # Add additional apt repos all at once
-  echo "deb https://deb.nodesource.com/node_11.x $(lsb_release -cs) main"                         | tee /etc/apt/sources.list.d/node.list             && \
+  echo "deb https://deb.nodesource.com/node_12.x $(lsb_release -cs) main"                         | tee /etc/apt/sources.list.d/node.list             && \
   echo "deb https://dl.yarnpkg.com/debian/ stable main"                                           | tee /etc/apt/sources.list.d/yarn.list             && \
   echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"      | tee /etc/apt/sources.list.d/docker.list           && \
   echo "deb http://packages.cloud.google.com/apt cloud-sdk-$(lsb_release -cs) main"               | tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
@@ -44,6 +47,17 @@ RUN apt-get update -y && \
   # Clean up the lists work
   rm -rf /var/lib/apt/lists/*
 
+# Install Go
+RUN curl -fsSLo /tmp/go.tgz https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz; \
+    echo "${GOLANG_SHA256} /tmp/go.tgz" | sha256sum -c -; \
+    tar -C /usr/local -xzf /tmp/go.tgz; \
+    rm /tmp/go.tgz; \
+    export PATH="/usr/local/go/bin:$PATH"; \
+    go version
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+    
+
 # Install .NET Core SDK
 RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsoft-prod.deb \
     -O packages-microsoft-prod.deb && \
@@ -55,7 +69,14 @@ RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsof
     dotnet-sdk-3.1
 
 # Install Helm
-RUN curl -L https://git.io/get_helm.sh | bash
+# Explicitly set env variables that helm reads to their defaults, so that subsequent calls to
+# helm will find the stable repo even if $HOME points to something other than /root
+# (e.g. in GitHub actions where $HOME points to /github/home).
+ENV XDG_CONFIG_HOME=/root/.config
+ENV XDG_CACHE_HOME=/root/.cache
+RUN curl -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
+  helm repo add stable https://kubernetes-charts.storage.googleapis.com && \
+  helm repo update
 
 # Passing --build-arg PULUMI_VERSION=vX.Y.Z will use that version
 # of the SDK. Otherwise, we use whatever get.pulumi.com thinks is

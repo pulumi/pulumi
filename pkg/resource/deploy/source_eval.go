@@ -26,17 +26,17 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/pkg/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
@@ -582,7 +582,51 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) StreamInvoke(
 	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
-	return fmt.Errorf("the resource monitor does not implement streaming invokes")
+	tok := tokens.ModuleMember(req.GetTok())
+	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
+
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return err
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return err
+	}
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	if err != nil {
+		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
+	// streaming operation completes!
+	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
+	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
+		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal return")
+		}
+
+		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+	})
+	if err != nil {
+		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+
+	if len(chkfails) > 0 {
+		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
+	}
+	return nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.

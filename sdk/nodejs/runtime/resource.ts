@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
 import * as query from "@pulumi/query";
-import * as grpc from "grpc";
 import * as log from "../log";
 import * as utils from "../utils";
 
@@ -117,6 +117,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
@@ -456,7 +457,7 @@ async function gatherExplicitDependencies(
             const urns = await dos.promise();
             const dosResources = await getAllResources(dos);
             const implicits = await gatherExplicitDependencies([...dosResources]);
-            return urns.concat(implicits);
+            return (urns ?? []).concat(implicits);
         } else {
             if (!Resource.isInstance(dependsOn)) {
                 throw new Error("'dependsOn' was passed a value that was not a Resource.");

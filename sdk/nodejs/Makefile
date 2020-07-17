@@ -2,7 +2,7 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(shell ../../scripts/get-version HEAD)
 
-LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs
+LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM := 10
@@ -13,7 +13,6 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	golangci-lint run
 	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
@@ -28,27 +27,27 @@ build_package::
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 build:: build_package build_plugin
 
-install_package::
+install_package:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
 
-install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+install_plugin:: build
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
-istanbul_tests::
-	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+istanbul_tests:: build
+	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 30000 'bin/tests/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
 
-sxs_tests::
-	pushd tests/sxs_ts_3.6 && yarn && tsc && popd
-	pushd tests/sxs_ts_latest && yarn && tsc && popd
+sxs_tests:: build
+	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
+	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 
 test_fast:: sxs_tests istanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
@@ -56,7 +55,12 @@ test_fast:: sxs_tests istanbul_tests
 test_all:: sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
-dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+dist:: build
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
+	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+
+brew::
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/

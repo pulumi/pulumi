@@ -22,11 +22,11 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 )
 
 type Row interface {
@@ -180,7 +180,7 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 }
 
 func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	payload := event.Payload.(engine.DiagEventPayload)
+	payload := event.Payload().(engine.DiagEventPayload)
 	data.recordDiagEventPayload(payload)
 }
 
@@ -223,7 +223,7 @@ func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPaylo
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
+	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 

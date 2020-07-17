@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/pkg/testing"
-	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 )
 
 // TestPulumiDockerImage simulates building and running Pulumi programs on the pulumi/pulumi Docker image.
@@ -59,7 +59,7 @@ func TestPulumiDockerImage(t *testing.T) {
 			}()
 
 			stackName := fmt.Sprintf("%s/container-%s-%x", stackOwner, template, time.Now().UnixNano())
-			e.RunCommand("pulumi", "new", template, "-f", "-s", stackName)
+			e.RunCommand("pulumi", "new", template, "-y", "-f", "-s", stackName)
 
 			example := base.With(integration.ProgramTestOptions{
 				Dir: e.RootPath,
@@ -125,7 +125,13 @@ func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		e.RunCommand("pulumi", "stack", "rm", "--force", "--yes")
-		e.DeleteEnvironment()
+		// BUG: We mount /tmp/${e.CWD} into the container, which contains the Pulumi program,
+		// and then the container executes and leaves new files there too. Since code in the
+		// container ( by default) runs as root (at least that's the default behavior on Linux),
+		// then on CI we don't have access to call e.DeleteEnvironment(). (Since files created
+		// on the container are owned by "root root".) We should fix this, since as-is we
+		// are leaving crap in the temp folder.
+		t.Logf("NOTE: Skipping cleanup of test environment. Leaving files in %q", e.CWD)
 	}()
 	e.ImportDirectory(runtime)
 
@@ -148,7 +154,7 @@ func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
 		// Container to run.
 		container,
 		// Flags to the container's entry point (`pulumi`).
-		"up", "--stack", stackName)
+		"up", "--stack", stackName, "--yes")
 
 	assert.Contains(t, stdout, "Hello from "+runtime,
 		"Looking for indication stack update was successful in container output.")

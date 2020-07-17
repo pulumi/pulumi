@@ -16,12 +16,13 @@ package deploytest
 
 import (
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
@@ -48,7 +49,11 @@ func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.
 
 func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	// Connect to the resource monitor and create an appropriate client.
-	conn, err := grpc.Dial(info.MonitorAddress, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		info.MonitorAddress,
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return "", false, errors.Wrapf(err, "could not connect to resource monitor")
 	}

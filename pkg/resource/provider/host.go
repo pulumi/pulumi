@@ -15,14 +15,15 @@
 package provider
 
 import (
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	lumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.
@@ -33,9 +34,12 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
-		rpcutil.OpenTracingClientInterceptor(),
-	))
+	conn, err := grpc.Dial(
+		addr,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,7 @@ func (host *HostClient) log(
 	}
 	_, err := host.client.Log(context, &lumirpc.LogRequest{
 		Severity:  rpcsev,
-		Message:   msg,
+		Message:   strings.ToValidUTF8(msg, "�"),
 		Urn:       string(urn),
 		Ephemeral: ephemeral,
 	})

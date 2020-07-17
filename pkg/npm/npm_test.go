@@ -52,10 +52,10 @@ func testInstall(t *testing.T, expectedBin string) {
 	packageJSON := []byte(`{
 	    "name": "test-package",
 	    "dependencies": {
-	        "@pulumi/pulumi": "^1.0.0"
+	        "@pulumi/pulumi": "^2.0.0"
 	    }
 	}`)
-	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0644))
+	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0600))
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
