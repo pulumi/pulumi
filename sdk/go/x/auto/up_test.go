@@ -42,4 +42,7 @@ func TestUpBasic(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
