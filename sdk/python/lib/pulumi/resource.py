@@ -258,6 +258,11 @@ class ResourceTransformationResult:
     the originally provided values.
     """
 
+    name: str
+    """
+    The name of the Resource.
+    """
+
     props: 'Inputs'
     """
     The new properties to use in place of the original `props`.
