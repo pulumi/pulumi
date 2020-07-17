@@ -244,15 +244,19 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             }
         if props_struct[_special_sig_key] == _special_resource_sig:
             urn = props_struct["urn"]
+            version = props_struct["version"]
+
             urn_parts = urn.split("::")
             qualified_type = urn_parts[2]
             typ = qualified_type.split("$")[-1]
-            proxy_constructor = PROXY_CONSTRUCTORS.get(typ, None)
-            if proxy_constructor is not None:
-                urn_name = urn_parts[3]
-                return proxy_constructor(urn_name, {"urn": urn})
-            print(f"Saw valid URN {urn} during deserialization, but no proxy constructor is registered for type {typ}.")
-            return urn
+            typ_parts = typ.split(":")
+            pkg_name = typ_parts[0]
+            resource_package = RESOURCE_PACKAGES.get(package_key(pkg_name, version))
+            if resource_package is None:
+                raise Exception(f"Unable to deserialize resource URN {urn}, no resource package is registered for type {typ}.")
+            urn_name = urn_parts[3]
+            resource = resource_package.construct(urn_name, typ, {}, {"urn": urn})
+            return cast('Resource', resource)
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
@@ -509,10 +513,14 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, exn)
 
-PROXY_CONSTRUCTORS: Dict[str, Any] = dict()
+RESOURCE_PACKAGES: Dict[str, Any] = dict()
 
-def register_proxy_constructor(typ: str, constructor):
-    existing = PROXY_CONSTRUCTORS.get(typ, None)
+def package_key(typ: str, version: str) -> str:
+    return f"{typ}@{version}"
+
+def register_resource_package(typ: str, version: str, package):
+    key = package_key(typ, version)
+    existing = RESOURCE_PACKAGES.get(key, None)
     if existing is not None:
-        raise ValueError(f"Cannot re-register type {typ} as a proxy.  Previous registration was {existing}, new registration was {constructor}.")
-    PROXY_CONSTRUCTORS[typ] = constructor
+        raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
+    RESOURCE_PACKAGES[key] = package

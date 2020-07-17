@@ -508,15 +508,19 @@ export function deserializeProperty(prop: any): any {
                 case specialResourceSig:
                     // Deserialize the resource into a live Resource reference
                     const urn = prop["urn"];
+                    const version = prop["version"];
+
                     const urnParts = urn.split("::");
                     const qualifiedType = urnParts[2];
                     const type = qualifiedType.split("$").pop()!;
-                    const proxyConstructor = proxyConstructors.get(type);
-                    if (!proxyConstructor) {
-                        throw new Error(`Unable to deserialize resource URN ${urn}, no proxy constructor is registered for type ${type}.`);
+                    const typeParts = type.split(":");
+                    const pkgName = typeParts[0];
+                    const resourcePackage = resourcePackages.get(packageKey(pkgName, version || ""));
+                    if (!resourcePackage) {
+                        throw new Error(`Unable to deserialize resource URN ${urn}, no resource package is registered for type ${type}.`);
                     }
                     const urnName = urnParts[3];
-                    return new proxyConstructor(urnName, {}, { urn });
+                    return resourcePackage.construct(urnName, type, {}, { urn });
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -544,19 +548,28 @@ export function deserializeProperty(prop: any): any {
     }
 }
 
-type ProxyConstructor = {
-    new(name: string, args: any, opts: { urn: string }): Resource;
+/**
+ * A ResourcePackage is a package that understands how to construct resources given a name, type, args, and URN.
+ */
+export type ResourcePackage = {
+    construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
 };
 
-const proxyConstructors = new Map<string, ProxyConstructor>();
+const resourcePackages = new Map<string, ResourcePackage>();
+
+function packageKey(name: string, version: string): string {
+    return `${name}@${version}`;
+}
+
 /**
- * registerProxyConstructor registers a constructor to be used as a proxy for any URNs matching the
- * given type that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ * registerResourcePackage registers a resource package that will be used to construct resources for any URNs matching
+ * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerProxyConstructor(type: string, constructor: ProxyConstructor) {
-    const existing = proxyConstructors.get(type);
+export function registerResourcePackage(pkgName: string, version: string, pkg: ResourcePackage) {
+    const key = packageKey(pkgName, version);
+    const existing = resourcePackages.get(key);
     if (existing) {
-        throw new Error(`Cannot re-register type ${type} as a proxy.  Previous registration was ${existing}, new registration was ${constructor}.`);
+        throw new Error(`Cannot re-register package ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
     }
-    proxyConstructors.set(type, constructor);
+    resourcePackages.set(key, pkg);
 }

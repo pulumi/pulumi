@@ -46,5 +46,5 @@ from .invoke import (
 )
 
 from .rpc import (
-    register_proxy_constructor,
+    register_resource_package,
 )
