@@ -38,12 +38,9 @@ func TestConflicError(t *testing.T) {
 
 	conflicts := 0
 
-	var errs []error
-
 	for i := 0; i < 5; i++ {
 		err := <-c
 		if IsConflict(err) {
-			errs = append(errs, err)
 			conflicts++
 		}
 	}
