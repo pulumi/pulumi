@@ -8,9 +8,9 @@ func (s *stack) Remove() error {
 		return errors.Wrap(err, "could not initialize or select stack")
 	}
 
-	_, stderr, err := s.runCmd("pulumi", "stack", "rm", "--yes")
+	stdout, stderr, code, err := s.runCmd("pulumi", "stack", "rm", "--yes")
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove stack: %s", stderr)
+		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, code)
 	}
 
 	return nil

@@ -7,15 +7,13 @@ func (s *stack) Destroy() (DestroyResult, error) {
 
 	err := s.initOrSelectStack()
 	if err != nil {
-		return dResult, errors.Wrap(err, "could not initialize or select stack")
+		return dResult, err
 	}
 
-	stdout, stderr, err := s.runCmd("pulumi", "destroy", "--yes")
+	stdout, stderr, code, err := s.runCmd("pulumi", "destroy", "--yes")
 	if err != nil {
-		return DestroyResult{
-			StdErr: stderr,
-			StdOut: stdout,
-		}, errors.Wrapf(err, "stderr: %s", stderr)
+		return dResult,
+			newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
 	summary, err := s.summary()

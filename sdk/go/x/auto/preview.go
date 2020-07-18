@@ -48,7 +48,7 @@ func (s *stack) Preview() (PreviewResult, error) {
 
 	err := s.initOrSelectStack()
 	if err != nil {
-		return pResult, errors.Wrap(err, "could not initialize or select stack")
+		return pResult, err
 	}
 	return s.preview()
 }
@@ -56,10 +56,9 @@ func (s *stack) Preview() (PreviewResult, error) {
 func (s *stack) preview() (PreviewResult, error) {
 	var pResult PreviewResult
 
-	stdout, _, err := s.runCmd("pulumi", "preview", "--json")
+	stdout, stderr, code, err := s.runCmd("pulumi", "preview", "--json")
 	if err != nil {
-		// TODO json output returns diagnostics. Should expose to user
-		return pResult, errors.Wrap(err, "failed to run preview")
+		return pResult, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &pResult)

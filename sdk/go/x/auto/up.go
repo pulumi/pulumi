@@ -14,15 +14,12 @@ func (s *stack) Up() (UpResult, error) {
 
 	err := s.initOrSelectStack()
 	if err != nil {
-		return upResult, errors.Wrap(err, "could not initialize or select stack")
+		return upResult, err
 	}
 
-	stdout, stderr, err := s.runCmd("pulumi", "up", "--yes")
+	stdout, stderr, code, err := s.runCmd("pulumi", "up", "--yes")
 	if err != nil {
-		return UpResult{
-			StdErr: stderr,
-			StdOut: stdout,
-		}, errors.Wrapf(err, "stderr: %s", stderr)
+		return upResult, newAutoError(err, stdout, stderr, code)
 	}
 
 	outs, secrets, err := s.outputs()
@@ -53,11 +50,11 @@ type UpResult struct {
 }
 
 func (s *stack) initOrSelectStack() error {
-	_, _, err := s.runCmd("pulumi", "stack", "select", s.Name)
+	_, _, _, err := s.runCmd("pulumi", "stack", "select", s.Name)
 	if err != nil {
-		_, initStderr, err := s.runCmd("pulumi", "stack", "init", s.Name)
+		stdout, stderr, code, err := s.runCmd("pulumi", "stack", "init", s.Name)
 		if err != nil {
-			return errors.Wrapf(err, "unable to select or init stack: %s", initStderr)
+			return newAutoError(errors.Wrap(err, "unable to select or init stack"), stdout, stderr, code)
 		}
 	}
 
@@ -69,7 +66,7 @@ const secretSentinel = "[secret]"
 func (s *stack) Outputs() (map[string]interface{}, map[string]interface{}, error) {
 	err := s.initOrSelectStack()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not initialize or select stack")
+		return nil, nil, err
 	}
 
 	return s.outputs()
@@ -78,15 +75,15 @@ func (s *stack) Outputs() (map[string]interface{}, map[string]interface{}, error
 // outputs returns a set of plain outputs, secret outputs, and an error
 func (s *stack) outputs() (map[string]interface{}, map[string]interface{}, error) {
 	// standard outputs
-	outStdout, outStderr, err := s.runCmd("pulumi", "stack", "output", "--json")
+	outStdout, outStderr, code, err := s.runCmd("pulumi", "stack", "output", "--json")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "could not get outputs: stderr: %s", outStderr)
+		return nil, nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
 	}
 
 	// secret outputs
-	secretStdout, secretStderr, err := s.runCmd("pulumi", "stack", "output", "--json", "--show-secrets")
+	secretStdout, secretStderr, code, err := s.runCmd("pulumi", "stack", "output", "--json", "--show-secrets")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "could not get secret outputs: stderr: %s", secretStderr)
+		return nil, nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
 	}
 
 	var outputs map[string]interface{}
@@ -116,9 +113,9 @@ func (s *stack) User() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not initialize or select stack")
 	}
-	outStdout, outStderr, err := s.runCmd("pulumi", "whoami")
+	outStdout, outStderr, code, err := s.runCmd("pulumi", "whoami")
 	if err != nil {
-		return "", errors.Wrapf(err, "could not detect user: stderr: %s", outStderr)
+		return "", newAutoError(errors.Wrap(err, "could not detect user"), outStdout, outStderr, code)
 	}
 	return strings.TrimSpace(outStdout), nil
 }
@@ -126,21 +123,23 @@ func (s *stack) User() (string, error) {
 func (s *stack) SetConfig(config map[string]string) error {
 	err := s.initOrSelectStack()
 	if err != nil {
-		return errors.Wrap(err, "could not initialize or select stack")
+		return err
 	}
 
 	return s.setConfig(config)
 }
 
 func (s *stack) setConfig(config map[string]string) error {
+	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
 	for k, v := range config {
 		// TODO verify escaping
-		_, errstr, err := s.runCmd("pulumi", "config", "set", k, v)
+		outstr, errstr, code, err := s.runCmd("pulumi", "config", "set", k, v)
+		stdout.WriteString(outstr)
 		stderr.WriteString(errstr)
 		if err != nil {
-			return errors.Wrapf(err, "unable to set config, stderr: %s", errstr)
+			return newAutoError(errors.Wrap(err, "unable to set config"), stdout.String(), stderr.String(), code)
 		}
 	}
 
@@ -151,21 +150,25 @@ func (s *stack) setConfig(config map[string]string) error {
 func (s *stack) SetSecrets(secrets map[string]string) error {
 	err := s.initOrSelectStack()
 	if err != nil {
-		return errors.Wrap(err, "could not initialize or select stack")
+		return err
 	}
 
 	return s.setSecrets(secrets)
 }
 
 func (s *stack) setSecrets(secrets map[string]string) error {
+	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
 	for k, v := range secrets {
 		// TODO verify escaping
-		_, errstr, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
+		outstr, errstr, code, err := s.runCmd("pulumi", "config", "set", k, v)
+		stdout.WriteString(outstr)
 		stderr.WriteString(errstr)
 		if err != nil {
-			return errors.Wrapf(err, "unable to set secret config, stderr: %s", errstr)
+			return newAutoError(
+				errors.Wrap(err, "unable to set secret config"), stdout.String(), stderr.String(), code,
+			)
 		}
 	}
 
@@ -177,7 +180,7 @@ func (s *stack) Summary() (UpdateSummary, error) {
 	var zero UpdateSummary
 	err := s.initOrSelectStack()
 	if err != nil {
-		return zero, errors.Wrap(err, "could not initialize or select stack")
+		return zero, err
 	}
 
 	return s.summary()
@@ -185,14 +188,13 @@ func (s *stack) Summary() (UpdateSummary, error) {
 
 func (s *stack) summary() (UpdateSummary, error) {
 	var res UpdateSummary
-	histOut, histErr, err := s.runCmd("pulumi", "history", "--json")
+	stdout, stderr, code, err := s.runCmd("pulumi", "history", "--json")
 	if err != nil {
-		// TODO JSON errors produce diagnostics, not STD err
-		return res, errors.Wrapf(err, "could not get outputs: stderr: %s", histErr)
+		return res, newAutoError(errors.Wrap(err, "could not get outputs"), stdout, stderr, code)
 	}
 
 	var history []UpdateSummary
-	err = json.Unmarshal([]byte(histOut), &history)
+	err = json.Unmarshal([]byte(stdout), &history)
 	if err != nil {
 		return res, errors.Wrap(err, "unable to unmarshal history result")
 	}
@@ -221,14 +223,18 @@ type UpdateSummary struct {
 }
 
 // runCmd execs the given command with appropriate stack context
-// returning stdout, stderr, and an error value
-func (s *stack) runCmd(name string, arg ...string) (string, string, error) {
+// returning stdout, stderr, exitcode, and an error value
+func (s *stack) runCmd(name string, arg ...string) (string, string, int, error) {
 	cmd := exec.Command(name, arg...)
 	cmd.Dir = s.SourcePath
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	code := -2 // unknown
 	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
+	if exitError, ok := err.(*exec.ExitError); ok {
+		code = exitError.ExitCode()
+	}
+	return stdout.String(), stderr.String(), code, err
 }
