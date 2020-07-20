@@ -119,7 +119,9 @@ namespace Pulumi
                             // Log the descriptions of completed tasks.
                             var descriptions = _inFlightTasks[task];
                             foreach (var description in descriptions)
+                            {
                                 Serilog.Log.Information($"Completed task: {description}");
+                            }
 
                             // Check if all the tasks are completed and signal the completion source if so.
                             if (Interlocked.Decrement(ref remaining) == 0)
