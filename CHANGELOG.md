@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add pluginDownloadURL field to package definition
+  [#4947](https://github.com/pulumi/pulumi/pull/4947)
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
   
