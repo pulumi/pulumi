@@ -18,11 +18,38 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-func newServiceSecretsManager(s httpstate.Stack) (secrets.Manager, error) {
+func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configFile string) (secrets.Manager, error) {
+	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+
+	if configFile == "" {
+		f, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return nil, err
+		}
+		configFile = f
+	}
+
+	info, err := workspace.LoadProjectStack(configFile)
+	if err != nil {
+		return nil, err
+	}
+
 	client := s.Backend().(httpstate.Backend).Client()
 	id := s.StackIdentifier()
+
+	// Let's ensure these are empty as they should be for a service secrets manager
+	info.SecretsProvider = ""
+	info.EncryptedKey = ""
+	info.EncryptionSalt = ""
+
+	if err := workspace.SaveProjectStack(stackName, info); err != nil {
+		return nil, err
+	}
 
 	return service.NewServiceSecretsManager(client, id)
 }
