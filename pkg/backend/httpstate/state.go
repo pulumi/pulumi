@@ -301,7 +301,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 }
 
 func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload.(engine.DiagEventPayload)).Severity == diag.Debug
+	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
 }
 
 type engineEventBatch struct {

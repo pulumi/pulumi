@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
 
@@ -35,7 +36,38 @@ import (
 // type for the `Payload` field will differ depending on the value of the `Type` field
 type Event struct {
 	Type    EventType
-	Payload interface{}
+	payload interface{}
+}
+
+func NewEvent(typ EventType, payload interface{}) Event {
+	ok := false
+	switch typ {
+	case CancelEvent:
+		ok = payload == nil
+	case StdoutColorEvent:
+		_, ok = payload.(StdoutEventPayload)
+	case DiagEvent:
+		_, ok = payload.(DiagEventPayload)
+	case PreludeEvent:
+		_, ok = payload.(PreludeEventPayload)
+	case SummaryEvent:
+		_, ok = payload.(SummaryEventPayload)
+	case ResourcePreEvent:
+		_, ok = payload.(ResourcePreEventPayload)
+	case ResourceOutputsEvent:
+		_, ok = payload.(ResourceOutputsEventPayload)
+	case ResourceOperationFailed:
+		_, ok = payload.(ResourceOperationFailedPayload)
+	case PolicyViolationEvent:
+		_, ok = payload.(PolicyViolationEventPayload)
+	default:
+		contract.Failf("unknown event type %v", typ)
+	}
+	contract.Assertf(ok, "invalid payload of type %T for event type %v", payload, typ)
+	return Event{
+		Type:    typ,
+		payload: payload,
+	}
 }
 
 // EventType is the kind of event being emitted.
@@ -52,6 +84,10 @@ const (
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
 )
+
+func (e Event) Payload() interface{} {
+	return deepcopy.Copy(e.payload)
+}
 
 func cancelEvent() Event {
 	return Event{Type: CancelEvent}
@@ -119,6 +155,8 @@ type ResourcePreEventPayload struct {
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
 	Op           deploy.StepOp                  // the operation performed by this step.
+	URN          resource.URN                   // the resource URN (for before and after).
+	Type         tokens.Type                    // the type affected by this step.
 	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
 	New          *StepEventStateMetadata        // the state of the resource after performing this step.
 	Res          *StepEventStateMetadata        // the latest state for the resource that is known (worst case, old).
@@ -272,6 +310,8 @@ func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepE
 
 	return StepEventMetadata{
 		Op:           op,
+		URN:          step.URN(),
+		Type:         step.Type(),
 		Keys:         keys,
 		Diffs:        diffs,
 		DetailedDiff: detailedDiff,
@@ -425,27 +465,21 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: ResourceOperationFailed,
-		Payload: ResourceOperationFailedPayload{
-			Metadata: makeStepEventMetadata(step.Op(), step, debug),
-			Status:   status,
-			Steps:    steps,
-		},
-	}
+	e.ch <- NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+		Metadata: makeStepEventMetadata(step.Op(), step, debug),
+		Status:   status,
+		Steps:    steps,
+	})
 }
 
 func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: ResourceOutputsEvent,
-		Payload: ResourceOutputsEventPayload{
-			Metadata: makeStepEventMetadata(op, step, debug),
-			Planning: planning,
-			Debug:    debug,
-		},
-	}
+	e.ch <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
+		Metadata: makeStepEventMetadata(op, step, debug),
+		Planning: planning,
+		Debug:    debug,
+	})
 }
 
 func (e *eventEmitter) resourcePreEvent(
@@ -453,14 +487,11 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: ResourcePreEvent,
-		Payload: ResourcePreEventPayload{
-			Metadata: makeStepEventMetadata(step.Op(), step, debug),
-			Planning: planning,
-			Debug:    debug,
-		},
-	}
+	e.ch <- NewEvent(ResourcePreEvent, ResourcePreEventPayload{
+		Metadata: makeStepEventMetadata(step.Op(), step, debug),
+		Planning: planning,
+		Debug:    debug,
+	})
 }
 
 func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
@@ -474,44 +505,35 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.ch <- Event{
-		Type: PreludeEvent,
-		Payload: PreludeEventPayload{
-			IsPreview: isPreview,
-			Config:    configStringMap,
-		},
-	}
+	e.ch <- NewEvent(PreludeEvent, PreludeEventPayload{
+		IsPreview: isPreview,
+		Config:    configStringMap,
+	})
 }
 
 func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: SummaryEvent,
-		Payload: SummaryEventPayload{
-			IsPreview:       true,
-			MaybeCorrupt:    false,
-			Duration:        0,
-			ResourceChanges: resourceChanges,
-			PolicyPacks:     policyPacks,
-		},
-	}
+	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
+		IsPreview:       true,
+		MaybeCorrupt:    false,
+		Duration:        0,
+		ResourceChanges: resourceChanges,
+		PolicyPacks:     policyPacks,
+	})
 }
 
 func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	duration time.Duration, resourceChanges ResourceChanges, policyPacks map[string]string) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: SummaryEvent,
-		Payload: SummaryEventPayload{
-			IsPreview:       false,
-			MaybeCorrupt:    maybeCorrupt,
-			Duration:        duration,
-			ResourceChanges: resourceChanges,
-			PolicyPacks:     policyPacks,
-		},
-	}
+	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
+		IsPreview:       false,
+		MaybeCorrupt:    maybeCorrupt,
+		Duration:        duration,
+		ResourceChanges: resourceChanges,
+		PolicyPacks:     policyPacks,
+	})
 }
 
 func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
@@ -542,37 +564,31 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.ch <- Event{
-		Type: PolicyViolationEvent,
-		Payload: PolicyViolationEventPayload{
-			ResourceURN:       urn,
-			Message:           logging.FilterString(buffer.String()),
-			Color:             colors.Raw,
-			PolicyName:        d.PolicyName,
-			PolicyPackName:    d.PolicyPackName,
-			PolicyPackVersion: d.PolicyPackVersion,
-			EnforcementLevel:  d.EnforcementLevel,
-			Prefix:            logging.FilterString(prefix.String()),
-		},
-	}
+	e.ch <- NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           logging.FilterString(buffer.String()),
+		Color:             colors.Raw,
+		PolicyName:        d.PolicyName,
+		PolicyPackName:    d.PolicyPackName,
+		PolicyPackVersion: d.PolicyPackVersion,
+		EnforcementLevel:  d.EnforcementLevel,
+		Prefix:            logging.FilterString(prefix.String()),
+	})
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
 	ephemeral bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			URN:       d.URN,
-			Prefix:    logging.FilterString(prefix),
-			Message:   logging.FilterString(msg),
-			Color:     colors.Raw,
-			Severity:  sev,
-			StreamID:  d.StreamID,
-			Ephemeral: ephemeral,
-		},
-	}
+	e.ch <- NewEvent(DiagEvent, DiagEventPayload{
+		URN:       d.URN,
+		Prefix:    logging.FilterString(prefix),
+		Message:   logging.FilterString(msg),
+		Color:     colors.Raw,
+		Severity:  sev,
+		StreamID:  d.StreamID,
+		Ephemeral: ephemeral,
+	})
 }
 
 func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {

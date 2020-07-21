@@ -128,7 +128,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, needsJSON bool) {
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
 		fmt.Fprintf(w, "from typing import Union\n")
-		fmt.Fprintf(w, "from %s import utilities, tables\n", relImport)
+		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
 		fmt.Fprintf(w, "\n")
 	}
 }
@@ -184,7 +184,8 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, false, false)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(filepath.Join(dir, "utilities.py"), buffer.Bytes())
+		fs.add(filepath.Join(dir, "_utilities.py"), buffer.Bytes())
+		fs.add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["python"].(PackageInfo).Readme
@@ -248,23 +249,13 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 func (mod *modContext) submodulesExist() bool {
-	if len(mod.children) <= 0 {
-		return false
-	}
-	if len(mod.children) == 1 && mod.children[0].mod == "config" {
-		return false
-	}
-	return true
+	return len(mod.children) > 0
 }
 
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false, false)
-
-	if mod.submodulesExist() {
-		fmt.Fprintf(w, "import importlib\n")
-	}
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -291,8 +282,8 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
-		fmt.Fprintf(w, "_submodules = [\n")
-		for i, mod := range mod.children {
+		fmt.Fprintf(w, "from . import (\n")
+		for _, mod := range mod.children {
 			child := mod.mod
 			if mod.compatibility == kubernetes20 {
 				// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
@@ -301,15 +292,9 @@ func (mod *modContext) genInit(exports []string) string {
 					child = child[match[2]:match[3]]
 				}
 			}
-			if i > 0 {
-				fmt.Fprintf(w, ",\n")
-			}
-			fmt.Fprintf(w, "    '%s'", PyName(child))
+			fmt.Fprintf(w, "    %s,\n", PyName(child))
 		}
-		fmt.Fprintf(w, ",\n]\n")
-		fmt.Fprintf(w, "for pkg in _submodules:\n")
-		fmt.Fprintf(w, "    if pkg != 'config':\n")
-		fmt.Fprintf(w, "        importlib.import_module(f'{__name__}.{pkg}')\n")
+		fmt.Fprintf(w, ")\n")
 	}
 
 	return w.String()
@@ -347,6 +332,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	baseName := pyClassName(tokenToName(obj.Token))
 
 	// Produce a class definition with optional """ comment.
+	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
@@ -378,6 +364,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	awaitableName := "Awaitable" + baseName
 
 	// Produce an awaitable subclass.
+	fmt.Fprint(w, "\n\n")
 	fmt.Fprintf(w, "class %s(%s):\n", awaitableName, baseName)
 
 	// Emit __await__ and __iter__ in order to make this type awaitable.
@@ -438,7 +425,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprintf(w, "\nclass %s(%s):\n", name, baseType)
+	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	for _, prop := range res.Properties {
 		name := PyName(prop.Name)
 		ty := pyType(prop.Type)
@@ -493,7 +481,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
-	fmt.Fprintf(w, "            opts.version = utilities.get_version()\n")
+	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
 	fmt.Fprintf(w, "        if opts.id is None:\n")
 	fmt.Fprintf(w, "            if __props__ is not None:\n")
 	fmt.Fprintf(w, "                raise TypeError(")
@@ -555,11 +543,16 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		ins.add(prop.Name)
 	}
 
+	var secretProps []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins.has(prop.Name) {
 			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
+		}
+
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
 		}
 	}
 
@@ -575,6 +568,20 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		fmt.Fprintf(w, "])\n")
 		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, alias_opts)\n")
+	}
+
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=[`)
+
+		for i, sp := range secretProps {
+			if i > 0 {
+				fmt.Fprintf(w, ", ")
+			}
+			fmt.Fprintf(w, "%q", sp)
+		}
+
+		fmt.Fprintf(w, "])\n")
+		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
@@ -618,10 +625,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// camel case when interacting with tfbridge.
 	fmt.Fprintf(w,
 		`    def translate_output_property(self, prop):
-        return tables._CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
     def translate_input_property(self, prop):
-        return tables._SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
+        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 `)
 
 	return w.String(), nil
@@ -674,9 +681,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// Write out the function signature.
+	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "def %s(", name)
 	for _, arg := range args {
-		fmt.Fprintf(w, "%s=None,", PyName(arg.Name))
+		fmt.Fprintf(w, "%s=None, ", PyName(arg.Name))
 	}
 	fmt.Fprintf(w, "opts=None")
 	fmt.Fprintf(w, "):\n")
@@ -704,8 +712,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// Copy the function arguments into a dictionary.
-	fmt.Fprintf(w, "    __args__ = dict()\n\n")
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "    __args__ = dict()\n")
 	for _, arg := range args {
 		// TODO: args validation.
 		fmt.Fprintf(w, "    __args__['%s'] = %s\n", arg.Name, PyName(arg.Name))
@@ -715,7 +722,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "    if opts is None:\n")
 	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
 	fmt.Fprintf(w, "    if opts.version is None:\n")
-	fmt.Fprintf(w, "        opts.version = utilities.get_version()\n")
+	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
 
 	// Now simply invoke the runtime function with the arguments.
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts).value\n", fun.Token)
@@ -918,7 +925,7 @@ func (mod *modContext) genPropertyConversionTables() string {
 	}
 	sort.Strings(allKeys)
 
-	fmt.Fprintf(w, "_SNAKE_TO_CAMEL_CASE_TABLE = {\n")
+	fmt.Fprintf(w, "SNAKE_TO_CAMEL_CASE_TABLE = {\n")
 	for _, key := range allKeys {
 		value := mod.snakeCaseToCamelCase[key]
 		if key != value {
@@ -926,7 +933,7 @@ func (mod *modContext) genPropertyConversionTables() string {
 		}
 	}
 	fmt.Fprintf(w, "}\n")
-	fmt.Fprintf(w, "\n_CAMEL_TO_SNAKE_CASE_TABLE = {\n")
+	fmt.Fprintf(w, "\nCAMEL_TO_SNAKE_CASE_TABLE = {\n")
 	for _, value := range allKeys {
 		key := mod.snakeCaseToCamelCase[value]
 		if key != value {
@@ -1282,14 +1289,14 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	}
 
 	if len(dv.Environment) > 0 {
-		envFunc := "utilities.get_env"
+		envFunc := "_utilities.get_env"
 		switch t {
 		case schema.BoolType:
-			envFunc = "utilities.get_env_bool"
+			envFunc = "_utilities.get_env_bool"
 		case schema.IntType:
-			envFunc = "utilities.get_env_int"
+			envFunc = "_utilities.get_env_int"
 		case schema.NumberType:
-			envFunc = "utilities.get_env_float"
+			envFunc = "_utilities.get_env_float"
 		}
 
 		envVars := fmt.Sprintf("'%s'", dv.Environment[0])
@@ -1345,7 +1352,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	getModFromToken := func(token string) *modContext {
 		canonicalModName := pkg.TokenToModule(token)
-		modName := PyName(canonicalModName)
+		modName := PyName(strings.ToLower(canonicalModName))
 		if override, ok := info.ModuleNameOverrides[canonicalModName]; ok {
 			modName = override
 		}
@@ -1460,7 +1467,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Emit casing tables.
-	files.add(filepath.Join(pyPack(pkg.Name), "tables.py"), []byte(modules[""].genPropertyConversionTables()))
+	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
 	// Finally emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, info.Requires)
@@ -1522,7 +1529,7 @@ def get_env_float(*args):
 
 def get_version():
     # __name__ is set to the fully-qualified name of the current module, In our case, it will be
-    # <some module>.utilities. <some module> is the module we want to query the version for.
+    # <some module>._utilities. <some module> is the module we want to query the version for.
     root_package, *rest = __name__.split('.')
 
     # pkg_resources uses setuptools to inspect the set of installed packages. We use it here to ask

@@ -180,7 +180,7 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 }
 
 func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	payload := event.Payload.(engine.DiagEventPayload)
+	payload := event.Payload().(engine.DiagEventPayload)
 	data.recordDiagEventPayload(payload)
 }
 
@@ -223,7 +223,7 @@ func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPaylo
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	pePayload := event.Payload.(engine.PolicyViolationEventPayload)
+	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
@@ -272,7 +272,7 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() && data.display.isTerminal {
 		op := data.display.getStepOp(data.step)
-		if op != deploy.OpSame || isRootURN(data.step.Res.URN) {
+		if op != deploy.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
@@ -286,7 +286,7 @@ func (data *resourceRowData) ColorizedSuffix() string {
 func (data *resourceRowData) ColorizedColumns() []string {
 	step := data.step
 
-	urn := data.step.Res.URN
+	urn := data.step.URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)

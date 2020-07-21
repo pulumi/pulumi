@@ -133,6 +133,14 @@ func TestPropertyPath(t *testing.T) {
 			u, ok := parsed.Get(value)
 			assert.True(t, ok)
 			assert.Equal(t, v, u)
+
+			vv := PropertyValue{}
+			vv, ok = parsed.Add(vv, v)
+			assert.True(t, ok)
+
+			u, ok = parsed.Get(vv)
+			assert.True(t, ok)
+			assert.Equal(t, v, u)
 		})
 	}
 

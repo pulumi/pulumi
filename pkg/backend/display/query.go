@@ -57,7 +57,7 @@ func ShowQueryEvents(op string, events <-chan engine.Event,
 
 			out := os.Stdout
 			if event.Type == engine.DiagEvent {
-				payload := event.Payload.(engine.DiagEventPayload)
+				payload := event.Payload().(engine.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = os.Stderr
 				}
@@ -81,11 +81,11 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		return ""
 
 	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
+		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
 	// Includes stdout of the query process.
 	case engine.DiagEvent:
-		return renderQueryDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+		return renderQueryDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
 
 	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
 		engine.ResourceOutputsEvent, engine.ResourcePreEvent:

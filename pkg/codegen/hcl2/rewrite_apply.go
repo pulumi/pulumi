@@ -150,6 +150,10 @@ func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 	case *model.ForExpression:
 		return r.hasEventualElements(x.Collection)
 	case *model.FunctionCallExpression:
+		_, isEventual := r.isEventualType(x.Signature.ReturnType)
+		if isEventual {
+			return true
+		}
 		for i, arg := range x.Args {
 			if r.hasEventualValues(arg) && r.isPromptArg(x.Signature.Parameters[i].Type, arg) {
 				return true
@@ -385,8 +389,18 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.RelativeTraversalExpression,
 	isRoot bool) model.Expression {
 
+	// If the access is not an output() or a promise(), return the node as-is.
+	paramType, isEventual := ctx.isEventualType(expr.Type())
+	if !isEventual {
+		return expr
+	}
+
+	// If the receiver is an eventual type, we're done.
+	if receiverResolvedType, isEventual := ctx.isEventualType(model.GetTraversableType(expr.Parts[0])); isEventual {
+		return ctx.rewriteApplyArg(expr.Source, receiverResolvedType, expr.Traversal, expr.Parts[1:], isRoot)
+	}
+
 	// Compute the type of the apply and callback arguments.
-	paramType := model.ResolveOutputs(expr.Type())
 	parts, traversal := expr.Parts, expr.Traversal
 	for i := range expr.Traversal {
 		partResolvedType, isEventual := paramType, true

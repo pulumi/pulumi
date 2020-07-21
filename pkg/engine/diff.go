@@ -60,7 +60,7 @@ func printStepHeader(b io.StringWriter, step StepEventMetadata) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
-	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Res.URN.Type()), step.Op, extra))
+	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
 func GetIndentationString(indent int) string {
@@ -117,7 +117,7 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
 	op := step.Op
-	urn := step.Res.URN
+	urn := step.URN
 	old := step.Old
 
 	// Print the indentation.
@@ -232,25 +232,32 @@ func PrintObject(
 	}
 }
 
-func massageStackPreviewAdd(p resource.PropertyValue) {
+func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case p.IsArray():
-		for _, v := range p.ArrayValue() {
-			massageStackPreviewAdd(v)
+		arr := make([]resource.PropertyValue, len(p.ArrayValue()))
+		for i, v := range p.ArrayValue() {
+			arr[i] = massageStackPreviewAdd(v)
 		}
+		return resource.NewArrayProperty(arr)
 	case p.IsObject():
-		delete(p.ObjectValue(), "@isPulumiResource")
-		for _, v := range p.ObjectValue() {
-			massageStackPreviewAdd(v)
+		obj := resource.PropertyMap{}
+		for k, v := range p.ObjectValue() {
+			if k != "@isPulumiResource" {
+				obj[k] = massageStackPreviewAdd(v)
+			}
 		}
+		return resource.NewObjectProperty(obj)
+	default:
+		return p
 	}
 }
 
 func massageStackPreviewDiff(diff resource.ValueDiff, inResource bool) {
 	switch {
 	case diff.Array != nil:
-		for _, p := range diff.Array.Adds {
-			massageStackPreviewAdd(p)
+		for i, p := range diff.Array.Adds {
+			diff.Array.Adds[i] = massageStackPreviewAdd(p)
 		}
 		for _, d := range diff.Array.Updates {
 			massageStackPreviewDiff(d, inResource)
@@ -278,8 +285,8 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 		}
 	}
 
-	for _, p := range diff.Adds {
-		massageStackPreviewAdd(p)
+	for i, p := range diff.Adds {
+		diff.Adds[i] = massageStackPreviewAdd(p)
 	}
 	for k, d := range diff.Updates {
 		if isResource && d.New.IsComputed() && !shouldPrintPropertyValue(d.Old, false) {
@@ -296,7 +303,7 @@ func GetResourceOutputsPropertiesString(
 	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
-	if !showSames && !planning && step.Res.URN.Type() == resource.RootStackType {
+	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
 		showSames = true
 	}
 
@@ -321,7 +328,7 @@ func GetResourceOutputsPropertiesString(
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
 			step.Op == deploy.OpImportReplacement ||
-			step.Res.URN.Type() == resource.RootStackType
+			step.URN.Type() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -353,7 +360,7 @@ func GetResourceOutputsPropertiesString(
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
-		if planning && step.Res.URN.Type() == resource.RootStackType {
+		if planning && step.URN.Type() == resource.RootStackType {
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
 	}

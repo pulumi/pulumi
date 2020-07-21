@@ -28,7 +28,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		apiEvent.CancelEvent = &apitype.CancelEvent{}
 
 	case engine.StdoutColorEvent:
-		p, ok := e.Payload.(engine.StdoutEventPayload)
+		p, ok := e.Payload().(engine.StdoutEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -38,7 +38,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.DiagEvent:
-		p, ok := e.Payload.(engine.DiagEventPayload)
+		p, ok := e.Payload().(engine.DiagEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -52,7 +52,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.PolicyViolationEvent:
-		p, ok := e.Payload.(engine.PolicyViolationEventPayload)
+		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -68,7 +68,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.PreludeEvent:
-		p, ok := e.Payload.(engine.PreludeEventPayload)
+		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -82,7 +82,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.SummaryEvent:
-		p, ok := e.Payload.(engine.SummaryEventPayload)
+		p, ok := e.Payload().(engine.SummaryEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -99,7 +99,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourcePreEvent:
-		p, ok := e.Payload.(engine.ResourcePreEventPayload)
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -109,7 +109,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourceOutputsEvent:
-		p, ok := e.Payload.(engine.ResourceOutputsEventPayload)
+		p, ok := e.Payload().(engine.ResourceOutputsEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -119,7 +119,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	case engine.ResourceOperationFailed:
-		p, ok := e.Payload.(engine.ResourceOperationFailedPayload)
+		p, ok := e.Payload().(engine.ResourceOperationFailedPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -175,8 +175,8 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 
 	return apitype.StepEventMetadata{
 		Op:   string(md.Op),
-		URN:  string(md.Res.URN),
-		Type: string(md.Res.URN.Type()),
+		URN:  string(md.URN),
+		Type: string(md.Type),
 
 		Old: convertStepEventStateMetadata(md.Old),
 		New: convertStepEventStateMetadata(md.New),

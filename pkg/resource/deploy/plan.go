@@ -282,7 +282,12 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	}, nil
 }
 
-func (p *Plan) diag() diag.Sink { return p.ctx.Diag }
+func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }
+func (p *Plan) Target() *Target                        { return p.target }
+func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
+func (p *Plan) Prev() *Snapshot                        { return p.prev }
+func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
+func (p *Plan) Source() Source                         { return p.source }
 
 func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return p.providers.GetProvider(ref)
@@ -298,7 +303,7 @@ func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QNam
 		parentType = parent.QualifiedType()
 	}
 
-	return resource.NewURN(p.target.Name, p.source.Project(), parentType, ty, name)
+	return resource.NewURN(p.Target().Name, p.source.Project(), parentType, ty, name)
 }
 
 // defaultProviderURN generates the URN for the global provider given a package.

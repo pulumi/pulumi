@@ -52,6 +52,14 @@ func (b *Block) HasTrailingTrivia() bool {
 	return b.Tokens != nil
 }
 
+func (b *Block) GetLeadingTrivia() syntax.TriviaList {
+	return b.Tokens.GetType(b.Type).LeadingTrivia
+}
+
+func (b *Block) GetTrailingTrivia() syntax.TriviaList {
+	return b.Tokens.GetCloseBrace().TrailingTrivia
+}
+
 func (b *Block) Format(f fmt.State, c rune) {
 	b.print(f, &printer{})
 }
@@ -94,9 +102,6 @@ func (b *Block) print(w io.Writer, p *printer) {
 	p.indented(func() {
 		b.Body.print(w, p)
 	})
-	if !b.Body.HasTrailingTrivia() {
-		p.fprintf(w, "\n")
-	}
 
 	if b.Tokens != nil {
 		p.fprintf(w, "%v", b.Tokens.GetCloseBrace())

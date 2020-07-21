@@ -119,7 +119,7 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range j.Entries {
-		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.Res().URN, e.Kind)
+		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
@@ -229,7 +229,7 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 		act := actual[0]
 		actual = actual[1:]
 
-		if !assert.Equal(t, exp.Op, act.Op()) || !assert.Equal(t, exp.URN, act.Res().URN) {
+		if !assert.Equal(t, exp.Op, act.Op()) || !assert.Equal(t, exp.URN, act.URN()) {
 			return false
 		}
 	}
@@ -672,7 +672,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range j.Entries {
-			switch urn := entry.Step.Res().URN; urn {
+			switch urn := entry.Step.URN(); urn {
 			case provURN, resURN:
 				expect := deploy.OpSame
 				if isRefresh {
@@ -707,7 +707,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 			// runs.
 			deleted := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					deleted[urn] = true
 					assert.Equal(t, deploy.OpDelete, entry.Step.Op())
@@ -783,7 +783,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					continue
 				}
 
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					replacedProvider = true
 				case resURN:
@@ -875,7 +875,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					continue
 				}
 
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					replacedProvider = true
 				case resURN:
@@ -967,7 +967,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					continue
 				}
 
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					if entry.Step.Op() == deploy.OpDeleteReplaced {
 						assert.False(t, createdProvider)
@@ -1050,7 +1050,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
-					p := e.Payload.(DiagEventPayload)
+					p := e.Payload().(DiagEventPayload)
 					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
 						found = true
 						break
@@ -1114,7 +1114,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range j.Entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.Res().URN != resURN ||
+				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}
@@ -1188,7 +1188,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range j.Entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.Res().URN != resURN ||
+				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}
@@ -1457,7 +1457,7 @@ func TestCheckFailureRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = msg == "oh no, check had an error\n" && e.Severity == diag.Error
 					}
@@ -1507,7 +1507,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawFailure = strings.Contains(msg, "field is not valid") && e.Severity == diag.Error
 						if sawFailure {
@@ -1674,8 +1674,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 				for _, entry := range j.Entries {
 					if len(refreshTargets) > 0 {
 						// should only see changes to urns we explicitly asked to change
-						assert.Containsf(t, refreshTargets, entry.Step.Res().URN,
-							"Refreshed a resource that wasn't a target: %v", entry.Step.Res().URN)
+						assert.Containsf(t, refreshTargets, entry.Step.URN(),
+							"Refreshed a resource that wasn't a target: %v", entry.Step.URN())
 					}
 
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -1843,8 +1843,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 			for _, entry := range j.Entries {
 				if len(refreshTargets) > 0 {
 					// should only see changes to urns we explicitly asked to change
-					assert.Containsf(t, refreshTargets, entry.Step.Res().URN,
-						"Refreshed a resource that wasn't a target: %v", entry.Step.Res().URN)
+					assert.Containsf(t, refreshTargets, entry.Step.URN(),
+						"Refreshed a resource that wasn't a target: %v", entry.Step.URN())
 				}
 
 				assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -2090,7 +2090,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
-						e := evt.Payload.(DiagEventPayload)
+						e := evt.Payload().(DiagEventPayload)
 						msg := colors.Never.Colorize(e.Message)
 						sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
 						if sawExitCode {
@@ -2375,7 +2375,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 
 			assertIsErrorOrBailResult(t, res)
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
 					switch entry.Kind {
@@ -2482,7 +2482,7 @@ func TestStackReference(t *testing.T) {
 
 			assert.Nil(t, res)
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					switch entry.Step.Op() {
 					case deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReplace:
@@ -2811,7 +2811,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 			replaced := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
 				if entry.Step.Op() == deploy.OpReplace {
-					replaced[entry.Step.Res().URN] = true
+					replaced[entry.Step.URN()] = true
 				}
 			}
 
@@ -3159,7 +3159,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
@@ -3255,7 +3255,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 								continue
 							}
 
-							switch entry.Step.Res().URN.Name().String() {
+							switch entry.Step.URN().Name().String() {
 							case resName, resBName:
 								assert.Equal(t, expectedStep, entry.Step.Op())
 							}
@@ -3376,7 +3376,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 								continue
 							}
 
-							switch entry.Step.Res().URN.Name().String() {
+							switch entry.Step.URN().Name().String() {
 							case resName:
 								assert.Subset(t, expectedSteps, []deploy.StepOp{entry.Step.Op()})
 							case resBName:
@@ -3494,13 +3494,13 @@ func TestAliases(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
 
 						for _, entry := range j.Entries {
-							if entry.Step.Res().URN.Type() == "pulumi:providers:pkgA" {
+							if entry.Step.Type() == "pulumi:providers:pkgA" {
 								continue
 							}
 							switch entry.Kind {
@@ -3803,8 +3803,8 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
-					if p.Res.URN == resURN {
+					p := e.Payload().(ResourcePreEventPayload).Metadata
+					if p.URN == resURN {
 						assert.Equal(t, deploy.OpUpdate, p.Op)
 						found = true
 					}
@@ -3824,8 +3824,8 @@ func TestPersistentDiff(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
-					if p.Res.URN == resURN {
+					p := e.Payload().(ResourcePreEventPayload).Metadata
+					if p.URN == resURN {
 						assert.Equal(t, deploy.OpSame, p.Op)
 						found = true
 					}
@@ -3884,8 +3884,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
-					p := e.Payload.(ResourcePreEventPayload).Metadata
-					if p.Res.URN == resURN && p.Op == deploy.OpReplace {
+					p := e.Payload().(ResourcePreEventPayload).Metadata
+					if p.URN == resURN && p.Op == deploy.OpReplace {
 						found = true
 					}
 				}
@@ -3973,7 +3973,7 @@ func TestImport(t *testing.T) {
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				case resURN:
@@ -3991,7 +3991,7 @@ func TestImport(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				default:
@@ -4007,7 +4007,7 @@ func TestImport(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				case resURN:
@@ -4029,7 +4029,7 @@ func TestImport(t *testing.T) {
 	_, res = TestOp(Destroy).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpDelete, entry.Step.Op())
 				default:
@@ -4045,7 +4045,7 @@ func TestImport(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				default:
@@ -4066,7 +4066,7 @@ func TestImport(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				default:
@@ -4083,7 +4083,7 @@ func TestImport(t *testing.T) {
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				case resURN:
@@ -4106,7 +4106,7 @@ func TestImport(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				case resURN:
@@ -4125,7 +4125,7 @@ func TestImport(t *testing.T) {
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				case resURN:
@@ -4211,7 +4211,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				case resURN:
@@ -4229,7 +4229,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
 			for _, entry := range j.Entries {
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				default:
@@ -4349,7 +4349,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 					continue
 				}
 
-				switch urn := entry.Step.Res().URN; urn {
+				switch urn := entry.Step.URN(); urn {
 				case providerURN:
 					replacedProvider = true
 				case resURN:
@@ -4600,7 +4600,7 @@ func destroySpecificTargets(
 			deleted := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
 				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
-				deleted[entry.Step.Res().URN] = true
+				deleted[entry.Step.URN()] = true
 			}
 
 			for _, target := range p.Options.DestroyTargets {
@@ -4693,9 +4693,9 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 			sames := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
 				if entry.Step.Op() == deploy.OpUpdate {
-					updated[entry.Step.Res().URN] = true
+					updated[entry.Step.URN()] = true
 				} else if entry.Step.Op() == deploy.OpSame {
-					sames[entry.Step.Res().URN] = true
+					sames[entry.Step.URN()] = true
 				} else {
 					assert.FailNowf(t, "", "Got a step that wasn't a same/update: %v", entry.Step.Op())
 				}
@@ -4803,9 +4803,9 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 			assert.True(t, len(j.Entries) > 0)
 
 			for _, entry := range j.Entries {
-				if entry.Step.Res().URN == resA {
+				if entry.Step.URN() == resA {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
-				} else if entry.Step.Res().URN == resB {
+				} else if entry.Step.URN() == resB {
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
 				}
 			}
@@ -5072,7 +5072,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 				resBDeleted, resBSame := false, false
 				for _, entry := range j.Entries {
-					if entry.Step.Res().URN == urnB {
+					if entry.Step.URN() == urnB {
 						switch entry.Step.Op() {
 						case deploy.OpDelete, deploy.OpDeleteReplaced:
 							resBDeleted = true
@@ -5148,9 +5148,9 @@ func TestReplaceSpecificTargets(t *testing.T) {
 			sames := make(map[resource.URN]bool)
 			for _, entry := range j.Entries {
 				if entry.Step.Op() == deploy.OpReplace {
-					replaced[entry.Step.Res().URN] = true
+					replaced[entry.Step.URN()] = true
 				} else if entry.Step.Op() == deploy.OpSame {
-					sames[entry.Step.Res().URN] = true
+					sames[entry.Step.URN()] = true
 				}
 			}
 
@@ -5566,7 +5566,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
-								payload := event.Payload.(ResourcePreEventPayload)
+								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
 							}
 						}
