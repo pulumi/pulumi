@@ -1,7 +1,8 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2020, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -92,6 +93,7 @@ namespace Pulumi
                     {
                         if (_inFlightTasks.Count == 0)
                         {
+                            // No more tasks in flight: exit the loop.
                             break;
                         }
 
@@ -99,24 +101,56 @@ namespace Pulumi
                         tasks.AddRange(_inFlightTasks.Keys);
                     }
 
-                    // Now, wait for one of them to finish.
-                    var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                    List<string> descriptions;
-                    lock (_inFlightTasks)
+                    // Wait for one of the two events to happen:
+                    // 1. All tasks in the list complete successfully, or
+                    // 2. Any task throws an exception.
+                    // There's no standard API with this semantics, so we create a custom completion source that is
+                    // completed when remaining count is zero, or when an exception is thrown.
+                    var remaining = tasks.Count;
+                    var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    tasks.ForEach(HandleCompletion);
+                    async void HandleCompletion(Task task)
                     {
-                        // Once finished, remove it from the set of tasks that are running.
-                        descriptions = _inFlightTasks[task];
-                        _inFlightTasks.Remove(task);
+                        try
+                        {
+                            // Wait for the task completion.
+                            await task.ConfigureAwait(false);
+
+                            // Log the descriptions of completed tasks.
+                            var descriptions = _inFlightTasks[task];
+                            foreach (var description in descriptions)
+                            {
+                                Serilog.Log.Information($"Completed task: {description}");
+                            }
+
+                            // Check if all the tasks are completed and signal the completion source if so.
+                            if (Interlocked.Decrement(ref remaining) == 0)
+                            {
+                                tcs.TrySetResult(0);
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            tcs.TrySetCanceled();
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.TrySetException(ex);
+                        }
+                        finally
+                        {
+                            // Once finished, remove the task from the set of tasks that are running.
+                            lock (_inFlightTasks)
+                            {
+                                _inFlightTasks.Remove(task);
+                            }
+                        }
                     }
-
-                    foreach (var description in descriptions)
-                        Serilog.Log.Information($"Completed task: {description}");
-
+                    
                     try
                     {
-                        // Now actually await that completed task so that we will realize any exceptions
-                        // is may have thrown.
-                        await task.ConfigureAwait(false);
+                        // Now actually await that combined task and realize any exceptions it may have thrown.
+                        await tcs.Task.ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {

@@ -41,11 +41,11 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Proj    *workspace.Project // the package metadata.
-	Pwd     string             // the package's working directory.
-	Program string             // the path to the program.
-	Args    []string           // any arguments to pass to the package.
-	Target  *Target            // the target being deployed into.
+	Proj    *workspace.Project `json:"proj" yaml:"proj"`                         // the package metadata.
+	Pwd     string             `json:"pwd" yaml:"pwd"`                           // the package's working directory.
+	Program string             `json:"program" yaml:"program"`                   // the path to the program.
+	Args    []string           `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
+	Target  *Target            `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -77,6 +77,13 @@ func (src *evalSource) Close() error {
 func (src *evalSource) Project() tokens.PackageName {
 	return src.runinfo.Proj.Name
 }
+
+// Stack is the name of the stack being targeted by this evaluation source.
+func (src *evalSource) Stack() tokens.QName {
+	return src.runinfo.Target.Name
+}
+
+func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(
@@ -575,7 +582,51 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) StreamInvoke(
 	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
-	return fmt.Errorf("the resource monitor does not implement streaming invokes")
+	tok := tokens.ModuleMember(req.GetTok())
+	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
+
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return err
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return err
+	}
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	if err != nil {
+		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
+	// streaming operation completes!
+	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
+	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
+		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal return")
+		}
+
+		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+	})
+	if err != nil {
+		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+
+	if len(chkfails) > 0 {
+		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
+	}
+	return nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.

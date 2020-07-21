@@ -35,6 +35,7 @@ type fixedSource struct {
 
 func (src *fixedSource) Close() error                { return nil }
 func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
+func (src *fixedSource) Info() interface{}           { return nil }
 
 func (src *fixedSource) Iterate(
 	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {

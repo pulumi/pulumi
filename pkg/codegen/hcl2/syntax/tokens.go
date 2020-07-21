@@ -1,8 +1,11 @@
 package syntax
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -110,6 +113,33 @@ func (trivia TriviaList) CollapseWhitespace() TriviaList {
 	return result
 }
 
+func (trivia TriviaList) EndsOnNewLine() bool {
+	for _, trivia := range trivia {
+		b := trivia.Bytes()
+		for len(b) > 0 {
+			r, sz := utf8.DecodeLastRune(b)
+			if r == '\n' {
+				return true
+			}
+			if !unicode.IsSpace(r) {
+				return false
+			}
+			b = b[:len(b)-sz]
+		}
+	}
+	return false
+}
+
+func (trivia TriviaList) Index(sep string) (Trivia, int) {
+	s := []byte(sep)
+	for _, trivia := range trivia {
+		if i := bytes.Index(trivia.Bytes(), s); i != -1 {
+			return trivia, i
+		}
+	}
+	return nil, -1
+}
+
 func (trivia TriviaList) Format(f fmt.State, c rune) {
 	for _, trivia := range trivia {
 		_, err := f.Write(trivia.Bytes())
@@ -171,6 +201,26 @@ type TemplateDelimiter struct {
 
 	rng   hcl.Range
 	bytes []byte
+}
+
+// NewTemplateDelimiter creates a new TemplateDelimiter value with the given delimiter type. If the token type is not a
+// template delimiter, this function will panic.
+func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
+	var s string
+	switch typ {
+	case hclsyntax.TokenTemplateInterp:
+		s = "${"
+	case hclsyntax.TokenTemplateControl:
+		s = "%{"
+	case hclsyntax.TokenTemplateSeqEnd:
+		s = "}"
+	default:
+		panic(fmt.Errorf("%v is not a template delimiter", typ))
+	}
+	return TemplateDelimiter{
+		Type:  typ,
+		bytes: []byte(s),
+	}
 }
 
 // Range returns the range of the delimiter in the source file.

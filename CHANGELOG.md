@@ -3,11 +3,38 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add pluginDownloadURL field to package definition
+  [#4947](https://github.com/pulumi/pulumi/pull/4947)
+- Add support for streamInvoke during update
+  [#4990](https://github.com/pulumi/pulumi/pull/4990)
+  
+- Add ability to copy configuration values between stacks
+  [#4971](https://github.com/pulumi/pulumi/pull/4971)
+
+- Add logic to parse pulumi venv on github action
+  [#4994](https://github.com/pulumi/pulumi/pull/4994)
+
+- Better performance for stacks with many resources using the .NET SDK
+  [#5015](https://github.com/pulumi/pulumi/pull/5015)
+
+- Output PDB files and enable SourceLink integration for .NET assemblies
+  [#4967](https://github.com/pulumi/pulumi/pull/4967)
+
+## 2.6.1 (2020-07-09)
+
+- Fix a panic in the display during CLI operations
+  [#4987](https://github.com/pulumi/pulumi/pull/4987)
+
+## 2.6.0 (2020-07-08)
+
 - Go program gen: Improved handling for pulumi.Map types
-  [#491](https://github.com/pulumi/pulumi/pull/4914)
+  [#4914](https://github.com/pulumi/pulumi/pull/4914)
 
 - Go SDK: Input type interfaces should declare pointer type impls where appropriate
   [#4911](https://github.com/pulumi/pulumi/pull/4911)
+
+- Fixes issue where base64-encoded GOOGLE_CREDENTIALS causes problems with other commands
+  [#4972](https://github.com/pulumi/pulumi/pull/4972)
 
 ## 2.5.0 (2020-06-25)
 
@@ -379,7 +406,7 @@ CHANGELOG
   [3938](https://github.com/pulumi/pulumi/pull/3938)
 
 - Add support for transformations in the Go SDK.
-  [3978](https://github.com/pulumi/pulumi/pull/3938)  
+  [3978](https://github.com/pulumi/pulumi/pull/3938)
 
 ## 1.11.0 (2020-02-19)
 - Allow oversize protocol buffers for Python SDK.

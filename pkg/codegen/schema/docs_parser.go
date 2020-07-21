@@ -133,9 +133,11 @@ func (p shortcodeParser) Open(parent ast.Node, reader text.Reader, pc parser.Con
 }
 
 func (p shortcodeParser) Continue(node ast.Node, reader text.Reader, pc parser.Context) parser.State {
-	line, _ := reader.PeekLine()
+	line, seg := reader.PeekLine()
 	pos := pc.BlockOffset()
 	if pos < 0 {
+		return parser.Continue | parser.HasChildren
+	} else if pos > seg.Len() {
 		return parser.Continue | parser.HasChildren
 	}
 

@@ -128,7 +128,7 @@ func (p PropertyPath) Get(v PropertyValue) (PropertyValue, bool) {
 	return v, true
 }
 
-// Set attempts to set the location inside a PropertyValue indicated by the PropertyPath to the given value If any
+// Set attempts to set the location inside a PropertyValue indicated by the PropertyPath to the given value. If any
 // component of the path besides the last component does not exist, this function will return false.
 func (p PropertyPath) Set(dest, v PropertyValue) bool {
 	if len(p) == 0 {
@@ -158,6 +158,72 @@ func (p PropertyPath) Set(dest, v PropertyValue) bool {
 		return false
 	}
 	return true
+}
+
+// Add sets the location inside a PropertyValue indicated by the PropertyPath to the given value. Any components
+// referred to by the path that do not exist will be created. If there is a mismatch between the type of an existing
+// component and a key that traverses that component, this function will return false. If the destination is a null
+// property value, this function will create and return a new property value.
+func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
+	if len(p) == 0 {
+		return PropertyValue{}, false
+	}
+
+	// set sets the destination referred to by the last element of the path to the given value.
+	rv := dest
+	set := func(v PropertyValue) {
+		dest, rv = v, v
+	}
+	for _, key := range p {
+		switch key := key.(type) {
+		case int:
+			// This key is an int, so we expect an array.
+			switch {
+			case dest.IsNull():
+				// If the destination array does not exist, create a new array with enough room to store the value at
+				// the requested index.
+				dest = NewArrayProperty(make([]PropertyValue, key+1))
+				set(dest)
+			case dest.IsArray():
+				// If the destination array does exist, ensure that it is large enough to accommodate the requested
+				// index.
+				arr := dest.ArrayValue()
+				if key >= len(arr) {
+					arr = append(make([]PropertyValue, key+1-len(arr)), arr...)
+					v.V = arr
+				}
+			default:
+				return PropertyValue{}, false
+			}
+			destV := dest.ArrayValue()
+			set = func(v PropertyValue) {
+				destV[key] = v
+			}
+			dest = destV[key]
+		case string:
+			// This key is a string, so we expect an object.
+			switch {
+			case dest.IsNull():
+				// If the destination does not exist, create a new object.
+				dest = NewObjectProperty(PropertyMap{})
+				set(dest)
+			case dest.IsObject():
+				// OK
+			default:
+				return PropertyValue{}, false
+			}
+			destV := dest.ObjectValue()
+			set = func(v PropertyValue) {
+				destV[PropertyKey(key)] = v
+			}
+			dest = destV[PropertyKey(key)]
+		default:
+			return PropertyValue{}, false
+		}
+	}
+
+	set(v)
+	return rv, true
 }
 
 // Delete attempts to delete the value located by the PropertyPath inside the given PropertyValue. If any component

@@ -245,6 +245,43 @@ func TestSecureValues(t *testing.T) {
 	}
 }
 
+func TestCopyValue(t *testing.T) {
+	tests := []struct {
+		Val      Value
+		Expected Value
+	}{
+		{
+			Val:      NewValue("value"),
+			Expected: NewValue("value"),
+		},
+		{
+			Val:      NewObjectValue(`{"foo":"bar"}`),
+			Expected: NewObjectValue(`{"foo":"bar"}`),
+		},
+		{
+			Val:      NewSecureObjectValue(`{"foo":{"secure":"stackAsecurevalue"}}`),
+			Expected: NewSecureObjectValue(`{"foo":{"secure":"stackBsecurevalue"}}`),
+		},
+		{
+			Val:      NewSecureValue("stackAsecurevalue"),
+			Expected: NewSecureValue("stackBsecurevalue"),
+		},
+		{
+			Val:      NewSecureObjectValue(`["a",{"secure":"stackAalpha"},{"test":{"secure":"stackAbeta"}}]`),
+			Expected: NewSecureObjectValue(`["a",{"secure":"stackBalpha"},{"test":{"secure":"stackBbeta"}}]`),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			newConfig, err := test.Val.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.Expected, newConfig)
+		})
+	}
+}
+
 func roundtripValueYAML(v Value) (Value, error) {
 	return roundtripValue(v, yaml.Marshal, yaml.Unmarshal)
 }

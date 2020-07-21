@@ -92,6 +92,14 @@ func camel(s string) string {
 	return string(res)
 }
 
+func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string) string {
+	mod := pkg.TokenToModule(tok)
+	if override, ok := overrides[mod]; ok {
+		mod = override
+	}
+	return strings.ToLower(mod)
+}
+
 type pkgContext struct {
 	pkg            *schema.Package
 	mod            string
@@ -120,6 +128,10 @@ func (pkg *pkgContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
+func (pkg *pkgContext) tokenToPackage(tok string) string {
+	return tokenToPackage(pkg.pkg, pkg.modToPkg, tok)
+}
+
 func (pkg *pkgContext) tokenToType(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -133,14 +145,13 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
 	}
 
-	mod, name := pkg.pkg.TokenToModule(tok), components[2]
-	if override, ok := pkg.modToPkg[mod]; ok {
-		mod = override
-	}
+	mod, name := pkg.tokenToPackage(tok), components[2]
 
 	// If the package containing the type's token already has a resource with the
 	// same name, add a `Type` suffix.
-	modPkg := pkg.getPkg(mod)
+	modPkg, ok := pkg.packages[mod]
+	contract.Assert(ok)
+
 	name = Title(name)
 	if modPkg.names.has(name) {
 		name += "Type"
@@ -148,6 +159,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	if mod == pkg.mod {
 		return name
+	}
+	if mod == "" {
+		mod = components[0]
 	}
 	return strings.Replace(mod, "/", "", -1) + "." + name
 }
@@ -921,10 +935,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports strin
 	case *schema.MapType:
 		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.ObjectType:
-		mod := pkg.pkg.TokenToModule(t.Token)
-		if override, ok := pkg.modToPkg[mod]; ok {
-			mod = override
-		}
+		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			imports.add(path.Join(pkg.importBasePath, mod))
 		}
@@ -1071,25 +1082,10 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
-func (pkg *pkgContext) getPkg(mod string) *pkgContext {
-	if override, ok := pkg.modToPkg[mod]; ok {
-		mod = override
-	}
-	pack, ok := pkg.packages[mod]
-	if !ok {
-		return nil
-	}
-	return pack
-}
-
 // generatePackageContextMap groups resources, types, and functions into Go packages.
 func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 	getPkg := func(mod string) *pkgContext {
-		if override, ok := goInfo.ModuleToPackage[mod]; ok {
-			mod = override
-		}
-
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
@@ -1110,7 +1106,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	getPkgFromToken := func(token string) *pkgContext {
-		return getPkg(pkg.TokenToModule(token))
+		return getPkg(tokenToPackage(pkg, goInfo.ModuleToPackage, token))
 	}
 
 	if len(pkg.Config) > 0 {

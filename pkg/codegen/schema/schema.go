@@ -303,6 +303,8 @@ type Package struct {
 	Repository string
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string
+	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
+	PluginDownloadURL string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -316,6 +318,9 @@ type Package struct {
 	Functions []*Function
 	// Language specifies additional language-specific data about the package.
 	Language map[string]interface{}
+
+	resourceTable map[string]*Resource
+	functionTable map[string]*Function
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -539,6 +544,16 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 }
 
+func (pkg *Package) GetResource(token string) (*Resource, bool) {
+	r, ok := pkg.resourceTable[token]
+	return r, ok
+}
+
+func (pkg *Package) GetFunction(token string) (*Function, bool) {
+	f, ok := pkg.functionTable[token]
+	return f, ok
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -681,6 +696,8 @@ type PackageSpec struct {
 	Repository string `json:"repository,omitempty"`
 	// LogoURL is the URL for the package's logo, if any.
 	LogoURL string `json:"logoUrl,omitempty"`
+	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty"`
@@ -736,12 +753,12 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		return nil, errors.Wrap(err, "binding provider")
 	}
 
-	resources, err := bindResources(spec.Resources, types)
+	resources, resourceTable, err := bindResources(spec.Resources, types)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding resources")
 	}
 
-	functions, err := bindFunctions(spec.Functions, types)
+	functions, functionTable, err := bindFunctions(spec.Functions, types)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding functions")
 	}
@@ -774,21 +791,24 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	}
 
 	pkg := &Package{
-		moduleFormat: moduleFormatRegexp,
-		Name:         spec.Name,
-		Version:      version,
-		Description:  spec.Description,
-		Keywords:     spec.Keywords,
-		Homepage:     spec.Homepage,
-		License:      spec.License,
-		Attribution:  spec.Attribution,
-		Repository:   spec.Repository,
-		Config:       config,
-		Types:        typeList,
-		Provider:     provider,
-		Resources:    resources,
-		Functions:    functions,
-		Language:     language,
+		moduleFormat:      moduleFormatRegexp,
+		Name:              spec.Name,
+		Version:           version,
+		Description:       spec.Description,
+		Keywords:          spec.Keywords,
+		Homepage:          spec.Homepage,
+		License:           spec.License,
+		Attribution:       spec.Attribution,
+		Repository:        spec.Repository,
+		PluginDownloadURL: spec.PluginDownloadURL,
+		Config:            config,
+		Types:             typeList,
+		Provider:          provider,
+		Resources:         resources,
+		Functions:         functions,
+		Language:          language,
+		resourceTable:     resourceTable,
+		functionTable:     functionTable,
 	}
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, err
@@ -1186,13 +1206,15 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 	return res, nil
 }
 
-func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, error) {
+func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, map[string]*Resource, error) {
+	resourceTable := map[string]*Resource{}
 	var resources []*Resource
 	for token, spec := range specs {
 		res, err := bindResource(token, spec, types)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding resource %v", token)
+			return nil, nil, errors.Wrapf(err, "error binding resource %v", token)
 		}
+		resourceTable[token] = res
 		resources = append(resources, res)
 	}
 
@@ -1200,7 +1222,7 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, er
 		return resources[i].Token < resources[j].Token
 	})
 
-	return resources, nil
+	return resources, resourceTable, nil
 }
 
 func bindFunction(token string, spec FunctionSpec, types *types) (*Function, error) {
@@ -1237,13 +1259,15 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 	}, nil
 }
 
-func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, error) {
+func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, map[string]*Function, error) {
+	functionTable := map[string]*Function{}
 	var functions []*Function
 	for token, spec := range specs {
 		f, err := bindFunction(token, spec, types)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error binding function %v", token)
+			return nil, nil, errors.Wrapf(err, "error binding function %v", token)
 		}
+		functionTable[token] = f
 		functions = append(functions, f)
 	}
 
@@ -1251,5 +1275,5 @@ func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, er
 		return functions[i].Token < functions[j].Token
 	})
 
-	return functions, nil
+	return functions, functionTable, nil
 }

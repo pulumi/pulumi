@@ -80,8 +80,160 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigRmCmd(&stack))
 	cmd.AddCommand(newConfigSetCmd(&stack))
 	cmd.AddCommand(newConfigRefreshCmd(&stack))
+	cmd.AddCommand(newConfigCopyCmd(&stack))
 
 	return cmd
+}
+
+func newConfigCopyCmd(stack *string) *cobra.Command {
+	var path bool
+	var destinationStackName string
+
+	cpCommand := &cobra.Command{
+		Use:   "cp [key]",
+		Short: "Copy config to another stack",
+		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
+			"then all of the config from the current stack will be copied to the destination stack.",
+		Args: cmdutil.MaximumNArgs(1),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			// Get current stack and ensure that it is a different stack to the destination stack
+			currentStack, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+			if currentStack.Ref().Name().String() == destinationStackName {
+				return errors.New("current stack and destination stack are the same")
+			}
+			currentProjectStack, err := loadProjectStack(currentStack)
+			if err != nil {
+				return err
+			}
+
+			// Get the destination stack
+			destinationStack, err := requireStack(destinationStackName, false, opts, false /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+			destinationProjectStack, err := loadProjectStack(destinationStack)
+			if err != nil {
+				return err
+			}
+
+			// Do we need to copy a single value or the entire map
+			if len(args) > 0 {
+				// A single key was specified so we only need to copy that specific value
+				return copySingleConfigKey(args[0], path, currentStack, currentProjectStack, destinationStack,
+					destinationProjectStack)
+			}
+
+			return copyEntireConfigMap(currentStack, currentProjectStack, destinationStack, destinationProjectStack)
+		}),
+	}
+
+	cpCommand.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"The key contains a path to a property in a map or list to set")
+	cpCommand.PersistentFlags().StringVarP(
+		&destinationStackName, "dest", "d", "",
+		"The name of the new stack to copy the config to")
+
+	return cpCommand
+}
+
+func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack,
+	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
+	destinationProjectStack *workspace.ProjectStack) error {
+	var decrypter config.Decrypter
+	key, err := parseConfigKey(configKey)
+	if err != nil {
+		return errors.Wrap(err, "invalid configuration key")
+	}
+
+	v, ok, err := currentProjectStack.Config.Get(key, path)
+	if err != nil {
+		return err
+	}
+	if ok {
+		if v.Secure() {
+			var err error
+			if decrypter, err = getStackDecrypter(currentStack); err != nil {
+				return errors.Wrap(err, "could not create a decrypter")
+			}
+		} else {
+			decrypter = config.NewPanicCrypter()
+		}
+
+		encrypter, cerr := getStackEncrypter(destinationStack)
+		if cerr != nil {
+			return cerr
+		}
+
+		val, err := v.Copy(decrypter, encrypter)
+		if err != nil {
+			return err
+		}
+
+		err = destinationProjectStack.Config.Set(key, val, path)
+		if err != nil {
+			return err
+		}
+
+		return saveProjectStack(destinationStack, destinationProjectStack)
+	}
+
+	return errors.Errorf(
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+}
+
+func copyEntireConfigMap(currentStack backend.Stack,
+	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
+	destinationProjectStack *workspace.ProjectStack) error {
+
+	var decrypter config.Decrypter
+	currentConfig := currentProjectStack.Config
+	if currentConfig.HasSecureValue() {
+		dec, decerr := getStackDecrypter(currentStack)
+		if decerr != nil {
+			return decerr
+		}
+		decrypter = dec
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	encrypter, cerr := getStackEncrypter(destinationStack)
+	if cerr != nil {
+		return cerr
+	}
+
+	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
+	if err != nil {
+		return err
+	}
+
+	var requiresSaving bool
+	for key, val := range newProjectConfig {
+		err = destinationProjectStack.Config.Set(key, val, false)
+		if err != nil {
+			return err
+		}
+		requiresSaving = true
+	}
+
+	// The use of `requiresSaving` here ensures that there was actually some config
+	// that needed saved, otherwise it's an unnecessary save call
+	if requiresSaving {
+		err := saveProjectStack(destinationStack, destinationProjectStack)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
@@ -431,7 +583,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		dec, decerr := getStackDencrypter(stack)
+		dec, decerr := getStackDecrypter(stack)
 		if decerr != nil {
 			return decerr
 		}
@@ -518,7 +670,7 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 		var d config.Decrypter
 		if v.Secure() {
 			var err error
-			if d, err = getStackDencrypter(stack); err != nil {
+			if d, err = getStackDecrypter(stack); err != nil {
 				return errors.Wrap(err, "could not create a decrypter")
 			}
 		} else {

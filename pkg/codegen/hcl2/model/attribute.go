@@ -49,6 +49,14 @@ func (a *Attribute) HasTrailingTrivia() bool {
 	return a.Value.HasTrailingTrivia()
 }
 
+func (a *Attribute) GetLeadingTrivia() syntax.TriviaList {
+	return a.Tokens.GetName(a.Name).LeadingTrivia
+}
+
+func (a *Attribute) GetTrailingTrivia() syntax.TriviaList {
+	return a.Value.GetTrailingTrivia()
+}
+
 func (a *Attribute) Format(f fmt.State, c rune) {
 	a.print(f, &printer{})
 }

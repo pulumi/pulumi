@@ -68,7 +68,7 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 
 			out := os.Stdout
 			if event.Type == engine.DiagEvent {
-				payload := event.Payload.(engine.DiagEventPayload)
+				payload := event.Payload().(engine.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = os.Stderr
 				}
@@ -96,25 +96,26 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
 	case engine.PreludeEvent:
-		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(action, event.Payload.(engine.SummaryEventPayload), false /* wroteDiagnosticHeader */, opts)
+		const wroteDiagnosticHeader = false
+		return renderSummaryEvent(action, event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
 	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
+		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
 		// Resource operations have very specific displays for either diff or progress displays.
 		// These functions should not be directly used by the progress display without validating
 		// that the display is appropriate for both.
 	case engine.ResourceOperationFailed:
-		return renderDiffResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		return renderDiffResourceOperationFailedEvent(event.Payload().(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
-		return renderDiffResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+		return renderDiffResourceOutputsEvent(event.Payload().(engine.ResourceOutputsEventPayload), seen, opts)
 	case engine.ResourcePreEvent:
-		return renderDiffResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
+		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
-		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
 	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload.(engine.PolicyViolationEventPayload), opts)
+		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -332,7 +333,7 @@ func renderDiffResourcePreEvent(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) string {
 
-	seen[payload.Metadata.Res.URN] = payload.Metadata
+	seen[payload.Metadata.URN] = payload.Metadata
 	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
 		return ""
 	}
@@ -360,7 +361,7 @@ func renderDiffResourceOutputsEvent(
 		indent := engine.GetIndent(payload.Metadata, seen)
 
 		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.Res.URN]; has && m.Op == deploy.OpRefresh {
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true
 			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))

@@ -30,7 +30,6 @@ from typing import (
 )
 
 from . import runtime
-from .runtime import known_types
 from .runtime import rpc
 
 if TYPE_CHECKING:
@@ -43,7 +42,6 @@ Input = Union[T, Awaitable[T], 'Output[T]']
 Inputs = Mapping[str, Input[Any]]
 
 
-@known_types.output
 class Output(Generic[T]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -223,7 +221,6 @@ class Output(Generic[T]):
         """
         return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
 
-
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
         Syntax sugar for looking up attributes dynamically off of outputs.
@@ -371,7 +368,6 @@ class Output(Generic[T]):
         return Output.all(*transformed_items).apply("".join) # type: ignore
 
 
-@known_types.unknown
 class Unknown:
     """
     Unknown represents a value that is unknown.
@@ -380,10 +376,12 @@ class Unknown:
     def __init__(self):
         pass
 
+
 UNKNOWN = Unknown()
 """
 UNKNOWN is the singleton unknown value.
 """
+
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)

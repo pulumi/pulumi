@@ -478,9 +478,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsProvider {
 		trailingBrace, optionsType = " {", "ResourceOptions"
 	}
-	if r.StateInputs == nil {
-		trailingBrace = " {"
-	}
 
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
@@ -498,27 +495,34 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			// conditional state into sensible variables using dynamic type tests.
 			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
 				argsType, stateType)
+		} else {
+			// Otherwise, write out a constructor with no state and required opts, then another with all optional params.
+			fmt.Fprintf(w, "    constructor(name: string, state: undefined, opts: pulumi.CustomResourceOptions)\n")
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s, opts?: pulumi.CustomResourceOptions) {\n",
+				argsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+
 		if r.StateInputs != nil {
 			// The lookup case:
 			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
-			for _, prop := range r.Properties {
+			for _, prop := range r.StateInputs.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
-			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
+		} else {
+			// The creation case:
+			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
 		}
+		fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 	} else {
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		if r.StateInputs != nil {
-			fmt.Fprintf(w, "        {\n")
-		}
+		fmt.Fprintf(w, "        {\n")
 	}
 	for _, prop := range r.InputProperties {
 		if prop.IsRequired {
@@ -531,10 +535,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
 
 		prefix := "            "
-		if r.StateInputs == nil {
-			prefix = "        "
-		}
-
 		if prop.ConstValue != nil {
 			cv, err := mod.getConstValue(prop.ConstValue)
 			if err != nil {
@@ -566,9 +566,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	var secretProps []string
 	for _, prop := range r.Properties {
 		prefix := "            "
-		if r.StateInputs == nil {
-			prefix = "        "
-		}
 		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
 		}
@@ -577,9 +574,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			secretProps = append(secretProps, prop.Name)
 		}
 	}
-	if r.StateInputs != nil {
-		fmt.Fprintf(w, "        }\n")
-	}
+	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "        if (!opts) {\n")
@@ -1059,8 +1054,10 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 func (mod *modContext) gen(fs fs) error {
 	files := append([]string(nil), mod.extraSourceFiles...)
 
+	modDir := strings.ToLower(mod.mod)
+
 	addFile := func(name, contents string) {
-		p := path.Join(mod.mod, name)
+		p := path.Join(modDir, name)
 		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
@@ -1071,7 +1068,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(path.Join(mod.mod, "utilities.ts"), buffer.Bytes())
+		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
@@ -1090,7 +1087,7 @@ func (mod *modContext) gen(fs fs) error {
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
-		fs.add(path.Join(mod.mod, "README.md"), []byte(readme))
+		fs.add(path.Join(modDir, "README.md"), []byte(readme))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
@@ -1140,12 +1137,12 @@ func (mod *modContext) gen(fs fs) error {
 	// Nested types
 	if len(mod.types) > 0 {
 		input, output := mod.genTypes()
-		fs.add(path.Join(mod.mod, "input.ts"), []byte(input))
-		fs.add(path.Join(mod.mod, "output.ts"), []byte(output))
+		fs.add(path.Join(modDir, "input.ts"), []byte(input))
+		fs.add(path.Join(modDir, "output.ts"), []byte(output))
 	}
 
 	// Index
-	fs.add(path.Join(mod.mod, "index.ts"), []byte(mod.genIndex(files)))
+	fs.add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
 	return nil
 }
 
@@ -1156,10 +1153,11 @@ func (mod *modContext) genIndex(exports []string) string {
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
+		modDir := strings.ToLower(mod.mod)
 		fmt.Fprintf(w, "// Export members:\n")
 		sort.Strings(exports)
 		for _, exp := range exports {
-			rel, err := filepath.Rel(mod.mod, exp)
+			rel, err := filepath.Rel(modDir, exp)
 			contract.Assert(err == nil)
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
@@ -1171,7 +1169,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
-		child := mod.mod
+		child := strings.ToLower(mod.mod)
 		if mod.compatibility == kubernetes20 {
 			// Extract version suffix from child modules. Nested versions will have their own index.ts file.
 			// Example: apps/v1beta1 -> v1beta1
@@ -1238,7 +1236,8 @@ type npmPackage struct {
 }
 
 type npmPulumiManifest struct {
-	Resource bool `json:"resource,omitempty"`
+	Resource          bool   `json:"resource,omitempty"`
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -1270,7 +1269,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
-			Resource: true,
+			Resource:          true,
+			PluginDownloadURL: pkg.PluginDownloadURL,
 		},
 	}
 

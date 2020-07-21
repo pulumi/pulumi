@@ -119,7 +119,7 @@ func (s *nopSpinner) Reset() {
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
 func isRootStack(step engine.StepEventMetadata) bool {
-	return isRootURN(step.Res.URN)
+	return isRootURN(step.URN)
 }
 
 func isRootURN(urn resource.URN) bool {

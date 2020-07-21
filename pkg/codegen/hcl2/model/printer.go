@@ -19,6 +19,8 @@ import (
 	"io"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 )
 
 type printable interface {
@@ -28,6 +30,10 @@ type printable interface {
 	HasLeadingTrivia() bool
 	// HasTrailingTrivia returns true if the value has associated trailing trivia.
 	HasTrailingTrivia() bool
+	// GetLeadingTrivia returns the leading trivia for this value, if any.
+	GetLeadingTrivia() syntax.TriviaList
+	// GetTrailingTrivia returns the trailing trivia for this value, if any.
+	GetTrailingTrivia() syntax.TriviaList
 }
 
 type printer struct {
@@ -50,7 +56,7 @@ func (p *printer) format(f fmt.State, c rune, pp printable) {
 	if f.Flag(' ') && !pp.HasLeadingTrivia() {
 		switch pp.(type) {
 		case BodyItem:
-			p.fprintf(f, "\n%s", p.indent)
+			p.fprintf(f, "%s", p.indent)
 		case Expression:
 			p.fprintf(f, " ")
 		}

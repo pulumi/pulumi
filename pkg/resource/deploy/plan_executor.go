@@ -82,9 +82,9 @@ func (pe *planExecutor) checkTargets(targets []resource.URN, op StepOp) result.R
 
 			logging.V(7).Infof("Resource to %v (%v) could not be found in the stack.", op, target)
 			if strings.Contains(string(target), "$") {
-				pe.plan.diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
 			} else {
-				pe.plan.diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
+				pe.plan.Diag().Errorf(diag.GetTargetCouldNotBeFoundDidYouForgetError(), target)
 			}
 		}
 	}
@@ -108,7 +108,7 @@ func (pe *planExecutor) reportExecResult(message string, preview bool) {
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
 func (pe *planExecutor) reportError(urn resource.URN, err error) {
-	pe.plan.diag().Errorf(diag.RawMessage(urn, err.Error()))
+	pe.plan.Diag().Errorf(diag.RawMessage(urn, err.Error()))
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
@@ -343,7 +343,7 @@ func (pe *planExecutor) performDeletes(
 	if targetsOpt != nil {
 		resourceToStep := make(map[*resource.State]Step)
 		for _, step := range deleteSteps {
-			resourceToStep[pe.plan.olds[step.Res().URN]] = step
+			resourceToStep[pe.plan.olds[step.URN()]] = step
 		}
 
 		pe.rebuildBaseState(resourceToStep, false /*refresh*/)
@@ -400,7 +400,7 @@ func (pe *planExecutor) retirePendingDeletes(callerCtx context.Context, opts Opt
 	// Submit the deletes for execution and wait for them all to retire.
 	for _, antichain := range antichains {
 		for _, step := range antichain {
-			pe.plan.ctx.StatusDiag.Infof(diag.RawMessage(step.Res().URN, "completing deletion from previous update"))
+			pe.plan.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
 		}
 
 		tok := stepExec.ExecuteParallel(antichain)

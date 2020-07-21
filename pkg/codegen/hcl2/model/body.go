@@ -61,6 +61,23 @@ func (b *Body) HasTrailingTrivia() bool {
 	return len(b.Items) > 0 && b.Items[len(b.Items)-1].HasTrailingTrivia()
 }
 
+func (b *Body) GetLeadingTrivia() syntax.TriviaList {
+	if len(b.Items) == 0 {
+		return nil
+	}
+	return b.Items[0].GetLeadingTrivia()
+}
+
+func (b *Body) GetTrailingTrivia() syntax.TriviaList {
+	if eof := b.Tokens.GetEndOfFile(); eof != nil {
+		return eof.TrailingTrivia
+	}
+	if len(b.Items) == 0 {
+		return nil
+	}
+	return b.Items[len(b.Items)-1].GetTrailingTrivia()
+}
+
 func (b *Body) Format(f fmt.State, c rune) {
 	b.print(f, &printer{})
 }
@@ -69,6 +86,9 @@ func (b *Body) print(w io.Writer, p *printer) {
 	// Print the items, separated by newlines.
 	for _, item := range b.Items {
 		p.fprintf(w, "% v", item)
+		if !item.GetTrailingTrivia().EndsOnNewLine() {
+			p.fprintf(w, "\n")
+		}
 	}
 
 	// If the body has an end-of-file token, print it.
