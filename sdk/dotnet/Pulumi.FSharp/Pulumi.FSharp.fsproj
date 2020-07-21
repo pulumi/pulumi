@@ -17,12 +17,22 @@
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Compile Include="Library.fs" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Pulumi\Pulumi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Library.fs" />
   </ItemGroup>
 
   <ItemGroup>

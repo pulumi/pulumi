@@ -129,6 +129,16 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <NoWarn>1701;1702;1591</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
     <Content Include="version.txt" />
