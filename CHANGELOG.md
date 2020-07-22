@@ -1,7 +1,12 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 2.7.1 (2020-07-22)
+
+- Fix logic to parse pulumi venv on github action
+  [5038](https://github.com/pulumi/pulumi/pull/5038)
+
+## 2.7.0 (2020-07-22)
 
 - Add pluginDownloadURL field to package definition
   [#4947](https://github.com/pulumi/pulumi/pull/4947)
@@ -20,9 +25,6 @@ CHANGELOG
 
 - Output PDB files and enable SourceLink integration for .NET assemblies
   [#4967](https://github.com/pulumi/pulumi/pull/4967)
-
-- Fix logic to parse pulumi venv on github action
-  [5038](https://github.com/pulumi/pulumi/pull/5038)
 
 ## 2.6.1 (2020-07-09)
 
