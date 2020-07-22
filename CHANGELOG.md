@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- Update pip/setuptools/wheel in virtual environment before installing dependencies
+  [#5042](https://github.com/pulumi/pulumi/pull/5042)
+
 ## 2.7.1 (2020-07-22)
 
 - Fix logic to parse pulumi venv on github action
