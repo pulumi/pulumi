@@ -5,9 +5,10 @@ CHANGELOG
 
 - Add pluginDownloadURL field to package definition
   [#4947](https://github.com/pulumi/pulumi/pull/4947)
+
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
-  
+
 - Add ability to copy configuration values between stacks
   [#4971](https://github.com/pulumi/pulumi/pull/4971)
 
@@ -19,6 +20,9 @@ CHANGELOG
 
 - Output PDB files and enable SourceLink integration for .NET assemblies
   [#4967](https://github.com/pulumi/pulumi/pull/4967)
+
+- Fix logic to parse pulumi venv on github action
+  [5038](https://github.com/pulumi/pulumi/pull/5038)
 
 ## 2.6.1 (2020-07-09)
 
