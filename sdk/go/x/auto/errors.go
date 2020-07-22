@@ -1,13 +1,12 @@
 package auto
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
-// question: should we expose this struct and allow users to access
-// raw error/out output?
 type autoError struct {
 	stdout string
 	stderr string
@@ -25,7 +24,9 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 }
 
 func (ae autoError) Error() string {
-	return errors.Wrap(ae.err, ae.stderr).Error()
+	return errors.Wrap(
+		ae.err, fmt.Sprintf("code: %d\n, stdout: %s\n, stderr: %s\n", ae.code, ae.stdout, ae.stderr),
+	).Error()
 }
 
 func IsConcurrentUpdateError(e error) bool {
