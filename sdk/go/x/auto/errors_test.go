@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TODO setup/teardown for npm, python, etc
+
 func TestConflicError(t *testing.T) {
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	ps := ProjectSpec{
@@ -169,6 +171,216 @@ func TestCompileErrorTypescript(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.True(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestRuntimeErrorGo(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name:       "runtime_error",
+		SourcePath: filepath.Join(".", "test", "errors", "runtime_error", "go"),
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestRuntimeErrorPython(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name:       "runtime_error",
+		SourcePath: filepath.Join(".", "test", "errors", "runtime_error", "python"),
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestRuntimeErrorJavascript(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name:       "runtime_error",
+		SourcePath: filepath.Join(".", "test", "errors", "runtime_error", "javascript"),
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestRuntimeErrorTypescript(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name:       "runtime_error",
+		SourcePath: filepath.Join(".", "test", "errors", "runtime_error", "typescript"),
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestRuntimeErrorDotnet(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name:       "runtime_error",
+		SourcePath: filepath.Join(".", "test", "errors", "runtime_error", "dotnet"),
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
 
 	// -- pulumi destroy --
 
