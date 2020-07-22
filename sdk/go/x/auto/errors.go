@@ -94,6 +94,17 @@ func IsRuntimeError(e error) bool {
 	return false
 }
 
+// IsUnexpectedEngineError returns true if the pulumi core engine encountered an error (most likely a bug).
+func IsUnexpectedEngineError(e error) bool {
+	// TODO: figure out how to write a test for this
+	as, ok := e.(autoError)
+	if !ok {
+		return false
+	}
+
+	return strings.Contains(as.stdout, "The Pulumi CLI encountered a fatal error. This is a bug!")
+}
+
 // TODO IsProviderError
 // errors are not consistently labeled, will likely need a new strategy.
 // Error creating S3 bucket: BucketAlreadyExists: The requested bucket name is not available.
