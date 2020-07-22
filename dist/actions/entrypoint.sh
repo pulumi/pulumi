@@ -121,12 +121,12 @@ if [ -e requirements.txt ]; then
     # Check if should use venv
     PULUMI_VENV=$(cat Pulumi.yaml | grep "virtualenv:" | cut -d':' -f2)
     if [ -z $PULUMI_VENV ]; then
+        pip3 install -r requirements.txt
+    else
         python3 -m venv $PULUMI_VENV
         source $PULUMI_VENV/bin/activate
         pip3 install -r requirements.txt
         deactivate
-    else
-        pip3 install -r requirements.txt
     fi
 fi
 
