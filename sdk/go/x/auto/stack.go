@@ -54,6 +54,14 @@ func NewStack(ss StackSpec) (Stack, error) {
 		return nil, err
 	}
 
+	if ss.Project.Remote != nil {
+		p, err := setupRemote(ss.Project.Remote)
+		ss.Project.SourcePath = p
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to enlist and setup remote")
+		}
+	}
+
 	s := &stack{
 		Name:        ss.Name,
 		ProjectName: ss.Project.Name,
@@ -107,11 +115,35 @@ type StackSpec struct {
 type ProjectSpec struct {
 	// Name of the project
 	Name string
-	//
+
+	// (Local program) source directory containing the pulumi program
 	SourcePath string
-	// Overrides is an optional set of values to overwrite in pulumi.yaml
+
+	// (Remote program) information to clone and setup a git hosted pulumi program
+	Remote *RemoteArgs
+
+	// Optional set of values to upsert into existing pulumi.yaml
 	Overrides *ProjectOverrides
 }
+
+type RemoteArgs struct {
+	// Git URL used to fetch the repository.
+	RepoURL string
+
+	// Optional path relative to the repo root specifying location of the pulumi program
+	ProjectPath *string
+	// Optional branch to checkout
+	Branch *string
+	// Optional commit to checkout
+	CommitHash *string
+	// Optional function to execute after enlisting in the specified repo.
+	Setup SetupFn
+	// Optional directory to enlist repo, defaults to using ioutil.TempDir.
+	WorkDir *string
+}
+
+// SetupFn is called with a PATH containing a pulumi program after enlistment
+type SetupFn func(string) error
 
 // ProjectOverrides is an optional set of values to be merged with
 // the existing pulumi.yaml
@@ -143,8 +175,18 @@ func (ss *StackSpec) validate() error {
 	if ss.Project.Name == "" {
 		return errors.New("missing project name")
 	}
-	if ss.Project.SourcePath == "" {
-		return errors.New("missing project source path")
+	if ss.Project.SourcePath == "" && ss.Project.Remote == nil {
+		return errors.New("must specify one of `ProjectSpec.Source` or `ProjectSpec.Remote`")
+	}
+	if ss.Project.Remote != nil {
+		if ss.Project.SourcePath != "" {
+			return errors.New(
+				"`ProjectSpec.Source` and `ProjectSpec.Remote` are mutually exclusive, but both were provided",
+			)
+		}
+		if ss.Project.Remote.RepoURL == "" {
+			return errors.New("Missing git source URL `Project.Remote.RepoURL`")
+		}
 	}
 	return nil
 }
@@ -156,6 +198,3 @@ type stack struct {
 }
 
 func (s *stack) isStack() {}
-
-// TODO define a "AUTOMATION_ERROR type w stdout, stderr, & errcode"
-// perhaps at first we can just do some parsing of stderr to demo IsConflictError()
