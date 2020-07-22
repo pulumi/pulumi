@@ -10,7 +10,7 @@ import (
 
 // TODO setup/teardown for npm, python, etc
 
-func TestConflicError(t *testing.T) {
+func TestConcurrentUpdateError(t *testing.T) {
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	ps := ProjectSpec{
 		Name:       "conflict_error",
