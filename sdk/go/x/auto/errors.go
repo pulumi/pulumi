@@ -6,6 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// question: should we expose this struct and allow users to access
+// raw error/out output?
 type autoError struct {
 	stdout string
 	stderr string
@@ -91,3 +93,9 @@ func IsRuntimeError(e error) bool {
 
 	return false
 }
+
+// TODO IsProviderError
+// errors are not consistently labeled, will likely need a new strategy.
+// Error creating S3 bucket: BucketAlreadyExists: The requested bucket name is not available.
+// could not make instance of 'aws:s3/bucket:Bucket': name '...' plus 7 random chars is longer than maximum length 63
+// Error creating S3 bucket: IllegalLocationConstraintException
