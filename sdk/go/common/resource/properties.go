@@ -98,6 +98,8 @@ type Secret struct {
 
 // ResourceReference is a property value that represents a reference to a Resource. The reference captures the
 // resource's URN, ID, and the version of its containing package.
+//
+//nolint: golint
 type ResourceReference struct {
 	URN            URN
 	ID             ID
