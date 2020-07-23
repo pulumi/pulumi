@@ -29,7 +29,7 @@ namespace Pulumi
             var argsDict = await args.ToDictionaryAsync().ConfigureAwait(false);
             var serialized = await SerializeAllPropertiesAsync(
     				$"invoke:{token}",
-    				argsDict, await this.MointorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+    				argsDict, await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
             Log.Debug($"Invoke RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 

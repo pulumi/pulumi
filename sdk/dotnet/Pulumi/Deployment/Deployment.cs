@@ -134,18 +134,18 @@ namespace Pulumi
             set => Stack = value;
         }
 
-        private async Task<bool> MonitorSupportsFeature(IMonitor monitor, string feature)
+        private async Task<bool> MonitorSupportsFeature(string feature)
         {
             if (!this._featureSupport.ContainsKey(feature))
             {
-                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature }
-                var response = await monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
+                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature };
+                var response = await this.Monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
                 this._featureSupport[feature] = response.HasSupport;
             }
             return this._featureSupport[feature];
         }
 
-        internal async Task<bool> MonitorSupportsResourceReferences()
+        internal Task<bool> MonitorSupportsResourceReferences()
         {
             return MonitorSupportsFeature("resourceReferences");
         }
