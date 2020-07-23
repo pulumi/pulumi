@@ -112,10 +112,14 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
 func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv string) error) error {
-	if showOutput {
-		fmt.Println("Creating virtual environment...")
-		fmt.Println()
+	print := func(message string) {
+		if showOutput {
+			fmt.Println(message)
+			fmt.Println()
+		}
 	}
+
+	print("Creating virtual environment...")
 
 	// Create the virtual environment by running `python -m venv venv`.
 	venvDir := filepath.Join(root, "venv")
@@ -136,49 +140,60 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 		return err
 	}
 
-	if showOutput {
-		fmt.Println("Finished creating virtual environment")
-		fmt.Println()
+	print("Finished creating virtual environment")
+
+	runPipInstall := func(errorMsg string, arg ...string) error {
+		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
+		pipCmd.Dir = root
+		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+
+		wrapError := func(err error) error {
+			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
+		}
+
+		if showOutput {
+			// Show stdout/stderr output.
+			pipCmd.Stdout = os.Stdout
+			pipCmd.Stderr = os.Stderr
+			if err := pipCmd.Run(); err != nil {
+				return wrapError(err)
+			}
+		} else {
+			// Otherwise, only show output if there is an error.
+			if output, err := pipCmd.CombinedOutput(); err != nil {
+				if len(output) > 0 {
+					os.Stdout.Write(output)
+					fmt.Println()
+				}
+				return wrapError(err)
+			}
+		}
+		return nil
 	}
 
-	// If `requirements.txt` doesn't exist, just exit early.
+	print("Updating pip, setuptools, and wheel in virtual environment...")
+
+	err = runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
+	if err != nil {
+		return err
+	}
+
+	print("Finished updating")
+
+	// If `requirements.txt` doesn't exist, exit early.
 	requirementsPath := filepath.Join(root, "requirements.txt")
 	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
 	}
 
-	if showOutput {
-		fmt.Println("Installing dependencies...")
-		fmt.Println()
+	print("Installing dependencies in virtual environment...")
+
+	err = runPipInstall("installing dependencies", "-r", "requirements.txt")
+	if err != nil {
+		return err
 	}
 
-	// Install dependencies by running `pip install -r requirements.txt` using the `pip`
-	// in the virtual environment.
-	pipCmd := VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
-	pipCmd.Dir = root
-	pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
-	if showOutput {
-		// Show stdout/stderr output.
-		pipCmd.Stdout = os.Stdout
-		pipCmd.Stderr = os.Stderr
-		if err := pipCmd.Run(); err != nil {
-			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
-		}
-	} else {
-		// Otherwise, only show output if there is an error.
-		if output, err := pipCmd.CombinedOutput(); err != nil {
-			if len(output) > 0 {
-				os.Stdout.Write(output)
-				fmt.Println()
-			}
-			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
-		}
-	}
-
-	if showOutput {
-		fmt.Println("Finished installing dependencies")
-		fmt.Println()
-	}
+	print("Finished installing dependencies")
 
 	return nil
 }
