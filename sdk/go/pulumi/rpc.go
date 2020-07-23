@@ -674,7 +674,7 @@ func packageKey(name, version string) string {
 	return fmt.Sprintf("%s@%s", name, version)
 }
 
-// RegisterResourcePackage register a resource pacakge with the Pulumi runtime.
+// RegisterResourcePackage register a resource package with the Pulumi runtime.
 func RegisterResourcePackage(name, version string, pkg ResourcePackage) {
 	key := packageKey(name, version)
 	existing, hasExisting := resourcePackages.LoadOrStore(key, pkg)

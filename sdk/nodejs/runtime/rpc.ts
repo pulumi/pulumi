@@ -370,7 +370,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
 
         if (await monitorSupportsResourceReferences()) {
-            // If we are keeping resources, emit a stronly typed wrapper over the URN
+            // If we are keeping resources, emit a strongly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
             return {
                 [specialSigKey]: specialResourceSig,

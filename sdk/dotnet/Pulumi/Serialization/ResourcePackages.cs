@@ -11,7 +11,7 @@ namespace Pulumi.Serialization
 {
 	public interface IResourcePackage
 	{
-		public Resource Construct(string name, string type, IDictionary<string, object?>? args, string urn);
+		Resource Construct(string name, string type, IDictionary<string, object?>? args, string urn);
 	}
 
 	internal static class ResourcePackages
