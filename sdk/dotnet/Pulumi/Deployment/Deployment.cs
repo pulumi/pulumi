@@ -1,6 +1,7 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pulumi.Testing;
@@ -51,14 +52,13 @@ namespace Pulumi
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
+        private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
         private readonly ILogger _logger;
         private readonly IRunner _runner;
 
         internal IEngine Engine { get; }
         internal IMonitor Monitor { get; }
-
-        internal bool SupportsResourceReferences { get; }
 
         internal Stack? _stack;
         internal Stack Stack
@@ -119,8 +119,6 @@ namespace Pulumi
             this.Monitor = monitor;
             _runner = new Runner(this);
             _logger = new Logger(this, this.Engine);
-
-            this.SupportsResourceReferences = monitorSupportsFeature(this.Monitor, "resourceReferences");
         }
 
         string IDeployment.ProjectName => _projectName;
@@ -136,10 +134,20 @@ namespace Pulumi
             set => Stack = value;
         }
 
-        private static bool monitorSupportsFeature(IMonitor monitor, string feature)
+        private async Task<bool> MonitorSupportsFeature(IMonitor monitor, string feature)
         {
-            var result = monitor.SupportsFeatureAsync(new Pulumirpc.SupportsFeatureRequest {Id = feature }).Result;
-            return result.HasSupport;
+            if (!this._featureSupport.ContainsKey(feature))
+            {
+                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature }
+                var response = await monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
+                this._featureSupport[feature] = response.HasSupport;
+            }
+            return this._featureSupport[feature];
+        }
+
+        internal async Task<bool> MonitorSupportsResourceReferences()
+        {
+            return MonitorSupportsFeature("resourceReferences");
         }
     }
 }
