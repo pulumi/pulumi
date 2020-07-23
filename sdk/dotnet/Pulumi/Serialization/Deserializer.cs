@@ -27,10 +27,10 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
-			else if (TryDeserializeResource(value, out var resource))
-			{
-				return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
-			}
+    		else if (TryDeserializeResource(value, out var resource))
+    		{
+    			return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
+    		}
 
             var innerData = func(value);
             return OutputData.Create(innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
@@ -214,37 +214,37 @@ namespace Pulumi.Serialization
         {
             if (!IsSpecialStruct(value, out var sig) || sig != Constants.SpecialResourceSig)
             {
-				resource = null;
-				return false;
-			}
+    			resource = null;
+    			return false;
+    		}
 
-			string? urn;
-			if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out urn))
-			{
-				throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
-			}
+    		string? urn;
+    		if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out urn))
+    		{
+    			throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+    		}
 
-			string? version;
-			if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version))
-			{
-				throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
-			}
+    		string? version;
+    		if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version))
+    		{
+    			throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+    		}
 
-			var urnParts = urn.Split("::");
-			var qualifiedType = urnParts[2];
-			var qualifiedTypeParts = qualifiedType.Split('$');
-			var type = qualifiedTypeParts[qualifiedTypeParts.Length-1];
-			var typeParts = type.Split(':');
-			var pkgName = typeParts[0];
+    		var urnParts = urn.Split("::");
+    		var qualifiedType = urnParts[2];
+    		var qualifiedTypeParts = qualifiedType.Split('$');
+    		var type = qualifiedTypeParts[qualifiedTypeParts.Length-1];
+    		var typeParts = type.Split(':');
+    		var pkgName = typeParts[0];
 
-			IResourcePackage? package;
-			if (!ResourcePackages.TryGetResourcePackage(pkgName, version, out package))
-			{
-				throw new InvalidOperationException($"Unable to deserialize resource URN {urn}, no resource package is registered for type {type}.");
-			}
-			var urnName = urnParts[3];
-			resource = package.Construct(urnName, type, null, urn);
-			return true;
+    		IResourcePackage? package;
+    		if (!ResourcePackages.TryGetResourcePackage(pkgName, version, out package))
+    		{
+    			throw new InvalidOperationException($"Unable to deserialize resource URN {urn}, no resource package is registered for type {type}.");
+    		}
+    		var urnName = urnParts[3];
+    		resource = package.Construct(urnName, type, null, urn);
+    		return true;
         }
 
         private static bool TryGetStringValue(

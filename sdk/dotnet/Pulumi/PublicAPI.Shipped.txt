@@ -173,8 +173,8 @@ Pulumi.ResourceTransformationResult
 Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
-Pulumi.Serialization.IResourcePackage
-Pulumi.Serialization.IResourcePackage.Construct(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.Resource
+Pulumi.IResourcePackage
+Pulumi.IResourcePackage.Construct(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.Resource
 Pulumi.Stack
 Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
 Pulumi.StackOptions
@@ -228,7 +228,7 @@ override Pulumi.Union<T0, T1>.ToString() -> string
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ComponentResourceOptions options1, Pulumi.ComponentResourceOptions options2) -> Pulumi.ComponentResourceOptions
 static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1, Pulumi.CustomResourceOptions options2) -> Pulumi.CustomResourceOptions
 static Pulumi.Deployment.Instance.get -> Pulumi.DeploymentInstance
-static Pulumi.Deployment.RegisterResourcePackage(string name, string version, Pulumi.Serialization.IResourcePackage package) -> void
+static Pulumi.Deployment.RegisterResourcePackage(string name, string version, Pulumi.IResourcePackage package) -> void
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func) -> System.Threading.Tasks.Task<int>

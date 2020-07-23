@@ -166,14 +166,14 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 }
 
                 this.DependentResources.Add(customResource);
-				if (keepResources)
-				{
-					var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources).ConfigureAwait(false);
-					var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+    			if (keepResources)
+    			{
+    				var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources).ConfigureAwait(false);
+    				var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialResourceSig);
                     builder.Add(Constants.ResourceUrnName, urn);
                     return builder.ToImmutable();
-				}
+    			}
                 return await SerializeAsync($"{ctx}.id", customResource.Id, keepResources).ConfigureAwait(false);
             }
 
@@ -201,14 +201,14 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
                 }
 
-				var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources).ConfigureAwait(false);
-				if (keepResources)
-				{
-					var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+    			var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources).ConfigureAwait(false);
+    			if (keepResources)
+    			{
+    				var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialResourceSig);
                     builder.Add(Constants.ResourceUrnName, urn);
                     return builder.ToImmutable();
-				}
+    			}
                 return urn;
             }
 

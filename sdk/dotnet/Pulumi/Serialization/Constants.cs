@@ -42,8 +42,8 @@ namespace Pulumi.Serialization
         public const string AssetOrArchivePathName = "path";
         public const string AssetOrArchiveUriName = "uri";
 
-		public const string ResourceUrnName = "urn";
-		public const string ResourceVersionName = "version";
+    	public const string ResourceUrnName = "urn";
+    	public const string ResourceVersionName = "version";
 
         public const string IdPropertyName = "id";
         public const string UrnPropertyName = "urn";

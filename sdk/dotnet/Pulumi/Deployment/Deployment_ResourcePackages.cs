@@ -7,9 +7,9 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-		public static void RegisterResourcePackage(string name, string version, IResourcePackage package)
-		{
-			ResourcePackages.RegisterResourcePackage(name, version, package);
-		}
-	}
+    	public static void RegisterResourcePackage(string name, string version, IResourcePackage package)
+    	{
+    		ResourcePackages.RegisterResourcePackage(name, version, package);
+    	}
+    }
 }

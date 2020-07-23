@@ -23,11 +23,11 @@ namespace Pulumi.Testing
             _mocks = mocks;
         }
 
-		public Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
-		{
-			var hasSupport = request.Id == "secrets" || request.Id == "resourceReferences";
-			return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
-		}
+    	public Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
+    	{
+    		var hasSupport = request.Id == "secrets" || request.Id == "resourceReferences";
+    		return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
+    	}
 
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
         {
