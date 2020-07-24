@@ -1,12 +1,15 @@
 package auto
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
 func (s *stack) Up() (UpResult, error) {
@@ -17,7 +20,54 @@ func (s *stack) Up() (UpResult, error) {
 		return upResult, err
 	}
 
-	stdout, stderr, code, err := s.runCmd("pulumi", "up", "--yes")
+	var stdout, stderr string
+	var code int
+	if s.InlineSource != nil {
+		cmd := exec.Command("pulumi", "host")
+		cmd.Dir = s.SourcePath
+		stderr, _ := cmd.StderrPipe()
+		cmd.Start()
+		scanner := bufio.NewScanner(stderr)
+		scanner.Split(bufio.ScanLines)
+		var monitorAddr string
+		// TODO should timeout here
+		for scanner.Scan() {
+			m := scanner.Text()
+			if strings.HasPrefix(m, "127.0.0.1:") {
+				monitorAddr = m
+				break
+			}
+		}
+		os.Setenv(pulumi.EnvMonitor, monitorAddr)
+		os.Setenv(pulumi.EnvProject, s.ProjectName)
+		os.Setenv(pulumi.EnvStack, s.Name)
+		cfg, err := s.rawConfig()
+		if err != nil {
+			return upResult, errors.Wrap(err, "failed to serialize config for inline program")
+		}
+		cfgStr, err := json.Marshal(cfg)
+		if err != nil {
+			return upResult, errors.Wrap(err, "unable to marshal config")
+		}
+		os.Setenv(pulumi.EnvConfig, string(cfgStr))
+		err = pulumi.RunErr(s.InlineSource)
+		if err != nil {
+			cmd.Process.Signal(os.Interrupt)
+			err = cmd.Process.Kill()
+			if err != nil {
+				return upResult, errors.Wrap(err, "failed to run inline program and shutdown gracefully")
+			}
+			return upResult, errors.Wrap(err, "error running inline pulumi program")
+		}
+
+		err = cmd.Process.Signal(os.Interrupt)
+		if err != nil {
+			return upResult, errors.Wrap(err, "failed to shutdown host gracefully")
+		}
+	} else {
+		stdout, stderr, code, err = s.runCmd("pulumi", "up", "--yes")
+	}
+
 	if err != nil {
 		return upResult, newAutoError(err, stdout, stderr, code)
 	}
@@ -108,6 +158,31 @@ func (s *stack) outputs() (map[string]interface{}, map[string]interface{}, error
 	return outputs, secrets, nil
 }
 
+type cfgValue struct {
+	Value string `json:"value"`
+}
+
+// rawConfig returns unencrypted config, and an error
+func (s *stack) rawConfig() (map[string]string, error) {
+	stdout, stderr, code, err := s.runCmd("pulumi", "config", "--json", "--show-secrets")
+	if err != nil {
+		return nil, newAutoError(errors.Wrap(err, "could not get config"), stdout, stderr, code)
+	}
+
+	var resp map[string]cfgValue
+	cfg := make(map[string]string)
+
+	if err = json.Unmarshal([]byte(stdout), &resp); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling config: %s", stderr)
+	}
+
+	for k, v := range resp {
+		cfg[k] = v.Value
+	}
+
+	return cfg, nil
+}
+
 func (s *stack) User() (string, error) {
 	err := s.initOrSelectStack()
 	if err != nil {
@@ -162,7 +237,7 @@ func (s *stack) setSecrets(secrets map[string]string) error {
 
 	for k, v := range secrets {
 		// TODO verify escaping
-		outstr, errstr, code, err := s.runCmd("pulumi", "config", "set", k, v)
+		outstr, errstr, code, err := s.runCmd("pulumi", "config", "set", "--secret", k, v)
 		stdout.WriteString(outstr)
 		stderr.WriteString(errstr)
 		if err != nil {

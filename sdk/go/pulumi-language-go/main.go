@@ -74,6 +74,7 @@ func findProgram(binary string) (*exec.Cmd, error) {
 	return exec.Command(program, "run", cwd), nil
 }
 
+// this should be launched with an engine flag
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
 	var tracing string

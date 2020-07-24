@@ -1,8 +1,11 @@
 package auto
 
 import (
+	"io/ioutil"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
 type Stack interface {
@@ -60,22 +63,29 @@ func NewStack(ss StackSpec) (Stack, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to enlist and setup remote")
 		}
+	} else if ss.Project.InlineSource != nil {
+		projDir, err := ioutil.TempDir("", "auto")
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create tmpdir for inline source")
+		}
+		ss.Project.SourcePath = projDir
 	}
 
 	s := &stack{
-		Name:        ss.Name,
-		ProjectName: ss.Project.Name,
-		SourcePath:  ss.Project.SourcePath,
-	}
-
-	err = s.initOrSelectStack()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not initialize or select stack")
+		Name:         ss.Name,
+		ProjectName:  ss.Project.Name,
+		SourcePath:   ss.Project.SourcePath,
+		InlineSource: ss.Project.InlineSource,
 	}
 
 	err = ss.writeProject()
 	if err != nil {
 		return nil, err
+	}
+
+	err = s.initOrSelectStack()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not initialize or select stack")
 	}
 
 	err = ss.writeStack()
@@ -121,6 +131,9 @@ type ProjectSpec struct {
 
 	// (Remote program) information to clone and setup a git hosted pulumi program
 	Remote *RemoteArgs
+
+	// (Inline Program) the Pulumi program as an inline function
+	InlineSource pulumi.RunFunc
 
 	// Optional set of values to upsert into existing pulumi.yaml
 	Overrides *ProjectOverrides
@@ -175,8 +188,10 @@ func (ss *StackSpec) validate() error {
 	if ss.Project.Name == "" {
 		return errors.New("missing project name")
 	}
-	if ss.Project.SourcePath == "" && ss.Project.Remote == nil {
-		return errors.New("must specify one of `ProjectSpec.Source` or `ProjectSpec.Remote`")
+	if ss.Project.SourcePath == "" && ss.Project.Remote == nil && ss.Project.InlineSource == nil {
+		return errors.New(
+			"must specify one of `ProjectSpec.Source`, `ProjectSpec.Remote`, or `ProjectSpec.InlineSource`",
+		)
 	}
 	if ss.Project.Remote != nil {
 		if ss.Project.SourcePath != "" {
@@ -184,17 +199,30 @@ func (ss *StackSpec) validate() error {
 				"`ProjectSpec.Source` and `ProjectSpec.Remote` are mutually exclusive, but both were provided",
 			)
 		}
+		if ss.Project.InlineSource != nil {
+			return errors.New(
+				"`ProjectSpec.InlineSource` and `ProjectSpec.Remote` are mutually exclusive, but both were provided",
+			)
+		}
 		if ss.Project.Remote.RepoURL == "" {
 			return errors.New("Missing git source URL `Project.Remote.RepoURL`")
+		}
+	}
+	if ss.Project.InlineSource != nil {
+		if ss.Project.SourcePath != "" {
+			return errors.New(
+				"`ProjectSpec.Source` and `ProjectSpec.InlineSource` are mutually exclusive, but both were provided",
+			)
 		}
 	}
 	return nil
 }
 
 type stack struct {
-	Name        string
-	ProjectName string
-	SourcePath  string
+	Name         string
+	ProjectName  string
+	SourcePath   string
+	InlineSource pulumi.RunFunc
 }
 
 func (s *stack) isStack() {}
