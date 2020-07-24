@@ -192,8 +192,9 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 
 type programGeneratorFunc func(p *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-func generateImportedDefinitions(stackName tokens.QName, projectName tokens.PackageName, snap *deploy.Snapshot,
-	programGenerator programGeneratorFunc, names importer.NameTable, imports []deploy.Import) error {
+func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
+	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
+	imports []deploy.Import) error {
 
 	resourceTable := map[resource.URN]*resource.State{}
 	for _, r := range snap.Resources {
@@ -217,6 +218,10 @@ func generateImportedDefinitions(stackName tokens.QName, projectName tokens.Pack
 		}
 	}
 
+	if len(resources) == 0 {
+		return nil
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -227,7 +232,7 @@ func generateImportedDefinitions(stackName tokens.QName, projectName tokens.Pack
 		return err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return importer.GenerateLanguageDefinitions(os.Stdout, loader, func(w io.Writer, p *hcl2.Program) error {
+	return importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
 		files, _, err := programGenerator(p)
 		if err != nil {
 			return err
@@ -249,6 +254,7 @@ func newImportCmd() *cobra.Command {
 	var parentSpec string
 	var providerSpec string
 	var importFilePath string
+	var outputFilePath string
 
 	var debug bool
 	var message string
@@ -333,6 +339,16 @@ func newImportCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 				importFile = f
+			}
+
+			output := io.Writer(os.Stdout)
+			if outputFilePath != "" {
+				f, err := os.Create(outputFilePath)
+				if err != nil {
+					return result.Errorf("could not open output file: %v", err)
+				}
+				defer contract.IgnoreClose(f)
+				output = f
 			}
 
 			imports, nameTable, err := parseImportFile(importFile)
@@ -429,7 +445,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if err = generateImportedDefinitions(
-				s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports); err != nil {
+				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports); err != nil {
 
 				if _, ok := err.(*importer.DiagnosticsError); ok {
 					err = errors.Wrap(err, "internal error")
@@ -453,6 +469,8 @@ func newImportCmd() *cobra.Command {
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
+	cmd.PersistentFlags().StringVarP(
+		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

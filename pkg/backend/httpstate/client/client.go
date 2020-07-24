@@ -466,7 +466,7 @@ func (pc *Client) CreateUpdate(
 	// Create the initial update object.
 	var endpoint string
 	switch kind {
-	case apitype.UpdateUpdate:
+	case apitype.UpdateUpdate, apitype.ResourceImportUpdate:
 		endpoint = "update"
 	case apitype.PreviewUpdate:
 		endpoint = "preview"

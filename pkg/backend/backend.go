@@ -209,7 +209,6 @@ type UpdateOperation struct {
 	Proj               *workspace.Project
 	Root               string
 	Imports            []deploy.Import
-	IsImport           bool
 	M                  *UpdateMetadata
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
