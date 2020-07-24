@@ -56,9 +56,19 @@ func (s *stack) Preview() (PreviewResult, error) {
 func (s *stack) preview() (PreviewResult, error) {
 	var pResult PreviewResult
 
-	stdout, stderr, code, err := s.runCmd("pulumi", "preview", "--json")
-	if err != nil {
-		return pResult, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
+	var stdout, stderr string
+	var code int
+	var err error
+	if s.InlineSource != nil {
+		stdout, stderr, err = s.host(true /*isPreview*/)
+		if err != nil {
+			return pResult, newAutoError(err, stdout, stderr, code)
+		}
+	} else {
+		stdout, stderr, code, err = s.runCmd("pulumi", "preview", "--json")
+		if err != nil {
+			return pResult, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
+		}
 	}
 
 	err = json.Unmarshal([]byte(stdout), &pResult)

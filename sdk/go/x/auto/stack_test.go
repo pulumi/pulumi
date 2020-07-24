@@ -307,13 +307,13 @@ func TestUpInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	// prev, err := s.Preview()
-	// if err != nil {
-	// 	t.Errorf("preview failed, err: %v", err)
-	// 	t.FailNow()
-	// }
-	// assert.Equal(t, 1, prev.ChangeSummary["same"])
-	// assert.Equal(t, 1, len(prev.Steps))
+	prev, err := s.Preview()
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
 
 	// // -- pulumi refresh --
 

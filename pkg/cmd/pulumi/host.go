@@ -66,6 +66,7 @@ func newHostCmd() *cobra.Command {
 			"needing to spawn its own language runtime. In this case, the lifetime of interactions between the\n" +
 			"language and the engine host must be managed manually.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			isPreview := len(args) > 0 && args[0] == "preview"
 
 			// Construct the options based on flags.
 			opts, err := updateFlagsToOptions(false, true, true)
@@ -115,8 +116,14 @@ func newHostCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			operation := s.Update
+			if isPreview {
+				operation = s.Preview
+				opts.Display.JSONDisplay = true
+			}
+
 			// Now perform the update. This will stay alive until the user cancels the host.
-			changes, res := s.Update(commandContext(), backend.UpdateOperation{
+			changes, res := operation(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				Opts:               opts,

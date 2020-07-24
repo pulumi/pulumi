@@ -23,46 +23,10 @@ func (s *stack) Up() (UpResult, error) {
 	var stdout, stderr string
 	var code int
 	if s.InlineSource != nil {
-		cmd := exec.Command("pulumi", "host")
-		cmd.Dir = s.SourcePath
-		stderr, _ := cmd.StderrPipe()
-		cmd.Start()
-		scanner := bufio.NewScanner(stderr)
-		scanner.Split(bufio.ScanLines)
-		var monitorAddr string
-		// TODO should timeout here
-		for scanner.Scan() {
-			m := scanner.Text()
-			if strings.HasPrefix(m, "127.0.0.1:") {
-				monitorAddr = m
-				break
-			}
-		}
-		os.Setenv(pulumi.EnvMonitor, monitorAddr)
-		os.Setenv(pulumi.EnvProject, s.ProjectName)
-		os.Setenv(pulumi.EnvStack, s.Name)
-		cfg, err := s.rawConfig()
+		// TODO need to figure out how to get error code...
+		stdout, stderr, err = s.host(false /*isPreview*/)
 		if err != nil {
-			return upResult, errors.Wrap(err, "failed to serialize config for inline program")
-		}
-		cfgStr, err := json.Marshal(cfg)
-		if err != nil {
-			return upResult, errors.Wrap(err, "unable to marshal config")
-		}
-		os.Setenv(pulumi.EnvConfig, string(cfgStr))
-		err = pulumi.RunErr(s.InlineSource)
-		if err != nil {
-			cmd.Process.Signal(os.Interrupt)
-			err = cmd.Process.Kill()
-			if err != nil {
-				return upResult, errors.Wrap(err, "failed to run inline program and shutdown gracefully")
-			}
-			return upResult, errors.Wrap(err, "error running inline pulumi program")
-		}
-
-		err = cmd.Process.Signal(os.Interrupt)
-		if err != nil {
-			return upResult, errors.Wrap(err, "failed to shutdown host gracefully")
+			return upResult, newAutoError(err, stdout, stderr, code)
 		}
 	} else {
 		stdout, stderr, code, err = s.runCmd("pulumi", "up", "--yes")
@@ -312,4 +276,62 @@ func (s *stack) runCmd(name string, arg ...string) (string, string, int, error) 
 		code = exitError.ExitCode()
 	}
 	return stdout.String(), stderr.String(), code, err
+}
+
+func (s *stack) host(isPreview bool) (string, string, error) {
+	var stdout bytes.Buffer
+	var errBuff bytes.Buffer
+	args := []string{"host"}
+	if isPreview {
+		args = append(args, "preview")
+	}
+	cmd := exec.Command("pulumi", args...)
+	cmd.Dir = s.SourcePath
+	cmd.Stdout = &stdout
+	stderr, _ := cmd.StderrPipe()
+	cmd.Start()
+	scanner := bufio.NewScanner(stderr)
+	scanner.Split(bufio.ScanLines)
+
+	addrChan := make(chan string)
+	go func() {
+		for scanner.Scan() {
+			m := scanner.Text()
+			errBuff.WriteString(m)
+			if strings.HasPrefix(m, "127.0.0.1:") {
+				addrChan <- m
+			}
+		}
+	}()
+	monitorAddr := <-addrChan
+
+	os.Setenv(pulumi.EnvMonitor, monitorAddr)
+	os.Setenv(pulumi.EnvProject, s.ProjectName)
+	os.Setenv(pulumi.EnvStack, s.Name)
+	cfg, err := s.rawConfig()
+	if err != nil {
+		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to serialize config for inline program")
+	}
+	cfgStr, err := json.Marshal(cfg)
+	if err != nil {
+		return stdout.String(), errBuff.String(), errors.Wrap(err, "unable to marshal config")
+	}
+	os.Setenv(pulumi.EnvConfig, string(cfgStr))
+	err = pulumi.RunErr(s.InlineSource)
+	if err != nil {
+		cmd.Process.Signal(os.Interrupt)
+		err = cmd.Process.Kill()
+		if err != nil {
+			return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to run inline program and shutdown gracefully")
+		}
+		return stdout.String(), errBuff.String(), errors.Wrap(err, "error running inline pulumi program")
+	}
+
+	err = cmd.Process.Signal(os.Interrupt)
+	if err != nil {
+		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to shutdown host gracefully")
+	}
+	cmd.Wait()
+
+	return stdout.String(), errBuff.String(), nil
 }
