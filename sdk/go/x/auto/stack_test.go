@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -259,7 +260,7 @@ func TestUpRemoteWithSetup(t *testing.T) {
 func TestUpInlineSource(t *testing.T) {
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	ps := ProjectSpec{
-		Name: "inlineproj1",
+		Name: "inlineproj",
 		InlineSource: func(ctx *pulumi.Context) error {
 			c := config.New(ctx, "")
 			ctx.Export("exp_static", pulumi.String("foo"))
@@ -269,7 +270,7 @@ func TestUpInlineSource(t *testing.T) {
 		},
 		Overrides: &ProjectOverrides{
 			Project: &workspace.Project{
-				Name:    "inlineproj1",
+				Name:    "inlineproj",
 				Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{} /*options*/),
 			},
 		},
@@ -344,5 +345,6 @@ func TestUpInlineSource(t *testing.T) {
 }
 
 func rangeIn(low, hi int) int {
+	rand.Seed(time.Now().UnixNano())
 	return low + rand.Intn(hi-low)
 }
