@@ -316,32 +316,32 @@ func TestUpInlineSource(t *testing.T) {
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
 	assert.Equal(t, 1, len(prev.Steps))
 
-	// // -- pulumi refresh --
+	// -- pulumi refresh --
 
-	// ref, err := s.Refresh()
+	ref, err := s.Refresh()
 
-	// if err != nil {
-	// 	t.Errorf("refresh failed, err: %v", err)
-	// 	t.FailNow()
-	// }
-	// assert.Equal(t, "refresh", ref.Summary.Kind)
-	// assert.Equal(t, "succeeded", ref.Summary.Result)
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
 
-	// // -- pulumi destroy --
+	// -- pulumi destroy --
 
-	// dRes, err := s.Destroy()
-	// if err != nil {
-	// 	t.Errorf("destroy failed, err: %v", err)
-	// 	t.FailNow()
-	// }
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
 
-	// assert.Equal(t, "destroy", dRes.Summary.Kind)
-	// assert.Equal(t, "succeeded", dRes.Summary.Result)
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
 
-	// // -- pulumi stack rm --
+	// -- pulumi stack rm --
 
-	// err = s.Remove()
-	// assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func rangeIn(low, hi int) int {
