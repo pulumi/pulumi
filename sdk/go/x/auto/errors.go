@@ -92,6 +92,10 @@ func IsRuntimeError(e error) bool {
 		return true
 	}
 
+	if strings.Contains(as.Error(), "go inline source runtime error") {
+		return true
+	}
+
 	return false
 }
 

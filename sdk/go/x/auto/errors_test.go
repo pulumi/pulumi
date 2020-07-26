@@ -299,6 +299,58 @@ func TestRuntimeErrorGo(t *testing.T) {
 	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
+func TestRuntimeErrorInlineGo(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name: "runtime_error_inline",
+		InlineSource: func(ctx *pulumi.Context) error {
+			var x []string
+			ctx.Export("a", pulumi.String(x[0]))
+			return nil
+		},
+		Overrides: &ProjectOverrides{
+			Project: &workspace.Project{
+				Name:    "runtime_error_inline",
+				Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{} /*options*/),
+			},
+		},
+	}
+
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+	}
+
+	// initialize
+	s, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up()
+
+	assert.NotNil(t, err)
+	assert.True(t, IsRuntimeError(err))
+	assert.False(t, IsCompilationError(err))
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	// -- pulumi stack rm --
+
+	err = s.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
 func TestRuntimeErrorPython(t *testing.T) {
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	ps := ProjectSpec{

@@ -62,10 +62,10 @@ func (s *stack) host(isPreview bool) (string, string, error) {
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "unable to marshal config")
 	}
 	os.Setenv(pulumi.EnvConfig, string(cfgStr))
-	err = pulumi.RunErr(s.InlineSource)
+	err = execUserCode(s.InlineSource)
 	if err != nil {
 		cmd.Process.Signal(os.Interrupt)
-		err = cmd.Process.Kill()
+		cmd.Wait()
 		if err != nil {
 			return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to run inline program and shutdown gracefully")
 		}
@@ -76,8 +76,22 @@ func (s *stack) host(isPreview bool) (string, string, error) {
 	if err != nil {
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to shutdown host gracefully")
 	}
-	// TODO does this wait need to happen as a part of shutdown routine before returning error?
 	cmd.Wait()
 
 	return stdout.String(), errBuff.String(), nil
+}
+
+func execUserCode(fn pulumi.RunFunc) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if pErr, ok := r.(error); ok {
+				err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred:")
+			} else {
+				err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
+			}
+		}
+	}()
+
+	err = pulumi.RunErr(fn)
+	return err
 }
