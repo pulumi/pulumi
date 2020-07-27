@@ -19,7 +19,6 @@
 package python
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -82,6 +81,33 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+	// This check and call to GetLanguageTypeStringLegacy can be deleted once all providers have
+	// UsesIOClasses set to true in their schema.
+	if pythonPkgInfo, ok := pkg.Language["python"].(PackageInfo); !ok || !pythonPkgInfo.UsesIOClasses {
+		return d.GetLanguageTypeStringLegacy(pkg, moduleName, t, input, optional)
+	}
+
+	typeDetails := map[*schema.ObjectType]*typeDetails{}
+	mod := &modContext{
+		pkg:         pkg,
+		mod:         moduleName,
+		typeDetails: typeDetails,
+	}
+	typeName := mod.typeString(t, input, false /*wrapInput*/, optional /*optional*/, false /*acceptMapping*/)
+
+	// Remove any package qualifiers from the type name.
+	if !input {
+		typeName = strings.ReplaceAll(typeName, "outputs.", "")
+	}
+
+	// Remove single quote from type names.
+	typeName = strings.ReplaceAll(typeName, "'", "")
+
+	return typeName
+}
+
+// GetLanguageTypeStringLegacy returns the legacy types and should be deleted once all providers have UsesIOClasses set to true in their schema.
+func (d DocLanguageHelper) GetLanguageTypeStringLegacy(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
 	// The Python SDK generator will simply return "list" or "dict" for enumerables.
@@ -101,13 +127,13 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 					types = append(types, e.String())
 					continue
 				}
-				t := d.GetLanguageTypeString(pkg, moduleName, e, input, optional)
+				t := d.GetLanguageTypeStringLegacy(pkg, moduleName, e, input, optional)
 				types = append(types, t)
 			}
 			return strings.Join(types, " | ")
 		case *schema.MapType:
 			if uTy, ok := dTy.ElementType.(*schema.UnionType); ok {
-				return d.GetLanguageTypeString(pkg, moduleName, uTy, input, optional)
+				return d.GetLanguageTypeStringLegacy(pkg, moduleName, uTy, input, optional)
 			}
 
 			elType := dTy.ElementType.String()
@@ -127,7 +153,7 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 
 // GetResourceFunctionResultName is not implemented for Python and returns an empty string.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	return ""
+	return title(tokenToName(f.Token)) + "Result"
 }
 
 // GenPropertyCaseMap generates the case maps for a property.
@@ -140,10 +166,9 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 }
 
-// GetPropertyName is not implemented for Python because property names in Python must use
-// property case maps, which need to be generated at each provider's package-level.
+// GetPropertyName returns the property name specific to Python.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
-	return "", errors.New("this method is not supported for the python language")
+	return PyName(p.Name), nil
 }
 
 // elementTypeToName returns the type name from an element type of the form

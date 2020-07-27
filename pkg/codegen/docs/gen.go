@@ -60,6 +60,7 @@ var (
 	goPkgInfo     go_gen.GoPackageInfo
 	csharpPkgInfo dotnet.CSharpPackageInfo
 	nodePkgInfo   nodejs.NodePackageInfo
+	pythonPkgInfo python.PackageInfo
 
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
@@ -358,6 +359,10 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 		if override, ok := nodePkgInfo.ModuleToPackage[modName]; ok {
 			modName = override
 		}
+	case "python":
+		if override, ok := pythonPkgInfo.ModuleNameOverrides[modName]; ok {
+			modName = override
+		}
 	}
 
 	langModuleNameLookup[lookupKey] = modName
@@ -368,11 +373,9 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 // The result of this function should be used display purposes only.
 func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
 	switch lang {
-	case "go":
+	case "go", "python":
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
-	case "python":
-		return langTypeString
 	}
 
 	cleanCSharpName := func(pkgName, objModName string) string {
@@ -499,7 +502,11 @@ func cleanOptionalIdentifier(s, lang string) string {
 	case "csharp":
 		return strings.TrimSuffix(s, "?")
 	case "python":
-		return s
+		if strings.HasPrefix(s, "Optional[") && strings.HasSuffix(s, "]") {
+			s = strings.TrimPrefix(s, "Optional[")
+			s = strings.TrimSuffix(s, "]")
+			return s
+		}
 	}
 	return s
 }
@@ -714,6 +721,47 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
+func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional bool) []formalParam {
+	docLanguageHelper := getLanguageDocHelper("python")
+	isK8sOverlayMod := mod.isKubernetesOverlayModule()
+	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
+
+	// Kubernetes overlay resources use a different ordering of formal params in Python.
+	if isK8sOverlayMod {
+		return getKubernetesOverlayPythonFormalParams(mod.mod)
+	} else if isDockerImageResource {
+		return getDockerImagePythonFormalParams()
+	}
+
+	params := make([]formalParam, 0, len(r.InputProperties)+1)
+	// All other resources accept the resource options as a second parameter.
+	params = append(params, formalParam{
+		Name:         "opts",
+		DefaultValue: " = None",
+		Type: propertyType{
+			Name: "Optional[ResourceOptions]",
+			Link: "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions",
+		},
+	})
+	for _, p := range r.InputProperties {
+		// If the property defines a const value, then skip it.
+		// For example, in k8s, `apiVersion` and `kind` are often hard-coded
+		// in the SDK and are not really user-provided input properties.
+		if p.ConstValue != nil {
+			continue
+		}
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, false /*optional*/)
+		params = append(params, formalParam{
+			Name:         python.InitParamName(p.Name),
+			DefaultValue: " = None",
+			Type: propertyType{
+				Name: fmt.Sprintf("Optional[%s]", typ),
+			},
+		})
+	}
+	return params
+}
+
 func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
 	tokens := nestedTypeUsageInfo{}
 	// Collect all of the types for this "member" as a map of resource names
@@ -835,9 +883,14 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 
 		langDocHelper := getLanguageDocHelper(lang)
-		var propLangName string
-		switch lang {
-		case "python":
+		name, err := langDocHelper.GetPropertyName(prop)
+		if err != nil {
+			panic(err)
+		}
+		propLangName := name
+
+		// This if check can be removed once all providers have UsesIOClasses set to true in their schema.
+		if lang == "python" && !pythonPkgInfo.UsesIOClasses {
 			pyName := python.PyName(prop.Name)
 			// The default casing for a Python property name is snake_case unless
 			// it is a property of a nested object, in which case, we should check the property
@@ -857,13 +910,6 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 					propLangName = prop.Name
 				}
 			}
-		default:
-			name, err := langDocHelper.GetPropertyName(prop)
-			if err != nil {
-				panic(err)
-			}
-
-			propLangName = name
 		}
 
 		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
@@ -926,9 +972,6 @@ func getDockerImagePythonFormalParams() []formalParam {
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) (map[string]string, map[string][]formalParam) {
 	renderedParams := make(map[string]string)
 	formalParams := make(map[string][]formalParam)
-	isK8sOverlayMod := mod.isKubernetesOverlayModule()
-	isK8sPackage := isKubernetesPackage(mod.pkg)
-	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
 
 	for _, lang := range supportedLanguages {
 		var (
@@ -948,58 +991,18 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			params = mod.genConstructorCS(r, allOptionalInputs)
 			paramTemplate = "csharp_formal_param"
 		case "python":
+			params = mod.genConstructorPython(r, allOptionalInputs)
 			paramTemplate = "py_formal_param"
-			// The Pulumi Python SDK does not have types for constructor args.
-			// All of the input properties are spread out in the signature as format params.
-
-			// Kubernetes overlay resources use a different ordering of formal params in Python.
-			if isK8sOverlayMod {
-				params = getKubernetesOverlayPythonFormalParams(mod.mod)
-				break
-			} else if isDockerImageResource {
-				params = getDockerImagePythonFormalParams()
-				break
-			}
-
-			params = make([]formalParam, 0, len(r.InputProperties)+1)
-			// All other resources accept the resource options as a second parameter.
-			params = append(params, formalParam{
-				Name:         "opts",
-				DefaultValue: "=None",
-			})
-			for _, p := range r.InputProperties {
-				// If the property defines a const value, then skip it.
-				// For example, in k8s, `apiVersion` and `kind` are often hard-coded
-				// in the SDK and are not really user-provided input properties.
-				if p.ConstValue != nil {
-					continue
-				}
-				params = append(params, formalParam{
-					Name:         python.PyName(p.Name),
-					DefaultValue: "=None",
-				})
-			}
-
-			// Kubernetes resources do not accept a props param.
-			if isK8sPackage {
-				break
-			}
-
-			params = append(params, formalParam{
-				Name:         "__props__",
-				DefaultValue: "=None",
-			})
 		}
 
-		n := len(params)
 		for i, p := range params {
-			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
-				panic(err)
-			}
-			if i != n-1 {
+			if i != 0 {
 				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
 					panic(err)
 				}
+			}
+			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+				panic(err)
 			}
 		}
 		renderedParams[lang] = b.String()
@@ -1181,6 +1184,24 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 	}
 }
 
+func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	// The input properties for a resource needs to be exploded as
+	// individual constructor params.
+	docLanguageHelper := getLanguageDocHelper("python")
+	params := make([]formalParam, 0, len(r.StateInputs.Properties))
+	for _, p := range r.StateInputs.Properties {
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, false /*optional*/)
+		params = append(params, formalParam{
+			Name:         python.PyName(p.Name),
+			DefaultValue: " = None",
+			Type: propertyType{
+				Name: fmt.Sprintf("Optional[%s]", typ),
+			},
+		})
+	}
+	return params
+}
+
 // genLookupParams generates a map of per-language way of rendering the formal parameters of the lookup function
 // used to lookup an existing resource.
 func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) map[string]string {
@@ -1207,17 +1228,8 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 			params = mod.getCSLookupParams(r, stateParam)
 			paramTemplate = "csharp_formal_param"
 		case "python":
+			params = mod.getPythonLookupParams(r, stateParam)
 			paramTemplate = "py_formal_param"
-			// The Pulumi Python SDK does not yet have types for formal parameters.
-			// The input properties for a resource needs to be exploded as
-			// individual constructor params.
-			params = make([]formalParam, 0, len(r.StateInputs.Properties))
-			for _, p := range r.StateInputs.Properties {
-				params = append(params, formalParam{
-					Name:         python.PyName(p.Name),
-					DefaultValue: "=None",
-				})
-			}
 		}
 
 		n := len(params)
@@ -1765,6 +1777,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	goPkgInfo, _ = pkg.Language["go"].(go_gen.GoPackageInfo)
 	csharpPkgInfo, _ = pkg.Language["csharp"].(dotnet.CSharpPackageInfo)
 	nodePkgInfo, _ = pkg.Language["nodejs"].(nodejs.NodePackageInfo)
+	pythonPkgInfo, _ = pkg.Language["python"].(python.PackageInfo)
 
 	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
 	// Generate the Go package map info now, so we can use that to get the type string
