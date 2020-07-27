@@ -12,6 +12,9 @@ CHANGELOG
 - Add ability to create a stack based on the config from an existing stack
   [#5062](https://github.com/pulumi/pulumi/pull/5062)
 
+- Python: Improved error message when `virtualenv` doesn't exist
+  [#5069](https://github.com/pulumi/pulumi/pull/5069)
+
 ## 2.7.1 (2020-07-22)
 
 - Fix logic to parse pulumi venv on github action
