@@ -67,7 +67,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				return err
 			}
 
-			// Get the current stack and it's project
+			// Get the current stack and its project
 			currentStack, err := requireStack("", false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
@@ -77,7 +77,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				return err
 			}
 
-			// Build encrypter and decrypter based on the existing secrets provider
+			// Build decrypter based on the existing secrets provider
 			var decrypter config.Decrypter
 			currentConfig := currentProjectStack.Config
 
@@ -103,12 +103,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			// Fixup the checkpoint
-			err = migrateCheckpointToNewSecretsProvider(commandContext(), currentStack)
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return migrateCheckpointToNewSecretsProvider(commandContext(), currentStack)
 		}),
 	}
 
@@ -133,7 +128,7 @@ func migrateCheckpointToNewSecretsProvider(ctx context.Context, currentStack bac
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
-	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false)
+	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false /*showSecrets*/)
 	if err != nil {
 		return err
 	}
@@ -149,11 +144,7 @@ func migrateCheckpointToNewSecretsProvider(ctx context.Context, currentStack bac
 	}
 
 	// Import the newly changes Deployment
-	if err = currentStack.ImportDeployment(ctx, &dep); err != nil {
-		return err
-	}
-
-	return err
+	return currentStack.ImportDeployment(ctx, &dep)
 }
 
 func migrateConfigToNewSecretsProvider(currentStack backend.Stack, currentConfig config.Map,
@@ -177,16 +168,10 @@ func migrateConfigToNewSecretsProvider(currentStack backend.Stack, currentConfig
 	}
 
 	for key, val := range newProjectConfig {
-		err = reloadedProjectStack.Config.Set(key, val, false)
-		if err != nil {
+		if err := reloadedProjectStack.Config.Set(key, val, false); err != nil {
 			return err
 		}
 	}
 
-	err = saveProjectStack(currentStack, reloadedProjectStack)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return saveProjectStack(currentStack, reloadedProjectStack)
 }

@@ -7,7 +7,7 @@ CHANGELOG
   [#5042](https://github.com/pulumi/pulumi/pull/5042)
 
 - Add ability to change a secrets provider for the current stack
-  [#5030](https://github.com/pulumi/pulumi/pull/5030)
+  [#5031](https://github.com/pulumi/pulumi/pull/5031)
 
 ## 2.7.1 (2020-07-22)
 
@@ -27,7 +27,6 @@ CHANGELOG
 
 - Add logic to parse pulumi venv on github action
   [#4994](https://github.com/pulumi/pulumi/pull/4994)
- 
 
 - Better performance for stacks with many resources using the .NET SDK
   [#5015](https://github.com/pulumi/pulumi/pull/5015)
