@@ -32,6 +32,7 @@ const (
 func newStackInitCmd() *cobra.Command {
 	var secretsProvider string
 	var stackName string
+	var stackToCopy string
 
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
@@ -60,7 +61,11 @@ func newStackInitCmd() *cobra.Command {
 			"* `pulumi stack init --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
 			"* `pulumi stack init --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
 			"* `pulumi stack init --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"`",
+			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"\n`" +
+			"\n" +
+			"A stack can be created based on the configuration of an existing stack by passing the\n" +
+			"`--copy-config-from` flag.\n" +
+			"* `pulumi stack init --copy-config-from dev",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -112,13 +117,40 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			_, err = createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
-			return err
+			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			if err != nil {
+				return err
+			}
+
+			if stackToCopy != "" {
+				// load the old stack and its project
+				copyStack, err := requireStack(stackToCopy, false, opts, false /*setCurrent*/)
+				if err != nil {
+					return err
+				}
+				copyProjectStack, err := loadProjectStack(copyStack)
+				if err != nil {
+					return err
+				}
+
+				// get the project for the newly created stack
+				newProjectStack, err := loadProjectStack(newStack)
+				if err != nil {
+					return err
+				}
+
+				// copy the config from the old to the new
+				return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+			}
+
+			return nil
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
+	cmd.PersistentFlags().StringVar(
+		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
 	return cmd
 }
