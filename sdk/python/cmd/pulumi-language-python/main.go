@@ -178,7 +178,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			virtualenv = filepath.Join(cwd, virtualenv)
 		}
 		if !python.IsVirtualEnv(virtualenv) {
-			return nil, errors.Errorf("%q doesn't appear to be a virtual environment", virtualenv)
+			return nil, python.NewVirtualEnvError(host.virtualenv, virtualenv)
 		}
 		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
 	} else {

@@ -81,6 +81,29 @@ func IsVirtualEnv(dir string) bool {
 	return false
 }
 
+// NewVirtualEnvError creates an error about the virtual environment with more info on how to resolve the issue.
+func NewVirtualEnvError(dir, fullPath string) error {
+	pythonBin := "python3"
+	if runtime.GOOS == windows {
+		pythonBin = "python"
+	}
+	venvPythonBin := filepath.Join(fullPath, virtualEnvBinDirName(), "python")
+
+	message := "doesn't appear to be a virtual environment"
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		message = "doesn't exist"
+	}
+
+	commandsText := fmt.Sprintf("    1. %s -m venv %s\n", pythonBin, fullPath) +
+		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel\n", venvPythonBin) +
+		fmt.Sprintf("    3. %s -m pip install -r requirements.txt\n", venvPythonBin)
+
+	return errors.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
+		"run the following commands to create the virtual environment and install dependencies into it:\n\n%s\n\n"+
+		"For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments",
+		dir, fullPath, message, commandsText)
+}
+
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
 // a virtual environment directory, and returns a new "activated" array with the virtual environment's
 // "bin" dir ("Scripts" on Windows) prepended to the `PATH` environment variable and `PYTHONHOME` variable
