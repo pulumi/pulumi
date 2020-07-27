@@ -16,8 +16,8 @@ package tools
 
 import (
 	"fmt"
+	user "github.com/tweekmonster/luser"
 	"os"
-	"os/user"
 	"path/filepath"
 	"time"
 )
