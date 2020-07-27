@@ -8,6 +8,9 @@ CHANGELOG
 
 - Add ability to change a secrets provider for the current stack
   [#5031](https://github.com/pulumi/pulumi/pull/5031)
+  
+- Add ability to create a stack based on the config from an existing stack
+  [#5062](https://github.com/pulumi/pulumi/pull/5062)
 
 ## 2.7.1 (2020-07-22)
 
