@@ -53,6 +53,12 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	}
 
 	sm, err := func() (secrets.Manager, error) {
+		if ps.SecretsProvider == "" {
+			switch s.(type) {
+			case httpstate.Stack:
+				return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
+			}
+		}
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 		}
@@ -61,9 +67,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
 		}
 
-		switch stack := s.(type) {
-		case httpstate.Stack:
-			return newServiceSecretsManager(stack)
+		switch s.(type) {
 		case filestate.Stack:
 			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
 		}
