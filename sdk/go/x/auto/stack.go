@@ -190,6 +190,11 @@ func (ss *StackSpec) validate() error {
 	if ss.Project.Name == "" {
 		return errors.New("missing project name")
 	}
+	if ss.Project.Overrides != nil && ss.Project.Overrides.Project != nil && ss.Project.Overrides.Project.Name != "" {
+		if ss.Project.Overrides.Project.Name.String() != ss.Project.Name {
+			return errors.New("`Project.Name` does not match Name specified in `Project.Overrides`")
+		}
+	}
 	if ss.Project.SourcePath == "" && ss.Project.Remote == nil && ss.Project.InlineSource == nil {
 		return errors.New(
 			"must specify one of `ProjectSpec.Source`, `ProjectSpec.Remote`, or `ProjectSpec.InlineSource`",
@@ -220,6 +225,9 @@ func (ss *StackSpec) validate() error {
 	return nil
 }
 
+// inline projects shouldn't require a pulumi.yaml from a user perspective
+// but they do from an implementation perspective. Ensure the required fields
+// are set on behalf of the user.
 func (ss *StackSpec) setInlineDefaults() {
 	if ss.Project.Overrides == nil {
 		ss.Project.Overrides = &ProjectOverrides{}
