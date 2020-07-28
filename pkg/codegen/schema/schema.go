@@ -42,14 +42,15 @@ type Type interface {
 type primitiveType int
 
 const (
-	boolType    primitiveType = 1
-	intType     primitiveType = 2
-	numberType  primitiveType = 3
-	stringType  primitiveType = 4
-	archiveType primitiveType = 5
-	assetType   primitiveType = 6
-	anyType     primitiveType = 7
-	jsonType    primitiveType = 8
+	boolType     primitiveType = 1
+	intType      primitiveType = 2
+	numberType   primitiveType = 3
+	stringType   primitiveType = 4
+	archiveType  primitiveType = 5
+	assetType    primitiveType = 6
+	anyType      primitiveType = 7
+	jsonType     primitiveType = 8
+	resourceType primitiveType = 9
 )
 
 //nolint: goconst
@@ -67,6 +68,8 @@ func (t primitiveType) String() string {
 		return "pulumi:pulumi:Archive"
 	case assetType:
 		return "pulumi:pulumi:Asset"
+	case resourceType:
+		return "pulumi:pulumi:Resource"
 	case jsonType:
 		fallthrough
 	case anyType:
@@ -79,7 +82,7 @@ func (t primitiveType) String() string {
 func (primitiveType) isType() {}
 
 // IsPrimitiveType returns true if the given Type is a primitive type. The primitive types are bool, int, number,
-// string, archive, asset, and any.
+// string, archive, asset, resource, and any.
 func IsPrimitiveType(t Type) bool {
 	_, ok := t.(primitiveType)
 	return ok
@@ -98,6 +101,8 @@ var (
 	ArchiveType Type = archiveType
 	// AssetType represents the set of Pulumi Asset values.
 	AssetType Type = assetType
+	// ResourceType represents the set of Pulumi Resource values.
+	ResourceType Type = resourceType
 	// JSONType represents the set of JSON-encoded values.
 	JSONType Type = jsonType
 	// AnyType represents the complete set of values.
@@ -846,6 +851,8 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return ArchiveType, nil
 		case "pulumi.json#/Asset":
 			return AssetType, nil
+		case "pulumi.json#/Resource":
+			return ResourceType, nil
 		case "pulumi.json#/Json":
 			return JSONType, nil
 		case "pulumi.json#/Any":
