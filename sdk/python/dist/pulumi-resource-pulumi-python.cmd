@@ -11,7 +11,12 @@ if defined PULUMI_RUNTIME_VIRTUALENV (
         "%PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe" -u -m pulumi.dynamic %*
         exit /B
     ) else (
-        echo "%PULUMI_RUNTIME_VIRTUALENV%" doesn't appear to be a virtual environment
+        echo The 'virtualenv' option in Pulumi.yaml is set to %PULUMI_RUNTIME_VIRTUALENV%, but %PULUMI_RUNTIME_VIRTUALENV% doesn't appear to be a virtual environment. 1>&2
+        echo Run the following commands to create the virtual environment and install dependencies into it: 1>&2
+        echo     1. python -m venv %PULUMI_RUNTIME_VIRTUALENV% 1>&2
+        echo     2. %PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe -m pip install --upgrade pip setuptools wheel 1>&2
+        echo     3. %PULUMI_RUNTIME_VIRTUALENV%\Scripts\python.exe -m pip install -r %cd%\requirements.txt 1>&2
+        echo For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments 1>&2
         exit 1
     )
 ) else (
