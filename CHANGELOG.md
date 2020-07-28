@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Switch os/user package with luser drop in replacement
+  [#5065](https://github.com/pulumi/pulumi/pull/5065)
+
 - Update pip/setuptools/wheel in virtual environment before installing dependencies
   [#5042](https://github.com/pulumi/pulumi/pull/5042)
 

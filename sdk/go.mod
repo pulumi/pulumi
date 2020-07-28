@@ -28,6 +28,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.5.1
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6
+	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	go.uber.org/atomic v1.6.0 // indirect
