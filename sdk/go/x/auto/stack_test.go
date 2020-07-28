@@ -268,12 +268,6 @@ func TestUpInlineSource(t *testing.T) {
 			ctx.Export("exp_secret", c.GetSecret("buzz"))
 			return nil
 		},
-		Overrides: &ProjectOverrides{
-			Project: &workspace.Project{
-				Name:    "inlineproj",
-				Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{} /*options*/),
-			},
-		},
 	}
 	ss := StackSpec{
 		Name:    sName,

@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
@@ -69,6 +70,7 @@ func NewStack(ss StackSpec) (Stack, error) {
 			return nil, errors.Wrap(err, "unable to create tmpdir for inline source")
 		}
 		ss.Project.SourcePath = projDir
+		ss.setInlineDefaults()
 	}
 
 	s := &stack{
@@ -216,6 +218,20 @@ func (ss *StackSpec) validate() error {
 		}
 	}
 	return nil
+}
+
+func (ss *StackSpec) setInlineDefaults() {
+	if ss.Project.Overrides == nil {
+		ss.Project.Overrides = &ProjectOverrides{}
+	}
+
+	if ss.Project.Overrides.Project == nil {
+		ss.Project.Overrides.Project = &workspace.Project{}
+	}
+	ss.Project.Overrides.Project.Name = tokens.PackageName(ss.Project.Name)
+	ss.Project.Overrides.Project.Runtime = workspace.NewProjectRuntimeInfo(
+		"go", ss.Project.Overrides.Project.Runtime.Options(),
+	)
 }
 
 type stack struct {
