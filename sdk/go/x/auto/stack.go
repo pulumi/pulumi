@@ -1,3 +1,31 @@
+// Package auto contains the Pulumi Automation API, the programmatic interface for driving Pulumi programs
+// without the CLI.
+// Generally this can be thought of as encapsulating the functionality of the CLI
+// (`pulumi up`, `pulumi preview`, pulumi destroy`, `pulumi stack init`, etc.). This still requires a
+// CLI binary to be installed and available on your $PATH. The Automation API
+// can operate on programs in three forms:
+//
+// 1. Local, on-disk programs: a stand alone Pulumi program on your local filesystem.
+// Specified via `StackSpec.Project.SourcePath`.
+//
+// 2. Remote programs: a git URL and subdirectory containing a pulumi program. Specified via `StackSpec.Project.Remote`
+//
+// 3. Inline: A pulumi program embedded within your Automation API program. Enables defining a single main()
+// func that describes and drives a pulumi program. Specified via `StackSpec.Project.InlineSource`
+//
+// The Automation API provides a natural way to orchestrate multiple stacks,
+// feeding the output of one stack as an input to the next as shown in the example below.
+// The package can be used for a number of use cases:
+//
+// 	- Driving pulumi deployments within CI/CD workflows
+//
+// 	- Integration testing
+//
+// 	- Multi-stage deployments such as blue-green deployment patterns
+//
+// 	- Deployments involving application code like database migrations
+//
+// 	- Building higher level tools, custom CLIs over pulumi, etc.
 package auto
 
 import (
@@ -9,39 +37,41 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
+// Stack is a deployable instance of a Pulumi program, containing it's own unique configuration.
 type Stack interface {
 	// -- Lifecycle
 
-	// Up creates or updates the resources in a stack
+	// Up creates or updates the resources in a stack.
 	// https://www.pulumi.com/docs/reference/cli/pulumi_up/
 	Up() (UpResult, error)
-	// Preview preforms a dry-run update to a stack, returning pending changes
+	// Preview preforms a dry-run update to a stack, returning pending changes.
 	// https://www.pulumi.com/docs/reference/cli/pulumi_preview/
 	Preview() (PreviewResult, error)
-	// Refresh refreshes the resources in a stack
+	// Refresh refreshes the resources in a stack, reading the state of the world directly from cloud providers.
 	// https://www.pulumi.com/docs/reference/cli/pulumi_refresh/
 	Refresh() (RefreshResult, error)
-	// Destroy deletes all resources in a stack
+	// Destroy deletes all resources in a stack.
 	// https://www.pulumi.com/docs/reference/cli/pulumi_destroy/
 	Destroy() (DestroyResult, error)
-	// Remove removes a stack and its configuration
+	// Remove removes a stack, its configuration, and all associated history
 	// https://www.pulumi.com/docs/reference/cli/pulumi_stack_rm/
 	Remove() error
 
 	// -- Status
 
-	// Summary returns information about the last update on the stack
+	// Summary returns information about the last update on the stack.
 	Summary() (UpdateSummary, error)
-	// Outputs returns the current plaintext and secret stack outputs
+	// Outputs returns the current plaintext and secret stack outputs.
 	Outputs() (map[string]interface{}, map[string]interface{}, error)
-	// User returns the current identity associated with the ambient $PULUMI_ACCESS_TOKEN
+	// User returns the current identity associated with the ambient $PULUMI_ACCESS_TOKEN.
 	User() (string, error)
 
 	// -- Config
 
 	// SetConfig sets (upsert) the specified config values
 	SetConfig(map[string]string) error
-	// SetSecrets sets (upsert) the specified secret config values
+	// SetSecrets sets (upsert) the specified secret config values, encrypted per settings in
+	// `Pulumi.<stack>.yaml` or `StackSpec.Overrides.ProjectStack`
 	SetSecrets(map[string]string) error
 
 	// -- marker method
@@ -49,8 +79,9 @@ type Stack interface {
 }
 
 // NewStack creates a stack for deployment and other operations.
-// Will select an existing matching stack if available before creating new.
-// Merges configuration with existing Pulumi.yaml, Pulumi.<stack>.yaml
+// It will select an existing matching stack if available before creating a new instance.
+// It will merge configuration with existing Pulumi.yaml, Pulumi.<stack>.yaml
+// if available in a `Source` or `Remote` project.
 // Sets config and secret values if provided.
 func NewStack(ss StackSpec) (Stack, error) {
 	err := ss.validate()
@@ -113,7 +144,7 @@ func NewStack(ss StackSpec) (Stack, error) {
 	return s, nil
 }
 
-// StackSpec is a description of a pulumi stack
+// StackSpec is a description of a Pulumi stack
 type StackSpec struct {
 	// Name of the the stack
 	Name string
@@ -123,7 +154,18 @@ type StackSpec struct {
 	Overrides *StackOverrides
 }
 
-// ProjectSpec is a description of a pulumi project and corresponding source code
+// ProjectSpec is a description of a Project project and corresponding source code
+//
+// Source code for a Pulumi Project is specified in one of three variants:
+//
+// 1. Local, on-disk programs: a stand alone Pulumi program on your local filesystem.
+// Specified via `StackSpec.Project.SourcePath`.
+//
+// 2. Remote programs: a git URL and subdirectory containing a pulumi program. Specified via `StackSpec.Project.Remote`
+//
+// 3. Inline: A pulumi program embedded within your Automation API program. Enables defining a single main()
+// func that describes and drives a pulumi program. Specified via `StackSpec.Project.InlineSource`
+//
 type ProjectSpec struct {
 	// Name of the project
 	Name string
