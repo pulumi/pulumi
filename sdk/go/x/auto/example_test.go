@@ -100,7 +100,7 @@ func ExampleNewStack() error {
 	}
 
 	// NewStack selects a stack if one already exists, and otherwise creates a new one
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func ExampleNewStack_sourceRoot() error {
 		Project: ps,
 	}
 
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func ExampleNewStack_remote() error {
 		},
 	}
 
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func ExampleNewStack_remoteWithSetup() error {
 	}
 
 	// initialize
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func ExampleNewStack_inlineSource() error {
 	}
 
 	// initialize an instance of the stack
-	s, err := NewStack(bucketStack)
+	_, err := NewStack(bucketStack)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func ExampleNewStack_configAndSecrets() error {
 		},
 	}
 
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func ExampleSetupFn() error {
 	}
 
 	// initialize
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -464,7 +464,7 @@ func ExampleProjectOverrides() error {
 	}
 
 	// initialize
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -498,7 +498,7 @@ func ExampleProjectSpec_inlineSource() error {
 	}
 
 	// initialize an instance of the stack
-	s, err := NewStack(bucketStack)
+	_, err := NewStack(bucketStack)
 	if err != nil {
 		return err
 	}
@@ -517,7 +517,7 @@ func ExampleProjectSpec_sourceRoot() error {
 		Project: ps,
 	}
 
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -544,7 +544,7 @@ func ExampleProjectSpec_remote() error {
 		},
 	}
 
-	s, err := NewStack(ss)
+	_, err := NewStack(ss)
 	if err != nil {
 		return err
 	}
@@ -583,7 +583,7 @@ func ExampleStackOverrides() error {
 	}
 
 	// initialize an instance of the stack
-	s, err := NewStack(bucketStack)
+	_, err := NewStack(bucketStack)
 	if err != nil {
 		return err
 	}
@@ -622,7 +622,7 @@ func ExampleStackSpec() error {
 	}
 
 	// initialize an instance of the stack
-	s, err := NewStack(bucketStack)
+	_, err := NewStack(bucketStack)
 	if err != nil {
 		return err
 	}
@@ -681,7 +681,7 @@ func ExampleStack() error {
 		return err
 	}
 
-	// remove the stack and all associated configuration and history
+	// remove the stack and all associate configuration and history
 	err = s.Remove()
 	return err
 }
