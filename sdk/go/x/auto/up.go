@@ -260,8 +260,11 @@ type UpdateSummary struct {
 
 // runCmd execs the given command with appropriate stack context
 // returning stdout, stderr, exitcode, and an error value
-func (s *stack) runCmd(name string, arg ...string) (string, string, int, error) {
-	cmd := exec.Command(name, arg...)
+func (s *stack) runCmd(name string, args ...string) (string, string, int, error) {
+	// all commands should be run in non-interactive mode.
+	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
+	args = append(args, "--non-interactive")
+	cmd := exec.Command(name, args...)
 	cmd.Dir = s.SourcePath
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
