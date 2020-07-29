@@ -17,6 +17,9 @@ CHANGELOG
 
 - Python: Improved error message when `virtualenv` doesn't exist
   [#5069](https://github.com/pulumi/pulumi/pull/5069)
+  
+- Enable pushing to Artifact Registry in actions
+  [#5075](https://github.com/pulumi/pulumi/pull/5075)
 
 ## 2.7.1 (2020-07-22)
 
