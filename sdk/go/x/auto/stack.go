@@ -38,6 +38,37 @@ import (
 )
 
 // Stack is a deployable instance of a Pulumi program, containing it's own unique configuration.
+// It defines a common set of operations that can be performed across all three stack types
+// (SourceRoot, Remote, InlineSource).
+//
+// Lifecycle Operations:
+//
+// - Up: create or update resources.
+//
+// - Preview: dry-run execution to see a proposed set of changes.
+//
+// - Refresh: sync the state of your stack with that of the cloud providers.
+//
+// - Destroy: delete all resources in a stack.
+//
+// - Remove: delete a stack, all associated history, and configuration.
+//
+//
+// Status Operations:
+//
+// - Summary: retrieve information about the last lifecycle operation's result.
+//
+// - Outputs: get both secret and plaintext stack outputs.
+//
+// - User: get the current authenticated Pulumi username.
+//
+//
+// Config Operations:
+//
+// - SetConfig: upsert the specified plaintext config values.
+//
+// - SetScrets: upsert the specified secret configuration values (will be stored encrypted per stack settings).
+//
 type Stack interface {
 	// -- Lifecycle
 
@@ -78,7 +109,7 @@ type Stack interface {
 	isStack()
 }
 
-// NewStack creates a stack for deployment and other operations.
+// NewStack creates a Stack for deployment and other operations.
 // It will select an existing matching stack if available before creating a new instance.
 // It will merge configuration with existing Pulumi.yaml, Pulumi.<stack>.yaml
 // if available in a `Source` or `Remote` project.
@@ -199,7 +230,8 @@ type RemoteArgs struct {
 	WorkDir *string
 }
 
-// SetupFn is called with a PATH containing a pulumi program after enlistment
+// SetupFn is a function to execute after enlisting in a Stack's remote repo.
+// It is called with a PATH containing the pulumi program post-enlistment.
 type SetupFn func(string) error
 
 // ProjectOverrides is an optional set of values to be merged with
