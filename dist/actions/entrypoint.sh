@@ -88,7 +88,7 @@ if [ ! -z "$GOOGLE_CREDENTIALS" ]; then
         echo "$GOOGLE_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
     fi
     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-    gcloud --quiet auth configure-docker
+    gcloud --quiet auth configure-docker $ARTIFACT_REGISTRY_HOSTNAME_LIST
 fi
 
 # Next, run npm install. We always call this, as
