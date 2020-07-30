@@ -156,7 +156,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	// In host mode, we simply print the engine and monitor address to stderr and wait for a signal.
 	if h.IsHostOnlyMode() {
-		fmt.Fprintf(os.Stderr, "%s\n", info.MonitorAddress)
+		fmt.Fprintf(os.Stderr, "resmon: %s\n", info.MonitorAddress)
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs

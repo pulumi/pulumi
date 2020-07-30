@@ -68,11 +68,9 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 		return errors.New("missing stack name")
 	} else if info.MonitorAddr == "" && info.Mocks == nil {
 		return errors.New("missing resource monitor RPC address")
+	} else if info.EngineAddr == "" && info.Mocks == nil {
+		return errors.New("missing engine RPC address")
 	}
-	// TODO we need to fix this for inline funcs
-	// } else if info.EngineAddr == "" && info.Mocks == nil {
-	// 	return errors.New("missing engine RPC address")
-	// }
 
 	// Create a fresh context.
 	ctx, err := NewContext(context.TODO(), info)

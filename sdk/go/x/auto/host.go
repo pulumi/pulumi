@@ -28,32 +28,45 @@ func (s *stack) host(isPreview bool) (string, string, error) {
 	scanner := bufio.NewScanner(stderr)
 	scanner.Split(bufio.ScanLines)
 
-	addrChan := make(chan string)
+	resMonAddrChan := make(chan string)
+	engineAddrChan := make(chan string)
 	failChan := make(chan bool)
 	go func() {
-		success := false
+		numAddrs := 0
 		for scanner.Scan() {
 			m := scanner.Text()
 			errBuff.WriteString(m)
-			if strings.HasPrefix(m, "127.0.0.1:") {
-				success = true
-				addrChan <- m
+			if strings.HasPrefix(m, "resmon: ") {
+				numAddrs++
+				// resmon: 127.0.0.1:23423
+				resMonAddrChan <- strings.Split(m, " ")[1]
+			}
+			if strings.HasPrefix(m, "engine: ") {
+				numAddrs++
+				// engine: 127.0.0.1:23423
+				engineAddrChan <- strings.Split(m, " ")[1]
 			}
 		}
-		if !success {
+		if numAddrs < 2 {
 			failChan <- true
 		}
 	}()
 	var monitorAddr string
-	select {
-	case <-failChan:
-		return stdout.String(), errBuff.String(), errors.New("failed to launch host")
-	case monitorAddr = <-addrChan:
+	var engineAddr string
+	for i := 0; i < 2; i++ {
+		select {
+		case <-failChan:
+			return stdout.String(), errBuff.String(), errors.New("failed to launch host")
+		case monitorAddr = <-resMonAddrChan:
+		case engineAddr = <-engineAddrChan:
+		}
 	}
 
 	os.Setenv(pulumi.EnvMonitor, monitorAddr)
 	os.Setenv(pulumi.EnvProject, s.ProjectName)
 	os.Setenv(pulumi.EnvStack, s.Name)
+	os.Setenv(pulumi.EnvEngine, engineAddr)
+
 	cfg, err := s.rawConfig()
 	if err != nil {
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to serialize config for inline program")

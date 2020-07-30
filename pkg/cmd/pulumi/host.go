@@ -92,6 +92,7 @@ func newHostCmd() *cobra.Command {
 				Debug:         debug,
 				Refresh:       refresh,
 				UseLegacyDiff: useLegacyDiff(),
+				IsHostCommand: true,
 			}
 
 			// we set up the stack in auto.NewStack before execing host
