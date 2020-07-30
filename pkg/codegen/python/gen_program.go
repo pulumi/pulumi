@@ -81,19 +81,6 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 		seenTypes := codegen.Set{}
 		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
-
-		// Annotate nested types to indicate they are dictionaries.
-		for _, t := range p.Types {
-			if t, ok := t.(*schema.ObjectType); ok {
-				if t.Language == nil {
-					t.Language = map[string]interface{}{}
-				}
-				t.Language["python"] = objectTypeInfo{
-					isDictionary:         true,
-					camelCaseToSnakeCase: camelCaseToSnakeCase,
-				}
-			}
-		}
 	}
 
 	g := &generator{
@@ -203,8 +190,36 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	for i, component := range components {
 		components[i] = PyName(component)
 	}
-
 	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
+}
+
+// argumentTypeName computes the python argument class name for the given expression and model type.
+func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
+	schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type))
+	if !ok {
+		return ""
+	}
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return ""
+	}
+
+	token := objType.Token
+	tokenRange := expr.SyntaxNode().Range()
+
+	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+	contract.Assert(len(diags) == 0)
+	modName := strings.Split(module, "/")[0]
+	if strings.ToLower(modName) == "index" {
+		modName = ""
+	}
+	if modName != "" {
+		modName = "." + PyName(modName)
+	}
+	member = member + "Args"
+
+	return fmt.Sprintf("%s%s.%s", PyName(pkg), modName, title(member))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -231,7 +246,7 @@ func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Blo
 			}
 		}
 
-		value, valueTemps := g.lowerExpression(value)
+		value, valueTemps := g.lowerExpression(value, value.Type())
 		temps = append(temps, valueTemps...)
 
 		block.Body.Items = append(block.Body.Items, &model.Attribute{
@@ -305,7 +320,9 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	for _, attr := range r.Inputs {
 		g.lowerObjectKeys(attr.Value, casingTable)
 
-		value, valueTemps := g.lowerExpression(attr.Value)
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		value, valueTemps := g.lowerExpression(attr.Value, destType.(model.Type))
 		temps = append(temps, valueTemps...)
 		attr.Value = value
 	}
@@ -403,7 +420,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 	var defaultValue model.Expression
 	var temps []*quoteTemp
 	if v.DefaultValue != nil {
-		defaultValue, temps = g.lowerExpression(v.DefaultValue)
+		defaultValue, temps = g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 	}
 	g.genTemps(w, temps)
 
@@ -418,7 +435,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
-	value, temps := g.lowerExpression(v.Definition.Value)
+	value, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia
@@ -426,7 +443,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
-	value, temps := g.lowerExpression(v.Value)
+	value, temps := g.lowerExpression(v.Value, v.Value.Type())
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia

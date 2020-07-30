@@ -23,13 +23,19 @@ func (nameInfo) Format(name string) string {
 	return PyName(name)
 }
 
-func (g *generator) lowerExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*quoteTemp) {
 	// TODO(pdg): diagnostics
 
 	expr = hcl2.RewritePropertyReferences(expr)
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
-	expr, _ = g.lowerProxyApplies(expr)
-	expr, quotes, _ := g.rewriteQuotes(expr)
+	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false)
+	contract.Assert(len(diags) == 0)
+	expr, diags = g.lowerProxyApplies(expr)
+	contract.Assert(len(diags) == 0)
+	expr = hcl2.RewriteConversions(expr, typ)
+
+	expr, quotes, diags := g.rewriteQuotes(expr)
+	contract.Assert(len(diags) == 0)
+
 	return expr, quotes
 }
 
@@ -169,7 +175,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	}
 }
 
-// functionName computes the NodeJS package, module, and name for the given function token.
+// functionName computes the python package, module, and name for the given function token.
 func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
@@ -198,6 +204,13 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
+	case hcl2.IntrinsicConvert:
+		switch arg := expr.Args[0].(type) {
+		case *model.ObjectConsExpression:
+			g.genObjectConsExpression(w, arg, expr.Type())
+		default:
+			g.Fgenf(w, "%.v", expr.Args[0])
+		}
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
 	case "element":
@@ -249,6 +262,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					}
 				}
 			})
+		}
+		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
+			g.GenFunctionCallExpression(w, obj)
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -356,8 +372,26 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
+	g.genObjectConsExpression(w, expr, expr.Type())
+}
+
+func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) == 0 {
-		g.Fgen(w, "{}")
+		return
+	}
+
+	typeName := g.argumentTypeName(expr, destType)
+	if typeName != "" {
+		g.Fgenf(w, "%s(\n", typeName)
+		g.Indented(func() {
+			for _, item := range expr.Items {
+				g.Fgenf(w, "%s", g.Indent)
+				lit := item.Key.(*model.LiteralValueExpression)
+				g.Fprint(w, PyName(lit.Value.AsString()))
+				g.Fgenf(w, "=%.v,\n", item.Value)
+			}
+		})
+		g.Fgenf(w, "%s)", g.Indent)
 	} else {
 		g.Fgen(w, "{")
 		g.Indented(func() {
