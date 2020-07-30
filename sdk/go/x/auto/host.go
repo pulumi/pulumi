@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -65,8 +66,8 @@ func (s *stack) host(isPreview bool) (string, string, error) {
 	err = execUserCode(s.InlineSource)
 	if err != nil {
 		cmd.Process.Signal(os.Interrupt)
-		cmd.Wait()
-		if err != nil {
+		waitErr := cmd.Wait()
+		if waitErr != nil {
 			return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to run inline program and shutdown gracefully")
 		}
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "error running inline pulumi program")
@@ -91,6 +92,10 @@ func execUserCode(fn pulumi.RunFunc) (err error) {
 			}
 		}
 	}()
+	stack := string(debug.Stack())
+	if strings.Contains(stack, "github.com/pulumi/pulumi/sdk/go/pulumi/run.go") {
+		return errors.New("nested stack operations are not supported https://github.com/pulumi/pulumi/issues/5058")
+	}
 
 	err = pulumi.RunErr(fn)
 	return err

@@ -338,6 +338,100 @@ func TestUpInlineSource(t *testing.T) {
 	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
+func TestNestedStackFails(t *testing.T) {
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	ps := ProjectSpec{
+		Name: "parent",
+		InlineSource: func(ctx *pulumi.Context) error {
+			nestedProj := ProjectSpec{
+				Name: "nested",
+				InlineSource: func(ctx *pulumi.Context) error {
+					ctx.Export("nested", pulumi.String("output"))
+					return nil
+				},
+			}
+			nestedStack := StackSpec{
+				Name:    sName,
+				Project: nestedProj,
+				Overrides: &StackOverrides{
+					Config: map[string]string{"aws:region": "us-west-2"},
+				},
+			}
+			nested, err := NewStack(nestedStack)
+			if err != nil {
+				return err
+			}
+
+			_, err = nested.Up()
+			return err
+		},
+	}
+	ss := StackSpec{
+		Name:    sName,
+		Project: ps,
+		Overrides: &StackOverrides{
+			Config: map[string]string{"aws:region": "us-west-2"},
+		},
+	}
+
+	// initialize
+	parent, err := NewStack(ss)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	_, err = parent.Up()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nested stack operations are not supported")
+
+	// -- pulumi destroy --
+	dRes, err := parent.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	err = parent.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+
+	// -- tear down nested
+
+	nestedProj := ProjectSpec{
+		Name: "nested",
+		InlineSource: func(ctx *pulumi.Context) error {
+			ctx.Export("nested", pulumi.String("output"))
+			return nil
+		},
+	}
+	nestedStack := StackSpec{
+		Name:    sName,
+		Project: nestedProj,
+		Overrides: &StackOverrides{
+			Config: map[string]string{"aws:region": "us-west-2"},
+		},
+	}
+	nested, err := NewStack(nestedStack)
+	assert.Nil(t, err)
+
+	dRes, err = nested.Destroy()
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+
+	err = nested.Remove()
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+
+}
+
 func rangeIn(low, hi int) int {
 	rand.Seed(time.Now().UnixNano())
 	return low + rand.Intn(hi-low)
