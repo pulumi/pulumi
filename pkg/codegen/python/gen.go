@@ -460,7 +460,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.InputProperties {
-		fmt.Fprintf(w, ", %s=None", PyName(prop.Name))
+		fmt.Fprintf(w, ", %s=None", initParamName(prop.Name))
 	}
 
 	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
@@ -491,7 +491,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	ins := stringSet{}
 	for _, prop := range res.InputProperties {
-		pname := PyName(prop.Name)
+		pname := initParamName(prop.Name)
 		var arg interface{}
 		var err error
 
@@ -538,7 +538,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(json.dumps) if %s is not None else None", arg, arg)
 		}
-		fmt.Fprintf(w, "            __props__['%s'] = %s\n", pname, arg)
+		fmt.Fprintf(w, "            __props__['%s'] = %s\n", PyName(prop.Name), arg)
 
 		ins.add(prop.Name)
 	}
@@ -699,7 +699,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if len(args) > 0 {
 		fmt.Fprintln(docs, "")
 		for _, arg := range args {
-			mod.genPropDocstring(docs, arg, false /*wrapInputs*/)
+			mod.genPropDocstring(docs, PyName(arg.Name), arg, false /*wrapInputs*/)
 		}
 
 		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
@@ -1040,7 +1040,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.InputProperties {
-		mod.genPropDocstring(b, prop, true /*wrapInput*/)
+		mod.genPropDocstring(b, initParamName(prop.Name), prop, true /*wrapInput*/)
 	}
 
 	// Exclude nested docs in kubernetes provider
@@ -1066,7 +1066,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
 		for _, prop := range res.StateInputs.Properties {
-			mod.genPropDocstring(b, prop, true /*wrapInput*/)
+			mod.genPropDocstring(b, PyName(prop.Name), prop, true /*wrapInput*/)
 		}
 
 		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
@@ -1077,12 +1077,11 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	printComment(w, b.String(), "        ")
 }
 
-func (mod *modContext) genPropDocstring(w io.Writer, prop *schema.Property, wrapInput bool) {
+func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, wrapInput bool) {
 	if prop.Comment == "" {
 		return
 	}
 
-	name := PyName(prop.Name)
 	ty := pyType(prop.Type)
 	if wrapInput {
 		ty = fmt.Sprintf("pulumi.Input[%s]", ty)
@@ -1244,6 +1243,17 @@ func pyPack(s string) string {
 // pyClassName turns a raw name into one that is suitable as a Python class name.
 func pyClassName(name string) string {
 	return EnsureKeywordSafe(name)
+}
+
+// initParamName returns a PyName-encoded name but also deduplicates the name against built-in parameters of resource __init__.
+func initParamName(name string) string {
+	result := PyName(name)
+	switch result {
+	case "resource_name", "opts":
+		return result + "_"
+	default:
+		return result
+	}
 }
 
 func getPrimitiveValue(value interface{}) (string, error) {
