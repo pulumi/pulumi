@@ -38,8 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
-// Match k8s version suffix. Examples include "/v1beta1" and "/v1alpha2".
-var k8sVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta)\d+)?)$`)
+// Match module version suffix. Examples include "/v1beta1", "/v1alpha2", and "/preview".
+var moduleVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta|preview)\d*)?)$`)
 
 type typeDetails struct {
 	outputType   bool
@@ -1170,12 +1170,10 @@ func (mod *modContext) genIndex(exports []string) string {
 
 	for _, mod := range mod.children {
 		child := strings.ToLower(mod.mod)
-		if mod.compatibility == kubernetes20 {
-			// Extract version suffix from child modules. Nested versions will have their own index.ts file.
-			// Example: apps/v1beta1 -> v1beta1
-			if match := k8sVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
-				child = child[match[2]:match[3]]
-			}
+		// Extract version suffix from child modules. Nested versions will have their own index.ts file.
+		// Example: apps/v1beta1 -> v1beta1
+		if match := moduleVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
+			child = child[match[2]:match[3]]
 		}
 		children.Add(child)
 	}
