@@ -21,7 +21,7 @@ func GenerateTypes(tool string, pkg *schema.Package) (string, error) {
 
 	for _, mod := range modules {
 		if len(mod.types) > 0 {
-			crdTypes := mod.genCRDNameSpaces()
+			crdTypes := mod.genCRDNamespaces()
 			return crdTypes, nil
 		}
 	}
@@ -29,7 +29,7 @@ func GenerateTypes(tool string, pkg *schema.Package) (string, error) {
 	return "", errors.New("cannot find module with types")
 }
 
-func (mod *modContext) genCRDNameSpaces() string {
+func (mod *modContext) genCRDNamespaces() string {
 	// Create inputs buffer
 	inputs := &bytes.Buffer{}
 
