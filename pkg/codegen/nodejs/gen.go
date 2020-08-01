@@ -107,6 +107,13 @@ func (mod *modContext) tokenToType(tok string, input bool) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
+	if mod.tool == "crd2pulumi" && components[0] == "crds" {
+		moduleName := strings.Split(components[1], "/")
+		version := moduleName[1]
+		name := components[2]
+		return version + "." + name
+	}
+
 	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
 	if override, ok := mod.modToPkg[modName]; ok {
 		modName = override
@@ -953,13 +960,20 @@ func (mod *modContext) genTypes() (string, string) {
 	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
 
 	// Build a namespace tree out of the types, then emit them.
+	namespaces := mod.getNamespaces()
+	mod.genNamespace(inputs, namespaces[""], true, 0)
+	mod.genNamespace(outputs, namespaces[""], false, 0)
 
-	type namespace struct {
-		name     string
-		types    []*schema.ObjectType
-		children []*namespace
-	}
+	return inputs.String(), outputs.String()
+}
 
+type namespace struct {
+	name     string
+	types    []*schema.ObjectType
+	children []*namespace
+}
+
+func (mod *modContext) getNamespaces() map[string]*namespace {
 	namespaces := map[string]*namespace{}
 	var getNamespace func(string) *namespace
 	getNamespace = func(mod string) *namespace {
@@ -994,38 +1008,35 @@ func (mod *modContext) genTypes() (string, string) {
 		ns.types = append(ns.types, t)
 	}
 
-	var genNamespace func(io.Writer, *namespace, bool, int)
-	genNamespace = func(w io.Writer, ns *namespace, input bool, level int) {
-		indent := strings.Repeat("    ", level)
+	return namespaces
+}
 
-		sort.Slice(ns.types, func(i, j int) bool {
-			return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
-		})
-		for i, t := range ns.types {
-			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
-				mod.genType(w, t, input, level)
-				if i != len(ns.types)-1 {
-					fmt.Fprintf(w, "\n")
-				}
-			}
-		}
+func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) {
+	indent := strings.Repeat("    ", level)
 
-		sort.Slice(ns.children, func(i, j int) bool {
-			return ns.children[i].name < ns.children[j].name
-		})
-		for i, ns := range ns.children {
-			fmt.Fprintf(w, "%sexport namespace %s {\n", indent, ns.name)
-			genNamespace(w, ns, input, level+1)
-			fmt.Fprintf(w, "%s}\n", indent)
-			if i != len(ns.children)-1 {
+	sort.Slice(ns.types, func(i, j int) bool {
+		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+	})
+	for i, t := range ns.types {
+		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+			mod.genType(w, t, input, level)
+			if i != len(ns.types)-1 {
 				fmt.Fprintf(w, "\n")
 			}
 		}
 	}
-	genNamespace(inputs, namespaces[""], true, 0)
-	genNamespace(outputs, namespaces[""], false, 0)
 
-	return inputs.String(), outputs.String()
+	sort.Slice(ns.children, func(i, j int) bool {
+		return ns.children[i].name < ns.children[j].name
+	})
+	for i, ns := range ns.children {
+		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, ns.name)
+		mod.genNamespace(w, ns, input, level+1)
+		fmt.Fprintf(w, "%s}\n", indent)
+		if i != len(ns.children)-1 {
+			fmt.Fprintf(w, "\n")
+		}
+	}
 }
 
 type fs map[string][]byte
