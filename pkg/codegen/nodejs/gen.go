@@ -959,6 +959,7 @@ func (mod *modContext) genTypes() (string, string) {
 	mod.genHeader(inputs, mod.sdkImports(true, false), imports)
 	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
 
+	// Build a namespace tree out of the types, then emit them.
 	namespaces := mod.getNamespaces()
 	mod.genNamespace(inputs, namespaces[""], true, 0)
 	mod.genNamespace(outputs, namespaces[""], false, 0)
