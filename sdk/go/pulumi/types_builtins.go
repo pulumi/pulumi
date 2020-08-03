@@ -70,6 +70,26 @@ func (o *OutputState) ApplyArchiveMapArrayWithContext(ctx context.Context, appli
 	return o.ApplyTWithContext(ctx, applier).(ArchiveMapArrayOutput)
 }
 
+// ApplyArchiveMapMap is like ApplyT, but returns a ArchiveMapMapOutput.
+func (o *OutputState) ApplyArchiveMapMap(applier interface{}) ArchiveMapMapOutput {
+	return o.ApplyT(applier).(ArchiveMapMapOutput)
+}
+
+// ApplyArchiveMapMapWithContext is like ApplyTWithContext, but returns a ArchiveMapMapOutput.
+func (o *OutputState) ApplyArchiveMapMapWithContext(ctx context.Context, applier interface{}) ArchiveMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(ArchiveMapMapOutput)
+}
+
+// ApplyArchiveArrayArray is like ApplyT, but returns a ArchiveArrayArrayOutput.
+func (o *OutputState) ApplyArchiveArrayArray(applier interface{}) ArchiveArrayArrayOutput {
+	return o.ApplyT(applier).(ArchiveArrayArrayOutput)
+}
+
+// ApplyArchiveArrayArrayWithContext is like ApplyTWithContext, but returns a ArchiveArrayArrayOutput.
+func (o *OutputState) ApplyArchiveArrayArrayWithContext(ctx context.Context, applier interface{}) ArchiveArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayArrayOutput)
+}
+
 // ApplyAsset is like ApplyT, but returns a AssetOutput.
 func (o *OutputState) ApplyAsset(applier interface{}) AssetOutput {
 	return o.ApplyT(applier).(AssetOutput)
@@ -120,6 +140,26 @@ func (o *OutputState) ApplyAssetMapArrayWithContext(ctx context.Context, applier
 	return o.ApplyTWithContext(ctx, applier).(AssetMapArrayOutput)
 }
 
+// ApplyAssetMapMap is like ApplyT, but returns a AssetMapMapOutput.
+func (o *OutputState) ApplyAssetMapMap(applier interface{}) AssetMapMapOutput {
+	return o.ApplyT(applier).(AssetMapMapOutput)
+}
+
+// ApplyAssetMapMapWithContext is like ApplyTWithContext, but returns a AssetMapMapOutput.
+func (o *OutputState) ApplyAssetMapMapWithContext(ctx context.Context, applier interface{}) AssetMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(AssetMapMapOutput)
+}
+
+// ApplyAssetArrayArray is like ApplyT, but returns a AssetArrayArrayOutput.
+func (o *OutputState) ApplyAssetArrayArray(applier interface{}) AssetArrayArrayOutput {
+	return o.ApplyT(applier).(AssetArrayArrayOutput)
+}
+
+// ApplyAssetArrayArrayWithContext is like ApplyTWithContext, but returns a AssetArrayArrayOutput.
+func (o *OutputState) ApplyAssetArrayArrayWithContext(ctx context.Context, applier interface{}) AssetArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(AssetArrayArrayOutput)
+}
+
 // ApplyAssetOrArchive is like ApplyT, but returns a AssetOrArchiveOutput.
 func (o *OutputState) ApplyAssetOrArchive(applier interface{}) AssetOrArchiveOutput {
 	return o.ApplyT(applier).(AssetOrArchiveOutput)
@@ -168,6 +208,26 @@ func (o *OutputState) ApplyAssetOrArchiveMapArray(applier interface{}) AssetOrAr
 // ApplyAssetOrArchiveMapArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveMapArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapArrayOutput)
+}
+
+// ApplyAssetOrArchiveMapMap is like ApplyT, but returns a AssetOrArchiveMapMapOutput.
+func (o *OutputState) ApplyAssetOrArchiveMapMap(applier interface{}) AssetOrArchiveMapMapOutput {
+	return o.ApplyT(applier).(AssetOrArchiveMapMapOutput)
+}
+
+// ApplyAssetOrArchiveMapMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapMapOutput.
+func (o *OutputState) ApplyAssetOrArchiveMapMapWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapMapOutput)
+}
+
+// ApplyAssetOrArchiveArrayArray is like ApplyT, but returns a AssetOrArchiveArrayArrayOutput.
+func (o *OutputState) ApplyAssetOrArchiveArrayArray(applier interface{}) AssetOrArchiveArrayArrayOutput {
+	return o.ApplyT(applier).(AssetOrArchiveArrayArrayOutput)
+}
+
+// ApplyAssetOrArchiveArrayArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayArrayOutput.
+func (o *OutputState) ApplyAssetOrArchiveArrayArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayArrayOutput)
 }
 
 // ApplyBool is like ApplyT, but returns a BoolOutput.
@@ -230,6 +290,26 @@ func (o *OutputState) ApplyBoolMapArrayWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(BoolMapArrayOutput)
 }
 
+// ApplyBoolMapMap is like ApplyT, but returns a BoolMapMapOutput.
+func (o *OutputState) ApplyBoolMapMap(applier interface{}) BoolMapMapOutput {
+	return o.ApplyT(applier).(BoolMapMapOutput)
+}
+
+// ApplyBoolMapMapWithContext is like ApplyTWithContext, but returns a BoolMapMapOutput.
+func (o *OutputState) ApplyBoolMapMapWithContext(ctx context.Context, applier interface{}) BoolMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(BoolMapMapOutput)
+}
+
+// ApplyBoolArrayArray is like ApplyT, but returns a BoolArrayArrayOutput.
+func (o *OutputState) ApplyBoolArrayArray(applier interface{}) BoolArrayArrayOutput {
+	return o.ApplyT(applier).(BoolArrayArrayOutput)
+}
+
+// ApplyBoolArrayArrayWithContext is like ApplyTWithContext, but returns a BoolArrayArrayOutput.
+func (o *OutputState) ApplyBoolArrayArrayWithContext(ctx context.Context, applier interface{}) BoolArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(BoolArrayArrayOutput)
+}
+
 // ApplyFloat32 is like ApplyT, but returns a Float32Output.
 func (o *OutputState) ApplyFloat32(applier interface{}) Float32Output {
 	return o.ApplyT(applier).(Float32Output)
@@ -288,6 +368,26 @@ func (o *OutputState) ApplyFloat32MapArray(applier interface{}) Float32MapArrayO
 // ApplyFloat32MapArrayWithContext is like ApplyTWithContext, but returns a Float32MapArrayOutput.
 func (o *OutputState) ApplyFloat32MapArrayWithContext(ctx context.Context, applier interface{}) Float32MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Float32MapArrayOutput)
+}
+
+// ApplyFloat32MapMap is like ApplyT, but returns a Float32MapMapOutput.
+func (o *OutputState) ApplyFloat32MapMap(applier interface{}) Float32MapMapOutput {
+	return o.ApplyT(applier).(Float32MapMapOutput)
+}
+
+// ApplyFloat32MapMapWithContext is like ApplyTWithContext, but returns a Float32MapMapOutput.
+func (o *OutputState) ApplyFloat32MapMapWithContext(ctx context.Context, applier interface{}) Float32MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float32MapMapOutput)
+}
+
+// ApplyFloat32ArrayArray is like ApplyT, but returns a Float32ArrayArrayOutput.
+func (o *OutputState) ApplyFloat32ArrayArray(applier interface{}) Float32ArrayArrayOutput {
+	return o.ApplyT(applier).(Float32ArrayArrayOutput)
+}
+
+// ApplyFloat32ArrayArrayWithContext is like ApplyTWithContext, but returns a Float32ArrayArrayOutput.
+func (o *OutputState) ApplyFloat32ArrayArrayWithContext(ctx context.Context, applier interface{}) Float32ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float32ArrayArrayOutput)
 }
 
 // ApplyFloat64 is like ApplyT, but returns a Float64Output.
@@ -350,6 +450,26 @@ func (o *OutputState) ApplyFloat64MapArrayWithContext(ctx context.Context, appli
 	return o.ApplyTWithContext(ctx, applier).(Float64MapArrayOutput)
 }
 
+// ApplyFloat64MapMap is like ApplyT, but returns a Float64MapMapOutput.
+func (o *OutputState) ApplyFloat64MapMap(applier interface{}) Float64MapMapOutput {
+	return o.ApplyT(applier).(Float64MapMapOutput)
+}
+
+// ApplyFloat64MapMapWithContext is like ApplyTWithContext, but returns a Float64MapMapOutput.
+func (o *OutputState) ApplyFloat64MapMapWithContext(ctx context.Context, applier interface{}) Float64MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float64MapMapOutput)
+}
+
+// ApplyFloat64ArrayArray is like ApplyT, but returns a Float64ArrayArrayOutput.
+func (o *OutputState) ApplyFloat64ArrayArray(applier interface{}) Float64ArrayArrayOutput {
+	return o.ApplyT(applier).(Float64ArrayArrayOutput)
+}
+
+// ApplyFloat64ArrayArrayWithContext is like ApplyTWithContext, but returns a Float64ArrayArrayOutput.
+func (o *OutputState) ApplyFloat64ArrayArrayWithContext(ctx context.Context, applier interface{}) Float64ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float64ArrayArrayOutput)
+}
+
 // ApplyID is like ApplyT, but returns a IDOutput.
 func (o *OutputState) ApplyID(applier interface{}) IDOutput {
 	return o.ApplyT(applier).(IDOutput)
@@ -410,6 +530,26 @@ func (o *OutputState) ApplyIDMapArrayWithContext(ctx context.Context, applier in
 	return o.ApplyTWithContext(ctx, applier).(IDMapArrayOutput)
 }
 
+// ApplyIDMapMap is like ApplyT, but returns a IDMapMapOutput.
+func (o *OutputState) ApplyIDMapMap(applier interface{}) IDMapMapOutput {
+	return o.ApplyT(applier).(IDMapMapOutput)
+}
+
+// ApplyIDMapMapWithContext is like ApplyTWithContext, but returns a IDMapMapOutput.
+func (o *OutputState) ApplyIDMapMapWithContext(ctx context.Context, applier interface{}) IDMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(IDMapMapOutput)
+}
+
+// ApplyIDArrayArray is like ApplyT, but returns a IDArrayArrayOutput.
+func (o *OutputState) ApplyIDArrayArray(applier interface{}) IDArrayArrayOutput {
+	return o.ApplyT(applier).(IDArrayArrayOutput)
+}
+
+// ApplyIDArrayArrayWithContext is like ApplyTWithContext, but returns a IDArrayArrayOutput.
+func (o *OutputState) ApplyIDArrayArrayWithContext(ctx context.Context, applier interface{}) IDArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(IDArrayArrayOutput)
+}
+
 // ApplyArray is like ApplyT, but returns a ArrayOutput.
 func (o *OutputState) ApplyArray(applier interface{}) ArrayOutput {
 	return o.ApplyT(applier).(ArrayOutput)
@@ -448,6 +588,26 @@ func (o *OutputState) ApplyMapArray(applier interface{}) MapArrayOutput {
 // ApplyMapArrayWithContext is like ApplyTWithContext, but returns a MapArrayOutput.
 func (o *OutputState) ApplyMapArrayWithContext(ctx context.Context, applier interface{}) MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(MapArrayOutput)
+}
+
+// ApplyMapMap is like ApplyT, but returns a MapMapOutput.
+func (o *OutputState) ApplyMapMap(applier interface{}) MapMapOutput {
+	return o.ApplyT(applier).(MapMapOutput)
+}
+
+// ApplyMapMapWithContext is like ApplyTWithContext, but returns a MapMapOutput.
+func (o *OutputState) ApplyMapMapWithContext(ctx context.Context, applier interface{}) MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(MapMapOutput)
+}
+
+// ApplyArrayArray is like ApplyT, but returns a ArrayArrayOutput.
+func (o *OutputState) ApplyArrayArray(applier interface{}) ArrayArrayOutput {
+	return o.ApplyT(applier).(ArrayArrayOutput)
+}
+
+// ApplyArrayArrayWithContext is like ApplyTWithContext, but returns a ArrayArrayOutput.
+func (o *OutputState) ApplyArrayArrayWithContext(ctx context.Context, applier interface{}) ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(ArrayArrayOutput)
 }
 
 // ApplyInt is like ApplyT, but returns a IntOutput.
@@ -510,6 +670,26 @@ func (o *OutputState) ApplyIntMapArrayWithContext(ctx context.Context, applier i
 	return o.ApplyTWithContext(ctx, applier).(IntMapArrayOutput)
 }
 
+// ApplyIntMapMap is like ApplyT, but returns a IntMapMapOutput.
+func (o *OutputState) ApplyIntMapMap(applier interface{}) IntMapMapOutput {
+	return o.ApplyT(applier).(IntMapMapOutput)
+}
+
+// ApplyIntMapMapWithContext is like ApplyTWithContext, but returns a IntMapMapOutput.
+func (o *OutputState) ApplyIntMapMapWithContext(ctx context.Context, applier interface{}) IntMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(IntMapMapOutput)
+}
+
+// ApplyIntArrayArray is like ApplyT, but returns a IntArrayArrayOutput.
+func (o *OutputState) ApplyIntArrayArray(applier interface{}) IntArrayArrayOutput {
+	return o.ApplyT(applier).(IntArrayArrayOutput)
+}
+
+// ApplyIntArrayArrayWithContext is like ApplyTWithContext, but returns a IntArrayArrayOutput.
+func (o *OutputState) ApplyIntArrayArrayWithContext(ctx context.Context, applier interface{}) IntArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(IntArrayArrayOutput)
+}
+
 // ApplyInt16 is like ApplyT, but returns a Int16Output.
 func (o *OutputState) ApplyInt16(applier interface{}) Int16Output {
 	return o.ApplyT(applier).(Int16Output)
@@ -568,6 +748,26 @@ func (o *OutputState) ApplyInt16MapArray(applier interface{}) Int16MapArrayOutpu
 // ApplyInt16MapArrayWithContext is like ApplyTWithContext, but returns a Int16MapArrayOutput.
 func (o *OutputState) ApplyInt16MapArrayWithContext(ctx context.Context, applier interface{}) Int16MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Int16MapArrayOutput)
+}
+
+// ApplyInt16MapMap is like ApplyT, but returns a Int16MapMapOutput.
+func (o *OutputState) ApplyInt16MapMap(applier interface{}) Int16MapMapOutput {
+	return o.ApplyT(applier).(Int16MapMapOutput)
+}
+
+// ApplyInt16MapMapWithContext is like ApplyTWithContext, but returns a Int16MapMapOutput.
+func (o *OutputState) ApplyInt16MapMapWithContext(ctx context.Context, applier interface{}) Int16MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int16MapMapOutput)
+}
+
+// ApplyInt16ArrayArray is like ApplyT, but returns a Int16ArrayArrayOutput.
+func (o *OutputState) ApplyInt16ArrayArray(applier interface{}) Int16ArrayArrayOutput {
+	return o.ApplyT(applier).(Int16ArrayArrayOutput)
+}
+
+// ApplyInt16ArrayArrayWithContext is like ApplyTWithContext, but returns a Int16ArrayArrayOutput.
+func (o *OutputState) ApplyInt16ArrayArrayWithContext(ctx context.Context, applier interface{}) Int16ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int16ArrayArrayOutput)
 }
 
 // ApplyInt32 is like ApplyT, but returns a Int32Output.
@@ -630,6 +830,26 @@ func (o *OutputState) ApplyInt32MapArrayWithContext(ctx context.Context, applier
 	return o.ApplyTWithContext(ctx, applier).(Int32MapArrayOutput)
 }
 
+// ApplyInt32MapMap is like ApplyT, but returns a Int32MapMapOutput.
+func (o *OutputState) ApplyInt32MapMap(applier interface{}) Int32MapMapOutput {
+	return o.ApplyT(applier).(Int32MapMapOutput)
+}
+
+// ApplyInt32MapMapWithContext is like ApplyTWithContext, but returns a Int32MapMapOutput.
+func (o *OutputState) ApplyInt32MapMapWithContext(ctx context.Context, applier interface{}) Int32MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int32MapMapOutput)
+}
+
+// ApplyInt32ArrayArray is like ApplyT, but returns a Int32ArrayArrayOutput.
+func (o *OutputState) ApplyInt32ArrayArray(applier interface{}) Int32ArrayArrayOutput {
+	return o.ApplyT(applier).(Int32ArrayArrayOutput)
+}
+
+// ApplyInt32ArrayArrayWithContext is like ApplyTWithContext, but returns a Int32ArrayArrayOutput.
+func (o *OutputState) ApplyInt32ArrayArrayWithContext(ctx context.Context, applier interface{}) Int32ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int32ArrayArrayOutput)
+}
+
 // ApplyInt64 is like ApplyT, but returns a Int64Output.
 func (o *OutputState) ApplyInt64(applier interface{}) Int64Output {
 	return o.ApplyT(applier).(Int64Output)
@@ -688,6 +908,26 @@ func (o *OutputState) ApplyInt64MapArray(applier interface{}) Int64MapArrayOutpu
 // ApplyInt64MapArrayWithContext is like ApplyTWithContext, but returns a Int64MapArrayOutput.
 func (o *OutputState) ApplyInt64MapArrayWithContext(ctx context.Context, applier interface{}) Int64MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Int64MapArrayOutput)
+}
+
+// ApplyInt64MapMap is like ApplyT, but returns a Int64MapMapOutput.
+func (o *OutputState) ApplyInt64MapMap(applier interface{}) Int64MapMapOutput {
+	return o.ApplyT(applier).(Int64MapMapOutput)
+}
+
+// ApplyInt64MapMapWithContext is like ApplyTWithContext, but returns a Int64MapMapOutput.
+func (o *OutputState) ApplyInt64MapMapWithContext(ctx context.Context, applier interface{}) Int64MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int64MapMapOutput)
+}
+
+// ApplyInt64ArrayArray is like ApplyT, but returns a Int64ArrayArrayOutput.
+func (o *OutputState) ApplyInt64ArrayArray(applier interface{}) Int64ArrayArrayOutput {
+	return o.ApplyT(applier).(Int64ArrayArrayOutput)
+}
+
+// ApplyInt64ArrayArrayWithContext is like ApplyTWithContext, but returns a Int64ArrayArrayOutput.
+func (o *OutputState) ApplyInt64ArrayArrayWithContext(ctx context.Context, applier interface{}) Int64ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int64ArrayArrayOutput)
 }
 
 // ApplyInt8 is like ApplyT, but returns a Int8Output.
@@ -750,6 +990,26 @@ func (o *OutputState) ApplyInt8MapArrayWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(Int8MapArrayOutput)
 }
 
+// ApplyInt8MapMap is like ApplyT, but returns a Int8MapMapOutput.
+func (o *OutputState) ApplyInt8MapMap(applier interface{}) Int8MapMapOutput {
+	return o.ApplyT(applier).(Int8MapMapOutput)
+}
+
+// ApplyInt8MapMapWithContext is like ApplyTWithContext, but returns a Int8MapMapOutput.
+func (o *OutputState) ApplyInt8MapMapWithContext(ctx context.Context, applier interface{}) Int8MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int8MapMapOutput)
+}
+
+// ApplyInt8ArrayArray is like ApplyT, but returns a Int8ArrayArrayOutput.
+func (o *OutputState) ApplyInt8ArrayArray(applier interface{}) Int8ArrayArrayOutput {
+	return o.ApplyT(applier).(Int8ArrayArrayOutput)
+}
+
+// ApplyInt8ArrayArrayWithContext is like ApplyTWithContext, but returns a Int8ArrayArrayOutput.
+func (o *OutputState) ApplyInt8ArrayArrayWithContext(ctx context.Context, applier interface{}) Int8ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int8ArrayArrayOutput)
+}
+
 // ApplyString is like ApplyT, but returns a StringOutput.
 func (o *OutputState) ApplyString(applier interface{}) StringOutput {
 	return o.ApplyT(applier).(StringOutput)
@@ -808,6 +1068,26 @@ func (o *OutputState) ApplyStringMapArray(applier interface{}) StringMapArrayOut
 // ApplyStringMapArrayWithContext is like ApplyTWithContext, but returns a StringMapArrayOutput.
 func (o *OutputState) ApplyStringMapArrayWithContext(ctx context.Context, applier interface{}) StringMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringMapArrayOutput)
+}
+
+// ApplyStringMapMap is like ApplyT, but returns a StringMapMapOutput.
+func (o *OutputState) ApplyStringMapMap(applier interface{}) StringMapMapOutput {
+	return o.ApplyT(applier).(StringMapMapOutput)
+}
+
+// ApplyStringMapMapWithContext is like ApplyTWithContext, but returns a StringMapMapOutput.
+func (o *OutputState) ApplyStringMapMapWithContext(ctx context.Context, applier interface{}) StringMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(StringMapMapOutput)
+}
+
+// ApplyStringArrayArray is like ApplyT, but returns a StringArrayArrayOutput.
+func (o *OutputState) ApplyStringArrayArray(applier interface{}) StringArrayArrayOutput {
+	return o.ApplyT(applier).(StringArrayArrayOutput)
+}
+
+// ApplyStringArrayArrayWithContext is like ApplyTWithContext, but returns a StringArrayArrayOutput.
+func (o *OutputState) ApplyStringArrayArrayWithContext(ctx context.Context, applier interface{}) StringArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(StringArrayArrayOutput)
 }
 
 // ApplyURN is like ApplyT, but returns a URNOutput.
@@ -870,6 +1150,26 @@ func (o *OutputState) ApplyURNMapArrayWithContext(ctx context.Context, applier i
 	return o.ApplyTWithContext(ctx, applier).(URNMapArrayOutput)
 }
 
+// ApplyURNMapMap is like ApplyT, but returns a URNMapMapOutput.
+func (o *OutputState) ApplyURNMapMap(applier interface{}) URNMapMapOutput {
+	return o.ApplyT(applier).(URNMapMapOutput)
+}
+
+// ApplyURNMapMapWithContext is like ApplyTWithContext, but returns a URNMapMapOutput.
+func (o *OutputState) ApplyURNMapMapWithContext(ctx context.Context, applier interface{}) URNMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(URNMapMapOutput)
+}
+
+// ApplyURNArrayArray is like ApplyT, but returns a URNArrayArrayOutput.
+func (o *OutputState) ApplyURNArrayArray(applier interface{}) URNArrayArrayOutput {
+	return o.ApplyT(applier).(URNArrayArrayOutput)
+}
+
+// ApplyURNArrayArrayWithContext is like ApplyTWithContext, but returns a URNArrayArrayOutput.
+func (o *OutputState) ApplyURNArrayArrayWithContext(ctx context.Context, applier interface{}) URNArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(URNArrayArrayOutput)
+}
+
 // ApplyUint is like ApplyT, but returns a UintOutput.
 func (o *OutputState) ApplyUint(applier interface{}) UintOutput {
 	return o.ApplyT(applier).(UintOutput)
@@ -928,6 +1228,26 @@ func (o *OutputState) ApplyUintMapArray(applier interface{}) UintMapArrayOutput 
 // ApplyUintMapArrayWithContext is like ApplyTWithContext, but returns a UintMapArrayOutput.
 func (o *OutputState) ApplyUintMapArrayWithContext(ctx context.Context, applier interface{}) UintMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(UintMapArrayOutput)
+}
+
+// ApplyUintMapMap is like ApplyT, but returns a UintMapMapOutput.
+func (o *OutputState) ApplyUintMapMap(applier interface{}) UintMapMapOutput {
+	return o.ApplyT(applier).(UintMapMapOutput)
+}
+
+// ApplyUintMapMapWithContext is like ApplyTWithContext, but returns a UintMapMapOutput.
+func (o *OutputState) ApplyUintMapMapWithContext(ctx context.Context, applier interface{}) UintMapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(UintMapMapOutput)
+}
+
+// ApplyUintArrayArray is like ApplyT, but returns a UintArrayArrayOutput.
+func (o *OutputState) ApplyUintArrayArray(applier interface{}) UintArrayArrayOutput {
+	return o.ApplyT(applier).(UintArrayArrayOutput)
+}
+
+// ApplyUintArrayArrayWithContext is like ApplyTWithContext, but returns a UintArrayArrayOutput.
+func (o *OutputState) ApplyUintArrayArrayWithContext(ctx context.Context, applier interface{}) UintArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(UintArrayArrayOutput)
 }
 
 // ApplyUint16 is like ApplyT, but returns a Uint16Output.
@@ -990,6 +1310,26 @@ func (o *OutputState) ApplyUint16MapArrayWithContext(ctx context.Context, applie
 	return o.ApplyTWithContext(ctx, applier).(Uint16MapArrayOutput)
 }
 
+// ApplyUint16MapMap is like ApplyT, but returns a Uint16MapMapOutput.
+func (o *OutputState) ApplyUint16MapMap(applier interface{}) Uint16MapMapOutput {
+	return o.ApplyT(applier).(Uint16MapMapOutput)
+}
+
+// ApplyUint16MapMapWithContext is like ApplyTWithContext, but returns a Uint16MapMapOutput.
+func (o *OutputState) ApplyUint16MapMapWithContext(ctx context.Context, applier interface{}) Uint16MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint16MapMapOutput)
+}
+
+// ApplyUint16ArrayArray is like ApplyT, but returns a Uint16ArrayArrayOutput.
+func (o *OutputState) ApplyUint16ArrayArray(applier interface{}) Uint16ArrayArrayOutput {
+	return o.ApplyT(applier).(Uint16ArrayArrayOutput)
+}
+
+// ApplyUint16ArrayArrayWithContext is like ApplyTWithContext, but returns a Uint16ArrayArrayOutput.
+func (o *OutputState) ApplyUint16ArrayArrayWithContext(ctx context.Context, applier interface{}) Uint16ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint16ArrayArrayOutput)
+}
+
 // ApplyUint32 is like ApplyT, but returns a Uint32Output.
 func (o *OutputState) ApplyUint32(applier interface{}) Uint32Output {
 	return o.ApplyT(applier).(Uint32Output)
@@ -1048,6 +1388,26 @@ func (o *OutputState) ApplyUint32MapArray(applier interface{}) Uint32MapArrayOut
 // ApplyUint32MapArrayWithContext is like ApplyTWithContext, but returns a Uint32MapArrayOutput.
 func (o *OutputState) ApplyUint32MapArrayWithContext(ctx context.Context, applier interface{}) Uint32MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Uint32MapArrayOutput)
+}
+
+// ApplyUint32MapMap is like ApplyT, but returns a Uint32MapMapOutput.
+func (o *OutputState) ApplyUint32MapMap(applier interface{}) Uint32MapMapOutput {
+	return o.ApplyT(applier).(Uint32MapMapOutput)
+}
+
+// ApplyUint32MapMapWithContext is like ApplyTWithContext, but returns a Uint32MapMapOutput.
+func (o *OutputState) ApplyUint32MapMapWithContext(ctx context.Context, applier interface{}) Uint32MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint32MapMapOutput)
+}
+
+// ApplyUint32ArrayArray is like ApplyT, but returns a Uint32ArrayArrayOutput.
+func (o *OutputState) ApplyUint32ArrayArray(applier interface{}) Uint32ArrayArrayOutput {
+	return o.ApplyT(applier).(Uint32ArrayArrayOutput)
+}
+
+// ApplyUint32ArrayArrayWithContext is like ApplyTWithContext, but returns a Uint32ArrayArrayOutput.
+func (o *OutputState) ApplyUint32ArrayArrayWithContext(ctx context.Context, applier interface{}) Uint32ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint32ArrayArrayOutput)
 }
 
 // ApplyUint64 is like ApplyT, but returns a Uint64Output.
@@ -1110,6 +1470,26 @@ func (o *OutputState) ApplyUint64MapArrayWithContext(ctx context.Context, applie
 	return o.ApplyTWithContext(ctx, applier).(Uint64MapArrayOutput)
 }
 
+// ApplyUint64MapMap is like ApplyT, but returns a Uint64MapMapOutput.
+func (o *OutputState) ApplyUint64MapMap(applier interface{}) Uint64MapMapOutput {
+	return o.ApplyT(applier).(Uint64MapMapOutput)
+}
+
+// ApplyUint64MapMapWithContext is like ApplyTWithContext, but returns a Uint64MapMapOutput.
+func (o *OutputState) ApplyUint64MapMapWithContext(ctx context.Context, applier interface{}) Uint64MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint64MapMapOutput)
+}
+
+// ApplyUint64ArrayArray is like ApplyT, but returns a Uint64ArrayArrayOutput.
+func (o *OutputState) ApplyUint64ArrayArray(applier interface{}) Uint64ArrayArrayOutput {
+	return o.ApplyT(applier).(Uint64ArrayArrayOutput)
+}
+
+// ApplyUint64ArrayArrayWithContext is like ApplyTWithContext, but returns a Uint64ArrayArrayOutput.
+func (o *OutputState) ApplyUint64ArrayArrayWithContext(ctx context.Context, applier interface{}) Uint64ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint64ArrayArrayOutput)
+}
+
 // ApplyUint8 is like ApplyT, but returns a Uint8Output.
 func (o *OutputState) ApplyUint8(applier interface{}) Uint8Output {
 	return o.ApplyT(applier).(Uint8Output)
@@ -1168,6 +1548,26 @@ func (o *OutputState) ApplyUint8MapArray(applier interface{}) Uint8MapArrayOutpu
 // ApplyUint8MapArrayWithContext is like ApplyTWithContext, but returns a Uint8MapArrayOutput.
 func (o *OutputState) ApplyUint8MapArrayWithContext(ctx context.Context, applier interface{}) Uint8MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Uint8MapArrayOutput)
+}
+
+// ApplyUint8MapMap is like ApplyT, but returns a Uint8MapMapOutput.
+func (o *OutputState) ApplyUint8MapMap(applier interface{}) Uint8MapMapOutput {
+	return o.ApplyT(applier).(Uint8MapMapOutput)
+}
+
+// ApplyUint8MapMapWithContext is like ApplyTWithContext, but returns a Uint8MapMapOutput.
+func (o *OutputState) ApplyUint8MapMapWithContext(ctx context.Context, applier interface{}) Uint8MapMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint8MapMapOutput)
+}
+
+// ApplyUint8ArrayArray is like ApplyT, but returns a Uint8ArrayArrayOutput.
+func (o *OutputState) ApplyUint8ArrayArray(applier interface{}) Uint8ArrayArrayOutput {
+	return o.ApplyT(applier).(Uint8ArrayArrayOutput)
+}
+
+// ApplyUint8ArrayArrayWithContext is like ApplyTWithContext, but returns a Uint8ArrayArrayOutput.
+func (o *OutputState) ApplyUint8ArrayArrayWithContext(ctx context.Context, applier interface{}) Uint8ArrayArrayOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint8ArrayArrayOutput)
 }
 
 var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
@@ -1419,6 +1819,102 @@ func (o ArchiveMapArrayOutput) Index(i IntInput) ArchiveMapOutput {
 	}).(ArchiveMapOutput)
 }
 
+var archiveMapMapType = reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem()
+
+// ArchiveMapMapInput is an input type that accepts ArchiveMapMap and ArchiveMapMapOutput values.
+type ArchiveMapMapInput interface {
+	Input
+
+	ToArchiveMapMapOutput() ArchiveMapMapOutput
+	ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput
+}
+
+// ArchiveMapMap is an input type for map[string]ArchiveMapInput values.
+type ArchiveMapMap map[string]ArchiveMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]Archive).
+func (ArchiveMapMap) ElementType() reflect.Type {
+	return archiveMapMapType
+}
+
+func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
+	return ToOutput(in).(ArchiveMapMapOutput)
+}
+
+func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveMapMapOutput)
+}
+
+// ArchiveMapMapOutput is an Output that returns map[string]map[string]Archive values.
+type ArchiveMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]Archive).
+func (ArchiveMapMapOutput) ElementType() reflect.Type {
+	return archiveMapMapType
+}
+
+func (o ArchiveMapMapOutput) ToArchiveMapMapOutput() ArchiveMapMapOutput {
+	return o
+}
+
+func (o ArchiveMapMapOutput) ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput {
+	return o
+}
+
+func (o ArchiveMapMapOutput) MapIndex(k StringInput) ArchiveMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]Archive {
+		return vs[0].(map[string]map[string]Archive)[vs[1].(string)]
+	}).(ArchiveMapOutput)
+}
+
+var archiveArrayArrayType = reflect.TypeOf((*[][]Archive)(nil)).Elem()
+
+// ArchiveArrayArrayInput is an input type that accepts ArchiveArrayArray and ArchiveArrayArrayOutput values.
+type ArchiveArrayArrayInput interface {
+	Input
+
+	ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput
+	ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput
+}
+
+// ArchiveArrayArray is an input type for []ArchiveArrayInput values.
+type ArchiveArrayArray []ArchiveArrayInput
+
+// ElementType returns the element type of this Input ([][]Archive).
+func (ArchiveArrayArray) ElementType() reflect.Type {
+	return archiveArrayArrayType
+}
+
+func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
+	return ToOutput(in).(ArchiveArrayArrayOutput)
+}
+
+func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayOutput)
+}
+
+// ArchiveArrayArrayOutput is an Output that returns [][]Archive values.
+type ArchiveArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]Archive).
+func (ArchiveArrayArrayOutput) ElementType() reflect.Type {
+	return archiveArrayArrayType
+}
+
+func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
+	return o
+}
+
+func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput {
+	return o
+}
+
+func (o ArchiveArrayArrayOutput) Index(i IntInput) ArchiveArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []Archive {
+		return vs[0].([][]Archive)[vs[1].(int)]
+	}).(ArchiveArrayOutput)
+}
+
 var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
 
 // AssetInput is an input type that accepts Asset and AssetOutput values.
@@ -1668,6 +2164,102 @@ func (o AssetMapArrayOutput) Index(i IntInput) AssetMapOutput {
 	}).(AssetMapOutput)
 }
 
+var assetMapMapType = reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem()
+
+// AssetMapMapInput is an input type that accepts AssetMapMap and AssetMapMapOutput values.
+type AssetMapMapInput interface {
+	Input
+
+	ToAssetMapMapOutput() AssetMapMapOutput
+	ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput
+}
+
+// AssetMapMap is an input type for map[string]AssetMapInput values.
+type AssetMapMap map[string]AssetMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]Asset).
+func (AssetMapMap) ElementType() reflect.Type {
+	return assetMapMapType
+}
+
+func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
+	return ToOutput(in).(AssetMapMapOutput)
+}
+
+func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetMapMapOutput)
+}
+
+// AssetMapMapOutput is an Output that returns map[string]map[string]Asset values.
+type AssetMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]Asset).
+func (AssetMapMapOutput) ElementType() reflect.Type {
+	return assetMapMapType
+}
+
+func (o AssetMapMapOutput) ToAssetMapMapOutput() AssetMapMapOutput {
+	return o
+}
+
+func (o AssetMapMapOutput) ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput {
+	return o
+}
+
+func (o AssetMapMapOutput) MapIndex(k StringInput) AssetMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]Asset {
+		return vs[0].(map[string]map[string]Asset)[vs[1].(string)]
+	}).(AssetMapOutput)
+}
+
+var assetArrayArrayType = reflect.TypeOf((*[][]Asset)(nil)).Elem()
+
+// AssetArrayArrayInput is an input type that accepts AssetArrayArray and AssetArrayArrayOutput values.
+type AssetArrayArrayInput interface {
+	Input
+
+	ToAssetArrayArrayOutput() AssetArrayArrayOutput
+	ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput
+}
+
+// AssetArrayArray is an input type for []AssetArrayInput values.
+type AssetArrayArray []AssetArrayInput
+
+// ElementType returns the element type of this Input ([][]Asset).
+func (AssetArrayArray) ElementType() reflect.Type {
+	return assetArrayArrayType
+}
+
+func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
+	return ToOutput(in).(AssetArrayArrayOutput)
+}
+
+func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetArrayArrayOutput)
+}
+
+// AssetArrayArrayOutput is an Output that returns [][]Asset values.
+type AssetArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]Asset).
+func (AssetArrayArrayOutput) ElementType() reflect.Type {
+	return assetArrayArrayType
+}
+
+func (o AssetArrayArrayOutput) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
+	return o
+}
+
+func (o AssetArrayArrayOutput) ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput {
+	return o
+}
+
+func (o AssetArrayArrayOutput) Index(i IntInput) AssetArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []Asset {
+		return vs[0].([][]Asset)[vs[1].(int)]
+	}).(AssetArrayOutput)
+}
+
 var assetOrArchiveType = reflect.TypeOf((*AssetOrArchive)(nil)).Elem()
 
 // AssetOrArchiveInput is an input type that accepts AssetOrArchive and AssetOrArchiveOutput values.
@@ -1884,6 +2476,102 @@ func (o AssetOrArchiveMapArrayOutput) Index(i IntInput) AssetOrArchiveMapOutput 
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
 		return vs[0].([]map[string]AssetOrArchive)[vs[1].(int)]
 	}).(AssetOrArchiveMapOutput)
+}
+
+var assetOrArchiveMapMapType = reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveMapMapInput is an input type that accepts AssetOrArchiveMapMap and AssetOrArchiveMapMapOutput values.
+type AssetOrArchiveMapMapInput interface {
+	Input
+
+	ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput
+	ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput
+}
+
+// AssetOrArchiveMapMap is an input type for map[string]AssetOrArchiveMapInput values.
+type AssetOrArchiveMapMap map[string]AssetOrArchiveMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMap) ElementType() reflect.Type {
+	return assetOrArchiveMapMapType
+}
+
+func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return ToOutput(in).(AssetOrArchiveMapMapOutput)
+}
+
+func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapMapOutput)
+}
+
+// AssetOrArchiveMapMapOutput is an Output that returns map[string]map[string]AssetOrArchive values.
+type AssetOrArchiveMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMapOutput) ElementType() reflect.Type {
+	return assetOrArchiveMapMapType
+}
+
+func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveMapMapOutput) MapIndex(k StringInput) AssetOrArchiveMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
+		return vs[0].(map[string]map[string]AssetOrArchive)[vs[1].(string)]
+	}).(AssetOrArchiveMapOutput)
+}
+
+var assetOrArchiveArrayArrayType = reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveArrayArrayInput is an input type that accepts AssetOrArchiveArrayArray and AssetOrArchiveArrayArrayOutput values.
+type AssetOrArchiveArrayArrayInput interface {
+	Input
+
+	ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput
+	ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput
+}
+
+// AssetOrArchiveArrayArray is an input type for []AssetOrArchiveArrayInput values.
+type AssetOrArchiveArrayArray []AssetOrArchiveArrayInput
+
+// ElementType returns the element type of this Input ([][]AssetOrArchive).
+func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayType
+}
+
+func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return ToOutput(in).(AssetOrArchiveArrayArrayOutput)
+}
+
+func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayArrayOutput)
+}
+
+// AssetOrArchiveArrayArrayOutput is an Output that returns [][]AssetOrArchive values.
+type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]AssetOrArchive).
+func (AssetOrArchiveArrayArrayOutput) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayType
+}
+
+func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayArrayOutput) Index(i IntInput) AssetOrArchiveArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []AssetOrArchive {
+		return vs[0].([][]AssetOrArchive)[vs[1].(int)]
+	}).(AssetOrArchiveArrayOutput)
 }
 
 var boolType = reflect.TypeOf((*bool)(nil)).Elem()
@@ -2193,6 +2881,102 @@ func (o BoolMapArrayOutput) Index(i IntInput) BoolMapOutput {
 	}).(BoolMapOutput)
 }
 
+var boolMapMapType = reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem()
+
+// BoolMapMapInput is an input type that accepts BoolMapMap and BoolMapMapOutput values.
+type BoolMapMapInput interface {
+	Input
+
+	ToBoolMapMapOutput() BoolMapMapOutput
+	ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput
+}
+
+// BoolMapMap is an input type for map[string]BoolMapInput values.
+type BoolMapMap map[string]BoolMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]bool).
+func (BoolMapMap) ElementType() reflect.Type {
+	return boolMapMapType
+}
+
+func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
+	return ToOutput(in).(BoolMapMapOutput)
+}
+
+func (in BoolMapMap) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput {
+	return ToOutputWithContext(ctx, in).(BoolMapMapOutput)
+}
+
+// BoolMapMapOutput is an Output that returns map[string]map[string]bool values.
+type BoolMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]bool).
+func (BoolMapMapOutput) ElementType() reflect.Type {
+	return boolMapMapType
+}
+
+func (o BoolMapMapOutput) ToBoolMapMapOutput() BoolMapMapOutput {
+	return o
+}
+
+func (o BoolMapMapOutput) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput {
+	return o
+}
+
+func (o BoolMapMapOutput) MapIndex(k StringInput) BoolMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]bool {
+		return vs[0].(map[string]map[string]bool)[vs[1].(string)]
+	}).(BoolMapOutput)
+}
+
+var boolArrayArrayType = reflect.TypeOf((*[][]bool)(nil)).Elem()
+
+// BoolArrayArrayInput is an input type that accepts BoolArrayArray and BoolArrayArrayOutput values.
+type BoolArrayArrayInput interface {
+	Input
+
+	ToBoolArrayArrayOutput() BoolArrayArrayOutput
+	ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput
+}
+
+// BoolArrayArray is an input type for []BoolArrayInput values.
+type BoolArrayArray []BoolArrayInput
+
+// ElementType returns the element type of this Input ([][]bool).
+func (BoolArrayArray) ElementType() reflect.Type {
+	return boolArrayArrayType
+}
+
+func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
+	return ToOutput(in).(BoolArrayArrayOutput)
+}
+
+func (in BoolArrayArray) ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(BoolArrayArrayOutput)
+}
+
+// BoolArrayArrayOutput is an Output that returns [][]bool values.
+type BoolArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]bool).
+func (BoolArrayArrayOutput) ElementType() reflect.Type {
+	return boolArrayArrayType
+}
+
+func (o BoolArrayArrayOutput) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
+	return o
+}
+
+func (o BoolArrayArrayOutput) ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput {
+	return o
+}
+
+func (o BoolArrayArrayOutput) Index(i IntInput) BoolArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []bool {
+		return vs[0].([][]bool)[vs[1].(int)]
+	}).(BoolArrayOutput)
+}
+
 var float32Type = reflect.TypeOf((*float32)(nil)).Elem()
 
 // Float32Input is an input type that accepts Float32 and Float32Output values.
@@ -2500,6 +3284,102 @@ func (o Float32MapArrayOutput) Index(i IntInput) Float32MapOutput {
 	}).(Float32MapOutput)
 }
 
+var float32MapMapType = reflect.TypeOf((*map[string]map[string]float32)(nil)).Elem()
+
+// Float32MapMapInput is an input type that accepts Float32MapMap and Float32MapMapOutput values.
+type Float32MapMapInput interface {
+	Input
+
+	ToFloat32MapMapOutput() Float32MapMapOutput
+	ToFloat32MapMapOutputWithContext(ctx context.Context) Float32MapMapOutput
+}
+
+// Float32MapMap is an input type for map[string]Float32MapInput values.
+type Float32MapMap map[string]Float32MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]float32).
+func (Float32MapMap) ElementType() reflect.Type {
+	return float32MapMapType
+}
+
+func (in Float32MapMap) ToFloat32MapMapOutput() Float32MapMapOutput {
+	return ToOutput(in).(Float32MapMapOutput)
+}
+
+func (in Float32MapMap) ToFloat32MapMapOutputWithContext(ctx context.Context) Float32MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Float32MapMapOutput)
+}
+
+// Float32MapMapOutput is an Output that returns map[string]map[string]float32 values.
+type Float32MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]float32).
+func (Float32MapMapOutput) ElementType() reflect.Type {
+	return float32MapMapType
+}
+
+func (o Float32MapMapOutput) ToFloat32MapMapOutput() Float32MapMapOutput {
+	return o
+}
+
+func (o Float32MapMapOutput) ToFloat32MapMapOutputWithContext(ctx context.Context) Float32MapMapOutput {
+	return o
+}
+
+func (o Float32MapMapOutput) MapIndex(k StringInput) Float32MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]float32 {
+		return vs[0].(map[string]map[string]float32)[vs[1].(string)]
+	}).(Float32MapOutput)
+}
+
+var float32ArrayArrayType = reflect.TypeOf((*[][]float32)(nil)).Elem()
+
+// Float32ArrayArrayInput is an input type that accepts Float32ArrayArray and Float32ArrayArrayOutput values.
+type Float32ArrayArrayInput interface {
+	Input
+
+	ToFloat32ArrayArrayOutput() Float32ArrayArrayOutput
+	ToFloat32ArrayArrayOutputWithContext(ctx context.Context) Float32ArrayArrayOutput
+}
+
+// Float32ArrayArray is an input type for []Float32ArrayInput values.
+type Float32ArrayArray []Float32ArrayInput
+
+// ElementType returns the element type of this Input ([][]float32).
+func (Float32ArrayArray) ElementType() reflect.Type {
+	return float32ArrayArrayType
+}
+
+func (in Float32ArrayArray) ToFloat32ArrayArrayOutput() Float32ArrayArrayOutput {
+	return ToOutput(in).(Float32ArrayArrayOutput)
+}
+
+func (in Float32ArrayArray) ToFloat32ArrayArrayOutputWithContext(ctx context.Context) Float32ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Float32ArrayArrayOutput)
+}
+
+// Float32ArrayArrayOutput is an Output that returns [][]float32 values.
+type Float32ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]float32).
+func (Float32ArrayArrayOutput) ElementType() reflect.Type {
+	return float32ArrayArrayType
+}
+
+func (o Float32ArrayArrayOutput) ToFloat32ArrayArrayOutput() Float32ArrayArrayOutput {
+	return o
+}
+
+func (o Float32ArrayArrayOutput) ToFloat32ArrayArrayOutputWithContext(ctx context.Context) Float32ArrayArrayOutput {
+	return o
+}
+
+func (o Float32ArrayArrayOutput) Index(i IntInput) Float32ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []float32 {
+		return vs[0].([][]float32)[vs[1].(int)]
+	}).(Float32ArrayOutput)
+}
+
 var float64Type = reflect.TypeOf((*float64)(nil)).Elem()
 
 // Float64Input is an input type that accepts Float64 and Float64Output values.
@@ -2805,6 +3685,102 @@ func (o Float64MapArrayOutput) Index(i IntInput) Float64MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]float64 {
 		return vs[0].([]map[string]float64)[vs[1].(int)]
 	}).(Float64MapOutput)
+}
+
+var float64MapMapType = reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem()
+
+// Float64MapMapInput is an input type that accepts Float64MapMap and Float64MapMapOutput values.
+type Float64MapMapInput interface {
+	Input
+
+	ToFloat64MapMapOutput() Float64MapMapOutput
+	ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput
+}
+
+// Float64MapMap is an input type for map[string]Float64MapInput values.
+type Float64MapMap map[string]Float64MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]float64).
+func (Float64MapMap) ElementType() reflect.Type {
+	return float64MapMapType
+}
+
+func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
+	return ToOutput(in).(Float64MapMapOutput)
+}
+
+func (in Float64MapMap) ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Float64MapMapOutput)
+}
+
+// Float64MapMapOutput is an Output that returns map[string]map[string]float64 values.
+type Float64MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]float64).
+func (Float64MapMapOutput) ElementType() reflect.Type {
+	return float64MapMapType
+}
+
+func (o Float64MapMapOutput) ToFloat64MapMapOutput() Float64MapMapOutput {
+	return o
+}
+
+func (o Float64MapMapOutput) ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput {
+	return o
+}
+
+func (o Float64MapMapOutput) MapIndex(k StringInput) Float64MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]float64 {
+		return vs[0].(map[string]map[string]float64)[vs[1].(string)]
+	}).(Float64MapOutput)
+}
+
+var float64ArrayArrayType = reflect.TypeOf((*[][]float64)(nil)).Elem()
+
+// Float64ArrayArrayInput is an input type that accepts Float64ArrayArray and Float64ArrayArrayOutput values.
+type Float64ArrayArrayInput interface {
+	Input
+
+	ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput
+	ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput
+}
+
+// Float64ArrayArray is an input type for []Float64ArrayInput values.
+type Float64ArrayArray []Float64ArrayInput
+
+// ElementType returns the element type of this Input ([][]float64).
+func (Float64ArrayArray) ElementType() reflect.Type {
+	return float64ArrayArrayType
+}
+
+func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
+	return ToOutput(in).(Float64ArrayArrayOutput)
+}
+
+func (in Float64ArrayArray) ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Float64ArrayArrayOutput)
+}
+
+// Float64ArrayArrayOutput is an Output that returns [][]float64 values.
+type Float64ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]float64).
+func (Float64ArrayArrayOutput) ElementType() reflect.Type {
+	return float64ArrayArrayType
+}
+
+func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
+	return o
+}
+
+func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput {
+	return o
+}
+
+func (o Float64ArrayArrayOutput) Index(i IntInput) Float64ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []float64 {
+		return vs[0].([][]float64)[vs[1].(int)]
+	}).(Float64ArrayOutput)
 }
 
 var idType = reflect.TypeOf((*ID)(nil)).Elem()
@@ -3129,6 +4105,102 @@ func (o IDMapArrayOutput) Index(i IntInput) IDMapOutput {
 	}).(IDMapOutput)
 }
 
+var iDMapMapType = reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem()
+
+// IDMapMapInput is an input type that accepts IDMapMap and IDMapMapOutput values.
+type IDMapMapInput interface {
+	Input
+
+	ToIDMapMapOutput() IDMapMapOutput
+	ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput
+}
+
+// IDMapMap is an input type for map[string]IDMapInput values.
+type IDMapMap map[string]IDMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]ID).
+func (IDMapMap) ElementType() reflect.Type {
+	return iDMapMapType
+}
+
+func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
+	return ToOutput(in).(IDMapMapOutput)
+}
+
+func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IDMapMapOutput)
+}
+
+// IDMapMapOutput is an Output that returns map[string]map[string]ID values.
+type IDMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]ID).
+func (IDMapMapOutput) ElementType() reflect.Type {
+	return iDMapMapType
+}
+
+func (o IDMapMapOutput) ToIDMapMapOutput() IDMapMapOutput {
+	return o
+}
+
+func (o IDMapMapOutput) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput {
+	return o
+}
+
+func (o IDMapMapOutput) MapIndex(k StringInput) IDMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]ID {
+		return vs[0].(map[string]map[string]ID)[vs[1].(string)]
+	}).(IDMapOutput)
+}
+
+var iDArrayArrayType = reflect.TypeOf((*[][]ID)(nil)).Elem()
+
+// IDArrayArrayInput is an input type that accepts IDArrayArray and IDArrayArrayOutput values.
+type IDArrayArrayInput interface {
+	Input
+
+	ToIDArrayArrayOutput() IDArrayArrayOutput
+	ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput
+}
+
+// IDArrayArray is an input type for []IDArrayInput values.
+type IDArrayArray []IDArrayInput
+
+// ElementType returns the element type of this Input ([][]ID).
+func (IDArrayArray) ElementType() reflect.Type {
+	return iDArrayArrayType
+}
+
+func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
+	return ToOutput(in).(IDArrayArrayOutput)
+}
+
+func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(IDArrayArrayOutput)
+}
+
+// IDArrayArrayOutput is an Output that returns [][]ID values.
+type IDArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]ID).
+func (IDArrayArrayOutput) ElementType() reflect.Type {
+	return iDArrayArrayType
+}
+
+func (o IDArrayArrayOutput) ToIDArrayArrayOutput() IDArrayArrayOutput {
+	return o
+}
+
+func (o IDArrayArrayOutput) ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput {
+	return o
+}
+
+func (o IDArrayArrayOutput) Index(i IntInput) IDArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []ID {
+		return vs[0].([][]ID)[vs[1].(int)]
+	}).(IDArrayOutput)
+}
+
 var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 
 // ArrayInput is an input type that accepts Array and ArrayOutput values.
@@ -3319,6 +4391,102 @@ func (o MapArrayOutput) Index(i IntInput) MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]interface{} {
 		return vs[0].([]map[string]interface{})[vs[1].(int)]
 	}).(MapOutput)
+}
+
+var mapMapType = reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem()
+
+// MapMapInput is an input type that accepts MapMap and MapMapOutput values.
+type MapMapInput interface {
+	Input
+
+	ToMapMapOutput() MapMapOutput
+	ToMapMapOutputWithContext(ctx context.Context) MapMapOutput
+}
+
+// MapMap is an input type for map[string]MapInput values.
+type MapMap map[string]MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]interface{}).
+func (MapMap) ElementType() reflect.Type {
+	return mapMapType
+}
+
+func (in MapMap) ToMapMapOutput() MapMapOutput {
+	return ToOutput(in).(MapMapOutput)
+}
+
+func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
+	return ToOutputWithContext(ctx, in).(MapMapOutput)
+}
+
+// MapMapOutput is an Output that returns map[string]map[string]interface{} values.
+type MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]interface{}).
+func (MapMapOutput) ElementType() reflect.Type {
+	return mapMapType
+}
+
+func (o MapMapOutput) ToMapMapOutput() MapMapOutput {
+	return o
+}
+
+func (o MapMapOutput) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
+	return o
+}
+
+func (o MapMapOutput) MapIndex(k StringInput) MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]interface{} {
+		return vs[0].(map[string]map[string]interface{})[vs[1].(string)]
+	}).(MapOutput)
+}
+
+var arrayArrayType = reflect.TypeOf((*[][]interface{})(nil)).Elem()
+
+// ArrayArrayInput is an input type that accepts ArrayArray and ArrayArrayOutput values.
+type ArrayArrayInput interface {
+	Input
+
+	ToArrayArrayOutput() ArrayArrayOutput
+	ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput
+}
+
+// ArrayArray is an input type for []ArrayInput values.
+type ArrayArray []ArrayInput
+
+// ElementType returns the element type of this Input ([][]interface{}).
+func (ArrayArray) ElementType() reflect.Type {
+	return arrayArrayType
+}
+
+func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
+	return ToOutput(in).(ArrayArrayOutput)
+}
+
+func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArrayArrayOutput)
+}
+
+// ArrayArrayOutput is an Output that returns [][]interface{} values.
+type ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]interface{}).
+func (ArrayArrayOutput) ElementType() reflect.Type {
+	return arrayArrayType
+}
+
+func (o ArrayArrayOutput) ToArrayArrayOutput() ArrayArrayOutput {
+	return o
+}
+
+func (o ArrayArrayOutput) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput {
+	return o
+}
+
+func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []interface{} {
+		return vs[0].([][]interface{})[vs[1].(int)]
+	}).(ArrayOutput)
 }
 
 var intType = reflect.TypeOf((*int)(nil)).Elem()
@@ -3628,6 +4796,102 @@ func (o IntMapArrayOutput) Index(i IntInput) IntMapOutput {
 	}).(IntMapOutput)
 }
 
+var intMapMapType = reflect.TypeOf((*map[string]map[string]int)(nil)).Elem()
+
+// IntMapMapInput is an input type that accepts IntMapMap and IntMapMapOutput values.
+type IntMapMapInput interface {
+	Input
+
+	ToIntMapMapOutput() IntMapMapOutput
+	ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput
+}
+
+// IntMapMap is an input type for map[string]IntMapInput values.
+type IntMapMap map[string]IntMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]int).
+func (IntMapMap) ElementType() reflect.Type {
+	return intMapMapType
+}
+
+func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
+	return ToOutput(in).(IntMapMapOutput)
+}
+
+func (in IntMapMap) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IntMapMapOutput)
+}
+
+// IntMapMapOutput is an Output that returns map[string]map[string]int values.
+type IntMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]int).
+func (IntMapMapOutput) ElementType() reflect.Type {
+	return intMapMapType
+}
+
+func (o IntMapMapOutput) ToIntMapMapOutput() IntMapMapOutput {
+	return o
+}
+
+func (o IntMapMapOutput) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput {
+	return o
+}
+
+func (o IntMapMapOutput) MapIndex(k StringInput) IntMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]int {
+		return vs[0].(map[string]map[string]int)[vs[1].(string)]
+	}).(IntMapOutput)
+}
+
+var intArrayArrayType = reflect.TypeOf((*[][]int)(nil)).Elem()
+
+// IntArrayArrayInput is an input type that accepts IntArrayArray and IntArrayArrayOutput values.
+type IntArrayArrayInput interface {
+	Input
+
+	ToIntArrayArrayOutput() IntArrayArrayOutput
+	ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput
+}
+
+// IntArrayArray is an input type for []IntArrayInput values.
+type IntArrayArray []IntArrayInput
+
+// ElementType returns the element type of this Input ([][]int).
+func (IntArrayArray) ElementType() reflect.Type {
+	return intArrayArrayType
+}
+
+func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
+	return ToOutput(in).(IntArrayArrayOutput)
+}
+
+func (in IntArrayArray) ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(IntArrayArrayOutput)
+}
+
+// IntArrayArrayOutput is an Output that returns [][]int values.
+type IntArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]int).
+func (IntArrayArrayOutput) ElementType() reflect.Type {
+	return intArrayArrayType
+}
+
+func (o IntArrayArrayOutput) ToIntArrayArrayOutput() IntArrayArrayOutput {
+	return o
+}
+
+func (o IntArrayArrayOutput) ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput {
+	return o
+}
+
+func (o IntArrayArrayOutput) Index(i IntInput) IntArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []int {
+		return vs[0].([][]int)[vs[1].(int)]
+	}).(IntArrayOutput)
+}
+
 var int16Type = reflect.TypeOf((*int16)(nil)).Elem()
 
 // Int16Input is an input type that accepts Int16 and Int16Output values.
@@ -3933,6 +5197,102 @@ func (o Int16MapArrayOutput) Index(i IntInput) Int16MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]int16 {
 		return vs[0].([]map[string]int16)[vs[1].(int)]
 	}).(Int16MapOutput)
+}
+
+var int16MapMapType = reflect.TypeOf((*map[string]map[string]int16)(nil)).Elem()
+
+// Int16MapMapInput is an input type that accepts Int16MapMap and Int16MapMapOutput values.
+type Int16MapMapInput interface {
+	Input
+
+	ToInt16MapMapOutput() Int16MapMapOutput
+	ToInt16MapMapOutputWithContext(ctx context.Context) Int16MapMapOutput
+}
+
+// Int16MapMap is an input type for map[string]Int16MapInput values.
+type Int16MapMap map[string]Int16MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]int16).
+func (Int16MapMap) ElementType() reflect.Type {
+	return int16MapMapType
+}
+
+func (in Int16MapMap) ToInt16MapMapOutput() Int16MapMapOutput {
+	return ToOutput(in).(Int16MapMapOutput)
+}
+
+func (in Int16MapMap) ToInt16MapMapOutputWithContext(ctx context.Context) Int16MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Int16MapMapOutput)
+}
+
+// Int16MapMapOutput is an Output that returns map[string]map[string]int16 values.
+type Int16MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]int16).
+func (Int16MapMapOutput) ElementType() reflect.Type {
+	return int16MapMapType
+}
+
+func (o Int16MapMapOutput) ToInt16MapMapOutput() Int16MapMapOutput {
+	return o
+}
+
+func (o Int16MapMapOutput) ToInt16MapMapOutputWithContext(ctx context.Context) Int16MapMapOutput {
+	return o
+}
+
+func (o Int16MapMapOutput) MapIndex(k StringInput) Int16MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]int16 {
+		return vs[0].(map[string]map[string]int16)[vs[1].(string)]
+	}).(Int16MapOutput)
+}
+
+var int16ArrayArrayType = reflect.TypeOf((*[][]int16)(nil)).Elem()
+
+// Int16ArrayArrayInput is an input type that accepts Int16ArrayArray and Int16ArrayArrayOutput values.
+type Int16ArrayArrayInput interface {
+	Input
+
+	ToInt16ArrayArrayOutput() Int16ArrayArrayOutput
+	ToInt16ArrayArrayOutputWithContext(ctx context.Context) Int16ArrayArrayOutput
+}
+
+// Int16ArrayArray is an input type for []Int16ArrayInput values.
+type Int16ArrayArray []Int16ArrayInput
+
+// ElementType returns the element type of this Input ([][]int16).
+func (Int16ArrayArray) ElementType() reflect.Type {
+	return int16ArrayArrayType
+}
+
+func (in Int16ArrayArray) ToInt16ArrayArrayOutput() Int16ArrayArrayOutput {
+	return ToOutput(in).(Int16ArrayArrayOutput)
+}
+
+func (in Int16ArrayArray) ToInt16ArrayArrayOutputWithContext(ctx context.Context) Int16ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Int16ArrayArrayOutput)
+}
+
+// Int16ArrayArrayOutput is an Output that returns [][]int16 values.
+type Int16ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]int16).
+func (Int16ArrayArrayOutput) ElementType() reflect.Type {
+	return int16ArrayArrayType
+}
+
+func (o Int16ArrayArrayOutput) ToInt16ArrayArrayOutput() Int16ArrayArrayOutput {
+	return o
+}
+
+func (o Int16ArrayArrayOutput) ToInt16ArrayArrayOutputWithContext(ctx context.Context) Int16ArrayArrayOutput {
+	return o
+}
+
+func (o Int16ArrayArrayOutput) Index(i IntInput) Int16ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []int16 {
+		return vs[0].([][]int16)[vs[1].(int)]
+	}).(Int16ArrayOutput)
 }
 
 var int32Type = reflect.TypeOf((*int32)(nil)).Elem()
@@ -4242,6 +5602,102 @@ func (o Int32MapArrayOutput) Index(i IntInput) Int32MapOutput {
 	}).(Int32MapOutput)
 }
 
+var int32MapMapType = reflect.TypeOf((*map[string]map[string]int32)(nil)).Elem()
+
+// Int32MapMapInput is an input type that accepts Int32MapMap and Int32MapMapOutput values.
+type Int32MapMapInput interface {
+	Input
+
+	ToInt32MapMapOutput() Int32MapMapOutput
+	ToInt32MapMapOutputWithContext(ctx context.Context) Int32MapMapOutput
+}
+
+// Int32MapMap is an input type for map[string]Int32MapInput values.
+type Int32MapMap map[string]Int32MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]int32).
+func (Int32MapMap) ElementType() reflect.Type {
+	return int32MapMapType
+}
+
+func (in Int32MapMap) ToInt32MapMapOutput() Int32MapMapOutput {
+	return ToOutput(in).(Int32MapMapOutput)
+}
+
+func (in Int32MapMap) ToInt32MapMapOutputWithContext(ctx context.Context) Int32MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Int32MapMapOutput)
+}
+
+// Int32MapMapOutput is an Output that returns map[string]map[string]int32 values.
+type Int32MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]int32).
+func (Int32MapMapOutput) ElementType() reflect.Type {
+	return int32MapMapType
+}
+
+func (o Int32MapMapOutput) ToInt32MapMapOutput() Int32MapMapOutput {
+	return o
+}
+
+func (o Int32MapMapOutput) ToInt32MapMapOutputWithContext(ctx context.Context) Int32MapMapOutput {
+	return o
+}
+
+func (o Int32MapMapOutput) MapIndex(k StringInput) Int32MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]int32 {
+		return vs[0].(map[string]map[string]int32)[vs[1].(string)]
+	}).(Int32MapOutput)
+}
+
+var int32ArrayArrayType = reflect.TypeOf((*[][]int32)(nil)).Elem()
+
+// Int32ArrayArrayInput is an input type that accepts Int32ArrayArray and Int32ArrayArrayOutput values.
+type Int32ArrayArrayInput interface {
+	Input
+
+	ToInt32ArrayArrayOutput() Int32ArrayArrayOutput
+	ToInt32ArrayArrayOutputWithContext(ctx context.Context) Int32ArrayArrayOutput
+}
+
+// Int32ArrayArray is an input type for []Int32ArrayInput values.
+type Int32ArrayArray []Int32ArrayInput
+
+// ElementType returns the element type of this Input ([][]int32).
+func (Int32ArrayArray) ElementType() reflect.Type {
+	return int32ArrayArrayType
+}
+
+func (in Int32ArrayArray) ToInt32ArrayArrayOutput() Int32ArrayArrayOutput {
+	return ToOutput(in).(Int32ArrayArrayOutput)
+}
+
+func (in Int32ArrayArray) ToInt32ArrayArrayOutputWithContext(ctx context.Context) Int32ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Int32ArrayArrayOutput)
+}
+
+// Int32ArrayArrayOutput is an Output that returns [][]int32 values.
+type Int32ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]int32).
+func (Int32ArrayArrayOutput) ElementType() reflect.Type {
+	return int32ArrayArrayType
+}
+
+func (o Int32ArrayArrayOutput) ToInt32ArrayArrayOutput() Int32ArrayArrayOutput {
+	return o
+}
+
+func (o Int32ArrayArrayOutput) ToInt32ArrayArrayOutputWithContext(ctx context.Context) Int32ArrayArrayOutput {
+	return o
+}
+
+func (o Int32ArrayArrayOutput) Index(i IntInput) Int32ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []int32 {
+		return vs[0].([][]int32)[vs[1].(int)]
+	}).(Int32ArrayOutput)
+}
+
 var int64Type = reflect.TypeOf((*int64)(nil)).Elem()
 
 // Int64Input is an input type that accepts Int64 and Int64Output values.
@@ -4547,6 +6003,102 @@ func (o Int64MapArrayOutput) Index(i IntInput) Int64MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]int64 {
 		return vs[0].([]map[string]int64)[vs[1].(int)]
 	}).(Int64MapOutput)
+}
+
+var int64MapMapType = reflect.TypeOf((*map[string]map[string]int64)(nil)).Elem()
+
+// Int64MapMapInput is an input type that accepts Int64MapMap and Int64MapMapOutput values.
+type Int64MapMapInput interface {
+	Input
+
+	ToInt64MapMapOutput() Int64MapMapOutput
+	ToInt64MapMapOutputWithContext(ctx context.Context) Int64MapMapOutput
+}
+
+// Int64MapMap is an input type for map[string]Int64MapInput values.
+type Int64MapMap map[string]Int64MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]int64).
+func (Int64MapMap) ElementType() reflect.Type {
+	return int64MapMapType
+}
+
+func (in Int64MapMap) ToInt64MapMapOutput() Int64MapMapOutput {
+	return ToOutput(in).(Int64MapMapOutput)
+}
+
+func (in Int64MapMap) ToInt64MapMapOutputWithContext(ctx context.Context) Int64MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Int64MapMapOutput)
+}
+
+// Int64MapMapOutput is an Output that returns map[string]map[string]int64 values.
+type Int64MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]int64).
+func (Int64MapMapOutput) ElementType() reflect.Type {
+	return int64MapMapType
+}
+
+func (o Int64MapMapOutput) ToInt64MapMapOutput() Int64MapMapOutput {
+	return o
+}
+
+func (o Int64MapMapOutput) ToInt64MapMapOutputWithContext(ctx context.Context) Int64MapMapOutput {
+	return o
+}
+
+func (o Int64MapMapOutput) MapIndex(k StringInput) Int64MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]int64 {
+		return vs[0].(map[string]map[string]int64)[vs[1].(string)]
+	}).(Int64MapOutput)
+}
+
+var int64ArrayArrayType = reflect.TypeOf((*[][]int64)(nil)).Elem()
+
+// Int64ArrayArrayInput is an input type that accepts Int64ArrayArray and Int64ArrayArrayOutput values.
+type Int64ArrayArrayInput interface {
+	Input
+
+	ToInt64ArrayArrayOutput() Int64ArrayArrayOutput
+	ToInt64ArrayArrayOutputWithContext(ctx context.Context) Int64ArrayArrayOutput
+}
+
+// Int64ArrayArray is an input type for []Int64ArrayInput values.
+type Int64ArrayArray []Int64ArrayInput
+
+// ElementType returns the element type of this Input ([][]int64).
+func (Int64ArrayArray) ElementType() reflect.Type {
+	return int64ArrayArrayType
+}
+
+func (in Int64ArrayArray) ToInt64ArrayArrayOutput() Int64ArrayArrayOutput {
+	return ToOutput(in).(Int64ArrayArrayOutput)
+}
+
+func (in Int64ArrayArray) ToInt64ArrayArrayOutputWithContext(ctx context.Context) Int64ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Int64ArrayArrayOutput)
+}
+
+// Int64ArrayArrayOutput is an Output that returns [][]int64 values.
+type Int64ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]int64).
+func (Int64ArrayArrayOutput) ElementType() reflect.Type {
+	return int64ArrayArrayType
+}
+
+func (o Int64ArrayArrayOutput) ToInt64ArrayArrayOutput() Int64ArrayArrayOutput {
+	return o
+}
+
+func (o Int64ArrayArrayOutput) ToInt64ArrayArrayOutputWithContext(ctx context.Context) Int64ArrayArrayOutput {
+	return o
+}
+
+func (o Int64ArrayArrayOutput) Index(i IntInput) Int64ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []int64 {
+		return vs[0].([][]int64)[vs[1].(int)]
+	}).(Int64ArrayOutput)
 }
 
 var int8Type = reflect.TypeOf((*int8)(nil)).Elem()
@@ -4856,6 +6408,102 @@ func (o Int8MapArrayOutput) Index(i IntInput) Int8MapOutput {
 	}).(Int8MapOutput)
 }
 
+var int8MapMapType = reflect.TypeOf((*map[string]map[string]int8)(nil)).Elem()
+
+// Int8MapMapInput is an input type that accepts Int8MapMap and Int8MapMapOutput values.
+type Int8MapMapInput interface {
+	Input
+
+	ToInt8MapMapOutput() Int8MapMapOutput
+	ToInt8MapMapOutputWithContext(ctx context.Context) Int8MapMapOutput
+}
+
+// Int8MapMap is an input type for map[string]Int8MapInput values.
+type Int8MapMap map[string]Int8MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]int8).
+func (Int8MapMap) ElementType() reflect.Type {
+	return int8MapMapType
+}
+
+func (in Int8MapMap) ToInt8MapMapOutput() Int8MapMapOutput {
+	return ToOutput(in).(Int8MapMapOutput)
+}
+
+func (in Int8MapMap) ToInt8MapMapOutputWithContext(ctx context.Context) Int8MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Int8MapMapOutput)
+}
+
+// Int8MapMapOutput is an Output that returns map[string]map[string]int8 values.
+type Int8MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]int8).
+func (Int8MapMapOutput) ElementType() reflect.Type {
+	return int8MapMapType
+}
+
+func (o Int8MapMapOutput) ToInt8MapMapOutput() Int8MapMapOutput {
+	return o
+}
+
+func (o Int8MapMapOutput) ToInt8MapMapOutputWithContext(ctx context.Context) Int8MapMapOutput {
+	return o
+}
+
+func (o Int8MapMapOutput) MapIndex(k StringInput) Int8MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]int8 {
+		return vs[0].(map[string]map[string]int8)[vs[1].(string)]
+	}).(Int8MapOutput)
+}
+
+var int8ArrayArrayType = reflect.TypeOf((*[][]int8)(nil)).Elem()
+
+// Int8ArrayArrayInput is an input type that accepts Int8ArrayArray and Int8ArrayArrayOutput values.
+type Int8ArrayArrayInput interface {
+	Input
+
+	ToInt8ArrayArrayOutput() Int8ArrayArrayOutput
+	ToInt8ArrayArrayOutputWithContext(ctx context.Context) Int8ArrayArrayOutput
+}
+
+// Int8ArrayArray is an input type for []Int8ArrayInput values.
+type Int8ArrayArray []Int8ArrayInput
+
+// ElementType returns the element type of this Input ([][]int8).
+func (Int8ArrayArray) ElementType() reflect.Type {
+	return int8ArrayArrayType
+}
+
+func (in Int8ArrayArray) ToInt8ArrayArrayOutput() Int8ArrayArrayOutput {
+	return ToOutput(in).(Int8ArrayArrayOutput)
+}
+
+func (in Int8ArrayArray) ToInt8ArrayArrayOutputWithContext(ctx context.Context) Int8ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Int8ArrayArrayOutput)
+}
+
+// Int8ArrayArrayOutput is an Output that returns [][]int8 values.
+type Int8ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]int8).
+func (Int8ArrayArrayOutput) ElementType() reflect.Type {
+	return int8ArrayArrayType
+}
+
+func (o Int8ArrayArrayOutput) ToInt8ArrayArrayOutput() Int8ArrayArrayOutput {
+	return o
+}
+
+func (o Int8ArrayArrayOutput) ToInt8ArrayArrayOutputWithContext(ctx context.Context) Int8ArrayArrayOutput {
+	return o
+}
+
+func (o Int8ArrayArrayOutput) Index(i IntInput) Int8ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []int8 {
+		return vs[0].([][]int8)[vs[1].(int)]
+	}).(Int8ArrayOutput)
+}
+
 var stringType = reflect.TypeOf((*string)(nil)).Elem()
 
 // StringInput is an input type that accepts String and StringOutput values.
@@ -5161,6 +6809,102 @@ func (o StringMapArrayOutput) Index(i IntInput) StringMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]string {
 		return vs[0].([]map[string]string)[vs[1].(int)]
 	}).(StringMapOutput)
+}
+
+var stringMapMapType = reflect.TypeOf((*map[string]map[string]string)(nil)).Elem()
+
+// StringMapMapInput is an input type that accepts StringMapMap and StringMapMapOutput values.
+type StringMapMapInput interface {
+	Input
+
+	ToStringMapMapOutput() StringMapMapOutput
+	ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput
+}
+
+// StringMapMap is an input type for map[string]StringMapInput values.
+type StringMapMap map[string]StringMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]string).
+func (StringMapMap) ElementType() reflect.Type {
+	return stringMapMapType
+}
+
+func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
+	return ToOutput(in).(StringMapMapOutput)
+}
+
+func (in StringMapMap) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+	return ToOutputWithContext(ctx, in).(StringMapMapOutput)
+}
+
+// StringMapMapOutput is an Output that returns map[string]map[string]string values.
+type StringMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]string).
+func (StringMapMapOutput) ElementType() reflect.Type {
+	return stringMapMapType
+}
+
+func (o StringMapMapOutput) ToStringMapMapOutput() StringMapMapOutput {
+	return o
+}
+
+func (o StringMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+	return o
+}
+
+func (o StringMapMapOutput) MapIndex(k StringInput) StringMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]string {
+		return vs[0].(map[string]map[string]string)[vs[1].(string)]
+	}).(StringMapOutput)
+}
+
+var stringArrayArrayType = reflect.TypeOf((*[][]string)(nil)).Elem()
+
+// StringArrayArrayInput is an input type that accepts StringArrayArray and StringArrayArrayOutput values.
+type StringArrayArrayInput interface {
+	Input
+
+	ToStringArrayArrayOutput() StringArrayArrayOutput
+	ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput
+}
+
+// StringArrayArray is an input type for []StringArrayInput values.
+type StringArrayArray []StringArrayInput
+
+// ElementType returns the element type of this Input ([][]string).
+func (StringArrayArray) ElementType() reflect.Type {
+	return stringArrayArrayType
+}
+
+func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return ToOutput(in).(StringArrayArrayOutput)
+}
+
+func (in StringArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(StringArrayArrayOutput)
+}
+
+// StringArrayArrayOutput is an Output that returns [][]string values.
+type StringArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]string).
+func (StringArrayArrayOutput) ElementType() reflect.Type {
+	return stringArrayArrayType
+}
+
+func (o StringArrayArrayOutput) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return o
+}
+
+func (o StringArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+	return o
+}
+
+func (o StringArrayArrayOutput) Index(i IntInput) StringArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []string {
+		return vs[0].([][]string)[vs[1].(int)]
+	}).(StringArrayOutput)
 }
 
 var urnType = reflect.TypeOf((*URN)(nil)).Elem()
@@ -5485,6 +7229,102 @@ func (o URNMapArrayOutput) Index(i IntInput) URNMapOutput {
 	}).(URNMapOutput)
 }
 
+var uRNMapMapType = reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem()
+
+// URNMapMapInput is an input type that accepts URNMapMap and URNMapMapOutput values.
+type URNMapMapInput interface {
+	Input
+
+	ToURNMapMapOutput() URNMapMapOutput
+	ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput
+}
+
+// URNMapMap is an input type for map[string]URNMapInput values.
+type URNMapMap map[string]URNMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]URN).
+func (URNMapMap) ElementType() reflect.Type {
+	return uRNMapMapType
+}
+
+func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
+	return ToOutput(in).(URNMapMapOutput)
+}
+
+func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput {
+	return ToOutputWithContext(ctx, in).(URNMapMapOutput)
+}
+
+// URNMapMapOutput is an Output that returns map[string]map[string]URN values.
+type URNMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]URN).
+func (URNMapMapOutput) ElementType() reflect.Type {
+	return uRNMapMapType
+}
+
+func (o URNMapMapOutput) ToURNMapMapOutput() URNMapMapOutput {
+	return o
+}
+
+func (o URNMapMapOutput) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput {
+	return o
+}
+
+func (o URNMapMapOutput) MapIndex(k StringInput) URNMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]URN {
+		return vs[0].(map[string]map[string]URN)[vs[1].(string)]
+	}).(URNMapOutput)
+}
+
+var uRNArrayArrayType = reflect.TypeOf((*[][]URN)(nil)).Elem()
+
+// URNArrayArrayInput is an input type that accepts URNArrayArray and URNArrayArrayOutput values.
+type URNArrayArrayInput interface {
+	Input
+
+	ToURNArrayArrayOutput() URNArrayArrayOutput
+	ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput
+}
+
+// URNArrayArray is an input type for []URNArrayInput values.
+type URNArrayArray []URNArrayInput
+
+// ElementType returns the element type of this Input ([][]URN).
+func (URNArrayArray) ElementType() reflect.Type {
+	return uRNArrayArrayType
+}
+
+func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {
+	return ToOutput(in).(URNArrayArrayOutput)
+}
+
+func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(URNArrayArrayOutput)
+}
+
+// URNArrayArrayOutput is an Output that returns [][]URN values.
+type URNArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]URN).
+func (URNArrayArrayOutput) ElementType() reflect.Type {
+	return uRNArrayArrayType
+}
+
+func (o URNArrayArrayOutput) ToURNArrayArrayOutput() URNArrayArrayOutput {
+	return o
+}
+
+func (o URNArrayArrayOutput) ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput {
+	return o
+}
+
+func (o URNArrayArrayOutput) Index(i IntInput) URNArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []URN {
+		return vs[0].([][]URN)[vs[1].(int)]
+	}).(URNArrayOutput)
+}
+
 var uintType = reflect.TypeOf((*uint)(nil)).Elem()
 
 // UintInput is an input type that accepts Uint and UintOutput values.
@@ -5790,6 +7630,102 @@ func (o UintMapArrayOutput) Index(i IntInput) UintMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]uint {
 		return vs[0].([]map[string]uint)[vs[1].(int)]
 	}).(UintMapOutput)
+}
+
+var uintMapMapType = reflect.TypeOf((*map[string]map[string]uint)(nil)).Elem()
+
+// UintMapMapInput is an input type that accepts UintMapMap and UintMapMapOutput values.
+type UintMapMapInput interface {
+	Input
+
+	ToUintMapMapOutput() UintMapMapOutput
+	ToUintMapMapOutputWithContext(ctx context.Context) UintMapMapOutput
+}
+
+// UintMapMap is an input type for map[string]UintMapInput values.
+type UintMapMap map[string]UintMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]uint).
+func (UintMapMap) ElementType() reflect.Type {
+	return uintMapMapType
+}
+
+func (in UintMapMap) ToUintMapMapOutput() UintMapMapOutput {
+	return ToOutput(in).(UintMapMapOutput)
+}
+
+func (in UintMapMap) ToUintMapMapOutputWithContext(ctx context.Context) UintMapMapOutput {
+	return ToOutputWithContext(ctx, in).(UintMapMapOutput)
+}
+
+// UintMapMapOutput is an Output that returns map[string]map[string]uint values.
+type UintMapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]uint).
+func (UintMapMapOutput) ElementType() reflect.Type {
+	return uintMapMapType
+}
+
+func (o UintMapMapOutput) ToUintMapMapOutput() UintMapMapOutput {
+	return o
+}
+
+func (o UintMapMapOutput) ToUintMapMapOutputWithContext(ctx context.Context) UintMapMapOutput {
+	return o
+}
+
+func (o UintMapMapOutput) MapIndex(k StringInput) UintMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]uint {
+		return vs[0].(map[string]map[string]uint)[vs[1].(string)]
+	}).(UintMapOutput)
+}
+
+var uintArrayArrayType = reflect.TypeOf((*[][]uint)(nil)).Elem()
+
+// UintArrayArrayInput is an input type that accepts UintArrayArray and UintArrayArrayOutput values.
+type UintArrayArrayInput interface {
+	Input
+
+	ToUintArrayArrayOutput() UintArrayArrayOutput
+	ToUintArrayArrayOutputWithContext(ctx context.Context) UintArrayArrayOutput
+}
+
+// UintArrayArray is an input type for []UintArrayInput values.
+type UintArrayArray []UintArrayInput
+
+// ElementType returns the element type of this Input ([][]uint).
+func (UintArrayArray) ElementType() reflect.Type {
+	return uintArrayArrayType
+}
+
+func (in UintArrayArray) ToUintArrayArrayOutput() UintArrayArrayOutput {
+	return ToOutput(in).(UintArrayArrayOutput)
+}
+
+func (in UintArrayArray) ToUintArrayArrayOutputWithContext(ctx context.Context) UintArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(UintArrayArrayOutput)
+}
+
+// UintArrayArrayOutput is an Output that returns [][]uint values.
+type UintArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]uint).
+func (UintArrayArrayOutput) ElementType() reflect.Type {
+	return uintArrayArrayType
+}
+
+func (o UintArrayArrayOutput) ToUintArrayArrayOutput() UintArrayArrayOutput {
+	return o
+}
+
+func (o UintArrayArrayOutput) ToUintArrayArrayOutputWithContext(ctx context.Context) UintArrayArrayOutput {
+	return o
+}
+
+func (o UintArrayArrayOutput) Index(i IntInput) UintArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []uint {
+		return vs[0].([][]uint)[vs[1].(int)]
+	}).(UintArrayOutput)
 }
 
 var uint16Type = reflect.TypeOf((*uint16)(nil)).Elem()
@@ -6099,6 +8035,102 @@ func (o Uint16MapArrayOutput) Index(i IntInput) Uint16MapOutput {
 	}).(Uint16MapOutput)
 }
 
+var uint16MapMapType = reflect.TypeOf((*map[string]map[string]uint16)(nil)).Elem()
+
+// Uint16MapMapInput is an input type that accepts Uint16MapMap and Uint16MapMapOutput values.
+type Uint16MapMapInput interface {
+	Input
+
+	ToUint16MapMapOutput() Uint16MapMapOutput
+	ToUint16MapMapOutputWithContext(ctx context.Context) Uint16MapMapOutput
+}
+
+// Uint16MapMap is an input type for map[string]Uint16MapInput values.
+type Uint16MapMap map[string]Uint16MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]uint16).
+func (Uint16MapMap) ElementType() reflect.Type {
+	return uint16MapMapType
+}
+
+func (in Uint16MapMap) ToUint16MapMapOutput() Uint16MapMapOutput {
+	return ToOutput(in).(Uint16MapMapOutput)
+}
+
+func (in Uint16MapMap) ToUint16MapMapOutputWithContext(ctx context.Context) Uint16MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Uint16MapMapOutput)
+}
+
+// Uint16MapMapOutput is an Output that returns map[string]map[string]uint16 values.
+type Uint16MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]uint16).
+func (Uint16MapMapOutput) ElementType() reflect.Type {
+	return uint16MapMapType
+}
+
+func (o Uint16MapMapOutput) ToUint16MapMapOutput() Uint16MapMapOutput {
+	return o
+}
+
+func (o Uint16MapMapOutput) ToUint16MapMapOutputWithContext(ctx context.Context) Uint16MapMapOutput {
+	return o
+}
+
+func (o Uint16MapMapOutput) MapIndex(k StringInput) Uint16MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]uint16 {
+		return vs[0].(map[string]map[string]uint16)[vs[1].(string)]
+	}).(Uint16MapOutput)
+}
+
+var uint16ArrayArrayType = reflect.TypeOf((*[][]uint16)(nil)).Elem()
+
+// Uint16ArrayArrayInput is an input type that accepts Uint16ArrayArray and Uint16ArrayArrayOutput values.
+type Uint16ArrayArrayInput interface {
+	Input
+
+	ToUint16ArrayArrayOutput() Uint16ArrayArrayOutput
+	ToUint16ArrayArrayOutputWithContext(ctx context.Context) Uint16ArrayArrayOutput
+}
+
+// Uint16ArrayArray is an input type for []Uint16ArrayInput values.
+type Uint16ArrayArray []Uint16ArrayInput
+
+// ElementType returns the element type of this Input ([][]uint16).
+func (Uint16ArrayArray) ElementType() reflect.Type {
+	return uint16ArrayArrayType
+}
+
+func (in Uint16ArrayArray) ToUint16ArrayArrayOutput() Uint16ArrayArrayOutput {
+	return ToOutput(in).(Uint16ArrayArrayOutput)
+}
+
+func (in Uint16ArrayArray) ToUint16ArrayArrayOutputWithContext(ctx context.Context) Uint16ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Uint16ArrayArrayOutput)
+}
+
+// Uint16ArrayArrayOutput is an Output that returns [][]uint16 values.
+type Uint16ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]uint16).
+func (Uint16ArrayArrayOutput) ElementType() reflect.Type {
+	return uint16ArrayArrayType
+}
+
+func (o Uint16ArrayArrayOutput) ToUint16ArrayArrayOutput() Uint16ArrayArrayOutput {
+	return o
+}
+
+func (o Uint16ArrayArrayOutput) ToUint16ArrayArrayOutputWithContext(ctx context.Context) Uint16ArrayArrayOutput {
+	return o
+}
+
+func (o Uint16ArrayArrayOutput) Index(i IntInput) Uint16ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []uint16 {
+		return vs[0].([][]uint16)[vs[1].(int)]
+	}).(Uint16ArrayOutput)
+}
+
 var uint32Type = reflect.TypeOf((*uint32)(nil)).Elem()
 
 // Uint32Input is an input type that accepts Uint32 and Uint32Output values.
@@ -6404,6 +8436,102 @@ func (o Uint32MapArrayOutput) Index(i IntInput) Uint32MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]uint32 {
 		return vs[0].([]map[string]uint32)[vs[1].(int)]
 	}).(Uint32MapOutput)
+}
+
+var uint32MapMapType = reflect.TypeOf((*map[string]map[string]uint32)(nil)).Elem()
+
+// Uint32MapMapInput is an input type that accepts Uint32MapMap and Uint32MapMapOutput values.
+type Uint32MapMapInput interface {
+	Input
+
+	ToUint32MapMapOutput() Uint32MapMapOutput
+	ToUint32MapMapOutputWithContext(ctx context.Context) Uint32MapMapOutput
+}
+
+// Uint32MapMap is an input type for map[string]Uint32MapInput values.
+type Uint32MapMap map[string]Uint32MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]uint32).
+func (Uint32MapMap) ElementType() reflect.Type {
+	return uint32MapMapType
+}
+
+func (in Uint32MapMap) ToUint32MapMapOutput() Uint32MapMapOutput {
+	return ToOutput(in).(Uint32MapMapOutput)
+}
+
+func (in Uint32MapMap) ToUint32MapMapOutputWithContext(ctx context.Context) Uint32MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Uint32MapMapOutput)
+}
+
+// Uint32MapMapOutput is an Output that returns map[string]map[string]uint32 values.
+type Uint32MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]uint32).
+func (Uint32MapMapOutput) ElementType() reflect.Type {
+	return uint32MapMapType
+}
+
+func (o Uint32MapMapOutput) ToUint32MapMapOutput() Uint32MapMapOutput {
+	return o
+}
+
+func (o Uint32MapMapOutput) ToUint32MapMapOutputWithContext(ctx context.Context) Uint32MapMapOutput {
+	return o
+}
+
+func (o Uint32MapMapOutput) MapIndex(k StringInput) Uint32MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]uint32 {
+		return vs[0].(map[string]map[string]uint32)[vs[1].(string)]
+	}).(Uint32MapOutput)
+}
+
+var uint32ArrayArrayType = reflect.TypeOf((*[][]uint32)(nil)).Elem()
+
+// Uint32ArrayArrayInput is an input type that accepts Uint32ArrayArray and Uint32ArrayArrayOutput values.
+type Uint32ArrayArrayInput interface {
+	Input
+
+	ToUint32ArrayArrayOutput() Uint32ArrayArrayOutput
+	ToUint32ArrayArrayOutputWithContext(ctx context.Context) Uint32ArrayArrayOutput
+}
+
+// Uint32ArrayArray is an input type for []Uint32ArrayInput values.
+type Uint32ArrayArray []Uint32ArrayInput
+
+// ElementType returns the element type of this Input ([][]uint32).
+func (Uint32ArrayArray) ElementType() reflect.Type {
+	return uint32ArrayArrayType
+}
+
+func (in Uint32ArrayArray) ToUint32ArrayArrayOutput() Uint32ArrayArrayOutput {
+	return ToOutput(in).(Uint32ArrayArrayOutput)
+}
+
+func (in Uint32ArrayArray) ToUint32ArrayArrayOutputWithContext(ctx context.Context) Uint32ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Uint32ArrayArrayOutput)
+}
+
+// Uint32ArrayArrayOutput is an Output that returns [][]uint32 values.
+type Uint32ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]uint32).
+func (Uint32ArrayArrayOutput) ElementType() reflect.Type {
+	return uint32ArrayArrayType
+}
+
+func (o Uint32ArrayArrayOutput) ToUint32ArrayArrayOutput() Uint32ArrayArrayOutput {
+	return o
+}
+
+func (o Uint32ArrayArrayOutput) ToUint32ArrayArrayOutputWithContext(ctx context.Context) Uint32ArrayArrayOutput {
+	return o
+}
+
+func (o Uint32ArrayArrayOutput) Index(i IntInput) Uint32ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []uint32 {
+		return vs[0].([][]uint32)[vs[1].(int)]
+	}).(Uint32ArrayOutput)
 }
 
 var uint64Type = reflect.TypeOf((*uint64)(nil)).Elem()
@@ -6713,6 +8841,102 @@ func (o Uint64MapArrayOutput) Index(i IntInput) Uint64MapOutput {
 	}).(Uint64MapOutput)
 }
 
+var uint64MapMapType = reflect.TypeOf((*map[string]map[string]uint64)(nil)).Elem()
+
+// Uint64MapMapInput is an input type that accepts Uint64MapMap and Uint64MapMapOutput values.
+type Uint64MapMapInput interface {
+	Input
+
+	ToUint64MapMapOutput() Uint64MapMapOutput
+	ToUint64MapMapOutputWithContext(ctx context.Context) Uint64MapMapOutput
+}
+
+// Uint64MapMap is an input type for map[string]Uint64MapInput values.
+type Uint64MapMap map[string]Uint64MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]uint64).
+func (Uint64MapMap) ElementType() reflect.Type {
+	return uint64MapMapType
+}
+
+func (in Uint64MapMap) ToUint64MapMapOutput() Uint64MapMapOutput {
+	return ToOutput(in).(Uint64MapMapOutput)
+}
+
+func (in Uint64MapMap) ToUint64MapMapOutputWithContext(ctx context.Context) Uint64MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Uint64MapMapOutput)
+}
+
+// Uint64MapMapOutput is an Output that returns map[string]map[string]uint64 values.
+type Uint64MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]uint64).
+func (Uint64MapMapOutput) ElementType() reflect.Type {
+	return uint64MapMapType
+}
+
+func (o Uint64MapMapOutput) ToUint64MapMapOutput() Uint64MapMapOutput {
+	return o
+}
+
+func (o Uint64MapMapOutput) ToUint64MapMapOutputWithContext(ctx context.Context) Uint64MapMapOutput {
+	return o
+}
+
+func (o Uint64MapMapOutput) MapIndex(k StringInput) Uint64MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]uint64 {
+		return vs[0].(map[string]map[string]uint64)[vs[1].(string)]
+	}).(Uint64MapOutput)
+}
+
+var uint64ArrayArrayType = reflect.TypeOf((*[][]uint64)(nil)).Elem()
+
+// Uint64ArrayArrayInput is an input type that accepts Uint64ArrayArray and Uint64ArrayArrayOutput values.
+type Uint64ArrayArrayInput interface {
+	Input
+
+	ToUint64ArrayArrayOutput() Uint64ArrayArrayOutput
+	ToUint64ArrayArrayOutputWithContext(ctx context.Context) Uint64ArrayArrayOutput
+}
+
+// Uint64ArrayArray is an input type for []Uint64ArrayInput values.
+type Uint64ArrayArray []Uint64ArrayInput
+
+// ElementType returns the element type of this Input ([][]uint64).
+func (Uint64ArrayArray) ElementType() reflect.Type {
+	return uint64ArrayArrayType
+}
+
+func (in Uint64ArrayArray) ToUint64ArrayArrayOutput() Uint64ArrayArrayOutput {
+	return ToOutput(in).(Uint64ArrayArrayOutput)
+}
+
+func (in Uint64ArrayArray) ToUint64ArrayArrayOutputWithContext(ctx context.Context) Uint64ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Uint64ArrayArrayOutput)
+}
+
+// Uint64ArrayArrayOutput is an Output that returns [][]uint64 values.
+type Uint64ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]uint64).
+func (Uint64ArrayArrayOutput) ElementType() reflect.Type {
+	return uint64ArrayArrayType
+}
+
+func (o Uint64ArrayArrayOutput) ToUint64ArrayArrayOutput() Uint64ArrayArrayOutput {
+	return o
+}
+
+func (o Uint64ArrayArrayOutput) ToUint64ArrayArrayOutputWithContext(ctx context.Context) Uint64ArrayArrayOutput {
+	return o
+}
+
+func (o Uint64ArrayArrayOutput) Index(i IntInput) Uint64ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []uint64 {
+		return vs[0].([][]uint64)[vs[1].(int)]
+	}).(Uint64ArrayOutput)
+}
+
 var uint8Type = reflect.TypeOf((*uint8)(nil)).Elem()
 
 // Uint8Input is an input type that accepts Uint8 and Uint8Output values.
@@ -7020,6 +9244,102 @@ func (o Uint8MapArrayOutput) Index(i IntInput) Uint8MapOutput {
 	}).(Uint8MapOutput)
 }
 
+var uint8MapMapType = reflect.TypeOf((*map[string]map[string]uint8)(nil)).Elem()
+
+// Uint8MapMapInput is an input type that accepts Uint8MapMap and Uint8MapMapOutput values.
+type Uint8MapMapInput interface {
+	Input
+
+	ToUint8MapMapOutput() Uint8MapMapOutput
+	ToUint8MapMapOutputWithContext(ctx context.Context) Uint8MapMapOutput
+}
+
+// Uint8MapMap is an input type for map[string]Uint8MapInput values.
+type Uint8MapMap map[string]Uint8MapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]uint8).
+func (Uint8MapMap) ElementType() reflect.Type {
+	return uint8MapMapType
+}
+
+func (in Uint8MapMap) ToUint8MapMapOutput() Uint8MapMapOutput {
+	return ToOutput(in).(Uint8MapMapOutput)
+}
+
+func (in Uint8MapMap) ToUint8MapMapOutputWithContext(ctx context.Context) Uint8MapMapOutput {
+	return ToOutputWithContext(ctx, in).(Uint8MapMapOutput)
+}
+
+// Uint8MapMapOutput is an Output that returns map[string]map[string]uint8 values.
+type Uint8MapMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string]map[string]uint8).
+func (Uint8MapMapOutput) ElementType() reflect.Type {
+	return uint8MapMapType
+}
+
+func (o Uint8MapMapOutput) ToUint8MapMapOutput() Uint8MapMapOutput {
+	return o
+}
+
+func (o Uint8MapMapOutput) ToUint8MapMapOutputWithContext(ctx context.Context) Uint8MapMapOutput {
+	return o
+}
+
+func (o Uint8MapMapOutput) MapIndex(k StringInput) Uint8MapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]uint8 {
+		return vs[0].(map[string]map[string]uint8)[vs[1].(string)]
+	}).(Uint8MapOutput)
+}
+
+var uint8ArrayArrayType = reflect.TypeOf((*[][]uint8)(nil)).Elem()
+
+// Uint8ArrayArrayInput is an input type that accepts Uint8ArrayArray and Uint8ArrayArrayOutput values.
+type Uint8ArrayArrayInput interface {
+	Input
+
+	ToUint8ArrayArrayOutput() Uint8ArrayArrayOutput
+	ToUint8ArrayArrayOutputWithContext(ctx context.Context) Uint8ArrayArrayOutput
+}
+
+// Uint8ArrayArray is an input type for []Uint8ArrayInput values.
+type Uint8ArrayArray []Uint8ArrayInput
+
+// ElementType returns the element type of this Input ([][]uint8).
+func (Uint8ArrayArray) ElementType() reflect.Type {
+	return uint8ArrayArrayType
+}
+
+func (in Uint8ArrayArray) ToUint8ArrayArrayOutput() Uint8ArrayArrayOutput {
+	return ToOutput(in).(Uint8ArrayArrayOutput)
+}
+
+func (in Uint8ArrayArray) ToUint8ArrayArrayOutputWithContext(ctx context.Context) Uint8ArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Uint8ArrayArrayOutput)
+}
+
+// Uint8ArrayArrayOutput is an Output that returns [][]uint8 values.
+type Uint8ArrayArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([][]uint8).
+func (Uint8ArrayArrayOutput) ElementType() reflect.Type {
+	return uint8ArrayArrayType
+}
+
+func (o Uint8ArrayArrayOutput) ToUint8ArrayArrayOutput() Uint8ArrayArrayOutput {
+	return o
+}
+
+func (o Uint8ArrayArrayOutput) ToUint8ArrayArrayOutputWithContext(ctx context.Context) Uint8ArrayArrayOutput {
+	return o
+}
+
+func (o Uint8ArrayArrayOutput) Index(i IntInput) Uint8ArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []uint8 {
+		return vs[0].([][]uint8)[vs[1].(int)]
+	}).(Uint8ArrayOutput)
+}
+
 func getResolvedValue(input Input) (reflect.Value, bool) {
 	switch input := input.(type) {
 	case *asset, *archive:
@@ -7035,114 +9355,154 @@ func init() {
 	RegisterOutputType(ArchiveMapOutput{})
 	RegisterOutputType(ArchiveArrayMapOutput{})
 	RegisterOutputType(ArchiveMapArrayOutput{})
+	RegisterOutputType(ArchiveMapMapOutput{})
+	RegisterOutputType(ArchiveArrayArrayOutput{})
 	RegisterOutputType(AssetOutput{})
 	RegisterOutputType(AssetArrayOutput{})
 	RegisterOutputType(AssetMapOutput{})
 	RegisterOutputType(AssetArrayMapOutput{})
 	RegisterOutputType(AssetMapArrayOutput{})
+	RegisterOutputType(AssetMapMapOutput{})
+	RegisterOutputType(AssetArrayArrayOutput{})
 	RegisterOutputType(AssetOrArchiveOutput{})
 	RegisterOutputType(AssetOrArchiveArrayOutput{})
 	RegisterOutputType(AssetOrArchiveMapOutput{})
 	RegisterOutputType(AssetOrArchiveArrayMapOutput{})
 	RegisterOutputType(AssetOrArchiveMapArrayOutput{})
+	RegisterOutputType(AssetOrArchiveMapMapOutput{})
+	RegisterOutputType(AssetOrArchiveArrayArrayOutput{})
 	RegisterOutputType(BoolOutput{})
 	RegisterOutputType(BoolPtrOutput{})
 	RegisterOutputType(BoolArrayOutput{})
 	RegisterOutputType(BoolMapOutput{})
 	RegisterOutputType(BoolArrayMapOutput{})
 	RegisterOutputType(BoolMapArrayOutput{})
+	RegisterOutputType(BoolMapMapOutput{})
+	RegisterOutputType(BoolArrayArrayOutput{})
 	RegisterOutputType(Float32Output{})
 	RegisterOutputType(Float32PtrOutput{})
 	RegisterOutputType(Float32ArrayOutput{})
 	RegisterOutputType(Float32MapOutput{})
 	RegisterOutputType(Float32ArrayMapOutput{})
 	RegisterOutputType(Float32MapArrayOutput{})
+	RegisterOutputType(Float32MapMapOutput{})
+	RegisterOutputType(Float32ArrayArrayOutput{})
 	RegisterOutputType(Float64Output{})
 	RegisterOutputType(Float64PtrOutput{})
 	RegisterOutputType(Float64ArrayOutput{})
 	RegisterOutputType(Float64MapOutput{})
 	RegisterOutputType(Float64ArrayMapOutput{})
 	RegisterOutputType(Float64MapArrayOutput{})
+	RegisterOutputType(Float64MapMapOutput{})
+	RegisterOutputType(Float64ArrayArrayOutput{})
 	RegisterOutputType(IDOutput{})
 	RegisterOutputType(IDPtrOutput{})
 	RegisterOutputType(IDArrayOutput{})
 	RegisterOutputType(IDMapOutput{})
 	RegisterOutputType(IDArrayMapOutput{})
 	RegisterOutputType(IDMapArrayOutput{})
+	RegisterOutputType(IDMapMapOutput{})
+	RegisterOutputType(IDArrayArrayOutput{})
 	RegisterOutputType(ArrayOutput{})
 	RegisterOutputType(MapOutput{})
 	RegisterOutputType(ArrayMapOutput{})
 	RegisterOutputType(MapArrayOutput{})
+	RegisterOutputType(MapMapOutput{})
+	RegisterOutputType(ArrayArrayOutput{})
 	RegisterOutputType(IntOutput{})
 	RegisterOutputType(IntPtrOutput{})
 	RegisterOutputType(IntArrayOutput{})
 	RegisterOutputType(IntMapOutput{})
 	RegisterOutputType(IntArrayMapOutput{})
 	RegisterOutputType(IntMapArrayOutput{})
+	RegisterOutputType(IntMapMapOutput{})
+	RegisterOutputType(IntArrayArrayOutput{})
 	RegisterOutputType(Int16Output{})
 	RegisterOutputType(Int16PtrOutput{})
 	RegisterOutputType(Int16ArrayOutput{})
 	RegisterOutputType(Int16MapOutput{})
 	RegisterOutputType(Int16ArrayMapOutput{})
 	RegisterOutputType(Int16MapArrayOutput{})
+	RegisterOutputType(Int16MapMapOutput{})
+	RegisterOutputType(Int16ArrayArrayOutput{})
 	RegisterOutputType(Int32Output{})
 	RegisterOutputType(Int32PtrOutput{})
 	RegisterOutputType(Int32ArrayOutput{})
 	RegisterOutputType(Int32MapOutput{})
 	RegisterOutputType(Int32ArrayMapOutput{})
 	RegisterOutputType(Int32MapArrayOutput{})
+	RegisterOutputType(Int32MapMapOutput{})
+	RegisterOutputType(Int32ArrayArrayOutput{})
 	RegisterOutputType(Int64Output{})
 	RegisterOutputType(Int64PtrOutput{})
 	RegisterOutputType(Int64ArrayOutput{})
 	RegisterOutputType(Int64MapOutput{})
 	RegisterOutputType(Int64ArrayMapOutput{})
 	RegisterOutputType(Int64MapArrayOutput{})
+	RegisterOutputType(Int64MapMapOutput{})
+	RegisterOutputType(Int64ArrayArrayOutput{})
 	RegisterOutputType(Int8Output{})
 	RegisterOutputType(Int8PtrOutput{})
 	RegisterOutputType(Int8ArrayOutput{})
 	RegisterOutputType(Int8MapOutput{})
 	RegisterOutputType(Int8ArrayMapOutput{})
 	RegisterOutputType(Int8MapArrayOutput{})
+	RegisterOutputType(Int8MapMapOutput{})
+	RegisterOutputType(Int8ArrayArrayOutput{})
 	RegisterOutputType(StringOutput{})
 	RegisterOutputType(StringPtrOutput{})
 	RegisterOutputType(StringArrayOutput{})
 	RegisterOutputType(StringMapOutput{})
 	RegisterOutputType(StringArrayMapOutput{})
 	RegisterOutputType(StringMapArrayOutput{})
+	RegisterOutputType(StringMapMapOutput{})
+	RegisterOutputType(StringArrayArrayOutput{})
 	RegisterOutputType(URNOutput{})
 	RegisterOutputType(URNPtrOutput{})
 	RegisterOutputType(URNArrayOutput{})
 	RegisterOutputType(URNMapOutput{})
 	RegisterOutputType(URNArrayMapOutput{})
 	RegisterOutputType(URNMapArrayOutput{})
+	RegisterOutputType(URNMapMapOutput{})
+	RegisterOutputType(URNArrayArrayOutput{})
 	RegisterOutputType(UintOutput{})
 	RegisterOutputType(UintPtrOutput{})
 	RegisterOutputType(UintArrayOutput{})
 	RegisterOutputType(UintMapOutput{})
 	RegisterOutputType(UintArrayMapOutput{})
 	RegisterOutputType(UintMapArrayOutput{})
+	RegisterOutputType(UintMapMapOutput{})
+	RegisterOutputType(UintArrayArrayOutput{})
 	RegisterOutputType(Uint16Output{})
 	RegisterOutputType(Uint16PtrOutput{})
 	RegisterOutputType(Uint16ArrayOutput{})
 	RegisterOutputType(Uint16MapOutput{})
 	RegisterOutputType(Uint16ArrayMapOutput{})
 	RegisterOutputType(Uint16MapArrayOutput{})
+	RegisterOutputType(Uint16MapMapOutput{})
+	RegisterOutputType(Uint16ArrayArrayOutput{})
 	RegisterOutputType(Uint32Output{})
 	RegisterOutputType(Uint32PtrOutput{})
 	RegisterOutputType(Uint32ArrayOutput{})
 	RegisterOutputType(Uint32MapOutput{})
 	RegisterOutputType(Uint32ArrayMapOutput{})
 	RegisterOutputType(Uint32MapArrayOutput{})
+	RegisterOutputType(Uint32MapMapOutput{})
+	RegisterOutputType(Uint32ArrayArrayOutput{})
 	RegisterOutputType(Uint64Output{})
 	RegisterOutputType(Uint64PtrOutput{})
 	RegisterOutputType(Uint64ArrayOutput{})
 	RegisterOutputType(Uint64MapOutput{})
 	RegisterOutputType(Uint64ArrayMapOutput{})
 	RegisterOutputType(Uint64MapArrayOutput{})
+	RegisterOutputType(Uint64MapMapOutput{})
+	RegisterOutputType(Uint64ArrayArrayOutput{})
 	RegisterOutputType(Uint8Output{})
 	RegisterOutputType(Uint8PtrOutput{})
 	RegisterOutputType(Uint8ArrayOutput{})
 	RegisterOutputType(Uint8MapOutput{})
 	RegisterOutputType(Uint8ArrayMapOutput{})
 	RegisterOutputType(Uint8MapArrayOutput{})
+	RegisterOutputType(Uint8MapMapOutput{})
+	RegisterOutputType(Uint8ArrayArrayOutput{})
 }

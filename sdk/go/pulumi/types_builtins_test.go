@@ -191,6 +191,32 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyArchiveMapMap", func(t *testing.T) {
+			o2 := out.ApplyArchiveMapMap(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyArchiveMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]Archive {
+				return *new(map[string]map[string]Archive)
+			})
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyArchiveArrayArray", func(t *testing.T) {
+			o2 := out.ApplyArchiveArrayArray(func(v int) [][]Archive { return *new([][]Archive) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyArchiveArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]Archive { return *new([][]Archive) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyAsset", func(t *testing.T) {
 			o2 := out.ApplyAsset(func(v int) Asset { return *new(Asset) })
 			_, known, _, err := await(o2)
@@ -251,6 +277,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyAssetMapMap", func(t *testing.T) {
+			o2 := out.ApplyAssetMapMap(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyAssetMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyAssetArrayArray", func(t *testing.T) {
+			o2 := out.ApplyAssetArrayArray(func(v int) [][]Asset { return *new([][]Asset) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyAssetArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]Asset { return *new([][]Asset) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyAssetOrArchive", func(t *testing.T) {
 			o2 := out.ApplyAssetOrArchive(func(v int) AssetOrArchive { return *new(AssetOrArchive) })
 			_, known, _, err := await(o2)
@@ -306,6 +356,32 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyAssetOrArchiveMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyAssetOrArchiveMapMap", func(t *testing.T) {
+			o2 := out.ApplyAssetOrArchiveMapMap(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyAssetOrArchiveMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]AssetOrArchive {
+				return *new(map[string]map[string]AssetOrArchive)
+			})
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyAssetOrArchiveArrayArray", func(t *testing.T) {
+			o2 := out.ApplyAssetOrArchiveArrayArray(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyAssetOrArchiveArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -383,6 +459,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyBoolMapMap", func(t *testing.T) {
+			o2 := out.ApplyBoolMapMap(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyBoolMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyBoolArrayArray", func(t *testing.T) {
+			o2 := out.ApplyBoolArrayArray(func(v int) [][]bool { return *new([][]bool) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyBoolArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]bool { return *new([][]bool) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyFloat32", func(t *testing.T) {
 			o2 := out.ApplyFloat32(func(v int) float32 { return *new(float32) })
 			_, known, _, err := await(o2)
@@ -450,6 +550,32 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyFloat32MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]float32 { return *new([]map[string]float32) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyFloat32MapMap", func(t *testing.T) {
+			o2 := out.ApplyFloat32MapMap(func(v int) map[string]map[string]float32 { return *new(map[string]map[string]float32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyFloat32MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]float32 {
+				return *new(map[string]map[string]float32)
+			})
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyFloat32ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyFloat32ArrayArray(func(v int) [][]float32 { return *new([][]float32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyFloat32ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]float32 { return *new([][]float32) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -527,6 +653,32 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyFloat64MapMap", func(t *testing.T) {
+			o2 := out.ApplyFloat64MapMap(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyFloat64MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]float64 {
+				return *new(map[string]map[string]float64)
+			})
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyFloat64ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyFloat64ArrayArray(func(v int) [][]float64 { return *new([][]float64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyFloat64ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]float64 { return *new([][]float64) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyID", func(t *testing.T) {
 			o2 := out.ApplyID(func(v int) ID { return *new(ID) })
 			_, known, _, err := await(o2)
@@ -599,6 +751,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyIDMapMap", func(t *testing.T) {
+			o2 := out.ApplyIDMapMap(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyIDMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyIDArrayArray", func(t *testing.T) {
+			o2 := out.ApplyIDArrayArray(func(v int) [][]ID { return *new([][]ID) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyIDArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]ID { return *new([][]ID) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyArray", func(t *testing.T) {
 			o2 := out.ApplyArray(func(v int) []interface{} { return *new([]interface{}) })
 			_, known, _, err := await(o2)
@@ -642,6 +818,32 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]interface{} { return *new([]map[string]interface{}) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyMapMap", func(t *testing.T) {
+			o2 := out.ApplyMapMap(func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]interface{} {
+				return *new(map[string]map[string]interface{})
+			})
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyArrayArray", func(t *testing.T) {
+			o2 := out.ApplyArrayArray(func(v int) [][]interface{} { return *new([][]interface{}) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]interface{} { return *new([][]interface{}) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -719,6 +921,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyIntMapMap", func(t *testing.T) {
+			o2 := out.ApplyIntMapMap(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyIntMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int { return *new(map[string]map[string]int) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyIntArrayArray", func(t *testing.T) {
+			o2 := out.ApplyIntArrayArray(func(v int) [][]int { return *new([][]int) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyIntArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int { return *new([][]int) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyInt16", func(t *testing.T) {
 			o2 := out.ApplyInt16(func(v int) int16 { return *new(int16) })
 			_, known, _, err := await(o2)
@@ -786,6 +1012,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyInt16MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int16 { return *new([]map[string]int16) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt16MapMap", func(t *testing.T) {
+			o2 := out.ApplyInt16MapMap(func(v int) map[string]map[string]int16 { return *new(map[string]map[string]int16) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt16MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int16 { return *new(map[string]map[string]int16) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt16ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyInt16ArrayArray(func(v int) [][]int16 { return *new([][]int16) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt16ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int16 { return *new([][]int16) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -863,6 +1113,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyInt32MapMap", func(t *testing.T) {
+			o2 := out.ApplyInt32MapMap(func(v int) map[string]map[string]int32 { return *new(map[string]map[string]int32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt32MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int32 { return *new(map[string]map[string]int32) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt32ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyInt32ArrayArray(func(v int) [][]int32 { return *new([][]int32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt32ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int32 { return *new([][]int32) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyInt64", func(t *testing.T) {
 			o2 := out.ApplyInt64(func(v int) int64 { return *new(int64) })
 			_, known, _, err := await(o2)
@@ -930,6 +1204,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyInt64MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int64 { return *new([]map[string]int64) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt64MapMap", func(t *testing.T) {
+			o2 := out.ApplyInt64MapMap(func(v int) map[string]map[string]int64 { return *new(map[string]map[string]int64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt64MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int64 { return *new(map[string]map[string]int64) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt64ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyInt64ArrayArray(func(v int) [][]int64 { return *new([][]int64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt64ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int64 { return *new([][]int64) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -1007,6 +1305,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyInt8MapMap", func(t *testing.T) {
+			o2 := out.ApplyInt8MapMap(func(v int) map[string]map[string]int8 { return *new(map[string]map[string]int8) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt8MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int8 { return *new(map[string]map[string]int8) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyInt8ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyInt8ArrayArray(func(v int) [][]int8 { return *new([][]int8) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyInt8ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int8 { return *new([][]int8) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyString", func(t *testing.T) {
 			o2 := out.ApplyString(func(v int) string { return *new(string) })
 			_, known, _, err := await(o2)
@@ -1074,6 +1396,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyStringMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]string { return *new([]map[string]string) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyStringMapMap", func(t *testing.T) {
+			o2 := out.ApplyStringMapMap(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyStringMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]string { return *new(map[string]map[string]string) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyStringArrayArray", func(t *testing.T) {
+			o2 := out.ApplyStringArrayArray(func(v int) [][]string { return *new([][]string) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyStringArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]string { return *new([][]string) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -1151,6 +1497,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyURNMapMap", func(t *testing.T) {
+			o2 := out.ApplyURNMapMap(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyURNMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyURNArrayArray", func(t *testing.T) {
+			o2 := out.ApplyURNArrayArray(func(v int) [][]URN { return *new([][]URN) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyURNArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]URN { return *new([][]URN) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyUint", func(t *testing.T) {
 			o2 := out.ApplyUint(func(v int) uint { return *new(uint) })
 			_, known, _, err := await(o2)
@@ -1218,6 +1588,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyUintMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint { return *new([]map[string]uint) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUintMapMap", func(t *testing.T) {
+			o2 := out.ApplyUintMapMap(func(v int) map[string]map[string]uint { return *new(map[string]map[string]uint) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUintMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]uint { return *new(map[string]map[string]uint) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUintArrayArray", func(t *testing.T) {
+			o2 := out.ApplyUintArrayArray(func(v int) [][]uint { return *new([][]uint) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUintArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]uint { return *new([][]uint) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -1295,6 +1689,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyUint16MapMap", func(t *testing.T) {
+			o2 := out.ApplyUint16MapMap(func(v int) map[string]map[string]uint16 { return *new(map[string]map[string]uint16) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint16MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]uint16 { return *new(map[string]map[string]uint16) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUint16ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyUint16ArrayArray(func(v int) [][]uint16 { return *new([][]uint16) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint16ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]uint16 { return *new([][]uint16) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyUint32", func(t *testing.T) {
 			o2 := out.ApplyUint32(func(v int) uint32 { return *new(uint32) })
 			_, known, _, err := await(o2)
@@ -1362,6 +1780,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 
 			o2 = out.ApplyUint32MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]uint32 { return *new([]map[string]uint32) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUint32MapMap", func(t *testing.T) {
+			o2 := out.ApplyUint32MapMap(func(v int) map[string]map[string]uint32 { return *new(map[string]map[string]uint32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint32MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]uint32 { return *new(map[string]map[string]uint32) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUint32ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyUint32ArrayArray(func(v int) [][]uint32 { return *new([][]uint32) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint32ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]uint32 { return *new([][]uint32) })
 			_, known, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
@@ -1439,6 +1881,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyUint64MapMap", func(t *testing.T) {
+			o2 := out.ApplyUint64MapMap(func(v int) map[string]map[string]uint64 { return *new(map[string]map[string]uint64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint64MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]uint64 { return *new(map[string]map[string]uint64) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUint64ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyUint64ArrayArray(func(v int) [][]uint64 { return *new([][]uint64) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint64ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]uint64 { return *new([][]uint64) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyUint8", func(t *testing.T) {
 			o2 := out.ApplyUint8(func(v int) uint8 { return *new(uint8) })
 			_, known, _, err := await(o2)
@@ -1511,6 +1977,30 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyUint8MapMap", func(t *testing.T) {
+			o2 := out.ApplyUint8MapMap(func(v int) map[string]map[string]uint8 { return *new(map[string]map[string]uint8) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint8MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]uint8 { return *new(map[string]map[string]uint8) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
+		t.Run("ApplyUint8ArrayArray", func(t *testing.T) {
+			o2 := out.ApplyUint8ArrayArray(func(v int) [][]uint8 { return *new([][]uint8) })
+			_, known, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyUint8ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]uint8 { return *new([][]uint8) })
+			_, known, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
 	{
@@ -1542,6 +2032,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::ArchiveMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) }).(ArchiveMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::ArchiveArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]Archive { return *new([][]Archive) }).(ArchiveArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::AssetOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 			assert.True(t, ok)
@@ -1567,6 +2067,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::AssetMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) }).(AssetMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::AssetArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]Asset { return *new([][]Asset) }).(AssetArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::AssetOrArchiveOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 			assert.True(t, ok)
@@ -1589,6 +2099,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::AssetOrArchiveMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) }).(AssetOrArchiveMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::AssetOrArchiveMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) }).(AssetOrArchiveMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::AssetOrArchiveArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) }).(AssetOrArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1622,6 +2142,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::BoolMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) }).(BoolMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::BoolArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]bool { return *new([][]bool) }).(BoolArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::Float32Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) float32 { return *new(float32) }).(Float32Output)
 			assert.True(t, ok)
@@ -1649,6 +2179,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::Float32MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]float32 { return *new([]map[string]float32) }).(Float32MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Float32MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]float32 { return *new(map[string]map[string]float32) }).(Float32MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Float32ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]float32 { return *new([][]float32) }).(Float32ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1682,6 +2222,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::Float64MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) }).(Float64MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Float64ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]float64 { return *new([][]float64) }).(Float64ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::IDOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) ID { return *new(ID) }).(IDOutput)
 			assert.True(t, ok)
@@ -1712,6 +2262,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::IDMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) }).(IDMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::IDArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]ID { return *new([][]ID) }).(IDArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []interface{} { return *new([]interface{}) }).(ArrayOutput)
 			assert.True(t, ok)
@@ -1729,6 +2289,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]interface{} { return *new([]map[string]interface{}) }).(MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) }).(MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]interface{} { return *new([][]interface{}) }).(ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1762,6 +2332,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::IntMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) }).(IntMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::IntArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]int { return *new([][]int) }).(IntArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::Int16Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) int16 { return *new(int16) }).(Int16Output)
 			assert.True(t, ok)
@@ -1789,6 +2369,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::Int16MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]int16 { return *new([]map[string]int16) }).(Int16MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int16MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]int16 { return *new(map[string]map[string]int16) }).(Int16MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int16ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]int16 { return *new([][]int16) }).(Int16ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1822,6 +2412,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::Int32MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]int32 { return *new(map[string]map[string]int32) }).(Int32MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int32ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]int32 { return *new([][]int32) }).(Int32ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::Int64Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) int64 { return *new(int64) }).(Int64Output)
 			assert.True(t, ok)
@@ -1849,6 +2449,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::Int64MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]int64 { return *new([]map[string]int64) }).(Int64MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int64MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]int64 { return *new(map[string]map[string]int64) }).(Int64MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int64ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]int64 { return *new([][]int64) }).(Int64ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1882,6 +2492,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::Int8MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]int8 { return *new(map[string]map[string]int8) }).(Int8MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Int8ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]int8 { return *new([][]int8) }).(Int8ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::StringOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 			assert.True(t, ok)
@@ -1909,6 +2529,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::StringMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]string { return *new([]map[string]string) }).(StringMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::StringMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) }).(StringMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::StringArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]string { return *new([][]string) }).(StringArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -1942,6 +2572,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::URNMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) }).(URNMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::URNArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]URN { return *new([][]URN) }).(URNArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::UintOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) uint { return *new(uint) }).(UintOutput)
 			assert.True(t, ok)
@@ -1969,6 +2609,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::UintMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]uint { return *new([]map[string]uint) }).(UintMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::UintMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]uint { return *new(map[string]map[string]uint) }).(UintMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::UintArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]uint { return *new([][]uint) }).(UintArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -2002,6 +2652,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::Uint16MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]uint16 { return *new(map[string]map[string]uint16) }).(Uint16MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint16ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]uint16 { return *new([][]uint16) }).(Uint16ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::Uint32Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) uint32 { return *new(uint32) }).(Uint32Output)
 			assert.True(t, ok)
@@ -2029,6 +2689,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::Uint32MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]uint32 { return *new([]map[string]uint32) }).(Uint32MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint32MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]uint32 { return *new(map[string]map[string]uint32) }).(Uint32MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint32ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]uint32 { return *new([][]uint32) }).(Uint32ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -2062,6 +2732,16 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		t.Run("ApplyT::Uint64MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]uint64 { return *new(map[string]map[string]uint64) }).(Uint64MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint64ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]uint64 { return *new([][]uint64) }).(Uint64ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 		t.Run("ApplyT::Uint8Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) uint8 { return *new(uint8) }).(Uint8Output)
 			assert.True(t, ok)
@@ -2089,6 +2769,16 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::Uint8MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]uint8 { return *new([]map[string]uint8) }).(Uint8MapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint8MapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]uint8 { return *new(map[string]map[string]uint8) }).(Uint8MapMapOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::Uint8ArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]uint8 { return *new([][]uint8) }).(Uint8ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
@@ -2294,6 +2984,42 @@ func TestToOutputArchiveMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputArchiveMapMap(t *testing.T) {
+	out := ToOutput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	_, ok := out.(ArchiveMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputArchiveArrayArray(t *testing.T) {
+	out := ToOutput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
+	_, ok := out.(ArchiveArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputAsset(t *testing.T) {
 	out := ToOutput(NewFileAsset("foo.txt"))
 	_, ok := out.(AssetInput)
@@ -2384,6 +3110,42 @@ func TestToOutputAssetMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputAssetMapMap(t *testing.T) {
+	out := ToOutput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}})
+	_, ok := out.(AssetMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputAssetArrayArray(t *testing.T) {
+	out := ToOutput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}})
+	_, ok := out.(AssetArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputAssetOrArchive(t *testing.T) {
 	out := ToOutput(NewFileArchive("foo.zip"))
 	_, ok := out.(AssetOrArchiveInput)
@@ -2467,6 +3229,42 @@ func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
+	out := ToOutput(AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	_, ok := out.(AssetOrArchiveMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
+	out := ToOutput(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
+	_, ok := out.(AssetOrArchiveArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -2582,6 +3380,42 @@ func TestToOutputBoolMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputBoolMapMap(t *testing.T) {
+	out := ToOutput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}})
+	_, ok := out.(BoolMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputBoolArrayArray(t *testing.T) {
+	out := ToOutput(BoolArrayArray{BoolArray{Bool(true)}})
+	_, ok := out.(BoolArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputFloat32(t *testing.T) {
 	out := ToOutput(Float32(1.3))
 	_, ok := out.(Float32Input)
@@ -2683,6 +3517,42 @@ func TestToOutputFloat32MapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Float32MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputFloat32MapMap(t *testing.T) {
+	out := ToOutput(Float32MapMap{"baz": Float32Map{"baz": Float32(1.3)}})
+	_, ok := out.(Float32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputFloat32ArrayArray(t *testing.T) {
+	out := ToOutput(Float32ArrayArray{Float32Array{Float32(1.3)}})
+	_, ok := out.(Float32ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float32ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -2798,6 +3668,42 @@ func TestToOutputFloat64MapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputFloat64MapMap(t *testing.T) {
+	out := ToOutput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}})
+	_, ok := out.(Float64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputFloat64ArrayArray(t *testing.T) {
+	out := ToOutput(Float64ArrayArray{Float64Array{Float64(999.9)}})
+	_, ok := out.(Float64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputID(t *testing.T) {
 	out := ToOutput(ID("foo"))
 	_, ok := out.(IDInput)
@@ -2906,6 +3812,42 @@ func TestToOutputIDMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputIDMapMap(t *testing.T) {
+	out := ToOutput(IDMapMap{"baz": IDMap{"baz": ID("foo")}})
+	_, ok := out.(IDMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputIDArrayArray(t *testing.T) {
+	out := ToOutput(IDArrayArray{IDArray{ID("foo")}})
+	_, ok := out.(IDArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputArray(t *testing.T) {
 	out := ToOutput(Array{String("any")})
 	_, ok := out.(ArrayInput)
@@ -2971,6 +3913,42 @@ func TestToOutputMapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputMapMap(t *testing.T) {
+	out := ToOutput(MapMap{"baz": Map{"baz": String("any")}})
+	_, ok := out.(MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputArrayArray(t *testing.T) {
+	out := ToOutput(ArrayArray{Array{String("any")}})
+	_, ok := out.(ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -3086,6 +4064,42 @@ func TestToOutputIntMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputIntMapMap(t *testing.T) {
+	out := ToOutput(IntMapMap{"baz": IntMap{"baz": Int(42)}})
+	_, ok := out.(IntMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputIntArrayArray(t *testing.T) {
+	out := ToOutput(IntArrayArray{IntArray{Int(42)}})
+	_, ok := out.(IntArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputInt16(t *testing.T) {
 	out := ToOutput(Int16(33))
 	_, ok := out.(Int16Input)
@@ -3187,6 +4201,42 @@ func TestToOutputInt16MapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Int16MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt16MapMap(t *testing.T) {
+	out := ToOutput(Int16MapMap{"baz": Int16Map{"baz": Int16(33)}})
+	_, ok := out.(Int16MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int16MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt16ArrayArray(t *testing.T) {
+	out := ToOutput(Int16ArrayArray{Int16Array{Int16(33)}})
+	_, ok := out.(Int16ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int16ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -3302,6 +4352,42 @@ func TestToOutputInt32MapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputInt32MapMap(t *testing.T) {
+	out := ToOutput(Int32MapMap{"baz": Int32Map{"baz": Int32(24)}})
+	_, ok := out.(Int32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt32ArrayArray(t *testing.T) {
+	out := ToOutput(Int32ArrayArray{Int32Array{Int32(24)}})
+	_, ok := out.(Int32ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int32ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputInt64(t *testing.T) {
 	out := ToOutput(Int64(15))
 	_, ok := out.(Int64Input)
@@ -3403,6 +4489,42 @@ func TestToOutputInt64MapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Int64MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt64MapMap(t *testing.T) {
+	out := ToOutput(Int64MapMap{"baz": Int64Map{"baz": Int64(15)}})
+	_, ok := out.(Int64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt64ArrayArray(t *testing.T) {
+	out := ToOutput(Int64ArrayArray{Int64Array{Int64(15)}})
+	_, ok := out.(Int64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int64ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -3518,6 +4640,42 @@ func TestToOutputInt8MapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputInt8MapMap(t *testing.T) {
+	out := ToOutput(Int8MapMap{"baz": Int8Map{"baz": Int8(6)}})
+	_, ok := out.(Int8MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int8MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputInt8ArrayArray(t *testing.T) {
+	out := ToOutput(Int8ArrayArray{Int8Array{Int8(6)}})
+	_, ok := out.(Int8ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Int8ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputString(t *testing.T) {
 	out := ToOutput(String("foo"))
 	_, ok := out.(StringInput)
@@ -3619,6 +4777,42 @@ func TestToOutputStringMapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputStringMapMap(t *testing.T) {
+	out := ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}})
+	_, ok := out.(StringMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputStringArrayArray(t *testing.T) {
+	out := ToOutput(StringArrayArray{StringArray{String("foo")}})
+	_, ok := out.(StringArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -3734,6 +4928,42 @@ func TestToOutputURNMapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputURNMapMap(t *testing.T) {
+	out := ToOutput(URNMapMap{"baz": URNMap{"baz": URN("foo")}})
+	_, ok := out.(URNMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputURNArrayArray(t *testing.T) {
+	out := ToOutput(URNArrayArray{URNArray{URN("foo")}})
+	_, ok := out.(URNArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputUint(t *testing.T) {
 	out := ToOutput(Uint(42))
 	_, ok := out.(UintInput)
@@ -3835,6 +5065,42 @@ func TestToOutputUintMapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(UintMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUintMapMap(t *testing.T) {
+	out := ToOutput(UintMapMap{"baz": UintMap{"baz": Uint(42)}})
+	_, ok := out.(UintMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(UintMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUintArrayArray(t *testing.T) {
+	out := ToOutput(UintArrayArray{UintArray{Uint(42)}})
+	_, ok := out.(UintArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(UintArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -3950,6 +5216,42 @@ func TestToOutputUint16MapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputUint16MapMap(t *testing.T) {
+	out := ToOutput(Uint16MapMap{"baz": Uint16Map{"baz": Uint16(33)}})
+	_, ok := out.(Uint16MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint16MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint16ArrayArray(t *testing.T) {
+	out := ToOutput(Uint16ArrayArray{Uint16Array{Uint16(33)}})
+	_, ok := out.(Uint16ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint16ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputUint32(t *testing.T) {
 	out := ToOutput(Uint32(24))
 	_, ok := out.(Uint32Input)
@@ -4051,6 +5353,42 @@ func TestToOutputUint32MapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Uint32MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint32MapMap(t *testing.T) {
+	out := ToOutput(Uint32MapMap{"baz": Uint32Map{"baz": Uint32(24)}})
+	_, ok := out.(Uint32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint32MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint32ArrayArray(t *testing.T) {
+	out := ToOutput(Uint32ArrayArray{Uint32Array{Uint32(24)}})
+	_, ok := out.(Uint32ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint32ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -4166,6 +5504,42 @@ func TestToOutputUint64MapArray(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToOutputUint64MapMap(t *testing.T) {
+	out := ToOutput(Uint64MapMap{"baz": Uint64Map{"baz": Uint64(15)}})
+	_, ok := out.(Uint64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint64MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint64ArrayArray(t *testing.T) {
+	out := ToOutput(Uint64ArrayArray{Uint64Array{Uint64(15)}})
+	_, ok := out.(Uint64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToOutputUint8(t *testing.T) {
 	out := ToOutput(Uint8(6))
 	_, ok := out.(Uint8Input)
@@ -4267,6 +5641,42 @@ func TestToOutputUint8MapArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Uint8MapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint8MapMap(t *testing.T) {
+	out := ToOutput(Uint8MapMap{"baz": Uint8Map{"baz": Uint8(6)}})
+	_, ok := out.(Uint8MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint8MapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputUint8ArrayArray(t *testing.T) {
+	out := ToOutput(Uint8ArrayArray{Uint8Array{Uint8(6)}})
+	_, ok := out.(Uint8ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Uint8ArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, err = await(out)
@@ -4416,6 +5826,62 @@ func TestToArchiveMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToArchiveMapMapOutput(t *testing.T) {
+	in := ArchiveMapMapInput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}})
+
+	out := in.ToArchiveMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArchiveMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToArchiveMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArchiveMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToArchiveArrayArrayOutput(t *testing.T) {
+	in := ArchiveArrayArrayInput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
+
+	out := in.ToArchiveArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToArchiveArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToAssetOutput(t *testing.T) {
 	in := AssetInput(NewFileAsset("foo.txt"))
 
@@ -4556,6 +6022,62 @@ func TestToAssetMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToAssetMapMapOutput(t *testing.T) {
+	in := AssetMapMapInput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}})
+
+	out := in.ToAssetMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToAssetMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToAssetArrayArrayOutput(t *testing.T) {
+	in := AssetArrayArrayInput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}})
+
+	out := in.ToAssetArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToAssetArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToAssetOrArchiveOutput(t *testing.T) {
 	in := AssetOrArchiveInput(NewFileArchive("foo.zip"))
 
@@ -4690,6 +6212,62 @@ func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
+	in := AssetOrArchiveMapMapInput(AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
+
+	out := in.ToAssetOrArchiveMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
+	in := AssetOrArchiveArrayArrayInput(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
+
+	out := in.ToAssetOrArchiveArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -4864,6 +6442,62 @@ func TestToBoolMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToBoolMapMapOutput(t *testing.T) {
+	in := BoolMapMapInput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}})
+
+	out := in.ToBoolMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBoolMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBoolMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBoolMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToBoolArrayArrayOutput(t *testing.T) {
+	in := BoolArrayArrayInput(BoolArrayArray{BoolArray{Bool(true)}})
+
+	out := in.ToBoolArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBoolArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToBoolArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToBoolArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToFloat32Output(t *testing.T) {
 	in := Float32Input(Float32(1.3))
 
@@ -5026,6 +6660,62 @@ func TestToFloat32MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToFloat32MapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToFloat32MapMapOutput(t *testing.T) {
+	in := Float32MapMapInput(Float32MapMap{"baz": Float32Map{"baz": Float32(1.3)}})
+
+	out := in.ToFloat32MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat32MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToFloat32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToFloat32ArrayArrayOutput(t *testing.T) {
+	in := Float32ArrayArrayInput(Float32ArrayArray{Float32Array{Float32(1.3)}})
+
+	out := in.ToFloat32ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat32ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToFloat32ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat32ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5200,6 +6890,62 @@ func TestToFloat64MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToFloat64MapMapOutput(t *testing.T) {
+	in := Float64MapMapInput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}})
+
+	out := in.ToFloat64MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat64MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToFloat64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToFloat64ArrayArrayOutput(t *testing.T) {
+	in := Float64ArrayArrayInput(Float64ArrayArray{Float64Array{Float64(999.9)}})
+
+	out := in.ToFloat64ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToFloat64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToIDOutput(t *testing.T) {
 	in := IDInput(ID("foo"))
 
@@ -5368,6 +7114,62 @@ func TestToIDMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToIDMapMapOutput(t *testing.T) {
+	in := IDMapMapInput(IDMapMap{"baz": IDMap{"baz": ID("foo")}})
+
+	out := in.ToIDMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIDMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToIDMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIDMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToIDArrayArrayOutput(t *testing.T) {
+	in := IDArrayArrayInput(IDArrayArray{IDArray{ID("foo")}})
+
+	out := in.ToIDArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIDArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToIDArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIDArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToArrayOutput(t *testing.T) {
 	in := ArrayInput(Array{String("any")})
 
@@ -5474,6 +7276,62 @@ func TestToMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToMapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToMapMapOutput(t *testing.T) {
+	in := MapMapInput(MapMap{"baz": Map{"baz": String("any")}})
+
+	out := in.ToMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToArrayArrayOutput(t *testing.T) {
+	in := ArrayArrayInput(ArrayArray{Array{String("any")}})
+
+	out := in.ToArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5648,6 +7506,62 @@ func TestToIntMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToIntMapMapOutput(t *testing.T) {
+	in := IntMapMapInput(IntMapMap{"baz": IntMap{"baz": Int(42)}})
+
+	out := in.ToIntMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIntMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToIntMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIntMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToIntArrayArrayOutput(t *testing.T) {
+	in := IntArrayArrayInput(IntArrayArray{IntArray{Int(42)}})
+
+	out := in.ToIntArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIntArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToIntArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToIntArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToInt16Output(t *testing.T) {
 	in := Int16Input(Int16(33))
 
@@ -5810,6 +7724,62 @@ func TestToInt16MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt16MapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt16MapMapOutput(t *testing.T) {
+	in := Int16MapMapInput(Int16MapMap{"baz": Int16Map{"baz": Int16(33)}})
+
+	out := in.ToInt16MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt16MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt16MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt16MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt16ArrayArrayOutput(t *testing.T) {
+	in := Int16ArrayArrayInput(Int16ArrayArray{Int16Array{Int16(33)}})
+
+	out := in.ToInt16ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt16ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt16ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt16ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -5984,6 +7954,62 @@ func TestToInt32MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToInt32MapMapOutput(t *testing.T) {
+	in := Int32MapMapInput(Int32MapMap{"baz": Int32Map{"baz": Int32(24)}})
+
+	out := in.ToInt32MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt32MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt32ArrayArrayOutput(t *testing.T) {
+	in := Int32ArrayArrayInput(Int32ArrayArray{Int32Array{Int32(24)}})
+
+	out := in.ToInt32ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt32ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt32ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt32ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToInt64Output(t *testing.T) {
 	in := Int64Input(Int64(15))
 
@@ -6146,6 +8172,62 @@ func TestToInt64MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToInt64MapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt64MapMapOutput(t *testing.T) {
+	in := Int64MapMapInput(Int64MapMap{"baz": Int64Map{"baz": Int64(15)}})
+
+	out := in.ToInt64MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt64MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt64ArrayArrayOutput(t *testing.T) {
+	in := Int64ArrayArrayInput(Int64ArrayArray{Int64Array{Int64(15)}})
+
+	out := in.ToInt64ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt64ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt64ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6320,6 +8402,62 @@ func TestToInt8MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToInt8MapMapOutput(t *testing.T) {
+	in := Int8MapMapInput(Int8MapMap{"baz": Int8Map{"baz": Int8(6)}})
+
+	out := in.ToInt8MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt8MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt8MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt8MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToInt8ArrayArrayOutput(t *testing.T) {
+	in := Int8ArrayArrayInput(Int8ArrayArray{Int8Array{Int8(6)}})
+
+	out := in.ToInt8ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt8ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToInt8ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToInt8ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToStringOutput(t *testing.T) {
 	in := StringInput(String("foo"))
 
@@ -6482,6 +8620,62 @@ func TestToStringMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringMapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToStringMapMapOutput(t *testing.T) {
+	in := StringMapMapInput(StringMapMap{"baz": StringMap{"baz": String("foo")}})
+
+	out := in.ToStringMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToStringMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToStringArrayArrayOutput(t *testing.T) {
+	in := StringArrayArrayInput(StringArrayArray{StringArray{String("foo")}})
+
+	out := in.ToStringArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToStringArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6656,6 +8850,62 @@ func TestToURNMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToURNMapMapOutput(t *testing.T) {
+	in := URNMapMapInput(URNMapMap{"baz": URNMap{"baz": URN("foo")}})
+
+	out := in.ToURNMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToURNMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToURNMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToURNMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToURNArrayArrayOutput(t *testing.T) {
+	in := URNArrayArrayInput(URNArrayArray{URNArray{URN("foo")}})
+
+	out := in.ToURNArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToURNArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToURNArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToURNArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToUintOutput(t *testing.T) {
 	in := UintInput(Uint(42))
 
@@ -6818,6 +9068,62 @@ func TestToUintMapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUintMapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUintMapMapOutput(t *testing.T) {
+	in := UintMapMapInput(UintMapMap{"baz": UintMap{"baz": Uint(42)}})
+
+	out := in.ToUintMapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUintMapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUintMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUintMapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUintArrayArrayOutput(t *testing.T) {
+	in := UintArrayArrayInput(UintArrayArray{UintArray{Uint(42)}})
+
+	out := in.ToUintArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUintArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUintArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUintArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -6992,6 +9298,62 @@ func TestToUint16MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToUint16MapMapOutput(t *testing.T) {
+	in := Uint16MapMapInput(Uint16MapMap{"baz": Uint16Map{"baz": Uint16(33)}})
+
+	out := in.ToUint16MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint16MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint16MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint16MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint16ArrayArrayOutput(t *testing.T) {
+	in := Uint16ArrayArrayInput(Uint16ArrayArray{Uint16Array{Uint16(33)}})
+
+	out := in.ToUint16ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint16ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint16ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint16ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToUint32Output(t *testing.T) {
 	in := Uint32Input(Uint32(24))
 
@@ -7154,6 +9516,62 @@ func TestToUint32MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint32MapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint32MapMapOutput(t *testing.T) {
+	in := Uint32MapMapInput(Uint32MapMap{"baz": Uint32Map{"baz": Uint32(24)}})
+
+	out := in.ToUint32MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint32MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint32MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint32ArrayArrayOutput(t *testing.T) {
+	in := Uint32ArrayArrayInput(Uint32ArrayArray{Uint32Array{Uint32(24)}})
+
+	out := in.ToUint32ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint32ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint32ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint32ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7328,6 +9746,62 @@ func TestToUint64MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToUint64MapMapOutput(t *testing.T) {
+	in := Uint64MapMapInput(Uint64MapMap{"baz": Uint64Map{"baz": Uint64(15)}})
+
+	out := in.ToUint64MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint64MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint64MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint64ArrayArrayOutput(t *testing.T) {
+	in := Uint64ArrayArrayInput(Uint64ArrayArray{Uint64Array{Uint64(15)}})
+
+	out := in.ToUint64ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint64ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 func TestToUint8Output(t *testing.T) {
 	in := Uint8Input(Uint8(6))
 
@@ -7490,6 +9964,62 @@ func TestToUint8MapArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToUint8MapArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint8MapMapOutput(t *testing.T) {
+	in := Uint8MapMapInput(Uint8MapMap{"baz": Uint8Map{"baz": Uint8(6)}})
+
+	out := in.ToUint8MapMapOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint8MapMapOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint8MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint8MapMapOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToUint8ArrayArrayOutput(t *testing.T) {
+	in := Uint8ArrayArrayInput(Uint8ArrayArray{Uint8Array{Uint8(6)}})
+
+	out := in.ToUint8ArrayArrayOutput()
+
+	_, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint8ArrayArrayOutput()
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToUint8ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToUint8ArrayArrayOutputWithContext(context.Background())
 
 	_, known, _, err = await(out)
 	assert.True(t, known)
@@ -7811,6 +10341,20 @@ func TestArchiveMapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
 }
 
+func TestArchiveArrayArrayIndex(t *testing.T) {
+	out := (ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}).ToArchiveArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]Archive)[0], iv)
+}
+
 func TestAssetArrayIndex(t *testing.T) {
 	out := (AssetArray{NewFileAsset("foo.txt")}).ToAssetArrayOutput()
 
@@ -7837,6 +10381,20 @@ func TestAssetMapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
+}
+
+func TestAssetArrayArrayIndex(t *testing.T) {
+	out := (AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}).ToAssetArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]Asset)[0], iv)
 }
 
 func TestAssetOrArchiveArrayIndex(t *testing.T) {
@@ -7867,6 +10425,20 @@ func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]AssetOrArchive)[0], iv)
 }
 
+func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
+	out := (AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}).ToAssetOrArchiveArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]AssetOrArchive)[0], iv)
+}
+
 func TestBoolArrayIndex(t *testing.T) {
 	out := (BoolArray{Bool(true)}).ToBoolArrayOutput()
 
@@ -7893,6 +10465,20 @@ func TestBoolMapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
+}
+
+func TestBoolArrayArrayIndex(t *testing.T) {
+	out := (BoolArrayArray{BoolArray{Bool(true)}}).ToBoolArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]bool)[0], iv)
 }
 
 func TestFloat32ArrayIndex(t *testing.T) {
@@ -7923,6 +10509,20 @@ func TestFloat32MapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]float32)[0], iv)
 }
 
+func TestFloat32ArrayArrayIndex(t *testing.T) {
+	out := (Float32ArrayArray{Float32Array{Float32(1.3)}}).ToFloat32ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]float32)[0], iv)
+}
+
 func TestFloat64ArrayIndex(t *testing.T) {
 	out := (Float64Array{Float64(999.9)}).ToFloat64ArrayOutput()
 
@@ -7949,6 +10549,20 @@ func TestFloat64MapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
+}
+
+func TestFloat64ArrayArrayIndex(t *testing.T) {
+	out := (Float64ArrayArray{Float64Array{Float64(999.9)}}).ToFloat64ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]float64)[0], iv)
 }
 
 func TestIDArrayIndex(t *testing.T) {
@@ -7979,6 +10593,20 @@ func TestIDMapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
 }
 
+func TestIDArrayArrayIndex(t *testing.T) {
+	out := (IDArrayArray{IDArray{ID("foo")}}).ToIDArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]ID)[0], iv)
+}
+
 func TestArrayIndex(t *testing.T) {
 	out := (Array{String("any")}).ToArrayOutput()
 
@@ -8005,6 +10633,20 @@ func TestMapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+}
+
+func TestArrayArrayIndex(t *testing.T) {
+	out := (ArrayArray{Array{String("any")}}).ToArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]interface{})[0], iv)
 }
 
 func TestIntArrayIndex(t *testing.T) {
@@ -8035,6 +10677,20 @@ func TestIntMapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]int)[0], iv)
 }
 
+func TestIntArrayArrayIndex(t *testing.T) {
+	out := (IntArrayArray{IntArray{Int(42)}}).ToIntArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int)[0], iv)
+}
+
 func TestInt16ArrayIndex(t *testing.T) {
 	out := (Int16Array{Int16(33)}).ToInt16ArrayOutput()
 
@@ -8061,6 +10717,20 @@ func TestInt16MapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]int16)[0], iv)
+}
+
+func TestInt16ArrayArrayIndex(t *testing.T) {
+	out := (Int16ArrayArray{Int16Array{Int16(33)}}).ToInt16ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int16)[0], iv)
 }
 
 func TestInt32ArrayIndex(t *testing.T) {
@@ -8091,6 +10761,20 @@ func TestInt32MapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]int32)[0], iv)
 }
 
+func TestInt32ArrayArrayIndex(t *testing.T) {
+	out := (Int32ArrayArray{Int32Array{Int32(24)}}).ToInt32ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int32)[0], iv)
+}
+
 func TestInt64ArrayIndex(t *testing.T) {
 	out := (Int64Array{Int64(15)}).ToInt64ArrayOutput()
 
@@ -8117,6 +10801,20 @@ func TestInt64MapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]int64)[0], iv)
+}
+
+func TestInt64ArrayArrayIndex(t *testing.T) {
+	out := (Int64ArrayArray{Int64Array{Int64(15)}}).ToInt64ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int64)[0], iv)
 }
 
 func TestInt8ArrayIndex(t *testing.T) {
@@ -8147,6 +10845,20 @@ func TestInt8MapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]int8)[0], iv)
 }
 
+func TestInt8ArrayArrayIndex(t *testing.T) {
+	out := (Int8ArrayArray{Int8Array{Int8(6)}}).ToInt8ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int8)[0], iv)
+}
+
 func TestStringArrayIndex(t *testing.T) {
 	out := (StringArray{String("foo")}).ToStringArrayOutput()
 
@@ -8173,6 +10885,20 @@ func TestStringMapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
+}
+
+func TestStringArrayArrayIndex(t *testing.T) {
+	out := (StringArrayArray{StringArray{String("foo")}}).ToStringArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]string)[0], iv)
 }
 
 func TestURNArrayIndex(t *testing.T) {
@@ -8203,6 +10929,20 @@ func TestURNMapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
 }
 
+func TestURNArrayArrayIndex(t *testing.T) {
+	out := (URNArrayArray{URNArray{URN("foo")}}).ToURNArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]URN)[0], iv)
+}
+
 func TestUintArrayIndex(t *testing.T) {
 	out := (UintArray{Uint(42)}).ToUintArrayOutput()
 
@@ -8229,6 +10969,20 @@ func TestUintMapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]uint)[0], iv)
+}
+
+func TestUintArrayArrayIndex(t *testing.T) {
+	out := (UintArrayArray{UintArray{Uint(42)}}).ToUintArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]uint)[0], iv)
 }
 
 func TestUint16ArrayIndex(t *testing.T) {
@@ -8259,6 +11013,20 @@ func TestUint16MapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]uint16)[0], iv)
 }
 
+func TestUint16ArrayArrayIndex(t *testing.T) {
+	out := (Uint16ArrayArray{Uint16Array{Uint16(33)}}).ToUint16ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]uint16)[0], iv)
+}
+
 func TestUint32ArrayIndex(t *testing.T) {
 	out := (Uint32Array{Uint32(24)}).ToUint32ArrayOutput()
 
@@ -8285,6 +11053,20 @@ func TestUint32MapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]uint32)[0], iv)
+}
+
+func TestUint32ArrayArrayIndex(t *testing.T) {
+	out := (Uint32ArrayArray{Uint32Array{Uint32(24)}}).ToUint32ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]uint32)[0], iv)
 }
 
 func TestUint64ArrayIndex(t *testing.T) {
@@ -8315,6 +11097,20 @@ func TestUint64MapArrayIndex(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]uint64)[0], iv)
 }
 
+func TestUint64ArrayArrayIndex(t *testing.T) {
+	out := (Uint64ArrayArray{Uint64Array{Uint64(15)}}).ToUint64ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]uint64)[0], iv)
+}
+
 func TestUint8ArrayIndex(t *testing.T) {
 	out := (Uint8Array{Uint8(6)}).ToUint8ArrayOutput()
 
@@ -8341,6 +11137,20 @@ func TestUint8MapArrayIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]map[string]uint8)[0], iv)
+}
+
+func TestUint8ArrayArrayIndex(t *testing.T) {
+	out := (Uint8ArrayArray{Uint8Array{Uint8(6)}}).ToUint8ArrayArrayOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]uint8)[0], iv)
 }
 
 // Test map indexers.
@@ -8373,6 +11183,20 @@ func TestArchiveArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
 }
 
+func TestArchiveMapMapIndex(t *testing.T) {
+	out := (ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
+}
+
 func TestAssetMapIndex(t *testing.T) {
 	out := (AssetMap{"baz": NewFileAsset("foo.txt")}).ToAssetMapOutput()
 
@@ -8399,6 +11223,20 @@ func TestAssetArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
+}
+
+func TestAssetMapMapIndex(t *testing.T) {
+	out := (AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}).ToAssetMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
 }
 
 func TestAssetOrArchiveMapIndex(t *testing.T) {
@@ -8429,6 +11267,20 @@ func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]AssetOrArchive)["baz"], iv)
 }
 
+func TestAssetOrArchiveMapMapIndex(t *testing.T) {
+	out := (AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToAssetOrArchiveMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]AssetOrArchive)["baz"], iv)
+}
+
 func TestBoolMapIndex(t *testing.T) {
 	out := (BoolMap{"baz": Bool(true)}).ToBoolMapOutput()
 
@@ -8455,6 +11307,20 @@ func TestBoolArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
+}
+
+func TestBoolMapMapIndex(t *testing.T) {
+	out := (BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}).ToBoolMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 }
 
 func TestFloat32MapIndex(t *testing.T) {
@@ -8485,6 +11351,20 @@ func TestFloat32ArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]float32)["baz"], iv)
 }
 
+func TestFloat32MapMapIndex(t *testing.T) {
+	out := (Float32MapMap{"baz": Float32Map{"baz": Float32(1.3)}}).ToFloat32MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]float32)["baz"], iv)
+}
+
 func TestFloat64MapIndex(t *testing.T) {
 	out := (Float64Map{"baz": Float64(999.9)}).ToFloat64MapOutput()
 
@@ -8511,6 +11391,20 @@ func TestFloat64ArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
+}
+
+func TestFloat64MapMapIndex(t *testing.T) {
+	out := (Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}).ToFloat64MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
 }
 
 func TestIDMapIndex(t *testing.T) {
@@ -8541,6 +11435,20 @@ func TestIDArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
 }
 
+func TestIDMapMapIndex(t *testing.T) {
+	out := (IDMapMap{"baz": IDMap{"baz": ID("foo")}}).ToIDMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
+}
+
 func TestMapIndex(t *testing.T) {
 	out := (Map{"baz": String("any")}).ToMapOutput()
 
@@ -8567,6 +11475,20 @@ func TestArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+}
+
+func TestMapMapIndex(t *testing.T) {
+	out := (MapMap{"baz": Map{"baz": String("any")}}).ToMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
 }
 
 func TestIntMapIndex(t *testing.T) {
@@ -8597,6 +11519,20 @@ func TestIntArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
 }
 
+func TestIntMapMapIndex(t *testing.T) {
+	out := (IntMapMap{"baz": IntMap{"baz": Int(42)}}).ToIntMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
+}
+
 func TestInt16MapIndex(t *testing.T) {
 	out := (Int16Map{"baz": Int16(33)}).ToInt16MapOutput()
 
@@ -8623,6 +11559,20 @@ func TestInt16ArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]int16)["baz"], iv)
+}
+
+func TestInt16MapMapIndex(t *testing.T) {
+	out := (Int16MapMap{"baz": Int16Map{"baz": Int16(33)}}).ToInt16MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int16)["baz"], iv)
 }
 
 func TestInt32MapIndex(t *testing.T) {
@@ -8653,6 +11603,20 @@ func TestInt32ArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]int32)["baz"], iv)
 }
 
+func TestInt32MapMapIndex(t *testing.T) {
+	out := (Int32MapMap{"baz": Int32Map{"baz": Int32(24)}}).ToInt32MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int32)["baz"], iv)
+}
+
 func TestInt64MapIndex(t *testing.T) {
 	out := (Int64Map{"baz": Int64(15)}).ToInt64MapOutput()
 
@@ -8679,6 +11643,20 @@ func TestInt64ArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]int64)["baz"], iv)
+}
+
+func TestInt64MapMapIndex(t *testing.T) {
+	out := (Int64MapMap{"baz": Int64Map{"baz": Int64(15)}}).ToInt64MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int64)["baz"], iv)
 }
 
 func TestInt8MapIndex(t *testing.T) {
@@ -8709,6 +11687,20 @@ func TestInt8ArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]int8)["baz"], iv)
 }
 
+func TestInt8MapMapIndex(t *testing.T) {
+	out := (Int8MapMap{"baz": Int8Map{"baz": Int8(6)}}).ToInt8MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int8)["baz"], iv)
+}
+
 func TestStringMapIndex(t *testing.T) {
 	out := (StringMap{"baz": String("foo")}).ToStringMapOutput()
 
@@ -8735,6 +11727,20 @@ func TestStringArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
+}
+
+func TestStringMapMapIndex(t *testing.T) {
+	out := (StringMapMap{"baz": StringMap{"baz": String("foo")}}).ToStringMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
 
 func TestURNMapIndex(t *testing.T) {
@@ -8765,6 +11771,20 @@ func TestURNArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
 }
 
+func TestURNMapMapIndex(t *testing.T) {
+	out := (URNMapMap{"baz": URNMap{"baz": URN("foo")}}).ToURNMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
+}
+
 func TestUintMapIndex(t *testing.T) {
 	out := (UintMap{"baz": Uint(42)}).ToUintMapOutput()
 
@@ -8791,6 +11811,20 @@ func TestUintArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]uint)["baz"], iv)
+}
+
+func TestUintMapMapIndex(t *testing.T) {
+	out := (UintMapMap{"baz": UintMap{"baz": Uint(42)}}).ToUintMapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]uint)["baz"], iv)
 }
 
 func TestUint16MapIndex(t *testing.T) {
@@ -8821,6 +11855,20 @@ func TestUint16ArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]uint16)["baz"], iv)
 }
 
+func TestUint16MapMapIndex(t *testing.T) {
+	out := (Uint16MapMap{"baz": Uint16Map{"baz": Uint16(33)}}).ToUint16MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]uint16)["baz"], iv)
+}
+
 func TestUint32MapIndex(t *testing.T) {
 	out := (Uint32Map{"baz": Uint32(24)}).ToUint32MapOutput()
 
@@ -8847,6 +11895,20 @@ func TestUint32ArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]uint32)["baz"], iv)
+}
+
+func TestUint32MapMapIndex(t *testing.T) {
+	out := (Uint32MapMap{"baz": Uint32Map{"baz": Uint32(24)}}).ToUint32MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]uint32)["baz"], iv)
 }
 
 func TestUint64MapIndex(t *testing.T) {
@@ -8877,6 +11939,20 @@ func TestUint64ArrayMapIndex(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]uint64)["baz"], iv)
 }
 
+func TestUint64MapMapIndex(t *testing.T) {
+	out := (Uint64MapMap{"baz": Uint64Map{"baz": Uint64(15)}}).ToUint64MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]uint64)["baz"], iv)
+}
+
 func TestUint8MapIndex(t *testing.T) {
 	out := (Uint8Map{"baz": Uint8(6)}).ToUint8MapOutput()
 
@@ -8903,4 +11979,18 @@ func TestUint8ArrayMapIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][]uint8)["baz"], iv)
+}
+
+func TestUint8MapMapIndex(t *testing.T) {
+	out := (Uint8MapMap{"baz": Uint8Map{"baz": Uint8(6)}}).ToUint8MapMapOutput()
+
+	av, known, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]uint8)["baz"], iv)
 }

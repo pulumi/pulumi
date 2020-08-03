@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Add missing MapMap and ArrayArray types to Go SDK
+  [#5092](https://github.com/pulumi/pulumi/pull/5092)
 
 - Switch os/user package with luser drop in replacement
   [#5065](https://github.com/pulumi/pulumi/pull/5065)
