@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.8.0 (2020-08-04)
+
 - Add missing MapMap and ArrayArray types to Go SDK
   [#5092](https://github.com/pulumi/pulumi/pull/5092)
 
@@ -13,7 +17,7 @@ CHANGELOG
 
 - Add ability to change a secrets provider for the current stack
   [#5031](https://github.com/pulumi/pulumi/pull/5031)
-  
+
 - Add ability to create a stack based on the config from an existing stack
   [#5062](https://github.com/pulumi/pulumi/pull/5062)
 
