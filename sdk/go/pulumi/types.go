@@ -92,7 +92,7 @@ func (o *OutputState) Secret() bool {
 	return o.secret
 }
 
-func (o *OutputState) UpdateSecret(s bool) {
+func (o *OutputState) SetSecret(s bool) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -431,7 +431,7 @@ func ToSecret(input interface{}) Output {
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	o := toOutputWithContext(ctx, input, true)
 	// set immediate secretness ahead of resolution/fufillment
-	o.getState().UpdateSecret(true)
+	o.getState().SetSecret(true)
 	return o
 }
 
