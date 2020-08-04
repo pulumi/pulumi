@@ -27,14 +27,10 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = hcl2.RewritePropertyReferences(expr)
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false)
-	contract.Assert(len(diags) == 0)
-	expr, diags = g.lowerProxyApplies(expr)
-	contract.Assert(len(diags) == 0)
+	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
+	expr, _ = g.lowerProxyApplies(expr)
 	expr = hcl2.RewriteConversions(expr, typ)
-
-	expr, quotes, diags := g.rewriteQuotes(expr)
-	contract.Assert(len(diags) == 0)
+	expr, quotes, _ := g.rewriteQuotes(expr)
 
 	return expr, quotes
 }
@@ -379,8 +375,13 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		return
 	}
 
-	typeName := g.argumentTypeName(expr, destType)
+	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
 	if typeName != "" {
+		if len(expr.Items) == 0 {
+			g.Fgenf(w, "%s()", typeName)
+			return
+		}
+
 		g.Fgenf(w, "%s(\n", typeName)
 		g.Indented(func() {
 			for _, item := range expr.Items {
@@ -392,6 +393,10 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		})
 		g.Fgenf(w, "%s)", g.Indent)
 	} else {
+		if len(expr.Items) == 0 {
+			g.Fgen(w, "{}")
+			return
+		}
 		g.Fgen(w, "{")
 		g.Indented(func() {
 			for _, item := range expr.Items {

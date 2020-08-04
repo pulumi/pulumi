@@ -208,8 +208,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	token := objType.Token
 	tokenRange := expr.SyntaxNode().Range()
 
-	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diags) == 0)
+	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
+	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	contract.Assert(len(diagnostics) == 0)
 	modName := strings.Split(module, "/")[0]
 	if strings.ToLower(modName) == "index" {
 		modName = ""
@@ -219,6 +220,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	}
 	member = member + "Args"
 
+	// Example: aws.s3.BucketLoggingArgs
 	return fmt.Sprintf("%s%s.%s", PyName(pkg), modName, title(member))
 }
 
@@ -317,14 +319,14 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	casingTable := g.casingTables[pkg]
-	for _, attr := range r.Inputs {
-		g.lowerObjectKeys(attr.Value, casingTable)
+	for _, input := range r.Inputs {
+		g.lowerObjectKeys(input.Value, casingTable)
 
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
-		value, valueTemps := g.lowerExpression(attr.Value, destType.(model.Type))
+		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
 		temps = append(temps, valueTemps...)
-		attr.Value = value
+		input.Value = value
 	}
 	g.genTemps(w, temps)
 
