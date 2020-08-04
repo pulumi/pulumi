@@ -24,157 +24,17 @@ import (
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func PyName(name string) string {
-	// This method is a state machine with four states:
-	//   stateFirst - the initial state.
-	//   stateUpper - The last character we saw was an uppercase letter and the character before it
-	//                was either a number or a lowercase letter.
-	//   stateAcronym - The last character we saw was an uppercase letter and the character before it
-	//                  was an uppercase letter.
-	//   stateLowerOrNumber - The last character we saw was a lowercase letter or a number.
-	//
-	// The following are the state transitions of this state machine:
-	//   stateFirst -> (uppercase letter) -> stateUpper
-	//   stateFirst -> (lowercase letter or number) -> stateLowerOrNumber
-	//      Append the lower-case form of the character to currentComponent.
-	//
-	//   stateUpper -> (uppercase letter) -> stateAcronym
-	//   stateUpper -> (lowercase letter or number) -> stateLowerOrNumber
-	//      Append the lower-case form of the character to currentComponent.
-	//
-	//   stateAcronym -> (uppercase letter) -> stateAcronym
-	//		Append the lower-case form of the character to currentComponent.
-	//   stateAcronym -> (number) -> stateLowerOrNumber
-	//      Append the character to currentComponent.
-	//   stateAcronym -> (lowercase letter) -> stateLowerOrNumber
-	//      Take all but the last character in currentComponent, turn that into
-	//      a string, and append that to components. Set currentComponent to the
-	//      last two characters seen.
-	//
-	//   stateLowerOrNumber -> (uppercase letter) -> stateUpper
-	//      Take all characters in currentComponent, turn that into a string,
-	//      and append that to components. Set currentComponent to the last
-	//      character seen.
-	//	 stateLowerOrNumber -> (lowercase letter) -> stateLowerOrNumber
-	//      Append the character to currentComponent.
-	//
-	// The Go libraries that convert camelCase to snake_case deviate subtly from
-	// the semantics we're going for in this method, namely that they separate
-	// numbers and lowercase letters. We don't want this in all cases (we want e.g. Sha256Hash to
-	// be converted as sha256_hash). We also want SHA256Hash to be converted as sha256_hash, so
-	// we must at least be aware of digits when in the stateAcronym state.
-	//
-	// As for why this is a state machine, the libraries that do this all pretty much use
-	// either regular expressions or state machines, which I suppose are ultimately the same thing.
-	const (
-		stateFirst = iota
-		stateUpper
-		stateAcronym
-		stateLowerOrNumber
-	)
-
-	var result strings.Builder           // The components of the name, joined together with underscores.
-	var currentComponent strings.Builder // The characters composing the current component being built
-	state := stateFirst
-	for _, char := range name {
-		// If this is an illegal character for a Python identifier, replace it.
-		if !isLegalIdentifierPart(char) {
-			char = '_'
-		}
-
-		switch state {
-		case stateFirst:
-			if !isLegalIdentifierStart(char) {
-				currentComponent.WriteRune('_')
-			}
-
-			if unicode.IsUpper(char) {
-				// stateFirst -> stateUpper
-				state = stateUpper
-				currentComponent.WriteRune(unicode.ToLower(char))
-				continue
-			}
-
-			// stateFirst -> stateLowerOrNumber
-			state = stateLowerOrNumber
-			currentComponent.WriteRune(char)
-			continue
-
-		case stateUpper:
-			if unicode.IsUpper(char) {
-				// stateUpper -> stateAcronym
-				state = stateAcronym
-				currentComponent.WriteRune(unicode.ToLower(char))
-				continue
-			}
-
-			// stateUpper -> stateLowerOrNumber
-			state = stateLowerOrNumber
-			currentComponent.WriteRune(char)
-			continue
-
-		case stateAcronym:
-			if unicode.IsUpper(char) {
-				// stateAcronym -> stateAcronym
-				currentComponent.WriteRune(unicode.ToLower(char))
-				continue
-			}
-
-			// We want to fold digits or the lowercase letter 's' immediately following
-			// an acronym into the same component as the acronym.
-			if unicode.IsDigit(char) || char == 's' {
-				// stateAcronym -> stateLowerOrNumber
-				state = stateLowerOrNumber
-				currentComponent.WriteRune(char)
-				continue
-			}
-
-			// stateAcronym -> stateLowerOrNumber
-			component := currentComponent.String()
-			last, size := utf8.DecodeLastRuneInString(component)
-			if result.Len() != 0 {
-				result.WriteRune('_')
-			}
-			result.WriteString(component[:len(component)-size])
-
-			currentComponent.Reset()
-			currentComponent.WriteRune(last)
-			currentComponent.WriteRune(char)
-			state = stateLowerOrNumber
-			continue
-
-		case stateLowerOrNumber:
-			if unicode.IsUpper(char) {
-				// stateLowerOrNumber -> stateUpper
-				if result.Len() != 0 {
-					result.WriteRune('_')
-				}
-				result.WriteString(currentComponent.String())
-
-				currentComponent.Reset()
-				currentComponent.WriteRune(unicode.ToLower(char))
-				state = stateUpper
-				continue
-			}
-
-			// stateLowerOrNumber -> stateLowerOrNumber
-			currentComponent.WriteRune(char)
-			continue
-		}
-	}
-
-	if currentComponent.Len() != 0 {
-		if result.Len() != 0 {
-			result.WriteRune('_')
-		}
-		result.WriteString(currentComponent.String())
-	}
-	return EnsureKeywordSafe(result.String())
+	return pyName(name, false /*legacy*/)
 }
 
 // Deprecated: Use PyName instead.
 // PyNameLegacy is an uncorrected and deprecated version of the PyName algorithm to maintain compatibility and avoid
 // a breaking change. See the linked issue for more context: https://github.com/pulumi/pulumi-kubernetes/issues/1179
 func PyNameLegacy(name string) string {
+	return pyName(name, true /*legacy*/)
+}
+
+func pyName(name string, legacy bool) string {
 	// This method is a state machine with four states:
 	//   stateFirst - the initial state.
 	//   stateUpper - The last character we saw was an uppercase letter and the character before it
@@ -270,9 +130,9 @@ func PyNameLegacy(name string) string {
 				continue
 			}
 
-			// We want to fold digits immediately following
+			// We want to fold digits immediately (or the lowercase letter 's' if not legacy) following
 			// an acronym into the same component as the acronym.
-			if unicode.IsDigit(char) {
+			if unicode.IsDigit(char) || (char == 's' && !legacy) {
 				// stateAcronym -> stateLowerOrNumber
 				state = stateLowerOrNumber
 				currentComponent.WriteRune(char)
