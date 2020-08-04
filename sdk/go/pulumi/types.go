@@ -85,6 +85,20 @@ type OutputState struct {
 	deps    []Resource   // the dependencies associated with this output property.
 }
 
+func (o *OutputState) Secret() bool {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+
+	return o.secret
+}
+
+func (o *OutputState) UpdateSecret(s bool) {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+
+	o.secret = s
+}
+
 func (o *OutputState) elementType() reflect.Type {
 	if o == nil {
 		return anyType
@@ -403,7 +417,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 
 // isSecret returns a bool representing the secretness of the Output
 func (o *OutputState) isSecret() bool {
-	return o.getState().secret
+	return o.getState().Secret()
 }
 
 // ToSecret wraps the input in an Output marked as secret
@@ -417,7 +431,7 @@ func ToSecret(input interface{}) Output {
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	o := toOutputWithContext(ctx, input, true)
 	// set immediate secretness ahead of resolution/fufillment
-	o.getState().secret = true
+	o.getState().UpdateSecret(true)
 	return o
 }
 
