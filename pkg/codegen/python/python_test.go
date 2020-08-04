@@ -1,6 +1,10 @@
 package python
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 var pyNameTests = []struct {
 	input    string
@@ -11,6 +15,8 @@ var pyNameTests = []struct {
 	{"podCIDR", "pod_cidr", "pod_cidr"},
 	{"podCidr", "pod_cidr", "pod_cidr"},
 	{"podCIDRs", "pod_cidrs", "pod_cid_rs"},
+	{"podIPs", "pod_ips", "pod_i_ps"},
+	{"nonResourceURLs", "non_resource_urls", "non_resource_ur_ls"},
 	{"someTHINGsAREWeird", "some_things_are_weird", "some_thin_gs_are_weird"},
 	{"podCIDRSet", "pod_cidr_set", "pod_cidr_set"},
 	{"Sha256Hash", "sha256_hash", "sha256_hash"},
@@ -21,9 +27,7 @@ func TestPyName(t *testing.T) {
 	for _, tt := range pyNameTests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := PyName(tt.input)
-			if result != tt.expected {
-				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -32,9 +36,7 @@ func TestPyNameLegacy(t *testing.T) {
 	for _, tt := range pyNameTests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := PyNameLegacy(tt.input)
-			if result != tt.legacy {
-				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
-			}
+			assert.Equal(t, tt.legacy, result)
 		})
 	}
 }
