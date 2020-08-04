@@ -443,7 +443,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
-	value, temps := g.lowerExpression(v.Value, v.Value.Type())
+	value, temps := g.lowerExpression(v.Value, v.Type())
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia

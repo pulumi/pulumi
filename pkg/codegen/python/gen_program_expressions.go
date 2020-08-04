@@ -239,32 +239,31 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%s(", name)
 
 		casingTable := g.casingTables[pkg]
-		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
-			g.lowerObjectKeys(expr.Args[1], casingTable)
-
-			indenter := func(f func()) { f() }
-			if len(obj.Items) > 1 {
-				indenter = g.Indented
-			}
-			indenter(func() {
-				for i, item := range obj.Items {
-					// Ignore non-literal keys
-					key, ok := item.Key.(*model.LiteralValueExpression)
-					if !ok || !key.Value.Type().Equals(cty.String) {
-						continue
-					}
-
-					keyVal := PyName(key.Value.AsString())
-					if i == 0 {
-						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
-					} else {
-						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
-					}
-				}
-			})
-		}
 		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
-			g.GenFunctionCallExpression(w, obj)
+			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
+				g.lowerObjectKeys(expr.Args[1], casingTable)
+
+				indenter := func(f func()) { f() }
+				if len(obj.Items) > 1 {
+					indenter = g.Indented
+				}
+				indenter(func() {
+					for i, item := range obj.Items {
+						// Ignore non-literal keys
+						key, ok := item.Key.(*model.LiteralValueExpression)
+						if !ok || !key.Value.Type().Equals(cty.String) {
+							continue
+						}
+
+						keyVal := PyName(key.Value.AsString())
+						if i == 0 {
+							g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+						} else {
+							g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+						}
+					}
+				})
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
