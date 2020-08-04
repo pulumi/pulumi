@@ -80,6 +80,12 @@ publish_packages:
 	$(call STEP_MESSAGE)
 	./scripts/publish_packages.sh
 
+.PHONY: goreleaser
+goreleaser:
+	$(call STEP_MESSAGE)
+	PULUMI_VERSION=$(pulumictl get version) goreleaser --rm-dist --snapshot
+
+
 # Run the integration tests for our DockerHub containers. We do so only via the
 # "Travis Cron" job type, because (1) the tests can only be ran _after_ we publish
 # the current SDK version, since it is required by the Docker build. And (2) the
