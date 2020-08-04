@@ -371,39 +371,36 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 }
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
-	if len(expr.Items) == 0 {
-		return
-	}
-
 	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
 	if typeName != "" {
+		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key=value, foo=bar, ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)
-			return
+		} else {
+			g.Fgenf(w, "%s(\n", typeName)
+			g.Indented(func() {
+				for _, item := range expr.Items {
+					g.Fgenf(w, "%s", g.Indent)
+					lit := item.Key.(*model.LiteralValueExpression)
+					g.Fprint(w, PyName(lit.Value.AsString()))
+					g.Fgenf(w, "=%.v,\n", item.Value)
+				}
+			})
+			g.Fgenf(w, "%s)", g.Indent)
 		}
-
-		g.Fgenf(w, "%s(\n", typeName)
-		g.Indented(func() {
-			for _, item := range expr.Items {
-				g.Fgenf(w, "%s", g.Indent)
-				lit := item.Key.(*model.LiteralValueExpression)
-				g.Fprint(w, PyName(lit.Value.AsString()))
-				g.Fgenf(w, "=%.v,\n", item.Value)
-			}
-		})
-		g.Fgenf(w, "%s)", g.Indent)
 	} else {
+		// Otherwise treat this as an untyped dictionary e.g. { key: value, foo: bar, ...}
 		if len(expr.Items) == 0 {
 			g.Fgen(w, "{}")
-			return
+		} else {
+			g.Fgen(w, "{")
+			g.Indented(func() {
+				for _, item := range expr.Items {
+					g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
 		}
-		g.Fgen(w, "{")
-		g.Indented(func() {
-			for _, item := range expr.Items {
-				g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
-			}
-		})
-		g.Fgenf(w, "\n%s}", g.Indent)
 	}
 }
 
