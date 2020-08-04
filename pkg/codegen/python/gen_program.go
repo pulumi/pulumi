@@ -181,7 +181,7 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
-// resourceTypeName computes the python package, module, and type name for the given resource.
+// resourceTypeName computes the Python package, module, and type name for the given resource.
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
@@ -193,7 +193,7 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
 }
 
-// argumentTypeName computes the python argument class name for the given expression and model type.
+// argumentTypeName computes the Python argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type))
 	if !ok {

@@ -171,7 +171,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	}
 }
 
-// functionName computes the python package, module, and name for the given function token.
+// functionName computes the Python package, module, and name for the given function token.
 func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
@@ -373,7 +373,7 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
 	if typeName != "" {
-		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key=value, foo=bar, ...)
+		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)
 		} else {
@@ -389,7 +389,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Fgenf(w, "%s)", g.Indent)
 		}
 	} else {
-		// Otherwise treat this as an untyped dictionary e.g. { key: value, foo: bar, ...}
+		// Otherwise treat this as an untyped dictionary e.g. { "key": "value", "foo": "bar", ...}
 		if len(expr.Items) == 0 {
 			g.Fgen(w, "{}")
 		} else {
