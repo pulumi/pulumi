@@ -4,6 +4,8 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '.github/workflows/codegen-test.yml'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   downstream-aws:
