@@ -130,7 +130,7 @@ func pyName(name string, legacy bool) string {
 				continue
 			}
 
-			// We want to fold digits immediately (or the lowercase letter 's' if not legacy) following
+			// We want to fold digits (or the lowercase letter 's' if not the legacy algo) immediately following
 			// an acronym into the same component as the acronym.
 			if unicode.IsDigit(char) || (char == 's' && !legacy) {
 				// stateAcronym -> stateLowerOrNumber
