@@ -32,12 +32,6 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
-	// TODO: this should be replaced with a map[string]*schema.Package
-	// once we land https://github.com/pulumi/pulumi/pull/5114
-	// we can rewrite the associated methods in terms of pkg.Schema
-	importAliases   map[string]map[string]string
-	importBasePaths map[string]string
-	modToPkg        map[string]map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -45,21 +39,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	contexts := make(map[string]map[string]*pkgContext)
-	importAliases := make(map[string]map[string]string)
-	modToPkg := make(map[string]map[string]string)
-	importBasePaths := make(map[string]string)
 	for _, pkg := range program.Packages() {
 		contexts[pkg.Name] = getPackages("tool", pkg)
-
-		// collect language specific info
-		if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
-			return make(map[string][]byte), nil, err
-		}
-		if langInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
-			importAliases[pkg.Name] = langInfo.PackageImportAliases
-			importBasePaths[pkg.Name] = langInfo.ImportBasePath
-			modToPkg[pkg.Name] = langInfo.ModuleToPackage
-		}
 	}
 
 	g := &generator{
@@ -72,9 +53,6 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-		importAliases:       importAliases,
-		importBasePaths:     importBasePaths,
-		modToPkg:            modToPkg,
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -264,28 +242,38 @@ func (g *generator) getVersionPath(program *hcl2.Program, pkg string) (string, e
 	return vPath, nil
 }
 
+func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
+	p, ok := g.contexts[pkg]
+	if !ok {
+		return nil, false
+	}
+	m, ok := p[mod]
+	return m, ok
+}
+
 func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
 	// namespaceless invokes "aws:index:..."
 	if mod == "" {
 		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 	}
-	if g.importAliases[pkg] != nil && g.importAliases[pkg][imp] != "" {
-		imp = fmt.Sprintf("%s %q", g.importAliases[pkg][imp], imp)
-	} else {
-		modSplit := strings.Split(mod, "/")
-		// account for mods like "eks/ClusterVpcConfig" index...
-		if len(modSplit) > 1 {
-			if modSplit[0] == "" || modSplit[0] == "index" {
-				imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
-			} else {
-				imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
-			}
+
+	if pkg, ok := g.getPkgContext(pkg, mod); ok {
+		if alias, ok := pkg.pkgImportAliases[imp]; ok {
+			return fmt.Sprintf("%s %q", alias, imp)
 		}
-		imp = fmt.Sprintf("%q", imp)
 	}
 
-	return imp
+	modSplit := strings.Split(mod, "/")
+	// account for mods like "eks/ClusterVpcConfig" index...
+	if len(modSplit) > 1 {
+		if modSplit[0] == "" || modSplit[0] == "index" {
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+		} else {
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
+		}
+	}
+	return fmt.Sprintf("%q", imp)
 }
 
 // genPostamble closes the method
@@ -606,12 +594,13 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod string) string {
-	if g.importBasePaths[pkg] != "" && g.modToPkg[pkg] != nil && g.modToPkg[pkg][mod] != "" {
-		imp := fmt.Sprintf("%s/%s", g.importBasePaths[pkg], g.modToPkg[pkg][mod])
-		if g.importAliases[pkg] != nil && g.importAliases[pkg][imp] != "" {
-			return g.importAliases[pkg][imp]
+	if mods, ok := g.contexts[pkg]; ok {
+		if ctx, ok := mods[mod]; ok {
+			imp := fmt.Sprintf("%s/%s", ctx.importBasePath, ctx.modToPkg[mod])
+			if alias, ok := ctx.pkgImportAliases[imp]; ok {
+				return alias
+			}
 		}
 	}
-
 	return mod
 }
