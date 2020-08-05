@@ -3,6 +3,13 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 _(none)_
+- Fix a bug where passphrase managers were not being
+  recognised correctly when getting the configuration
+  for the current stack. 
+  **Please Note:**
+  This specific bug may have caused the stack config
+  file to remove the password encryption salt.
+  [#5110](https://github.com/pulumi/pulumi/pull/5110)
 
 ## 2.8.0 (2020-08-04)
 
