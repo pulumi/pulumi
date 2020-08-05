@@ -75,12 +75,28 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}
+		info, _ := p.Language["python"].(PackageInfo)
 
 		// Build the case mapping table.
 		camelCaseToSnakeCase := map[string]string{}
 		seenTypes := codegen.Set{}
 		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
+
+		// If this package does not use Input/Output classes, annotate nested types to indicate they are dictionaries.
+		if !info.UsesIOClasses {
+			for _, t := range p.Types {
+				if t, ok := t.(*schema.ObjectType); ok {
+					if t.Language == nil {
+						t.Language = map[string]interface{}{}
+					}
+					t.Language["python"] = objectTypeInfo{
+						isDictionary:         true,
+						camelCaseToSnakeCase: camelCaseToSnakeCase,
+					}
+				}
+			}
+		}
 	}
 
 	g := &generator{
@@ -93,7 +109,7 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 	return g, nil
 }
 
-// genLeadingTrivia generates the list of leading trivia assicated with a given token.
+// genLeadingTrivia generates the list of leading trivia associated with a given token.
 func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
 	// TODO(pdg): whitespace
 	for _, t := range token.LeadingTrivia {
@@ -103,7 +119,7 @@ func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-// genTrailingTrivia generates the list of trailing trivia assicated with a given token.
+// genTrailingTrivia generates the list of trailing trivia associated with a given token.
 func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
 	// TODO(pdg): whitespace
 	for _, t := range token.TrailingTrivia {
@@ -113,7 +129,7 @@ func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-// genTrivia generates the list of trivia assicated with a given token.
+// genTrivia generates the list of trivia associated with a given token.
 func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 	g.genLeadingTrivia(w, token)
 	g.genTrailingTrivia(w, token)
@@ -203,6 +219,15 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	objType, ok := schemaType.(*schema.ObjectType)
 	if !ok {
 		return ""
+	}
+
+	if objType.Language != nil {
+		pyTypeInfo, ok := objType.Language["python"].(objectTypeInfo)
+		if ok {
+			if pyTypeInfo.isDictionary {
+				return ""
+			}
+		}
 	}
 
 	token := objType.Token

@@ -389,7 +389,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Fgenf(w, "%s)", g.Indent)
 		}
 	} else {
-		// Otherwise treat this as an untyped dictionary e.g. { "key": "value", "foo": "bar", ...}
+		// Otherwise treat this as an untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
 		if len(expr.Items) == 0 {
 			g.Fgen(w, "{}")
 		} else {
