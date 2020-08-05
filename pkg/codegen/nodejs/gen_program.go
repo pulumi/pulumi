@@ -297,6 +297,8 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
 
+	// TODO: normalize module name
+
 	if module != "" {
 		module = "." + module
 	}
