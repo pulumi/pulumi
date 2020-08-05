@@ -271,7 +271,7 @@ type Resource struct {
 
 // Function describes a Pulumi function.
 type Function struct {
-	// Package is the package that defines the resource.
+	// Package is the package that defines the function.
 	Package *Package
 	// Token is the function's Pulumi type token.
 	Token string
