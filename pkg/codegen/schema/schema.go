@@ -271,6 +271,8 @@ type Resource struct {
 
 // Function describes a Pulumi function.
 type Function struct {
+	// Package is the package that defines the resource.
+	Package *Package
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
@@ -1261,6 +1263,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 	}
 
 	return &Function{
+		Package:            types.pkg,
 		Token:              token,
 		Comment:            spec.Description,
 		Inputs:             inputs,
