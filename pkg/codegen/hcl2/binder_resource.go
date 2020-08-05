@@ -76,6 +76,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		if !ok {
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
+		node.Schema = res
 		inputProperties, properties = res.InputProperties, res.Properties
 	} else {
 		inputProperties, properties = pkgSchema.schema.Config, pkgSchema.schema.Config

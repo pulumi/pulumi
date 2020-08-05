@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 )
 
 // ResourceOptions represents a resource instantiation's options.
@@ -51,6 +52,9 @@ type Resource struct {
 
 	// Token is the type token for this resource.
 	Token string
+
+	// Schema is the schema definition for this resource, if any.
+	Schema *schema.Resource
 
 	// The type of the resource's inputs. This will always be either Any or an object type.
 	InputType model.Type
