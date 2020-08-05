@@ -91,6 +91,19 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: AssetType,
 	}),
+	"join": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{
+			{
+				Name: "separator",
+				Type: model.StringType,
+			},
+			{
+				Name: "strings",
+				Type: model.NewListType(model.StringType),
+			},
+		},
+		ReturnType: model.StringType,
+	}),
 	"length": model.NewFunction(model.GenericFunctionSignature(
 		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 			var diagnostics hcl.Diagnostics
@@ -223,6 +236,13 @@ var pulumiBuiltins = map[string]*model.Function{
 			},
 		},
 		ReturnType: model.NewListType(model.StringType),
+	}),
+	"toBase64": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "value",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
 	}),
 	"toJSON": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
