@@ -156,7 +156,10 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, 
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
-func (g *generator) collectImports(program *hcl2.Program, stdImports, pulumiImports codegen.StringSet) (codegen.StringSet, codegen.StringSet) {
+func (g *generator) collectImports(
+	program *hcl2.Program,
+	stdImports,
+	pulumiImports codegen.StringSet) (codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
@@ -275,9 +278,6 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 			} else {
 				imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
 			}
-		}
-		if imp == "github.com/pulumi/pulumi-aws/sdk/v2/go/aws/" {
-			mod = ""
 		}
 		imp = fmt.Sprintf("%q", imp)
 	}
