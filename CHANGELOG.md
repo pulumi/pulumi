@@ -3,9 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 _(none)_
+
+## 2.8.1 (2020-08-05)
+
 - Fix a bug where passphrase managers were not being
   recognised correctly when getting the configuration
-  for the current stack. 
+  for the current stack.
   **Please Note:**
   This specific bug may have caused the stack config
   file to remove the password encryption salt.
