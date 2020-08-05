@@ -32,6 +32,7 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
+	importAliases       map[string]map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -39,9 +40,18 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	contexts := make(map[string]map[string]*pkgContext)
-
+	importAliases := make(map[string]map[string]string)
 	for _, pkg := range program.Packages() {
 		contexts[pkg.Name] = getPackages("tool", pkg)
+
+		// collect language specific info
+		if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+			return make(map[string][]byte), nil, err
+		}
+		if langInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			aliases := langInfo.PackageImportAliases
+			importAliases[pkg.Name] = aliases
+		}
 	}
 
 	g := &generator{
@@ -54,6 +64,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		importAliases:       importAliases,
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -116,7 +127,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
 
 	for _, imp := range pulumiImports.SortedValues() {
-		g.Fprintf(w, "\"%s\"\n", imp)
+		g.Fprintf(w, "%s\n", imp)
 	}
 
 	g.Fprintf(w, ")\n")
@@ -152,11 +163,8 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 			if version > 1 {
 				vPath = fmt.Sprintf("/v%d", version)
 			}
-			if mod == "" {
-				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
-			} else {
-				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
-			}
+
+			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -186,12 +194,7 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 						vPath = fmt.Sprintf("/v%d", version)
 					}
 
-					// namespaceless invokes "aws:index:..."
-					if mod == "" {
-						pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
-					} else {
-						pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
-					}
+					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 				}
 			}
 			return n, nil
@@ -215,6 +218,21 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 	}
 
 	return stdImports, pulumiImports
+}
+
+func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
+	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
+	// namespaceless invokes "aws:index:..."
+	if mod == "" {
+		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+	}
+	if g.importAliases[pkg] != nil && g.importAliases[pkg][imp] != "" {
+		imp = fmt.Sprintf("%s %q", g.importAliases[pkg][imp], imp)
+	} else {
+		imp = fmt.Sprintf("%q", imp)
+	}
+
+	return imp
 }
 
 // genPostamble closes the method
