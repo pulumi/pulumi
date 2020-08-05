@@ -32,9 +32,12 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
-	importAliases       map[string]map[string]string
-	importBasePaths     map[string]string
-	modToPkg            map[string]map[string]string
+	// TODO: this should be replaced with a map[string]*schema.Package
+	// once we land https://github.com/pulumi/pulumi/pull/5114
+	// we can rewrite the associated methods in terms of pkg.Schema
+	importAliases   map[string]map[string]string
+	importBasePaths map[string]string
+	modToPkg        map[string]map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -94,7 +97,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 	g.genPostamble(&progPostamble, nodes)
 
-	// We must genearte the program first and the preamble second and finally cat the two together.
+	// We must generate the program first and the preamble second and finally cat the two together.
 	// This is because nested object/tuple cons expressions can require imports that aren't
 	// present in resource declarations or invokes alone. Expressions are lowered when the program is generated
 	// and this must happen first so we can access types via __convert intrinsics.
