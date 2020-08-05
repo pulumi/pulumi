@@ -211,6 +211,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diagnostics) == 0)
+	// TODO: Make the objType's *schema.Package available and use its TokenToModule function
+	// https://github.com/pulumi/pulumi/issues/5111
 	modName := strings.Split(module, "/")[0]
 	if strings.ToLower(modName) == "index" {
 		modName = ""
