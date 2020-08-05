@@ -33,6 +33,8 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	importAliases       map[string]map[string]string
+	importBasePaths     map[string]string
+	modToPkg            map[string]map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -41,6 +43,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 	contexts := make(map[string]map[string]*pkgContext)
 	importAliases := make(map[string]map[string]string)
+	modToPkg := make(map[string]map[string]string)
+	importBasePaths := make(map[string]string)
 	for _, pkg := range program.Packages() {
 		contexts[pkg.Name] = getPackages("tool", pkg)
 
@@ -49,8 +53,9 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 			return make(map[string][]byte), nil, err
 		}
 		if langInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
-			aliases := langInfo.PackageImportAliases
-			importAliases[pkg.Name] = aliases
+			importAliases[pkg.Name] = langInfo.PackageImportAliases
+			importBasePaths[pkg.Name] = langInfo.ImportBasePath
+			modToPkg[pkg.Name] = langInfo.ModuleToPackage
 		}
 	}
 
@@ -65,6 +70,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importAliases:       importAliases,
+		importBasePaths:     importBasePaths,
+		modToPkg:            modToPkg,
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -344,20 +351,22 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.genTemps(w, temps)
 	}
 
+	modOrAlias := g.getModOrAlias(pkg, mod)
+
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
-			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
+			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
 			assignment := ":="
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, mod, typ, resourceName)
+			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
 		}
 		g.isErrAssigned = true
 
 		if len(r.Inputs) > 0 {
-			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
+			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
 				g.Fgenf(w, "%s: ", strings.Title(attr.Name))
 				g.Fgenf(w, "%.v,\n", attr.Value)
@@ -379,7 +388,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType, false)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, mod, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
@@ -546,4 +555,17 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	}
 
 	return false
+}
+
+// getModOrAlias attempts to reconstruct the import statement and check if the imported package
+// is aliased, returning that alias if available.
+func (g *generator) getModOrAlias(pkg, mod string) string {
+	if g.importBasePaths[pkg] != "" && g.modToPkg[pkg] != nil && g.modToPkg[pkg][mod] != "" {
+		imp := fmt.Sprintf("%s/%s", g.importBasePaths[pkg], g.modToPkg[pkg][mod])
+		if g.importAliases[pkg] != nil && g.importAliases[pkg][imp] != "" {
+			return g.importAliases[pkg][imp]
+		}
+	}
+
+	return mod
 }

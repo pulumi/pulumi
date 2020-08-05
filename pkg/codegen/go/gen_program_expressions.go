@@ -572,7 +572,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			fmtString := "[]%s.%s"
 			if isInput {
@@ -593,7 +594,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			member = Title(member)
 			if strings.HasPrefix(member, "Get") {
