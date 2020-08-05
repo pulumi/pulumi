@@ -156,6 +156,8 @@ func (*UnionType) isType() {}
 
 // ObjectType represents schematized maps from strings to particular types.
 type ObjectType struct {
+	// Package is the package that defines the resource.
+	Package *Package
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -245,6 +247,8 @@ type Alias struct {
 
 // Resource describes a Pulumi resource.
 type Resource struct {
+	// Package is the package that defines the resource.
+	Package *Package
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
@@ -738,7 +742,9 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		return nil, errors.Wrap(err, "compiling module format regexp")
 	}
 
-	types, err := bindTypes(spec.Types)
+	pkg := &Package{}
+
+	types, err := bindTypes(pkg, spec.Types)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding types")
 	}
@@ -790,7 +796,7 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		language[name] = raw
 	}
 
-	pkg := &Package{
+	*pkg = Package{
 		moduleFormat:      moduleFormatRegexp,
 		Name:              spec.Name,
 		Version:           version,
@@ -817,6 +823,8 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 }
 
 type types struct {
+	pkg *Package
+
 	objects map[string]*ObjectType
 	arrays  map[Type]*ArrayType
 	maps    map[Type]*MapType
@@ -1102,6 +1110,7 @@ func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec Object
 		language[name] = raw
 	}
 
+	obj.Package = t.pkg
 	obj.Token = token
 	obj.Comment = spec.Description
 	obj.Language = language
@@ -1118,8 +1127,9 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 	return obj, nil
 }
 
-func bindTypes(objects map[string]ObjectTypeSpec) (*types, error) {
+func bindTypes(pkg *Package, objects map[string]ObjectTypeSpec) (*types, error) {
 	typs := &types{
+		pkg:     pkg,
 		objects: map[string]*ObjectType{},
 		arrays:  map[Type]*ArrayType{},
 		maps:    map[Type]*MapType{},
@@ -1186,6 +1196,7 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 	}
 
 	return &Resource{
+		Package:            types.pkg,
 		Token:              token,
 		Comment:            spec.Description,
 		InputProperties:    inputProperties,

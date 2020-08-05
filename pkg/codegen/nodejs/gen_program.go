@@ -22,6 +22,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -51,6 +53,12 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		program: program,
 	}
 	g.Formatter = format.NewFormatter(g)
+
+	for _, p := range program.Packages() {
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
@@ -215,6 +223,18 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	if pkg == "pulumi" && module == "providers" {
 		pkg, module, member = member, "", "Provider"
 	}
+
+	// Normalize module.
+	if r.Schema != nil {
+		pkg := r.Schema.Package
+		if lang, ok := pkg.Language["nodejs"]; ok {
+			pkgInfo := lang.(NodePackageInfo)
+			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
+				module = m
+			}
+		}
+	}
+
 	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
@@ -276,6 +296,8 @@ func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
+
+	// TODO: normalize module name
 
 	if module != "" {
 		module = "." + module
