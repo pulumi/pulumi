@@ -13,5 +13,8 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		}),
 		deploytest.NewProviderLoader("random", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return Random(schemaDirectoryPath)
+		}),
+		deploytest.NewProviderLoader("kubernetes", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return Kubernetes(schemaDirectoryPath)
 		}))
 }
