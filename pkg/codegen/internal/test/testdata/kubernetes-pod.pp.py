@@ -1,7 +1,7 @@
 import pulumi
 import pulumi_kubernetes as kubernetes
 
-bar = kubernetes.core_v1.Pod("bar",
+bar = kubernetes.core.v1.Pod("bar",
     api_version="v1",
     kind="Pod",
     metadata={
