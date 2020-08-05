@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Support publishing and consuming Policy Packs using any runtime
+  [#5102](https://github.com/pulumi/pulumi/pull/5102)
 
 ## 2.8.0 (2020-08-04)
 
