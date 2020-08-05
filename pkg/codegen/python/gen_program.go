@@ -234,21 +234,18 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
-	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkg, _, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diagnostics) == 0)
-	// TODO: Make the objType's *schema.Package available and use its TokenToModule function
-	// https://github.com/pulumi/pulumi/issues/5111
-	modName := strings.Split(module, "/")[0]
-	if strings.ToLower(modName) == "index" {
-		modName = ""
+
+	module := objType.Package.TokenToModule(token)
+	if module != "" {
+		module = "." + PyName(module)
 	}
-	if modName != "" {
-		modName = "." + PyName(modName)
-	}
+	module = strings.Replace(module, "_", ".", -1)
 	member = member + "Args"
 
 	// Example: aws.s3.BucketLoggingArgs
-	return fmt.Sprintf("%s%s.%s", PyName(pkg), modName, title(member))
+	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
