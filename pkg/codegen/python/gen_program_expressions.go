@@ -338,6 +338,8 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		} else {
 			g.Fgen(w, "False")
 		}
+	case model.NoneType:
+		g.Fgen(w, "None")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {

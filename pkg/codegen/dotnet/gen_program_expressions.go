@@ -17,7 +17,6 @@ package dotnet
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"io"
 	"math/big"
 	"strings"
@@ -26,6 +25,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -402,6 +402,8 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	switch expr.Type() {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
+	case model.NoneType:
+		g.Fgen(w, "null")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
