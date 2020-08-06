@@ -2,7 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+
 - Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
+
+- Support publishing and consuming Policy Packs using any runtime
+  [#5102](https://github.com/pulumi/pulumi/pull/5102)
+
 
 ## 2.8.1 (2020-08-05)
 
