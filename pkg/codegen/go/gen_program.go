@@ -252,6 +252,7 @@ func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
 }
 
 func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
+	// TODO: need to replace mod if we have an entry in the equivalent of go.ModuleToPackage
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
 	// namespaceless invokes "aws:index:..."
 	if mod == "" {
@@ -595,6 +596,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod string) string {
 	if mods, ok := g.contexts[pkg]; ok {
+		// TODO: need the equivalent of mod go.ModuleToPackage here
 		if ctx, ok := mods[mod]; ok {
 			imp := fmt.Sprintf("%s/%s", ctx.importBasePath, ctx.modToPkg[mod])
 			if alias, ok := ctx.pkgImportAliases[imp]; ok {

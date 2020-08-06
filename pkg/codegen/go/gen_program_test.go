@@ -24,6 +24,9 @@ func TestGenProgram(t *testing.T) {
 	}
 
 	for _, f := range files {
+		if f.Name() != "kubernetes-operator.pp" {
+			continue
+		}
 		if filepath.Ext(f.Name()) != ".pp" {
 			continue
 		}
