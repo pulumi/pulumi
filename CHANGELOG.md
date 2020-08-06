@@ -3,8 +3,21 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
+
 - Support publishing and consuming Policy Packs using any runtime
   [#5102](https://github.com/pulumi/pulumi/pull/5102)
+
+
+## 2.8.1 (2020-08-05)
+
+- Fix a bug where passphrase managers were not being
+  recognised correctly when getting the configuration
+  for the current stack.
+  **Please Note:**
+  This specific bug may have caused the stack config
+  file to remove the password encryption salt.
+  [#5110](https://github.com/pulumi/pulumi/pull/5110)
 
 ## 2.8.0 (2020-08-04)
 

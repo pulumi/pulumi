@@ -23,13 +23,15 @@ func (nameInfo) Format(name string) string {
 	return PyName(name)
 }
 
-func (g *generator) lowerExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*quoteTemp) {
 	// TODO(pdg): diagnostics
 
 	expr = hcl2.RewritePropertyReferences(expr)
 	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
 	expr, _ = g.lowerProxyApplies(expr)
+	expr = hcl2.RewriteConversions(expr, typ)
 	expr, quotes, _ := g.rewriteQuotes(expr)
+
 	return expr, quotes
 }
 
@@ -169,7 +171,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	}
 }
 
-// functionName computes the NodeJS package, module, and name for the given function token.
+// functionName computes the Python package, module, and name for the given function token.
 func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
@@ -198,6 +200,13 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
+	case hcl2.IntrinsicConvert:
+		switch arg := expr.Args[0].(type) {
+		case *model.ObjectConsExpression:
+			g.genObjectConsExpression(w, arg, expr.Type())
+		default:
+			g.Fgenf(w, "%.v", expr.Args[0])
+		}
 	case hcl2.IntrinsicApply:
 		g.genApply(w, expr)
 	case "element":
@@ -226,29 +235,31 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%s(", name)
 
 		casingTable := g.casingTables[pkg]
-		if obj, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
-			g.lowerObjectKeys(expr.Args[1], casingTable)
+		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
+			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
+				g.lowerObjectKeys(expr.Args[1], casingTable)
 
-			indenter := func(f func()) { f() }
-			if len(obj.Items) > 1 {
-				indenter = g.Indented
-			}
-			indenter(func() {
-				for i, item := range obj.Items {
-					// Ignore non-literal keys
-					key, ok := item.Key.(*model.LiteralValueExpression)
-					if !ok || !key.Value.Type().Equals(cty.String) {
-						continue
-					}
-
-					keyVal := PyName(key.Value.AsString())
-					if i == 0 {
-						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
-					} else {
-						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
-					}
+				indenter := func(f func()) { f() }
+				if len(obj.Items) > 1 {
+					indenter = g.Indented
 				}
-			})
+				indenter(func() {
+					for i, item := range obj.Items {
+						// Ignore non-literal keys
+						key, ok := item.Key.(*model.LiteralValueExpression)
+						if !ok || !key.Value.Type().Equals(cty.String) {
+							continue
+						}
+
+						keyVal := PyName(key.Value.AsString())
+						if i == 0 {
+							g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+						} else {
+							g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+						}
+					}
+				})
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -338,6 +349,8 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		} else {
 			g.Fgen(w, "False")
 		}
+	case model.NoneType:
+		g.Fgen(w, "None")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
@@ -356,16 +369,40 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
-	if len(expr.Items) == 0 {
-		g.Fgen(w, "{}")
+	g.genObjectConsExpression(w, expr, expr.Type())
+}
+
+func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
+	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
+	if typeName != "" {
+		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
+		if len(expr.Items) == 0 {
+			g.Fgenf(w, "%s()", typeName)
+		} else {
+			g.Fgenf(w, "%s(\n", typeName)
+			g.Indented(func() {
+				for _, item := range expr.Items {
+					g.Fgenf(w, "%s", g.Indent)
+					lit := item.Key.(*model.LiteralValueExpression)
+					g.Fprint(w, PyName(lit.Value.AsString()))
+					g.Fgenf(w, "=%.v,\n", item.Value)
+				}
+			})
+			g.Fgenf(w, "%s)", g.Indent)
+		}
 	} else {
-		g.Fgen(w, "{")
-		g.Indented(func() {
-			for _, item := range expr.Items {
-				g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
-			}
-		})
-		g.Fgenf(w, "\n%s}", g.Indent)
+		// Otherwise treat this as an untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
+		if len(expr.Items) == 0 {
+			g.Fgen(w, "{}")
+		} else {
+			g.Fgen(w, "{")
+			g.Indented(func() {
+				for _, item := range expr.Items {
+					g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
+		}
 	}
 }
 

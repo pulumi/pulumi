@@ -974,7 +974,7 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 		mapCase = python.(PropertyInfo).MapCase
 	}
 	if mapCase {
-		snakeCaseName := PyName(prop.Name)
+		snakeCaseName := PyNameLegacy(prop.Name)
 		// If the property is a single word, don't add it to the tables.
 		containsOneUnderscore := strings.Count(snakeCaseName, "_") == 1
 		endsWithUnderscore := strings.HasSuffix(snakeCaseName, "_")

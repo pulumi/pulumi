@@ -146,7 +146,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}, diagnostics, nil
 }
 
-// declareNodes declares all of the top-level nodes in the given file. This invludes config, resources, outputs, and
+// declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
 // locals.
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
