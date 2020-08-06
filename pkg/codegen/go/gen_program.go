@@ -253,19 +253,29 @@ func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
 	return m, ok
 }
 
+func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
+	p, ok := g.packages[pkg]
+	if !ok {
+		return GoPackageInfo{}, false
+	}
+	info, ok := p.Language["go"].(GoPackageInfo)
+	return info, ok
+}
+
 func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
+	info, _ := g.getGoPackageInfo(pkg)
+	if m, ok := info.ModuleToPackage[mod]; ok {
+		mod = m
+	}
+
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
 	// namespaceless invokes "aws:index:..."
 	if mod == "" {
 		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 	}
 
-	if pkg, ok := g.packages[pkg]; ok {
-		if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-			if alias, ok := info.PackageImportAliases[imp]; ok {
-				return fmt.Sprintf("%s %q", alias, imp)
-			}
-		}
+	if alias, ok := info.PackageImportAliases[imp]; ok {
+		return fmt.Sprintf("%s %q", alias, imp)
 	}
 
 	modSplit := strings.Split(mod, "/")
@@ -598,13 +608,17 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod string) string {
-	if pkg, ok := g.packages[pkg]; ok {
-		if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-			imp := fmt.Sprintf("%s/%s", info.ImportBasePath, info.ModuleToPackage[mod])
-			if alias, ok := info.PackageImportAliases[imp]; ok {
-				return alias
-			}
-		}
+	info, ok := g.getGoPackageInfo(pkg)
+	if !ok {
+		return mod
+	}
+	if m, ok := info.ModuleToPackage[mod]; ok {
+		mod = m
+	}
+
+	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+	if alias, ok := info.PackageImportAliases[imp]; ok {
+		return alias
 	}
 	return mod
 }
