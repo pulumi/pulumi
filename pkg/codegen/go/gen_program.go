@@ -22,6 +22,7 @@ type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 	program             *hcl2.Program
+	packages            map[string]*schema.Package
 	contexts            map[string]map[string]*pkgContext
 	diagnostics         hcl.Diagnostics
 	jsonTempSpiller     *jsonSpiller
@@ -38,13 +39,14 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := hcl2.Linearize(program)
 
-	contexts := make(map[string]map[string]*pkgContext)
+	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
-		contexts[pkg.Name] = getPackages("tool", pkg)
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
 	g := &generator{
 		program:             program,
+		packages:            packages,
 		contexts:            contexts,
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
@@ -258,9 +260,11 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 	}
 
-	if pkg, ok := g.getPkgContext(pkg, mod); ok {
-		if alias, ok := pkg.pkgImportAliases[imp]; ok {
-			return fmt.Sprintf("%s %q", alias, imp)
+	if pkg, ok := g.packages[pkg]; ok {
+		if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			if alias, ok := info.PackageImportAliases[imp]; ok {
+				return fmt.Sprintf("%s %q", alias, imp)
+			}
 		}
 	}
 
@@ -594,10 +598,10 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod string) string {
-	if mods, ok := g.contexts[pkg]; ok {
-		if ctx, ok := mods[mod]; ok {
-			imp := fmt.Sprintf("%s/%s", ctx.importBasePath, ctx.modToPkg[mod])
-			if alias, ok := ctx.pkgImportAliases[imp]; ok {
+	if pkg, ok := g.packages[pkg]; ok {
+		if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			imp := fmt.Sprintf("%s/%s", info.ImportBasePath, info.ModuleToPackage[mod])
+			if alias, ok := info.PackageImportAliases[imp]; ok {
 				return alias
 			}
 		}
