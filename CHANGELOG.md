@@ -2,6 +2,22 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
+
+## 2.8.1 (2020-08-05)
+
+- Fix a bug where passphrase managers were not being
+  recognised correctly when getting the configuration
+  for the current stack.
+  **Please Note:**
+  This specific bug may have caused the stack config
+  file to remove the password encryption salt.
+  [#5110](https://github.com/pulumi/pulumi/pull/5110)
+
+## 2.8.0 (2020-08-04)
+
+- Add missing MapMap and ArrayArray types to Go SDK
+  [#5092](https://github.com/pulumi/pulumi/pull/5092)
 
 - Switch os/user package with luser drop in replacement
   [#5065](https://github.com/pulumi/pulumi/pull/5065)
@@ -11,9 +27,12 @@ CHANGELOG
 
 - Add ability to change a secrets provider for the current stack
   [#5031](https://github.com/pulumi/pulumi/pull/5031)
-  
+
 - Add ability to create a stack based on the config from an existing stack
   [#5062](https://github.com/pulumi/pulumi/pull/5062)
+
+- Python: Improved error message when `virtualenv` doesn't exist
+  [#5069](https://github.com/pulumi/pulumi/pull/5069)
 
 ## 2.7.1 (2020-07-22)
 

@@ -24,6 +24,17 @@ import (
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func PyName(name string) string {
+	return pyName(name, false /*legacy*/)
+}
+
+// Deprecated: Use PyName instead.
+// PyNameLegacy is an uncorrected and deprecated version of the PyName algorithm to maintain compatibility and avoid
+// a breaking change. See the linked issue for more context: https://github.com/pulumi/pulumi-kubernetes/issues/1179
+func PyNameLegacy(name string) string {
+	return pyName(name, true /*legacy*/)
+}
+
+func pyName(name string, legacy bool) string {
 	// This method is a state machine with four states:
 	//   stateFirst - the initial state.
 	//   stateUpper - The last character we saw was an uppercase letter and the character before it
@@ -119,9 +130,9 @@ func PyName(name string) string {
 				continue
 			}
 
-			// We want to fold digits immediately following an acronym into the same
-			// component as the acronym.
-			if unicode.IsDigit(char) {
+			// We want to fold digits (or the lowercase letter 's' if not the legacy algo) immediately following
+			// an acronym into the same component as the acronym.
+			if unicode.IsDigit(char) || (char == 's' && !legacy) {
 				// stateAcronym -> stateLowerOrNumber
 				state = stateLowerOrNumber
 				currentComponent.WriteRune(char)

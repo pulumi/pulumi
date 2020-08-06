@@ -199,7 +199,7 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
 
-	components := strings.Split(module, ".")
+	components := strings.Split(module, "/")
 	for i, component := range components {
 		components[i] = PyName(component)
 	}

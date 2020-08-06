@@ -39,7 +39,6 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	nodes := hcl2.Linearize(program)
 
 	contexts := make(map[string]map[string]*pkgContext)
-
 	for _, pkg := range program.Packages() {
 		contexts[pkg.Name] = getPackages("tool", pkg)
 	}
@@ -58,18 +57,31 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 	g.Formatter = format.NewFormatter(g)
 
-	var index bytes.Buffer
-	g.genPreamble(&index, program)
+	// we must collect imports once before lowering, and once after.
+	// this allows us to avoid complexity of traversing apply expressions for things like JSON
+	// but still have access to types provided by __convert intrinsics after lowering.
+	pulumiImports := codegen.NewStringSet()
+	stdImports := codegen.NewStringSet()
+	g.collectImports(program, stdImports, pulumiImports)
 
+	var progPostamble bytes.Buffer
 	for _, n := range nodes {
 		g.collectScopeRoots(n)
 	}
 
 	for _, n := range nodes {
-		g.genNode(&index, n)
+		g.genNode(&progPostamble, n)
 	}
 
-	g.genPostamble(&index, nodes)
+	g.genPostamble(&progPostamble, nodes)
+
+	// We must generate the program first and the preamble second and finally cat the two together.
+	// This is because nested object/tuple cons expressions can require imports that aren't
+	// present in resource declarations or invokes alone. Expressions are lowered when the program is generated
+	// and this must happen first so we can access types via __convert intrinsics.
+	var index bytes.Buffer
+	g.genPreamble(&index, program, stdImports, pulumiImports)
+	index.Write(progPostamble.Bytes())
 
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
@@ -103,11 +115,11 @@ func (g *generator) collectScopeRoots(n hcl2.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
+func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
-	stdImports, pulumiImports := g.collectImports(w, program)
+	g.collectImports(program, stdImports, pulumiImports)
 	for _, imp := range stdImports.SortedValues() {
 		g.Fprintf(w, "\"%s\"\n", imp)
 	}
@@ -116,7 +128,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
 
 	for _, imp := range pulumiImports.SortedValues() {
-		g.Fprintf(w, "\"%s\"\n", imp)
+		g.Fprintf(w, "%s\n", imp)
 	}
 
 	g.Fprintf(w, ")\n")
@@ -125,10 +137,11 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
-func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.StringSet, codegen.StringSet) {
+func (g *generator) collectImports(
+	program *hcl2.Program,
+	stdImports,
+	pulumiImports codegen.StringSet) (codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
-	pulumiImports := codegen.NewStringSet()
-	stdImports := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
@@ -136,27 +149,12 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 				pkg = name
 			}
 
-			version := -1
-			for _, p := range program.Packages() {
-				if p.Name == pkg {
-					version = int(p.Version.Major)
-					break
-				}
+			vPath, err := g.getVersionPath(program, pkg)
+			if err != nil {
+				panic(err)
 			}
 
-			if version == -1 {
-				panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", r.Token))
-			}
-
-			var vPath string
-			if version > 1 {
-				vPath = fmt.Sprintf("/v%d", version)
-			}
-			if mod == "" {
-				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
-			} else {
-				pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
-			}
+			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -169,28 +167,34 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 
 					contract.Assert(len(diagnostics) == 0)
 
-					version := -1
-					for _, p := range program.Packages() {
-						if p.Name == pkg {
-							version = int(p.Version.Major)
-							break
+					vPath, err := g.getVersionPath(program, pkg)
+					if err != nil {
+						panic(err)
+					}
+					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+				} else if call.Name == hcl2.IntrinsicConvert {
+					if schemaType, ok := hcl2.GetSchemaForType(call.Type()); ok {
+						switch schemaType := schemaType.(type) {
+						case *schema.ObjectType:
+							token := schemaType.Token
+							var tokenRange hcl.Range
+							pkg, mod, _, _ := hcl2.DecomposeToken(token, tokenRange)
+							vPath, err := g.getVersionPath(program, pkg)
+							if err != nil {
+								panic(err)
+							}
+							pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+						case *schema.ArrayType:
+							token := schemaType.ElementType.(*schema.ObjectType).Token
+							var tokenRange hcl.Range
+							pkg, mod, _, _ := hcl2.DecomposeToken(token, tokenRange)
+							vPath, err := g.getVersionPath(program, pkg)
+							if err != nil {
+								panic(err)
+							}
+							pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 						}
-					}
 
-					if version == -1 {
-						panic(errors.Errorf("could not find package information for resource with type token:\n\n%s", token))
-					}
-
-					var vPath string
-					if version > 1 {
-						vPath = fmt.Sprintf("/v%d", version)
-					}
-
-					// namespaceless invokes "aws:index:..."
-					if mod == "" {
-						pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg))
-					} else {
-						pulumiImports.Add(fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod))
 					}
 				}
 			}
@@ -215,6 +219,61 @@ func (g *generator) collectImports(w io.Writer, program *hcl2.Program) (codegen.
 	}
 
 	return stdImports, pulumiImports
+}
+
+func (g *generator) getVersionPath(program *hcl2.Program, pkg string) (string, error) {
+	version := -1
+	for _, p := range program.Packages() {
+		if p.Name == pkg {
+			version = int(p.Version.Major)
+			break
+		}
+	}
+
+	if version == -1 {
+		return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
+	}
+
+	var vPath string
+	if version > 1 {
+		vPath = fmt.Sprintf("/v%d", version)
+	}
+
+	return vPath, nil
+}
+
+func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
+	p, ok := g.contexts[pkg]
+	if !ok {
+		return nil, false
+	}
+	m, ok := p[mod]
+	return m, ok
+}
+
+func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
+	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
+	// namespaceless invokes "aws:index:..."
+	if mod == "" {
+		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+	}
+
+	if pkg, ok := g.getPkgContext(pkg, mod); ok {
+		if alias, ok := pkg.pkgImportAliases[imp]; ok {
+			return fmt.Sprintf("%s %q", alias, imp)
+		}
+	}
+
+	modSplit := strings.Split(mod, "/")
+	// account for mods like "eks/ClusterVpcConfig" index...
+	if len(modSplit) > 1 {
+		if modSplit[0] == "" || modSplit[0] == "index" {
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+		} else {
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
+		}
+	}
+	return fmt.Sprintf("%q", imp)
 }
 
 // genPostamble closes the method
@@ -326,20 +385,22 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.genTemps(w, temps)
 	}
 
+	modOrAlias := g.getModOrAlias(pkg, mod)
+
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
-			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, mod, typ, resourceName)
+			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
 			assignment := ":="
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, mod, typ, resourceName)
+			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
 		}
 		g.isErrAssigned = true
 
 		if len(r.Inputs) > 0 {
-			g.Fgenf(w, "&%s.%sArgs{\n", mod, typ)
+			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
 				g.Fgenf(w, "%s: ", strings.Title(attr.Name))
 				g.Fgenf(w, "%.v,\n", attr.Value)
@@ -361,7 +422,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType, false)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, mod, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
@@ -528,4 +589,18 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	}
 
 	return false
+}
+
+// getModOrAlias attempts to reconstruct the import statement and check if the imported package
+// is aliased, returning that alias if available.
+func (g *generator) getModOrAlias(pkg, mod string) string {
+	if mods, ok := g.contexts[pkg]; ok {
+		if ctx, ok := mods[mod]; ok {
+			imp := fmt.Sprintf("%s/%s", ctx.importBasePath, ctx.modToPkg[mod])
+			if alias, ok := ctx.pkgImportAliases[imp]; ok {
+				return alias
+			}
+		}
+	}
+	return mod
 }
