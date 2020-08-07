@@ -82,7 +82,8 @@ func main() {
 			ApiVersion: pulumi.String("rbac.authorization.k8s.io/v1"),
 			Kind:       pulumi.String("Role"),
 			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String("pulumi-kubernetes-operator"),
+				CreationTimestamp: nil,
+				Name:              pulumi.String("pulumi-kubernetes-operator"),
 			},
 			Rules: rbacv1.PolicyRuleArray{
 				&rbacv1.PolicyRuleArgs{

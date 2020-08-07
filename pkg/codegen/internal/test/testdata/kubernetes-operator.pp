@@ -69,7 +69,7 @@ resource pulumi_kubernetes_operatorRole "kubernetes:rbac.authorization.k8s.io/v1
 apiVersion = "rbac.authorization.k8s.io/v1"
 kind = "Role"
 metadata = {
-# TODO creationTimestamp = null
+creationTimestamp = null
 name = "pulumi-kubernetes-operator"
 }
 rules = [

@@ -258,6 +258,11 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression, destType model.Type) {
+	if destType == model.NoneType {
+		g.Fgen(w, "nil")
+		return
+	}
+
 	argTypeName := g.argumentTypeName(expr, destType, false)
 	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
 
