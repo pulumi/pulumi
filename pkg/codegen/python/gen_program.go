@@ -245,18 +245,27 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
-	pkg, _, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkgName, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diagnostics) == 0)
 
-	module := objType.Package.TokenToModule(token)
-	if module != "" {
-		module = "." + PyName(module)
+	modName := objType.Package.TokenToModule(token)
+
+	// Normalize module.
+	pkg := objType.Package
+	if lang, ok := pkg.Language["python"]; ok {
+		pkgInfo := lang.(PackageInfo)
+		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+			modName = m
+		}
 	}
-	module = strings.Replace(module, "_", ".", -1)
+	if modName != "" {
+		modName = "." + PyName(modName)
+	}
+	modName = strings.Replace(modName, "_", ".", -1)
 	member = member + "Args"
 
 	// Example: aws.s3.BucketLoggingArgs
-	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
+	return fmt.Sprintf("%s%s.%s", PyName(pkgName), modName, title(member))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
