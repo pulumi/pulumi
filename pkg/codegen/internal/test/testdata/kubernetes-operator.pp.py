@@ -57,7 +57,7 @@ pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_ku
             },
         },
     })
-pulumi_kubernetes_operator_role = kubernetes.rbac_authorization_k8s_io.v1.Role("pulumi_kubernetes_operatorRole",
+pulumi_kubernetes_operator_role = kubernetes.rbac.v1.Role("pulumi_kubernetes_operatorRole",
     api_version="rbac.authorization.k8s.io/v1",
     kind="Role",
     metadata={
@@ -146,7 +146,7 @@ pulumi_kubernetes_operator_role = kubernetes.rbac_authorization_k8s_io.v1.Role("
             ],
         },
     ])
-pulumi_kubernetes_operator_role_binding = kubernetes.rbac_authorization_k8s_io.v1.RoleBinding("pulumi_kubernetes_operatorRoleBinding",
+pulumi_kubernetes_operator_role_binding = kubernetes.rbac.v1.RoleBinding("pulumi_kubernetes_operatorRoleBinding",
     kind="RoleBinding",
     api_version="rbac.authorization.k8s.io/v1",
     metadata={
