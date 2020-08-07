@@ -31,6 +31,21 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		pkg := packages[mod]
 		buffer := &bytes.Buffer{}
 
+		// Functions
+		fmt.Println("printing functions")
+		for _, f := range pkg.functions {
+			fmt.Println("HAA")
+			imports := stringSet{}
+			pkg.getImports(f, imports)
+
+			b := &bytes.Buffer{}
+			pkg.genHeader(b, nil, imports)
+
+			pkg.genFunction(b, f)
+
+			fmt.Println(b.String())
+		}
+
 		for _, r := range pkg.resources {
 			imports := stringSet{}
 			pkg.getImports(r, imports)

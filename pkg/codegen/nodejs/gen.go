@@ -107,13 +107,6 @@ func (mod *modContext) tokenToType(tok string, input bool) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	if mod.tool == "crd2pulumi" && components[0] == "crds" {
-		moduleName := strings.Split(components[1], "/")
-		version := moduleName[1]
-		name := components[2]
-		return version + "." + name
-	}
-
 	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
 	if override, ok := mod.modToPkg[modName]; ok {
 		modName = override
