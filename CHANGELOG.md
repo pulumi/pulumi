@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.8.2 (2020-08-07)
 
 - Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
 
