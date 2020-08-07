@@ -5,24 +5,24 @@ class MyStack : Stack
 {
     public MyStack()
     {
-        var bar = new Kubernetes.Core.v1.Pod("bar", new Kubernetes.Core.v1.PodArgs
+        var bar = new Kubernetes.Core.V1.Pod("bar", new Kubernetes.Types.Inputs.Core.V1.PodArgs
         {
             ApiVersion = "v1",
             Kind = "Pod",
-            Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+            Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
             {
                 Namespace = "foo",
                 Name = "bar",
             },
-            Spec = new Kubernetes.Core.Inputs.PodSpecArgs
+            Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
             {
                 Containers = 
                 {
-                    new Kubernetes.Core.Inputs.ContainerArgs
+                    new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                     {
                         Name = "nginx",
                         Image = "nginx:1.14-alpine",
-                        Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                        Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                         {
                             Limits = 
                             {
