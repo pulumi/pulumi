@@ -48,6 +48,8 @@ type generator struct {
 	diagnostics   hcl.Diagnostics
 }
 
+const pulumiPackage = "pulumi"
+
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := hcl2.Linearize(program)
@@ -144,7 +146,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			if pkg != "pulumi" {
+			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
 				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", namespace))
 			}
@@ -271,7 +273,7 @@ func (g *generator) resourceTypeName(r *hcl2.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == "pulumi" && module == "providers" {
+	if pkg == pulumiPackage && module == "providers" {
 		pkg, module, member = member, "", "Provider"
 	}
 
@@ -292,7 +294,7 @@ func (g *generator) resourceArgsTypeName(r *hcl2.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == "pulumi" && module == "providers" {
+	if pkg == pulumiPackage && module == "providers" {
 		pkg, module, member = member, "", "Provider"
 	}
 
