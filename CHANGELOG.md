@@ -7,6 +7,11 @@ CHANGELOG
 
 - Support publishing and consuming Policy Packs using any runtime
   [#5102](https://github.com/pulumi/pulumi/pull/5102)
+  
+- Fix regression where any CLI integration for any stack with a default
+  secrets provider would sort the config alphabetically and new stacks created
+  would get created with an empty map `{}` in the config file
+  [#5132](https://github.com/pulumi/pulumi/pull/5132)
 
 
 ## 2.8.1 (2020-08-05)
