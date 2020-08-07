@@ -36,6 +36,10 @@ type generator struct {
 	program *hcl2.Program
 	// C# namespace map per package.
 	namespaces map[string]map[string]string
+	// C# codegen compatibility mode per package.
+	compatibilities map[string]string
+	// A function to convert tokens to module names per package (utilizes the `moduleFormat` setting internally).
+	tokenToModules map[string]func(x string) string
 	// Type names per invoke function token.
 	functionArgs map[string]string
 	// Whether awaits are needed, and therefore an async Initialize method should be declared.
@@ -50,14 +54,19 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 	// Import C#-specific schema info.
 	namespaces := make(map[string]map[string]string)
+	compatibilities := make(map[string]string)
+	tokenToModules := make(map[string]func(x string) string)
 	functionArgs := make(map[string]string)
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
 			return make(map[string][]byte), nil, err
 		}
 
-		packageNamespaces := p.Language["csharp"].(CSharpPackageInfo).Namespaces
+		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
+		packageNamespaces := csharpInfo.Namespaces
 		namespaces[p.Name] = packageNamespaces
+		compatibilities[p.Name] = csharpInfo.Compatibility
+		tokenToModules[p.Name] = p.TokenToModule
 
 		for _, f := range p.Functions {
 			if f.Inputs != nil {
@@ -67,9 +76,11 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	}
 
 	g := &generator{
-		program:      program,
-		namespaces:   namespaces,
-		functionArgs: functionArgs,
+		program:         program,
+		namespaces:      namespaces,
+		compatibilities: compatibilities,
+		tokenToModules:  tokenToModules,
+		functionArgs:    functionArgs,
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -265,9 +276,8 @@ func (g *generator) resourceTypeName(r *hcl2.Resource) string {
 	}
 
 	namespaces := g.namespaces[pkg]
-	namespaceKey := strings.Replace(module, "/", ".", -1)
 	rootNamespace := namespaceName(namespaces, pkg)
-	namespace := namespaceName(namespaces, namespaceKey)
+	namespace := namespaceName(namespaces, module)
 
 	if namespace != "" {
 		namespace = "." + namespace
@@ -275,6 +285,29 @@ func (g *generator) resourceTypeName(r *hcl2.Resource) string {
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 	return qualifiedMemberName
+}
+
+// resourceArgsTypeName computes the C# arguments class name for the given resource.
+func (g *generator) resourceArgsTypeName(r *hcl2.Resource) string {
+	// Compute the resource type from the Pulumi type token.
+	pkg, module, member, diags := r.DecomposeToken()
+	contract.Assert(len(diags) == 0)
+	if pkg == "pulumi" && module == "providers" {
+		pkg, module, member = member, "", "Provider"
+	}
+
+	namespaces := g.namespaces[pkg]
+	rootNamespace := namespaceName(namespaces, pkg)
+	namespace := namespaceName(namespaces, module)
+	if g.compatibilities[pkg] == "kubernetes20" {
+		namespace = fmt.Sprintf("Types.Inputs.%s", namespace)
+	}
+
+	if namespace != "" {
+		namespace = "." + namespace
+	}
+
+	return fmt.Sprintf("%s%s.%sArgs", rootNamespace, namespace, Title(member))
 }
 
 // functionName computes the C# namespace and class name for the given function token.
@@ -286,9 +319,8 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diags) == 0)
 	namespaces := g.namespaces[pkg]
-	namespaceKey := strings.Replace(module, "/", ".", -1)
 	rootNamespace := namespaceName(namespaces, pkg)
-	namespace := namespaceName(namespaces, namespaceKey)
+	namespace := namespaceName(namespaces, module)
 
 	if namespace != "" {
 		namespace = "." + namespace
@@ -317,19 +349,21 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		qualifier = ""
 	}
 
-	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+	pkg, _, member, diags := hcl2.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diags) == 0)
+	module := g.tokenToModules[pkg](token)
 	namespaces := g.namespaces[pkg]
-	namespaceKey := strings.Split(module, "/")[0]
 	rootNamespace := namespaceName(namespaces, pkg)
-	namespace := namespaceName(namespaces, namespaceKey)
+	namespace := namespaceName(namespaces, module)
 	if strings.ToLower(namespace) == "index" {
 		namespace = ""
 	}
 	if namespace != "" {
 		namespace = "." + namespace
 	}
-	if qualifier != "" {
+	if g.compatibilities[pkg] == "kubernetes20" {
+		namespace = ".Types.Inputs" + namespace
+	} else if qualifier != "" {
 		namespace = namespace + "." + qualifier
 	}
 	member = member + "Args"
@@ -390,6 +424,7 @@ func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
+	argsName := g.resourceArgsTypeName(r)
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
@@ -408,7 +443,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	instantiate := func(resName string) {
-		g.Fgenf(w, "new %s(%s, new %[1]sArgs\n", qualifiedMemberName, resName)
+		g.Fgenf(w, "new %s(%s, new %s\n", qualifiedMemberName, resName, argsName)
 		g.Fgenf(w, "%s{\n", g.Indent)
 		g.Indented(func() {
 			for _, attr := range r.Inputs {
