@@ -365,19 +365,15 @@ func (mod *modContext) hasTypes(input bool) bool {
 }
 
 func (mod *modContext) isEmpty() bool {
-	var any func(m *modContext) bool
-	any = func(m *modContext) bool {
-		if len(m.extraSourceFiles) > 0 || len(m.functions) > 0 || len(m.resources) > 0 || len(m.types) > 0 {
-			return true
-		}
-		for _, child := range m.children {
-			if any(child) {
-				return true
-			}
-		}
+	if len(mod.extraSourceFiles) > 0 || len(mod.functions) > 0 || len(mod.resources) > 0 || len(mod.types) > 0 {
 		return false
 	}
-	return !any(mod)
+	for _, child := range mod.children {
+		if !child.isEmpty() {
+			return false
+		}
+	}
+	return true
 }
 
 func (mod *modContext) submodulesExist() bool {
