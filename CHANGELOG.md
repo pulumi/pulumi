@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix support for CheckFailures in Python Dynamic Providers
+  [#5138](https://github.com/pulumi/pulumi/pull/5138)
 
 ## 2.8.2 (2020-08-07)
 
