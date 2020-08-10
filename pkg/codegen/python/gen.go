@@ -117,7 +117,7 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
+func (mod *modContext) tokenToType(tok string, input, functionType bool) string {
 	// token := pkg : module : member
 	// module := path/to/module
 
@@ -127,8 +127,11 @@ func (mod *modContext) tokenToType(tok string, input bool) string {
 	modName, name := mod.tokenToModule(tok), title(components[2])
 
 	var suffix string
-	if input {
+	switch {
+	case input:
 		suffix = "Args"
+	case functionType:
+		suffix = "Result"
 	}
 
 	if modName == "" && modName != mod.mod {
@@ -535,6 +538,8 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				name := tokenToName(t.Token)
 				if input {
 					name += "Args"
+				} else if mod.details(t).functionType {
+					name += "Result"
 				}
 				fmt.Fprintf(w, "    '%s',\n", name)
 			}
@@ -545,13 +550,13 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 		for _, t := range mod.types {
 			if input && mod.details(t).inputType {
 				wrapInput := !mod.details(t).functionType
-				if err := mod.genType(w, tokenToName(t.Token), t.Comment, t.Properties, true, wrapInput); err != nil {
+				if err := mod.genType(w, t, true, wrapInput); err != nil {
 					return err
 				}
 				hasTypes = true
 			}
 			if !input && mod.details(t).outputType {
-				if err := mod.genType(w, tokenToName(t.Token), t.Comment, t.Properties, false, false); err != nil {
+				if err := mod.genType(w, t, false, false); err != nil {
 					return err
 				}
 				hasTypes = true
@@ -1439,7 +1444,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 	case *schema.MapType:
 		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input)
+		typ = mod.tokenToType(t.Token, input, mod.details(t).functionType)
 		if acceptMapping {
 			typ = fmt.Sprintf("pulumi.InputType[%s]", typ)
 		}
@@ -1570,13 +1575,12 @@ func initParamName(name string) string {
 	}
 }
 
-func (mod *modContext) genType(
-	w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput bool) error {
-	props := properties
+func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapInput bool) error {
+	props := obj.Properties
 	if input {
 		// Sort required props first.
 		props = make([]*schema.Property, len(props))
-		copy(props, properties)
+		copy(props, obj.Properties)
 		sort.Slice(props, func(i, j int) bool {
 			pi, pj := props[i], props[j]
 			switch {
@@ -1593,14 +1597,23 @@ func (mod *modContext) genType(
 		decorator = "@pulumi.input_type"
 	}
 
-	suffix := "(dict)"
-	if input {
-		suffix = "Args"
+	name := tokenToName(obj.Token)
+	switch {
+	case input:
+		name += "Args"
+	case mod.details(obj).functionType:
+		name += "Result"
 	}
+
+	var suffix string
+	if !input {
+		suffix = "(dict)"
+	}
+
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
-	if !input && comment != "" {
-		printComment(w, comment, "    ")
+	if !input && obj.Comment != "" {
+		printComment(w, obj.Comment, "    ")
 	}
 
 	genProp := func(w io.Writer, prop *schema.Property, setter bool) {
@@ -1642,7 +1655,7 @@ func (mod *modContext) genType(
 			fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 		}
 		fmt.Fprintf(w, "):\n")
-		mod.genTypeDocstring(w, comment, props, wrapInput)
+		mod.genTypeDocstring(w, obj.Comment, props, wrapInput)
 		if len(props) == 0 {
 			fmt.Fprintf(w, "        pass\n")
 		}
@@ -1698,12 +1711,14 @@ func (mod *modContext) genType(
 			genProp(w, prop, false /*setter*/)
 		}
 
-		// The generated output class is a subclass of dict and contains translated keys
-		// to maintain backwards compatibility. When this function is present, property
-		// getters will use it to translate the key from the Pulumi name before looking
-		// up the value in the dictionary.
-		fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
-		fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
+		if !mod.details(obj).functionType {
+			// The generated output class is a subclass of dict and contains translated keys
+			// to maintain backwards compatibility. When this function is present, property
+			// getters will use it to translate the key from the Pulumi name before looking
+			// up the value in the dictionary.
+			fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
+			fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
+		}
 	}
 	fmt.Fprintf(w, "\n")
 	return nil
