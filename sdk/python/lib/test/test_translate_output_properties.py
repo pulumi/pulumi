@@ -24,16 +24,8 @@ camel_case_to_snake_case = {
 }
 
 
-class FakeCustomResource:
-    """
-    Fake CustomResource class that duck-types to the real CustomResource.
-    This class is substituted for the real CustomResource for the below test.
-    """
-    def __init__(self, id):
-        self.id = id
-
-    def translate_output_property(self, prop: str) -> str:
-        return camel_case_to_snake_case.get(prop) or prop
+def translate_output_property(prop: str) -> str:
+    return camel_case_to_snake_case.get(prop) or prop
 
 
 @pulumi.output_type
@@ -162,12 +154,11 @@ class BarDeclared(dict):
 
 class TranslateOutputPropertiesTests(unittest.TestCase):
     def test_translate(self):
-        res = FakeCustomResource("fake")
         output = {
             "firstArg": "hello",
             "secondArg": 42,
         }
-        result = rpc.translate_output_properties(res, output, Foo)
+        result = rpc.translate_output_properties(output, translate_output_property, Foo)
         self.assertIsInstance(result, Foo)
         self.assertEqual(result.first_arg, "hello")
         self.assertEqual(result["first_arg"], "hello")
@@ -182,7 +173,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             self.assertEqual(val.second_arg, second_arg)
             self.assertEqual(val["second_arg"], second_arg)
 
-        res = FakeCustomResource("fake")
         output = {
             "thirdArg": {
                 "firstArg": "hello",
@@ -275,7 +265,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         }
 
         for typ in [Bar, BarDeclared]:
-            result = rpc.translate_output_properties(res, output, typ)
+            result = rpc.translate_output_properties(output, translate_output_property, typ)
             self.assertIsInstance(result, typ)
 
             self.assertIs(result.third_arg, result["thirdArg"])

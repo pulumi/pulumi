@@ -373,10 +373,12 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
     return resolvers
 
 
-def translate_output_properties(res: 'Resource', output: Any, typ: Optional[type] = None) -> Any:
+def translate_output_properties(output: Any,
+                                output_transformer: Callable[[str], str],
+                                typ: Optional[type] = None) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
-    convention specified by the resource's implementation of `translate_output_property`.
+    convention specified by `output_transformer`.
 
     Additionally, if output is a `dict` and `typ` is an output type, instantiate the output type,
     passing the dict as an argument to the output type's __init__() method.
@@ -411,8 +413,8 @@ def translate_output_properties(res: 'Resource', output: Any, typ: Optional[type
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
         translated = {
-            res.translate_output_property(k):
-                translate_output_properties(res, v, get_type(k))
+            output_transformer(k):
+                translate_output_properties(v, output_transformer, get_type(k))
             for k, v in output.items()
         }
         # If typ is an output type, instantiate it, passing the translated dict as an
@@ -430,7 +432,7 @@ def translate_output_properties(res: 'Resource', output: Any, typ: Optional[type
                 args = _types.get_args(typ)
                 if len(args) == 1:
                     element_type = args[0]
-        return [translate_output_properties(res, v, element_type) for v in output]
+        return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
     return output
 
@@ -465,7 +467,7 @@ async def resolve_outputs(res: 'Resource',
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = res.translate_output_property(key)
-        translated_value = translate_output_properties(res, value, types.get(key))
+        translated_value = translate_output_properties(value, res.translate_output_property, types.get(key))
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
@@ -476,7 +478,7 @@ async def resolve_outputs(res: 'Resource',
             if translated_key not in all_properties:
                 # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
                 # the user.
-                all_properties[translated_key] = translate_output_properties(res, deserialize_property(value), types.get(key))
+                all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
