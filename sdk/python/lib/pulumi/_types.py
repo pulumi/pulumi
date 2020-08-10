@@ -332,7 +332,7 @@ def _process_class(cls: type, signifier_attr: str) -> Dict[str, Any]:
     return props
 
 
-def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool):
+def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = False):
     """
     Returns a Python property getter that looks up the value using get.
     """
@@ -439,7 +439,7 @@ def output_type(cls: Type[T]) -> Type[T]:
 
     # Create Python properties.
     for name, prop in props.items():
-        setattr(cls, name, _create_py_property(name, prop.name, prop.type, setter=False))
+        setattr(cls, name, _create_py_property(name, prop.name, prop.type))
 
     # Add an __eq__ method if one doesn't already exist.
     _add_eq(cls)
@@ -578,43 +578,76 @@ def _is_optional_type(tp):
 
 def output_type_types(output_type_cls: type) -> Dict[str, type]:
     """
-    Returns a dict of Pulumi names to type for the output type.
+    Returns a dict of Pulumi names to types for the output type.
     """
     assert is_output_type(output_type_cls)
 
-    # pylint: disable=import-outside-toplevel
-    from . import Output, Input
+    # We use get_type_hints() below on each Python property to resolve the getter function's
+    # return type annotation, resolving forward references.
+    #
+    # We pass the output_type_cls's globals to get_type_hints() to ensure any other referenced
+    # output types (which may exist in other modules of the output_type_cls, like `.outputs` or
+    # `...meta.v1.outputs`) can be resolved. If we didn't pass the output_type_cls's globals,
+    # get_type_hints() would use the __globals__ of the function, which likely does not contain
+    # the necessary references, as the function was likely created internally inside this module
+    # (either via the @output_type decorator, which converts class annotations into Python
+    # properties, or via the @getter decorator, which replaces empty getter functions) and
+    # therefore has __globals__ of this SDK module.
+    globalns = None
+    if getattr(output_type_cls, '__module__', None) in sys.modules:
+        globalns = dict(sys.modules[output_type_cls.__module__].__dict__)
 
+    # Build-up a dictionary of Pulumi property names to types by looping through all the
+    # Python properties on the class that have a getter marked as a Pulumi property getter,
+    # and looking at the getter function's return type annotation.
+    # Types that are Output[T] and Optional[T] are unwrapped to just T.
     result: Dict[str, type] = {}
-
     for v in output_type_cls.__dict__.values():
         if isinstance(v, builtins.property):
             prop = cast(builtins.property, v)
             if hasattr(prop.fget, _PULUMI_GETTER) and hasattr(prop.fget, _PULUMI_NAME):
                 name: str = getattr(prop.fget, _PULUMI_NAME)
-                 # Get hints via typing.get_type_hints(), which handles forward references.
-                 # Pass Output and Input as locals to typing.get_type_hints() to ensure they are available.
-                cls_hints = get_type_hints(prop.fget, localns={"Output": Output, "Input": Input})  # type: ignore
+                cls_hints = get_type_hints(prop.fget, globalns=globalns)
+                # Get the value of the function's return type hint.
                 value = cls_hints.get("return")
                 if value is not None:
                     result[name] = _unwrap_type(value)
-
     return result
 
 
 def resource_types(resource_cls: type) -> Dict[str, type]:
     """
-    Returns a dict of Pulumi names to type for the resource.
+    Returns a dict of Pulumi names to types for the resource.
     """
-    # pylint: disable=import-outside-toplevel
-    from . import Output, Input
 
+    # Get the properties from the class's type annotations.
     props = _properties_from_annotations(resource_cls)
+    if not props:
+        return {}
 
-    # Get hints via typing.get_type_hints(), which handles forward references.
-    # Pass Output and Input as locals to typing.get_type_hints() to ensure they are available.
-    cls_hints = get_type_hints(resource_cls, localns={"Output": Output, "Input": Input})  # type: ignore
+    # We want resolved types for just the resource_cls's type annotations (not base classes),
+    # but get_type_hints() looks at the annotations of the class and its base classes.
+    # So create a type dynamically that has the annotations from resource_cls but doesn't have
+    # any base classes, and pass the dynamically created type to get_type_hints().
+    dynamic_cls_attrs = {"__annotations__": resource_cls.__dict__.get('__annotations__', {})}
+    dynamic_cls = type(resource_cls.__name__, (object,), dynamic_cls_attrs)
 
+    # Pass along globals for the resource_cls, to help resolve forward references.
+    globalns = None
+    if getattr(resource_cls, '__module__', None) in sys.modules:
+        globalns = dict(sys.modules[resource_cls.__module__].__dict__)
+
+    # Pass along Output as a local, as it is a forward reference type annotation on the base
+    # CustomResource class that can be instantiated directly (which our tests do).
+    # pylint: disable=import-outside-toplevel
+    from . import Output
+    localns = {"Output": Output}  # type: ignore
+
+    # Get the type hints, resolving any forward references.
+    cls_hints = get_type_hints(dynamic_cls, globalns=globalns, localns=localns)
+
+    # Return a dictionary of Pulumi property names to types. Types that are Output[T] and
+    # Optional[T] are unwrapped to just T.
     return {
         prop.name: _unwrap_type(cls_hints[name])
         for name, prop in props.items()
