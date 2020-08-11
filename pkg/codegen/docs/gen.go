@@ -889,7 +889,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 		propLangName := name
 
-		// This if check can be removed once all providers have UsesIOClasses set to true in their schema.
+		// TODO[pulumi/pulumi#5145]: Delete this if check once all providers have UsesIOClasses set to true in their
+		// schema.
 		if lang == "python" && !pythonPkgInfo.UsesIOClasses {
 			pyName := python.PyName(prop.Name)
 			// The default casing for a Python property name is snake_case unless

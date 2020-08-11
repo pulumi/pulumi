@@ -81,8 +81,8 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	// This check and call to GetLanguageTypeStringLegacy can be deleted once all providers have
-	// UsesIOClasses set to true in their schema.
+	// TODO[pulumi/pulumi#5145]: Delete this if check once all providers have UsesIOClasses set to true in their
+	// schema.
 	if pythonPkgInfo, ok := pkg.Language["python"].(PackageInfo); !ok || !pythonPkgInfo.UsesIOClasses {
 		return d.GetLanguageTypeStringLegacy(pkg, moduleName, t, input, optional)
 	}
@@ -106,7 +106,8 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
-// GetLanguageTypeStringLegacy returns the legacy types and should be deleted once all providers have UsesIOClasses set to true in their schema.
+// TODO[pulumi/pulumi#5145]: Delete this function once all providers have UsesIOClasses set to true in their schema.
+// GetLanguageTypeStringLegacy returns the legacy type strings.
 func (d DocLanguageHelper) GetLanguageTypeStringLegacy(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	name := pyType(t)
 
@@ -151,7 +152,8 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 	return PyName(tokenToName(f.Token))
 }
 
-// GetResourceFunctionResultName is not implemented for Python and returns an empty string.
+// GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
+// an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	return title(tokenToName(f.Token)) + "Result"
 }
