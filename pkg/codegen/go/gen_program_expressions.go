@@ -307,10 +307,15 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	// handles the __convert intrinsic assuming that the union type will have an opaque type containing the dest type
 	case *model.UnionType:
+		var didGenerate bool
 		for _, t := range destType.ElementTypes {
+			if didGenerate {
+				break
+			}
 			switch t := t.(type) {
 			case *model.OpaqueType:
 				g.genLiteralValueExpression(w, expr, t)
+				didGenerate = true
 				break
 			}
 		}
