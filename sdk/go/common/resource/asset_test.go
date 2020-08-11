@@ -312,7 +312,7 @@ func TestArchiveDir(t *testing.T) {
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 		assert.Equal(t, "489e9a9dad271922ecfbda590efc40e48788286a06bd406a357ab8d13f0b6abf", arch.Hash)
 	}
-	validateTestDirArchive(t, arch)
+	validateTestDirArchive(t, arch, 3)
 }
 
 func TestArchiveTar(t *testing.T) {
