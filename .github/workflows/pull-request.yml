@@ -102,6 +102,8 @@ jobs:
           path: ${{ github.workspace }}/bin
       - name: update path
         run: echo "::add-path::${{ github.workspace }}/bin"
+      - name: check bins
+        run: ls -alh ${{ github.workspace }}/bin/
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
