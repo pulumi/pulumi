@@ -47,15 +47,21 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: windows
-          path: goreleaser/pulumi-*-windows*
+          path: |
+            goreleaser/pulumi-windows_windows_amd64/
+            goreleaser/pulumi-language-*-windows_windows_amd64/
       - uses: actions/upload-artifact@v2
         with:
           name: linux
-          path: goreleaser/pulumi-*-linux*
+          path: |
+            goreleaser/pulumi-unix_linux_amd64/
+            goreleaser/pulumi-language-*-unix_linux_amd64/
       - uses: actions/upload-artifact@v2
         with:
           name: darwin
-          path: goreleaser/pulumi-*-darwin*
+          path: |
+            goreleaser/pulumi-unix_darwin_amd64/
+            goreleaser/pulumi-language-*-darwin_linux_amd64/
   build_sdk:
     name: Build SDK
     needs: build_binaries
