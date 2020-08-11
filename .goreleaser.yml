@@ -154,6 +154,6 @@ archives:
     - sdk/python/cmd/pulumi-language-python-exec
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 snapshot:
-  name_template: "{{ .Version }}-SNAPSHOT"
+  name_template: "{{ .Tag }}-SNAPSHOT"
 checksum: 
   name_template: "{{ .ProjectName }}-{{ .Tag }}-checksums.txt"

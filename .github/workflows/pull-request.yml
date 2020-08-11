@@ -3,7 +3,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GORELEASER_PREVIOUS_TAG: "2.8.2" # FIXME: use pulumictl for this
+  GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
 
 jobs:
   build:

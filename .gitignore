@@ -23,3 +23,5 @@ coverage.cov
 **/yarn.lock
 
 .mypy_cache
+
+goreleaser/**
