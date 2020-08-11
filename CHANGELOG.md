@@ -5,6 +5,10 @@ CHANGELOG
 
 - Fix support for CheckFailures in Python Dynamic Providers
   [#5138](https://github.com/pulumi/pulumi/pull/5138)
+  
+- Upgrade version of `gocloud.dev`. This ensures that 'AWSKMS' secrets
+  providers can now be used with full ARNs rather than just Aliases
+  [#5138](https://github.com/pulumi/pulumi/pull/5138)
 
 ## 2.8.2 (2020-08-07)
 
