@@ -38,7 +38,7 @@ jobs:
       #  uses: jaxxstorm/action-install-gh-release@release/v1-alpha
       #  with:
       #    repo: pulumi/pulumictl
-      - name: Check out code into the Go module directory
+      - name: Checkout
         uses: actions/checkout@v2
       - name: Fetch Git Tags
         run: git fetch --quiet --prune --unshallow --tags
@@ -47,3 +47,7 @@ jobs:
         with:
           args: release --rm-dist --snapshot
           version: latest
+      - uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: goreleaser/pulumi-*
