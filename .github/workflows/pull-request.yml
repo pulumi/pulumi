@@ -6,8 +6,59 @@ env:
   GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
 
 jobs:
+  build_binaries:
+    name: Build Binaries
+    strategy:
+      matrix:
+        platform: [ macos-latest  ] # We run on OS X because of a CGO dependency
+        go-version: [1.14.x]
+        node-version: [10.x]
+        python-version: [3.7]
+        dotnet: ['3.1.301']
+    runs-on: ${{ matrix.platform }}
+    env:
+      GOPATH: ${{ github.workspace }}
+    steps:
+      - name: Install DotNet ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Fetch Git Tags
+        run: git fetch --quiet --prune --unshallow --tags
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          args: release --rm-dist --snapshot
+          version: latest
+      - uses: actions/upload-artifact@v2
+        with:
+          name: windows
+          path: goreleaser/pulumi-*-windows*
+      - uses: actions/upload-artifact@v2
+        with:
+          name: linux
+          path: goreleaser/pulumi-*-linux*
+      - uses: actions/upload-artifact@v2
+        with:
+          name: darwin
+          path: goreleaser/pulumi-*-darwin*
   build_sdk:
     name: Build SDK
+    needs: build_binaries
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
@@ -44,61 +95,15 @@ jobs:
         uses: actions/checkout@v2
       - name: Fetch Git Tags
         run: git fetch --quiet --prune --unshallow --tags
+      - name: download binaries
+        uses: actions/download-artifact@v2
+        with:
+          name: linux
+          path: ${{ github.workspace }}/bin
+      - name: update path
+        run: echo "::add-path::${{ github.workspace }}/bin"
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
         run: make -C sdk/${{ matrix.language }}
-  build_binaries:
-    name: Build Binaries
-    strategy:
-      matrix:
-        platform: [ macos-latest  ] # We run on OS X because of a CGO dependency
-        go-version: [1.14.x]
-        node-version: [10.x]
-        python-version: [3.7]
-        dotnet: ['3.1.301']
-    runs-on: ${{ matrix.platform }}
-    env:
-      GOPATH: ${{ github.workspace }}
-    steps:
-      - name: Install DotNet ${{ matrix.dotnet }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
-      #- name: Install pulumictl
-      #  uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-      #  with:
-      #    repo: pulumi/pulumictl
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Fetch Git Tags
-        run: git fetch --quiet --prune --unshallow --tags
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          args: release --rm-dist --snapshot
-          version: latest
-      - uses: actions/upload-artifact@v2
-        with:
-          name: windows
-          path: goreleaser/pulumi-*-windows*
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux
-          path: goreleaser/pulumi-*-linux*
-      - uses: actions/upload-artifact@v2
-        with:
-          name: darwin
-          path: goreleaser/pulumi-*-darwin*
+
