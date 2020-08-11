@@ -10,6 +10,11 @@ CHANGELOG
   providers can now be used with full ARNs rather than just Aliases
   [#5138](https://github.com/pulumi/pulumi/pull/5138)
 
+- Ensure the 'history' command is a subcommand of 'stack'.
+  This means that `pulumi history` has been deprecated in favour
+  of `pulumi stack history`.
+  [#5158](https://github.com/pulumi/pulumi/pull/5158)
+
 ## 2.8.2 (2020-08-07)
 
 - Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
