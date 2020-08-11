@@ -133,7 +133,7 @@ archives:
     - sdk/nodejs/dist/pulumi-analyzer-policy
     - sdk/python/dist/pulumi-analyzer-policy-python
     - sdk/python/cmd/pulumi-language-python-exec
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 - id: pulumi-windows
   builds:
     - pulumi-language-dotnet-windows
@@ -152,8 +152,8 @@ archives:
     - sdk/nodejs/dist/pulumi-analyzer-policy.cmd
     - sdk/python/dist/pulumi-analyzer-policy-python.cmd
     - sdk/python/cmd/pulumi-language-python-exec
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: "{{ .ProjectName }}-v{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 snapshot:
-  name_template: "{{ .Tag }}-SNAPSHOT"
+  name_template: "{{ .Version }}-SNAPSHOT"
 checksum: 
   name_template: "{{ .ProjectName }}-{{ .Tag }}-checksums.txt"
