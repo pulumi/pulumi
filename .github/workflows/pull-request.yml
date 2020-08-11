@@ -50,5 +50,13 @@ jobs:
           version: latest
       - uses: actions/upload-artifact@v2
         with:
-          name: binaries
-          path: goreleaser/pulumi-*
+          name: windows
+          path: goreleaser/pulumi-*-windows*
+      - uses: actions/upload-artifact@v2
+        with:
+          name: linux
+          path: goreleaser/pulumi-*-linux*
+      - uses: actions/upload-artifact@v2
+        with:
+          name: darwin
+          path: goreleaser/pulumi-*-darwin*
