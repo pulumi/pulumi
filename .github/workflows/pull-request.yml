@@ -34,10 +34,10 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with:
-          repo: pulumi/pulumictl
+      #- name: Install pulumictl
+      #  uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+      #  with:
+      #    repo: pulumi/pulumictl
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
       - name: Fetch Git Tags
