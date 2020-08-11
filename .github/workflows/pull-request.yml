@@ -6,8 +6,43 @@ env:
   GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
 
 jobs:
-  build:
-    name: Build
+  build_sdk:
+    name: Build SDK
+    strategy:
+      matrix:
+        platform: [ ubuntu-latest ]
+        go-version: [1.14.x]
+        node-version: [10.x]
+        python-version: [3.7]
+        dotnet: ['3.1.301']
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Install DotNet ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Fetch Git Tags
+        run: git fetch --quiet --prune --unshallow --tags
+  build_binaries:
+    name: Build Binaries
     strategy:
       matrix:
         platform: [ macos-latest  ] # We run on OS X because of a CGO dependency
