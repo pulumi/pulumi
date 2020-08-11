@@ -34,6 +34,8 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install pipenv
+        uses: dschep/install-pipenv-action@v1
       - name: Install pulumictl
         uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
