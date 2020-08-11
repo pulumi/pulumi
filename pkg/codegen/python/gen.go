@@ -585,8 +585,22 @@ func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
 	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
-	// Produce a class definition with optional """ comment.
+	// Produce a private output type that we can pass to invoke to be instantiated along with any nested outputs.
+	// Ideally this would just be the single public class, but our output types expect to have an __init__()
+	// method that accepts a dict and the existing type has an __init__() that accepts individual arguments.
+	// So instead, we'll pass the private class to invoke, and then copy its values into the existing public
+	// class.
 	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "@pulumi.output_type\n")
+	fmt.Fprintf(w, "class _%s:\n", baseName)
+	for _, prop := range obj.Properties {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+		fmt.Fprintf(w, "    %s: %s = pulumi.property(\"%s\")\n", pname, ty, prop.Name)
+	}
+
+	// Produce a class definition with optional """ comment.
+	fmt.Fprint(w, "\n\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
@@ -938,12 +952,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	mod.genHeader(w, true, false, imports)
 
+	baseName, awaitableName := awaitableTypeNames(fun.Outputs.Token)
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
 	if fun.Outputs != nil {
-		baseName, awaitableName := awaitableTypeNames(fun.Outputs.Token)
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1022,14 +1036,22 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
 
 	// Now simply invoke the runtime function with the arguments.
-	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts).value\n", fun.Token)
+	var typ string
+	if fun.Outputs != nil {
+		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
+		// the call to invoke.
+		typ = fmt.Sprintf(", typ=_%s", baseName)
+	}
+	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
 	fmt.Fprintf(w, "\n")
 
 	// And copy the results to an object, if there are indeed any expected returns.
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "    return %s(\n", retTypeName)
 		for i, ret := range rets {
-			fmt.Fprintf(w, "        %s=__ret__.get('%s')", PyName(ret.Name), ret.Name)
+			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
+			// object has a get property that masks the underlying dict subclass's get method.
+			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
 			if i == len(rets)-1 {
 				fmt.Fprintf(w, ")\n")
 			} else {
