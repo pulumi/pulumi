@@ -50,7 +50,7 @@ dotnet_test:: install
 	# include the version prefix/suffix to avoid generating a separate nupkg file
 	dotnet test /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
 	# work around a bug where running `dotnet test` disables console stdinput display
-	stty echo
+	# stty echo
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
