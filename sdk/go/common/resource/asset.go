@@ -1130,6 +1130,7 @@ const (
 	TarArchive            // a POSIX tar archive.
 	TarGZIPArchive        // a POSIX tar archive that has been subsequently compressed using GZip.
 	ZIPArchive            // a multi-file ZIP archive.
+	JARArchive            // a Java JAR file
 )
 
 // ArchiveExts maps from a file extension and its associated archive and/or compression format.
@@ -1138,6 +1139,7 @@ var ArchiveExts = map[string]ArchiveFormat{
 	".tgz":    TarGZIPArchive,
 	".tar.gz": TarGZIPArchive,
 	".zip":    ZIPArchive,
+	".jar":    JARArchive,
 }
 
 // detectArchiveFormat takes a path and infers its archive format based on the file extension.
@@ -1159,7 +1161,7 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (ArchiveReader, error) 
 		return readTarArchive(ar)
 	case TarGZIPArchive:
 		return readTarGZIPArchive(ar)
-	case ZIPArchive:
+	case ZIPArchive, JARArchive:
 		// Unfortunately, the ZIP archive reader requires ReaderAt functionality.  If it's a file, we can recover this
 		// with a simple stat.  Otherwise, we will need to go ahead and make a copy in memory.
 		var ra io.ReaderAt

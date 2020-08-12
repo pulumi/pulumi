@@ -15,6 +15,10 @@ CHANGELOG
   of `pulumi stack history`.
   [#5158](https://github.com/pulumi/pulumi/pull/5158)
 
+- Add support for extracting jar files in archive resources
+  [#5150](https://github.com/pulumi/pulumi/pull/5150)
+
+
 ## 2.8.2 (2020-08-07)
 
 - Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
