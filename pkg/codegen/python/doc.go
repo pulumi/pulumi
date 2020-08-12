@@ -194,7 +194,7 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	if modName == "" {
 		displayName = fmt.Sprintf("pulumi_%s", pkg.Name)
 	} else {
-		displayName = fmt.Sprintf("pulumi_%s/%s", pkg.Name, strings.ToLower(modName))
+		displayName = fmt.Sprintf("pulumi_%s/%s", pkg.Name, PyName(modName))
 	}
 	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
 	return displayName, link
