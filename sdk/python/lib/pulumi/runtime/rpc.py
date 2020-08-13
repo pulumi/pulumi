@@ -17,6 +17,7 @@ out of RPC calls.
 """
 import sys
 import asyncio
+import collections
 import functools
 import inspect
 from typing import List, Any, Callable, Dict, Mapping, Optional, Tuple, Union, TYPE_CHECKING, cast, get_type_hints
@@ -408,10 +409,12 @@ def translate_output_properties(output: Any,
             # If typ is a dict, get the type for its values, to pass
             # along for each key.
             origin = _types.get_origin(typ)
-            if origin is dict or Dict:
+            if typ is dict or origin in {dict, Dict, Mapping, collections.abc.Mapping}:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
+            else:
+                raise AssertionError(f"Unexpected type; expected 'dict' got '{typ}'")
         translated = {
             output_transformer(k):
                 translate_output_properties(v, output_transformer, get_type(k))
@@ -428,10 +431,12 @@ def translate_output_properties(output: Any,
             # If typ is a list, get the type for its values, to pass
             # along for each item.
             origin = _types.get_origin(typ)
-            if origin is list or List:
+            if typ is list or origin in {list, List}:
                 args = _types.get_args(typ)
                 if len(args) == 1:
                     element_type = args[0]
+            else:
+                raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
     return output
