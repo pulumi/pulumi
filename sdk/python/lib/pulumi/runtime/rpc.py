@@ -193,7 +193,7 @@ async def serialize_property(value: 'Input[Any]',
         value = _types.input_type_to_dict(value)
         transform_keys = False
 
-    if isinstance(value, Mapping):
+    if isinstance(value, Mapping):  # pylint: disable=bad-option-value,isinstance-second-argument-not-valid-type
         obj = {}
         for k, v in value.items():
             transformed_key = k
