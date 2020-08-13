@@ -152,6 +152,117 @@ class BarDeclared(dict):
         return camel_case_to_snake_case.get(prop) or prop
 
 
+@pulumi.output_type
+class InvalidTypeStr(dict):
+    value: str = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> str:
+        ...
+
+@pulumi.output_type
+class InvalidTypeOptionalStr(dict):
+    value: Optional[str] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredOptionalStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Optional[str]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeDictStr(dict):
+    value: Dict[str, str] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredDictStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Dict[str, str]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeOptionalDictStr(dict):
+    value: Optional[Dict[str, str]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredOptionalDictStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Optional[Dict[str, str]]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeDictOptionalStr(dict):
+    value: Dict[str, Optional[str]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredDictOptionalStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Dict[str, Optional[str]]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeOptionalDictOptionalStr(dict):
+    value: Optional[Dict[str, Optional[str]]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredOptionalDictOptionalStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Optional[Dict[str, Optional[str]]]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeListStr(dict):
+    value: List[str] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredListStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> List[str]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeOptionalListStr(dict):
+    value: Optional[List[str]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredOptionalListStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Optional[List[str]]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeListOptionalStr(dict):
+    value: List[Optional[str]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredListOptionalStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> List[Optional[str]]:
+        ...
+
+@pulumi.output_type
+class InvalidTypeOptionalListOptionalStr(dict):
+    value: Optional[List[Optional[str]]] = pulumi.property("value")
+
+@pulumi.output_type
+class InvalidTypeDeclaredOptionalListOptionalStr(dict):
+    @property
+    @pulumi.getter
+    def value(self) -> Optional[List[Optional[str]]]:
+        ...
+
+
 class TranslateOutputPropertiesTests(unittest.TestCase):
     def test_translate(self):
         output = {
@@ -305,3 +416,63 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             assertFoo(result.eighth_optional_optional_arg[0]["blah"][0], "farewell-opt-opt", 1137)
             self.assertIs(result.eighth_optional_optional_optional_arg, result["eighthOptionalOptionalOptionalArg"])
             assertFoo(result.eighth_optional_optional_optional_arg[0]["blah"][0], "farewell-opt-opt-opt", 11137)
+
+    def test_nested_types_raises(self):
+        dict_value = {
+            "firstArg": "hello",
+            "secondArg": 42,
+        }
+        list_value = ["hello"]
+
+        tests = [
+            (InvalidTypeStr, dict_value),
+            (InvalidTypeDeclaredStr, dict_value),
+            (InvalidTypeOptionalStr, dict_value),
+            (InvalidTypeDeclaredOptionalStr, dict_value),
+
+            (InvalidTypeStr, list_value),
+            (InvalidTypeDeclaredStr, list_value),
+            (InvalidTypeOptionalStr, list_value),
+            (InvalidTypeDeclaredOptionalStr, list_value),
+
+            (InvalidTypeDictStr, {"foo": dict_value}),
+            (InvalidTypeDeclaredDictStr, {"foo": dict_value}),
+            (InvalidTypeOptionalDictStr, {"foo": dict_value}),
+            (InvalidTypeDeclaredOptionalDictStr, {"foo": dict_value}),
+            (InvalidTypeDictOptionalStr, {"foo": dict_value}),
+            (InvalidTypeDeclaredDictOptionalStr, {"foo": dict_value}),
+            (InvalidTypeOptionalDictOptionalStr, {"foo": dict_value}),
+            (InvalidTypeDeclaredOptionalDictOptionalStr, {"foo": dict_value}),
+
+            (InvalidTypeDictStr, {"foo": list_value}),
+            (InvalidTypeDeclaredDictStr, {"foo": list_value}),
+            (InvalidTypeOptionalDictStr, {"foo": list_value}),
+            (InvalidTypeDeclaredOptionalDictStr, {"foo": list_value}),
+            (InvalidTypeDictOptionalStr, {"foo": list_value}),
+            (InvalidTypeDeclaredDictOptionalStr, {"foo": list_value}),
+            (InvalidTypeOptionalDictOptionalStr, {"foo": list_value}),
+            (InvalidTypeDeclaredOptionalDictOptionalStr, {"foo": list_value}),
+
+            (InvalidTypeListStr, [dict_value]),
+            (InvalidTypeDeclaredListStr, [dict_value]),
+            (InvalidTypeOptionalListStr, [dict_value]),
+            (InvalidTypeDeclaredOptionalListStr, [dict_value]),
+            (InvalidTypeListOptionalStr, [dict_value]),
+            (InvalidTypeDeclaredListOptionalStr, [dict_value]),
+            (InvalidTypeOptionalListOptionalStr, [dict_value]),
+            (InvalidTypeDeclaredOptionalListOptionalStr, [dict_value]),
+
+            (InvalidTypeListStr, [list_value]),
+            (InvalidTypeDeclaredListStr, [list_value]),
+            (InvalidTypeOptionalListStr, [list_value]),
+            (InvalidTypeDeclaredOptionalListStr, [list_value]),
+            (InvalidTypeListOptionalStr, [list_value]),
+            (InvalidTypeDeclaredListOptionalStr, [list_value]),
+            (InvalidTypeOptionalListOptionalStr, [list_value]),
+            (InvalidTypeDeclaredOptionalListOptionalStr, [list_value]),
+        ]
+
+        for typ, value in tests:
+            output = {"value": value}
+            with self.assertRaises(AssertionError):
+                rpc.translate_output_properties(output, translate_output_property, typ)
