@@ -12,6 +12,228 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This module exports decorators, functions, and other helpers for defining input/output types.
+#
+# A resource can be declared as:
+#
+#   class FooResource(pulumi.CustomResource):
+#       nested_value: pulumi.Output[Nested] = pulumi.property("nestedValue")
+#
+#       def __init__(self, resource_name, nested_value: pulumi.InputType[NestedArgs]):
+#           super().__init__("my:module:FooResource", resource_name, {"nestedValue": nested_value})
+#
+# The resource declares a single output `nested_value` of type `pulumi.Output[Nested]` and uses
+# `pulumi.property()` to indicate the Pulumi property name.
+#
+# The resource's `__init__()` method accepts a `nested_value` argument typed as
+# `pulumi.InputType[NestedArgs]`, which is an alias for accepting either an input type (in this
+# case `NestedArgs`) or `Mapping[str, Any]`. Input types are converted to a `dict` during
+# serialization.
+#
+# When the resource's outputs are resolved, the `Nested` class is instantiated.
+#
+#
+# Here's how the `NestedArgs` input class can be declared:
+#
+#   @pulumi.input_type
+#   class NestedArgs:
+#       first_arg: pulumi.Input[str] = pulumi.property("firstArg")
+#       second_arg: Optional[pulumi.Input[float]] = pulumi.property("secondArg")
+#
+#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
+#           pulumi.set(self, "firstArg", first_arg)
+#           pulumi.set(self, "secondArg", second_arg)
+#
+# The class is decorated with the `@pulumi.input_type` decorator, which indicates the class is an
+# input type and does some processing of the class (explained below). `NestedArgs` declares two
+# inputs (`first_arg` and `second_arg`) and uses type annotations and `pulumi.property()` to
+# specify the types and Pulumi input property names. The `__init__()` method class `pulumi.set` to
+# save the values for each input.
+#
+# A more verbose way to declare the same input type is as follows:
+#
+#   @pulumi.input_type
+#   class NestedArgs:
+#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
+#           pulumi.set(self, "firstArg", first_arg)
+#           pulumi.set(self, "secondArg", second_arg)
+#
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> pulumi.Input[str]:
+#           ...
+#
+#       @first_arg.setter
+#       def first_arg(self, value: pulumi.Input[str]):
+#           ...
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[pulumi.Input[float]]:
+#           ...
+#
+#       @second_arg.setter
+#       def second_arg(self, value: Optional[pulumi.Input[float]]):
+#           ...
+#
+# This latter (more verbose) declaration is equivalent to the former (simpler) declaration;
+# the `@pulumi.input_type` processes the class and essentially transforms the former declaration
+# into the latter declaration.
+#
+# The former (simpler) declaration is nice syntactic sugar to use when declaring these by hand,
+# e.g. when writing a dynamic provider that has nested inputs/outputs. The latter declaration isn't
+# as pleasant to write by hand and is closer to what we emit in our provider codegen. The benefit
+# of the latter (more verbose) form is that it allows docstrings to be specified on the Python
+# property getters, which will show up in IDE tooltips when hovering over the property.
+#
+# Note the property getter/setter functions are empty in the latter (more verbose) declaration.
+# Empty getter functions are automatically replaced by the `@pulumi.getter` decorator with an
+# actual implementation, and the `@pulumi.input_type` decorator will automatically replace any
+# empty setter functions associated with a getter decorated with `@pulumi.getter` with an actual
+# implementation. Thus, the above is equivalent to this even more verbose form:
+#
+#   @pulumi.input_type
+#   class NestedArgs:
+#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
+#           pulumi.set(self, "firstArg", first_arg)
+#           pulumi.set(self, "secondArg", second_arg)
+#
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> pulumi.Input[str]:
+#           return pulumi.get(self, "firstArg")
+#
+#       @first_arg.setter
+#       def first_arg(self, value: pulumi.Input[str]):
+#           pulumi.set(self, "firstArg", value)
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[pulumi.Input[float]]:
+#           return pulumi.get(self, "secondArg")
+#
+#       @second_arg.setter
+#       def second_arg(self, value: Optional[pulumi.Input[float]]):
+#           pulumi.set(self, "secondArg", value)
+#
+#
+# Here's how the `Nested` output class can be declared:
+#
+#   @pulumi.output_type
+#   class Nested:
+#       first_arg: str = pulumi.property("firstArg")
+#       second_arg: Optional[float] = pulumi.property("secondArg")
+#
+#
+# This is equivalent to the more verbose form:
+#
+#   @pulumi.output_type
+#   class Nested:
+#       def __init__(self, values: Dict[str, Any]):
+#           self._values = values
+#
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> str:
+#           ...
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[float]:
+#           ...
+#
+# An `__init__()` method is added to the class by the `@pulumi.output_type` decorator (if an
+# `__init__()` method isn't already present on the class) which accepts a dictionary containing the
+# values of the object. When the output is resolved, the `Nested` class is instantiated and the
+# dict representing the object from the engine is passed to class's `__init__()` method.
+#
+# Output types only have property getters and the bodies can be empty. Empty getter functions are
+# replaced with implementations by the `@pulumi.getter` decorator.
+#
+# The above form is equivalent to:
+#
+#   @pulumi.output_type
+#   class Nested:
+#       def __init__(self, values: Dict[str, Any]):
+#           self._values = values
+#
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> str:
+#           return pulumi.get(self, "firstArg")
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[float]:
+#           return pulumi.get(self, "secondArg")
+#
+#
+# Output classes can also be a subclass of `dict`. This is used in our provider codegen to maintain
+# backwards compatibility, where previously these objects were instances of `dict`.
+#
+#   @pulumi.output_type
+#   class Nested(dict):
+#       first_arg: str = pulumi.property("firstArg")
+#       second_arg: Optional[float] = pulumi.property("secondArg")
+#
+#
+# The above output type, a subclass of `dict`, is equivalent to:
+#
+#   @pulumi.output_type
+#   class Nested(dict):
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> str:
+#           ...
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[float]:
+#           ...
+#
+#
+# Which is equivalent to:
+#
+#   @pulumi.output_type
+#   class Nested(dict):
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> str:
+#           return pulumi.get(self, "firstArg")
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[float]:
+#           return pulumi.get(self, "secondArg")
+#
+#
+# Note: When the class is a subclass of `dict`, no `__init__()` method is generated, as super
+# type's (dict's) `__init__()` will be used and calls to `pulumi.get` will get the values from
+# itself.
+#
+# An output class can optionally include a `_translate_property(self, prop)` method, which
+# `pulumi.get` will call to translate the Pulumi property name to a translated key name before
+# looking up the value in the dictionary. This is to provide backwards compatibility with our
+# provider generated code, where mapping tables are used to translate dict keys before being
+# returned to the program. This way, existing programs accessing the values as a dictionary will
+# continue to see the same translated key names as before, but updated programs can now access
+# the values using Python properties, which will always have thecorrect snake_case Python names.
+#
+#   @pulumi.output_type
+#   class Nested(dict):
+#       @property
+#       @pulumi.getter(name="firstArg")
+#       def first_arg(self) -> str:
+#           ...
+#
+#       @property
+#       @pulumi.getter(name="secondArg")
+#       def second_arg(self) -> Optional[float]:
+#           ...
+#
+#       def _translate_property(self, prop):
+#           return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+
 import builtins
 import functools
 import sys
