@@ -315,8 +315,8 @@ def set(self, name: str, value: Any) -> None:
 # Use the built-in `get_origin` and `get_args` functions on Python 3.8+,
 # otherwise fallback to downlevel implementations.
 if sys.version_info[:2] >= (3, 8):
-    get_origin = typing.get_origin
-    get_args = typing.get_args
+    get_origin = typing.get_origin  # pylint: disable=no-member
+    get_args = typing.get_args  # pylint: disable=no-member
 elif sys.version_info[:2] >= (3, 7):
     def get_origin(tp):
         if isinstance(tp, typing._GenericAlias):
