@@ -38,7 +38,7 @@ def _consts(fn: typing.Callable) -> tuple:
 
 
 # Precompute constants for each of the empty functions.
-_consts_empty_ = _consts(_empty)
+_consts_empty = _consts(_empty)
 _consts_empty_doc = _consts(_empty_doc)
 _consts_empty_lambda = _consts(_empty_lambda)
 _consts_empty_lambda_doc = _consts(_empty_lambda_doc)
@@ -50,7 +50,7 @@ def is_empty_function(fn: typing.Callable) -> bool:
     """
     consts = _consts(fn)
     return (
-        (fn.__code__.co_code == _empty.__code__.co_code and consts == _consts_empty_) or
+        (fn.__code__.co_code == _empty.__code__.co_code and consts == _consts_empty) or
         (fn.__code__.co_code == _empty_doc.__code__.co_code and consts == _consts_empty_doc) or
         (fn.__code__.co_code == _empty_lambda.__code__.co_code and consts == _consts_empty_lambda) or
         (fn.__code__.co_code == _empty_lambda_doc.__code__.co_code and consts == _consts_empty_lambda_doc)
