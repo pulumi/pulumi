@@ -32,6 +32,28 @@
 #
 # When the resource's outputs are resolved, the `Nested` class is instantiated.
 #
+# The resource could alternatively be declared using a Python property for nested_value rather than
+# using a class annotation:
+#
+#   class FooResource(pulumi.CustomResource):
+#       def __init__(self, resource_name, nested_value: pulumi.InputType[NestedArgs]):
+#           super().__init__("my:module:FooResource", resource_name, {"nestedValue": nested_value})
+#
+#       @property
+#       @pulumi.getter(name="nestedValue")
+#       def nested_value(self) -> pulumi.Output[Nested]:
+#           ...
+#
+#
+# Note the `nested_value` property getter function is empty. The `@pulumi.getter` decorator replaces
+# empty function bodies with an actual implementation. In this case, it replaces it with a body that
+# looks like:
+#
+#       @property
+#       @pulumi.getter(name="nestedValue")
+#       def nested_value(self) -> pulumi.Output[Nested]:
+#           pulumi.get(self, "nestedValue")
+#
 #
 # Here's how the `NestedArgs` input class can be declared:
 #
@@ -130,7 +152,8 @@
 #   @pulumi.output_type
 #   class Nested:
 #       def __init__(self, values: Dict[str, Any]):
-#           self._values = values
+#           for k, v in values.items():
+#               self.__dict__[k] = v
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
@@ -155,7 +178,8 @@
 #   @pulumi.output_type
 #   class Nested:
 #       def __init__(self, values: Dict[str, Any]):
-#           self._values = values
+#           for k, v in values.items():
+#               self.__dict__[k] = v
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
@@ -250,7 +274,6 @@ _PULUMI_NAME = "_pulumi_name"
 _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
 _TRANSLATE_PROPERTY = "_translate_property"
-_VALUES = "_values"
 
 
 def is_input_type(cls: type) -> bool:
@@ -358,7 +381,7 @@ def _add_eq(cls: type):
     # There's no need for a __ne__ method, since Python will call __eq__ and negate it.
     if not issubclass(cls, dict) and "__eq__" not in cls.__dict__:
         def eq(self, other):
-            return type(other) is type(self) and getattr(other, _VALUES, None) == getattr(self, _VALUES, None)
+            return type(other) is type(self) and other.__dict__ == self.__dict__
         setattr(cls, "__eq__", eq)
 
 
@@ -407,7 +430,7 @@ def input_type_to_dict(value: Any) -> Dict[str, Any]:
     Returns a dict for the input type.
     """
     assert is_input_type(type(value))
-    return dict(getattr(value, _VALUES, {}))
+    return value.__dict__.copy()
 
 
 def output_type(cls: Type[T]) -> Type[T]:
@@ -434,7 +457,8 @@ def output_type(cls: Type[T]) -> Type[T]:
         def init(self, value: dict) -> None:
             if not isinstance(value, dict):
                 raise TypeError('Expected value to be a dict')
-            setattr(self, _VALUES, value)
+            for k, v in value.items():
+                self.__dict__[k] = v
         setattr(cls, "__init__", init)
 
     # Create Python properties.
@@ -454,6 +478,9 @@ def getter(_fn=None, *, name: Optional[str] = None):
     name is the Pulumi property name. If not set, the name of the function is used.
     """
     def decorator(fn: Callable) -> Callable:
+        if not callable(fn):
+            raise TypeError("Expected fn to be callable")
+
         # If name isn't specified, use the name of the function.
         pulumi_name = name if name is not None else fn.__name__
         if _utils.is_empty_function(fn):
@@ -486,10 +513,8 @@ def get(self, name: str) -> Any:
     if not isinstance(name, str):
         raise TypeError("Expected name to be a string")
 
-    values: Optional[Dict[str, Any]] = getattr(self, _VALUES, None)
-
     if hasattr(type(self), _PULUMI_INPUT_TYPE):
-        return values.get(name) if values is not None else None
+        return self.__dict__.get(name)
 
     if hasattr(type(self), _PULUMI_OUTPUT_TYPE):
         cls = type(self)
@@ -507,7 +532,12 @@ def get(self, name: str) -> Any:
             # in case the type has a `get` property.
             return getattr(dict, "get")(self, translate(self, name))
 
-        return values.get(translate(self, name)) if values is not None else None
+        return self.__dict__.get(translate(self, name))
+
+    # pylint: disable=import-outside-toplevel
+    from . import Resource
+    if isinstance(self, Resource):
+        return self.__dict__.get(name)
 
     raise AssertionError("get can only be used with classes decorated with @input_type or @output_type")
 
@@ -527,11 +557,7 @@ def set(self, name: str, value: Any) -> None:
     if not hasattr(type(self), _PULUMI_INPUT_TYPE):
         raise AssertionError("set can only be used with classes decorated with @input_type")
 
-    values = getattr(self, _VALUES, None)
-    if values is None:
-        values = dict()
-        setattr(self, _VALUES, values)
-    values[name] = value
+    self.__dict__[name] = value
 
 
 # Use the built-in `get_origin` and `get_args` functions on Python 3.8+,
@@ -576,33 +602,31 @@ def _is_optional_type(tp):
     return False
 
 
-def output_type_types(output_type_cls: type) -> Dict[str, type]:
+def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
-    Returns a dict of Pulumi names to types for the output type.
+    Returns a dict of Pulumi names to types for a type.
     """
-    assert is_output_type(output_type_cls)
-
     # We use get_type_hints() below on each Python property to resolve the getter function's
     # return type annotation, resolving forward references.
     #
-    # We pass the output_type_cls's globals to get_type_hints() to ensure any other referenced
-    # output types (which may exist in other modules of the output_type_cls, like `.outputs` or
-    # `...meta.v1.outputs`) can be resolved. If we didn't pass the output_type_cls's globals,
+    # We pass the cls's globals to get_type_hints() to ensure any other referenced
+    # output types (which may exist in other modules of the cls, like `.outputs` or
+    # `...meta.v1.outputs`) can be resolved. If we didn't pass the cls's globals,
     # get_type_hints() would use the __globals__ of the function, which likely does not contain
     # the necessary references, as the function was likely created internally inside this module
     # (either via the @output_type decorator, which converts class annotations into Python
     # properties, or via the @getter decorator, which replaces empty getter functions) and
     # therefore has __globals__ of this SDK module.
     globalns = None
-    if getattr(output_type_cls, '__module__', None) in sys.modules:
-        globalns = dict(sys.modules[output_type_cls.__module__].__dict__)
+    if getattr(cls, '__module__', None) in sys.modules:
+        globalns = dict(sys.modules[cls.__module__].__dict__)
 
     # Build-up a dictionary of Pulumi property names to types by looping through all the
     # Python properties on the class that have a getter marked as a Pulumi property getter,
     # and looking at the getter function's return type annotation.
     # Types that are Output[T] and Optional[T] are unwrapped to just T.
     result: Dict[str, type] = {}
-    for v in output_type_cls.__dict__.values():
+    for v in cls.__dict__.values():
         if isinstance(v, builtins.property):
             prop = cast(builtins.property, v)
             if hasattr(prop.fget, _PULUMI_GETTER) and hasattr(prop.fget, _PULUMI_NAME):
@@ -615,27 +639,26 @@ def output_type_types(output_type_cls: type) -> Dict[str, type]:
     return result
 
 
-def resource_types(resource_cls: type) -> Dict[str, type]:
+def _types_from_annotations(cls: type) -> Dict[str, type]:
     """
-    Returns a dict of Pulumi names to types for the resource.
+    Returns a dict of Pulumi names to types for a type.
     """
-
-    # Get the properties from the class's type annotations.
-    props = _properties_from_annotations(resource_cls)
+    # Get the "Pulumi properties" from the class's type annotations.
+    props = _properties_from_annotations(cls)
     if not props:
         return {}
 
-    # We want resolved types for just the resource_cls's type annotations (not base classes),
+    # We want resolved types for just the cls's type annotations (not base classes),
     # but get_type_hints() looks at the annotations of the class and its base classes.
-    # So create a type dynamically that has the annotations from resource_cls but doesn't have
+    # So create a type dynamically that has the annotations from cls but doesn't have
     # any base classes, and pass the dynamically created type to get_type_hints().
-    dynamic_cls_attrs = {"__annotations__": resource_cls.__dict__.get('__annotations__', {})}
-    dynamic_cls = type(resource_cls.__name__, (object,), dynamic_cls_attrs)
+    dynamic_cls_attrs = {"__annotations__": cls.__dict__.get('__annotations__', {})}
+    dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
-    # Pass along globals for the resource_cls, to help resolve forward references.
+    # Pass along globals for the cls, to help resolve forward references.
     globalns = None
-    if getattr(resource_cls, '__module__', None) in sys.modules:
-        globalns = dict(sys.modules[resource_cls.__module__].__dict__)
+    if getattr(cls, '__module__', None) in sys.modules:
+        globalns = dict(sys.modules[cls.__module__].__dict__)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
@@ -652,6 +675,28 @@ def resource_types(resource_cls: type) -> Dict[str, type]:
         prop.name: _unwrap_type(cls_hints[name])
         for name, prop in props.items()
     }
+
+
+def output_type_types(output_type_cls: type) -> Dict[str, type]:
+    """
+    Returns a dict of Pulumi names to types for the output type.
+    """
+    assert is_output_type(output_type_cls)
+    return _types_from_py_properties(output_type_cls)
+
+
+def resource_types(resource_cls: type) -> Dict[str, type]:
+    """
+    Returns a dict of Pulumi names to types for the resource.
+    """
+    # First, get the "Pulumi properties" from the class's type annotations.
+    types_from_annotations = _types_from_annotations(resource_cls)
+
+    # Next, get the types from the class's Python properties.
+    types_from_py_properties = _types_from_py_properties(resource_cls)
+
+    # Return the merged dictionaries.
+    return {**types_from_annotations, **types_from_py_properties}
 
 
 def unwrap_optional_type(val: type) -> type:
