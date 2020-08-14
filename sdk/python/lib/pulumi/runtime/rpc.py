@@ -369,7 +369,7 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
         resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known, resolve_is_secret)
-        res.__setattr__(name, Output({res}, resolve_value, resolve_is_known, resolve_is_secret))
+        res.__dict__[name] = Output({res}, resolve_value, resolve_is_known, resolve_is_secret)
 
     return resolvers
 

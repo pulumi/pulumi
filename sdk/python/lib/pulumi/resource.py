@@ -18,7 +18,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 import copy
 
 from .runtime import known_types
-from .runtime.resource import _register_resource, register_resource_outputs, _read_resource
+from .runtime.resource import register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -561,12 +561,6 @@ class Resource:
     Resource represents a class whose CRUD operations are implemented by a provider plugin.
     """
 
-    urn: 'Output[str]'
-    """
-    The stable, logical URN used to distinctly address a resource, both before and after
-    deployments.
-    """
-
     _providers: Mapping[str, 'ProviderResource']
     """
     The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -709,18 +703,17 @@ class Resource:
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            res = cast('CustomResource', self)
-            result = _read_resource(res, t, name, props, opts)
-            res.urn = result.urn
-            assert result.id is not None
-            res.id = result.id
+            read_resource(cast('CustomResource', self), t, name, props, opts)
         else:
-            result = _register_resource(self, t, name, custom, props, opts)
-            self.urn = result.urn
-            if custom:
-                assert result.id is not None
-                res = cast('CustomResource', self)
-                res.id = result.id
+            register_resource(self, t, name, custom, props, opts)
+
+    @property
+    def urn(self) -> 'Output[str]':
+        """
+        The stable, logical URN used to distinctly address a resource, both before and after
+        deployments.
+        """
+        return self.__dict__["urn"]
 
     def _convert_providers(self, provider: Optional['ProviderResource'], providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
         if provider is not None:
@@ -787,12 +780,6 @@ class CustomResource(Resource):
     dynamically loaded plugin for the defining package.
     """
 
-    id: 'Output[str]'
-    """
-    id is the provider-assigned unique ID for this managed resource.  It is set during
-    deployments and may be missing (undefined) during planning phases.
-    """
-
     __pulumi_type: str
     """
     Private field containing the type ID for this object. Useful for implementing `isInstance` on
@@ -813,6 +800,14 @@ class CustomResource(Resource):
         """
         Resource.__init__(self, t, name, True, props, opts)
         self.__pulumi_type = t
+
+    @property
+    def id(self) -> 'Output[str]':
+        """
+        id is the provider-assigned unique ID for this managed resource.  It is set during
+        deployments and may be missing (undefined) during planning phases.
+        """
+        return self.__dict__["id"]
 
 
 class ComponentResource(Resource):
