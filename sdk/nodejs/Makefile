@@ -31,6 +31,9 @@ build_plugin::
 
 build:: build_package build_plugin
 
+binary::
+	go build -o bin/pulumi-language-nodejs -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
 install_package:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"

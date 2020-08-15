@@ -47,9 +47,9 @@ jobs:
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
-        run: make -C sdk/${{ matrix.language }} build
+        run: make -C sdk/${{ matrix.language }} binary
       - uses: actions/upload-artifact@v2
         with:
           name: pulumi-language-${{ matrix.language}}
-          path: ${GOPATH}/bin/pulumi-language-${{ matrix.language}}
+          path: sdk/${{ matrix.language }}/bin/pulumi-language-${{ matrix.language}}
 
