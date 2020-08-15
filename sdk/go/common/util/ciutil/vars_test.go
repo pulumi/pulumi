@@ -31,33 +31,39 @@ func TestDetectVars(t *testing.T) {
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AzurePipelines: {
 			"TRAVIS":        "",
+			"GITHUB_WORKFLOW": "",
 			"TF_BUILD":      "true",
 			"BUILD_BUILDID": buildNumber,
 		},
 		CircleCI: {
 			"TRAVIS":           "",
 			"CIRCLECI":         "true",
+			"GITHUB_WORKFLOW": "",
 			"CIRCLE_BUILD_NUM": buildNumber,
 		},
 		Codefresh: {
 			"TRAVIS":       "",
 			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
+			"GITHUB_WORKFLOW": "",
 			"CF_BUILD_ID":  buildNumber,
 		},
 		GenericCI: {
 			"TRAVIS":             "",
 			"PULUMI_CI_SYSTEM":   "generic-ci-system",
+			"GITHUB_WORKFLOW": "",
 			"PULUMI_CI_BUILD_ID": buildNumber,
 		},
 		GitLab: {
 			"TRAVIS":          "",
 			"GITLAB_CI":       "true",
+			"GITHUB_WORKFLOW": "",
 			"CI_PIPELINE_ID":  buildID,
 			"CI_PIPELINE_IID": buildNumber,
 		},
 		Travis: {
 			"TRAVIS":            "true",
 			"TRAVIS_JOB_ID":     buildID,
+			"GITHUB_WORKFLOW": "",
 			"TRAVIS_JOB_NUMBER": buildNumber,
 		},
 	}
@@ -111,10 +117,12 @@ func TestDetectVarsBaseCI(t *testing.T) {
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AppVeyor: {
 			"TRAVIS":   "",
+			"GITHUB_WORKFLOW": "",
 			"APPVEYOR": "true",
 		},
 		Codeship: {
 			"TRAVIS":  "",
+			"GITHUB_WORKFLOW": "",
 			"CI_NAME": "codeship",
 		},
 	}
