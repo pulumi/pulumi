@@ -39,7 +39,7 @@ import (
 type ApplierOptions struct {
 	// DryRun indicates if the update should not change any resource state and instead just preview changes.
 	DryRun bool
-	// ShowLink indicates if a link to the update persisted result should be displayed.
+	// ShowLink indicates if a link to the update persisted result can be displayed.
 	ShowLink bool
 }
 
