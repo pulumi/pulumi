@@ -48,14 +48,16 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: pulumi-language-${{ matrix.language}}
-          path: /usr/local/bin/pulumi-language-${{ matrix.language}}
+          path: ~/bin/pulumi-language-${{ matrix.language}}
+      - name: update path
+        run: echo "::add-path::~/bin"
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
         run: make -C sdk/${{ matrix.language }} test_all
 
   build_langhost:
-    name: Build Language Hosts
+    name: Build LangHost Binary
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
