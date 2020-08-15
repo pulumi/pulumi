@@ -52,6 +52,8 @@ jobs:
           path: sdk/${{ matrix.language}}
       - name: update path
         run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
+      - name: restore binary permissions
+        run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-${{ matrix.language }}" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
