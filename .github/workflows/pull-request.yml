@@ -47,17 +47,17 @@ jobs:
         run: git fetch --quiet --prune --unshallow --tags
       - uses: actions/download-artifact@v2
         with:
-          name: pulumi-language-${{ matrix.language}}
-          path: ~/bin/pulumi-language-${{ matrix.language}}
+          name: pulumi-${{ matrix.language}}
+          path: sdk/${{ matrix.language}}
       - name: update path
-        run: echo "::add-path::~/bin"
+        run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
-        run: make -C sdk/${{ matrix.language }} test_all
+        run: make -C sdk/${{ matrix.language }} only_test
 
-  build_langhost:
-    name: Build LangHost Binary
+  build_sdk:
+    name: Build SDK
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
@@ -97,9 +97,9 @@ jobs:
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Build SDK
-        run: make -C sdk/${{ matrix.language }} binary
+        run: make -C sdk/${{ matrix.language }} build
       - uses: actions/upload-artifact@v2
         with:
-          name: pulumi-language-${{ matrix.language}}
-          path: sdk/${{ matrix.language }}/bin/pulumi-language-${{ matrix.language}}
+          name: pulumi-${{ matrix.language}}
+          path: sdk/${{ matrix.language }}
 

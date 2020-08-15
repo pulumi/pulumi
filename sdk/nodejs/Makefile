@@ -48,14 +48,17 @@ istanbul_tests:: build
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
 
-sxs_tests:: build
+sxs_tests:: 
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
 	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 
-test_fast:: sxs_tests istanbul_tests
+only_test:: sxs_tests istanbul_tests
+	$(GO_TEST) ${PROJECT_PKGS}
+
+test_fast:: build sxs_tests istanbul_tests
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests istanbul_tests
+test_all:: build sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist:: build

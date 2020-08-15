@@ -49,16 +49,19 @@ install:: build install_plugin
 binary::
 	go build -o bin/pulumi-language-dotnet -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-dotnet_test:: install
+dotnet_test::
 	# include the version prefix/suffix to avoid generating a separate nupkg file
 	dotnet test /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
 	# work around a bug where running `dotnet test` disables console stdinput display
 	# stty echo
 
-test_fast:: dotnet_test
+only_test:: dotnet_test
+	$(GO_TEST) ${PROJECT_PKGS}
+
+test_fast:: install dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: dotnet_test
+test_all:: install dotnet_test
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
