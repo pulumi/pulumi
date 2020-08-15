@@ -153,7 +153,7 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-	@if [ -e 'package.json' ]; then echo "yarn instal"; rm -rf node_moduled & yarn install; fi
+	@if [ -e 'package.json' ]; then echo "yarn install"; rm -rf node_modules & yarn install; fi
 build::
 	$(call STEP_MESSAGE)
 
