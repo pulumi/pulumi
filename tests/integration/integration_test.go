@@ -450,6 +450,22 @@ func TestPermaLinkSuppressed(t *testing.T) {
 	})
 }
 
+// TestPermaLink ensures that a permalink is displayed by default
+func TestPermaLink(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        false,
+		Verbose:      true,
+		Stdout:       stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.Contains(t, output, "PermaLink:")
+		},
+	})
+}
+
 // TestStackParenting tests out that stacks and components are parented correctly.
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
