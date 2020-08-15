@@ -46,6 +46,7 @@ jobs:
       - name: Fetch Git Tags
         run: git fetch --quiet --prune --unshallow --tags
       - uses: actions/download-artifact@v2
+        id: download
         with:
           name: pulumi-${{ matrix.language}}
           path: sdk/${{ matrix.language}}
