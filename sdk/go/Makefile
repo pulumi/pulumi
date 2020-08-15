@@ -13,8 +13,10 @@ gen::
 build:: gen
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-binary:: gen
+build_binary:: gen
 	go build -o bin/pulumi-language-go -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+ci_build:: gen build_binary
 
 install_plugin::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

@@ -23,8 +23,10 @@ build_plugin::
 
 build:: build_package build_plugin
 
-binary::
+build_binary::
 	go build -o bin/pulumi-language-python -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+ci_build:: build_package build_binary
 
 lint::
 	pipenv run mypy ./lib/pulumi --config-file=mypy.ini

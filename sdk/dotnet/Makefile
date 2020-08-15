@@ -23,7 +23,21 @@ TESTPARALLELISM := 10
 
 include ../../build/common.mk
 
-build::
+build_package::
+	# From the nuget docs:
+	#
+	# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
+	# Technically speaking, you can use any string after the hyphen and NuGet will treat the package as
+	# pre-release. NuGet then displays the full version number in the applicable UI, leaving consumers
+	# to interpret the meaning for themselves.
+	#
+	# With this in mind, it's generally good to follow recognized naming conventions such as the
+	# following:
+	#
+	#  -alpha: Alpha release, typically used for work-in-progress and experimentation
+	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
+
+build:: build_package
 	# From the nuget docs:
 	#
 	# Pre-release versions are then denoted by appending a hyphen and a string after the patch number.
@@ -35,7 +49,6 @@ build::
 	# following:
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
@@ -46,8 +59,10 @@ install:: build install_plugin
 	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	find . -name '*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
-binary::
+build_binary::
 	go build -o bin/pulumi-language-dotnet -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+ci_build:: build_package build_binary
 
 dotnet_test::
 	# include the version prefix/suffix to avoid generating a separate nupkg file
