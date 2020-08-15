@@ -8,7 +8,6 @@ env:
 jobs:
   build_sdk:
     name: Build SDK
-    needs: build_binaries
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
