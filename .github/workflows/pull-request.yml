@@ -58,8 +58,6 @@ jobs:
         run: make -C sdk/${{ matrix.language }} ensure
       - name: Run tests
         run: make -C sdk/${{ matrix.language }} only_test
-        env:
-          PULUMI_DISABLE_CI_DETECTION: true
 
   build_sdk:
     name: Build SDK

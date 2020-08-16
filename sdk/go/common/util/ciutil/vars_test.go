@@ -30,40 +30,42 @@ func TestDetectVars(t *testing.T) {
 		// except for the Travis one itself.
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AzurePipelines: {
-			"TRAVIS":        "",
-			"GITHUB_WORKFLOW": "",
-			"TF_BUILD":      "true",
-			"BUILD_BUILDID": buildNumber,
+			"TRAVIS":            "",
+			"GITHUB_RUN_NUMBER": "",
+			"TF_BUILD":          "true",
+			"BUILD_BUILDID":     buildNumber,
 		},
 		CircleCI: {
-			"TRAVIS":           "",
-			"CIRCLECI":         "true",
-			"GITHUB_WORKFLOW": "",
-			"CIRCLE_BUILD_NUM": buildNumber,
+			"TRAVIS":            "",
+			"CIRCLECI":          "true",
+			"GITHUB_RUN_NUMBER": "",
+			"CIRCLE_BUILD_NUM":  buildNumber,
 		},
 		Codefresh: {
-			"TRAVIS":       "",
-			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
-			"GITHUB_WORKFLOW": "",
-			"CF_BUILD_ID":  buildNumber,
+			"TRAVIS":            "",
+			"CF_BUILD_URL":      "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
+			"GITHUB_RUN_NUMBER": "",
+			"CF_BUILD_ID":       buildNumber,
 		},
 		GenericCI: {
 			"TRAVIS":             "",
 			"PULUMI_CI_SYSTEM":   "generic-ci-system",
-			"GITHUB_WORKFLOW": "",
+			"GITHUB_RUN_NUMBER":  "",
 			"PULUMI_CI_BUILD_ID": buildNumber,
 		},
 		GitLab: {
-			"TRAVIS":          "",
-			"GITLAB_CI":       "true",
-			"GITHUB_WORKFLOW": "",
-			"CI_PIPELINE_ID":  buildID,
-			"CI_PIPELINE_IID": buildNumber,
+			"TRAVIS":            "",
+			"GITLAB_CI":         "true",
+			"GITHUB_RUN_NUMBER": "",
+			"GITHUB_RUN_ID":     "",
+			"CI_PIPELINE_ID":    buildID,
+			"CI_PIPELINE_IID":   buildNumber,
 		},
 		Travis: {
 			"TRAVIS":            "true",
 			"TRAVIS_JOB_ID":     buildID,
-			"GITHUB_WORKFLOW": "",
+			"GITHUB_RUN_NUMBER": "",
+			"GITHUB_RUN_ID":     "",
 			"TRAVIS_JOB_NUMBER": buildNumber,
 		},
 	}
@@ -116,14 +118,14 @@ func TestDetectVarsBaseCI(t *testing.T) {
 		// except for the Travis one itself.
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AppVeyor: {
-			"TRAVIS":   "",
+			"TRAVIS":          "",
 			"GITHUB_WORKFLOW": "",
-			"APPVEYOR": "true",
+			"APPVEYOR":        "true",
 		},
 		Codeship: {
-			"TRAVIS":  "",
+			"TRAVIS":          "",
 			"GITHUB_WORKFLOW": "",
-			"CI_NAME": "codeship",
+			"CI_NAME":         "codeship",
 		},
 	}
 
