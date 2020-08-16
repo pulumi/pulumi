@@ -56,8 +56,10 @@ jobs:
         run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-${{ matrix.language }}" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
-      - name: Build SDK
+      - name: Run tests
         run: make -C sdk/${{ matrix.language }} only_test
+        env:
+          PULUMI_DISABLE_CI_DETECTION: true
 
   build_sdk:
     name: Build SDK
