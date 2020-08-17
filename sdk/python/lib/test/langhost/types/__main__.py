@@ -23,8 +23,8 @@ class AdditionalArgs:
     second_value: Optional[pulumi.Input[float]] = pulumi.property("secondValue")
 
     def __init__(self, first_value: pulumi.Input[str], second_value: Optional[pulumi.Input[float]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
 
 @pulumi.output_type
 class Additional(dict):
@@ -50,8 +50,8 @@ res2 = AdditionalResource("testres2", additional=AdditionalArgs(
 # Note: the output dict's keys are exactly what is returned from the engine since the resource
 # does not do any translation of property names.
 res3 = AdditionalResource("testres3", additional=AdditionalArgs(
-    first_value=res.additional["firstValue"],
-    second_value=res.additional["secondValue"],
+    first_value=res.additional["first_value"],
+    second_value=res.additional["second_value"],
 ))
 
 # Create a resource using a dict as the input.
@@ -81,8 +81,8 @@ class ExtraArgs:
     second_value: Optional[pulumi.Input[float]] = pulumi.property("secondValue")
 
     def __init__(self, first_value: pulumi.Input[str], second_value: Optional[pulumi.Input[float]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
 
 @pulumi.output_type
 class Extra(dict):
@@ -137,8 +137,8 @@ class SupplementaryArgs:
                  second_value: Optional[pulumi.Input[float]] = None,
                  third: Optional[pulumi.Input[str]] = None,
                  fourth: Optional[pulumi.Input[str]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
         pulumi.set(self, "third", third)
         pulumi.set(self, "fourth", fourth)
 
@@ -150,17 +150,17 @@ class SupplementaryArgs:
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
-        pulumi.set(self, "firstValue", value)
+        pulumi.set(self, "first_value", value)
 
     # Property with explicitly specified getter/setter bodies.
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[pulumi.Input[float]]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     @second_value.setter
     def second_value(self, value: Optional[pulumi.Input[float]]):
-        pulumi.set(self, "secondValue", value)
+        pulumi.set(self, "second_value", value)
 
     # Single word property name that doesn't require a name to be
     # passed to the getter decorator.
@@ -181,12 +181,18 @@ class SupplementaryArgs:
     def fourth(self) -> Optional[pulumi.Input[str]]:
         ...
 
-    @third.setter
+    @fourth.setter
     def fourth(self, value: Optional[pulumi.Input[str]]):
         ...
 
 @pulumi.output_type
 class Supplementary(dict):
+    def __init__(self, first_value: str, second_value: Optional[float], third: str, fourth: str):
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
+        pulumi.set(self, "third", third)
+        pulumi.set(self, "fourth", fourth)
+
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
@@ -197,7 +203,7 @@ class Supplementary(dict):
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     # Single word property name that doesn't require a name to be
     # passed to the getter decorator.
@@ -237,11 +243,9 @@ res10 = SupplementaryResource("testres10", supplementary=SupplementaryArgs(
 ))
 
 # Create a resource using the output object of another resource, accessing the output as a dict.
-# Note: the output dict's keys are exactly what is returned from the engine since MyResource
-# does not do any translation of property names.
 res11 = SupplementaryResource("testres11", supplementary=SupplementaryArgs(
-    first_value=res9.supplementary["firstValue"],
-    second_value=res9.supplementary["secondValue"],
+    first_value=res9.supplementary["first_value"],
+    second_value=res9.supplementary["second_value"],
     third=res9.supplementary["third"],
     fourth=res9.supplementary["fourth"],
 ))
@@ -266,8 +270,8 @@ class AncillaryArgs:
                  second_value: Optional[pulumi.Input[float]] = None,
                  third: Optional[pulumi.Input[str]] = None,
                  fourth: Optional[pulumi.Input[str]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
         pulumi.set(self, "third", third)
         pulumi.set(self, "fourth", fourth)
 
@@ -279,17 +283,17 @@ class AncillaryArgs:
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
-        pulumi.set(self, "firstValue", value)
+        pulumi.set(self, "first_value", value)
 
     # Property with explicitly specified getter/setter bodies.
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[pulumi.Input[float]]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     @second_value.setter
     def second_value(self, value: Optional[pulumi.Input[float]]):
-        pulumi.set(self, "secondValue", value)
+        pulumi.set(self, "second_value", value)
 
     # Single word property name that doesn't require a name to be
     # passed to the getter decorator.
@@ -310,12 +314,18 @@ class AncillaryArgs:
     def fourth(self) -> Optional[pulumi.Input[str]]:
         ...
 
-    @third.setter
+    @fourth.setter
     def fourth(self, value: Optional[pulumi.Input[str]]):
         ...
 
 @pulumi.output_type
 class Ancillary(dict):
+    def __init__(self, first_value: str, second_value: Optional[float], third: str, fourth: str):
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
+        pulumi.set(self, "third", third)
+        pulumi.set(self, "fourth", fourth)
+
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
@@ -326,7 +336,7 @@ class Ancillary(dict):
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     # Single word property name that doesn't require a name to be
     # passed to the getter decorator.
@@ -339,7 +349,7 @@ class Ancillary(dict):
     # passed to the getter decorator, this time using the decorator with
     # parens.
     @property
-    @pulumi.getter
+    @pulumi.getter()
     def fourth(self) -> str:
         ...
 
@@ -360,7 +370,7 @@ class AncillaryResource(pulumi.CustomResource):
 
 
 # Create a resource with input object.
-res13 = AncillaryResource("testres13", ancillary=SupplementaryArgs(
+res13 = AncillaryResource("testres13", ancillary=AncillaryArgs(
     first_value="baz",
     second_value=500,
     third="third value!",
@@ -368,7 +378,7 @@ res13 = AncillaryResource("testres13", ancillary=SupplementaryArgs(
 ))
 
 # Create a resource using the output object of another resource.
-res14 = AncillaryResource("testres14", ancillary=SupplementaryArgs(
+res14 = AncillaryResource("testres14", ancillary=AncillaryArgs(
     first_value=res13.ancillary.first_value,
     second_value=res13.ancillary.second_value,
     third=res13.ancillary.third,
@@ -377,7 +387,7 @@ res14 = AncillaryResource("testres14", ancillary=SupplementaryArgs(
 
 # Create a resource using the output object of another resource, accessing the output as a dict.
 # Note: the output dict's keys are translated keys.
-res15 = AncillaryResource("testres15", ancillary=SupplementaryArgs(
+res15 = AncillaryResource("testres15", ancillary=AncillaryArgs(
     first_value=res13.ancillary["first_value"],
     second_value=res13.ancillary["second_value"],
     third=res13.ancillary["third"],

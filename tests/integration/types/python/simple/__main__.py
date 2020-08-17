@@ -9,16 +9,12 @@ from pulumi.dynamic import Resource, ResourceProvider, CreateResult
 @input_type
 class AdditionalArgs:
     first_value: Input[str] = property("firstValue")
-    second_value: Optional[Input[float]] = property("secondValue")
-
-    def __init__(self, first_value: Input[str], second_value: Optional[Input[float]] = None):
-        self.first_value = first_value
-        self.second_value = second_value
+    second_value: Optional[Input[float]] = property("secondValue", default=None)
 
 @output_type
 class Additional(dict):
     first_value: str = property("firstValue")
-    second_value: Optional[float] = property("secondValue")
+    second_value: Optional[float] = property("secondValue", default=None)
 
 current_id = 0
 

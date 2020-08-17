@@ -415,15 +415,23 @@ def translate_output_properties(output: Any,
                     get_type = lambda k: args[1]
             else:
                 raise AssertionError(f"Unexpected type; expected 'dict' got '{typ}'")
-        translated = {
+
+        # If typ is an output type, instantiate it. We do not translate the top-level keys,
+        # as the output type will take care of doing that if it has a _translate_property()
+        # method.
+        if typ and _types.is_output_type(typ):
+            translated_values = {
+                k: translate_output_properties(v, output_transformer, get_type(k))
+                for k, v in output.items()
+            }
+            return _types.output_type_from_dict(typ, translated_values)
+
+        # Otherwise, return the fully translated dict.
+        return {
             output_transformer(k):
                 translate_output_properties(v, output_transformer, get_type(k))
             for k, v in output.items()
         }
-        # If typ is an output type, instantiate it, passing the translated dict as an
-        # arg to the output type's __init__() method, otherwise, return the translated
-        # dict.
-        return typ(translated) if typ and _types.is_output_type(typ) else translated
 
     if isinstance(output, list):
         element_type: Optional[type] = None
