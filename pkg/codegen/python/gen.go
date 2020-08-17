@@ -585,22 +585,9 @@ func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
 	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
-	// Produce a private output type that we can pass to invoke to be instantiated along with any nested outputs.
-	// Ideally this would just be the single public class, but our output types expect to have an __init__()
-	// method that accepts a dict and the existing type has an __init__() that accepts individual arguments.
-	// So instead, we'll pass the private class to invoke, and then copy its values into the existing public
-	// class.
-	fmt.Fprint(w, "\n")
-	fmt.Fprintf(w, "@pulumi.output_type\n")
-	fmt.Fprintf(w, "class _%s:\n", baseName)
-	for _, prop := range obj.Properties {
-		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
-		fmt.Fprintf(w, "    %s: %s = pulumi.property(\"%s\")\n", pname, ty, prop.Name)
-	}
-
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "\n\n")
+	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
@@ -624,9 +611,26 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
 		}
 
-		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
-		fmt.Fprintf(w, "        __self__.%[1]s = %[1]s\n", pname)
-		printComment(w, prop.Comment, "        ")
+		// Now perform the assignment.
+		fmt.Fprintf(w, "        pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
+	}
+	fmt.Fprintf(w, "\n")
+
+	// Write out Python property getters for each property.
+	for _, prop := range obj.Properties {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        ...\n\n")
 	}
 
 	// Produce an awaitable subclass.
@@ -710,16 +714,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
-	for _, prop := range res.Properties {
-		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, false, false, !prop.IsRequired, false)
-		fmt.Fprintf(w, "    %s: pulumi.Output[%s] = pulumi.property(\"%s\")\n", pname, ty, prop.Name)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, "    ")
-		}
-		fmt.Fprintf(w, "\n")
-	}
-
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
@@ -899,6 +893,23 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
+	// Write out Python properties for each of the resource's properties.
+	for _, prop := range res.Properties {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, false, false, !prop.IsRequired, false)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        ...\n\n")
+	}
+
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
 	fmt.Fprintf(w,
@@ -1040,7 +1051,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if fun.Outputs != nil {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
-		typ = fmt.Sprintf(", typ=_%s", baseName)
+		typ = fmt.Sprintf(", typ=%s", baseName)
 	}
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
 	fmt.Fprintf(w, "\n")
@@ -1597,21 +1608,18 @@ func initParamName(name string) string {
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapInput bool) error {
-	props := obj.Properties
-	if input {
-		// Sort required props first.
-		props = make([]*schema.Property, len(props))
-		copy(props, obj.Properties)
-		sort.Slice(props, func(i, j int) bool {
-			pi, pj := props[i], props[j]
-			switch {
-			case pi.IsRequired != pj.IsRequired:
-				return pi.IsRequired && !pj.IsRequired
-			default:
-				return pi.Name < pj.Name
-			}
-		})
-	}
+	// Sort required props first.
+	props := make([]*schema.Property, len(obj.Properties))
+	copy(props, obj.Properties)
+	sort.Slice(props, func(i, j int) bool {
+		pi, pj := props[i], props[j]
+		switch {
+		case pi.IsRequired != pj.IsRequired:
+			return pi.IsRequired && !pj.IsRequired
+		default:
+			return pi.Name < pj.Name
+		}
+	})
 
 	decorator := "@pulumi.output_type"
 	if input {
@@ -1659,88 +1667,83 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		}
 	}
 
-	if input {
-		// Generate an __init__ method.
-		fmt.Fprintf(w, "    def __init__(__self__")
-		// Bare `*` argument to force callers to use named arguments.
-		if len(props) > 0 {
-			fmt.Fprintf(w, ", *")
-		}
-		for _, prop := range props {
-			pname := PyName(prop.Name)
-			ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
-			var defaultValue string
-			if !prop.IsRequired {
-				defaultValue = " = None"
-			}
-			fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
-		}
-		fmt.Fprintf(w, "):\n")
-		mod.genTypeDocstring(w, obj.Comment, props, wrapInput)
-		if len(props) == 0 {
-			fmt.Fprintf(w, "        pass\n")
-		}
-		for _, prop := range props {
-			pname := PyName(prop.Name)
-			var arg interface{}
-			var err error
-
-			// Fill in computed defaults for arguments.
-			if prop.DefaultValue != nil {
-				dv, err := getDefaultValue(prop.DefaultValue, prop.Type)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(w, "        if %s is None:\n", pname)
-				fmt.Fprintf(w, "            %s = %s\n", pname, dv)
-			}
-
-			// Check that the property isn't deprecated.
-			if prop.DeprecationMessage != "" {
-				escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-				fmt.Fprintf(w, "        if %s is not None:\n", pname)
-				fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
-				fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
-			}
-
-			// And add it to the dictionary.
-			arg = pname
-
-			if prop.ConstValue != nil {
-				arg, err = getConstValue(prop.ConstValue)
-				if err != nil {
-					return err
-				}
-			}
-
-			fmt.Fprintf(w, "        pulumi.set(__self__, %q, %s)\n", prop.Name, arg)
-		}
-		fmt.Fprintf(w, "\n")
-
-		// Generate properties. Input types have getters and setters.
-		for _, prop := range props {
-			genProp(w, prop, true /*setter*/)
-		}
-	} else {
-		if len(props) == 0 {
-			fmt.Fprintf(w, "    pass\n\n\n")
-			return nil
-		}
-
-		// Generate properties. Output types only have getters.
-		for _, prop := range props {
-			genProp(w, prop, false /*setter*/)
-		}
-
-		if !mod.details(obj).functionType {
-			// The generated output class is a subclass of dict and contains translated keys
-			// to maintain backwards compatibility. When this function is present, property
-			// getters will use it to translate the key from the Pulumi name before looking
-			// up the value in the dictionary.
-			fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
-			fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
-		}
+	// Generate an __init__ method.
+	fmt.Fprintf(w, "    def __init__(__self__")
+	// Bare `*` argument to force callers to use named arguments.
+	if len(props) > 0 {
+		fmt.Fprintf(w, ", *")
 	}
+	for _, prop := range props {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		var defaultValue string
+		if !prop.IsRequired {
+			defaultValue = " = None"
+		}
+		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
+	}
+	fmt.Fprintf(w, "):\n")
+	mod.genTypeDocstring(w, obj.Comment, props, wrapInput)
+	if len(props) == 0 {
+		fmt.Fprintf(w, "        pass\n")
+	}
+	for _, prop := range props {
+		pname := PyName(prop.Name)
+		var arg interface{}
+		var err error
+
+		// Fill in computed defaults for arguments.
+		if prop.DefaultValue != nil {
+			dv, err := getDefaultValue(prop.DefaultValue, prop.Type)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "        if %s is None:\n", pname)
+			fmt.Fprintf(w, "            %s = %s\n", pname, dv)
+		}
+
+		// Check that the property isn't deprecated.
+		if input && prop.DeprecationMessage != "" {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+		}
+
+		// And add it to the dictionary.
+		arg = pname
+
+		if prop.ConstValue != nil {
+			arg, err = getConstValue(prop.ConstValue)
+			if err != nil {
+				return err
+			}
+		}
+
+		var indent string
+		if !prop.IsRequired {
+			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			indent = "    "
+		}
+
+		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
+	}
+	fmt.Fprintf(w, "\n")
+
+	// Generate properties. Input types have getters and setters, output types only have getters.
+	for _, prop := range props {
+		genProp(w, prop, input /*setter*/)
+	}
+
+	if !input && !mod.details(obj).functionType {
+		// The generated output class is a subclass of dict and contains translated keys
+		// to maintain backwards compatibility. When this function is present, property
+		// getters will use it to translate the key from the Pulumi name before looking
+		// up the value in the dictionary.
+		fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
+		fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
+	}
+
 	fmt.Fprintf(w, "\n")
 	return nil
 }
