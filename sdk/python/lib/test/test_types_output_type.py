@@ -27,17 +27,17 @@ CAMEL_TO_SNAKE_CASE_TABLE = {
 @pulumi.output_type
 class MyOutputType:
     first_value: str = pulumi.property("firstValue")
-    second_value: Optional[float] = pulumi.property("secondValue")
+    second_value: Optional[float] = pulumi.property("secondValue", default=None)
 
 @pulumi.output_type
 class MyOutputTypeDict(dict):
     first_value: str = pulumi.property("firstValue")
-    second_value: Optional[float] = pulumi.property("secondValue")
+    second_value: Optional[float] = pulumi.property("secondValue", default=None)
 
 @pulumi.output_type
 class MyOutputTypeTranslated:
     first_value: str = pulumi.property("firstValue")
-    second_value: Optional[float] = pulumi.property("secondValue")
+    second_value: Optional[float] = pulumi.property("secondValue", default=None)
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
@@ -45,7 +45,7 @@ class MyOutputTypeTranslated:
 @pulumi.output_type
 class MyOutputTypeDictTranslated(dict):
     first_value: str = pulumi.property("firstValue")
-    second_value: Optional[float] = pulumi.property("secondValue")
+    second_value: Optional[float] = pulumi.property("secondValue", default=None)
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
@@ -53,6 +53,11 @@ class MyOutputTypeDictTranslated(dict):
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputType:
+    def __init__(self, first_value: str, second_value: Optional[float] = None):
+        pulumi.set(self, "first_value", first_value)
+        if second_value is not None:
+            pulumi.set(self, "second_value", second_value)
+
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
@@ -65,10 +70,15 @@ class MyDeclaredPropertiesOutputType:
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
         """Second value docstring."""
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeDict(dict):
+    def __init__(self, first_value: str, second_value: Optional[float] = None):
+        pulumi.set(self, "first_value", first_value)
+        if second_value is not None:
+            pulumi.set(self, "second_value", second_value)
+
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
@@ -81,10 +91,15 @@ class MyDeclaredPropertiesOutputTypeDict(dict):
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
         """Second value docstring."""
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeTranslated:
+    def __init__(self, first_value: str, second_value: Optional[float] = None):
+        pulumi.set(self, "first_value", first_value)
+        if second_value is not None:
+            pulumi.set(self, "second_value", second_value)
+
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
@@ -97,13 +112,18 @@ class MyDeclaredPropertiesOutputTypeTranslated:
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
         """Second value docstring."""
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeDictTranslated(dict):
+    def __init__(self, first_value: str, second_value: Optional[float] = None):
+        pulumi.set(self, "first_value", first_value)
+        if second_value is not None:
+            pulumi.set(self, "second_value", second_value)
+
     # Property with empty body.
     @property
     @pulumi.getter(name="firstValue")
@@ -116,7 +136,7 @@ class MyDeclaredPropertiesOutputTypeDictTranslated(dict):
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
         """Second value docstring."""
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
@@ -150,6 +170,7 @@ class InputTypeTests(unittest.TestCase):
         for typ in types:
             self.assertTrue(_types.is_output_type(typ))
             self.assertEqual(True, typ._pulumi_output_type)
+            self.assertTrue(hasattr(typ, "__init__"))
 
     def test_output_type_types(self):
         self.assertEqual({
@@ -159,24 +180,24 @@ class InputTypeTests(unittest.TestCase):
 
     def test_output_type(self):
         types = [
-            (MyOutputType, "firstValue", "secondValue", False),
-            (MyOutputTypeDict, "firstValue", "secondValue", False),
-            (MyOutputTypeTranslated, "first_value", "second_value", False),
-            (MyOutputTypeDictTranslated, "first_value", "second_value", False),
-            (MyDeclaredPropertiesOutputType, "firstValue", "secondValue", True),
-            (MyDeclaredPropertiesOutputTypeDict, "firstValue", "secondValue", True),
-            (MyDeclaredPropertiesOutputTypeTranslated, "first_value", "second_value", True),
-            (MyDeclaredPropertiesOutputTypeDictTranslated, "first_value", "second_value", True),
+            (MyOutputType, False),
+            (MyOutputTypeDict, False),
+            (MyOutputTypeTranslated, False),
+            (MyOutputTypeDictTranslated, False),
+            (MyDeclaredPropertiesOutputType, True),
+            (MyDeclaredPropertiesOutputTypeDict, True),
+            (MyDeclaredPropertiesOutputTypeTranslated, True),
+            (MyDeclaredPropertiesOutputTypeDictTranslated, True),
         ]
-        for typ, k1, k2, has_doc in types:
-            self.assertTrue(hasattr(MyOutputType, "__init__"))
-            t = typ({k1: "hello", k2: 42})
+        for typ, has_doc in types:
+            self.assertTrue(hasattr(typ, "__init__"))
+            t = _types.output_type_from_dict(typ, {"firstValue": "hello", "secondValue": 42})
             self.assertEqual("hello", t.first_value)
             self.assertEqual(42, t.second_value)
 
             if isinstance(t, dict):
-                self.assertEqual("hello", t[k1])
-                self.assertEqual(42, t[k2])
+                self.assertEqual("hello", t["first_value"])
+                self.assertEqual(42, t["second_value"])
 
             first = typ.first_value
             self.assertIsInstance(first, property)
@@ -185,7 +206,6 @@ class InputTypeTests(unittest.TestCase):
             self.assertEqual({"return": str}, first.fget.__annotations__)
             if has_doc:
                 self.assertEqual("First value docstring.", first.fget.__doc__)
-            self.assertEqual(True, first.fget._pulumi_getter)
             self.assertEqual("firstValue", first.fget._pulumi_name)
 
             second = typ.second_value
@@ -195,7 +215,6 @@ class InputTypeTests(unittest.TestCase):
             self.assertEqual({"return": Optional[float]}, second.fget.__annotations__)
             if has_doc:
                 self.assertEqual("Second value docstring.", second.fget.__doc__)
-            self.assertEqual(True, second.fget._pulumi_getter)
             self.assertEqual("secondValue", second.fget._pulumi_name)
 
             self.assertTrue(hasattr(t, "__eq__"))
@@ -204,20 +223,20 @@ class InputTypeTests(unittest.TestCase):
             self.assertFalse(t != t)
             self.assertFalse(t == "not equal")
 
-            t2 = typ({k1: "hello", k2: 42})
+            t2 = _types.output_type_from_dict(typ, {"firstValue": "hello", "secondValue": 42})
             self.assertTrue(t.__eq__(t2))
             self.assertTrue(t == t2)
             self.assertFalse(t != t2)
 
             if isinstance(t2, dict):
-                self.assertEqual("hello", t2[k1])
-                self.assertEqual(42, t2[k2])
+                self.assertEqual("hello", t2["first_value"])
+                self.assertEqual(42, t2["second_value"])
 
-            t3 = typ({k1: "foo", k2: 1})
+            t3 = _types.output_type_from_dict(typ, {"firstValue": "foo", "secondValue": 1})
             self.assertFalse(t.__eq__(t3))
             self.assertFalse(t == t3)
             self.assertTrue(t != t3)
 
             if isinstance(t3, dict):
-                self.assertEqual("foo", t3[k1])
-                self.assertEqual(1, t3[k2])
+                self.assertEqual("foo", t3["first_value"])
+                self.assertEqual(1, t3["second_value"])

@@ -20,20 +20,24 @@ class AdditionalArgs:
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
-        pulumi.set(self, "firstValue", value)
+        pulumi.set(self, "first_value", value)
 
     # Property with explicitly specified getter/setter bodies.
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[pulumi.Input[float]]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     @second_value.setter
     def second_value(self, value: Optional[pulumi.Input[float]]):
-        pulumi.set(self, "secondValue", value)
+        pulumi.set(self, "second_value", value)
 
 @pulumi.output_type
 class Additional(dict):
+    def __init__(self, first_value: str, second_value: Optional[float], third: str, fourth: str):
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
+
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
@@ -44,7 +48,7 @@ class Additional(dict):
     @property
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[float]:
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
 current_id = 0
 

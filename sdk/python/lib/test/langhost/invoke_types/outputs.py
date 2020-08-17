@@ -18,7 +18,7 @@ import outputs
 
 
 @pulumi.output_type
-class MyFunctionNestedResult(dict):
+class MyFunctionNestedResult:
     first_value: str = pulumi.property("firstValue")
     second_value: float = pulumi.property("secondValue")
 
@@ -29,7 +29,11 @@ class MyFunctionResult:
     nested: 'outputs.MyFunctionNestedResult'
 
 @pulumi.output_type
-class MyOtherFunctionNestedResult(dict):
+class MyOtherFunctionNestedResult:
+    def __init__(self, first_value: str, second_value: float):
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
+
     @property
     @pulumi.getter(name="firstValue")
     def first_value(self) -> str:
@@ -42,6 +46,9 @@ class MyOtherFunctionNestedResult(dict):
 
 @pulumi.output_type
 class MyOtherFunctionResult:
+    def __init__(self, nested: 'outputs.MyOtherFunctionNestedResult'):
+        pulumi.set(self, "nested", nested)
+
     @property
     @pulumi.getter
     # Deliberately using a qualified (with `outputs.`) forward reference

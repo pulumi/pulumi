@@ -20,6 +20,12 @@ import pulumi._types as _types
 
 
 @pulumi.input_type
+class MySimpleInputType:
+    first_value: pulumi.Input[str] = pulumi.property("firstValue")
+    second_value: Optional[pulumi.Input[float]] = pulumi.property("secondValue", default=None)
+
+
+@pulumi.input_type
 class MyInputType:
     first_value: pulumi.Input[str] = pulumi.property("firstValue")
     second_value: Optional[pulumi.Input[float]] = pulumi.property("secondValue")
@@ -27,8 +33,8 @@ class MyInputType:
     def __init__(self,
                  first_value: pulumi.Input[str],
                  second_value: Optional[pulumi.Input[float]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
 
 
 @pulumi.input_type
@@ -36,8 +42,8 @@ class MyDeclaredPropertiesInputType:
     def __init__(self,
                  first_value: pulumi.Input[str],
                  second_value: Optional[pulumi.Input[float]] = None):
-        pulumi.set(self, "firstValue", first_value)
-        pulumi.set(self, "secondValue", second_value)
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
 
     # Property with empty getter/setter bodies.
     @property
@@ -55,11 +61,11 @@ class MyDeclaredPropertiesInputType:
     @pulumi.getter(name="secondValue")
     def second_value(self) -> Optional[pulumi.Input[float]]:
         """Second value docstring."""
-        return pulumi.get(self, "secondValue")
+        return pulumi.get(self, "second_value")
 
     @second_value.setter
     def second_value(self, value: Optional[pulumi.Input[float]]):
-        pulumi.set(self, "secondValue", value)
+        pulumi.set(self, "second_value", value)
 
 
 class InputTypeTests(unittest.TestCase):
@@ -87,6 +93,7 @@ class InputTypeTests(unittest.TestCase):
 
     def test_input_type(self):
         types = [
+            (MySimpleInputType, False),
             (MyInputType, False),
             (MyDeclaredPropertiesInputType, True),
         ]
@@ -106,7 +113,6 @@ class InputTypeTests(unittest.TestCase):
             self.assertEqual({"return": pulumi.Input[str]}, first.fget.__annotations__)
             if has_doc:
                 self.assertEqual("First value docstring.", first.fget.__doc__)
-            self.assertEqual(True, first.fget._pulumi_getter)
             self.assertEqual("firstValue", first.fget._pulumi_name)
             self.assertTrue(callable(first.fset))
             self.assertEqual("first_value", first.fset.__name__)
@@ -119,7 +125,6 @@ class InputTypeTests(unittest.TestCase):
             self.assertEqual({"return": Optional[pulumi.Input[float]]}, second.fget.__annotations__)
             if has_doc:
                 self.assertEqual("Second value docstring.", second.fget.__doc__)
-            self.assertEqual(True, second.fget._pulumi_getter)
             self.assertEqual("secondValue", second.fget._pulumi_name)
             self.assertTrue(callable(second.fset))
             self.assertEqual("second_value", second.fset.__name__)

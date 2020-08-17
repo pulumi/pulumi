@@ -67,6 +67,39 @@ class Bar(dict):
 
 @pulumi.output_type
 class BarDeclared(dict):
+    def __init__(self,
+                 third_arg: Foo,
+                 third_optional_arg: Optional[Foo],
+                 fourth_arg: Dict[str, Foo],
+                 fourth_optional_arg: Dict[str, Optional[Foo]],
+                 fifth_arg: List[Foo],
+                 fifth_optional_arg: List[Optional[Foo]],
+                 sixth_arg: Dict[str, List[Foo]],
+                 sixth_optional_arg: Dict[str, Optional[List[Foo]]],
+                 sixth_optional_optional_arg: Dict[str, Optional[List[Optional[Foo]]]],
+                 seventh_arg: List[Dict[str, Foo]],
+                 seventh_optional_arg: List[Optional[Dict[str, Foo]]],
+                 seventh_optional_optional_arg: List[Optional[Dict[str, Optional[Foo]]]],
+                 eighth_arg: List[Dict[str, List[Foo]]],
+                 eighth_optional_arg: List[Optional[Dict[str, List[Foo]]]],
+                 eighth_optional_optional_arg: List[Optional[Dict[str, Optional[List[Foo]]]]],
+                 eighth_optional_optional_optional_arg: List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]]):
+        pulumi.set(self, "third_arg", third_arg)
+        pulumi.set(self, "third_optional_arg", third_optional_arg)
+        pulumi.set(self, "fourth_arg", fourth_arg)
+        pulumi.set(self, "fourth_optional_arg", fourth_optional_arg)
+        pulumi.set(self, "fifth_arg", fifth_arg)
+        pulumi.set(self, "fifth_optional_arg", fifth_optional_arg)
+        pulumi.set(self, "sixth_arg", sixth_arg)
+        pulumi.set(self, "sixth_optional_arg", sixth_optional_arg)
+        pulumi.set(self, "sixth_optional_optional_arg", sixth_optional_optional_arg)
+        pulumi.set(self, "seventh_arg", seventh_arg)
+        pulumi.set(self, "seventh_optional_arg", seventh_optional_arg)
+        pulumi.set(self, "seventh_optional_optional_arg", seventh_optional_optional_arg)
+        pulumi.set(self, "eighth_arg", eighth_arg)
+        pulumi.set(self, "eighth_optional_arg", eighth_optional_arg)
+        pulumi.set(self, "eighth_optional_optional_arg", eighth_optional_optional_arg)
+        pulumi.set(self, "eighth_optional_optional_optional_arg", eighth_optional_optional_optional_arg)
 
     @property
     @pulumi.getter(name="thirdArg")
@@ -158,6 +191,9 @@ class InvalidTypeStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredStr(dict):
+    def __init__(self, value: str):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> str:
@@ -169,6 +205,9 @@ class InvalidTypeOptionalStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalStr(dict):
+    def __init__(self, value: Optional[str]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Optional[str]:
@@ -180,6 +219,9 @@ class InvalidTypeDictStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredDictStr(dict):
+    def __init__(self, value: Dict[str, str]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Dict[str, str]:
@@ -191,6 +233,9 @@ class InvalidTypeOptionalDictStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalDictStr(dict):
+    def __init__(self, value: Optional[Dict[str, str]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Optional[Dict[str, str]]:
@@ -202,6 +247,9 @@ class InvalidTypeDictOptionalStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredDictOptionalStr(dict):
+    def __init__(self, value: Dict[str, Optional[str]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Dict[str, Optional[str]]:
@@ -213,6 +261,9 @@ class InvalidTypeOptionalDictOptionalStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalDictOptionalStr(dict):
+    def __init__(self, value: Optional[Dict[str, Optional[str]]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Optional[Dict[str, Optional[str]]]:
@@ -224,6 +275,9 @@ class InvalidTypeListStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredListStr(dict):
+    def __init__(self, value: List[str]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> List[str]:
@@ -235,6 +289,9 @@ class InvalidTypeOptionalListStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalListStr(dict):
+    def __init__(self, value: Optional[List[str]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Optional[List[str]]:
@@ -246,6 +303,9 @@ class InvalidTypeListOptionalStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredListOptionalStr(dict):
+    def __init__(self, value: List[Optional[str]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> List[Optional[str]]:
@@ -257,6 +317,9 @@ class InvalidTypeOptionalListOptionalStr(dict):
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalListOptionalStr(dict):
+    def __init__(self, value: Optional[List[Optional[str]]]):
+        pulumi.set(self, "value", value)
+
     @property
     @pulumi.getter
     def value(self) -> Optional[List[Optional[str]]]:

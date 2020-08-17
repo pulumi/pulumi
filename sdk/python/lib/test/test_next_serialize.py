@@ -920,8 +920,8 @@ class FooArgs:
     second_arg: Optional[Input[float]] = pulumi.property("secondArg")
 
     def __init__(self, first_arg: Input[str], second_arg: Optional[Input[float]]=None):
-        pulumi.set(self, "firstArg", first_arg)
-        pulumi.set(self, "secondArg", second_arg)
+        pulumi.set(self, "first_arg", first_arg)
+        pulumi.set(self, "second_arg", second_arg)
 
 
 @input_type
@@ -929,7 +929,7 @@ class BarArgs:
     tag_args: Input[dict] = pulumi.property("tagArgs")
 
     def __init__(self, tag_args: Input[dict]):
-        pulumi.set(self, "tagArgs", tag_args)
+        pulumi.set(self, "tag_args", tag_args)
 
 
 class InputTypeSerializationTests(unittest.TestCase):

@@ -22,6 +22,7 @@
 #       def __init__(self, resource_name, nested_value: pulumi.InputType[NestedArgs]):
 #           super().__init__("my:module:FooResource", resource_name, {"nestedValue": nested_value})
 #
+#
 # The resource declares a single output `nested_value` of type `pulumi.Output[Nested]` and uses
 # `pulumi.property()` to indicate the Pulumi property name.
 #
@@ -52,7 +53,7 @@
 #       @property
 #       @pulumi.getter(name="nestedValue")
 #       def nested_value(self) -> pulumi.Output[Nested]:
-#           pulumi.get(self, "nestedValue")
+#           pulumi.get(self, "nested_value")
 #
 #
 # Here's how the `NestedArgs` input class can be declared:
@@ -60,25 +61,23 @@
 #   @pulumi.input_type
 #   class NestedArgs:
 #       first_arg: pulumi.Input[str] = pulumi.property("firstArg")
-#       second_arg: Optional[pulumi.Input[float]] = pulumi.property("secondArg")
+#       second_arg: Optional[pulumi.Input[float]] = pulumi.property("secondArg", default=None)
 #
-#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
-#           pulumi.set(self, "firstArg", first_arg)
-#           pulumi.set(self, "secondArg", second_arg)
 #
 # The class is decorated with the `@pulumi.input_type` decorator, which indicates the class is an
 # input type and does some processing of the class (explained below). `NestedArgs` declares two
 # inputs (`first_arg` and `second_arg`) and uses type annotations and `pulumi.property()` to
-# specify the types and Pulumi input property names. The `__init__()` method class `pulumi.set` to
-# save the values for each input.
+# specify the types and Pulumi input property names. An `__init__()` method is automatically added
+# based on the annotations since one was not already present.
 #
 # A more verbose way to declare the same input type is as follows:
 #
 #   @pulumi.input_type
 #   class NestedArgs:
-#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
-#           pulumi.set(self, "firstArg", first_arg)
-#           pulumi.set(self, "secondArg", second_arg)
+#       def __init__(self, *, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
+#           pulumi.set(self, "first_arg", first_arg)
+#           if second_arg is not None:
+#               pulumi.set(self, "second_arg", second_arg)
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
@@ -99,16 +98,16 @@
 #           ...
 #
 # This latter (more verbose) declaration is equivalent to the former (simpler) declaration;
-# the `@pulumi.input_type` processes the class and essentially transforms the former declaration
-# into the latter declaration.
+# the `@pulumi.input_type` processes the class and transforms the former declaration into the
+# latter declaration.
 #
-# The former (simpler) declaration is nice syntactic sugar to use when declaring these by hand,
+# The former (simpler) declaration is syntactic sugar to use when declaring these by hand,
 # e.g. when writing a dynamic provider that has nested inputs/outputs. The latter declaration isn't
 # as pleasant to write by hand and is closer to what we emit in our provider codegen. The benefit
 # of the latter (more verbose) form is that it allows docstrings to be specified on the Python
 # property getters, which will show up in IDE tooltips when hovering over the property.
 #
-# Note the property getter/setter functions are empty in the latter (more verbose) declaration.
+# Note the property getter/setter functions are empty in the more verbose declaration.
 # Empty getter functions are automatically replaced by the `@pulumi.getter` decorator with an
 # actual implementation, and the `@pulumi.input_type` decorator will automatically replace any
 # empty setter functions associated with a getter decorated with `@pulumi.getter` with an actual
@@ -116,27 +115,28 @@
 #
 #   @pulumi.input_type
 #   class NestedArgs:
-#       def __init__(self, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
-#           pulumi.set(self, "firstArg", first_arg)
-#           pulumi.set(self, "secondArg", second_arg)
+#       def __init__(self, *, first_arg: pulumi.Input[str], second_arg: Optional[pulumi.Input[float]] = None):
+#           pulumi.set(self, "first_arg", first_arg)
+#           if second_arg is not None:
+#               pulumi.set(self, "second_arg", second_arg)
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
 #       def first_arg(self) -> pulumi.Input[str]:
-#           return pulumi.get(self, "firstArg")
+#           return pulumi.get(self, "first_arg")
 #
 #       @first_arg.setter
 #       def first_arg(self, value: pulumi.Input[str]):
-#           pulumi.set(self, "firstArg", value)
+#           pulumi.set(self, "first_arg", value)
 #
 #       @property
 #       @pulumi.getter(name="secondArg")
 #       def second_arg(self) -> Optional[pulumi.Input[float]]:
-#           return pulumi.get(self, "secondArg")
+#           return pulumi.get(self, "second_arg")
 #
 #       @second_arg.setter
 #       def second_arg(self, value: Optional[pulumi.Input[float]]):
-#           pulumi.set(self, "secondArg", value)
+#           pulumi.set(self, "second_arg", value)
 #
 #
 # Here's how the `Nested` output class can be declared:
@@ -151,9 +151,9 @@
 #
 #   @pulumi.output_type
 #   class Nested:
-#       def __init__(self, values: Dict[str, Any]):
-#           for k, v in values.items():
-#               self.__dict__[k] = v
+#       def __init__(self, *, first_arg: str, second_arg: Optional[float]):
+#           pulumi.set(self, "first_arg", first_arg)
+#           pulumi.set(self, "second_arg", second_arg)
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
@@ -166,9 +166,7 @@
 #           ...
 #
 # An `__init__()` method is added to the class by the `@pulumi.output_type` decorator (if an
-# `__init__()` method isn't already present on the class) which accepts a dictionary containing the
-# values of the object. When the output is resolved, the `Nested` class is instantiated and the
-# dict representing the object from the engine is passed to class's `__init__()` method.
+# `__init__()` method isn't already present on the class).
 #
 # Output types only have property getters and the bodies can be empty. Empty getter functions are
 # replaced with implementations by the `@pulumi.getter` decorator.
@@ -177,19 +175,19 @@
 #
 #   @pulumi.output_type
 #   class Nested:
-#       def __init__(self, values: Dict[str, Any]):
-#           for k, v in values.items():
-#               self.__dict__[k] = v
+#       def __init__(self, *, first_arg: str, second_arg: Optional[float]):
+#           pulumi.set(self, "first_arg", first_arg)
+#           pulumi.set(self, "second_arg", second_arg)
 #
 #       @property
 #       @pulumi.getter(name="firstArg")
 #       def first_arg(self) -> str:
-#           return pulumi.get(self, "firstArg")
+#           return pulumi.get(self, "first_arg")
 #
 #       @property
 #       @pulumi.getter(name="secondArg")
 #       def second_arg(self) -> Optional[float]:
-#           return pulumi.get(self, "secondArg")
+#           return pulumi.get(self, "second_arg")
 #
 #
 # Output classes can also be a subclass of `dict`. This is used in our provider codegen to maintain
@@ -205,6 +203,10 @@
 #
 #   @pulumi.output_type
 #   class Nested(dict):
+#       def __init__(self, *, first_arg: str, second_arg: Optional[float]):
+#           pulumi.set(self, "first_arg", first_arg)
+#           pulumi.set(self, "second_arg", second_arg)
+#
 #       @property
 #       @pulumi.getter(name="firstArg")
 #       def first_arg(self) -> str:
@@ -220,31 +222,36 @@
 #
 #   @pulumi.output_type
 #   class Nested(dict):
+#       def __init__(self, *, first_arg: str, second_arg: Optional[float]):
+#           pulumi.set(self, "first_arg", first_arg)
+#           pulumi.set(self, "second_arg", second_arg)
+#
 #       @property
 #       @pulumi.getter(name="firstArg")
 #       def first_arg(self) -> str:
-#           return pulumi.get(self, "firstArg")
+#           return pulumi.get(self, "first_arg")
 #
 #       @property
 #       @pulumi.getter(name="secondArg")
 #       def second_arg(self) -> Optional[float]:
-#           return pulumi.get(self, "secondArg")
+#           return pulumi.get(self, "second_arg")
 #
-#
-# Note: When the class is a subclass of `dict`, no `__init__()` method is generated, as super
-# type's (dict's) `__init__()` will be used and calls to `pulumi.get` will get the values from
-# itself.
 #
 # An output class can optionally include a `_translate_property(self, prop)` method, which
-# `pulumi.get` will call to translate the Pulumi property name to a translated key name before
-# looking up the value in the dictionary. This is to provide backwards compatibility with our
-# provider generated code, where mapping tables are used to translate dict keys before being
-# returned to the program. This way, existing programs accessing the values as a dictionary will
-# continue to see the same translated key names as before, but updated programs can now access
-# the values using Python properties, which will always have thecorrect snake_case Python names.
+# `pulumi.get` and `pulumi.set` will call to translate the Pulumi property name to a translated
+# key name before getting/setting the value in the dictionary. This is to provide backwards
+# compatibility with our provider generated code, where mapping tables are used to translate dict
+# keys before being returned to the program. This way, existing programs accessing the values as a
+# dictionary will continue to see the same translated key names as before, but updated programs can
+# now access the values using Python properties, which will always have thecorrect snake_case
+# Python names.
 #
 #   @pulumi.output_type
 #   class Nested(dict):
+#       def __init__(self, *, first_arg: str, second_arg: Optional[float]):
+#           pulumi.set(self, "first_arg", first_arg)
+#           pulumi.set(self, "second_arg", second_arg)
+#
 #       @property
 #       @pulumi.getter(name="firstArg")
 #       def first_arg(self) -> str:
@@ -262,17 +269,17 @@ import builtins
 import functools
 import sys
 import typing
-from typing import Any, Callable, Dict, Optional, Type, TypeVar, Union, cast, get_type_hints
+from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar, Union, cast, get_type_hints
 
 from . import _utils
 
 T = TypeVar('T')
 
 
-_PULUMI_GETTER = "_pulumi_getter"
 _PULUMI_NAME = "_pulumi_name"
 _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
+_PULUMI_PYTHON_TO_PULUMI_TABLE = "_pulumi_python_to_pulumi_table"
 _TRANSLATE_PROPERTY = "_translate_property"
 
 
@@ -308,7 +315,7 @@ class _Property:
 # This function's return type is deliberately annotated as Any so that type checkers do not
 # complain about assignments that we want to allow like `my_value: str = property("myValue")`.
 # pylint: disable=redefined-builtin
-def property(name: str, default: Any = MISSING) -> Any:
+def property(name: str, *, default: Any = MISSING) -> Any:
     """
     Return an object to identify Pulumi properties.
 
@@ -323,6 +330,7 @@ def _properties_from_annotations(cls: type) -> Dict[str, _Property]:
     """
 
     # Get annotations that are defined on this class (not base classes).
+    # These are returned in the order declared on Python 3.6+.
     cls_annotations = cls.__dict__.get('__annotations__', {})
 
     def get_property(cls: type, a_name: str, a_type: Any) -> _Property:
@@ -337,7 +345,7 @@ def _properties_from_annotations(cls: type) -> Dict[str, _Property]:
     }
 
 
-def _process_class(cls: type, signifier_attr: str) -> Dict[str, Any]:
+def _process_class(cls: type, signifier_attr: str, is_input: bool = False, setter: bool = False):
     # Get properties.
     props = _properties_from_annotations(cls)
 
@@ -352,7 +360,29 @@ def _process_class(cls: type, signifier_attr: str) -> Dict[str, Any]:
     # Mark this class with the signifier and save the properties.
     setattr(cls, signifier_attr, True)
 
-    return props
+    # Create Python properties.
+    for name, prop in props.items():
+        setattr(cls, name, _create_py_property(name, prop.name, prop.type, setter))
+
+    # Add an __init__() method if the class doesn't have one.
+    if "__init__" not in cls.__dict__:
+        if cls.__module__ in sys.modules:
+            globals = sys.modules[cls.__module__].__dict__
+        else:
+            globals = {}
+        init_fn = _init_fn(props, globals, issubclass(cls, dict), not is_input and hasattr(cls, _TRANSLATE_PROPERTY))
+        setattr(cls, "__init__", init_fn)
+
+    # Add an __eq__() method if the class doesn't have one.
+    # There's no need for a __ne__ method, since Python will call __eq__ and negate it.
+    if "__eq__" not in cls.__dict__:
+        if issubclass(cls, dict):
+            def eq_fn(self, other):
+                return type(other) is type(self) and getattr(dict, "__eq__")(other, self)
+        else:
+            def eq_fn(self, other):
+                return type(other) is type(self) and other.__dict__ == self.__dict__
+        setattr(cls, "__eq__", eq_fn)
 
 
 def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = False):
@@ -360,29 +390,28 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
     Returns a Python property getter that looks up the value using get.
     """
     def getter_fn(self):
-        return get(self, pulumi_name)
+        return get(self, a_name)
     getter_fn.__name__ = a_name
-    getter_fn.__annotations__ = {"return":typ}
-    setattr(getter_fn, _PULUMI_GETTER, True)
+    getter_fn.__annotations__ = {"return": typ}
     setattr(getter_fn, _PULUMI_NAME, pulumi_name)
 
     if setter:
         def setter_fn(self, value):
-            return set(self, pulumi_name, value)
+            return set(self, a_name, value)
         setter_fn.__name__ = a_name
-        setter_fn.__annotations__ = {"value":typ}
+        setter_fn.__annotations__ = {"value": typ}
         return builtins.property(fget=getter_fn, fset=setter_fn)
 
     return builtins.property(fget=getter_fn)
 
 
-def _add_eq(cls: type):
-    # Add an __eq__ method to cls if it isn't a subclass of dict and __eq__ doesn't already exist.
-    # There's no need for a __ne__ method, since Python will call __eq__ and negate it.
-    if not issubclass(cls, dict) and "__eq__" not in cls.__dict__:
-        def eq(self, other):
-            return type(other) is type(self) and other.__dict__ == self.__dict__
-        setattr(cls, "__eq__", eq)
+def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
+    for python_name, v in cls.__dict__.items():
+        if isinstance(v, builtins.property):
+            prop = cast(builtins.property, v)
+            pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
+            if pulumi_name is not MISSING:
+                yield (python_name, pulumi_name, prop)
 
 
 def input_type(cls: Type[T]) -> Type[T]:
@@ -394,43 +423,44 @@ def input_type(cls: Type[T]) -> Type[T]:
         raise AssertionError("Cannot apply @input_type and @output_type more than once.")
 
     # Get the input properties and mark the class as an input type.
-    props = _process_class(cls, _PULUMI_INPUT_TYPE)
-
-    # Create Python properties.
-    for name, prop in props.items():
-        setattr(cls, name, _create_py_property(name, prop.name, prop.type, setter=True))
+    _process_class(cls, _PULUMI_INPUT_TYPE, is_input=True, setter=True)
 
     # Helper to create a setter function.
-    def create_setter(pulumi_name: str) -> Callable:
+    def create_setter(name: str) -> Callable:
         def setter_fn(self, value):
-            set(self, pulumi_name, value)
+            set(self, name, value)
         return setter_fn
 
     # Now, process the class's properties, replacing properties with empty setters with
     # an actual setter.
-    for k, v in cls.__dict__.items():
-        if isinstance(v, builtins.property):
-            prop = cast(builtins.property, v)
-            if hasattr(prop.fget, _PULUMI_GETTER) and prop.fset is not None and _utils.is_empty_function(prop.fset):
-                pulumi_name: str = getattr(prop.fget, _PULUMI_NAME)
-                setter_fn = create_setter(pulumi_name)
-                setter_fn.__name__ = prop.fset.__name__
-                setter_fn.__annotations__ = prop.fset.__annotations__
-                # Replace the property with a new property object that has the new setter.
-                setattr(cls, k, prop.setter(setter_fn))
-
-    # Add an __eq__ method if one doesn't already exist.
-    _add_eq(cls)
+    for python_name, _, prop in _py_properties(cls):
+        if prop.fset is not None and _utils.is_empty_function(prop.fset):
+            setter_fn = create_setter(python_name)
+            setter_fn.__name__ = prop.fset.__name__
+            setter_fn.__annotations__ = prop.fset.__annotations__
+            # Replace the property with a new property object that has the new setter.
+            setattr(cls, python_name, prop.setter(setter_fn))
 
     return cls
 
 
-def input_type_to_dict(value: Any) -> Dict[str, Any]:
+def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     """
     Returns a dict for the input type.
+
+    The keys of the dict are Pulumi names that should not be translated.
     """
-    assert is_input_type(type(value))
-    return value.__dict__.copy()
+    cls = type(obj)
+    assert is_input_type(cls)
+
+    # Build a dictionary of properties to return
+    result: Dict[str, Any] = {}
+    for _, pulumi_name, prop in _py_properties(cls):
+        value = prop.fget(obj)  # type: ignore
+        # We treat properties with a value of None as if they don't exist.
+        if value is not None:
+            result[pulumi_name] = value
+    return result
 
 
 def output_type(cls: Type[T]) -> Type[T]:
@@ -440,8 +470,8 @@ def output_type(cls: Type[T]) -> Type[T]:
     Python property getters are created for each Pulumi output property
     defined in the class.
 
-    If the class is not a subclass of dict and doesn't have an __init__()
-    method, an __init__() method is added to the class that accepts a dict
+    If the class is not a subclass of dict and doesn't have an __init__
+    method, an __init__ method is added to the class that accepts a dict
     representing the outputs.
     """
 
@@ -449,26 +479,34 @@ def output_type(cls: Type[T]) -> Type[T]:
         raise AssertionError("Cannot apply @input_type and @output_type more than once.")
 
     # Get the output properties and mark the class as an output type.
-    props = _process_class(cls, _PULUMI_OUTPUT_TYPE)
+    _process_class(cls, _PULUMI_OUTPUT_TYPE)
 
-    # Add an __init__() method that takes a dict (representing outputs) as an arg,
-    # if the class isn't a subclass of dict and doesn't have an __init__() method.
-    if not issubclass(cls, dict) and "__init__" not in cls.__dict__:
-        def init(self, value: dict) -> None:
-            if not isinstance(value, dict):
-                raise TypeError('Expected value to be a dict')
-            for k, v in value.items():
-                self.__dict__[k] = v
-        setattr(cls, "__init__", init)
-
-    # Create Python properties.
-    for name, prop in props.items():
-        setattr(cls, name, _create_py_property(name, prop.name, prop.type))
-
-    # Add an __eq__ method if one doesn't already exist.
-    _add_eq(cls)
+    # If the class has a _translate_property() method, build a mapping table of Python names to
+    # Pulumi names. Calls to pulumi.get() will then convert the name passed to pulumi.get() from
+    # the Python name to the Pulumi name, and then pass the Pulumi name to _translate_property() to
+    # convert the Pulumi name to whatever name _translate_property() returns (which, for our
+    # provider codegen, will be the translated name from _tables.CAMEL_TO_SNAKE_CASE_TABLE).
+    # pylint: disable=too-many-nested-blocks
+    if hasattr(cls, _TRANSLATE_PROPERTY):
+        python_to_pulumi_table = None
+        for python_name, pulumi_name, _ in _py_properties(cls):
+            if python_name != pulumi_name:
+                if python_to_pulumi_table is None:
+                    python_to_pulumi_table = {}
+                python_to_pulumi_table[python_name] = pulumi_name
+        if python_to_pulumi_table is not None:
+            setattr(cls, _PULUMI_PYTHON_TO_PULUMI_TABLE, python_to_pulumi_table)
 
     return cls
+
+
+def output_type_from_dict(cls: Type[T], output: Dict[str, Any]) -> T:
+    assert isinstance(output, dict)
+    assert is_output_type(cls)
+    args = {}
+    for python_name, pulumi_name, _ in _py_properties(cls):
+        args[python_name] = output.get(pulumi_name)
+    return cls(**args)  # type: ignore
 
 
 def getter(_fn=None, *, name: Optional[str] = None):
@@ -486,9 +524,9 @@ def getter(_fn=None, *, name: Optional[str] = None):
         if _utils.is_empty_function(fn):
             @functools.wraps(fn)
             def get_fn(self):
-                return get(self, pulumi_name)
+                # Get the value using the Python name, which is the name of the function.
+                return get(self, fn.__name__)
             fn = get_fn
-        setattr(fn, _PULUMI_GETTER, True)
         setattr(fn, _PULUMI_NAME, pulumi_name)
         return fn
 
@@ -501,11 +539,25 @@ def getter(_fn=None, *, name: Optional[str] = None):
     return decorator(_fn)
 
 
+def _translate_name(obj: Any, name: str) -> str:
+    cls = type(obj)
+    if hasattr(cls, _PULUMI_OUTPUT_TYPE):
+        # If the class has a _translate_property() method we need to do two translations:
+        #   1. Translate Python => Pulumi name.
+        #   2. Translate Pulumi name => result of _translate_property().
+        translate = getattr(cls, _TRANSLATE_PROPERTY, None)
+        if callable(translate):
+            table = getattr(cls, _PULUMI_PYTHON_TO_PULUMI_TABLE, None)
+            if isinstance(table, dict):
+                name = table.get(name) or name
+            name = translate(obj, name)
+
+    return name
+
+
 def get(self, name: str) -> Any:
     """
-    Used to get values in Pulumi property getters.
-
-    name is the Pulumi property name.
+    Used to get values in types decorated with @input_type or @output_type.
     """
 
     if not name:
@@ -513,26 +565,18 @@ def get(self, name: str) -> Any:
     if not isinstance(name, str):
         raise TypeError("Expected name to be a string")
 
-    if hasattr(type(self), _PULUMI_INPUT_TYPE):
+    cls = type(self)
+
+    if hasattr(cls, _PULUMI_INPUT_TYPE):
         return self.__dict__.get(name)
 
-    if hasattr(type(self), _PULUMI_OUTPUT_TYPE):
-        cls = type(self)
-
-        # If the class has a _translate_property() method, use it to translate
-        # property names, otherwise, use an identity function.
-        translate = getattr(cls, _TRANSLATE_PROPERTY, None)
-        if not callable(translate):
-            translate = lambda self, prop: prop
-
-        # If the class itself is a subclass of dict, get the value from itself,
-        # otherwise, get the value from a private _values attribute.
+    if hasattr(cls, _PULUMI_OUTPUT_TYPE):
+        name = _translate_name(self, name)
         if issubclass(cls, dict):
             # Grab dict's `get` method instead of calling `self.get` directly
             # in case the type has a `get` property.
-            return getattr(dict, "get")(self, translate(self, name))
-
-        return self.__dict__.get(translate(self, name))
+            return getattr(dict, "get")(self, name)
+        return self.__dict__.get(name)
 
     # pylint: disable=import-outside-toplevel
     from . import Resource
@@ -544,9 +588,7 @@ def get(self, name: str) -> Any:
 
 def set(self, name: str, value: Any) -> None:
     """
-    Used to set values in the __init__() method of classes decorated with @input_type.
-
-    name is the Pulumi property name.
+    Used to set values in types decorated with @input_type or @output_type.
     """
 
     if not name:
@@ -554,25 +596,38 @@ def set(self, name: str, value: Any) -> None:
     if not isinstance(name, str):
         raise TypeError("Expected name to be a string")
 
-    if not hasattr(type(self), _PULUMI_INPUT_TYPE):
-        raise AssertionError("set can only be used with classes decorated with @input_type")
+    cls = type(self)
 
-    self.__dict__[name] = value
+    if hasattr(cls, _PULUMI_INPUT_TYPE):
+        self.__dict__[name] = value
+        return
+
+    if hasattr(cls, _PULUMI_OUTPUT_TYPE):
+        name = _translate_name(self, name)
+        if issubclass(cls, dict):
+            self[name] = value
+        else:
+            self.__dict__[name] = value
+        return
+
+    raise AssertionError("set can only be used with classes decorated with @input_type or @output_type")
 
 
 # Use the built-in `get_origin` and `get_args` functions on Python 3.8+,
 # otherwise fallback to downlevel implementations.
 if sys.version_info[:2] >= (3, 8):
-    get_origin = typing.get_origin  # pylint: disable=no-member
-    get_args = typing.get_args  # pylint: disable=no-member
+    # pylint: disable=no-member
+    get_origin = typing.get_origin  # type: ignore
+    # pylint: disable=no-member
+    get_args = typing.get_args  # type: ignore
 elif sys.version_info[:2] >= (3, 7):
     def get_origin(tp):
-        if isinstance(tp, typing._GenericAlias):
+        if isinstance(tp, typing._GenericAlias):  # type: ignore
             return tp.__origin__
         return None
 
     def get_args(tp):
-        if isinstance(tp, typing._GenericAlias):
+        if isinstance(tp, typing._GenericAlias):  # type: ignore
             return tp.__args__
         return ()
 else:
@@ -590,8 +645,9 @@ else:
 def _is_union_type(tp):
     if sys.version_info[:2] >= (3, 7):
         return (tp is Union or
-                isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union)
-    return type(tp) is typing._Union # pylint: disable=unidiomatic-typecheck, no-member
+                isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union)  # type: ignore
+    # pylint: disable=unidiomatic-typecheck, no-member
+    return type(tp) is typing._Union  # type: ignore
 
 
 def _is_optional_type(tp):
@@ -618,7 +674,7 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     # properties, or via the @getter decorator, which replaces empty getter functions) and
     # therefore has __globals__ of this SDK module.
     globalns = None
-    if getattr(cls, '__module__', None) in sys.modules:
+    if cls.__module__ in sys.modules:
         globalns = dict(sys.modules[cls.__module__].__dict__)
 
     # Build-up a dictionary of Pulumi property names to types by looping through all the
@@ -626,16 +682,12 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     # and looking at the getter function's return type annotation.
     # Types that are Output[T] and Optional[T] are unwrapped to just T.
     result: Dict[str, type] = {}
-    for v in cls.__dict__.values():
-        if isinstance(v, builtins.property):
-            prop = cast(builtins.property, v)
-            if hasattr(prop.fget, _PULUMI_GETTER) and hasattr(prop.fget, _PULUMI_NAME):
-                name: str = getattr(prop.fget, _PULUMI_NAME)
-                cls_hints = get_type_hints(prop.fget, globalns=globalns)
-                # Get the value of the function's return type hint.
-                value = cls_hints.get("return")
-                if value is not None:
-                    result[name] = _unwrap_type(value)
+    for _, pulumi_name, prop in _py_properties(cls):
+        cls_hints = get_type_hints(prop.fget, globalns=globalns)
+        # Get the value of the function's return type hint.
+        value = cls_hints.get("return")
+        if value is not None:
+            result[pulumi_name] = _unwrap_type(value)
     return result
 
 
@@ -652,12 +704,12 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     # but get_type_hints() looks at the annotations of the class and its base classes.
     # So create a type dynamically that has the annotations from cls but doesn't have
     # any base classes, and pass the dynamically created type to get_type_hints().
-    dynamic_cls_attrs = {"__annotations__": cls.__dict__.get('__annotations__', {})}
+    dynamic_cls_attrs = {"__annotations__": cls.__dict__.get("__annotations__", {})}
     dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
     # Pass along globals for the cls, to help resolve forward references.
     globalns = None
-    if getattr(cls, '__module__', None) in sys.modules:
+    if getattr(cls, "__module__", None) in sys.modules:
         globalns = dict(sys.modules[cls.__module__].__dict__)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
@@ -731,3 +783,112 @@ def _unwrap_type(val: type) -> type:
         val = args[0]
 
     return unwrap_optional_type(val)
+
+
+# The following functions for creating an __init__() method were adapted
+# from Python's dataclasses module.
+
+def _create_fn(name, args, body, *, globals=None, locals=None):
+    if locals is None:
+        locals = {}
+    if "BUILTINS" not in locals:
+        locals["BUILTINS"] = builtins
+    args = ",".join(args)
+    body = "\n".join(f"  {b}" for b in body)
+
+    # Compute the text of the entire function.
+    txt = f" def {name}({args}):\n{body}"
+
+    local_vars = ", ".join(locals.keys())
+    txt = f"def __create_fn__({local_vars}):\n{txt}\n return {name}"
+
+    ns = {}
+    exec(txt, globals, ns)  # pylint: disable=exec-used
+    return ns["__create_fn__"](**locals)
+
+
+def _property_init(python_name: str, prop: _Property, globals, is_dict: bool, has_translate: bool):
+    # Return the text of the line in the body of __init__() that will
+    # initialize this property.
+
+    default_name = f"_dflt_{python_name}"
+    if prop.default is MISSING:
+        # There's no default, just do an assignment.
+        value = python_name
+    else:
+        globals[default_name] = python_name
+        value = python_name
+
+    # Now, actually generate the assignment.
+    if is_dict:
+        # It's a dict, store the value in itself.
+        container = ""
+    else:
+        # It isn't a dict, store the value in __dict__.
+        container = ".__dict__"
+
+    # Only assign the value if not None.
+    if prop.default is None:
+        check = f"if {value} is not None:\n    "
+    else:
+        check = ""
+
+    # If it has a _translate_property method, use it to translate the name.
+    if has_translate:
+        return f"{check}__self__{container}[__self__.{_TRANSLATE_PROPERTY}('{prop.name}')]={value}"
+
+    return f"{check}__self__{container}['{python_name}']={value}"
+
+
+def _init_param(python_name: str, prop: _Property):
+    # Return the __init__ parameter string for this property.  For
+    # example, the equivalent of 'x:int=3' (except instead of 'int',
+    # reference a variable set to int, and instead of '3', reference a
+    # variable set to 3).
+    if prop.default is MISSING:
+        # There's no default, just output the variable name and type.
+        default = ""
+    else:
+        # There's a default, this will be the name that's used to look it up.
+        default = f"=_dflt_{python_name}"
+    return f"{python_name}:_type_{python_name}{default}"
+
+
+def _init_fn(props: Dict[str, _Property], globals, is_dict: bool, has_translate: bool):
+    # Make sure we don't have properties without defaults following properties
+    # with defaults. This actually would be caught when exec-ing the
+    # function source code, but catching it here gives a better error
+    # message, and future-proofs us in case we build up the function
+    # using ast.
+    seen_default = False
+    for python_name, prop in props.items():
+        if prop.default is not MISSING:
+            seen_default = True
+        elif seen_default:
+            raise TypeError(f"non-default argument {python_name!r} "
+                            "follows default argument")
+
+    locals = {f"_type_{python_name}": prop.type for python_name, prop in props.items()}
+    locals.update({
+        "MISSING": MISSING,
+    })
+
+    body_lines = []
+    for python_name, prop in props.items():
+        line = _property_init(python_name, prop, locals, is_dict, has_translate)
+        body_lines.append(line)
+
+    # If no body lines, use `pass`.
+    if not body_lines:
+        body_lines = ["pass"]
+
+    first_args = ["__self__"]
+    # If we have args after __self__, use bare * to force them to be specified by name.
+    if len(props) > 0:
+        first_args += ["*"]
+
+    return _create_fn("__init__",
+                      first_args + [_init_param(python_name, prop) for python_name, prop in props.items()],
+                      body_lines,
+                      locals=locals,
+                      globals=globals)
