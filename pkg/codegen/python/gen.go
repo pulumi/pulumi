@@ -975,20 +975,14 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 	}
 	if mapCase {
 		snakeCaseName := PyNameLegacy(prop.Name)
-		// If the property is a single word, don't add it to the tables.
-		containsOneUnderscore := strings.Count(snakeCaseName, "_") == 1
-		endsWithUnderscore := strings.HasSuffix(snakeCaseName, "_")
-		singleWordProp := containsOneUnderscore && endsWithUnderscore
-		if !singleWordProp {
-			if snakeCaseToCamelCase != nil {
-				if _, ok := snakeCaseToCamelCase[snakeCaseName]; !ok {
-					snakeCaseToCamelCase[snakeCaseName] = prop.Name
-				}
+		if snakeCaseToCamelCase != nil {
+			if _, ok := snakeCaseToCamelCase[snakeCaseName]; !ok {
+				snakeCaseToCamelCase[snakeCaseName] = prop.Name
 			}
-			if camelCaseToSnakeCase != nil {
-				if _, ok := camelCaseToSnakeCase[prop.Name]; !ok {
-					camelCaseToSnakeCase[prop.Name] = snakeCaseName
-				}
+		}
+		if camelCaseToSnakeCase != nil {
+			if _, ok := camelCaseToSnakeCase[prop.Name]; !ok {
+				camelCaseToSnakeCase[prop.Name] = snakeCaseName
 			}
 		}
 	}
