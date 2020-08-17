@@ -948,11 +948,9 @@ func (mod *modContext) genPropertyConversionTables() string {
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
 func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
-	// Add provider input properties to translation table - this is unique to Python codegen.
-	if pkg.Provider != nil { // Can pkg.Provider even be nil?
-		for _, p := range pkg.Provider.InputProperties {
-			recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-		}
+	// Add provider input properties to translation tables.
+	for _, p := range pkg.Provider.InputProperties {
+		recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 	}
 
 	for _, r := range pkg.Resources {
