@@ -43,7 +43,6 @@ func newRefreshCmd() *cobra.Command {
 	var showSames bool
 	var skipPreview bool
 	var suppressOutputs bool
-	var suppressPermaLink bool
 	var yes bool
 	var targets *[]string
 
@@ -83,7 +82,6 @@ func newRefreshCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
-				SuppressPermaLink:    suppressPermaLink,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -193,9 +191,6 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
-	cmd.PersistentFlags().BoolVar(
-		&suppressPermaLink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
