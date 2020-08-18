@@ -630,7 +630,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, "        ")
 		}
-		fmt.Fprintf(w, "        ...\n\n")
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
 	}
 
 	// Produce an awaitable subclass.
@@ -907,7 +907,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, "        ")
 		}
-		fmt.Fprintf(w, "        ...\n\n")
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
 	}
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
@@ -1659,12 +1659,12 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, "        ")
 		}
-		fmt.Fprintf(w, "        ...\n\n")
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
 
 		if setter {
 			fmt.Fprintf(w, "    @%s.setter\n", pname)
 			fmt.Fprintf(w, "    def %s(self, value: %s):\n", pname, ty)
-			fmt.Fprintf(w, "        ...\n\n")
+			fmt.Fprintf(w, "        pulumi.set(self, %q, value)\n\n", pname)
 		}
 	}
 
