@@ -45,6 +45,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - uses: oleksiyrudenko/gha-git-credentials@v1
+        with:
+          token: '${{ secrets.GITHUB_TOKEN }}'
       - uses: actions/download-artifact@v2
         id: download
         with:
