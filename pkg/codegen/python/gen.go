@@ -867,7 +867,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if !res.IsProvider {
 		fmt.Fprintf(w, "    @staticmethod\n")
 		fmt.Fprintf(w, "    def get(resource_name: str,\n")
-		fmt.Fprintf(w, "            id: str,\n")
+		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
 		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
 
 		if res.StateInputs != nil {
@@ -1413,7 +1413,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, "")
 
 	fmt.Fprintln(b, ":param str resource_name: The unique name of the resulting resource.")
-	fmt.Fprintln(b, ":param str id: The unique provider ID of the resource to lookup.")
+	fmt.Fprintln(b, ":param pulumi.Input[str] id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
 		for _, prop := range res.StateInputs.Properties {
