@@ -948,6 +948,11 @@ func (mod *modContext) genPropertyConversionTables() string {
 // Once all resources have been emitted, the table is written out to a format usable for implementations of
 // translate_input_property and translate_output_property.
 func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
+	// Add provider input properties to translation tables.
+	for _, p := range pkg.Provider.InputProperties {
+		recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
+	}
+
 	for _, r := range pkg.Resources {
 		// Calculate casing tables. We do this up front because our docstring generator (which is run during
 		// genResource) requires them.
