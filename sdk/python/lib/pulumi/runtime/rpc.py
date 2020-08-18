@@ -392,6 +392,10 @@ def translate_output_properties(output: Any,
     If output is a primitive (i.e. not a dict or list), the value is returned without modification.
     """
 
+    # If it's a secret, unwrap the value so the output is in alignment with the expected type.
+    if is_rpc_secret(output):
+        output = unwrap_rpc_secret(output)
+
     # Unwrap optional types.
     typ = _types.unwrap_optional_type(typ) if typ else typ
 

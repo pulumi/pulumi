@@ -438,7 +438,10 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             }],
         }
 
-        for typ in [Bar, BarDeclared]:
+        def convert_properties_to_secrets(output: dict) -> dict:
+            return {k: {rpc._special_sig_key: rpc._special_secret_sig, "value": v } for k, v in output.items()}
+
+        def run_test(output: dict):
             result = rpc.translate_output_properties(output, translate_output_property, typ)
             self.assertIsInstance(result, typ)
 
@@ -479,6 +482,10 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             assertFoo(result.eighth_optional_optional_arg[0]["blah"][0], "farewell-opt-opt", 1137)
             self.assertIs(result.eighth_optional_optional_optional_arg, result["eighthOptionalOptionalOptionalArg"])
             assertFoo(result.eighth_optional_optional_optional_arg[0]["blah"][0], "farewell-opt-opt-opt", 11137)
+
+        for typ in [Bar, BarDeclared]:
+            run_test(output)
+            run_test(convert_properties_to_secrets(output))
 
     def test_nested_types_raises(self):
         dict_value = {
@@ -536,6 +543,10 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         ]
 
         for typ, value in tests:
-            output = {"value": value}
-            with self.assertRaises(AssertionError):
-                rpc.translate_output_properties(output, translate_output_property, typ)
+            outputs = [
+                {"value": value},
+                {"value": {rpc._special_sig_key: rpc._special_secret_sig, "value": value}},
+            ]
+            for output in outputs:
+                with self.assertRaises(AssertionError):
+                    rpc.translate_output_properties(output, translate_output_property, typ)
