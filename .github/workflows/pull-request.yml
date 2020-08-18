@@ -43,8 +43,8 @@ jobs:
           repo: pulumi/pulumictl
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Fetch Git Tags
-        run: git fetch --quiet --prune --unshallow --tags
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v2
         id: download
         with:
