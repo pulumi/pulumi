@@ -47,7 +47,6 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
-	var suppressPermaLink bool
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
@@ -83,7 +82,6 @@ func newPreviewCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
-				SuppressPermaLink:    suppressPermaLink,
 				IsInteractive:        cmdutil.Interactive(),
 				Type:                 displayType,
 				JSONDisplay:          jsonDisplay,
@@ -249,9 +247,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&suppressPermaLink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
