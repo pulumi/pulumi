@@ -6,7 +6,30 @@ env:
   GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
 
 jobs:
-  test:
+  test_pulumi:
+    name: Run Pulumi Tests
+    strategy:
+      matrix:
+        platform: [ ubuntu-latest ]
+        go-version: [1.14.x]
+    needs: build_sdk
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Ensure dependencies
+        run: make ensure SUB_PROJECTS=""
+      - name: Run tests
+        run: make only_test SUB_PROJECTS=""
+  test_sdks:
     name: Run Language Tests
     strategy:
       matrix:
@@ -43,8 +66,6 @@ jobs:
           repo: pulumi/pulumictl
       - name: Checkout
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - name: setup git
         run: |
           git config --global user.email "you@example.com"

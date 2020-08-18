@@ -123,7 +123,7 @@ default::
 # recurse into them.
 ifneq ($(SUB_PROJECTS),)
 only_build:: $(SUB_PROJECTS:%=%_only_build)
-only_test:: $(SUB_PROJECTS:%=%_only_test)
+only_test_all:: $(SUB_PROJECTS:%=%_only_test)
 only_test_fast:: $(SUB_PROJECTS:%=%_only_test_fast)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
