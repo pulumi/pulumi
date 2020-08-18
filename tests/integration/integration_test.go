@@ -445,7 +445,7 @@ func TestPermaLinkSuppressed(t *testing.T) {
 		UpdateCommandlineFlags: []string{"--suppress-permalink"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			output := stdout.String()
-			assert.NotContains(t, output, "PermaLink:")
+			assert.NotContains(t, output, "Permalink:")
 		},
 	})
 }
@@ -461,7 +461,7 @@ func TestPermaLink(t *testing.T) {
 		Stdout:       stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			output := stdout.String()
-			assert.Contains(t, output, "PermaLink:")
+			assert.Contains(t, output, "Permalink:")
 		},
 	})
 }
