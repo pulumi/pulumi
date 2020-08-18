@@ -491,8 +491,7 @@ def output_type(cls: Type[T]) -> Type[T]:
         python_to_pulumi_table = None
         for python_name, pulumi_name, _ in _py_properties(cls):
             if python_name != pulumi_name:
-                if python_to_pulumi_table is None:
-                    python_to_pulumi_table = {}
+                python_to_pulumi_table = python_to_pulumi_table or {}
                 python_to_pulumi_table[python_name] = pulumi_name
         if python_to_pulumi_table is not None:
             setattr(cls, _PULUMI_PYTHON_TO_PULUMI_TABLE, python_to_pulumi_table)
