@@ -45,6 +45,7 @@ func newDestroyCmd() *cobra.Command {
 	var showSames bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressPermaLink bool
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
@@ -84,6 +85,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
+				SuppressPermaLink:    suppressPermaLink,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -195,6 +197,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressPermaLink, "suppress-permalink", false,
+		"Suppress display of the state permalink")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
