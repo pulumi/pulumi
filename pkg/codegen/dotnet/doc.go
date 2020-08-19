@@ -36,7 +36,17 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the .Net API doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
-	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi/%s.html", typeName)
+	var filename string
+	switch typeName {
+	// We use docfx to generate the .NET language docs. docfx adds a suffix
+	// to generic classes. The suffix depends on the number of type args the class accepts,
+	// which in the case of the Pulumi.Input class is 1.
+	case "Pulumi.Input":
+		filename = "Pulumi.Input-1"
+	default:
+		filename = typeName
+	}
+	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi/%s.html", filename)
 }
 
 // GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
