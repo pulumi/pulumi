@@ -2,10 +2,13 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)
+
+## 2.9.0 (2020-08-19)
 
 - Fix support for CheckFailures in Python Dynamic Providers
   [#5138](https://github.com/pulumi/pulumi/pull/5138)
-  
+
 - Upgrade version of `gocloud.dev`. This ensures that 'AWSKMS' secrets
   providers can now be used with full ARNs rather than just Aliases
   [#5138](https://github.com/pulumi/pulumi/pull/5138)
@@ -27,7 +30,7 @@ CHANGELOG
 
 - Support publishing and consuming Policy Packs using any runtime
   [#5102](https://github.com/pulumi/pulumi/pull/5102)
-  
+
 - Fix regression where any CLI integration for any stack with a default
   secrets provider would sort the config alphabetically and new stacks created
   would get created with an empty map `{}` in the config file
@@ -63,7 +66,7 @@ CHANGELOG
 
 - Python: Improved error message when `virtualenv` doesn't exist
   [#5069](https://github.com/pulumi/pulumi/pull/5069)
-  
+
 - Enable pushing to Artifact Registry in actions
   [#5075](https://github.com/pulumi/pulumi/pull/5075)
 
