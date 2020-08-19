@@ -911,7 +911,7 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Print a URL at the beginning of the update pointing to the Pulumi Service.
 		b.printLink(op, opts, update, version)
 	}
