@@ -30,7 +30,7 @@ jobs:
       - name: Run tests
         run: make only_test SUB_PROJECTS=""
   test_sdks:
-    name: Run Language Tests
+    name: ${{ matrix.platform }} Tests
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
