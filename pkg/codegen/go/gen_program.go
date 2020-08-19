@@ -102,8 +102,11 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 		return nil
 	}
 
-	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
-	return generatePackageContextMap(tool, pkg, goInfo)
+	var goPkgInfo GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		goPkgInfo = goInfo
+	}
+	return generatePackageContextMap(tool, pkg, goPkgInfo)
 }
 
 func (g *generator) collectScopeRoots(n hcl2.Node) {
