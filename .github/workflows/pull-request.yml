@@ -34,7 +34,7 @@ jobs:
       - name: Run tests
         run: make only_test SUB_PROJECTS=""
   test_sdks:
-    name: ${{ matrix.platform }} Tests
+    name: ${{ matrix.language }} Tests
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
