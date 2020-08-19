@@ -20,6 +20,10 @@ CHANGELOG
 
 - SDK changes to support Python input/output classes
   [#5033](https://github.com/pulumi/pulumi/pull/5033)
+  
+- Added `--suppress-permalink` option to suppress the permalink output
+  (fixes [#4103](https://github.com/pulumi/pulumi/issues/4103))
+  [#5191](https://github.com/pulumi/pulumi/pull/5191)
 
 ## 2.8.2 (2020-08-07)
 
