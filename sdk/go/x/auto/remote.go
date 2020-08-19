@@ -1,7 +1,6 @@
 package auto
 
 import (
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -9,20 +8,9 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
-func setupRemote(remote *RemoteArgs) (string, error) {
+func setupGitRepo(workDir string, repoArgs *GitRepo) (string, error) {
 	// clone
-	var enlistPath string
-	if remote.WorkDir != nil {
-		enlistPath = *remote.WorkDir
-	} else {
-		p, err := ioutil.TempDir("", "auto")
-		enlistPath = p
-		if err != nil {
-			return "", errors.Wrap(err, "error enlisting in remote")
-		}
-	}
-
-	repo, err := git.PlainClone(enlistPath, false, &git.CloneOptions{URL: remote.RepoURL})
+	repo, err := git.PlainClone(workDir, false, &git.CloneOptions{URL: repoArgs.URL})
 	if err != nil {
 		return "", errors.Wrap(err, "unable to clone repo")
 	}
@@ -34,12 +22,12 @@ func setupRemote(remote *RemoteArgs) (string, error) {
 	}
 
 	var hash string
-	if remote.CommitHash != nil {
-		hash = *remote.CommitHash
+	if repoArgs.CommitHash != "" {
+		hash = repoArgs.CommitHash
 	}
 	var branch string
-	if remote.Branch != nil {
-		branch = *remote.Branch
+	if repoArgs.Branch != "" {
+		branch = repoArgs.Branch
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
@@ -52,19 +40,19 @@ func setupRemote(remote *RemoteArgs) (string, error) {
 	}
 
 	var relPath string
-	if remote.ProjectPath != nil {
-		relPath = *remote.ProjectPath
+	if repoArgs.ProjectPath != "" {
+		relPath = repoArgs.ProjectPath
 	}
 
-	projectDiskPath := filepath.Join(enlistPath, relPath)
+	workDir = filepath.Join(workDir, relPath)
 
 	// setup
-	if remote.Setup != nil {
-		err = remote.Setup(projectDiskPath)
+	if repoArgs.Setup != nil {
+		err = repoArgs.Setup(workDir)
 		if err != nil {
 			return "", errors.Wrap(err, "error while running setup function")
 		}
 	}
 
-	return projectDiskPath, nil
+	return workDir, nil
 }

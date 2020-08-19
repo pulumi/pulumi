@@ -230,10 +230,6 @@ type RemoteArgs struct {
 	WorkDir *string
 }
 
-// SetupFn is a function to execute after enlisting in a Stack's remote repo.
-// It is called with a PATH containing the pulumi program post-enlistment.
-type SetupFn func(string) error
-
 // ProjectOverrides is an optional set of values to be merged with
 // the existing pulumi.yaml
 type ProjectOverrides struct {

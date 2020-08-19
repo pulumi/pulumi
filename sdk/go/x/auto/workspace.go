@@ -39,7 +39,7 @@ type Workspace interface {
 	WorkDir() string
 	// PulumiHome returns the directory override for CLI metadata if set.
 	PulumiHome() *string
-	// Stack returns the fullyQualifiedStackName of the current stack.
+	// Stack returns the fullyQualifiedStackName of the currently selected stack if any.
 	Stack() string
 	// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
 	CreateStack(string) (Stack, error)
