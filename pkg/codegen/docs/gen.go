@@ -1728,6 +1728,8 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 			// If the parent name is blank, it means this is the package-level.
 			if parentName == "." || parentName == "" {
 				parentName = ":index:"
+			} else {
+				parentName = ":" + parentName + ":"
 			}
 			parent := getMod(pkg, parentName, modules, tool)
 			parent.children = append(parent.children, mod)
