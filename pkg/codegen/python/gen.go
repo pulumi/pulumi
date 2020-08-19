@@ -726,7 +726,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// If there's an argument type, emit it.
 	for _, prop := range res.InputProperties {
 		ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
-		fmt.Fprintf(w, ",\n                 %s: %s = None", initParamName(prop.Name), ty)
+		fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 	}
 
 	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
@@ -759,7 +759,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	ins := stringSet{}
 	for _, prop := range res.InputProperties {
-		pname := initParamName(prop.Name)
+		pname := InitParamName(prop.Name)
 		var arg interface{}
 		var err error
 
@@ -1397,7 +1397,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.InputProperties {
-		mod.genPropDocstring(b, initParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
+		mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
 	}
 
 	// printComment handles the prefix and triple quotes.
@@ -1596,8 +1596,8 @@ func pyClassName(name string) string {
 	return EnsureKeywordSafe(name)
 }
 
-// initParamName returns a PyName-encoded name but also deduplicates the name against built-in parameters of resource __init__.
-func initParamName(name string) string {
+// InitParamName returns a PyName-encoded name but also deduplicates the name against built-in parameters of resource __init__.
+func InitParamName(name string) string {
 	result := PyName(name)
 	switch result {
 	case "resource_name", "opts":
