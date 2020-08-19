@@ -9,8 +9,8 @@ from pulumi.dynamic import Resource, ResourceProvider, CreateResult
 @pulumi.input_type
 class AdditionalArgs:
     def __init__(self, first_value: pulumi.Input[str], second_value: Optional[pulumi.Input[float]] = None):
-        self.first_value = first_value
-        self.second_value = second_value
+        pulumi.set(self, "first_value", first_value)
+        pulumi.set(self, "second_value", second_value)
 
     # Property with empty getter/setter bodies.
     @property
@@ -20,7 +20,7 @@ class AdditionalArgs:
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
-        pulumi.set(self, "first_value", value)
+        ...
 
     # Property with explicitly specified getter/setter bodies.
     @property
@@ -34,11 +34,11 @@ class AdditionalArgs:
 
 @pulumi.output_type
 class Additional(dict):
-    def __init__(self, first_value: str, second_value: Optional[float], third: str, fourth: str):
+    def __init__(self, first_value: str, second_value: Optional[float]):
         pulumi.set(self, "first_value", first_value)
         pulumi.set(self, "second_value", second_value)
 
-    # Property with empty getter/setter bodies.
+    # Property with empty getter body.
     @property
     @pulumi.getter(name="firstValue")
     def first_value(self) -> str:
@@ -75,10 +75,12 @@ res2 = MyResource("testres2", additional=AdditionalArgs(
 
 # Create a resource using the output object of another resource, accessing the output as a dict.
 res3 = MyResource("testres3", additional=AdditionalArgs(
-    first_value=res.additional["firstValue"],
-    second_value=res.additional["secondValue"]))
+    first_value=res.additional["first_value"],
+    second_value=res.additional["second_value"]))
 
 # Create a resource using a dict as the input.
+# Note: These are camel case (not snake_case) since the resource does not do any translation of
+# property names.
 res4 = MyResource("testres4", additional={
     "firstValue": "hello",
     "secondValue": 42,

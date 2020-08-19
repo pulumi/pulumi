@@ -41,10 +41,12 @@ res2 = MyResource("testres2", additional=AdditionalArgs(
 
 # Create a resource using the output object of another resource, accessing the output as a dict.
 res3 = MyResource("testres3", additional=AdditionalArgs(
-    first_value=res.additional["firstValue"],
-    second_value=res.additional["secondValue"]))
+    first_value=res.additional["first_value"],
+    second_value=res.additional["second_value"]))
 
 # Create a resource using a dict as the input.
+# Note: These are camel case (not snake_case) since the resource does not do any translation of
+# property names.
 res4 = MyResource("testres4", additional={
     "firstValue": "hello",
     "secondValue": 42,

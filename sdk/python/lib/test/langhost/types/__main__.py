@@ -47,8 +47,6 @@ res2 = AdditionalResource("testres2", additional=AdditionalArgs(
 ))
 
 # Create a resource using the output object of another resource, accessing the output as a dict.
-# Note: the output dict's keys are exactly what is returned from the engine since the resource
-# does not do any translation of property names.
 res3 = AdditionalResource("testres3", additional=AdditionalArgs(
     first_value=res.additional["first_value"],
     second_value=res.additional["second_value"],
