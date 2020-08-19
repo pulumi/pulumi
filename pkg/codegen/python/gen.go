@@ -41,6 +41,12 @@ import (
 // Match module version suffix. Examples include "/v1beta1", "/v1alpha2", and "/preview".
 var moduleVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta|preview)\d*)?)$`)
 
+type typeDetails struct {
+	outputType   bool
+	inputType    bool
+	functionType bool
+}
+
 type stringSet map[string]struct{}
 
 func (ss stringSet) add(s string) {
@@ -50,6 +56,27 @@ func (ss stringSet) add(s string) {
 func (ss stringSet) has(s string) bool {
 	_, ok := ss[s]
 	return ok
+}
+
+type imports stringSet
+
+func (imports imports) add(mod *modContext, tok string, input bool) {
+	imports.addIf(mod, tok, input, nil /*predicate*/)
+}
+
+func (imports imports) addIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
+	if imp := mod.importFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
+		stringSet(imports).add(imp)
+	}
+}
+
+func (imports imports) strings() []string {
+	result := make([]string, 0, len(imports))
+	for imp := range imports {
+		result = append(result, imp)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func title(s string) string {
@@ -63,8 +90,10 @@ func title(s string) string {
 type modContext struct {
 	pkg                  *schema.Package
 	mod                  string
+	types                []*schema.ObjectType
 	resources            []*schema.Resource
 	functions            []*schema.Function
+	typeDetails          map[*schema.ObjectType]*typeDetails
 	children             []*modContext
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
@@ -76,10 +105,75 @@ type modContext struct {
 	compatibility    string            // Toggle compatibility mode for a specified target.
 }
 
+func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
+	details, ok := mod.typeDetails[t]
+	if !ok {
+		details = &typeDetails{}
+		if mod.typeDetails == nil {
+			mod.typeDetails = map[*schema.ObjectType]*typeDetails{}
+		}
+		mod.typeDetails[t] = details
+	}
+	return details
+}
+
+func (mod *modContext) tokenToType(tok string, input, functionType bool) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
+	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+
+	modName, name := mod.tokenToModule(tok), title(components[2])
+
+	var suffix string
+	switch {
+	case input:
+		suffix = "Args"
+	case functionType:
+		suffix = "Result"
+	}
+
+	if modName == "" && modName != mod.mod {
+		rootModName := "_root_outputs."
+		if input {
+			rootModName = "_root_inputs."
+		}
+		return fmt.Sprintf("'%s%s%s'", rootModName, name, suffix)
+	}
+
+	if modName == mod.mod {
+		modName = ""
+	}
+	if modName != "" {
+		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
+	}
+
+	var prefix string
+	if !input {
+		prefix = "outputs."
+	}
+
+	return fmt.Sprintf("'%s%s%s%s'", modName, prefix, name, suffix)
+}
+
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return title(components[2])
+}
+
+func tokenToModule(tok string, pkg *schema.Package, moduleNameOverrides map[string]string) string {
+	canonicalModName := pkg.TokenToModule(tok)
+	modName := PyName(strings.ToLower(canonicalModName))
+	if override, ok := moduleNameOverrides[canonicalModName]; ok {
+		modName = override
+	}
+	return modName
+}
+
+func (mod *modContext) tokenToModule(tok string) string {
+	return tokenToModule(tok, mod.pkg, mod.modNameOverrides)
 }
 
 func printComment(w io.Writer, comment string, indent string) {
@@ -104,7 +198,7 @@ func printComment(w io.Writer, comment string, indent string) {
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
 }
 
-func (mod *modContext) genHeader(w io.Writer, needsSDK bool, needsJSON bool) {
+func (mod *modContext) genHeader(w io.Writer, needsSDK, needsJSON bool, imports imports) {
 	// Set the encoding to UTF-8, in case the comments contain non-ASCII characters.
 	fmt.Fprintf(w, "# coding=utf-8\n")
 
@@ -127,8 +221,11 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, needsJSON bool) {
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
-		fmt.Fprintf(w, "from typing import Union\n")
+		fmt.Fprintf(w, "from typing import Any, Dict, List, Mapping, Optional, Tuple, Union\n")
 		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
+		for _, imp := range imports.strings() {
+			fmt.Fprintf(w, "%s\n", imp)
+		}
 		fmt.Fprintf(w, "\n")
 	}
 }
@@ -182,7 +279,7 @@ func (mod *modContext) gen(fs fs) error {
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, false, false)
+		mod.genHeader(buffer, false, false, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
 		fs.add(filepath.Join(dir, "_utilities.py"), buffer.Bytes())
 		fs.add(filepath.Join(dir, "py.typed"), []byte{})
@@ -243,9 +340,43 @@ func (mod *modContext) gen(fs fs) error {
 		addFile(PyName(tokenToName(f.Token))+".py", fun)
 	}
 
+	// Nested types
+	if len(mod.types) > 0 {
+		if err := mod.genTypes(dir, fs); err != nil {
+			return err
+		}
+	}
+
 	// Index
-	fs.add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
+	if !mod.isEmpty() {
+		fs.add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
+	}
+
 	return nil
+}
+
+func (mod *modContext) hasTypes(input bool) bool {
+	for _, t := range mod.types {
+		if input && mod.details(t).inputType {
+			return true
+		}
+		if !input && mod.details(t).outputType {
+			return true
+		}
+	}
+	return false
+}
+
+func (mod *modContext) isEmpty() bool {
+	if len(mod.extraSourceFiles) > 0 || len(mod.functions) > 0 || len(mod.resources) > 0 || len(mod.types) > 0 {
+		return false
+	}
+	for _, child := range mod.children {
+		if !child.isEmpty() {
+			return false
+		}
+	}
+	return true
 }
 
 func (mod *modContext) submodulesExist() bool {
@@ -255,7 +386,7 @@ func (mod *modContext) submodulesExist() bool {
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, false, false)
+	mod.genHeader(w, false, false, nil)
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -274,6 +405,12 @@ func (mod *modContext) genInit(exports []string) string {
 			fmt.Fprintf(w, "from .%s import *\n", name)
 		}
 	}
+	if mod.hasTypes(true /*input*/) {
+		fmt.Fprintf(w, "from ._inputs import *\n")
+	}
+	if mod.hasTypes(false /*input*/) {
+		fmt.Fprintf(w, "from . import outputs\n")
+	}
 
 	// If there are subpackages, import them with importlib.
 	if mod.submodulesExist() {
@@ -284,6 +421,10 @@ func (mod *modContext) genInit(exports []string) string {
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
 		fmt.Fprintf(w, "from . import (\n")
 		for _, mod := range mod.children {
+			if mod.isEmpty() {
+				continue
+			}
+
 			child := mod.mod
 			// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
 			// Example: apps/v1beta1 -> v1beta1
@@ -298,10 +439,51 @@ func (mod *modContext) genInit(exports []string) string {
 	return w.String()
 }
 
+func (mod *modContext) importFromToken(tok string, input bool) string {
+	modName := mod.tokenToModule(tok)
+	if modName == mod.mod {
+		if input {
+			return "from ._inputs import *"
+		}
+		return "from . import outputs"
+	}
+
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	relImport := relPathToRelImport(relRoot)
+
+	if modName == "" {
+		imp, as := "outputs", "_root_outputs"
+		if input {
+			imp, as = "_inputs", "_root_inputs"
+		}
+		return fmt.Sprintf("from %s import %s as %s", relImport, imp, as)
+	}
+
+	components := strings.Split(modName, "/")
+	return fmt.Sprintf("from %s import %[2]s as _%[2]s", relImport, components[0])
+}
+
 // emitConfigVariables emits all config vaiables in the given module, returning the resulting file.
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, true, false)
+
+	imports, seen := imports{}, codegen.Set{}
+	visitObjectTypesFromProperties(variables, seen, func(t *schema.ObjectType) {
+		imports.add(mod, t.Token, false /*input*/)
+	})
+
+	mod.genHeader(w, true, false, imports)
+
+	// Export only the symbols we want exported.
+	if len(variables) > 0 {
+		fmt.Fprintf(w, "__all__ = [\n")
+		for _, p := range variables {
+			fmt.Fprintf(w, "    '%s',\n", PyName(p.Name))
+		}
+		fmt.Fprintf(w, "]\n\n")
+	}
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name)
@@ -326,11 +508,86 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	return w.String(), nil
 }
 
+func (mod *modContext) genTypes(dir string, fs fs) error {
+	genTypes := func(file string, input bool) error {
+		w := &bytes.Buffer{}
+
+		imports, inputSeen, outputSeen := imports{}, codegen.Set{}, codegen.Set{}
+		for _, t := range mod.types {
+			if input && mod.details(t).inputType {
+				visitObjectTypesFromProperties(t.Properties, inputSeen, func(t *schema.ObjectType) {
+					imports.addIf(mod, t.Token, true /*input*/, func(imp string) bool {
+						// No need to import `._inputs` inside _inputs.py.
+						return imp != "from ._inputs import *"
+					})
+				})
+			}
+			if !input && mod.details(t).outputType {
+				visitObjectTypesFromProperties(t.Properties, outputSeen, func(t *schema.ObjectType) {
+					imports.add(mod, t.Token, false /*input*/)
+				})
+			}
+		}
+
+		mod.genHeader(w, true, false, imports)
+
+		// Export only the symbols we want exported.
+		fmt.Fprintf(w, "__all__ = [\n")
+		for _, t := range mod.types {
+			if (input && mod.details(t).inputType) || (!input && mod.details(t).outputType) {
+				name := tokenToName(t.Token)
+				if input {
+					name += "Args"
+				} else if mod.details(t).functionType {
+					name += "Result"
+				}
+				fmt.Fprintf(w, "    '%s',\n", name)
+			}
+		}
+		fmt.Fprintf(w, "]\n\n")
+
+		var hasTypes bool
+		for _, t := range mod.types {
+			if input && mod.details(t).inputType {
+				wrapInput := !mod.details(t).functionType
+				if err := mod.genType(w, t, true, wrapInput); err != nil {
+					return err
+				}
+				hasTypes = true
+			}
+			if !input && mod.details(t).outputType {
+				if err := mod.genType(w, t, false, false); err != nil {
+					return err
+				}
+				hasTypes = true
+			}
+		}
+		if hasTypes {
+			fs.add(path.Join(dir, file), w.Bytes())
+		}
+		return nil
+	}
+	if err := genTypes("_inputs.py", true); err != nil {
+		return err
+	}
+	if err := genTypes("outputs.py", false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func awaitableTypeNames(tok string) (baseName, awaitableName string) {
+	baseName = pyClassName(tokenToName(tok))
+	awaitableName = "Awaitable" + baseName
+	return
+}
+
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
-	baseName := pyClassName(tokenToName(obj.Token))
+	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprint(w, "\n")
+	fmt.Fprint(w, "\n\n")
+	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
@@ -354,12 +611,27 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
 		}
 
-		// Now perform the assignment, and follow it with a """ doc comment if there was one found.
-		fmt.Fprintf(w, "        __self__.%[1]s = %[1]s\n", pname)
-		printComment(w, prop.Comment, "        ")
+		// Now perform the assignment.
+		fmt.Fprintf(w, "        pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
 	}
+	fmt.Fprintf(w, "\n")
 
-	awaitableName := "Awaitable" + baseName
+	// Write out Python property getters for each property.
+	for _, prop := range obj.Properties {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
+	}
 
 	// Produce an awaitable subclass.
 	fmt.Fprint(w, "\n\n")
@@ -405,7 +677,29 @@ func jsonImportRequired(res *schema.Resource) bool {
 
 func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, true, jsonImportRequired(res))
+
+	imports, inputSeen, outputSeen := imports{}, codegen.Set{}, codegen.Set{}
+	visitObjectTypesFromProperties(res.Properties, outputSeen, func(t *schema.ObjectType) {
+		imports.add(mod, t.Token, false /*input*/)
+	})
+	visitObjectTypesFromProperties(res.InputProperties, inputSeen, func(t *schema.ObjectType) {
+		imports.add(mod, t.Token, !res.IsProvider)
+	})
+	if res.StateInputs != nil {
+		visitObjectTypesFromProperties(res.StateInputs.Properties, inputSeen, func(t *schema.ObjectType) {
+			imports.add(mod, t.Token, true /*input*/)
+		})
+	}
+
+	mod.genHeader(w, true, jsonImportRequired(res), imports)
+
+	name := pyClassName(tokenToName(res.Token))
+	if res.IsProvider {
+		name = "Provider"
+	}
+
+	// Export only the symbols we want exported.
+	fmt.Fprintf(w, "__all__ = ['%s']\n\n", name)
 
 	baseType := "pulumi.CustomResource"
 	if res.IsProvider {
@@ -417,53 +711,29 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
 
-	name := pyClassName(tokenToName(res.Token))
-	if res.IsProvider {
-		name = "Provider"
-	}
-
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
-	for _, prop := range res.Properties {
-		name := PyName(prop.Name)
-		ty := pyType(prop.Type)
-		fmt.Fprintf(w, "    %s: pulumi.Output[%s]\n", name, ty)
-		if prop.Comment != "" {
-			doc := prop.Comment
-
-			// Exclude nested docs in kubernetes provider
-			if mod.compatibility != kubernetes20 {
-				seenTypes := codegen.Set{}
-				nested := nestedStructure(prop.Type, seenTypes)
-				if len(nested) > 0 {
-					doc = fmt.Sprintf("%s\n", doc)
-
-					b := &bytes.Buffer{}
-					mod.genNestedStructureBullets(b, nested, "  ", false /*wrapInput*/)
-					doc = fmt.Sprintf("%s%s", doc, b.String())
-				}
-			}
-
-			printComment(w, doc, "    ")
-		}
-	}
-
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
 	// Now generate an initializer with arguments for all input properties.
-	fmt.Fprintf(w, "    def __init__(__self__, resource_name, opts=None")
+	fmt.Fprintf(w, "    def __init__(__self__,\n")
+	fmt.Fprintf(w, "                 resource_name,\n")
+	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None")
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.InputProperties {
-		fmt.Fprintf(w, ", %s=None", initParamName(prop.Name))
+		ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
+		fmt.Fprintf(w, ",\n                 %s: %s = None", initParamName(prop.Name), ty)
 	}
 
 	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
 	// compatibility, we still emit them, but we don't emit documentation for them.
-	fmt.Fprintf(w, ", __props__=None, __name__=None, __opts__=None):\n")
+	fmt.Fprintf(w, ",\n                 __props__=None")
+	fmt.Fprintf(w, ",\n                 __name__=None")
+	fmt.Fprintf(w, ",\n                 __opts__=None):\n")
 	mod.genInitDocstring(w, res)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, res.DeprecationMessage)
@@ -596,14 +866,18 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	if !res.IsProvider {
 		fmt.Fprintf(w, "    @staticmethod\n")
-		fmt.Fprintf(w, "    def get(resource_name, id, opts=None")
+		fmt.Fprintf(w, "    def get(resource_name: str,\n")
+		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
+		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
 
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
-				fmt.Fprintf(w, ", %[1]s=None", PyName(prop.Name))
+				pname := PyName(prop.Name)
+				ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
+				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
 			}
 		}
-		fmt.Fprintf(w, "):\n")
+		fmt.Fprintf(w, ") -> '%s':\n", name)
 		mod.genGetDocstring(w, res)
 		fmt.Fprintf(w,
 			"        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))\n")
@@ -619,6 +893,23 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
+	// Write out Python properties for each of the resource's properties.
+	for _, prop := range res.Properties {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, false, false, !prop.IsRequired, false)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
+	}
+
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
 	fmt.Fprintf(w,
@@ -627,6 +918,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
     def translate_input_property(self, prop):
         return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
+
 `)
 
 	return w.String(), nil
@@ -656,9 +948,32 @@ func (mod *modContext) writeAlias(w io.Writer, alias *schema.Alias) {
 
 func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, true, false)
 
+	imports, inputSeen, outputSeen := imports{}, codegen.Set{}, codegen.Set{}
+	if fun.Inputs != nil {
+		visitObjectTypesFromProperties(fun.Inputs.Properties, inputSeen, func(t *schema.ObjectType) {
+			imports.add(mod, t.Token, true /*input*/)
+		})
+	}
+	if fun.Outputs != nil {
+		visitObjectTypesFromProperties(fun.Outputs.Properties, outputSeen, func(t *schema.ObjectType) {
+			imports.add(mod, t.Token, false /*input*/)
+		})
+	}
+
+	mod.genHeader(w, true, false, imports)
+
+	baseName, awaitableName := awaitableTypeNames(fun.Outputs.Token)
 	name := PyName(tokenToName(fun.Token))
+
+	// Export only the symbols we want exported.
+	fmt.Fprintf(w, "__all__ = [\n")
+	if fun.Outputs != nil {
+		fmt.Fprintf(w, "    '%s',\n", baseName)
+		fmt.Fprintf(w, "    '%s',\n", awaitableName)
+	}
+	fmt.Fprintf(w, "    '%s',\n", name)
+	fmt.Fprintf(w, "]\n\n")
 
 	if fun.DeprecationMessage != "" {
 		escaped := strings.ReplaceAll(fun.DeprecationMessage, `"`, `\"`)
@@ -680,12 +995,24 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// Write out the function signature.
 	fmt.Fprint(w, "\n")
-	fmt.Fprintf(w, "def %s(", name)
-	for _, arg := range args {
-		fmt.Fprintf(w, "%s=None, ", PyName(arg.Name))
+	def := fmt.Sprintf("def %s(", name)
+	indent := strings.Repeat(" ", len(def))
+	fmt.Fprintf(w, def)
+	for i, arg := range args {
+		var ind string
+		if i != 0 {
+			ind = indent
+		}
+		pname := PyName(arg.Name)
+		ty := mod.typeString(arg.Type, true, false /*wrapInput*/, true /*optional*/, true /*acceptMapping*/)
+		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
 	}
-	fmt.Fprintf(w, "opts=None")
-	fmt.Fprintf(w, "):\n")
+	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
+	if retTypeName != "" {
+		fmt.Fprintf(w, ") -> %s:\n", retTypeName)
+	} else {
+		fmt.Fprintf(w, "):\n")
+	}
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
@@ -697,11 +1024,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if len(args) > 0 {
 		fmt.Fprintln(docs, "")
 		for _, arg := range args {
-			mod.genPropDocstring(docs, PyName(arg.Name), arg, false /*wrapInputs*/)
+			mod.genPropDocstring(docs, PyName(arg.Name), arg, false /*wrapInputs*/, true /*acceptMapping*/)
 		}
-
-		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-		mod.genNestedStructuresDocstring(docs, args, false /*wrapInput*/)
 	}
 	printComment(w, docs.String(), "    ")
 
@@ -723,14 +1047,22 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
 
 	// Now simply invoke the runtime function with the arguments.
-	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts).value\n", fun.Token)
+	var typ string
+	if fun.Outputs != nil {
+		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
+		// the call to invoke.
+		typ = fmt.Sprintf(", typ=%s", baseName)
+	}
+	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
 	fmt.Fprintf(w, "\n")
 
 	// And copy the results to an object, if there are indeed any expected returns.
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "    return %s(\n", retTypeName)
 		for i, ret := range rets {
-			fmt.Fprintf(w, "        %s=__ret__.get('%s')", PyName(ret.Name), ret.Name)
+			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
+			// object has a get property that masks the underlying dict subclass's get method.
+			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
 			if i == len(rets)-1 {
 				fmt.Fprintf(w, ")\n")
 			} else {
@@ -740,6 +1072,34 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	return w.String(), nil
+}
+
+func visitObjectTypesFromProperties(properties []*schema.Property, seen codegen.Set, visitor func(*schema.ObjectType)) {
+	for _, p := range properties {
+		visitObjectTypes(p.Type, seen, visitor)
+	}
+}
+
+func visitObjectTypes(t schema.Type, seen codegen.Set, visitor func(*schema.ObjectType)) {
+	if seen.Has(t) {
+		return
+	}
+	seen.Add(t)
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		visitObjectTypes(t.ElementType, seen, visitor)
+	case *schema.MapType:
+		visitObjectTypes(t.ElementType, seen, visitor)
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			visitObjectTypes(p.Type, seen, visitor)
+		}
+		visitor(t)
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			visitObjectTypes(e, seen, visitor)
+		}
+	}
 }
 
 var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
@@ -765,7 +1125,7 @@ func sanitizePackageDescription(description string) string {
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
 	w := &bytes.Buffer{}
-	(&modContext{tool: tool}).genHeader(w, false, false)
+	(&modContext{tool: tool}).genHeader(w, false, false, nil)
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
@@ -915,7 +1275,7 @@ func pep440VersionToSemver(v string) (semver.Version, error) {
 // used to convert to and from snake case and camel case.
 func (mod *modContext) genPropertyConversionTables() string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, false, false)
+	mod.genHeader(w, false, false, nil)
 
 	var allKeys []string
 	for key := range mod.snakeCaseToCamelCase {
@@ -1037,13 +1397,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	for _, prop := range res.InputProperties {
-		mod.genPropDocstring(b, initParamName(prop.Name), prop, true /*wrapInput*/)
-	}
-
-	// Exclude nested docs in kubernetes provider
-	if mod.compatibility != kubernetes20 {
-		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-		mod.genNestedStructuresDocstring(b, res.InputProperties, true /*wrapInput*/)
+		mod.genPropDocstring(b, initParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
 	}
 
 	// printComment handles the prefix and triple quotes.
@@ -1059,30 +1413,43 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, "")
 
 	fmt.Fprintln(b, ":param str resource_name: The unique name of the resulting resource.")
-	fmt.Fprintln(b, ":param str id: The unique provider ID of the resource to lookup.")
+	fmt.Fprintln(b, ":param pulumi.Input[str] id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
 		for _, prop := range res.StateInputs.Properties {
-			mod.genPropDocstring(b, PyName(prop.Name), prop, true /*wrapInput*/)
+			mod.genPropDocstring(b, PyName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
 		}
-
-		// Nested structures are typed as `dict` so we include some extra documentation for these structures.
-		mod.genNestedStructuresDocstring(b, res.StateInputs.Properties, true /*wrapInput*/)
 	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
 }
 
-func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, wrapInput bool) {
+func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties []*schema.Property, wrapInput bool) {
+	// b contains the full text of the docstring, without the leading and trailing triple quotes.
+	b := &bytes.Buffer{}
+
+	// If this type has documentation, write it at the top of the docstring.
+	if comment != "" {
+		fmt.Fprintln(b, comment)
+	}
+
+	for _, prop := range properties {
+		mod.genPropDocstring(b, PyName(prop.Name), prop, wrapInput, false /*acceptMapping*/)
+	}
+
+	// printComment handles the prefix and triple quotes.
+	printComment(w, b.String(), "        ")
+}
+
+func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, wrapInput bool,
+	acceptMapping bool) {
+
 	if prop.Comment == "" {
 		return
 	}
 
-	ty := pyType(prop.Type)
-	if wrapInput {
-		ty = fmt.Sprintf("pulumi.Input[%s]", ty)
-	}
+	ty := mod.typeString(prop.Type, true, wrapInput, false /*optional*/, acceptMapping)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -1101,96 +1468,83 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 	}
 }
 
-func (mod *modContext) genNestedStructuresDocstring(w io.Writer, props []*schema.Property, wrapInput bool) {
-	var names []string
-	nestedMap := make(map[string][]*nestedVariable)
-	seenTypes := codegen.Set{}
-	for _, prop := range props {
-		nested := nestedStructure(prop.Type, seenTypes)
-		if len(nested) > 0 {
-			nestedMap[prop.Name] = nested
-			names = append(names, prop.Name)
-		}
-	}
-	sort.Strings(names)
-
-	for _, name := range names {
-		nested := nestedMap[name]
-		fmt.Fprintf(w, "\nThe **%s** object supports the following:\n\n", PyName(name))
-		mod.genNestedStructureBullets(w, nested, "  ", wrapInput)
-	}
-}
-
-func (mod *modContext) genNestedStructureBullets(w io.Writer, nested []*nestedVariable, indent string, wrapInput bool) {
-	contract.Assert(len(nested) > 0)
-	for i, nes := range nested {
-		name := nes.prop.Name
-		if snake, ok := mod.camelCaseToSnakeCase[name]; ok {
-			name = snake
-		}
-
-		typ := pyType(nes.prop.Type)
-		if wrapInput {
-			typ = fmt.Sprintf("pulumi.Input[%s]", typ)
-		}
-
-		docPrefix := " - "
-		if nes.prop.Comment == "" {
-			// If there's no doc available, just write a new line.
-			docPrefix = "\n"
-		}
-		fmt.Fprintf(w, "%s* `%s` (`%s`)%s", indent, name, typ, docPrefix)
-
-		// If this property has some documentation associated with it, we need to split it so that it is indented
-		// in a way that Sphinx can understand.
-		lines := strings.Split(nes.prop.Comment, "\n")
-		for len(lines) > 0 && lines[len(lines)-1] == "" {
-			lines = lines[:len(lines)-1]
-		}
-		for j, docLine := range lines {
-			// If it's the first line, print it.
-			if j == 0 {
-				fmt.Fprintln(w, docLine)
-			} else {
-				// Otherwise, pad with a couple spaces so the text is aligned with the bullet text above.
-				fmt.Fprintf(w, "%s  %s\n", indent, docLine)
-			}
-		}
-
-		if len(nes.nested) > 0 {
-			mod.genNestedStructureBullets(w, nes.nested, indent+"  ", wrapInput)
-			if i < len(nested)-1 {
-				fmt.Fprintln(w, "")
-			}
-		}
-	}
-}
-
-type nestedVariable struct {
-	prop   *schema.Property
-	nested []*nestedVariable
-}
-
-func nestedStructure(typ schema.Type, seen codegen.Set) []*nestedVariable {
-	if seen.Has(typ) {
-		return nil
-	}
-	seen.Add(typ)
-	switch typ := typ.(type) {
+func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acceptMapping bool) string {
+	var typ string
+	switch t := t.(type) {
 	case *schema.ArrayType:
-		return nestedStructure(typ.ElementType, seen)
+		typ = fmt.Sprintf("List[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
+	case *schema.MapType:
+		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.ObjectType:
-		nested := make([]*nestedVariable, len(typ.Properties))
-		for i, p := range typ.Properties {
-			nested[i] = &nestedVariable{
-				prop:   p,
-				nested: nestedStructure(p.Type, seen),
-			}
+		typ = mod.tokenToType(t.Token, input, mod.details(t).functionType)
+		if acceptMapping {
+			typ = fmt.Sprintf("pulumi.InputType[%s]", typ)
 		}
-		return nested
+	case *schema.TokenType:
+		// Use the underlying type for now.
+		if t.UnderlyingType != nil {
+			return mod.typeString(t.UnderlyingType, input, wrapInput, optional, acceptMapping)
+		}
+		typ = "Any"
+	case *schema.UnionType:
+		if !input {
+			if t.DefaultType != nil {
+				return mod.typeString(t.DefaultType, input, wrapInput, optional, acceptMapping)
+			}
+			typ = "Any"
+		} else {
+			elementTypeSet := stringSet{}
+			var elementTypes []schema.Type
+			for _, e := range t.ElementTypes {
+				et := mod.typeString(e, input, false, false, acceptMapping)
+				if !elementTypeSet.has(et) {
+					elementTypeSet.add(et)
+					elementTypes = append(elementTypes, e)
+				}
+			}
+
+			if len(elementTypes) == 1 {
+				return mod.typeString(elementTypes[0], input, wrapInput, optional, acceptMapping)
+			}
+
+			var elements []string
+			for _, e := range elementTypes {
+				t := mod.typeString(e, input, wrapInput, false, acceptMapping)
+				if wrapInput && strings.HasPrefix(t, "pulumi.Input[") {
+					contract.Assert(t[len(t)-1] == ']')
+					// Strip off the leading `pulumi.Input[` and the trailing `]`
+					t = t[len("pulumi.Input[") : len(t)-1]
+				}
+				elements = append(elements, t)
+			}
+			typ = fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
+		}
 	default:
-		return nil
+		switch t {
+		case schema.BoolType:
+			typ = "bool"
+		case schema.IntType, schema.NumberType:
+			typ = "float"
+		case schema.StringType:
+			typ = "str"
+		case schema.ArchiveType:
+			typ = "pulumi.Archive"
+		case schema.AssetType:
+			typ = "Union[pulumi.Asset, pulumi.Archive]"
+		case schema.JSONType:
+			fallthrough
+		case schema.AnyType:
+			typ = "Any"
+		}
 	}
+
+	if wrapInput && typ != "Any" {
+		typ = fmt.Sprintf("pulumi.Input[%s]", typ)
+	}
+	if optional {
+		return fmt.Sprintf("Optional[%s]", typ)
+	}
+	return typ
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
@@ -1251,6 +1605,147 @@ func initParamName(name string) string {
 	default:
 		return result
 	}
+}
+
+func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapInput bool) error {
+	// Sort required props first.
+	props := make([]*schema.Property, len(obj.Properties))
+	copy(props, obj.Properties)
+	sort.Slice(props, func(i, j int) bool {
+		pi, pj := props[i], props[j]
+		switch {
+		case pi.IsRequired != pj.IsRequired:
+			return pi.IsRequired && !pj.IsRequired
+		default:
+			return pi.Name < pj.Name
+		}
+	})
+
+	decorator := "@pulumi.output_type"
+	if input {
+		decorator = "@pulumi.input_type"
+	}
+
+	name := tokenToName(obj.Token)
+	switch {
+	case input:
+		name += "Args"
+	case mod.details(obj).functionType:
+		name += "Result"
+	}
+
+	var suffix string
+	if !input {
+		suffix = "(dict)"
+	}
+
+	fmt.Fprintf(w, "%s\n", decorator)
+	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
+	if !input && obj.Comment != "" {
+		printComment(w, obj.Comment, "    ")
+	}
+
+	genProp := func(w io.Writer, prop *schema.Property, setter bool) {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
+
+		if setter {
+			fmt.Fprintf(w, "    @%s.setter\n", pname)
+			fmt.Fprintf(w, "    def %s(self, value: %s):\n", pname, ty)
+			fmt.Fprintf(w, "        pulumi.set(self, %q, value)\n\n", pname)
+		}
+	}
+
+	// Generate an __init__ method.
+	fmt.Fprintf(w, "    def __init__(__self__")
+	// Bare `*` argument to force callers to use named arguments.
+	if len(props) > 0 {
+		fmt.Fprintf(w, ", *")
+	}
+	for _, prop := range props {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		var defaultValue string
+		if !prop.IsRequired {
+			defaultValue = " = None"
+		}
+		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
+	}
+	fmt.Fprintf(w, "):\n")
+	mod.genTypeDocstring(w, obj.Comment, props, wrapInput)
+	if len(props) == 0 {
+		fmt.Fprintf(w, "        pass\n")
+	}
+	for _, prop := range props {
+		pname := PyName(prop.Name)
+		var arg interface{}
+		var err error
+
+		// Fill in computed defaults for arguments.
+		if prop.DefaultValue != nil {
+			dv, err := getDefaultValue(prop.DefaultValue, prop.Type)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "        if %s is None:\n", pname)
+			fmt.Fprintf(w, "            %s = %s\n", pname, dv)
+		}
+
+		// Check that the property isn't deprecated.
+		if input && prop.DeprecationMessage != "" {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+		}
+
+		// And add it to the dictionary.
+		arg = pname
+
+		if prop.ConstValue != nil {
+			arg, err = getConstValue(prop.ConstValue)
+			if err != nil {
+				return err
+			}
+		}
+
+		var indent string
+		if !prop.IsRequired {
+			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			indent = "    "
+		}
+
+		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
+	}
+	fmt.Fprintf(w, "\n")
+
+	// Generate properties. Input types have getters and setters, output types only have getters.
+	for _, prop := range props {
+		genProp(w, prop, input /*setter*/)
+	}
+
+	if !input && !mod.details(obj).functionType {
+		// The generated output class is a subclass of dict and contains translated keys
+		// to maintain backwards compatibility. When this function is present, property
+		// getters will use it to translate the key from the Pulumi name before looking
+		// up the value in the dictionary.
+		fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
+		fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
+	}
+
+	fmt.Fprintf(w, "\n")
+	return nil
 }
 
 func getPrimitiveValue(value interface{}) (string, error) {
@@ -1357,12 +1852,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		return mod
 	}
 
-	getModFromToken := func(token string) *modContext {
-		canonicalModName := pkg.TokenToModule(token)
-		modName := PyName(strings.ToLower(canonicalModName))
-		if override, ok := info.ModuleNameOverrides[canonicalModName]; ok {
-			modName = override
-		}
+	getModFromToken := func(tok string) *modContext {
+		modName := tokenToModule(tok, pkg, info.ModuleNameOverrides)
 		return getMod(modName)
 	}
 
@@ -1372,9 +1863,29 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		_ = getMod("config")
 	}
 
+	inputSeen, outputSeen := codegen.Set{}, codegen.Set{}
+	visitObjectTypesFromProperties(pkg.Config, outputSeen, func(t *schema.ObjectType) {
+		getModFromToken(t.Token).details(t).outputType = true
+	})
+
+	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
+		visitObjectTypesFromProperties(r.Properties, outputSeen, func(t *schema.ObjectType) {
+			getModFromToken(t.Token).details(t).outputType = true
+		})
+		visitObjectTypesFromProperties(r.InputProperties, inputSeen, func(t *schema.ObjectType) {
+			if r.IsProvider {
+				getModFromToken(t.Token).details(t).outputType = true
+			}
+			getModFromToken(t.Token).details(t).inputType = true
+		})
+		if r.StateInputs != nil {
+			visitObjectTypes(r.StateInputs, inputSeen, func(t *schema.ObjectType) {
+				getModFromToken(t.Token).details(t).inputType = true
+			})
+		}
 	}
 
 	scanResource(pkg.Provider)
@@ -1382,13 +1893,33 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		scanResource(r)
 	}
 
+	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
+		if f.Inputs != nil {
+			visitObjectTypes(f.Inputs, inputSeen, func(t *schema.ObjectType) {
+				getModFromToken(t.Token).details(t).inputType = true
+				getModFromToken(t.Token).details(t).functionType = true
+			})
+		}
+		if f.Outputs != nil {
+			visitObjectTypes(f.Outputs, outputSeen, func(t *schema.ObjectType) {
+				getModFromToken(t.Token).details(t).outputType = true
+				getModFromToken(t.Token).details(t).functionType = true
+			})
+		}
 	}
 
-	if _, ok := modules["types"]; ok {
-		return nil, errors.New("this provider has a `types` module which is reserved for input/output types")
+	// Find nested types.
+	for _, t := range pkg.Types {
+		if obj, ok := t.(*schema.ObjectType); ok {
+			mod := getModFromToken(obj.Token)
+			d := mod.details(obj)
+			if d.inputType || d.outputType {
+				mod.types = append(mod.types, obj)
+			}
+		}
 	}
 
 	// Add python source files to the corresponding modules. Note that we only add the file names; the contents are
