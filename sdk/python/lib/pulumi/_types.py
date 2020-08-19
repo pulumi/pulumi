@@ -661,6 +661,9 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
+    # pylint: disable=import-outside-toplevel
+    from . import Output
+
     # We use get_type_hints() below on each Python property to resolve the getter function's
     # return type annotation, resolving forward references.
     #
@@ -683,10 +686,17 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     result: Dict[str, type] = {}
     for _, pulumi_name, prop in _py_properties(cls):
         cls_hints = get_type_hints(prop.fget, globalns=globalns)
-        # Get the value of the function's return type hint.
-        value = cls_hints.get("return")
-        if value is not None:
-            result[pulumi_name] = _unwrap_type(value)
+        # Get the function's return type hint.
+        return_hint = cls_hints.get("return")
+        if return_hint is not None:
+            typ = _unwrap_type(return_hint)
+            # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
+            # because _unwrap_type would have returned the T in Output[T] if it was specified
+            # generically. To avoid raising a type mismatch error when the deserialized output type
+            # doesn't match Output, we exclude it from the results.
+            if typ is Output:
+                continue
+            result[pulumi_name] = typ
     return result
 
 
@@ -698,6 +708,9 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     props = _properties_from_annotations(cls)
     if not props:
         return {}
+
+    # pylint: disable=import-outside-toplevel
+    from . import Output
 
     # We want resolved types for just the cls's type annotations (not base classes),
     # but get_type_hints() looks at the annotations of the class and its base classes.
@@ -713,8 +726,6 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    # pylint: disable=import-outside-toplevel
-    from . import Output
     localns = {"Output": Output}  # type: ignore
 
     # Get the type hints, resolving any forward references.
@@ -722,10 +733,17 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     # Return a dictionary of Pulumi property names to types. Types that are Output[T] and
     # Optional[T] are unwrapped to just T.
-    return {
-        prop.name: _unwrap_type(cls_hints[name])
-        for name, prop in props.items()
-    }
+    result: Dict[str, type] = {}
+    for name, prop in props.items():
+        typ = _unwrap_type(cls_hints[name])
+        # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
+        # because _unwrap_type would have returned the T in Output[T] if it was specified
+        # generically. To avoid raising a type mismatch error when the deserialized output type
+        # doesn't match Output, we exclude it from the results.
+        if typ is Output:
+            continue
+        result[prop.name] = typ
+    return result
 
 
 def output_type_types(output_type_cls: type) -> Dict[str, type]:

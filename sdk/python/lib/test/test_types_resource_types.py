@@ -33,7 +33,7 @@ class Resource4(pulumi.Resource):
 class Resource5(pulumi.Resource):
     @property
     @pulumi.getter
-    def foo(self) -> str:
+    def foo(self) -> pulumi.Output[str]:
         ...
 
 class Resource6(pulumi.Resource):
@@ -46,6 +46,31 @@ class Resource7(pulumi.Resource):
     @property
     @pulumi.getter(name="nestedValue")
     def nested_value(self) -> pulumi.Output['Nested']:
+        ...
+
+class Resource8(pulumi.Resource):
+    foo: pulumi.Output
+
+class Resource9(pulumi.Resource):
+    @property
+    @pulumi.getter
+    def foo(self) -> pulumi.Output:
+        ...
+
+class Resource10(pulumi.Resource):
+    foo: str
+
+
+class Resource11(pulumi.Resource):
+    @property
+    @pulumi.getter
+    def foo(self) -> str:
+        ...
+
+class Resource12(pulumi.Resource):
+    @property
+    @pulumi.getter
+    def foo(self):
         ...
 
 
@@ -66,3 +91,14 @@ class ResourceTypesTests(unittest.TestCase):
         self.assertEqual({"foo": str}, resource_types(Resource5))
         self.assertEqual({"nested": Nested}, resource_types(Resource6))
         self.assertEqual({"nestedValue": Nested}, resource_types(Resource7))
+
+        # Non-generic Output excluded from types.
+        self.assertEqual({}, resource_types(Resource8))
+        self.assertEqual({}, resource_types(Resource9))
+
+        # Type annotations not using Output.
+        self.assertEqual({"foo": str}, resource_types(Resource10))
+        self.assertEqual({"foo": str}, resource_types(Resource11))
+
+        # No return type annotation from the property getter.
+        self.assertEqual({}, resource_types(Resource12))
