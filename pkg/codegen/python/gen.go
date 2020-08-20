@@ -99,6 +99,7 @@ type modContext struct {
 	camelCaseToSnakeCase map[string]string
 	tool                 string
 	extraSourceFiles     []string
+	isConfig             bool
 
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
@@ -368,7 +369,8 @@ func (mod *modContext) hasTypes(input bool) bool {
 }
 
 func (mod *modContext) isEmpty() bool {
-	if len(mod.extraSourceFiles) > 0 || len(mod.functions) > 0 || len(mod.resources) > 0 || len(mod.types) > 0 {
+	if len(mod.extraSourceFiles) > 0 || len(mod.functions) > 0 || len(mod.resources) > 0 || len(mod.types) > 0 ||
+		mod.isConfig {
 		return false
 	}
 	for _, child := range mod.children {
@@ -1860,7 +1862,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
 		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
-		_ = getMod("config")
+		configMod := getMod("config")
+		configMod.isConfig = true
 	}
 
 	inputSeen, outputSeen := codegen.Set{}, codegen.Set{}
