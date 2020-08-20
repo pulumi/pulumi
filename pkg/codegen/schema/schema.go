@@ -128,6 +128,18 @@ func (t *ArrayType) String() string {
 
 func (*ArrayType) isType() {}
 
+// EnumType represents an enum.
+type EnumType struct {
+	// ElementType is the element type of the enum.
+	ElementType Type
+}
+
+func (t *EnumType) String() string {
+	return fmt.Sprintf("Enum<%v>", t.ElementType)
+}
+
+func (*EnumType) isType() {}
+
 // UnionType represents values that may be any one of a specified set of types.
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
@@ -575,6 +587,17 @@ type TypeSpec struct {
 	Items *TypeSpec `json:"items,omitempty"`
 	// OneOf indicates that values of the type may be one of any of the listed types.
 	OneOf []TypeSpec `json:"oneOf,omitempty"`
+	// Enum, if set, lists the allowed values for an enum type.
+	Enum []string `json:"enum,omitempty"`
+	// EnumMetadata, if set, is the metadata associated with an enum type.
+	EnumMetadata *EnumMetadataSpec `json:"enumMetadata,omitempty"`
+}
+
+// EnumMetadataSpec is the serializable form of the metadata associated with an enum type.
+type EnumMetadataSpec struct {
+	Name          string        `json:"name"`
+	ModelAsString bool          `json:"modelAsString"`
+	Values        []interface{} `json:"values,omitempty"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
@@ -615,7 +638,7 @@ type ObjectTypeSpec struct {
 	Properties map[string]PropertySpec `json:"properties,omitempty"`
 	// Type must be "object".
 	Type string `json:"type,omitempty"`
-	// Requires is a list of the names of the type's required properties. These properties must be set for inputs and
+	// Required is a list of the names of the type's required properties. These properties must be set for inputs and
 	// will always be set for outputs.
 	Required []string `json:"required,omitempty"`
 	// Language specifies additional language-specific data about the type.
