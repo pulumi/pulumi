@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
@@ -81,31 +81,107 @@ func (l *LocalWorkspace) PostOpCallback(fqsn string) error {
 	return nil
 }
 
-func (l *LocalWorkspace) GetConfig(string, config.Key) (config.Value, error) {
-	var val config.Value
-	// pulumi config key --json --show-secrets
+func (l *LocalWorkspace) GetConfig(fqsn string, key string) (ConfigValue, error) {
+	var val ConfigValue
+	_, err := l.SelectStack(fqsn)
+	if err != nil {
+		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
+	}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "get", key, "--show-secrets", "--json")
+	if err != nil {
+		return val, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable read config")
+	}
+	err = json.Unmarshal([]byte(stdout), &val)
+	if err != nil {
+		return val, errors.Wrap(err, "unable to unmarshal config value")
+	}
 	return val, nil
 }
 
-func (l *LocalWorkspace) GetAllConfig(string) (config.Map, error) {
-	// pulumi config --json --show-secrets
-	return nil, nil
+func (l *LocalWorkspace) GetAllConfig(fqsn string) (ConfigMap, error) {
+	var val ConfigMap
+	_, err := l.SelectStack(fqsn)
+	if err != nil {
+		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
+	}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "--show-secrets", "--json")
+	if err != nil {
+		return val, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable read config")
+	}
+	err = json.Unmarshal([]byte(stdout), &val)
+	if err != nil {
+		return val, errors.Wrap(err, "unable to unmarshal config value")
+	}
+	return val, nil
 }
 
-func (l *LocalWorkspace) SetConfig(string, config.Key, config.Value) error {
-	// pulumi config set --json
+func (l *LocalWorkspace) SetConfig(fqsn string, key string, val ConfigValue) error {
+	_, err := l.SelectStack(fqsn)
+	if err != nil {
+		return errors.Wrapf(err, "could not set config, unable to select stack %s", fqsn)
+	}
+
+	secretArg := "--plaintext"
+	if val.Secret {
+		secretArg = "--secret"
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "set", key, val.Value, "--json", secretArg)
+	if err != nil {
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable set config")
+	}
 	return nil
 }
 
-func (l *LocalWorkspace) SetAllConfig(string, config.Map) error {
-	// for each, pulumi config set --json
+func (l *LocalWorkspace) SetAllConfig(fqsn string, config ConfigMap) error {
+	for k, v := range config {
+		err := l.SetConfig(fqsn, k, v)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (l *LocalWorkspace) RefreshConfig(string) (config.Map, error) {
-	// pulumi config refresh --force
-	// l.GetAllConfig
-	return nil, nil
+func (l *LocalWorkspace) RemoveConfig(fqsn string, key string) error {
+	_, err := l.SelectStack(fqsn)
+	if err != nil {
+		return errors.Wrapf(err, "could not remove config, unable to select stack %s", fqsn)
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "rm", key)
+	if err != nil {
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not remove config")
+	}
+	return nil
+}
+
+func (l *LocalWorkspace) RemoveAllConfig(fqsn string, keys []string) error {
+	for _, k := range keys {
+		err := l.RemoveConfig(fqsn, k)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *LocalWorkspace) RefreshConfig(fqsn string) (ConfigMap, error) {
+	_, err := l.SelectStack(fqsn)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not refresh config, unable to select stack %s", fqsn)
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "refresh", "--force")
+	if err != nil {
+		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not refresh config")
+	}
+
+	cfg, err := l.GetAllConfig(fqsn)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not fetch config after refresh")
+	}
+	return cfg, nil
 }
 
 func (l *LocalWorkspace) WorkDir() string {
@@ -116,44 +192,128 @@ func (l *LocalWorkspace) PulumiHome() *string {
 	return l.pulumiHome
 }
 
-func (l *LocalWorkspace) Stack() string {
-	// pulumi stack ls --json, followed by filter for current == true
-	// pulumi whoami, also read pulumi.yaml to find project
-	return ""
+func (l *LocalWorkspace) WhoAmI() (string, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("whoami")
+	if err != nil {
+		return "", errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not determine authenticated user")
+	}
+	return strings.TrimSpace(stdout), nil
 }
 
-func (l *LocalWorkspace) CreateStack(string) (Stack, error) {
-	// validate fqsn
-	// pulumi stack init fqsn
+func (l *LocalWorkspace) Stack() (*StackSummary, error) {
+	stacks, err := l.ListStacks()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not determine selected stack")
+	}
+	for _, s := range stacks {
+		if s.Current {
+			return &s, nil
+		}
+	}
 	return nil, nil
 }
 
-func (l *LocalWorkspace) SelectStack(string) (Stack, error) {
-	// validate fqsn
-	// pulumi stack init fqsn
+func (l *LocalWorkspace) CreateStack(fqsn string) (Stack, error) {
+	err := ValidateFullyQualifiedStackName(fqsn)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create stack")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "init", fqsn)
+	if err != nil {
+		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to create stack")
+	}
+
+	// TODO return stack once interface is migrated
 	return nil, nil
 }
 
-//
-func (l *LocalWorkspace) ListStacks(string) ([]string, error) {
-	// pulumi stack ls --json
-	// pulumi whoami, read pulumi.yaml for project
+func (l *LocalWorkspace) SelectStack(fqsn string) (Stack, error) {
+	err := ValidateFullyQualifiedStackName(fqsn)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to select stack")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "select", fqsn)
+	if err != nil {
+		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to select stack")
+	}
+
+	// TODO return stack once interface is migrated
 	return nil, nil
 }
 
-func (l *LocalWorkspace) InstallPlugin(string, string) error {
-	// pulumi plugin install resource str str
+func (l *LocalWorkspace) RemoveStack(fqsn string) error {
+	err := ValidateFullyQualifiedStackName(fqsn)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove stack")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "rm", fqsn)
+	if err != nil {
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to remove stack")
+	}
 	return nil
 }
 
-func (l *LocalWorkspace) RemovePlugin(string, string) error {
-	// pulumi plugin rm
+func (l *LocalWorkspace) ListStacks() ([]StackSummary, error) {
+	user, err := l.WhoAmI()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list stacks")
+	}
+
+	proj, err := l.ProjectSettings()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list stacks")
+	}
+
+	var stacks []StackSummary
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "ls", "--json")
+	if err != nil {
+		return stacks, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not list stacks")
+	}
+	err = json.Unmarshal([]byte(stdout), &stacks)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to unmarshal config value")
+	}
+	for _, s := range stacks {
+		nameParts := strings.Split(s.Name, "/")
+		if len(nameParts) == 1 {
+			s.Name = fmt.Sprintf("%s/%s/%s", user, proj.Name.String(), s.Name)
+		} else {
+			s.Name = fmt.Sprintf("%s/%s/%s", nameParts[0], proj.Name.String(), nameParts[1])
+		}
+	}
+	return stacks, nil
+}
+
+func (l *LocalWorkspace) InstallPlugin(name string, version string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("plugin", "install", "resource", name, version)
+	if err != nil {
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to install plugin")
+	}
+	return nil
+}
+
+func (l *LocalWorkspace) RemovePlugin(name string, version string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("plugin", "rm", "resource", name, version)
+	if err != nil {
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to remove plugin")
+	}
 	return nil
 }
 
 func (l *LocalWorkspace) ListPlugins() ([]workspace.PluginInfo, error) {
-	// pulumi plugin ls
-	return nil, nil
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("plugin", "ls", "--json")
+	if err != nil {
+		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not list list")
+	}
+	var plugins []workspace.PluginInfo
+	err = json.Unmarshal([]byte(stdout), &plugins)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to unmarshal plugin response")
+	}
+	return plugins, nil
 }
 
 func (l *LocalWorkspace) runPulumiCmdSync(args ...string) (string, string, int, error) { /*set work dir, set pulumi home*/

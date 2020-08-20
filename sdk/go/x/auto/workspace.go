@@ -1,7 +1,6 @@
 package auto
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -26,32 +25,56 @@ type Workspace interface {
 	PostOpCallback(string) error
 	// GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
 	// scoped to the current workspace.
-	GetConfig(string, config.Key) (config.Value, error)
+	GetConfig(string, string) (ConfigValue, error)
 	// GetAllConfig returns the config map for the specified fullyQualifiedStackName, scoped to the current workspace.
-	GetAllConfig(string) (config.Map, error)
+	GetAllConfig(string) (ConfigMap, error)
 	// SetConfig sets the specified KVP on the provided fullyQualifiedStackName.
-	SetConfig(string, config.Key, config.Value) error
-	// SetAllConfig overwrites the current config map for the specified fullyQualifiedStackName
-	SetAllConfig(string, config.Map) error
+	SetConfig(string, string, ConfigValue) error
+	// SetAllConfig sets all values in the provided config map for the specified fullyQualifiedStackName
+	SetAllConfig(string, ConfigMap) error
+	// RemoveConfig removes the specified KVP on the provided fullyQualifiedStackName.
+	RemoveConfig(string, string) error
+	// RemoveAllConfig removes all values in the provided config map for the specified fullyQualifiedStackName
+	RemoveAllConfig(string, []string) error
 	// RefreshConfig gets and sets the config map used with the last Update for Stack matching fullyQualifiedStackName.
-	RefreshConfig(string) (config.Map, error)
+	RefreshConfig(string) (ConfigMap, error)
 	// WorkDir returns the working directory to run Pulumi CLI commands.
 	WorkDir() string
 	// PulumiHome returns the directory override for CLI metadata if set.
 	PulumiHome() *string
-	// Stack returns the fullyQualifiedStackName of the currently selected stack if any.
-	Stack() string
+	// WhoAmI returns the currently authenticated user
+	WhoAmI() (string, error)
+	// Stack returns the currently selected stack if any.
+	Stack() (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
 	CreateStack(string) (Stack, error)
 	// SelectStack selects and sets an existing stack matching the fullyQualifiedStackName, failing if none exists.
 	SelectStack(string) (Stack, error)
-	// ListStacks returns the fullyQualifiedStackNames of all Stacks created under the current Project.
+	// RemoveStack deletes the stack and all associated configuration and history.
+	RemoveStack(string) error
+	// ListStacks returns all Stacks created under the current Project.
 	// This queries underlying backend and may return stacks not present in the Workspace.
-	ListStacks(string) ([]string, error)
+	ListStacks() ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version
 	InstallPlugin(string, string) error
 	// RemovePlugin deletes the plugin matching the specified name and verision
 	RemovePlugin(string, string) error
 	// ListPlugins lists all installed plugins.
 	ListPlugins() ([]workspace.PluginInfo, error)
+}
+
+type ConfigValue struct {
+	Value  string
+	Secret bool
+}
+
+type ConfigMap map[string]ConfigValue
+
+type StackSummary struct {
+	Name             string `json:"name"`
+	Current          bool   `json:"current"`
+	LastUpdate       string `json:"lastUpdate,omitempty"`
+	UpdateInProgress bool   `json:"updateInProgress"`
+	ResourceCount    *int   `json:"resourceCount,omitempty"`
+	URL              string `json:"url,omitempty"`
 }
