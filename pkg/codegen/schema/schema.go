@@ -595,9 +595,12 @@ type TypeSpec struct {
 
 // EnumMetadataSpec is the serializable form of the metadata associated with an enum type.
 type EnumMetadataSpec struct {
-	Name          string        `json:"name"`
-	ModelAsString bool          `json:"modelAsString"`
-	Values        []interface{} `json:"values,omitempty"`
+	// Name is the name of the enum type
+	Name string `json:"name"`
+	// ModelAsString, when true, indicates that an enum should be modelled as a string and not strictly enforced.
+	ModelAsString bool `json:"modelAsString"`
+	// Values contains metadata associated with each value of the enum.
+	Values []interface{} `json:"values,omitempty"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
