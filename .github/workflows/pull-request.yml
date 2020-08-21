@@ -11,31 +11,31 @@ env:
 jobs:
   test_unit:
     name: Run Pulumi Unit Tests
-      strategy:
-        matrix:
-          platform: [ ubuntu-latest ]
-          go-version: [1.14.x]
-      needs: build_sdk
-      runs-on: ${{ matrix.platform }}
-      steps:
-        - name: Set up Go ${{ matrix.go-version }}
-          uses: actions/setup-go@v1
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Install pulumictl
-          uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-          with:
-            repo: pulumi/pulumictl
-        - name: Checkout
-          uses: actions/checkout@v2
-        - name: Ensure dependencies
-          run: make ensure SUB_PROJECTS=""
-        - name: setup git
-          run: |
-            git config --global user.email "you@example.com"
-            git config --global user.name "Your Name"
-        - name: Run tests
-          run: make test_fast SUB_PROJECTS=""
+    strategy:
+      matrix:
+        platform: [ ubuntu-latest ]
+        go-version: [1.14.x]
+    needs: build_sdk
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Ensure dependencies
+        run: make ensure SUB_PROJECTS=""
+      - name: setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Run tests
+        run: make test_fast SUB_PROJECTS=""
   test_integration:
     name: Run Pulumi Integration Tests
     strategy:
