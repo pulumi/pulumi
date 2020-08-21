@@ -177,6 +177,7 @@ func TestReadingGitRepo(t *testing.T) {
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
 	os.Setenv("TRAVIS", "1")
 	os.Setenv("TRAVIS_BRANCH", "branch-from-ci")
+	os.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
