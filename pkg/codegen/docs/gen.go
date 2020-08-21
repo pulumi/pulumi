@@ -348,6 +348,8 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 
 	switch lang {
 	case "go":
+		// Go module names use lowercase.
+		modName = strings.ToLower(modName)
 		if override, ok := goPkgInfo.ModuleToPackage[modName]; ok {
 			modName = override
 		}
