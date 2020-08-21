@@ -68,7 +68,7 @@ test_fast:: build
 
 test_all:: build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd tests && $(GO_TEST) -v ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -v -p=6 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
