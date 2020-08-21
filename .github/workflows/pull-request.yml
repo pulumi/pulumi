@@ -78,11 +78,11 @@ jobs:
           name: pulumi-nodejs
           path: sdk/nodejs
       - name: update path
-        run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
+        run: |
+          echo "::add-path::${{steps.download.outputs.download-path}}/bin"
+          echo "::add-path::${{steps.download.outputs.download-path}}/sdk/nodejs/dist"
       - name: restore binary permissions
-        run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-nodejs" -print -exec chmod +x {} \;
-      - name: Run make install
-        run: make install && make -C sdk/nodejs
+        run: find ${{steps.download.outputs.download-path}} -name "pulumi-*" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make ensure SUB_PROJECTS=""
       - name: setup git
