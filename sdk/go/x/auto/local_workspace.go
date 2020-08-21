@@ -83,7 +83,7 @@ func (l *LocalWorkspace) PostOpCallback(fqsn string) error {
 
 func (l *LocalWorkspace) GetConfig(fqsn string, key string) (ConfigValue, error) {
 	var val ConfigValue
-	_, err := l.SelectStack(fqsn)
+	err := l.SelectStack(fqsn)
 	if err != nil {
 		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
 	}
@@ -100,7 +100,7 @@ func (l *LocalWorkspace) GetConfig(fqsn string, key string) (ConfigValue, error)
 
 func (l *LocalWorkspace) GetAllConfig(fqsn string) (ConfigMap, error) {
 	var val ConfigMap
-	_, err := l.SelectStack(fqsn)
+	err := l.SelectStack(fqsn)
 	if err != nil {
 		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
 	}
@@ -116,7 +116,7 @@ func (l *LocalWorkspace) GetAllConfig(fqsn string) (ConfigMap, error) {
 }
 
 func (l *LocalWorkspace) SetConfig(fqsn string, key string, val ConfigValue) error {
-	_, err := l.SelectStack(fqsn)
+	err := l.SelectStack(fqsn)
 	if err != nil {
 		return errors.Wrapf(err, "could not set config, unable to select stack %s", fqsn)
 	}
@@ -144,7 +144,7 @@ func (l *LocalWorkspace) SetAllConfig(fqsn string, config ConfigMap) error {
 }
 
 func (l *LocalWorkspace) RemoveConfig(fqsn string, key string) error {
-	_, err := l.SelectStack(fqsn)
+	err := l.SelectStack(fqsn)
 	if err != nil {
 		return errors.Wrapf(err, "could not remove config, unable to select stack %s", fqsn)
 	}
@@ -167,7 +167,7 @@ func (l *LocalWorkspace) RemoveAllConfig(fqsn string, keys []string) error {
 }
 
 func (l *LocalWorkspace) RefreshConfig(fqsn string) (ConfigMap, error) {
-	_, err := l.SelectStack(fqsn)
+	err := l.SelectStack(fqsn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not refresh config, unable to select stack %s", fqsn)
 	}
@@ -213,34 +213,32 @@ func (l *LocalWorkspace) Stack() (*StackSummary, error) {
 	return nil, nil
 }
 
-func (l *LocalWorkspace) CreateStack(fqsn string) (Stack, error) {
+func (l *LocalWorkspace) CreateStack(fqsn string) error {
 	err := ValidateFullyQualifiedStackName(fqsn)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create stack")
+		return errors.Wrap(err, "failed to create stack")
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "init", fqsn)
 	if err != nil {
-		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to create stack")
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to create stack")
 	}
 
-	// TODO return stack once interface is migrated
-	return nil, nil
+	return nil
 }
 
-func (l *LocalWorkspace) SelectStack(fqsn string) (Stack, error) {
+func (l *LocalWorkspace) SelectStack(fqsn string) error {
 	err := ValidateFullyQualifiedStackName(fqsn)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to select stack")
+		return errors.Wrap(err, "failed to select stack")
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "select", fqsn)
 	if err != nil {
-		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to select stack")
+		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to select stack")
 	}
 
-	// TODO return stack once interface is migrated
-	return nil, nil
+	return nil
 }
 
 func (l *LocalWorkspace) RemoveStack(fqsn string) error {
@@ -314,6 +312,14 @@ func (l *LocalWorkspace) ListPlugins() ([]workspace.PluginInfo, error) {
 		return nil, errors.Wrap(err, "unable to unmarshal plugin response")
 	}
 	return plugins, nil
+}
+
+func (l *LocalWorkspace) Program() pulumi.RunFunc {
+	return l.program
+}
+
+func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
+	l.program = fn
 }
 
 func (l *LocalWorkspace) runPulumiCmdSync(args ...string) (string, string, int, error) { /*set work dir, set pulumi home*/
@@ -437,7 +443,8 @@ func WorkDir(workDir string) LocalWorkspaceOption {
 	})
 }
 
-// Program is the Pulumi Program to execute.
+// Program is the Pulumi Program to execute. If none is supplied,
+// the program identified in $WORKDIR/pulumi.yaml will be used instead.
 func Program(program pulumi.RunFunc) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.Program = program

@@ -2,6 +2,7 @@ package auto
 
 import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
 // Workspace TODO docstring
@@ -34,7 +35,7 @@ type Workspace interface {
 	SetAllConfig(string, ConfigMap) error
 	// RemoveConfig removes the specified KVP on the provided fullyQualifiedStackName.
 	RemoveConfig(string, string) error
-	// RemoveAllConfig removes all values in the provided config map for the specified fullyQualifiedStackName
+	// RemoveAllConfig removes all values in the provided key list for the specified fullyQualifiedStackName
 	RemoveAllConfig(string, []string) error
 	// RefreshConfig gets and sets the config map used with the last Update for Stack matching fullyQualifiedStackName.
 	RefreshConfig(string) (ConfigMap, error)
@@ -47,9 +48,9 @@ type Workspace interface {
 	// Stack returns the currently selected stack if any.
 	Stack() (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
-	CreateStack(string) (Stack, error)
+	CreateStack(string) error
 	// SelectStack selects and sets an existing stack matching the fullyQualifiedStackName, failing if none exists.
-	SelectStack(string) (Stack, error)
+	SelectStack(string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
 	RemoveStack(string) error
 	// ListStacks returns all Stacks created under the current Project.
@@ -61,6 +62,11 @@ type Workspace interface {
 	RemovePlugin(string, string) error
 	// ListPlugins lists all installed plugins.
 	ListPlugins() ([]workspace.PluginInfo, error)
+	// Program returns the program `pulumi.RunFunc` to be used for Preview/Update if any.
+	// If none is specified, the stack will refer to Project Settings for this information.
+	Program() pulumi.RunFunc
+	// SetProgram sets the program associated with the Workspace to the specified `pulumi.RunFunc`
+	SetProgram(pulumi.RunFunc)
 }
 
 type ConfigValue struct {
