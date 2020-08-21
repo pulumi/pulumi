@@ -25,6 +25,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"runtime/debug"
@@ -39,6 +40,10 @@ import (
 type Stack struct {
 	workspace Workspace
 	fqsn      string
+}
+
+func FullyQualifiedStackName(org, project, stack string) string {
+	return fmt.Sprintf("%s/%s/%s", org, project, stack)
 }
 
 // NewStack creates a new stack using the given workspace, and fully qualified stack name (org/project/name).

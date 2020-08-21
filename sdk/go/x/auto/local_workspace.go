@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
@@ -23,8 +24,8 @@ var settingsExtensions = []string{".yaml", ".yml", ".json"}
 
 func (l *LocalWorkspace) ProjectSettings() (*workspace.Project, error) {
 	for _, ext := range settingsExtensions {
-		projectPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi%s", ext))
-		if _, err := os.Stat(projectPath); err != nil {
+		projectPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi%s", ext))
+		if _, err := os.Stat(projectPath); err == nil {
 			proj, err := workspace.LoadProject(projectPath)
 			if err != nil {
 				return nil, errors.Wrap(err, "found project settings, but failed to load")
@@ -36,7 +37,7 @@ func (l *LocalWorkspace) ProjectSettings() (*workspace.Project, error) {
 }
 
 func (l *LocalWorkspace) WriteProjectSettings(settings *workspace.Project) error {
-	pulumiYamlPath := filepath.Join(l.WorkDir(), "pulumi.yaml")
+	pulumiYamlPath := filepath.Join(l.WorkDir(), "Pulumi.yaml")
 	return settings.Save(pulumiYamlPath)
 }
 
@@ -126,7 +127,7 @@ func (l *LocalWorkspace) SetConfig(fqsn string, key string, val ConfigValue) err
 		secretArg = "--secret"
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "set", key, val.Value, "--json", secretArg)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("config", "set", key, val.Value, secretArg)
 	if err != nil {
 		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable set config")
 	}
@@ -247,7 +248,7 @@ func (l *LocalWorkspace) RemoveStack(fqsn string) error {
 		return errors.Wrap(err, "failed to remove stack")
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "rm", fqsn)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync("stack", "rm", "--yes", fqsn)
 	if err != nil {
 		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to remove stack")
 	}
@@ -472,8 +473,8 @@ func Stacks(settings map[string]workspace.ProjectStack) LocalWorkspaceOption {
 	})
 }
 
-// GitURL is a git repo with a Pulumi Project to clone into the WorkDir.
-func GitURL(gitRepo GitRepo) LocalWorkspaceOption {
+// Repo is a git repo with a Pulumi Project to clone into the WorkDir.
+func Repo(gitRepo GitRepo) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.Repo = &gitRepo
 	})
@@ -495,4 +496,105 @@ func ValidateFullyQualifiedStackName(fqsn string) error {
 		)
 	}
 	return nil
+}
+
+func NewStackLocalSource(fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, WorkDir(workDir))
+	w, err := NewLocalWorkspace(opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return NewStack(fqsn, w)
+}
+
+func SelectStackLocalSource(fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, WorkDir(workDir))
+	w, err := NewLocalWorkspace(opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to select stack")
+	}
+
+	return SelectStack(fqsn, w)
+}
+
+func NewStackRemoteSource(fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, Repo(repo))
+	w, err := NewLocalWorkspace(opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return NewStack(fqsn, w)
+}
+
+func SelectStackRemoteSource(fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, Repo(repo))
+	w, err := NewLocalWorkspace(opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to select stack")
+	}
+
+	return SelectStack(fqsn, w)
+}
+
+func NewStackInlineSource(
+	fqsn string,
+	program pulumi.RunFunc,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
+	var stack Stack
+	opts = append(opts, Program(program))
+	proj, err := defaultInlineProject(fqsn)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one
+	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	w, err := NewLocalWorkspace(opts...)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return NewStack(fqsn, w)
+}
+
+func SelectStackInlineSource(
+	fqsn string,
+	program pulumi.RunFunc,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
+	var stack Stack
+	opts = append(opts, Program(program))
+	proj, err := defaultInlineProject(fqsn)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to select stack")
+	}
+	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one
+	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	w, err := NewLocalWorkspace(opts...)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to select stack")
+	}
+
+	return SelectStack(fqsn, w)
+}
+
+func defaultInlineProject(fqsn string) (workspace.Project, error) {
+	var proj workspace.Project
+	err := ValidateFullyQualifiedStackName(fqsn)
+	if err != nil {
+		return proj, err
+	}
+	pName := strings.Split(fqsn, "/")[1]
+	proj = workspace.Project{
+		Name:    tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+	}
+
+	return proj, nil
 }
