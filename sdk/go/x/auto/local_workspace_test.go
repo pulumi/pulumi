@@ -15,11 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const pulumiOrg = "pulumi"
+
 func TestNewStackLocalSource(t *testing.T) {
-	oName := "pulumi"
 	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(oName, pName, sName)
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -282,10 +283,9 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestNewStackInlineSource(t *testing.T) {
-	oName := "pulumi"
 	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(oName, pName, sName)
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -372,10 +372,9 @@ func TestNewStackInlineSource(t *testing.T) {
 }
 
 func TestNestedStackFails(t *testing.T) {
-	oName := "pulumi"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	parentFQSN := FullyQualifiedStackName(oName, "parent", sName)
-	nestedFQSN := FullyQualifiedStackName(oName, "nested", sName)
+	parentFQSN := FullyQualifiedStackName(pulumiOrg, "parent", sName)
+	nestedFQSN := FullyQualifiedStackName(pulumiOrg, "nested", sName)
 
 	nestedStack, err := NewStackInlineSource(nestedFQSN, func(ctx *pulumi.Context) error {
 		ctx.Export("exp_static", pulumi.String("foo"))

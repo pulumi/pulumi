@@ -323,10 +323,11 @@ func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
 	l.program = fn
 }
 
-func (l *LocalWorkspace) runPulumiCmdSync(args ...string) (string, string, int, error) { /*set work dir, set pulumi home*/
+func (l *LocalWorkspace) runPulumiCmdSync(args ...string) (string, string, int, error) {
 	var env []string
 	if l.PulumiHome() != nil {
-		env = append(env, *l.PulumiHome())
+		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *l.PulumiHome())
+		env = append(env, homeEnv)
 	}
 	return runPulumiCommandSync(l.WorkDir(), env, args...)
 }
@@ -382,8 +383,9 @@ func NewLocalWorkspace(opts ...LocalWorkspaceOption) (Workspace, error) {
 		}
 	}
 
-	for fqsn, ss := range lwOpts.Stacks {
-		err := l.WriteStackSettings(fqsn, &ss)
+	for fqsn := range lwOpts.Stacks {
+		s := lwOpts.Stacks[fqsn]
+		err := l.WriteStackSettings(fqsn, &s)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workspace")
 		}

@@ -24,5 +24,3 @@ func runPulumiCommandSync(workdir string, additionalEnv []string, args ...string
 	}
 	return stdout.String(), stderr.String(), code, err
 }
-
-func runPulumiCommandAsync() { /*TODO*/ }

@@ -76,6 +76,8 @@ type ConfigValue struct {
 
 type ConfigMap map[string]ConfigValue
 
+const PulumiHomeEnv = "PULUMI_HOME"
+
 type StackSummary struct {
 	Name             string `json:"name"`
 	Current          bool   `json:"current"`

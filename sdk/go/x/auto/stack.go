@@ -434,9 +434,23 @@ const secretSentinel = "[secret]"
 func (s *Stack) runPulumiCmdSync(args ...string) (string, string, int, error) {
 	var env []string
 	if s.Workspace().PulumiHome() != nil {
-		env = append(env, *s.Workspace().PulumiHome())
+		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
+		env = append(env, homeEnv)
 	}
-	return runPulumiCommandSync(s.Workspace().WorkDir(), env, args...)
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(s.Name())
+	if err != nil {
+		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
+	}
+	args = append(args, additionalArgs...)
+	stdout, stderr, errCode, err := runPulumiCommandSync(s.Workspace().WorkDir(), env, args...)
+	if err != nil {
+		return stdout, stderr, errCode, err
+	}
+	err = s.Workspace().PostOpCallback(s.Name())
+	if err != nil {
+		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
+	}
+	return stdout, stderr, errCode, nil
 }
 
 // TODO set pulumi home env var, etc
@@ -452,12 +466,24 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	if isPreview {
 		args = append(args, "preview")
 	}
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(s.Name())
+	if err != nil {
+		return "", "", errors.Wrap(err, "failed to exec command, error getting additional args")
+	}
+	args = append(args, additionalArgs...)
 	cmd := exec.Command("pulumi", args...)
 	cmd.Dir = s.Workspace().WorkDir()
+	if s.Workspace().PulumiHome() != nil {
+		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
+		cmd.Env = append(os.Environ(), homeEnv)
+	}
 
 	cmd.Stdout = &stdout
 	stderr, _ := cmd.StderrPipe()
-	cmd.Start()
+	err = cmd.Start()
+	if err != nil {
+		return "", "", errors.Wrap(err, "failed to start host command")
+	}
 	scanner := bufio.NewScanner(stderr)
 	scanner.Split(bufio.ScanLines)
 
@@ -515,10 +541,15 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	os.Setenv(pulumi.EnvConfig, string(cfgStr))
 	err = execUserCode(s.Workspace().Program())
 	if err != nil {
-		cmd.Process.Signal(os.Interrupt)
+		err = cmd.Process.Signal(os.Interrupt)
+		if err != nil {
+			return stdout.String(), errBuff.String(),
+				errors.Wrap(err, "failed to run inline program and shutdown gracefully, could not kill host")
+		}
 		waitErr := cmd.Wait()
 		if waitErr != nil {
-			return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to run inline program and shutdown gracefully")
+			return stdout.String(), errBuff.String(),
+				errors.Wrap(err, "failed to run inline program and shutdown gracefully")
 		}
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "error running inline pulumi program")
 	}
@@ -527,7 +558,17 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	if err != nil {
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to shutdown host gracefully")
 	}
-	cmd.Wait()
+	err = cmd.Wait()
+
+	if err != nil {
+		return stdout.String(), errBuff.String(), err
+	}
+
+	err = s.Workspace().PostOpCallback(s.Name())
+	if err != nil {
+		return stdout.String(), errBuff.String(),
+			errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
+	}
 
 	return stdout.String(), errBuff.String(), nil
 }
