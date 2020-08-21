@@ -588,7 +588,6 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprint(w, "\n\n")
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
@@ -636,7 +635,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	}
 
 	// Produce an awaitable subclass.
-	fmt.Fprint(w, "\n\n")
+	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "class %s(%s):\n", awaitableName, baseName)
 
 	// Emit __await__ and __iter__ in order to make this type awaitable.
@@ -979,7 +978,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	if fun.DeprecationMessage != "" {
 		escaped := strings.ReplaceAll(fun.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
 	}
 
 	// If there is a return type, emit it.
@@ -987,7 +986,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	var rets []*schema.Property
 	if fun.Outputs != nil {
 		retTypeName, rets = mod.genAwaitableType(w, fun.Outputs), fun.Outputs.Properties
-		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "\n\n")
 	}
 
 	var args []*schema.Property
@@ -996,9 +995,11 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// Write out the function signature.
-	fmt.Fprint(w, "\n")
 	def := fmt.Sprintf("def %s(", name)
-	indent := strings.Repeat(" ", len(def))
+	var indent string
+	if len(args) > 0 {
+		indent = strings.Repeat(" ", len(def))
+	}
 	fmt.Fprintf(w, def)
 	for i, arg := range args {
 		var ind string
