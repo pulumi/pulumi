@@ -72,6 +72,10 @@ jobs:
           repo: pulumi/pulumictl
       - name: Checkout
         uses: actions/checkout@v2
+      - name: setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
       - uses: actions/download-artifact@v2
         id: download
         with:
@@ -85,10 +89,8 @@ jobs:
         run: find ${{steps.download.outputs.download-path}} -name "pulumi-*" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make ensure SUB_PROJECTS=""
-      - name: setup git
-        run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
+      - name: Run yarn link
+        run: yarn link --cwd sdk/nodejs/bin
       - name: Run tests
         run: make test_integration SUB_PROJECTS=""
   test_sdks:
