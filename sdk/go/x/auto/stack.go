@@ -332,6 +332,26 @@ func (s *Stack) RefreshConfig() (ConfigMap, error) {
 	return s.Workspace().RefreshConfig(s.Name())
 }
 
+// Info returns a summary of the Stack including its URL
+func (s *Stack) Info() (StackSummary, error) {
+	var info StackSummary
+	err := s.Workspace().SelectStack(s.Name())
+	if err != nil {
+		return info, errors.Wrap(err, "failed to fetch stack info")
+	}
+
+	summary, err := s.Workspace().Stack()
+	if err != nil {
+		return info, errors.Wrap(err, "failed to fetch stack info")
+	}
+
+	if summary != nil {
+		info = *summary
+	}
+
+	return info, nil
+}
+
 // UpdateSummary provides an summary of a Stack.Up() operation
 type UpdateSummary struct {
 	Kind        string            `json:"kind"`
