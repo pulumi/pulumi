@@ -76,19 +76,10 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
-      - uses: actions/download-artifact@v2
-        id: download
-        with:
-          name: pulumi-nodejs
-          path: sdk/nodejs
-      - name: update path
-        run: |
-          echo "::add-path::${{steps.download.outputs.download-path}}/bin"
-          echo "::add-path::${{steps.download.outputs.download-path}}/sdk/nodejs/dist"
-      - name: restore binary permissions
-        run: find ${{steps.download.outputs.download-path}} -name "pulumi-*" -print -exec chmod +x {} \;
       - name: Ensure dependencies
-        run: make ensure SUB_PROJECTS=""
+        run: make ensure
+      - name: Build
+        run: make build
       - name: Run yarn link
         run: yarn link --cwd sdk/nodejs/bin
       - name: Run tests
