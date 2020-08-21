@@ -55,6 +55,15 @@ jobs:
           repo: pulumi/pulumictl
       - name: Checkout
         uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        id: download
+          with:
+            name: pulumi-nodejs
+            path: sdk/nodejs
+      - name: update path
+        run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
+      - name: restore binary permissions
+        run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-nodejs" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make ensure SUB_PROJECTS=""
       - name: setup git
