@@ -66,12 +66,12 @@ func NewMissingError(info PluginInfo) error {
 
 func (err *MissingError) Error() string {
 	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
+		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
 			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
 			err.Info.Kind, err.Info.Name, err.Info.Version)
 	}
 
-	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace or on your $PATH",
+	return fmt.Sprintf("no %[1]s plugin '%[2]s' found - ensure that 'pulumi-%[1]s-%[2]s' is in the workspace or on your $PATH",
 		err.Info.Kind, err.Info.String())
 }
 
