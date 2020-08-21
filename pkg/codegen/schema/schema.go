@@ -132,6 +132,20 @@ func (*ArrayType) isType() {}
 type EnumType struct {
 	// ElementType is the element type of the enum.
 	ElementType Type
+	// Elements are the predefined enum values.
+	Elements []*Enum
+	// ModelAsString indicates whether the enum should be strictly enforced.
+	ModelAsString bool
+	// Name is the name for the enum type.
+	Name string
+}
+
+// Enum contains information about an enum.
+type Enum struct {
+	// Value is the value of the enum.
+	Value interface{}
+	// Description for the enum value.
+	Description string
 }
 
 func (t *EnumType) String() string {
@@ -947,6 +961,43 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		}
 		t.unions[union.String()] = union
 		return union, nil
+	}
+
+	if spec.Enum != nil && spec.EnumMetadata != nil {
+		elementType, err := t.bindPrimitiveType(spec.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		enum := &EnumType{
+			ElementType:   elementType,
+			ModelAsString: spec.EnumMetadata.ModelAsString,
+			Name:          spec.EnumMetadata.Name,
+			Elements:      []*Enum{},
+		}
+
+		if spec.EnumMetadata.Values != nil {
+			for _, enumValue := range spec.EnumMetadata.Values {
+				var enumItem Enum
+				if value, ok := enumValue.(map[string]interface{})["value"]; ok {
+					enumItem.Value = value
+				}
+				if desc, ok := enumValue.(map[string]interface{})["description"]; ok {
+					if description, ok := desc.(string); ok {
+						enumItem.Description = description
+					}
+				}
+				enum.Elements = append(enum.Elements, &enumItem)
+			}
+		} else {
+			for _, enumValue := range spec.Enum {
+				enumItem := Enum{
+					Value: enumValue,
+				}
+				enum.Elements = append(enum.Elements, &enumItem)
+			}
+		}
+		return enum, nil
 	}
 
 	switch spec.Type {
