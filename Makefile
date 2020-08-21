@@ -66,7 +66,7 @@ lint::
 test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_integration:: build
+test_integration:: install
 	cd tests && $(GO_TEST) -v -p=6 ${TESTS_PKGS}
 
 test_all:: build $(SUB_PROJECTS:%=%_install) test_fast test_integration

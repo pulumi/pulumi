@@ -10,7 +10,7 @@ env:
 
 jobs:
   test_unit:
-    name: Run Pulumi Unit Tests
+    name: "Pulumi Tests: Unit"
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
@@ -37,7 +37,7 @@ jobs:
       - name: Run tests
         run: make test_fast SUB_PROJECTS=""
   test_integration:
-    name: Run Pulumi Integration Tests
+    name: "Pulumi Tests: Integration"
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
