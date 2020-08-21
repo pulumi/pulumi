@@ -81,6 +81,8 @@ jobs:
         run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
       - name: restore binary permissions
         run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-nodejs" -print -exec chmod +x {} \;
+      - name: Run yarn link
+        run: yarn link --cwd sdk/nodejs/bin
       - name: Ensure dependencies
         run: make ensure SUB_PROJECTS=""
       - name: setup git
