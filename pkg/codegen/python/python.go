@@ -47,11 +47,26 @@ var excludeFromPanic = codegen.StringSet{
 	// The following all show up as properties of nested input/output classes only, so it's OK that the current
 	// and legacy names are different since we haven't previously generated any input/output classes (hence no
 	// breaking change).
-	"nonResourceURLs": struct{}{}, // K8s
-	"targetWWNs":      struct{}{}, // K8s
-	"podCIDRs":        struct{}{}, // K8s
-	"podIPs":          struct{}{}, // K8s
-	"externalIPs":     struct{}{}, // K8s
+	"nonResourceURLs":                        struct{}{}, // K8s
+	"targetWWNs":                             struct{}{}, // K8s
+	"podCIDRs":                               struct{}{}, // K8s
+	"podIPs":                                 struct{}{}, // K8s
+	"externalIPs":                            struct{}{}, // K8s
+	"publicIPs":                              struct{}{}, // Azure
+	"effectiveOutboundIPs":                   struct{}{}, // Azure
+	"doNotRunExtensionsOnOverprovisionedVMs": struct{}{}, // Azure
+	"vCPUs":                                  struct{}{}, // Azure
+	"networkACLs":                            struct{}{}, // Azure
+	"allocatableVMs":                         struct{}{}, // Azure
+	"publicIPsToAllow":                       struct{}{}, // Azure
+	"managedOutboundIPs":                     struct{}{}, // Azure
+	"outboundIPs":                            struct{}{}, // Azure
+	"staticIPs":                              struct{}{}, // Azure
+	"sendMDNAsynchronously":                  struct{}{}, // Azure
+	"adminGroupObjectIDs":                    struct{}{}, // Azure
+	"GuestConfigurationHCRPAssignment":       struct{}{}, // Azure
+	"GetGuestConfigurationHCRPAssignment":    struct{}{}, // Azure
+	"clusterUsersGroupDNs":                   struct{}{}, // Azure
 }
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
