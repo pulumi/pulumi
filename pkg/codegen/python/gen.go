@@ -38,9 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
-// Match module version suffix. Examples include "/v1beta1", "/v1alpha2", and "/preview".
-var moduleVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta|preview)\d*)?)$`)
-
 type typeDetails struct {
 	outputType   bool
 	inputType    bool
@@ -430,8 +427,9 @@ func (mod *modContext) genInit(exports []string) string {
 			child := mod.mod
 			// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
 			// Example: apps/v1beta1 -> v1beta1
-			if match := moduleVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
-				child = child[match[2]:match[3]]
+			parts := strings.SplitN(child, "/", 2)
+			if len(parts) == 2 {
+				child = parts[1]
 			}
 			fmt.Fprintf(w, "    %s,\n", PyName(child))
 		}
