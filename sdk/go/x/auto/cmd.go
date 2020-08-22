@@ -2,15 +2,21 @@ package auto
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 )
 
-func runPulumiCommandSync(workdir string, additionalEnv []string, args ...string) (string, string, int, error) {
+func runPulumiCommandSync(
+	ctx context.Context,
+	workdir string,
+	additionalEnv []string,
+	args ...string,
+) (string, string, int, error) {
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = append(args, "--non-interactive")
-	cmd := exec.Command("pulumi", args...)
+	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = workdir
 	cmd.Env = append(os.Environ(), additionalEnv...)
 	var stdout bytes.Buffer

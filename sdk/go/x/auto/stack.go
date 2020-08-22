@@ -24,6 +24,7 @@ package auto
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -48,14 +49,14 @@ func FullyQualifiedStackName(org, project, stack string) string {
 
 // NewStack creates a new stack using the given workspace, and fully qualified stack name (org/project/name).
 // It fails if a stack with that name already exists
-func NewStack(fqsn string, ws Workspace) (Stack, error) {
+func NewStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
 		workspace: ws,
 		fqsn:      fqsn,
 	}
 
-	err := ws.CreateStack(fqsn)
+	err := ws.CreateStack(ctx, fqsn)
 	if err != nil {
 		return s, err
 	}
@@ -64,14 +65,14 @@ func NewStack(fqsn string, ws Workspace) (Stack, error) {
 }
 
 // SelectStack creates a new stack using the given workspace, and fully qualified stack name (org/project/name).
-func SelectStack(fqsn string, ws Workspace) (Stack, error) {
+func SelectStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
 		workspace: ws,
 		fqsn:      fqsn,
 	}
 
-	err := ws.SelectStack(fqsn)
+	err := ws.SelectStack(ctx, fqsn)
 	if err != nil {
 		return s, err
 	}
@@ -93,10 +94,10 @@ func (s *Stack) Workspace() Workspace {
 
 // Preview preforms a dry-run update to a stack, returning pending changes.
 // https://www.pulumi.com/docs/reference/cli/pulumi_preview/
-func (s *Stack) Preview() (PreviewResult, error) {
+func (s *Stack) Preview(ctx context.Context) (PreviewResult, error) {
 	var res PreviewResult
 
-	err := s.Workspace().SelectStack(s.Name())
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return res, errors.Wrap(err, "failed to run preview")
 	}
@@ -104,12 +105,12 @@ func (s *Stack) Preview() (PreviewResult, error) {
 	var stdout, stderr string
 	var code int
 	if s.Workspace().Program() != nil {
-		stdout, stderr, err = s.host(true /*isPreview*/)
+		stdout, stderr, err = s.host(ctx, true /*isPreview*/)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
 	} else {
-		stdout, stderr, code, err = s.runPulumiCmdSync("preview", "--json")
+		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, "preview", "--json")
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
@@ -125,9 +126,9 @@ func (s *Stack) Preview() (PreviewResult, error) {
 
 // Up creates or updates the resources in a stack by executing the program in the Workspace.
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
-func (s *Stack) Up() (UpResult, error) {
+func (s *Stack) Up(ctx context.Context) (UpResult, error) {
 	var res UpResult
-	err := s.Workspace().SelectStack(s.Name())
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return res, errors.Wrap(err, "failed to run update")
 	}
@@ -136,23 +137,23 @@ func (s *Stack) Up() (UpResult, error) {
 	var code int
 	if s.Workspace().Program() != nil {
 		// TODO need to figure out how to get error code...
-		stdout, stderr, err = s.host(false /*isPreview*/)
+		stdout, stderr, err = s.host(ctx, false /*isPreview*/)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 		}
 	} else {
-		stdout, stderr, code, err = s.runPulumiCmdSync("up", "--yes")
+		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, "up", "--yes")
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 		}
 	}
 
-	outs, err := s.Outputs()
+	outs, err := s.Outputs(ctx)
 	if err != nil {
 		return res, err
 	}
 
-	history, err := s.History()
+	history, err := s.History(ctx)
 	if err != nil {
 		return res, err
 	}
@@ -170,20 +171,20 @@ func (s *Stack) Up() (UpResult, error) {
 	return res, nil
 }
 
-func (s *Stack) Refresh() (RefreshResult, error) {
+func (s *Stack) Refresh(ctx context.Context) (RefreshResult, error) {
 	var res RefreshResult
 
-	err := s.Workspace().SelectStack(s.Name())
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync("refresh", "--yes")
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, "refresh", "--yes")
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History()
+	history, err := s.History(ctx)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
@@ -202,20 +203,20 @@ func (s *Stack) Refresh() (RefreshResult, error) {
 	return res, nil
 }
 
-func (s *Stack) Destroy() (DestroyResult, error) {
+func (s *Stack) Destroy(ctx context.Context) (DestroyResult, error) {
 	var res DestroyResult
 
-	err := s.Workspace().SelectStack(s.Name())
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync("destroy", "--yes")
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, "destroy", "--yes")
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History()
+	history, err := s.History(ctx)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -235,20 +236,20 @@ func (s *Stack) Destroy() (DestroyResult, error) {
 }
 
 // Outputs get the current set of Stack outputs from the last Stack.Up()
-func (s *Stack) Outputs() (OutputMap, error) {
-	err := s.Workspace().SelectStack(s.Name())
+func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack outputs")
 	}
 
 	// standard outputs
-	outStdout, outStderr, code, err := s.runPulumiCmdSync("stack", "output", "--json")
+	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, "stack", "output", "--json")
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
 	}
 
 	// secret outputs
-	secretStdout, secretStderr, code, err := s.runPulumiCmdSync("stack", "output", "--json", "--show-secrets")
+	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, "stack", "output", "--json", "--show-secrets")
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
 	}
@@ -277,13 +278,13 @@ func (s *Stack) Outputs() (OutputMap, error) {
 }
 
 // History returns a list summarizing all previous and current results from Stack.Up()
-func (s *Stack) History() ([]UpdateSummary, error) {
-	err := s.Workspace().SelectStack(s.Name())
+func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync("history", "--json", "--show-secrets")
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, "history", "--json", "--show-secrets")
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
@@ -298,49 +299,49 @@ func (s *Stack) History() ([]UpdateSummary, error) {
 }
 
 // GetConfig returns the config value associated with the specified key
-func (s *Stack) GetConfig(key string) (ConfigValue, error) {
-	return s.Workspace().GetConfig(s.Name(), key)
+func (s *Stack) GetConfig(ctx context.Context, key string) (ConfigValue, error) {
+	return s.Workspace().GetConfig(ctx, s.Name(), key)
 }
 
 // GetAllConfig returns the full config map.
-func (s *Stack) GetAllConfig() (ConfigMap, error) {
-	return s.Workspace().GetAllConfig(s.Name())
+func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
+	return s.Workspace().GetAllConfig(ctx, s.Name())
 }
 
 // SetConfig sets the specified config KVP.
-func (s *Stack) SetConfig(key string, val ConfigValue) error {
-	return s.Workspace().SetConfig(s.Name(), key, val)
+func (s *Stack) SetConfig(ctx context.Context, key string, val ConfigValue) error {
+	return s.Workspace().SetConfig(ctx, s.Name(), key, val)
 }
 
 // SetAllConfig sets all values in the provided config map.
-func (s *Stack) SetAllConfig(config ConfigMap) error {
-	return s.Workspace().SetAllConfig(s.Name(), config)
+func (s *Stack) SetAllConfig(ctx context.Context, config ConfigMap) error {
+	return s.Workspace().SetAllConfig(ctx, s.Name(), config)
 }
 
 // RemoveConfig removes the specified config KVP.
-func (s *Stack) RemoveConfig(key string) error {
-	return s.Workspace().RemoveConfig(s.Name(), key)
+func (s *Stack) RemoveConfig(ctx context.Context, key string) error {
+	return s.Workspace().RemoveConfig(ctx, s.Name(), key)
 }
 
 // RemoveAllConfig removes all values in the provided list of keys.
-func (s *Stack) RemoveAllConfig(keys []string) error {
-	return s.Workspace().RemoveAllConfig(s.Name(), keys)
+func (s *Stack) RemoveAllConfig(ctx context.Context, keys []string) error {
+	return s.Workspace().RemoveAllConfig(ctx, s.Name(), keys)
 }
 
 // RefreshConfig gets and sets the config map used with the last Update.
-func (s *Stack) RefreshConfig() (ConfigMap, error) {
-	return s.Workspace().RefreshConfig(s.Name())
+func (s *Stack) RefreshConfig(ctx context.Context) (ConfigMap, error) {
+	return s.Workspace().RefreshConfig(ctx, s.Name())
 }
 
 // Info returns a summary of the Stack including its URL
-func (s *Stack) Info() (StackSummary, error) {
+func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	var info StackSummary
-	err := s.Workspace().SelectStack(s.Name())
+	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return info, errors.Wrap(err, "failed to fetch stack info")
 	}
 
-	summary, err := s.Workspace().Stack()
+	summary, err := s.Workspace().Stack(ctx)
 	if err != nil {
 		return info, errors.Wrap(err, "failed to fetch stack info")
 	}
@@ -431,22 +432,22 @@ type DestroyResult struct {
 // secretSentinel represents the CLI response for an output marked as "secret"
 const secretSentinel = "[secret]"
 
-func (s *Stack) runPulumiCmdSync(args ...string) (string, string, int, error) {
+func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, string, int, error) {
 	var env []string
 	if s.Workspace().PulumiHome() != nil {
 		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
 	}
-	additionalArgs, err := s.Workspace().SerializeArgsForOp(s.Name())
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
 	if err != nil {
 		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
-	stdout, stderr, errCode, err := runPulumiCommandSync(s.Workspace().WorkDir(), env, args...)
+	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), env, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}
-	err = s.Workspace().PostOpCallback(s.Name())
+	err = s.Workspace().PostOpCallback(ctx, s.Name())
 	if err != nil {
 		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
 	}
@@ -454,8 +455,8 @@ func (s *Stack) runPulumiCmdSync(args ...string) (string, string, int, error) {
 }
 
 // TODO set pulumi home env var, etc
-func (s *Stack) host(isPreview bool) (string, string, error) {
-	proj, err := s.Workspace().ProjectSettings()
+func (s *Stack) host(ctx context.Context, isPreview bool) (string, string, error) {
+	proj, err := s.Workspace().ProjectSettings(ctx)
 	if err != nil {
 		return "", "", errors.Wrap(err, "could not start run program, failed to start host")
 	}
@@ -466,12 +467,12 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	if isPreview {
 		args = append(args, "preview")
 	}
-	additionalArgs, err := s.Workspace().SerializeArgsForOp(s.Name())
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
-	cmd := exec.Command("pulumi", args...)
+	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = s.Workspace().WorkDir()
 	if s.Workspace().PulumiHome() != nil {
 		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
@@ -514,6 +515,8 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	var engineAddr string
 	for i := 0; i < 2; i++ {
 		select {
+		case <-ctx.Done():
+			return stdout.String(), errBuff.String(), ctx.Err()
 		case <-failChan:
 			return stdout.String(), errBuff.String(), errors.New("failed to launch host")
 		case monitorAddr = <-resMonAddrChan:
@@ -521,12 +524,7 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 		}
 	}
 
-	os.Setenv(pulumi.EnvMonitor, monitorAddr)
-	os.Setenv(pulumi.EnvProject, proj.Name.String())
-	os.Setenv(pulumi.EnvStack, s.Name())
-	os.Setenv(pulumi.EnvEngine, engineAddr)
-
-	cfg, err := s.GetAllConfig()
+	cfg, err := s.GetAllConfig(ctx)
 	if err != nil {
 		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to serialize config for inline program")
 	}
@@ -534,12 +532,15 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	for k, v := range cfg {
 		cfgMap[k] = v.Value
 	}
-	cfgStr, err := json.Marshal(cfgMap)
-	if err != nil {
-		return stdout.String(), errBuff.String(), errors.Wrap(err, "unable to marshal config")
+
+	runInfo := pulumi.RunInfo{
+		EngineAddr:  engineAddr,
+		MonitorAddr: monitorAddr,
+		Config:      cfgMap,
+		Project:     proj.Name.String(),
+		Stack:       s.Name(),
 	}
-	os.Setenv(pulumi.EnvConfig, string(cfgStr))
-	err = execUserCode(s.Workspace().Program())
+	err = execUserCode(ctx, s.Workspace().Program(), runInfo)
 	if err != nil {
 		err = cmd.Process.Signal(os.Interrupt)
 		if err != nil {
@@ -564,7 +565,7 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 		return stdout.String(), errBuff.String(), err
 	}
 
-	err = s.Workspace().PostOpCallback(s.Name())
+	err = s.Workspace().PostOpCallback(ctx, s.Name())
 	if err != nil {
 		return stdout.String(), errBuff.String(),
 			errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
@@ -573,7 +574,7 @@ func (s *Stack) host(isPreview bool) (string, string, error) {
 	return stdout.String(), errBuff.String(), nil
 }
 
-func execUserCode(fn pulumi.RunFunc) (err error) {
+func execUserCode(ctx context.Context, fn pulumi.RunFunc, info pulumi.RunInfo) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if pErr, ok := r.(error); ok {
@@ -587,7 +588,9 @@ func execUserCode(fn pulumi.RunFunc) (err error) {
 	if strings.Contains(stack, "github.com/pulumi/pulumi/sdk/go/pulumi/run.go") {
 		return errors.New("nested stack operations are not supported https://github.com/pulumi/pulumi/issues/5058")
 	}
-
-	err = pulumi.RunErr(fn)
-	return err
+	pulumiCtx, err := pulumi.NewContext(ctx, info)
+	if err != nil {
+		return err
+	}
+	return pulumi.RunWithContext(pulumiCtx, fn)
 }

@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -8,9 +9,9 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
-func setupGitRepo(workDir string, repoArgs *GitRepo) (string, error) {
+func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	// clone
-	repo, err := git.PlainClone(workDir, false, &git.CloneOptions{URL: repoArgs.URL})
+	repo, err := git.PlainCloneContext(ctx, workDir, false, &git.CloneOptions{URL: repoArgs.URL})
 	if err != nil {
 		return "", errors.Wrap(err, "unable to clone repo")
 	}
@@ -48,7 +49,7 @@ func setupGitRepo(workDir string, repoArgs *GitRepo) (string, error) {
 
 	// setup
 	if repoArgs.Setup != nil {
-		err = repoArgs.Setup(workDir)
+		err = repoArgs.Setup(ctx, workDir)
 		if err != nil {
 			return "", errors.Wrap(err, "error while running setup function")
 		}

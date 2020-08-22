@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os/exec"
@@ -18,6 +19,7 @@ import (
 const pulumiOrg = "pulumi"
 
 func TestNewStackLocalSource(t *testing.T) {
+	ctx := context.Background()
 	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -33,7 +35,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
-	s, err := NewStackLocalSource(fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, fqsn, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -41,18 +43,18 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	err = s.SetAllConfig(cfg)
+	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
 		t.Errorf("failed to set config, err: %v", err)
 		t.FailNow()
 	}
 
 	// -- pulumi up --
-	res, err := s.Up()
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -70,7 +72,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview()
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -80,7 +82,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh()
+	ref, err := s.Refresh(ctx)
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -91,7 +93,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy()
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -107,6 +109,7 @@ func rangeIn(low, hi int) int {
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
+	ctx := context.Background()
 	// TODO this example has a policy violation if created in the pulumi org.
 	// Should use a non-cloud remote example for this test.
 	oName := "evanboyle"
@@ -124,7 +127,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackRemoteSource(fqsn, repo)
+	s, err := NewStackRemoteSource(ctx, fqsn, repo)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -132,18 +135,18 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	err = s.SetAllConfig(cfg)
+	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
 		t.Errorf("failed to set config, err: %v", err)
 		t.FailNow()
 	}
 
 	// -- pulumi up --
-	res, err := s.Up()
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -157,7 +160,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview()
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -167,7 +170,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh()
+	ref, err := s.Refresh(ctx)
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -178,7 +181,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy()
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -189,6 +192,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 }
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
+	ctx := context.Background()
 	// TODO this example has a policy violation if created in the pulumi org.
 	// Should use a non-cloud remote example for this test.
 	oName := "evanboyle"
@@ -204,7 +208,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/examples.git",
 		ProjectPath: pName,
-		Setup: func(path string) error {
+		Setup: func(ctx context.Context, path string) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
 			cmd.Dir = path
 			return cmd.Run()
@@ -218,7 +222,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackRemoteSource(fqsn, repo, Project(project))
+	s, err := NewStackRemoteSource(ctx, fqsn, repo, Project(project))
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -226,18 +230,18 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	err = s.SetAllConfig(cfg)
+	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
 		t.Errorf("failed to set config, err: %v", err)
 		t.FailNow()
 	}
 
 	// -- pulumi up --
-	res, err := s.Up()
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -251,7 +255,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview()
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -261,7 +265,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh()
+	ref, err := s.Refresh(ctx)
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -272,7 +276,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy()
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -283,6 +287,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestNewStackInlineSource(t *testing.T) {
+	ctx := context.Background()
 	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -297,7 +302,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackInlineSource(fqsn, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
@@ -311,18 +316,18 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	err = s.SetAllConfig(cfg)
+	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
 		t.Errorf("failed to set config, err: %v", err)
 		t.FailNow()
 	}
 
 	// -- pulumi up --
-	res, err := s.Up()
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -340,7 +345,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview()
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -350,7 +355,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh()
+	ref, err := s.Refresh(ctx)
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -361,7 +366,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy()
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -372,11 +377,12 @@ func TestNewStackInlineSource(t *testing.T) {
 }
 
 func TestNestedStackFails(t *testing.T) {
+	testCtx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	parentFQSN := FullyQualifiedStackName(pulumiOrg, "parent", sName)
 	nestedFQSN := FullyQualifiedStackName(pulumiOrg, "nested", sName)
 
-	nestedStack, err := NewStackInlineSource(nestedFQSN, func(ctx *pulumi.Context) error {
+	nestedStack, err := NewStackInlineSource(testCtx, nestedFQSN, func(ctx *pulumi.Context) error {
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
@@ -386,8 +392,8 @@ func TestNestedStackFails(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackInlineSource(parentFQSN, func(ctx *pulumi.Context) error {
-		_, err := nestedStack.Up()
+	s, err := NewStackInlineSource(testCtx, parentFQSN, func(ctx *pulumi.Context) error {
+		_, err := nestedStack.Up(testCtx)
 		return err
 	})
 	if err != nil {
@@ -397,20 +403,20 @@ func TestNestedStackFails(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(s.Name())
+		err = s.Workspace().RemoveStack(testCtx, s.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 
-		err = nestedStack.Workspace().RemoveStack(nestedStack.Name())
+		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name())
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	_, err = s.Up()
+	_, err = s.Up(testCtx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "nested stack operations are not supported")
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy()
+	dRes, err := s.Destroy(testCtx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -418,7 +424,7 @@ func TestNestedStackFails(t *testing.T) {
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 
-	dRes, err = nestedStack.Destroy()
+	dRes, err = nestedStack.Destroy(testCtx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
