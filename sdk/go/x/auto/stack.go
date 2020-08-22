@@ -542,8 +542,8 @@ func (s *Stack) host(ctx context.Context, isPreview bool) (string, string, error
 	}
 	err = execUserCode(ctx, s.Workspace().Program(), runInfo)
 	if err != nil {
-		err = cmd.Process.Signal(os.Interrupt)
-		if err != nil {
+		interruptErr := cmd.Process.Signal(os.Interrupt)
+		if interruptErr != nil {
 			return stdout.String(), errBuff.String(),
 				errors.Wrap(err, "failed to run inline program and shutdown gracefully, could not kill host")
 		}

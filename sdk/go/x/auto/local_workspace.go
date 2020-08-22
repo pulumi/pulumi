@@ -541,7 +541,11 @@ func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts .
 	return NewStack(ctx, fqsn, w)
 }
 
-func SelectStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+func SelectStackRemoteSource(
+	ctx context.Context,
+	fqsn string, repo GitRepo,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
