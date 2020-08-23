@@ -36,6 +36,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 )
 
 type Stack struct {
@@ -94,7 +98,7 @@ func (s *Stack) Workspace() Workspace {
 
 // Preview preforms a dry-run update to a stack, returning pending changes.
 // https://www.pulumi.com/docs/reference/cli/pulumi_preview/
-func (s *Stack) Preview(ctx context.Context) (PreviewResult, error) {
+func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
 	var res PreviewResult
 
 	err := s.Workspace().SelectStack(ctx, s.Name())
@@ -102,15 +106,41 @@ func (s *Stack) Preview(ctx context.Context) (PreviewResult, error) {
 		return res, errors.Wrap(err, "failed to run preview")
 	}
 
+	preOpts := &optpreview.Options{}
+	for _, o := range opts {
+		o.ApplyOption(preOpts)
+	}
+
+	var sharedArgs []string
+	if preOpts.Message != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", preOpts.Message))
+	}
+	if preOpts.ExpectNoChanges {
+		sharedArgs = append(sharedArgs, "--expect-no-changes")
+	}
+	for _, rURN := range preOpts.Replace {
+		sharedArgs = append(sharedArgs, "--replace %s", rURN)
+	}
+	for _, tURN := range preOpts.Target {
+		sharedArgs = append(sharedArgs, "--target %s", tURN)
+	}
+	if preOpts.TargetDependents {
+		sharedArgs = append(sharedArgs, "--target-dependents")
+	}
+
 	var stdout, stderr string
 	var code int
 	if s.Workspace().Program() != nil {
-		stdout, stderr, err = s.host(ctx, true /*isPreview*/)
+		hostArgs := []string{"preview"}
+		hostArgs = append(hostArgs, sharedArgs...)
+		stdout, stderr, err = s.host(ctx, hostArgs, preOpts.Parallel)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
 	} else {
-		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, "preview", "--json")
+		args := []string{"preview", "--json"}
+		args = append(args, sharedArgs...)
+		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
@@ -126,23 +156,51 @@ func (s *Stack) Preview(ctx context.Context) (PreviewResult, error) {
 
 // Up creates or updates the resources in a stack by executing the program in the Workspace.
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
-func (s *Stack) Up(ctx context.Context) (UpResult, error) {
+func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
 	var res UpResult
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return res, errors.Wrap(err, "failed to run update")
 	}
 
+	upOpts := &optup.Options{}
+	for _, o := range opts {
+		o.ApplyOption(upOpts)
+	}
+
+	var sharedArgs []string
+	if upOpts.Message != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
+	}
+	if upOpts.ExpectNoChanges {
+		sharedArgs = append(sharedArgs, "--expect-no-changes")
+	}
+	for _, rURN := range upOpts.Replace {
+		sharedArgs = append(sharedArgs, "--replace %s", rURN)
+	}
+	for _, tURN := range upOpts.Target {
+		sharedArgs = append(sharedArgs, "--target %s", tURN)
+	}
+	if upOpts.TargetDependents {
+		sharedArgs = append(sharedArgs, "--target-dependents")
+	}
+
 	var stdout, stderr string
 	var code int
 	if s.Workspace().Program() != nil {
 		// TODO need to figure out how to get error code...
-		stdout, stderr, err = s.host(ctx, false /*isPreview*/)
+		stdout, stderr, err = s.host(ctx, sharedArgs, upOpts.Parallel)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 		}
 	} else {
-		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, "up", "--yes")
+		args := []string{"up", "--yes", "--skip-preview"}
+		args = append(args, sharedArgs...)
+		if upOpts.Parallel > 0 {
+			args = append(args, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
+		}
+
+		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 		}
@@ -171,7 +229,7 @@ func (s *Stack) Up(ctx context.Context) (UpResult, error) {
 	return res, nil
 }
 
-func (s *Stack) Refresh(ctx context.Context) (RefreshResult, error) {
+func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {
 	var res RefreshResult
 
 	err := s.Workspace().SelectStack(ctx, s.Name())
@@ -179,7 +237,23 @@ func (s *Stack) Refresh(ctx context.Context) (RefreshResult, error) {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, "refresh", "--yes")
+	refreshOpts := &optrefresh.Options{}
+	for _, o := range opts {
+		o.ApplyOption(refreshOpts)
+	}
+
+	args := []string{"refresh", "--yes", "--skip-preview"}
+	if refreshOpts.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
+	}
+	for _, tURN := range refreshOpts.Target {
+		args = append(args, "--target %s", tURN)
+	}
+	if refreshOpts.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
@@ -203,7 +277,7 @@ func (s *Stack) Refresh(ctx context.Context) (RefreshResult, error) {
 	return res, nil
 }
 
-func (s *Stack) Destroy(ctx context.Context) (DestroyResult, error) {
+func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
 
 	err := s.Workspace().SelectStack(ctx, s.Name())
@@ -211,7 +285,26 @@ func (s *Stack) Destroy(ctx context.Context) (DestroyResult, error) {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, "destroy", "--yes")
+	destroyOpts := &optdestroy.Options{}
+	for _, o := range opts {
+		o.ApplyOption(destroyOpts)
+	}
+
+	args := []string{"destroy", "--yes", "--skip-preview"}
+	if destroyOpts.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
+	}
+	for _, tURN := range destroyOpts.Target {
+		args = append(args, "--target %s", tURN)
+	}
+	if destroyOpts.TargetDependents {
+		args = append(args, "--target-dependents")
+	}
+	if destroyOpts.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
@@ -454,8 +547,7 @@ func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, s
 	return stdout, stderr, errCode, nil
 }
 
-// TODO set pulumi home env var, etc
-func (s *Stack) host(ctx context.Context, isPreview bool) (string, string, error) {
+func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int) (string, string, error) {
 	proj, err := s.Workspace().ProjectSettings(ctx)
 	if err != nil {
 		return "", "", errors.Wrap(err, "could not start run program, failed to start host")
@@ -464,14 +556,12 @@ func (s *Stack) host(ctx context.Context, isPreview bool) (string, string, error
 	var stdout bytes.Buffer
 	var errBuff bytes.Buffer
 	args := []string{"host"}
-	if isPreview {
-		args = append(args, "preview")
-	}
-	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
+	args = append(args, additionalArgs...)
+	workspaceArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
-	args = append(args, additionalArgs...)
+	args = append(args, workspaceArgs...)
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = s.Workspace().WorkDir()
 	if s.Workspace().PulumiHome() != nil {
@@ -539,6 +629,9 @@ func (s *Stack) host(ctx context.Context, isPreview bool) (string, string, error
 		Config:      cfgMap,
 		Project:     proj.Name.String(),
 		Stack:       s.Name(),
+	}
+	if parallel > 0 {
+		runInfo.Parallel = parallel
 	}
 	err = execUserCode(ctx, s.Workspace().Program(), runInfo)
 	if err != nil {
