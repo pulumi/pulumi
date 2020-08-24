@@ -347,8 +347,8 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
 	}
 
-	var outputs map[string]string
-	var secrets map[string]string
+	var outputs map[string]interface{}
+	var secrets map[string]interface{}
 
 	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
@@ -462,7 +462,7 @@ type UpdateSummary struct {
 
 // OutputValue models a Pulumi Stack output
 type OutputValue struct {
-	Value  string
+	Value  interface{}
 	Secret bool
 }
 
