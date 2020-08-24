@@ -110,20 +110,21 @@ func rangeIn(low, hi int) int {
 
 func TestNewStackRemoteSource(t *testing.T) {
 	ctx := context.Background()
-	// TODO this example has a policy violation if created in the pulumi org.
-	// Should use a non-cloud remote example for this test.
-	oName := "evanboyle"
-	pName := "aws-go-s3-folder"
+	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(oName, pName, sName)
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
-		"aws:region": ConfigValue{
-			Value: "us-west-2",
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
 		},
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/examples.git",
-		ProjectPath: pName,
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
 	}
 
 	// initialize
@@ -152,9 +153,13 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 2, len(res.Outputs), "expected two outputs")
-	assert.NotNil(t, res.Outputs["bucketName"])
-	assert.NotNil(t, res.Outputs["websiteUrl"])
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
@@ -165,7 +170,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 5, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
 	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
@@ -193,21 +198,22 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	ctx := context.Background()
-	// TODO this example has a policy violation if created in the pulumi org.
-	// Should use a non-cloud remote example for this test.
-	oName := "evanboyle"
-	pName := "aws-go-s3-folder"
+	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(oName, pName, sName)
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
-		"aws:region": ConfigValue{
-			Value: "us-west-2",
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
 		},
 	}
 	binName := "examplesBinary"
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/examples.git",
-		ProjectPath: pName,
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
 		Setup: func(ctx context.Context, path string) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
 			cmd.Dir = path
@@ -247,9 +253,13 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 2, len(res.Outputs), "expected two outputs")
-	assert.NotNil(t, res.Outputs["bucketName"])
-	assert.NotNil(t, res.Outputs["websiteUrl"])
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
@@ -260,7 +270,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 5, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
 	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
