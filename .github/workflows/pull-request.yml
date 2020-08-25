@@ -7,6 +7,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
+  GO111MODULE: on
 
 jobs:
   test_unit:
