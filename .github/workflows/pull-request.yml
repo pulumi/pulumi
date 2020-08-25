@@ -7,7 +7,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   GORELEASER_CURRENT_TAG: "2.8.2" # FIXME: use pulumictl for this
-  GO111MODULE: on
+  GO111MODULE: "on"
 
 jobs:
   test_unit:
@@ -76,6 +76,11 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
+      - name: Set GOPATH
+          # temporary fix
+          # see https://github.com/actions/setup-go/issues/14
+        run: echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
+        shell: bash
       - name: Ensure dependencies
         run: make ensure
       - name: Build
