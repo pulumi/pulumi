@@ -15,6 +15,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
+// LocalWorkspace is a default implemenatation of workspace of the Workspace interface.
+// A Workspace is the execution context containing a single Pulumi project, a program,
+// and multiple stacks. Workspaces are used to manage the execution environment,
+// providing various utilities such as plugin installation, environment configuration
+// ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
+// LocalWorkspace relies on pulumi.yaml and pulumi.<stack>.yaml as the intermediate format
+// for Project and Stack settings. Modifying ProjectSettings will
+// alter the Workspace pulumi.yaml file, and setting config on a Stack will modify the pulumi.<stack>.yaml file.
+// This is identical to the behavior of Pulumi CLI driven workspaces.
 type LocalWorkspace struct {
 	workDir    string
 	pulumiHome *string
@@ -23,6 +32,9 @@ type LocalWorkspace struct {
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
 
+// ProjectSettings returns the settings object for the current project if any
+// LocalWorkspace reads settings from the pulumi.yaml in the workspace.
+// A workspace can contain only a single project at a time.
 func (l *LocalWorkspace) ProjectSettings(ctx context.Context) (*workspace.Project, error) {
 	for _, ext := range settingsExtensions {
 		projectPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi%s", ext))
@@ -37,13 +49,18 @@ func (l *LocalWorkspace) ProjectSettings(ctx context.Context) (*workspace.Projec
 	return nil, errors.New("unable to find project settings in workspace")
 }
 
+// WriteProjectSettings overwrites the settings object in the current project.
+// There can only be a single project per workspace. Fails is new project name does not match old.
+// LocalWorkspace writes this value to a pulumi.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) WriteProjectSettings(ctx context.Context, settings *workspace.Project) error {
 	pulumiYamlPath := filepath.Join(l.WorkDir(), "Pulumi.yaml")
 	return settings.Save(pulumiYamlPath)
 }
 
+// StackSettings returns the settings object for the stack matching the specified fullyQualifiedStackName if any.
+// LocalWorkspace reads this from a pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) StackSettings(ctx context.Context, fqsn string) (*workspace.ProjectStack, error) {
-	name, err := GetStackFromFQSN(fqsn)
+	name, err := getStackFromFQSN(fqsn)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load stack settings, invalid stack name")
 	}
@@ -60,12 +77,14 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, fqsn string) (*works
 	return nil, errors.Errorf("unable to find stack settings in workspace for %s", fqsn)
 }
 
+// WriteStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
+// LocalWorkspace writes this value to a pulumi.<stack>.yaml file in Workspace.WorkDir()
 func (l *LocalWorkspace) WriteStackSettings(
 	ctx context.Context,
 	fqsn string,
 	settings *workspace.ProjectStack,
 ) error {
-	name, err := GetStackFromFQSN(fqsn)
+	name, err := getStackFromFQSN(fqsn)
 	if err != nil {
 		return errors.Wrap(err, "failed to save stack settings, invalid stack name")
 	}
@@ -77,16 +96,25 @@ func (l *LocalWorkspace) WriteStackSettings(
 	return nil
 }
 
+// SerializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
+// Provided with fullyQualifiedStackName,
+// returns a list of args to append to an invoked command ["--config=...", ]
+// LocalWorkspace does not utilize this extensibility point.
 func (l *LocalWorkspace) SerializeArgsForOp(ctx context.Context, fqsn string) ([]string, error) {
 	// not utilized for LocalWorkspace
 	return nil, nil
 }
 
+// PostOpCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
+// An extensibility point to perform workspace cleanup (CLI operations may create/modify a pulumi.stack.yaml)
+// LocalWorkspace does not utilize this extensibility point.
 func (l *LocalWorkspace) PostOpCallback(ctx context.Context, fqsn string) error {
 	// not utilized for LocalWorkspace
 	return nil
 }
 
+// GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
+// scoped to the current workspace. LocalWorkspace reads this config from the matching pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string) (ConfigValue, error) {
 	var val ConfigValue
 	err := l.SelectStack(ctx, fqsn)
@@ -104,6 +132,8 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string)
 	return val, nil
 }
 
+// GetAllConfig returns the config map for the specified fullyQualifiedStackName, scoped to the current workspace.
+// LocalWorkspace reads this config from the matching pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigMap, error) {
 	var val ConfigMap
 	err := l.SelectStack(ctx, fqsn)
@@ -121,6 +151,8 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigM
 	return val, nil
 }
 
+// SetConfig sets the specified KVP on the provided fullyQualifiedStackName.
+// LocalWorkspace writes this value to the matching pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) SetConfig(ctx context.Context, fqsn string, key string, val ConfigValue) error {
 	err := l.SelectStack(ctx, fqsn)
 	if err != nil {
@@ -139,6 +171,8 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, fqsn string, key string,
 	return nil
 }
 
+// SetAllConfig sets all values in the provided config map for the specified fullyQualifiedStackName.
+// LocalWorkspace writes the config to the matching pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) SetAllConfig(ctx context.Context, fqsn string, config ConfigMap) error {
 	for k, v := range config {
 		err := l.SetConfig(ctx, fqsn, k, v)
@@ -149,6 +183,8 @@ func (l *LocalWorkspace) SetAllConfig(ctx context.Context, fqsn string, config C
 	return nil
 }
 
+// RemoveConfig removes the specified KVP on the provided fullyQualifiedStackName.
+// It will remove any matching values in the pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RemoveConfig(ctx context.Context, fqsn string, key string) error {
 	err := l.SelectStack(ctx, fqsn)
 	if err != nil {
@@ -162,6 +198,8 @@ func (l *LocalWorkspace) RemoveConfig(ctx context.Context, fqsn string, key stri
 	return nil
 }
 
+// RemoveAllConfig removes all values in the provided key list for the specified fullyQualifiedStackName
+// It will remove any matching values in the pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, fqsn string, keys []string) error {
 	for _, k := range keys {
 		err := l.RemoveConfig(ctx, fqsn, k)
@@ -172,6 +210,8 @@ func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, fqsn string, keys 
 	return nil
 }
 
+// RefreshConfig gets and sets the config map used with the last Update for Stack matching fullyQualifiedStackName.
+// It will overwrite all configuration in the pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (ConfigMap, error) {
 	err := l.SelectStack(ctx, fqsn)
 	if err != nil {
@@ -190,14 +230,20 @@ func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (Config
 	return cfg, nil
 }
 
+// WorkDir returns the working directory to run Pulumi CLI commands.
+// LocalWorkspace expects that this directory contains a Pulumi.yaml file.
+// For "Inline" Pulumi programs created from NewStackInlineSource, a pulumi.yaml
+// is created on behalf of the user if none is specified.
 func (l *LocalWorkspace) WorkDir() string {
 	return l.workDir
 }
 
+// PulumiHome returns the directory override for CLI metadata if set.
 func (l *LocalWorkspace) PulumiHome() *string {
 	return l.pulumiHome
 }
 
+// WhoAmI returns the currently authenticated user
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
 	if err != nil {
@@ -206,6 +252,7 @@ func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	return strings.TrimSpace(stdout), nil
 }
 
+// Stack returns a summary of the currently selected stack, if any.
 func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	stacks, err := l.ListStacks(ctx)
 	if err != nil {
@@ -219,6 +266,7 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	return nil, nil
 }
 
+// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
 func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
 	err := ValidateFullyQualifiedStackName(fqsn)
 	if err != nil {
@@ -233,6 +281,7 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
 	return nil
 }
 
+// SelectStack selects and sets an existing stack matching the fullyQualifiedStackName, failing if none exists.
 func (l *LocalWorkspace) SelectStack(ctx context.Context, fqsn string) error {
 	err := ValidateFullyQualifiedStackName(fqsn)
 	if err != nil {
@@ -247,6 +296,7 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, fqsn string) error {
 	return nil
 }
 
+// RemoveStack deletes the stack and all associated configuration and history.
 func (l *LocalWorkspace) RemoveStack(ctx context.Context, fqsn string) error {
 	err := ValidateFullyQualifiedStackName(fqsn)
 	if err != nil {
@@ -260,6 +310,8 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, fqsn string) error {
 	return nil
 }
 
+// ListStacks returns all Stacks created under the current Project.
+// This queries underlying backend and may return stacks not present in the Workspace (as pulumi.<stack>.yaml files).
 func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
 	user, err := l.WhoAmI(ctx)
 	if err != nil {
@@ -291,6 +343,7 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	return stacks, nil
 }
 
+// InstallPlugin acquires the plugin matching the specified name and version
 func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "install", "resource", name, version)
 	if err != nil {
@@ -299,6 +352,7 @@ func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version
 	return nil
 }
 
+// RemovePlugin deletes the plugin matching the specified name and verision
 func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version)
 	if err != nil {
@@ -307,6 +361,7 @@ func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version 
 	return nil
 }
 
+// ListPlugins lists all installed plugins.
 func (l *LocalWorkspace) ListPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "ls", "--json")
 	if err != nil {
@@ -320,10 +375,13 @@ func (l *LocalWorkspace) ListPlugins(ctx context.Context) ([]workspace.PluginInf
 	return plugins, nil
 }
 
+// Program returns the program `pulumi.RunFunc` to be used for Preview/Update if any.
+// If none is specified, the stack will refer to Project Settings for this information.
 func (l *LocalWorkspace) Program() pulumi.RunFunc {
 	return l.program
 }
 
+// SetProgram sets the program associated with the Workspace to the specified `pulumi.RunFunc`
 func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
 	l.program = fn
 }
@@ -334,12 +392,15 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 ) (string, string, int, error) {
 	var env []string
 	if l.PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *l.PulumiHome())
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *l.PulumiHome())
 		env = append(env, homeEnv)
 	}
 	return runPulumiCommandSync(ctx, l.WorkDir(), env, args...)
 }
 
+// NewLocalWorkspace creates an configures a LocalWorkspace. LocalWorkspaceOptions can be used to
+// configure things like the working directory, the program to execute, and to seed the directory with source code
+// from a git repository.
 func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Workspace, error) {
 	lwOpts := &localWorkspaceOptions{}
 	// for merging options, last specified value wins
@@ -419,6 +480,8 @@ type localWorkspaceOptions struct {
 	Repo *GitRepo
 }
 
+// LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
+// See Workdir, Program, PulumiHome, Project, Stacks, and Repo for concrete options.
 type LocalWorkspaceOption interface {
 	applyLocalWorkspaceOption(*localWorkspaceOptions)
 }
@@ -429,6 +492,7 @@ func (o localWorkspaceOption) applyLocalWorkspaceOption(opts *localWorkspaceOpti
 	o(opts)
 }
 
+// GitRepo contains info to acquire and setup a Pulumi program from a git repository.
 type GitRepo struct {
 	// URL to clone git repo
 	URL string
@@ -490,13 +554,7 @@ func Repo(gitRepo GitRepo) LocalWorkspaceOption {
 	})
 }
 
-func GetStackFromFQSN(fqsn string) (string, error) {
-	if err := ValidateFullyQualifiedStackName(fqsn); err != nil {
-		return "", err
-	}
-	return strings.Split(fqsn, "/")[2], nil
-}
-
+// ValidateFullyQualifiedStackName validates that the fqsn is in the form "org/project/name"
 func ValidateFullyQualifiedStackName(fqsn string) error {
 	parts := strings.Split(fqsn, "/")
 	if len(parts) != 3 {
@@ -508,6 +566,9 @@ func ValidateFullyQualifiedStackName(fqsn string) error {
 	return nil
 }
 
+// NewStackLocalSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// from the specified WorkDir. This Workspace will pick up
+// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml).
 func NewStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
@@ -519,6 +580,9 @@ func NewStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...Loca
 	return NewStack(ctx, fqsn, w)
 }
 
+// SelectStackLocalSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
+// from the specified WorkDir. This Workspace will pick up
+// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml).
 func SelectStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
@@ -530,6 +594,10 @@ func SelectStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...L
 	return SelectStack(ctx, fqsn, w)
 }
 
+// NewStackRemoteSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// with source code cloned from the specified GitRepo. This Workspace will pick up
+// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml) that are cloned into the Workspace.
+// Unless a WorkDir option is specified, the GitRepo will be clone into a new temporary directory provided by the OS.
 func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
@@ -541,6 +609,10 @@ func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts .
 	return NewStack(ctx, fqsn, w)
 }
 
+// SelectStackRemoteSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
+// with source code cloned from the specified GitRepo. This Workspace will pick up
+// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml) that are cloned into the Workspace.
+// Unless a WorkDir option is specified, the GitRepo will be clone into a new temporary directory provided by the OS.
 func SelectStackRemoteSource(
 	ctx context.Context,
 	fqsn string, repo GitRepo,
@@ -556,6 +628,10 @@ func SelectStackRemoteSource(
 	return SelectStack(ctx, fqsn, w)
 }
 
+// NewStackInlineSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// with the specified program. If no Project option is specified, default project settings will be created
+// on behalf of the user. Similarly, unless a WorkDir option is specified, the working directory will default
+// to a new temporary directory provided by the OS.
 func NewStackInlineSource(
 	ctx context.Context,
 	fqsn string,
@@ -578,6 +654,10 @@ func NewStackInlineSource(
 	return NewStack(ctx, fqsn, w)
 }
 
+// SelectStackInlineSource selects an existing Stack backed by a new LocalWorkspace created on behalf of the user,
+// with the specified program. If no Project option is specified, default project settings will be created
+// on behalf of the user. Similarly, unless a WorkDir option is specified, the working directory will default
+// to a new temporary directory provided by the OS.
 func SelectStackInlineSource(
 	ctx context.Context,
 	fqsn string,
@@ -614,3 +694,12 @@ func defaultInlineProject(fqsn string) (workspace.Project, error) {
 
 	return proj, nil
 }
+
+func getStackFromFQSN(fqsn string) (string, error) {
+	if err := ValidateFullyQualifiedStackName(fqsn); err != nil {
+		return "", err
+	}
+	return strings.Split(fqsn, "/")[2], nil
+}
+
+const pulumiHomeEnv = "PULUMI_HOME"

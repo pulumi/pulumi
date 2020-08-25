@@ -29,6 +29,7 @@ func (ae autoError) Error() string {
 	).Error()
 }
 
+// IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
 func IsConcurrentUpdateError(e error) bool {
 	ae, ok := e.(autoError)
 	if !ok {
@@ -38,7 +39,7 @@ func IsConcurrentUpdateError(e error) bool {
 	return strings.Contains(ae.stderr, "[409] Conflict: Another update is currently in progress.")
 }
 
-// IsCompilationError returns true if there was an error compiling the user program (only typescript, go, dotnet)
+// IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, C#)
 func IsCompilationError(e error) bool {
 	as, ok := e.(autoError)
 	if !ok {
@@ -109,9 +110,3 @@ func IsUnexpectedEngineError(e error) bool {
 
 	return strings.Contains(as.stdout, "The Pulumi CLI encountered a fatal error. This is a bug!")
 }
-
-// TODO IsProviderError
-// errors are not consistently labeled, will likely need a new strategy.
-// Error creating S3 bucket: BucketAlreadyExists: The requested bucket name is not available.
-// could not make instance of 'aws:s3/bucket:Bucket': name '...' plus 7 random chars is longer than maximum length 63
-// Error creating S3 bucket: IllegalLocationConstraintException

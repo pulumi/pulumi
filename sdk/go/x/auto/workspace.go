@@ -7,8 +7,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
-// Workspace TODO docstring
-// TODO: many maybe all of these methods need to accept context objects to make sure they are extensible over network
+// Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
+// Workspaces are used to manage the execution environment, providing various utilities such as plugin
+// installation, environment configuration ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
 type Workspace interface {
 	// ProjectSettings returns the settings object for the current project if any
 	ProjectSettings(context.Context) (*workspace.Project, error)
@@ -47,7 +48,7 @@ type Workspace interface {
 	PulumiHome() *string
 	// WhoAmI returns the currently authenticated user
 	WhoAmI(context.Context) (string, error)
-	// Stack returns the currently selected stack if any.
+	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
 	CreateStack(context.Context, string) error
@@ -71,15 +72,18 @@ type Workspace interface {
 	SetProgram(pulumi.RunFunc)
 }
 
+// ConfigValue is a configuration value used by a Pulumi program.
+// Allows differentiating between secret and plaintext values by setting the `Secret` property.
 type ConfigValue struct {
 	Value  string
 	Secret bool
 }
 
+// ConfigMap is a map of ConfigValue used by Pulumi programs.
+// Allows differentiating between secret and plaintext values.
 type ConfigMap map[string]ConfigValue
 
-const PulumiHomeEnv = "PULUMI_HOME"
-
+// StackSummary is a description of a stack and its current status.
 type StackSummary struct {
 	Name             string `json:"name"`
 	Current          bool   `json:"current"`

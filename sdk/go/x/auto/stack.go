@@ -2,10 +2,36 @@
 // without the CLI.
 // Generally this can be thought of as encapsulating the functionality of the CLI but with more flexibility
 // (`pulumi up`, `pulumi preview`, pulumi destroy`, `pulumi stack init`, etc.). This still requires a
-// CLI binary to be installed and available on your $PATH.
+// CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
+// breaking changes (mostly additive) will be made. You can pin to a specific commit version if you need stability.
 //
+// In addition to fine-grained building blocks, Automation API provides three out of the box ways to work with Stacks:
+//
+// 1. Programs locally available on-disk and addressed via a filepath (NewStackLocalSource)
+//	stack, err := NewStackLocalSource(ctx, "myOrg/myProj/myStack", filepath.Join("..", "path", "to", "project"))
+//
+// 2. Programs fetched from a Git URL (NewStackRemoteSource)
+//	stack, err := NewStackRemoteSource(ctx, "myOrg/myProj/myStack", GitRepo{
+//		URL:         "https://github.com/pulumi/test-repo.git",
+//		ProjectPath: filepath.Join("project", "path", "repo", "root", "relative"),
+//	})
+// 3. Programs defined as a `func` alongside your Automation API code (NewStackInlineSource)
+//	 stack, err := NewStackInlineSource(ctx, "myOrg/myProj/myStack", func(pCtx *pulumi.Context) error {
+//		bucket, err := s3.NewBucket(pCtx, "bucket", nil)
+//		if err != nil {
+//			return err
+//		}
+//		pCtx.Export("bucketName", bucket.Bucket)
+//		return nil
+//	 })
+// Each of these creates a stack with access to the full range of Pulumi lifecycle methods
+// (up/preview/refresh/destroy), as well as methods for managing config, stack, and project settings:
+//	 err := stack.SetConfig(ctx, "key", ConfigValue{ Value: "value", Secret: true })
+//	 preRes, err := stack.Preview(ctx)
+//	 // detailed info about results
+//	 fmt.Println(preRes.prev.Steps[0].URN)
 // The Automation API provides a natural way to orchestrate multiple stacks,
-// feeding the output of one stack as an input to the next as shown in the example below.
+// feeding the output of one stack as an input to the next as shown in the package level example.
 // The package can be used for a number of use cases:
 //
 // 	- Driving pulumi deployments within CI/CD workflows
@@ -16,9 +42,33 @@
 //
 // 	- Deployments involving application code like database migrations
 //
-// 	- Building higher level tools, custom CLIs over pulumi, etc.
+// 	- Building higher level tools, custom CLIs over pulumi, etc
 //
-//  - Using pulumi behind a REST or GRPC API.
+//	- Using pulumi behind a REST or GRPC API
+//
+// To enable a broad range of runtime customization the API defines a `Workspace` interface.
+// A Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
+// Workspaces are used to manage the execution environment, providing various utilities such as plugin
+// installation, environment configuration ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
+// Every Stack including those in the above examples are backed by a Workspace which can be accessed via:
+//	 w = stack.Workspace()
+//	 err := w.InstallPlugin("aws", "v3.2.0")
+// Workspaces can be explicitly created and customized beyond the three Stack creation helpers noted above:
+//	 w, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "project", "path"), PulumiHome("~/.pulumi"))
+//	 s := NewStack(ctx, "org/proj/stack", w)
+// A default implemenatation of workspace is provided as LocalWorkspace. This implementation relies on pulumi.yaml
+// and pulumi.<stack>.yaml as the intermediate format for Project and Stack settings. Modifying ProjectSettings will
+// alter the Workspace pulumi.yaml file, and setting config on a Stack will modify the pulumi.<stack>.yaml file.
+// This is identical to the behavior of Pulumi CLI driven workspaces. Custom Workspace
+// implementations can be used to store Project and Stack settings as well as Config in a different format,
+// such as an in-memory data structure, a shared persistend SQL database, or cloud object storage. Regardless of
+// the backing Workspace implementation, the Pulumi SaaS Console will still be able to display configuration
+// applied to updates as it does with the local version of the Workspace today.
+//
+// The Automation API also provides error handling utilities to detect common cases such as concurrent update
+// conflicts:
+// 	uRes, err :=stack.Up(ctx)
+// 	if err != nil && IsConcurrentUpdateError(err) { /* retry logic here */ }
 package auto
 
 import (
@@ -42,11 +92,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 )
 
+// Stack is an isolated, independently configurable instance of a Pulumi program.
+// Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
+// Automation API stacks are addressed by a fully qualified stack name (fqsn) in the form "org/project/stack".
+// Multiple Stacks are commonly used to denote different phases of development
+// (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
 type Stack struct {
 	workspace Workspace
 	fqsn      string
 }
 
+// FullyQualifiedStackName returns an appropriately formatted name to be used for Stack creation/selection.
 func FullyQualifiedStackName(org, project, stack string) string {
 	return fmt.Sprintf("%s/%s/%s", org, project, stack)
 }
@@ -68,7 +124,9 @@ func NewStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
 	return s, nil
 }
 
-// SelectStack creates a new stack using the given workspace, and fully qualified stack name (org/project/name).
+// SelectStack selects stack using the given workspace, and fully qualified stack name (org/project/name).
+// It returns an error if the given Stack does not exist. All LocalWorkspace operations will call SelectStack()
+// before running.
 func SelectStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
@@ -229,6 +287,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	return res, nil
 }
 
+// Refresh compares the current stack’s resource state with the state known to exist in the actual
+// cloud provider. Any such changes are adopted into the current stack.
 func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {
 	var res RefreshResult
 
@@ -277,6 +337,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	return res, nil
 }
 
+// Destroy deletes all resources in a stack, leaving all history and configuration intact.
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
 
@@ -328,7 +389,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	return res, nil
 }
 
-// Outputs get the current set of Stack outputs from the last Stack.Up()
+// Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
@@ -370,7 +431,8 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 	return res, nil
 }
 
-// History returns a list summarizing all previous and current results from Stack.Up()
+// History returns a list summarizing all previous and current results from Stack lifecycle operations
+// (up/preview/refresh/destroy).
 func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
@@ -391,7 +453,7 @@ func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
 	return history, nil
 }
 
-// GetConfig returns the config value associated with the specified key
+// GetConfig returns the config value associated with the specified key.
 func (s *Stack) GetConfig(ctx context.Context, key string) (ConfigValue, error) {
 	return s.Workspace().GetConfig(ctx, s.Name(), key)
 }
@@ -426,7 +488,7 @@ func (s *Stack) RefreshConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().RefreshConfig(ctx, s.Name())
 }
 
-// Info returns a summary of the Stack including its URL
+// Info returns a summary of the Stack including its URL.
 func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	var info StackSummary
 	err := s.Workspace().SelectStack(ctx, s.Name())
@@ -446,7 +508,7 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	return info, nil
 }
 
-// UpdateSummary provides an summary of a Stack.Up() operation
+// UpdateSummary provides an summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
 	Kind        string            `json:"kind"`
 	StartTime   string            `json:"startTime"`
@@ -460,12 +522,15 @@ type UpdateSummary struct {
 	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
 }
 
-// OutputValue models a Pulumi Stack output
+// OutputValue models a Pulumi Stack output, providing the plaintext value and a market indicating secretness.
 type OutputValue struct {
 	Value  interface{}
 	Secret bool
 }
 
+// UpResult contains information about a Stack.Up operation,
+// including Outputs, and a summary of the deployed changes.
+// TODO: remote StdOut in favor of structured info https://github.com/pulumi/pulumi/issues/5218
 type UpResult struct {
 	StdOut  string
 	StdErr  string
@@ -510,12 +575,16 @@ type PreviewResult struct {
 	ChangeSummary map[string]int `json:"changeSummary"`
 }
 
+// RefreshResult is the output of a successful Stack.Refresh operation
+// TODO: replace StdOut with structured output https://github.com/pulumi/pulumi/issues/5220
 type RefreshResult struct {
 	StdOut  string
 	StdErr  string
 	Summary UpdateSummary
 }
 
+// DestroyResult is the output of a successful Stack.Destroy operation
+// TODO: replace StdOut with structured output https://github.com/pulumi/pulumi/issues/5219
 type DestroyResult struct {
 	StdOut  string
 	StdErr  string
@@ -528,7 +597,7 @@ const secretSentinel = "[secret]"
 func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, string, int, error) {
 	var env []string
 	if s.Workspace().PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
 	}
 	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
@@ -565,7 +634,7 @@ func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int)
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = s.Workspace().WorkDir()
 	if s.Workspace().PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", PulumiHomeEnv, *s.Workspace().PulumiHome())
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *s.Workspace().PulumiHome())
 		cmd.Env = append(os.Environ(), homeEnv)
 	}
 
