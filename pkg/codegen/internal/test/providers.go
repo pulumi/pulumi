@@ -35,3 +35,15 @@ func Random(schemaDirectoryPath string) (plugin.Provider, error) {
 		},
 	}, nil
 }
+
+func Kubernetes(schemaDirectoryPath string) (plugin.Provider, error) {
+	schema, err := GetSchema(schemaDirectoryPath, "kubernetes")
+	if err != nil {
+		return nil, err
+	}
+	return &deploytest.Provider{
+		GetSchemaF: func(version int) ([]byte, error) {
+			return schema, nil
+		},
+	}, nil
+}

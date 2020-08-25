@@ -521,7 +521,7 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 }
 
 /**
- * [secret] behaves the same as [output] except the resturned output is marked as contating sensitive data.
+ * [secret] behaves the same as [output] except the returned output is marked as contating sensitive data.
  */
 export function secret<T>(val: Input<T>): Output<Unwrap<T>>;
 export function secret<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;

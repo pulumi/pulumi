@@ -751,8 +751,11 @@ func pythonCommands() []string {
 		commands = append(commands, "source venv/bin/activate")
 	}
 
-	// Install dependencies within the virtualenv
-	commands = append(commands, "pip3 install -r requirements.txt")
+	// Update pip, setuptools, and wheel within the virtualenv.
+	commands = append(commands, "python -m pip install --upgrade pip setuptools wheel")
+
+	// Install dependencies within the virtualenv.
+	commands = append(commands, "python -m pip install -r requirements.txt")
 
 	return commands
 }

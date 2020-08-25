@@ -258,6 +258,11 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression, destType model.Type) {
+	if destType == model.NoneType {
+		g.Fgen(w, "nil")
+		return
+	}
+
 	argTypeName := g.argumentTypeName(expr, destType, false)
 	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
 
@@ -302,10 +307,15 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	// handles the __convert intrinsic assuming that the union type will have an opaque type containing the dest type
 	case *model.UnionType:
+		var didGenerate bool
 		for _, t := range destType.ElementTypes {
+			if didGenerate {
+				break
+			}
 			switch t := t.(type) {
 			case *model.OpaqueType:
 				g.genLiteralValueExpression(w, expr, t)
+				didGenerate = true
 				break
 			}
 		}
@@ -572,7 +582,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			fmtString := "[]%s.%s"
 			if isInput {
@@ -593,7 +604,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			member = Title(member)
 			if strings.HasPrefix(member, "Get") {

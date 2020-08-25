@@ -203,6 +203,18 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			elementType: "[]map[string]" + p.Type,
 			Example:     fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
 		})
+		builtins = append(builtins, &builtin{
+			Name:        name + "MapMap",
+			Type:        "map[string]" + name + "MapInput",
+			elementType: "map[string]map[string]" + p.Type,
+			Example:     fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
+		})
+		builtins = append(builtins, &builtin{
+			Name:        name + "ArrayArray",
+			Type:        "[]" + name + "ArrayInput",
+			elementType: "[][]" + p.Type,
+			Example:     fmt.Sprintf("%sArrayArray{%sArray{%s}}", name, name, p.Example),
+		})
 	}
 
 	nameToBuiltin := map[string]*builtin{}

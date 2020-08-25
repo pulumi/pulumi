@@ -1221,8 +1221,11 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 		return nil, err
 	}
 
-	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
-	packages := generatePackageContextMap(tool, pkg, goInfo)
+	var goPkgInfo GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		goPkgInfo = goInfo
+	}
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
 
 	// emit each package
 	var pkgMods []string
@@ -1238,10 +1241,10 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 		pkg := packages[mod]
 
 		for _, r := range pkg.resources {
-			packagePath := path.Join(goInfo.ImportBasePath, pkg.mod)
+			packagePath := path.Join(goPkgInfo.ImportBasePath, pkg.mod)
 			resources[r.Token] = LanguageResource{
 				Resource: r,
-				Alias:    goInfo.PackageImportAliases[packagePath],
+				Alias:    goPkgInfo.PackageImportAliases[packagePath],
 				Name:     tokenToName(r.Token),
 				Package:  packagePath,
 			}
@@ -1256,8 +1259,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		return nil, err
 	}
 
-	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
-	packages := generatePackageContextMap(tool, pkg, goInfo)
+	var goPkgInfo GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		goPkgInfo = goInfo
+	}
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
 
 	// emit each package
 	var pkgMods []string

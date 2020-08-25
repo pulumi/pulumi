@@ -2,12 +2,87 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)
+
+## 2.9.0 (2020-08-19)
+
+- Fix support for CheckFailures in Python Dynamic Providers
+  [#5138](https://github.com/pulumi/pulumi/pull/5138)
+
+- Upgrade version of `gocloud.dev`. This ensures that 'AWSKMS' secrets
+  providers can now be used with full ARNs rather than just Aliases
+  [#5138](https://github.com/pulumi/pulumi/pull/5138)
+
+- Ensure the 'history' command is a subcommand of 'stack'.
+  This means that `pulumi history` has been deprecated in favour
+  of `pulumi stack history`.
+  [#5158](https://github.com/pulumi/pulumi/pull/5158)
+
+- Add support for extracting jar files in archive resources
+  [#5150](https://github.com/pulumi/pulumi/pull/5150)
+
+- SDK changes to support Python input/output classes
+  [#5033](https://github.com/pulumi/pulumi/pull/5033)
+
+## 2.8.2 (2020-08-07)
+
+- Add nuget badge to README [#5117](https://github.com/pulumi/pulumi/pull/5117)
+
+- Support publishing and consuming Policy Packs using any runtime
+  [#5102](https://github.com/pulumi/pulumi/pull/5102)
+
+- Fix regression where any CLI integration for any stack with a default
+  secrets provider would sort the config alphabetically and new stacks created
+  would get created with an empty map `{}` in the config file
+  [#5132](https://github.com/pulumi/pulumi/pull/5132)
+
+
+## 2.8.1 (2020-08-05)
+
+- Fix a bug where passphrase managers were not being
+  recognised correctly when getting the configuration
+  for the current stack.
+  **Please Note:**
+  This specific bug may have caused the stack config
+  file to remove the password encryption salt.
+  [#5110](https://github.com/pulumi/pulumi/pull/5110)
+
+## 2.8.0 (2020-08-04)
+
+- Add missing MapMap and ArrayArray types to Go SDK
+  [#5092](https://github.com/pulumi/pulumi/pull/5092)
+
+- Switch os/user package with luser drop in replacement
+  [#5065](https://github.com/pulumi/pulumi/pull/5065)
+
+- Update pip/setuptools/wheel in virtual environment before installing dependencies
+  [#5042](https://github.com/pulumi/pulumi/pull/5042)
+
+- Add ability to change a secrets provider for the current stack
+  [#5031](https://github.com/pulumi/pulumi/pull/5031)
+
+- Add ability to create a stack based on the config from an existing stack
+  [#5062](https://github.com/pulumi/pulumi/pull/5062)
+
+- Python: Improved error message when `virtualenv` doesn't exist
+  [#5069](https://github.com/pulumi/pulumi/pull/5069)
+
+- Enable pushing to Artifact Registry in actions
+  [#5075](https://github.com/pulumi/pulumi/pull/5075)
+
+## 2.7.1 (2020-07-22)
+
+- Fix logic to parse pulumi venv on github action
+  [5038](https://github.com/pulumi/pulumi/pull/5038)
+
+## 2.7.0 (2020-07-22)
 
 - Add pluginDownloadURL field to package definition
   [#4947](https://github.com/pulumi/pulumi/pull/4947)
+
 - Add support for streamInvoke during update
   [#4990](https://github.com/pulumi/pulumi/pull/4990)
-  
+
 - Add ability to copy configuration values between stacks
   [#4971](https://github.com/pulumi/pulumi/pull/4971)
 

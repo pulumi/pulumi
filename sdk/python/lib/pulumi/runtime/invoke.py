@@ -13,10 +13,11 @@
 # limitations under the License.
 import asyncio
 import sys
-from typing import Any, Awaitable, TYPE_CHECKING
+from typing import Any, Awaitable, Optional, TYPE_CHECKING
 import grpc
 
 from .. import log
+from .. import _types
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
@@ -59,7 +60,7 @@ class InvokeResult:
 
     __iter__ = __await__
 
-def invoke(tok: str, props: 'Inputs', opts: InvokeOptions = None) -> InvokeResult:
+def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ: Optional[type] = None) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
@@ -68,6 +69,9 @@ def invoke(tok: str, props: 'Inputs', opts: InvokeOptions = None) -> InvokeResul
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
+
+    if typ and not _types.is_output_type(typ):
+        raise TypeError("Expected typ to be decorated with @output_type")
 
     async def do_invoke():
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
@@ -115,7 +119,9 @@ def invoke(tok: str, props: 'Inputs', opts: InvokeOptions = None) -> InvokeResul
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, 'return')
         if ret_obj:
-            return rpc.deserialize_properties(ret_obj)
+            deserialized = rpc.deserialize_properties(ret_obj)
+            # If typ is not None, call translate_output_properties to instantiate any output types.
+            return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized
         return {}
 
     async def do_rpc():

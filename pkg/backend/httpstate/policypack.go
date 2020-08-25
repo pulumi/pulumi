@@ -185,19 +185,15 @@ func (pack *cloudPolicyPack) Publish(
 			return result.FromError(
 				errors.Wrap(err, "could not publish policies because of error running npm pack"))
 		}
-	} else if strings.EqualFold(runtime, "python") {
+	} else {
 		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
-		// the same for Python. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
+		// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
 		// package directory to determine the runtime of the policy pack.
 		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
 		if err != nil {
 			return result.FromError(
 				errors.Wrap(err, "could not publish policies because of error creating the .tgz"))
 		}
-	} else {
-		return result.Errorf(
-			"failed to publish policies because PulumiPolicy.yaml specifies an unsupported runtime %s",
-			runtime)
 	}
 
 	//
@@ -298,12 +294,19 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		return completeNodeJSInstall(finalDir)
+		if err := completeNodeJSInstall(finalDir); err != nil {
+			return err
+		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		return completePythonInstall(finalDir, projPath, proj)
+		if err := completePythonInstall(finalDir, projPath, proj); err != nil {
+			return err
+		}
 	}
 
-	return errors.Errorf("unsupported policy runtime %s", proj.Runtime.Name())
+	fmt.Println("Finished installing policy pack")
+	fmt.Println()
+
+	return nil
 }
 
 func completeNodeJSInstall(finalDir string) error {
@@ -314,8 +317,6 @@ func completeNodeJSInstall(finalDir string) error {
 				"in %q before this policy pack works", bin, finalDir)
 	}
 
-	fmt.Println("Finished installing policy pack")
-	fmt.Println()
 	return nil
 }
 
@@ -331,7 +332,5 @@ func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPack
 		return err
 	}
 
-	fmt.Println("Finished installing policy pack")
-	fmt.Println()
 	return nil
 }

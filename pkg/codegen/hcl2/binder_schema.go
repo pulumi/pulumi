@@ -211,7 +211,7 @@ var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)
 
 // GetSchemaForType extracts the schema.Type associated with a model.Type, if any.
 //
-// The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
+// The result may be a *schema.UnionType if multiple schema types are associated with the input type.
 func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	switch t := t.(type) {
 	case *model.ListType:

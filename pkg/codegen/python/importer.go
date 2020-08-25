@@ -40,6 +40,8 @@ type PackageInfo struct {
 	ModuleNameOverrides map[string]string `json:"moduleNameOverrides,omitempty"`
 	// Toggle compatibility mode for a specified target.
 	Compatibility string `json:"compatibility,omitempty"`
+	// Indicates whether the package generates input/output classes.
+	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

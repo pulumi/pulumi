@@ -24,7 +24,7 @@
 
 <!-- Python -->
 {{ print "{{% choosable language python %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">function </span> {{ .FunctionName.python }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> {{ .FunctionResult.python.Name }}</code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 <!-- Go -->

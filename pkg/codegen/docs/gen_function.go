@@ -87,8 +87,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			}
 
 		case "python":
-			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
-			continue
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		default:
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
@@ -212,6 +211,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []form
 }
 
 func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
+	docLanguageHelper := getLanguageDocHelper("python")
 	var params []formalParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
@@ -219,11 +219,14 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	if f.Inputs != nil {
 		params = make([]formalParam, 0, len(f.Inputs.Properties))
 		for _, prop := range f.Inputs.Properties {
-			fArg := formalParam{
+			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, prop.Type, true /*input*/, false /*optional*/)
+			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
-				DefaultValue: "=None",
-			}
-			params = append(params, fArg)
+				DefaultValue: " = None",
+				Type: propertyType{
+					Name: fmt.Sprintf("Optional[%s]", typ),
+				},
+			})
 		}
 	} else {
 		params = make([]formalParam, 0, 1)
@@ -231,7 +234,11 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 	params = append(params, formalParam{
 		Name:         "opts",
-		DefaultValue: "=None",
+		DefaultValue: " = None",
+		Type: propertyType{
+			Name: "Optional[InvokeOptions]",
+			Link: "/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions",
+		},
 	})
 
 	return params

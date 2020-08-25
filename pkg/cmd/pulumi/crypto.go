@@ -61,11 +61,11 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
 		}
 
-		switch stack := s.(type) {
-		case httpstate.Stack:
-			return newServiceSecretsManager(stack)
+		switch s.(type) {
 		case filestate.Stack:
 			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+		case httpstate.Stack:
+			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
 		}
 
 		return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))

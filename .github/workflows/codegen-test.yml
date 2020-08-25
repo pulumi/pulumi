@@ -4,6 +4,8 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '.github/workflows/codegen-test.yml'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   downstream-aws:
@@ -24,6 +26,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -57,6 +63,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -90,6 +100,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -123,6 +137,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -156,6 +174,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
@@ -189,6 +211,10 @@ jobs:
           python-version: 3.6.11
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with:
+          repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master

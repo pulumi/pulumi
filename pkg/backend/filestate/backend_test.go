@@ -1,7 +1,7 @@
 package filestate
 
 import (
-	"os/user"
+	user "github.com/tweekmonster/luser"
 	"path/filepath"
 	"runtime"
 	"testing"
