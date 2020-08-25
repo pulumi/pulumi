@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)
+
+- Improved error message for missing plugins.
+  [#5208](https://github.com/pulumi/pulumi/pull/5208)
 
 ## 2.9.0 (2020-08-19)
 

@@ -71,7 +71,7 @@ func (err *MissingError) Error() string {
 			err.Info.Kind, err.Info.Name, err.Info.Version)
 	}
 
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
+	return fmt.Sprintf("no %[1]s plugin '%[2]s' found - ensure that 'pulumi-%[1]s-%[2]s' is in the workspace or on your $PATH",
 		err.Info.Kind, err.Info.String())
 }
 
