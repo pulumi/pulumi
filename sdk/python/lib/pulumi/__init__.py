@@ -69,6 +69,7 @@ from .output import (
     Output,
     Input,
     Inputs,
+    InputType,
     UNKNOWN,
     contains_unknowns,
 )
@@ -82,6 +83,17 @@ from .log import (
 
 from .stack_reference import (
     StackReference,
+)
+
+# pylint: disable=redefined-builtin
+from ._types import (
+    MISSING,
+    input_type,
+    output_type,
+    property,
+    getter,
+    get,
+    set,
 )
 
 from . import runtime, dynamic, policy

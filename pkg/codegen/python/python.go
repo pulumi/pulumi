@@ -15,6 +15,7 @@
 package python
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -22,9 +23,67 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
+// useLegacyName are names that should return the result of PyNameLegacy from PyName, for compatibility.
+var useLegacyName = codegen.StringSet{
+	// The following property name of a nested type is a case where the newer algorithm produces an incorrect name
+	// (`open_xjson_ser_de`). It should be the legacy name of `open_x_json_ser_de`.
+	// TODO[pulumi/pulumi#5199]: We should see if we can fix this in the algorithm of PyName so it doesn't need to
+	// be special-cased in this set.
+	"openXJsonSerDe": struct{}{}, // AWS
+
+	// The following function name has already shipped with the legacy name (`get_public_i_ps`).
+	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_public_ips`)
+	// and another function with the legacy name (`get_public_i_ps`) marked as deprecated.
+	"GetPublicIPs": struct{}{}, // Azure
+
+	// The following function name has already shipped with the legacy name (`get_uptime_check_i_ps`).
+	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_uptime_check_ips`)
+	// and another function with the legacy name (`get_uptime_check_i_ps`) marked as deprecated.
+	"GetUptimeCheckIPs": struct{}{}, // GCP
+}
+
+// excludeFromPanic are names that are ok to have different results from PyName and PyNameLegacy.
+var excludeFromPanic = codegen.StringSet{
+	// The following all show up as properties of nested input/output classes only, so it's OK that the current
+	// and legacy names are different since we haven't previously generated any input/output classes (hence no
+	// breaking change).
+	"nonResourceURLs":                        struct{}{}, // K8s
+	"targetWWNs":                             struct{}{}, // K8s
+	"podCIDRs":                               struct{}{}, // K8s
+	"podIPs":                                 struct{}{}, // K8s
+	"externalIPs":                            struct{}{}, // K8s
+	"publicIPs":                              struct{}{}, // Azure
+	"effectiveOutboundIPs":                   struct{}{}, // Azure
+	"doNotRunExtensionsOnOverprovisionedVMs": struct{}{}, // Azure
+	"vCPUs":                                  struct{}{}, // Azure
+	"networkACLs":                            struct{}{}, // Azure
+	"allocatableVMs":                         struct{}{}, // Azure
+	"publicIPsToAllow":                       struct{}{}, // Azure
+	"managedOutboundIPs":                     struct{}{}, // Azure
+	"outboundIPs":                            struct{}{}, // Azure
+	"staticIPs":                              struct{}{}, // Azure
+	"sendMDNAsynchronously":                  struct{}{}, // Azure
+	"adminGroupObjectIDs":                    struct{}{}, // Azure
+	"GuestConfigurationHCRPAssignment":       struct{}{}, // Azure
+	"GetGuestConfigurationHCRPAssignment":    struct{}{}, // Azure
+	"clusterUsersGroupDNs":                   struct{}{}, // Azure
+}
+
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
+// It panics if the result is different from PyNameLegacy, unless name is in excludeFromPanic, to help catch
+// unintended breaking changes.
+// TODO[pulumi/pulumi#5201]: Once all providers have been updated to use this version of the codegen (or later),
+// we can go back and remove the panic.
 func PyName(name string) string {
-	return pyName(name, false /*legacy*/)
+	current := pyName(name, useLegacyName.Has(name))
+	if excludeFromPanic.Has(name) {
+		return current
+	}
+	legacy := PyNameLegacy(name)
+	if current != legacy {
+		panic(fmt.Sprintf("PyName(%[1]q) != PyNameLegacy(%[1]q) (%q != %q)", name, current, legacy))
+	}
+	return current
 }
 
 // Deprecated: Use PyName instead.

@@ -26,7 +26,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,9 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
-
-// Match module version suffix. Examples include "/v1beta1", "/v1alpha2", and "/preview".
-var moduleVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta|preview)\d*)?)$`)
 
 type typeDetails struct {
 	outputType   bool
@@ -1176,8 +1172,9 @@ func (mod *modContext) genIndex(exports []string) string {
 		child := strings.ToLower(mod.mod)
 		// Extract version suffix from child modules. Nested versions will have their own index.ts file.
 		// Example: apps/v1beta1 -> v1beta1
-		if match := moduleVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
-			child = child[match[2]:match[3]]
+		parts := strings.SplitN(child, "/", 2)
+		if len(parts) == 2 {
+			child = parts[1]
 		}
 		children.Add(child)
 	}

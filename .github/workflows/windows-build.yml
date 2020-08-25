@@ -44,7 +44,7 @@ jobs:
       run: |
         echo "::set-env name=PULUMI_TEST_OWNER::moolumi"
         echo "::set-env name=PULUMI_LOCAL_NUGET::D:\\Pulumi\\nuget"
-        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::set-env name=PULUMI_API::https://api.pulumi-staging.io"
         echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
         echo "::add-path::D:\\Pulumi\\bin"
     - name: Install AWS CLI Tools

@@ -312,7 +312,7 @@ func TestArchiveDir(t *testing.T) {
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 		assert.Equal(t, "489e9a9dad271922ecfbda590efc40e48788286a06bd406a357ab8d13f0b6abf", arch.Hash)
 	}
-	validateTestDirArchive(t, arch)
+	validateTestDirArchive(t, arch, 3)
 }
 
 func TestArchiveTar(t *testing.T) {
@@ -320,7 +320,7 @@ func TestArchiveTar(t *testing.T) {
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tar")
 	assert.Nil(t, err)
 	assert.Equal(t, "c618d74a40f87de3092ca6a6c4cca834aa5c6a3956c6ceb2054b40d04bb4cd76", arch.Hash)
-	validateTestDirArchive(t, arch)
+	validateTestDirArchive(t, arch, 3)
 }
 
 func TestArchiveTgz(t *testing.T) {
@@ -328,7 +328,7 @@ func TestArchiveTgz(t *testing.T) {
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tgz")
 	assert.Nil(t, err)
 	assert.Equal(t, "f9b33523b6a3538138aff0769ff9e7d522038e33c5cfe28b258332b3f15790c8", arch.Hash)
-	validateTestDirArchive(t, arch)
+	validateTestDirArchive(t, arch, 3)
 }
 
 func TestArchiveZip(t *testing.T) {
@@ -336,7 +336,14 @@ func TestArchiveZip(t *testing.T) {
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.zip")
 	assert.Nil(t, err)
 	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)
-	validateTestDirArchive(t, arch)
+	validateTestDirArchive(t, arch, 3)
+}
+
+func TestArchiveJar(t *testing.T) {
+	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.jar")
+	assert.Nil(t, err)
+	assert.Equal(t, "dfb9eb69f433564b07df524068621c5ac65c08868e6094b8fa4ee388a5ee66e7", arch.Hash)
+	validateTestDirArchive(t, arch, 4)
 }
 
 func findRepositoryRoot() (string, error) {
@@ -463,6 +470,7 @@ func TestFileExtentionSniffing(t *testing.T) {
 	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.tar"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tar.gz"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tgz"))
+	assert.Equal(t, ArchiveFormat(JARArchive), detectArchiveFormat("./some/path/my.jar"))
 	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.knows"))
 
 	// In #2589 we had cases where a file would look like it had an longer extension, because the suffix would include
@@ -471,6 +479,7 @@ func TestFileExtentionSniffing(t *testing.T) {
 	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.file.tar"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tar.gz"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tgz"))
+	assert.Equal(t, ArchiveFormat(JARArchive), detectArchiveFormat("./some/path/my.file.jar"))
 	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.even.knows"))
 }
 
@@ -487,7 +496,7 @@ func TestInvalidPathArchive(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func validateTestDirArchive(t *testing.T, arch *Archive) {
+func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {
 	r, err := arch.Open()
 	assert.Nil(t, err)
 	defer func() {
@@ -518,7 +527,7 @@ func validateTestDirArchive(t *testing.T, arch *Archive) {
 		subs[name] = text.String()
 	}
 
-	assert.Equal(t, 3, len(subs))
+	assert.Equal(t, expected, len(subs))
 
 	lorem := subs["Lorem_ipsum.txt"]
 	assert.Equal(t, lorem,
