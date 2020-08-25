@@ -902,7 +902,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		} else {
 			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
 		}
-		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		fmt.Fprintf(w, "    def %s(self) -> pulumi.Output[%s]:\n", pname, ty)
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, "        ")
 		}
