@@ -80,10 +80,12 @@ jobs:
       - name: Build
         run: make only_build
         env:
+          PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"
       - name: Run tests
         run: make test_integration SUB_PROJECTS=""
         env:
+          PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"
   test_sdks:
     name: "Language Tests: ${{ matrix.language }}"
