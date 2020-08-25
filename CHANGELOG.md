@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)
+  Alpha version of the Automation API for Go
+  [#4977](https://github.com/pulumi/pulumi/pull/4977)
 
 ## 2.9.0 (2020-08-19)
 
