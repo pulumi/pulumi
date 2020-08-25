@@ -25,7 +25,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -61,7 +60,8 @@ func WriteYarnRCForTest(root string) error {
 
 // NewGoEnvironment returns a new Environment object, located in a GOPATH temp directory.
 func NewGoEnvironment(t *testing.T) *Environment {
-	testRoot, err := tools.CreateTemporaryGoFolder("test-env")
+	//testRoot, err := tools.CreateTemporaryGoFolder("test-env")
+	testRoot, err := ioutil.TempDir("", "test-env")
 	if err != nil {
 		t.Errorf("error creating test directory %s", err)
 	}

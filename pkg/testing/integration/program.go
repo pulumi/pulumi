@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
@@ -1543,21 +1542,21 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must create
 	// a folder structure that adheres to GOPATH requirements
 	var tmpdir, projdir string
-	if projinfo.Proj.Runtime.Name() == "go" {
-		targetDir, err := tools.CreateTemporaryGoFolder("stackName")
-		if err != nil {
-			return "", "", errors.Wrap(err, "Couldn't create temporary directory")
-		}
-		tmpdir = targetDir
-		projdir = targetDir
-	} else {
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
-		if tempErr != nil {
-			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
-		}
-		tmpdir = targetDir
-		projdir = targetDir
+	//if projinfo.Proj.Runtime.Name() == "go" {
+	//	targetDir, err := tools.CreateTemporaryGoFolder("stackName")
+	//	if err != nil {
+	//		return "", "", errors.Wrap(err, "Couldn't create temporary directory")
+	//	}
+	//	tmpdir = targetDir
+	//	projdir = targetDir
+	//} else {
+	targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+	if tempErr != nil {
+		return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 	}
+	tmpdir = targetDir
+	projdir = targetDir
+	//}
 	// Copy the source project.
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
