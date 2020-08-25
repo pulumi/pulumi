@@ -76,11 +76,6 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
-      - name: Set GOPATH
-          # temporary fix
-          # see https://github.com/actions/setup-go/issues/14
-        run: echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        shell: bash
       - name: Ensure dependencies
         run: make ensure
       - name: Build
