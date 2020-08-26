@@ -88,7 +88,7 @@ jobs:
           PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"
       - name: Run tests
-        run: cd tests && go test -v -count=1 -cover -timeout 2h -tags=${{ matrix.language }} -parallel 1 github.com/pulumi/pulumi/tests/integration/...
+        run: cd tests/integration && go test -v -count=1 -cover -timeout 2h -tags=${{ matrix.language }} -parallel 1 .
         env:
           PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"

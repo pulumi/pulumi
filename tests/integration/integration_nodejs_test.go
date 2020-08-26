@@ -3,26 +3,6 @@
 
 package ints
 
-import (
-	"bytes"
-	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"testing"
-	"time"
-
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
-	"github.com/stretchr/testify/assert"
-)
-
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -125,6 +105,7 @@ func TestProjectMain(t *testing.T) {
 	})
 }
 
+
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -202,6 +183,7 @@ func TestStackOutputsJSON(t *testing.T) {
 }
 `, stdout)
 }
+
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 func TestStackOutputsDisplayed(t *testing.T) {
@@ -479,6 +461,7 @@ func TestGetCreated(t *testing.T) {
 		Quick:        true,
 	})
 }
+
 
 // TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
 func TestProviderSecretConfig(t *testing.T) {
