@@ -46,6 +46,7 @@ jobs:
         python-version: [3.7]
         dotnet: ['3.1.301']
         go-version: [1.14.x]
+        language: [ "nodejs", "go", "dotnet", "python" ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
@@ -84,7 +85,7 @@ jobs:
           PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"
       - name: Run tests
-        run: make test_integration SUB_PROJECTS=""
+        run: cd tests && go test -v -count=1 -cover -timeout 2h -tags=${{ matrix.language }} -parallel 1 .
         env:
           PULUMI_NODE_MODULES: "/opt/pulumi/node_modules"
           PULUMI_LOCAL_NUGET: "/opt/pulumi/nuget"
