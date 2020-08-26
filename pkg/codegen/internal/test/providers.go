@@ -47,3 +47,15 @@ func Kubernetes(schemaDirectoryPath string) (plugin.Provider, error) {
 		},
 	}, nil
 }
+
+func Azure(schemaDirectoryPath string) (plugin.Provider, error) {
+	schema, err := GetSchema(schemaDirectoryPath, "azure")
+	if err != nil {
+		return nil, err
+	}
+	return &deploytest.Provider{
+		GetSchemaF: func(version int) ([]byte, error) {
+			return schema, nil
+		},
+	}, nil
+}

@@ -1,0 +1,1104 @@
+{
+  "name": "azure",
+  "version": "0.1.0",
+  "description": "A Pulumi package for creating and managing Azure resources.",
+  "keywords": [
+    "pulumi",
+    "azure"
+  ],
+  "homepage": "https://pulumi.com",
+  "license": "TODO",
+  "repository": "https://github.com/pulumi/pulumi-azure",
+  "config": {},
+  "types": {
+    "azure:costmanagement/v20191101:ExportDeliveryDestination": {
+      "description": "The destination information for the delivery of the export. To allow access to a storage account, you must register the account's subscription with the Microsoft.CostManagementExports resource provider. This is required once per subscription. When creating an export in the Azure portal, it is done automatically, however API users need to register the subscription. For more information see https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-supported-services .",
+      "properties": {
+        "container": {
+          "type": "string",
+          "description": "The name of the container where exports will be uploaded."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the storage account where exports will be delivered."
+        },
+        "rootFolderPath": {
+          "type": "string",
+          "description": "The name of the directory where exports will be uploaded."
+        }
+      },
+      "type": "object",
+      "required": [
+        "container",
+        "resourceId"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportDeliveryDestinationResponse": {
+      "description": "The destination information for the delivery of the export. To allow access to a storage account, you must register the account's subscription with the Microsoft.CostManagementExports resource provider. This is required once per subscription. When creating an export in the Azure portal, it is done automatically, however API users need to register the subscription. For more information see https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-supported-services .",
+      "properties": {
+        "container": {
+          "type": "string",
+          "description": "The name of the container where exports will be uploaded."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the storage account where exports will be delivered."
+        },
+        "rootFolderPath": {
+          "type": "string",
+          "description": "The name of the directory where exports will be uploaded."
+        }
+      },
+      "type": "object",
+      "required": [
+        "container",
+        "resourceId"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportDeliveryInfo": {
+      "description": "The delivery information associated with a export.",
+      "properties": {
+        "destination": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ExportDeliveryDestination",
+          "description": "Has destination for the export being delivered."
+        }
+      },
+      "type": "object",
+      "required": [
+        "destination"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportDeliveryInfoResponse": {
+      "description": "The delivery information associated with a export.",
+      "properties": {
+        "destination": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ExportDeliveryDestinationResponse",
+          "description": "Has destination for the export being delivered."
+        }
+      },
+      "type": "object",
+      "required": [
+        "destination"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportRecurrencePeriod": {
+      "description": "The start and end date for recurrence schedule.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date of recurrence."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date of recurrence."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportRecurrencePeriodResponse": {
+      "description": "The start and end date for recurrence schedule.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date of recurrence."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date of recurrence."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportSchedule": {
+      "description": "The schedule associated with a export.",
+      "properties": {
+        "recurrence": {
+          "type": "string",
+          "description": "The schedule recurrence."
+        },
+        "recurrencePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ExportRecurrencePeriod",
+          "description": "Has start and end date of the recurrence. The start date must be in future. If present, the end date must be greater than start date."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the schedule. Whether active or not. If inactive, the export's scheduled execution is paused."
+        }
+      },
+      "type": "object",
+      "required": [
+        "recurrence"
+      ]
+    },
+    "azure:costmanagement/v20191101:ExportScheduleResponse": {
+      "description": "The schedule associated with a export.",
+      "properties": {
+        "recurrence": {
+          "type": "string",
+          "description": "The schedule recurrence."
+        },
+        "recurrencePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ExportRecurrencePeriodResponse",
+          "description": "Has start and end date of the recurrence. The start date must be in future. If present, the end date must be greater than start date."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the schedule. Whether active or not. If inactive, the export's scheduled execution is paused."
+        }
+      },
+      "type": "object",
+      "required": [
+        "recurrence"
+      ]
+    },
+    "azure:costmanagement/v20191101:KpiProperties": {
+      "description": "Each KPI must contain a 'type' and 'enabled' key.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "show the KPI in the UI?"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID of resource related to metric (budget)."
+        },
+        "type": {
+          "type": "string",
+          "description": "KPI type (Forecast, Budget)."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:KpiPropertiesResponse": {
+      "description": "Each KPI must contain a 'type' and 'enabled' key.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "show the KPI in the UI?"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID of resource related to metric (budget)."
+        },
+        "type": {
+          "type": "string",
+          "description": "KPI type (Forecast, Budget)."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:PivotProperties": {
+      "description": "Each pivot must contain a 'type' and 'name'.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Data field to show in view."
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type to show in view."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:PivotPropertiesResponse": {
+      "description": "Each pivot must contain a 'type' and 'name'.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Data field to show in view."
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type to show in view."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryAggregation": {
+      "description": "The aggregation expression to be used in the query.",
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "The name of the aggregation function to use."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to aggregate."
+        }
+      },
+      "type": "object",
+      "required": [
+        "function",
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryAggregationResponse": {
+      "description": "The aggregation expression to be used in the query.",
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "The name of the aggregation function to use."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to aggregate."
+        }
+      },
+      "type": "object",
+      "required": [
+        "function",
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryComparisonExpression": {
+      "description": "The comparison expression to be used in the query.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to use in comparison."
+        },
+        "operator": {
+          "type": "string",
+          "description": "The operator to use for comparison."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of values to use for comparison"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "operator",
+        "values"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryComparisonExpressionResponse": {
+      "description": "The comparison expression to be used in the query.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to use in comparison."
+        },
+        "operator": {
+          "type": "string",
+          "description": "The operator to use for comparison."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of values to use for comparison"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "operator",
+        "values"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryDataset": {
+      "description": "The definition of data present in the query.",
+      "properties": {
+        "aggregation": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryAggregation"
+          },
+          "description": "Dictionary of aggregation expression to use in the query. The key of each item in the dictionary is the alias for the aggregated column. Query can have up to 2 aggregation clauses."
+        },
+        "configuration": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryDatasetConfiguration",
+          "description": "Has configuration information for the data in the export. The configuration will be ignored if aggregation and grouping are provided."
+        },
+        "filter": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryFilter",
+          "description": "Has filter expression to use in the query."
+        },
+        "granularity": {
+          "type": "string",
+          "description": "The granularity of rows in the query."
+        },
+        "grouping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryGrouping"
+          },
+          "description": "Array of group by expression to use in the query. Query can have up to 2 group by clauses."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryDatasetConfiguration": {
+      "description": "The configuration of dataset in the query.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of column names to be included in the query. Any valid query column name is allowed. If not provided, then query includes all columns."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryDatasetConfigurationResponse": {
+      "description": "The configuration of dataset in the query.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of column names to be included in the query. Any valid query column name is allowed. If not provided, then query includes all columns."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryDatasetResponse": {
+      "description": "The definition of data present in the query.",
+      "properties": {
+        "aggregation": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryAggregationResponse"
+          },
+          "description": "Dictionary of aggregation expression to use in the query. The key of each item in the dictionary is the alias for the aggregated column. Query can have up to 2 aggregation clauses."
+        },
+        "configuration": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryDatasetConfigurationResponse",
+          "description": "Has configuration information for the data in the export. The configuration will be ignored if aggregation and grouping are provided."
+        },
+        "filter": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryFilterResponse",
+          "description": "Has filter expression to use in the query."
+        },
+        "granularity": {
+          "type": "string",
+          "description": "The granularity of rows in the query."
+        },
+        "grouping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryGroupingResponse"
+          },
+          "description": "Array of group by expression to use in the query. Query can have up to 2 group by clauses."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryDefinition": {
+      "description": "The definition of a query.",
+      "properties": {
+        "dataset": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryDataset",
+          "description": "Has definition for data in this query."
+        },
+        "timePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryTimePeriod",
+          "description": "Has time period for pulling data for the query."
+        },
+        "timeframe": {
+          "type": "string",
+          "description": "The time frame for pulling data for the query. If custom, then a specific time period must be provided."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the query."
+        }
+      },
+      "type": "object",
+      "required": [
+        "timeframe",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryDefinitionResponse": {
+      "description": "The definition of a query.",
+      "properties": {
+        "dataset": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryDatasetResponse",
+          "description": "Has definition for data in this query."
+        },
+        "timePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryTimePeriodResponse",
+          "description": "Has time period for pulling data for the query."
+        },
+        "timeframe": {
+          "type": "string",
+          "description": "The time frame for pulling data for the query. If custom, then a specific time period must be provided."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the query."
+        }
+      },
+      "type": "object",
+      "required": [
+        "timeframe",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryFilter": {
+      "description": "The filter expression to be used in the export.",
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryFilter"
+          },
+          "description": "The logical \"AND\" expression. Must have at least 2 items."
+        },
+        "dimension": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryComparisonExpression",
+          "description": "Has comparison expression for a dimension"
+        },
+        "not": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryFilter",
+          "description": "The logical \"NOT\" expression."
+        },
+        "or": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryFilter"
+          },
+          "description": "The logical \"OR\" expression. Must have at least 2 items."
+        },
+        "tag": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryComparisonExpression",
+          "description": "Has comparison expression for a tag"
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryFilterResponse": {
+      "description": "The filter expression to be used in the export.",
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryFilterResponse"
+          },
+          "description": "The logical \"AND\" expression. Must have at least 2 items."
+        },
+        "dimension": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryComparisonExpressionResponse",
+          "description": "Has comparison expression for a dimension"
+        },
+        "not": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryFilterResponse",
+          "description": "The logical \"NOT\" expression."
+        },
+        "or": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:QueryFilterResponse"
+          },
+          "description": "The logical \"OR\" expression. Must have at least 2 items."
+        },
+        "tag": {
+          "$ref": "#/types/azure:costmanagement/v20191101:QueryComparisonExpressionResponse",
+          "description": "Has comparison expression for a tag"
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:QueryGrouping": {
+      "description": "The group by expression to be used in the query.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to group."
+        },
+        "type": {
+          "type": "string",
+          "description": "Has type of the column to group."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryGroupingResponse": {
+      "description": "The group by expression to be used in the query.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to group."
+        },
+        "type": {
+          "type": "string",
+          "description": "Has type of the column to group."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryTimePeriod": {
+      "description": "The start and end date for pulling data for the query.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date to pull data from."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date to pull data to."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "azure:costmanagement/v20191101:QueryTimePeriodResponse": {
+      "description": "The start and end date for pulling data for the query.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date to pull data from."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date to pull data to."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigAggregation": {
+      "description": "The aggregation expression to be used in the report.",
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "The name of the aggregation function to use."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to aggregate."
+        }
+      },
+      "type": "object",
+      "required": [
+        "function",
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigAggregationResponse": {
+      "description": "The aggregation expression to be used in the report.",
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "The name of the aggregation function to use."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to aggregate."
+        }
+      },
+      "type": "object",
+      "required": [
+        "function",
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigComparisonExpression": {
+      "description": "The comparison expression to be used in the report.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to use in comparison."
+        },
+        "operator": {
+          "type": "string",
+          "description": "The operator to use for comparison."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of values to use for comparison"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "operator",
+        "values"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigComparisonExpressionResponse": {
+      "description": "The comparison expression to be used in the report.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to use in comparison."
+        },
+        "operator": {
+          "type": "string",
+          "description": "The operator to use for comparison."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of values to use for comparison"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "operator",
+        "values"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigDataset": {
+      "description": "The definition of data present in the report.",
+      "properties": {
+        "aggregation": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigAggregation"
+          },
+          "description": "Dictionary of aggregation expression to use in the report. The key of each item in the dictionary is the alias for the aggregated column. Report can have up to 2 aggregation clauses."
+        },
+        "configuration": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigDatasetConfiguration",
+          "description": "Has configuration information for the data in the report. The configuration will be ignored if aggregation and grouping are provided."
+        },
+        "filter": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilter",
+          "description": "Has filter expression to use in the report."
+        },
+        "granularity": {
+          "type": "string",
+          "description": "The granularity of rows in the report."
+        },
+        "grouping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigGrouping"
+          },
+          "description": "Array of group by expression to use in the report. Report can have up to 2 group by clauses."
+        },
+        "sorting": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigSorting"
+          },
+          "description": "Array of order by expression to use in the report."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigDatasetConfiguration": {
+      "description": "The configuration of dataset in the report.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of column names to be included in the report. Any valid report column name is allowed. If not provided, then report includes all columns."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigDatasetConfigurationResponse": {
+      "description": "The configuration of dataset in the report.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of column names to be included in the report. Any valid report column name is allowed. If not provided, then report includes all columns."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigDatasetResponse": {
+      "description": "The definition of data present in the report.",
+      "properties": {
+        "aggregation": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigAggregationResponse"
+          },
+          "description": "Dictionary of aggregation expression to use in the report. The key of each item in the dictionary is the alias for the aggregated column. Report can have up to 2 aggregation clauses."
+        },
+        "configuration": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigDatasetConfigurationResponse",
+          "description": "Has configuration information for the data in the report. The configuration will be ignored if aggregation and grouping are provided."
+        },
+        "filter": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilterResponse",
+          "description": "Has filter expression to use in the report."
+        },
+        "granularity": {
+          "type": "string",
+          "description": "The granularity of rows in the report."
+        },
+        "grouping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigGroupingResponse"
+          },
+          "description": "Array of group by expression to use in the report. Report can have up to 2 group by clauses."
+        },
+        "sorting": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigSortingResponse"
+          },
+          "description": "Array of order by expression to use in the report."
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigFilter": {
+      "description": "The filter expression to be used in the report.",
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilter"
+          },
+          "description": "The logical \"AND\" expression. Must have at least 2 items."
+        },
+        "dimension": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigComparisonExpression",
+          "description": "Has comparison expression for a dimension"
+        },
+        "not": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilter",
+          "description": "The logical \"NOT\" expression."
+        },
+        "or": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilter"
+          },
+          "description": "The logical \"OR\" expression. Must have at least 2 items."
+        },
+        "tag": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigComparisonExpression",
+          "description": "Has comparison expression for a tag"
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigFilterResponse": {
+      "description": "The filter expression to be used in the report.",
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilterResponse"
+          },
+          "description": "The logical \"AND\" expression. Must have at least 2 items."
+        },
+        "dimension": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigComparisonExpressionResponse",
+          "description": "Has comparison expression for a dimension"
+        },
+        "not": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilterResponse",
+          "description": "The logical \"NOT\" expression."
+        },
+        "or": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigFilterResponse"
+          },
+          "description": "The logical \"OR\" expression. Must have at least 2 items."
+        },
+        "tag": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigComparisonExpressionResponse",
+          "description": "Has comparison expression for a tag"
+        }
+      },
+      "type": "object"
+    },
+    "azure:costmanagement/v20191101:ReportConfigGrouping": {
+      "description": "The group by expression to be used in the report.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to group. This version supports subscription lowest possible grain."
+        },
+        "type": {
+          "type": "string",
+          "description": "Has type of the column to group."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigGroupingResponse": {
+      "description": "The group by expression to be used in the report.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the column to group. This version supports subscription lowest possible grain."
+        },
+        "type": {
+          "type": "string",
+          "description": "Has type of the column to group."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigSorting": {
+      "description": "The order by expression to be used in the report.",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "description": "Direction of sort."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to sort."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigSortingResponse": {
+      "description": "The order by expression to be used in the report.",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "description": "Direction of sort."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the column to sort."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigTimePeriod": {
+      "description": "The start and end date for pulling data for the report.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date to pull data from."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date to pull data to."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "azure:costmanagement/v20191101:ReportConfigTimePeriodResponse": {
+      "description": "The start and end date for pulling data for the report.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The start date to pull data from."
+        },
+        "to": {
+          "type": "string",
+          "description": "The end date to pull data to."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    }
+  },
+  "resources": {
+    "azure:costmanagement/v20191101:View": {
+      "description": "States and configurations of Cost Analysis.",
+      "properties": {
+        "accumulated": {
+          "type": "string",
+          "description": "Show costs accumulated over time."
+        },
+        "chart": {
+          "type": "string",
+          "description": "Chart type of the main view in Cost Analysis. Required."
+        },
+        "createdOn": {
+          "type": "string",
+          "description": "Date the user created this view."
+        },
+        "dataset": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigDatasetResponse",
+          "description": "Has definition for data in this report config."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User input name of the view. Required."
+        },
+        "eTag": {
+          "type": "string",
+          "description": "eTag of the resource. To handle concurrent update scenario, this field will be used to determine whether the user is updating the latest version or not."
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:KpiPropertiesResponse"
+          },
+          "description": "List of KPIs to show in Cost Analysis UI."
+        },
+        "metric": {
+          "type": "string",
+          "description": "Metric to use when displaying costs."
+        },
+        "modifiedOn": {
+          "type": "string",
+          "description": "Date when the user last modified this view."
+        },
+        "name": {
+          "type": "string",
+          "description": "Resource name."
+        },
+        "pivots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:PivotPropertiesResponse"
+          },
+          "description": "Configuration of 3 sub-views in the Cost Analysis UI."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Cost Management scope to save the view on. This includes 'subscriptions/{subscriptionId}' for subscription scope, 'subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' for resourceGroup scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}' for Billing Account scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/departments/{departmentId}' for Department scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/enrollmentAccounts/{enrollmentAccountId}' for EnrollmentAccount scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/billingProfiles/{billingProfileId}' for BillingProfile scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/invoiceSections/{invoiceSectionId}' for InvoiceSection scope, 'providers/Microsoft.Management/managementGroups/{managementGroupId}' for Management Group scope, '/providers/Microsoft.CostManagement/externalBillingAccounts/{externalBillingAccountName}' for ExternalBillingAccount scope, and '/providers/Microsoft.CostManagement/externalSubscriptions/{externalSubscriptionName}' for ExternalSubscription scope."
+        },
+        "timePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigTimePeriodResponse",
+          "description": "Has time period for pulling data for the report."
+        },
+        "timeframe": {
+          "type": "string",
+          "description": "The time frame for pulling data for the report. If custom, then a specific time period must be provided."
+        },
+        "type": {
+          "type": "string",
+          "description": "Resource type."
+        }
+      },
+      "type": "object",
+      "required": [
+        "createdOn",
+        "modifiedOn",
+        "name",
+        "timeframe",
+        "type"
+      ],
+      "inputProperties": {
+        "accumulated": {
+          "type": "string",
+          "description": "Show costs accumulated over time."
+        },
+        "chart": {
+          "type": "string",
+          "description": "Chart type of the main view in Cost Analysis. Required."
+        },
+        "dataset": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigDataset",
+          "description": "Has definition for data in this report config."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User input name of the view. Required."
+        },
+        "eTag": {
+          "type": "string",
+          "description": "eTag of the resource. To handle concurrent update scenario, this field will be used to determine whether the user is updating the latest version or not."
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:KpiProperties"
+          },
+          "description": "List of KPIs to show in Cost Analysis UI."
+        },
+        "metric": {
+          "type": "string",
+          "description": "Metric to use when displaying costs."
+        },
+        "name": {
+          "type": "string",
+          "description": "View name"
+        },
+        "pivots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/azure:costmanagement/v20191101:PivotProperties"
+          },
+          "description": "Configuration of 3 sub-views in the Cost Analysis UI."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Cost Management scope to save the view on. This includes 'subscriptions/{subscriptionId}' for subscription scope, 'subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' for resourceGroup scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}' for Billing Account scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/departments/{departmentId}' for Department scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/enrollmentAccounts/{enrollmentAccountId}' for EnrollmentAccount scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/billingProfiles/{billingProfileId}' for BillingProfile scope, 'providers/Microsoft.Billing/billingAccounts/{billingAccountId}/invoiceSections/{invoiceSectionId}' for InvoiceSection scope, 'providers/Microsoft.Management/managementGroups/{managementGroupId}' for Management Group scope, '/providers/Microsoft.CostManagement/externalBillingAccounts/{externalBillingAccountName}' for ExternalBillingAccount scope, and '/providers/Microsoft.CostManagement/externalSubscriptions/{externalSubscriptionName}' for ExternalSubscription scope."
+        },
+        "timePeriod": {
+          "$ref": "#/types/azure:costmanagement/v20191101:ReportConfigTimePeriod",
+          "description": "Has time period for pulling data for the report."
+        },
+        "timeframe": {
+          "type": "string",
+          "description": "The time frame for pulling data for the report. If custom, then a specific time period must be provided."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the report. Usage represents actual usage, forecast represents forecasted data and UsageAndForecast represents both usage and forecasted data. Actual usage and forecasted data can be differentiated based on dates."
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "timeframe",
+        "type"
+      ],
+      "aliases": [
+        {
+          "type": "azure:costmanagement/v20200601:View"
+        }
+      ]
+    }
+  }
+}
