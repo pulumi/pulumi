@@ -79,7 +79,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "::add-path::/opt/pulumi"
+          echo "::add-path::/opt/pulumi/bin"
       - name: Ensure dependencies
         run: make ensure
       - name: Build
