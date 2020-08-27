@@ -140,7 +140,7 @@ type EnumType struct {
 	Name string
 }
 
-// Enum contains information about an enum.
+// Enum contains information about an enum value.
 type Enum struct {
 	// Value is the value of the enum.
 	Value interface{}
