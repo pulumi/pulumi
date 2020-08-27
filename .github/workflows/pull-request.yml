@@ -9,8 +9,8 @@ env:
   GO111MODULE: "on"
 
 jobs:
-  test_unit:
-    name: "Pulumi Tests: Unit"
+  test_pkg:
+    name: "Pulumi Tests: Pkg"
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Ensure dependencies
         run: make ensure SUB_PROJECTS=""
-      - name: setup git
+      - name: Setup git
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
@@ -74,7 +74,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
           repo: pulumi/pulumictl
-      - name: setup git
+      - name: Setup git
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
@@ -136,13 +136,14 @@ jobs:
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
       - uses: actions/download-artifact@v2
+        name: Download ${{ matrix.language }} Artifacts
         id: download
         with:
           name: pulumi-${{ matrix.language}}
           path: sdk/${{ matrix.language}}
-      - name: update path
+      - name: Update path
         run: echo "::add-path::${{steps.download.outputs.download-path}}/bin"
-      - name: restore binary permissions
+      - name: Restore binary permissions
         run: find ${{steps.download.outputs.download-path}}/bin -name "pulumi-language-${{ matrix.language }}" -print -exec chmod +x {} \;
       - name: Ensure dependencies
         run: make -C sdk/${{ matrix.language }} ensure
@@ -192,6 +193,7 @@ jobs:
       - name: Build SDK
         run: make -C sdk/${{ matrix.language }} ci_build
       - uses: actions/upload-artifact@v2
+        name: Upload ${{ matrix.language }} Artifacts
         with:
           name: pulumi-${{ matrix.language}}
           path: sdk/${{ matrix.language }}
