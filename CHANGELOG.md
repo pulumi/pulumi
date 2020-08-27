@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)
+
+- Python SDK: Avoid raising an error when an output has a type annotation of Any
+  and the value is a list or dict.
+  [#5238](https://github.com/pulumi/pulumi/pull/5238)
 
 ## 2.9.0 (2020-08-19)
 
