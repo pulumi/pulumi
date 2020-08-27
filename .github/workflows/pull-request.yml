@@ -48,6 +48,10 @@ jobs:
         language: [ "nodejs", "go", "dotnet", "python" ]
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Fetch Git Tags
+        run: git fetch --quiet --prune --unshallow --tags
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
         with:
@@ -70,8 +74,6 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@release/v1-alpha
         with:
           repo: pulumi/pulumictl
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: setup git
         run: |
           git config --global user.email "you@example.com"
