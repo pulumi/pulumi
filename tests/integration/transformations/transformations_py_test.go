@@ -24,7 +24,7 @@ func TestPythonTransformations(t *testing.T) {
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
 				Quick:                  true,
-				ExtraRuntimeValidation: validator("python"),
+				ExtraRuntimeValidation: Validator("python"),
 			})
 		})
 	}
