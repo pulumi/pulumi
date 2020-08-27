@@ -4,8 +4,10 @@
 package ints
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 	"path/filepath"
+	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 )
 
 var dirs = []string{
@@ -25,5 +27,3 @@ func TestNodejsTransformations(t *testing.T) {
 		})
 	}
 }
-
-
