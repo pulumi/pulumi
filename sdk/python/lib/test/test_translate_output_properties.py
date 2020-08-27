@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from pulumi.runtime import rpc
 import pulumi
@@ -326,6 +326,15 @@ class InvalidTypeDeclaredOptionalListOptionalStr(dict):
         ...
 
 
+@pulumi.output_type
+class OutputTypeWithAny(dict):
+    value_dict: Any
+    value_list: Any
+    value_dict_dict: Mapping[str, Any]
+    value_list_list: List[Any]
+    value_str: Any
+
+
 class TranslateOutputPropertiesTests(unittest.TestCase):
     def test_translate(self):
         output = {
@@ -550,3 +559,19 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             for output in outputs:
                 with self.assertRaises(AssertionError):
                     rpc.translate_output_properties(output, translate_output_property, typ)
+
+    def test_any(self):
+        output = {
+            "value_dict": {"hello": "world"},
+            "value_list": ["hello"],
+            "value_dict_dict": {"value": {"hello": "world"}},
+            "value_list_list": [["hello"]],
+            "value_str": "hello",
+        }
+        result = rpc.translate_output_properties(output, translate_output_property, OutputTypeWithAny)
+        self.assertIsInstance(result, OutputTypeWithAny)
+        self.assertEqual({"hello": "world"}, result.value_dict)
+        self.assertEqual(["hello"], result.value_list)
+        self.assertEqual({"value": {"hello": "world"}}, result.value_dict_dict)
+        self.assertEqual([["hello"]], result.value_list_list)
+        self.assertEqual("hello", result.value_str)
