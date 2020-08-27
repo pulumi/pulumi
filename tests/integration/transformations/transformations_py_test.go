@@ -3,6 +3,13 @@
 
 package ints
 
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+)
+
 var dirs = []string{
 	"simple",
 }
