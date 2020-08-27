@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.9.1 (2020-08-127
 
 - Python SDK: Avoid raising an error when an output has a type annotation of Any
   and the value is a list or dict.
