@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,6 +32,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -1839,6 +1840,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
+	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
+
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -1861,14 +1864,35 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
-		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
-		dep := filepath.Join(depParts...)
-		if strings.Contains(dep, "v2") {
-			// This is something we need to do for a local override. We effectively
-			// map a pkg to a folder location on disk. Local disk doesn't have a v2
-			// in it's path so we need to skip it
-			dep = strings.Replace(dep, "v2", "", -1)
+
+		var depParts []string
+		var dep string
+		var sanitizedPkg string
+
+		// Check if the dependency has version string
+		re := regexp.MustCompile(`v\d`)
+		v := re.FindString(pkg)
+		if v != "" {
+			sanitizedPkg = strings.Replace(pkg, v, "", -1)
+		} else {
+			sanitizedPkg = pkg
 		}
+
+		if depRoot != "" {
+			// Extract the package name from the full dependency
+			// Must be in the format `pulumi-foo`
+			re := regexp.MustCompile(`(pulumi*-[a-zA-Z0-9]*)+`)
+			pkgName := re.FindString(pkg)
+			if v == "" {
+				return fmt.Errorf("dependency %s not valid - must be a pulumi-foo package", pkg)
+			}
+			depParts = append([]string{depRoot, pkgName, "sdk"})
+			dep = filepath.Join(depParts...)
+		} else {
+			depParts = append([]string{gopath, "src"}, strings.Split(sanitizedPkg, "/")...)
+			dep = filepath.Join(depParts...)
+		}
+
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
