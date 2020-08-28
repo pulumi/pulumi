@@ -591,7 +591,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 }
 
 func genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "new Alias { ")
+	fmt.Fprintf(w, "new Pulumi.Alias { ")
 
 	parts := []string{}
 	if alias.Name != nil {
