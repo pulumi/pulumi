@@ -2,8 +2,15 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-  Alpha version of the Automation API for Go
+
+- Alpha version of the Automation API for Go
   [#4977](https://github.com/pulumi/pulumi/pull/4977)
+
+## 2.9.1 (2020-08-127
+
+- Python SDK: Avoid raising an error when an output has a type annotation of Any
+  and the value is a list or dict.
+  [#5238](https://github.com/pulumi/pulumi/pull/5238)
 
 ## 2.9.0 (2020-08-19)
 

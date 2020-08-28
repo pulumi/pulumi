@@ -399,6 +399,11 @@ def translate_output_properties(output: Any,
     # Unwrap optional types.
     typ = _types.unwrap_optional_type(typ) if typ else typ
 
+    # If the typ is Any, set it to None to treat it as if we don't have any type information,
+    # to avoid raising errors about unexpected types, since it could be any type.
+    if typ is Any:
+        typ = None
+
     if isinstance(output, dict):
         # Function called to lookup a type for a given key.
         # The default always returns None.

@@ -1018,9 +1018,9 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	sort.Slice(ns.children, func(i, j int) bool {
 		return ns.children[i].name < ns.children[j].name
 	})
-	for i, ns := range ns.children {
-		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, ns.name)
-		mod.genNamespace(w, ns, input, level+1)
+	for i, child := range ns.children {
+		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, child.name)
+		mod.genNamespace(w, child, input, level+1)
 		fmt.Fprintf(w, "%s}\n", indent)
 		if i != len(ns.children)-1 {
 			fmt.Fprintf(w, "\n")

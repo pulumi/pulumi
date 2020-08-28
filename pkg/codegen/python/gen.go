@@ -719,7 +719,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 	// Now generate an initializer with arguments for all input properties.
 	fmt.Fprintf(w, "    def __init__(__self__,\n")
-	fmt.Fprintf(w, "                 resource_name,\n")
+	fmt.Fprintf(w, "                 resource_name: str,\n")
 	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None")
 
 	// If there's an argument type, emit it.
@@ -902,7 +902,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		} else {
 			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
 		}
-		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		fmt.Fprintf(w, "    def %s(self) -> pulumi.Output[%s]:\n", pname, ty)
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, "        ")
 		}
