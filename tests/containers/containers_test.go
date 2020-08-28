@@ -112,6 +112,10 @@ func TestPulumiActionsImage(t *testing.T) {
 	t.Run("python", func(t *testing.T) {
 		testRuntimeWorksInContainer(t, "python", pulumiContainerToTest)
 	})
+
+	t.Run("python_venv", func(t *testing.T) {
+		testRuntimeWorksInContainer(t, "python_venv", pulumiContainerToTest)
+	})
 }
 
 // testRuntimeWorksInContainer runs a test that attempts to run a Pulumi program in the given
