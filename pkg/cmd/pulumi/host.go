@@ -65,6 +65,8 @@ func newHostCmd() *cobra.Command {
 			"To support some automation scenarios, the engine may be launched in this mode to prevent it from\n" +
 			"needing to spawn its own language runtime. In this case, the lifetime of interactions between the\n" +
 			"language and the engine host must be managed manually.",
+		// host is an internal command not intended for public use
+		Hidden: true,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			isPreview := len(args) > 0 && args[0] == "preview"
 
