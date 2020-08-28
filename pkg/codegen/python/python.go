@@ -279,6 +279,7 @@ var Keywords = codegen.NewStringSet(
 	"or",
 	"pass",
 	"print",
+	"property",
 	"raise",
 	"return",
 	"try",
