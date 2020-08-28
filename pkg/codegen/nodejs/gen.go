@@ -363,44 +363,43 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, " }")
 }
 
-func genEnum(w io.Writer, e *schema.EnumType) {
-	// Write the TypeDoc/JSDoc for the enum type
-	fmt.Fprintf(w, "enum %s {\n", e.Name)
-	for _, enum := range e.Elements {
-		fmt.Fprintf(w, "    %s,\n", enum.Value)
-	}
-	fmt.Fprintf(w, "}")
-	fmt.Fprint(w, "\n\n")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
 	// Declare any enums first.
-	//enumTypeSet := make(map[string]*schema.EnumType)
-	//for _, prop := range r.Properties {
-	//	if enumType, ok := prop.Type.(*schema.EnumType); ok {
-	//		if !enumType.ModelAsString {
-	//			if _, ok := enumTypeSet[enumType.Name]; !ok {
-	//				enumTypeSet[enumType.Name] = enumType
-	//			}
-	//		}
-	//	}
-	//}
-	//for _, prop := range r.InputProperties {
-	//	if enumType, ok := prop.Type.(*schema.EnumType); ok {
-	//		if !enumType.ModelAsString {
-	//			if _, ok := enumTypeSet[enumType.Name]; !ok {
-	//				enumTypeSet[enumType.Name] = enumType
-	//			}
-	//		}
-	//	}
-	//}
-	//
-	//for _, enumType := range enumTypeSet {
-	//	genEnum(w, enumType)
-	//}
+	var enums []*schema.EnumType
+	enumSet := codegen.NewStringSet()
+	for _, prop := range r.Properties {
+		if enumType, ok := prop.Type.(*schema.EnumType); ok {
+			if !enumType.ModelAsString && !enumSet.Has(enumType.Name) {
+				enumSet.Add(enumType.Name)
+				enums = append(enums, enumType)
+			}
+		}
+	}
+	for _, prop := range r.InputProperties {
+		if enumType, ok := prop.Type.(*schema.EnumType); ok {
+			if !enumType.ModelAsString && !enumSet.Has(enumType.Name) {
+				enumSet.Add(enumType.Name)
+				enums = append(enums, enumType)
+			}
+		}
+	}
+
+	sort.Slice(enums, func(i, j int) bool {
+		return enums[i].Name < enums[j].Name
+	})
+	for _, enum := range enums {
+		// Write the TypeDoc/JSDoc for the enum type
+		fmt.Fprintf(w, "export enum %s {\n", enum.Name)
+		for _, enum := range enum.Elements {
+			safeName := safeEnumName(enum.Value)
+			fmt.Fprintf(w, "    %s = \"%s\",\n", safeName, enum.Value)
+		}
+		fmt.Fprintf(w, "}")
+		fmt.Fprint(w, "\n\n")
+	}
 
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
