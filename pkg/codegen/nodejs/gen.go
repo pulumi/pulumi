@@ -1081,11 +1081,10 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	sort.Slice(enums, func(i, j int) bool {
 		return enums[i].Name < enums[j].Name
 	})
-	replacer := strings.NewReplacer(".", "", "-", "", ",", "", " ", "")
 	for i, enum := range enums {
 		fmt.Fprintf(w, "%sexport enum %s {\n", indent, enum.Name)
 		for _, enum := range enum.Elements {
-			safeName := replacer.Replace(enum.Value.(string))
+			safeName := safeEnumName(enum.Value)
 			fmt.Fprintf(w, "%s    %s = \"%s\",\n", indent, safeName, enum.Value)
 		}
 		fmt.Fprintf(w, "%s}\n", indent)
@@ -1105,6 +1104,12 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 			fmt.Fprintf(w, "\n")
 		}
 	}
+}
+
+var replacer = strings.NewReplacer(".", "", "-", "", ",", "", " ", "")
+
+func safeEnumName(name string) string {
+	return replacer.Replace(name)
 }
 
 type fs map[string][]byte
