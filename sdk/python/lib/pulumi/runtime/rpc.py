@@ -259,7 +259,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         # These don't actually contribute to the exposed shape of the object, do
         # not need to be passed back to the engine, and often will not match the
         # expected type we are deserializing into.
-        if k.startswith("__"):
+        # Keep "__provider" as it's the property name used by Python dynamic providers.
+        if k.startswith("__") and k != "__provider":
             continue
 
         value = deserialize_property(v, keep_unknowns)
