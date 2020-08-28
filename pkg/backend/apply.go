@@ -108,7 +108,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// confirm the prompt.
 	opts := ApplierOptions{
 		DryRun:   true,
-		ShowLink: false,
+		ShowLink: true,
 	}
 
 	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
