@@ -15,7 +15,6 @@
 package auto
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -38,9 +37,7 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 }
 
 func (ae autoError) Error() string {
-	return errors.Wrap(
-		ae.err, fmt.Sprintf("code: %d\n, stdout: %s\n, stderr: %s\n", ae.code, ae.stdout, ae.stderr),
-	).Error()
+	return errors.Wrapf(ae.err, "code: %d\n, stdout: %s\n, stderr: %s\n", ae.code, ae.stdout, ae.stderr).Error()
 }
 
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
@@ -53,7 +50,7 @@ func IsConcurrentUpdateError(e error) bool {
 	return strings.Contains(ae.stderr, "[409] Conflict: Another update is currently in progress.")
 }
 
-// IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, C#)
+// IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, .NET)
 func IsCompilationError(e error) bool {
 	as, ok := e.(autoError)
 	if !ok {

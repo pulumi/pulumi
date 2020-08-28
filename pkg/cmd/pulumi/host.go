@@ -59,8 +59,8 @@ func newHostCmd() *cobra.Command {
 
 	var cmd = &cobra.Command{
 		Use:   "host",
-		Short: "Launch the engine in 'host' mode without launching a language runtime",
-		Long: "Launch the engine in 'host' mode without launching a language runtime.\n" +
+		Short: "[PREVIEW] Launch the engine in 'host' mode without launching a language runtime",
+		Long: "[PREVIEW] Launch the engine in 'host' mode without launching a language runtime.\n" +
 			"\n" +
 			"To support some automation scenarios, the engine may be launched in this mode to prevent it from\n" +
 			"needing to spawn its own language runtime. In this case, the lifetime of interactions between the\n" +

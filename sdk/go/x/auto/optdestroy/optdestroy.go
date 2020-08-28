@@ -59,7 +59,7 @@ type Options struct {
 	Parallel int
 	// Message (optional) to associate with the destroy operation
 	Message string
-	// Specify an exclusive list of resource URNs to re
+	// Specify an exclusive list of resource URNs to update
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool

@@ -14,8 +14,8 @@
 
 // Package auto contains the Pulumi Automation API, the programmatic interface for driving Pulumi programs
 // without the CLI.
-// Generally this can be thought of as encapsulating the functionality of the CLI but with more flexibility
-// (`pulumi up`, `pulumi preview`, pulumi destroy`, `pulumi stack init`, etc.). This still requires a
+// Generally this can be thought of as encapsulating the functionality of the CLI (`pulumi up`, `pulumi preview`,
+// pulumi destroy`, `pulumi stack init`, etc.) but with more flexibility. This still requires a
 // CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
 // breaking changes (mostly additive) will be made. You can pin to a specific commit version if you need stability.
 //
@@ -29,7 +29,7 @@
 //		URL:         "https://github.com/pulumi/test-repo.git",
 //		ProjectPath: filepath.Join("project", "path", "repo", "root", "relative"),
 //	})
-// 3. Programs defined as a `func` alongside your Automation API code (NewStackInlineSource)
+// 3. Programs defined as a function alongside your Automation API code (NewStackInlineSource)
 //	 stack, err := NewStackInlineSource(ctx, "myOrg/myProj/myStack", func(pCtx *pulumi.Context) error {
 //		bucket, err := s3.NewBucket(pCtx, "bucket", nil)
 //		if err != nil {
@@ -39,13 +39,13 @@
 //		return nil
 //	 })
 // Each of these creates a stack with access to the full range of Pulumi lifecycle methods
-// (up/preview/refresh/destroy), as well as methods for managing config, stack, and project settings:
+// (up/preview/refresh/destroy), as well as methods for managing config, stack, and project settings.
 //	 err := stack.SetConfig(ctx, "key", ConfigValue{ Value: "value", Secret: true })
 //	 preRes, err := stack.Preview(ctx)
 //	 // detailed info about results
 //	 fmt.Println(preRes.prev.Steps[0].URN)
 // The Automation API provides a natural way to orchestrate multiple stacks,
-// feeding the output of one stack as an input to the next as shown in the package level example.
+// feeding the output of one stack as an input to the next as shown in the package-level example below.
 // The package can be used for a number of use cases:
 //
 // 	- Driving pulumi deployments within CI/CD workflows
@@ -70,12 +70,12 @@
 // Workspaces can be explicitly created and customized beyond the three Stack creation helpers noted above:
 //	 w, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "project", "path"), PulumiHome("~/.pulumi"))
 //	 s := NewStack(ctx, "org/proj/stack", w)
-// A default implemenatation of workspace is provided as LocalWorkspace. This implementation relies on pulumi.yaml
-// and pulumi.<stack>.yaml as the intermediate format for Project and Stack settings. Modifying ProjectSettings will
-// alter the Workspace pulumi.yaml file, and setting config on a Stack will modify the pulumi.<stack>.yaml file.
+// A default implementation of workspace is provided as `LocalWorkspace`. This implementation relies on Pulumi.yaml
+// and Pulumi.<stack>.yaml as the intermediate format for Project and Stack settings. Modifying ProjectSettings will
+// alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
 // This is identical to the behavior of Pulumi CLI driven workspaces. Custom Workspace
 // implementations can be used to store Project and Stack settings as well as Config in a different format,
-// such as an in-memory data structure, a shared persistend SQL database, or cloud object storage. Regardless of
+// such as an in-memory data structure, a shared persistent SQL database, or cloud object storage. Regardless of
 // the backing Workspace implementation, the Pulumi SaaS Console will still be able to display configuration
 // applied to updates as it does with the local version of the Workspace today.
 //
@@ -477,7 +477,7 @@ func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
 }
 
-// SetConfig sets the specified config KVP.
+// SetConfig sets the specified config key-value pair.
 func (s *Stack) SetConfig(ctx context.Context, key string, val ConfigValue) error {
 	return s.Workspace().SetConfig(ctx, s.Name(), key, val)
 }
@@ -487,7 +487,7 @@ func (s *Stack) SetAllConfig(ctx context.Context, config ConfigMap) error {
 	return s.Workspace().SetAllConfig(ctx, s.Name(), config)
 }
 
-// RemoveConfig removes the specified config KVP.
+// RemoveConfig removes the specified config key-value pair.
 func (s *Stack) RemoveConfig(ctx context.Context, key string) error {
 	return s.Workspace().RemoveConfig(ctx, s.Name(), key)
 }
@@ -522,7 +522,7 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	return info, nil
 }
 
-// UpdateSummary provides an summary of a Stack lifecycle operation (up/preview/refresh/destroy).
+// UpdateSummary provides a summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
 	Kind        string            `json:"kind"`
 	StartTime   string            `json:"startTime"`
@@ -536,7 +536,7 @@ type UpdateSummary struct {
 	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
 }
 
-// OutputValue models a Pulumi Stack output, providing the plaintext value and a market indicating secretness.
+// OutputValue models a Pulumi Stack output, providing the plaintext value and a boolean indicating secretness.
 type OutputValue struct {
 	Value  interface{}
 	Secret bool
@@ -555,7 +555,7 @@ type UpResult struct {
 // OutputMap is the output result of running a Pulumi program
 type OutputMap map[string]OutputValue
 
-// PreviewStep is summary of the expected state transition of a given resource based on running the current program
+// PreviewStep is a summary of the expected state transition of a given resource based on running the current program.
 type PreviewStep struct {
 	// Op is the kind of operation being performed.
 	Op string `json:"op"`

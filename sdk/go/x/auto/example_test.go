@@ -236,7 +236,7 @@ func ExampleLocalWorkspace_InstallPlugin() {
 func ExampleNewLocalWorkspace() {
 	ctx := context.Background()
 	// WorkDir sets the working directory for the LocalWorkspace. The workspace will look for a default
-	// project settings file (pulumi.yaml) in this location for information about the Pulumi program.
+	// project settings file (Pulumi.yaml) in this location for information about the Pulumi program.
 	wd := WorkDir(filepath.Join("..", "path", "to", "pulumi", "project"))
 	// PulumiHome customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	ph := PulumiHome(filepath.Join("~", ".pulumi"))
@@ -274,7 +274,7 @@ func ExampleLocalWorkspace_ProjectSettings() {
 	// read existing project settings if any
 	ps, err := w.ProjectSettings(ctx)
 	if err != nil {
-		// no pulumi.yaml was found, so create a default
+		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
 			Name:    tokens.PackageName("myproject"),
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
@@ -294,7 +294,7 @@ func ExampleLocalWorkspace_WriteProjectSettings() {
 	// read existing project settings if any
 	ps, err := w.ProjectSettings(ctx)
 	if err != nil {
-		// no pulumi.yaml was found, so create a default
+		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
 			Name:    tokens.PackageName("myproject"),
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
@@ -592,7 +592,7 @@ func ExampleNewStackLocalSource() {
 	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
 	workDir := filepath.Join(".", "program", "dir")
 	// creates a new stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
-	// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml)
+	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
 	stack, _ := NewStackLocalSource(ctx, fqsn, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
@@ -610,7 +610,7 @@ func ExampleSelectStackLocalSource() {
 	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
 	workDir := filepath.Join(".", "program", "dir")
 	// selects an existing stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
-	// any available Settings files (pulumi.yaml, pulumi.<stack>.yaml)
+	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
 	stack, _ := SelectStackLocalSource(ctx, fqsn, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
@@ -790,7 +790,7 @@ func ExampleStack_SetConfig() {
 	ctx := context.Background()
 	fqsn := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
-	// set config KVP
+	// set config key-value pair
 	_ = stack.SetConfig(ctx, "key_to_set", ConfigValue{Value: "abc", Secret: true})
 }
 
