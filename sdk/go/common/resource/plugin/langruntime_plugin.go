@@ -99,6 +99,8 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
 	if h.IsHostOnlyMode() {
+		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) in host mode, exiting",
+			h.runtime, proj, info.Pwd, info.Program)
 		return nil, nil
 	}
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{

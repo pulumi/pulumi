@@ -40,7 +40,7 @@ import (
 // This is identical to the behavior of Pulumi CLI driven workspaces.
 type LocalWorkspace struct {
 	workDir    string
-	pulumiHome *string
+	pulumiHome string
 	program    pulumi.RunFunc
 }
 
@@ -63,10 +63,10 @@ func (l *LocalWorkspace) ProjectSettings(ctx context.Context) (*workspace.Projec
 	return nil, errors.New("unable to find project settings in workspace")
 }
 
-// WriteProjectSettings overwrites the settings object in the current project.
+// SaveProjectSettings overwrites the settings object in the current project.
 // There can only be a single project per workspace. Fails is new project name does not match old.
 // LocalWorkspace writes this value to a Pulumi.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) WriteProjectSettings(ctx context.Context, settings *workspace.Project) error {
+func (l *LocalWorkspace) SaveProjectSettings(ctx context.Context, settings *workspace.Project) error {
 	pulumiYamlPath := filepath.Join(l.WorkDir(), "Pulumi.yaml")
 	return settings.Save(pulumiYamlPath)
 }
@@ -91,9 +91,9 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, fqsn string) (*works
 	return nil, errors.Errorf("unable to find stack settings in workspace for %s", fqsn)
 }
 
-// WriteStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
+// SaveStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
 // LocalWorkspace writes this value to a Pulumi.<stack>.yaml file in Workspace.WorkDir()
-func (l *LocalWorkspace) WriteStackSettings(
+func (l *LocalWorkspace) SaveStackSettings(
 	ctx context.Context,
 	fqsn string,
 	settings *workspace.ProjectStack,
@@ -119,16 +119,16 @@ func (l *LocalWorkspace) SerializeArgsForOp(ctx context.Context, fqsn string) ([
 	return nil, nil
 }
 
-// PostOpCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
-// An extensibility point to perform workspace cleanup (CLI operations may create/modify a pulumi.stack.yaml)
+// PostCommandCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
+// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml)
 // LocalWorkspace does not utilize this extensibility point.
-func (l *LocalWorkspace) PostOpCallback(ctx context.Context, fqsn string) error {
+func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, fqsn string) error {
 	// not utilized for LocalWorkspace
 	return nil
 }
 
 // GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
-// scoped to the current workspace. LocalWorkspace reads this config from the matching pulumi.stack.yaml file.
+// scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string) (ConfigValue, error) {
 	var val ConfigValue
 	err := l.SelectStack(ctx, fqsn)
@@ -147,7 +147,7 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string)
 }
 
 // GetAllConfig returns the config map for the specified fullyQualifiedStackName, scoped to the current workspace.
-// LocalWorkspace reads this config from the matching pulumi.stack.yaml file.
+// LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigMap, error) {
 	var val ConfigMap
 	err := l.SelectStack(ctx, fqsn)
@@ -253,7 +253,8 @@ func (l *LocalWorkspace) WorkDir() string {
 }
 
 // PulumiHome returns the directory override for CLI metadata if set.
-func (l *LocalWorkspace) PulumiHome() *string {
+// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+func (l *LocalWorkspace) PulumiHome() string {
 	return l.pulumiHome
 }
 
@@ -405,8 +406,8 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
-	if l.PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *l.PulumiHome())
+	if l.PulumiHome() != "" {
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, l.PulumiHome())
 		env = append(env, homeEnv)
 	}
 	return runPulumiCommandSync(ctx, l.WorkDir(), env, args...)
@@ -448,19 +449,14 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		program = lwOpts.Program
 	}
 
-	var pulumiHome *string
-	if lwOpts.PulumiHome != nil {
-		pulumiHome = lwOpts.PulumiHome
-	}
-
 	l := &LocalWorkspace{
 		workDir:    workDir,
 		program:    program,
-		pulumiHome: pulumiHome,
+		pulumiHome: lwOpts.PulumiHome,
 	}
 
 	if lwOpts.Project != nil {
-		err := l.WriteProjectSettings(ctx, lwOpts.Project)
+		err := l.SaveProjectSettings(ctx, lwOpts.Project)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workspace, unable to save project settings")
 		}
@@ -468,7 +464,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 
 	for fqsn := range lwOpts.Stacks {
 		s := lwOpts.Stacks[fqsn]
-		err := l.WriteStackSettings(ctx, fqsn, &s)
+		err := l.SaveStackSettings(ctx, fqsn, &s)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workspace")
 		}
@@ -484,11 +480,12 @@ type localWorkspaceOptions struct {
 	// Program is the Pulumi Program to execute. If none is supplied,
 	// the program identified in $WORKDIR/Pulumi.yaml will be used instead.
 	Program pulumi.RunFunc
-	// PulumiHome overrides the metadata directory for pulumi commands
-	PulumiHome *string
-	// Project is the project settings for the workspace
+	// PulumiHome overrides the metadata directory for pulumi commands.
+	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+	PulumiHome string
+	// Project is the project settings for the workspace.
 	Project *workspace.Project
-	// Stacks is a map of [fqsn -> stack settings objects] to seed the workspace
+	// Stacks is a map of [fqsn -> stack settings objects] to seed the workspace.
 	Stacks map[string]workspace.ProjectStack
 	// Repo is a git repo with a Pulumi Project to clone into the WorkDir.
 	Repo *GitRepo
@@ -543,7 +540,7 @@ func Program(program pulumi.RunFunc) LocalWorkspaceOption {
 // PulumiHome overrides the metadata directory for pulumi commands.
 func PulumiHome(dir string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
-		lo.PulumiHome = &dir
+		lo.PulumiHome = dir
 	})
 }
 

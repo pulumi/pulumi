@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/stretchr/testify/assert"
@@ -84,6 +85,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+		time.Sleep(1 * time.Second)
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})

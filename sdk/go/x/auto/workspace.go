@@ -27,20 +27,20 @@ import (
 type Workspace interface {
 	// ProjectSettings returns the settings object for the current project if any.
 	ProjectSettings(context.Context) (*workspace.Project, error)
-	// WriteProjectSettings overwrites the settings object in the current project.
+	// SaveProjectSettings overwrites the settings object in the current project.
 	// There can only be a single project per workspace. Fails is new project name does not match old.
-	WriteProjectSettings(context.Context, *workspace.Project) error
+	SaveProjectSettings(context.Context, *workspace.Project) error
 	// StackSettings returns the settings object for the stack matching the specified fullyQualifiedStackName if any.
 	StackSettings(context.Context, string) (*workspace.ProjectStack, error)
-	// WriteStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
-	WriteStackSettings(context.Context, string, *workspace.ProjectStack) error
+	// SaveStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
+	SaveStackSettings(context.Context, string, *workspace.ProjectStack) error
 	// SerializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
 	// Provided with fullyQualifiedStackName,
 	// returns a list of args to append to an invoked command ["--config=...", ].
 	SerializeArgsForOp(context.Context, string) ([]string, error)
-	// PostOpCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
-	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a pulumi.stack.yaml).
-	PostOpCallback(context.Context, string) error
+	// PostCommandCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
+	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml).
+	PostCommandCallback(context.Context, string) error
 	// GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)
@@ -59,7 +59,8 @@ type Workspace interface {
 	// WorkDir returns the working directory to run Pulumi CLI commands.
 	WorkDir() string
 	// PulumiHome returns the directory override for CLI metadata if set.
-	PulumiHome() *string
+	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+	PulumiHome() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
 	// Stack returns a summary of the currently selected stack, if any.

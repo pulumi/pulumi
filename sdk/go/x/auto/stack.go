@@ -610,8 +610,8 @@ const secretSentinel = "[secret]"
 
 func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, string, int, error) {
 	var env []string
-	if s.Workspace().PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *s.Workspace().PulumiHome())
+	if s.Workspace().PulumiHome() != "" {
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
 	}
 	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
@@ -623,9 +623,9 @@ func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, s
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}
-	err = s.Workspace().PostOpCallback(ctx, s.Name())
+	err = s.Workspace().PostCommandCallback(ctx, s.Name())
 	if err != nil {
-		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
+		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
 	}
 	return stdout, stderr, errCode, nil
 }
@@ -647,8 +647,8 @@ func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int)
 	args = append(args, workspaceArgs...)
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = s.Workspace().WorkDir()
-	if s.Workspace().PulumiHome() != nil {
-		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, *s.Workspace().PulumiHome())
+	if s.Workspace().PulumiHome() != "" {
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
 		cmd.Env = append(os.Environ(), homeEnv)
 	}
 
@@ -741,10 +741,10 @@ func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int)
 		return stdout.String(), errBuff.String(), err
 	}
 
-	err = s.Workspace().PostOpCallback(ctx, s.Name())
+	err = s.Workspace().PostCommandCallback(ctx, s.Name())
 	if err != nil {
 		return stdout.String(), errBuff.String(),
-			errors.Wrap(err, "command ran successfully, but error running PostOpCallback")
+			errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
 	}
 
 	return stdout.String(), errBuff.String(), nil

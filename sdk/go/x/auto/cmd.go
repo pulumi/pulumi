@@ -21,6 +21,8 @@ import (
 	"os/exec"
 )
 
+const unknownErrorCode = -2
+
 func runPulumiCommandSync(
 	ctx context.Context,
 	workdir string,
@@ -37,7 +39,7 @@ func runPulumiCommandSync(
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	code := -2 // unknown
+	code := unknownErrorCode
 	err := cmd.Run()
 	if exitError, ok := err.(*exec.ExitError); ok {
 		code = exitError.ExitCode()

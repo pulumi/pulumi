@@ -210,7 +210,7 @@ func ExampleLocalWorkspace_GetAllConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	// get all config from the workspace for the stack (read from pulumi.stack.yaml)
+	// get all config from the workspace for the stack (read from Pulumi.stack.yaml)
 	cfg, _ := w.GetAllConfig(ctx, "org/proj/stack")
 	fmt.Println(cfg["config_key"].Value)
 	fmt.Println(cfg["config_key"].Secret)
@@ -220,7 +220,7 @@ func ExampleLocalWorkspace_GetConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	// get all config from the workspace for the stack (read from pulumi.stack.yaml)
+	// get all config from the workspace for the stack (read from Pulumi.stack.yaml)
 	cfgVal, _ := w.GetConfig(ctx, "org/proj/stack", "config_key")
 	fmt.Println(cfgVal.Value)
 	fmt.Println(cfgVal.Secret)
@@ -284,10 +284,10 @@ func ExampleLocalWorkspace_ProjectSettings() {
 	author := "pulumipus"
 	ps.Author = &author
 	// save the settings back to the Workspace
-	w.WriteProjectSettings(ctx, ps)
+	w.SaveProjectSettings(ctx, ps)
 }
 
-func ExampleLocalWorkspace_WriteProjectSettings() {
+func ExampleLocalWorkspace_SaveProjectSettings() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
@@ -304,7 +304,7 @@ func ExampleLocalWorkspace_WriteProjectSettings() {
 	author := "pulumipus"
 	ps.Author = &author
 	// save the settings back to the Workspace
-	w.WriteProjectSettings(ctx, ps)
+	w.SaveProjectSettings(ctx, ps)
 }
 
 func ExampleLocalWorkspace_RefreshConfig() {
@@ -420,10 +420,10 @@ func ExampleLocalWorkspace_StackSettings() {
 	}
 	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
 	// copy the settings to stackB
-	w.WriteStackSettings(ctx, fqsnB, ss)
+	w.SaveStackSettings(ctx, fqsnB, ss)
 }
 
-func ExampleLocalWorkspace_WriteStackSettings() {
+func ExampleLocalWorkspace_SaveStackSettings() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
@@ -436,7 +436,7 @@ func ExampleLocalWorkspace_WriteStackSettings() {
 	}
 	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
 	// copy the settings to stackB
-	w.WriteStackSettings(ctx, fqsnB, ss)
+	w.SaveStackSettings(ctx, fqsnB, ss)
 }
 
 func ExampleLocalWorkspace_WhoAmI() {
@@ -766,7 +766,7 @@ func ExampleStack_RefreshConfig() {
 	ctx := context.Background()
 	fqsn := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
-	// get the last deployed config from stack and overwrite pulumi.stack.yaml
+	// get the last deployed config from stack and overwrite Pulumi.stack.yaml
 	_, _ = stack.RefreshConfig(ctx)
 }
 
