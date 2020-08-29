@@ -320,6 +320,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if refreshOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
 	}
+	if refreshOpts.ExpectNoChanges {
+		args = append(args, "--expect-no-changes")
+	}
 	for _, tURN := range refreshOpts.Target {
 		args = append(args, "--target %s", tURN)
 	}

@@ -24,6 +24,13 @@ func Parallel(n int) Option {
 	})
 }
 
+// ExpectNoChanges will cause the preview to return an error if any changes occur
+func ExpectNoChanges() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExpectNoChanges = true
+	})
+}
+
 // Message (optional) to associate with the refresh operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
@@ -52,6 +59,8 @@ type Options struct {
 	Parallel int
 	// Message (optional) to associate with the refresh operation
 	Message string
+	// Return an error if any changes occur during this preview
+	ExpectNoChanges bool
 	// Specify an exclusive list of resource URNs to re
 	Target []string
 }
