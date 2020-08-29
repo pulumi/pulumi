@@ -901,7 +901,7 @@ func (b *cloudBackend) apply(
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
 	}
 
 	// Create an update object to persist results.
@@ -911,25 +911,30 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
-		// Print a URL at the end of the update pointing to the Pulumi Service.
-		var link string
-		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if !opts.DryRun {
-			link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
-		} else {
-			link = b.CloudConsoleURL(base, "previews", update.UpdateID)
-		}
-		if link != "" {
-			defer func() {
-				fmt.Printf(op.Opts.Display.Color.Colorize(
-					colors.SpecHeadline+"Permalink: "+
-						colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
-			}()
-		}
+	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+		// Print a URL at the beginning of the update pointing to the Pulumi Service.
+		b.printLink(op, opts, update, version)
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+}
+
+// printLink prints a link to the update in the Pulumi Service.
+func (b *cloudBackend) printLink(
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	update client.UpdateIdentifier, version int) {
+	var link string
+	base := b.cloudConsoleStackPath(update.StackIdentifier)
+	if !opts.DryRun {
+		link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+	} else {
+		link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+	}
+	if link != "" {
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"View Live: "+
+				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n\n"), link)
+	}
 }
 
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi

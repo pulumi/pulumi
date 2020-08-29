@@ -124,9 +124,8 @@ if [ -e requirements.txt ]; then
         pip3 install -r requirements.txt
     else
         python3 -m venv $PULUMI_VENV
-        source $PULUMI_VENV/bin/activate
-        pip3 install -r requirements.txt
-        deactivate
+        $PULUMI_VENV/bin/python -m pip install --upgrade pip setuptools wheel
+        $PULUMI_VENV/bin/python -m pip install -r requirements.txt
     fi
 fi
 

@@ -569,7 +569,7 @@ func (b *localBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string

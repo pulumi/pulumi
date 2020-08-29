@@ -616,21 +616,10 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	fmt.Fprintf(w, "\n")
 
 	// Write out Python property getters for each property.
-	for _, prop := range obj.Properties {
-		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
-		fmt.Fprintf(w, "    @property\n")
-		if pname == prop.Name {
-			fmt.Fprintf(w, "    @pulumi.getter\n")
-		} else {
-			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
-		}
-		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, "        ")
-		}
-		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
-	}
+	mod.genProperties(w, obj.Properties, false /*setters*/, func(prop *schema.Property) string {
+		return mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired,
+			false /*acceptMapping*/)
+	})
 
 	// Produce an awaitable subclass.
 	fmt.Fprint(w, "\n")
@@ -892,22 +881,11 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
-	// Write out Python properties for each of the resource's properties.
-	for _, prop := range res.Properties {
-		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, false, false, !prop.IsRequired, false)
-		fmt.Fprintf(w, "    @property\n")
-		if pname == prop.Name {
-			fmt.Fprintf(w, "    @pulumi.getter\n")
-		} else {
-			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
-		}
-		fmt.Fprintf(w, "    def %s(self) -> pulumi.Output[%s]:\n", pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, "        ")
-		}
-		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
-	}
+	// Write out Python property getters for each of the resource's properties.
+	mod.genProperties(w, res.Properties, false /*setters*/, func(prop *schema.Property) string {
+		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+		return fmt.Sprintf("pulumi.Output[%s]", ty)
+	})
 
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
@@ -921,6 +899,47 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 `)
 
 	return w.String(), nil
+}
+
+func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, setters bool,
+	propType func(prop *schema.Property) string) {
+	// Write out Python properties for each property. If there is a property named "property", it will
+	// be emitted last to avoid conflicting with the built-in `@property` decorator function. We do
+	// this instead of importing `builtins` and fully qualifying the decorator as `@builtins.property`
+	// because that wouldn't address the problem if there was a property named "builtins".
+	emitProp := func(pname string, prop *schema.Property) {
+		ty := propType(prop)
+		fmt.Fprintf(w, "    @property\n")
+		if pname == prop.Name {
+			fmt.Fprintf(w, "    @pulumi.getter\n")
+		} else {
+			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
+		}
+		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, "        ")
+		}
+		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
+
+		if setters {
+			fmt.Fprintf(w, "    @%s.setter\n", pname)
+			fmt.Fprintf(w, "    def %s(self, value: %s):\n", pname, ty)
+			fmt.Fprintf(w, "        pulumi.set(self, %q, value)\n\n", pname)
+		}
+	}
+	var propNamedProperty *schema.Property
+	for _, prop := range properties {
+		pname := PyName(prop.Name)
+		// If there is a property named "property", skip it, and emit it last.
+		if pname == "property" {
+			propNamedProperty = prop
+			continue
+		}
+		emitProp(pname, prop)
+	}
+	if propNamedProperty != nil {
+		emitProp("property", propNamedProperty)
+	}
 }
 
 func (mod *modContext) writeAlias(w io.Writer, alias *schema.Alias) {
@@ -1646,28 +1665,6 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		printComment(w, obj.Comment, "    ")
 	}
 
-	genProp := func(w io.Writer, prop *schema.Property, setter bool) {
-		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
-		fmt.Fprintf(w, "    @property\n")
-		if pname == prop.Name {
-			fmt.Fprintf(w, "    @pulumi.getter\n")
-		} else {
-			fmt.Fprintf(w, "    @pulumi.getter(name=%q)\n", prop.Name)
-		}
-		fmt.Fprintf(w, "    def %s(self) -> %s:\n", pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, "        ")
-		}
-		fmt.Fprintf(w, "        return pulumi.get(self, %q)\n\n", pname)
-
-		if setter {
-			fmt.Fprintf(w, "    @%s.setter\n", pname)
-			fmt.Fprintf(w, "    def %s(self, value: %s):\n", pname, ty)
-			fmt.Fprintf(w, "        pulumi.set(self, %q, value)\n\n", pname)
-		}
-	}
-
 	// Generate an __init__ method.
 	fmt.Fprintf(w, "    def __init__(__self__")
 	// Bare `*` argument to force callers to use named arguments.
@@ -1732,9 +1729,9 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 	fmt.Fprintf(w, "\n")
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
-	for _, prop := range props {
-		genProp(w, prop, input /*setter*/)
-	}
+	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
+		return mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+	})
 
 	if !input && !mod.details(obj).functionType {
 		// The generated output class is a subclass of dict and contains translated keys

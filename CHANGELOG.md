@@ -6,6 +6,10 @@ CHANGELOG
 - Alpha version of the Automation API for Go
   [#4977](https://github.com/pulumi/pulumi/pull/4977)
 
+- Python SDK: Avoid raising an error when internal properties don't match the
+  expected type.
+  [#5251](https://github.com/pulumi/pulumi/pull/5251)
+
 ## 2.9.1 (2020-08-127
 
 - Python SDK: Avoid raising an error when an output has a type annotation of Any
@@ -31,6 +35,10 @@ CHANGELOG
 
 - SDK changes to support Python input/output classes
   [#5033](https://github.com/pulumi/pulumi/pull/5033)
+  
+- Added `--suppress-permalink` option to suppress the permalink output
+  (fixes [#4103](https://github.com/pulumi/pulumi/issues/4103))
+  [#5191](https://github.com/pulumi/pulumi/pull/5191)
 
 ## 2.8.2 (2020-08-07)
 

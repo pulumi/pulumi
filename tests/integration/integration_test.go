@@ -433,6 +433,40 @@ func TestStackOutputsSuppressed(t *testing.T) {
 	})
 }
 
+// TestPermaLinkIsSuppressed ensures that the state permalink is not displayed
+func TestPermaLinkSuppressed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                     filepath.Join("stack_outputs", "nodejs"),
+		Dependencies:            []string{"@pulumi/pulumi"},
+		Quick:                   false,
+		Verbose:                 true,
+		Stdout:                  stdout,
+		UpdateCommandlineFlags:  []string{"--suppress-permalink"},
+		PreviewCommandlineFlags: []string{"--suppress-permalink"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.NotContains(t, output, "View Live:")
+		},
+	})
+}
+
+// TestPermaLink ensures that a permalink is displayed by default
+func TestPermaLink(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        false,
+		Verbose:      true,
+		Stdout:       stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.Contains(t, output, "View Live:")
+		},
+	})
+}
+
 // TestStackParenting tests out that stacks and components are parented correctly.
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
