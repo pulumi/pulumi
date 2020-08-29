@@ -98,6 +98,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
@@ -203,14 +204,14 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	var stdout, stderr string
 	var code int
 	if s.Workspace().Program() != nil {
-		hostArgs := []string{"preview"}
+		hostArgs := []string{"preview", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoInline)}
 		hostArgs = append(hostArgs, sharedArgs...)
 		stdout, stderr, err = s.host(ctx, hostArgs, preOpts.Parallel)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
 	} else {
-		args := []string{"preview", "--json"}
+		args := []string{"preview", "--json", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
 		args = append(args, sharedArgs...)
 		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
 		if err != nil {
@@ -261,12 +262,16 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	var code int
 	if s.Workspace().Program() != nil {
 		// TODO need to figure out how to get error code...
-		stdout, stderr, err = s.host(ctx, sharedArgs, upOpts.Parallel)
+		stdout, stderr, err = s.host(
+			ctx,
+			append(sharedArgs, fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoInline)),
+			upOpts.Parallel,
+		)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 		}
 	} else {
-		args := []string{"up", "--yes", "--skip-preview"}
+		args := []string{"up", "--yes", "--skip-preview", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
 		args = append(args, sharedArgs...)
 		if upOpts.Parallel > 0 {
 			args = append(args, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
@@ -329,6 +334,11 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
 	}
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
 	if err != nil {
@@ -381,6 +391,11 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if destroyOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
 	}
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
 	if err != nil {

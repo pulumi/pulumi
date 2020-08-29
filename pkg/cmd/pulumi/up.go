@@ -47,6 +47,7 @@ func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var execKind string
 	var stack string
 	var configArray []string
 	var path bool
@@ -89,7 +90,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root)
+		m, err := getUpdateMetadata(message, root, execKind)
 		if err != nil {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
@@ -266,7 +267,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root)
+		m, err := getUpdateMetadata(message, root, execKind)
 		if err != nil {
 			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 		}
@@ -465,6 +466,12 @@ func newUpCmd() *cobra.Command {
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
+
+	// internal flag
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+
 	return cmd
 }
 

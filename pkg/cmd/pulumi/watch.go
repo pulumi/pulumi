@@ -32,6 +32,7 @@ import (
 func newWatchCmd() *cobra.Command {
 	var debug bool
 	var message string
+	var execKind string
 	var stack string
 	var configArray []string
 	var configPath bool
@@ -97,7 +98,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root)
+			m, err := getUpdateMetadata(message, root, execKind)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
@@ -186,6 +187,10 @@ func newWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
 
 	return cmd
 }

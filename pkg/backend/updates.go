@@ -85,6 +85,9 @@ const (
 	// CIPRNumber is the PR number, for which the current CI job may be executing.
 	// Combining this information with the `VCSRepoKind` will give us the PR URL.
 	CIPRNumber = "ci.pr.number"
+
+	// ExecutionKind indicates how the update was executed. One of "cli", "auto.local", or "auto.inline".
+	ExecutionKind = "exec.kind"
 )
 
 // UpdateInfo describes a previous update.

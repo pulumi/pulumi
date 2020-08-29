@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -486,7 +487,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(msg, root, execKind string) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
@@ -497,6 +498,8 @@ func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
+
+	addExecutionMetadataToEnvironment(m.Environment, execKind)
 
 	return m, nil
 }
@@ -646,6 +649,22 @@ func addCIMetadataToEnvironment(env map[string]string) {
 	addIfSet(backend.CIBuildURL, vars.BuildURL)
 	addIfSet(backend.CIPRHeadSHA, vars.SHA)
 	addIfSet(backend.CIPRNumber, vars.PRNumber)
+}
+
+// addExecutionMetadataToEnvironment populates the environment metadata bag with execution-related values.
+func addExecutionMetadataToEnvironment(env map[string]string, execKind string) {
+	// this comes from a hidden flag, so we restrict the set of allowed values
+	switch execKind {
+	case constant.ExecKindAutoInline:
+		break
+	case constant.ExecKindAutoLocal:
+		break
+	case constant.ExecKindCLI:
+		break
+	default:
+		execKind = constant.ExecKindCLI
+	}
+	env[backend.ExecutionKind] = execKind
 }
 
 type cancellationScope struct {
