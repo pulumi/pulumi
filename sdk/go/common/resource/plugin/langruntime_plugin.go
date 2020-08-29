@@ -16,7 +16,10 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -27,9 +30,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
+
+// HostOnlyRuntimeMode can be used to launch the engine in "host"-only mode. That is to say, the engine and
+// resource monitors will be spawned, but no language runtime will be created. This allows automated
+// scenarios that drive the engine from outside of the engine itself, such as, for example, a Node.js
+// program spawning, deploying, and tearing down the engine's resources.
+const HostOnlyRuntimeMode = "host"
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {
@@ -43,7 +53,12 @@ type langhost struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	options map[string]interface{}) (LanguageRuntime, error) {
-	// Load the plugin's path by using the standard workspace logic.
+	// If this is host-only mode, exit without spawning anything.
+	if runtime == HostOnlyRuntimeMode {
+		return &langhost{ctx: ctx, runtime: runtime}, nil
+	}
+
+	// For all other languages, load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
@@ -75,13 +90,19 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	}, nil
 }
 
-func (h *langhost) Runtime() string { return h.runtime }
+func (h *langhost) Runtime() string      { return h.runtime }
+func (h *langhost) IsHostOnlyMode() bool { return h.runtime == HostOnlyRuntimeMode }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
+	if h.IsHostOnlyMode() {
+		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) in host mode, exiting",
+			h.runtime, proj, info.Pwd, info.Program)
+		return nil, nil
+	}
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
 		Project: proj,
 		Pwd:     info.Pwd,
@@ -135,6 +156,14 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
+	// In host mode, we simply print the engine and monitor address to stderr and wait for a signal.
+	if h.IsHostOnlyMode() {
+		fmt.Fprintf(os.Stderr, "resmon: %s\n", info.MonitorAddress)
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		return "", false, nil
+	}
 	config := make(map[string]string)
 	for k, v := range info.Config {
 		config[k.String()] = v
@@ -168,31 +197,42 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 // GetPluginInfo returns this plugin's information.
 func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
-	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
-		return workspace.PluginInfo{}, rpcError
+
+	plugInfo := workspace.PluginInfo{
+		Name: h.runtime,
+		Kind: workspace.LanguagePlugin,
 	}
 
-	var version *semver.Version
-	if v := resp.Version; v != "" {
-		sv, err := semver.ParseTolerant(v)
+	var vers string
+	if h.IsHostOnlyMode() {
+		vers = version.Version
+	} else {
+		plugInfo.Path = h.plug.Bin
+
+		resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
+		if err != nil {
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
+			return workspace.PluginInfo{}, rpcError
+		}
+		vers = resp.Version
+	}
+
+	if vers != "" {
+		sv, err := semver.ParseTolerant(vers)
 		if err != nil {
 			return workspace.PluginInfo{}, err
 		}
-		version = &sv
+		plugInfo.Version = &sv
 	}
 
-	return workspace.PluginInfo{
-		Name:    h.runtime,
-		Path:    h.plug.Bin,
-		Kind:    workspace.LanguagePlugin,
-		Version: version,
-	}, nil
+	return plugInfo, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.
 func (h *langhost) Close() error {
-	return h.plug.Close()
+	if h.plug != nil {
+		return h.plug.Close()
+	}
+	return nil
 }

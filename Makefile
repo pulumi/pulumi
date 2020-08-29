@@ -94,7 +94,7 @@ test_containers_cron:
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
-travis_cron: all
-travis_push: only_build publish_tgz only_test publish_packages
-travis_pull_request: all
-travis_api: all
+travis_cron: install dist all
+travis_push: install dist publish_tgz only_test publish_packages
+travis_pull_request: install dist all
+travis_api: install dist all

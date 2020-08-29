@@ -664,11 +664,14 @@ func (s *cancellationScope) Close() {
 	<-s.done
 }
 
-type cancellationScopeSource int
+type cancellationScopeSource struct {
+	disableInterrupt bool
+}
 
-var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
+var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource{})
+var cancellationScopesWithoutInterrupt = backend.CancellationScopeSource(cancellationScopeSource{true})
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cs cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -679,28 +682,30 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 	go func() {
 		for range c.sigint {
-			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
-			// func.
-			if cancelContext.CancelErr() == nil {
-				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
-				if !isPreview {
-					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
-						"and other inconsistencies.\n" + colors.Reset
+			if !cs.disableInterrupt {
+				// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
+				// func.
+				if cancelContext.CancelErr() == nil {
+					message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+					if !isPreview {
+						message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
+							"and other inconsistencies.\n" + colors.Reset
+					}
+					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+						Message: message,
+						Color:   colors.Always,
+					})
+
+					cancelSource.Cancel()
+				} else {
+					message := colors.BrightRed + "^C received; terminating" + colors.Reset
+					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+						Message: message,
+						Color:   colors.Always,
+					})
+
+					cancelSource.Terminate()
 				}
-				events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
-				})
-
-				cancelSource.Cancel()
-			} else {
-				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
-				})
-
-				cancelSource.Terminate()
 			}
 		}
 		close(c.done)

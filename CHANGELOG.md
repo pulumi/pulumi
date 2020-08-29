@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Alpha version of the Automation API for Go
+  [#4977](https://github.com/pulumi/pulumi/pull/4977)
+
 - Python SDK: Avoid raising an error when internal properties don't match the
   expected type.
   [#5251](https://github.com/pulumi/pulumi/pull/5251)

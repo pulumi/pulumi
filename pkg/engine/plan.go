@@ -16,6 +16,8 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
@@ -123,6 +125,10 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		opts.Diag, opts.StatusDiag, info.TracingSpan)
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.UpdateOptions.IsHostCommand {
+		fmt.Fprintf(os.Stderr, "engine: %s\n", plugctx.Host.ServerAddr())
 	}
 
 	opts.trustDependencies = proj.TrustResourceDependencies()
