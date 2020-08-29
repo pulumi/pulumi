@@ -913,6 +913,20 @@ class DeserializationTests(unittest.TestCase):
         self.assertEqual(val["listWithMap"]["value"][0]["regular"], "a normal value")
         self.assertEqual(val["listWithMap"]["value"][0]["secret"], "a secret value")
 
+    def test_internal_property(self):
+        all_props = struct_pb2.Struct()
+        all_props["a"] = "b"
+        all_props["__defaults"] = []
+        all_props["c"] = {"foo": "bar", "__defaults": []}
+        all_props["__provider"] = "serialized_dynamic_provider"
+        all_props["__other"] = "baz"
+
+        val = rpc.deserialize_properties(all_props)
+        self.assertEqual({
+            "a": "b",
+            "c": {"foo": "bar"},
+            "__provider": "serialized_dynamic_provider",
+        }, val)
 
 @input_type
 class FooArgs:

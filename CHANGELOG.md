@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Python SDK: Avoid raising an error when internal properties don't match the
+  expected type.
+  [#5251](https://github.com/pulumi/pulumi/pull/5251)
 
 ## 2.9.1 (2020-08-127
 

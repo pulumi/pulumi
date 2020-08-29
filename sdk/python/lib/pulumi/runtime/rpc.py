@@ -255,6 +255,14 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
+        # Unilaterally skip properties considered internal by the Pulumi engine.
+        # These don't actually contribute to the exposed shape of the object, do
+        # not need to be passed back to the engine, and often will not match the
+        # expected type we are deserializing into.
+        # Keep "__provider" as it's the property name used by Python dynamic providers.
+        if k.startswith("__") and k != "__provider":
+            continue
+
         value = deserialize_property(v, keep_unknowns)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
