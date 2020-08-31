@@ -1878,18 +1878,16 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 			sanitizedPkg = pkg
 		}
 
+		splitPkg := strings.Split(sanitizedPkg, "/")
+
 		if depRoot != "" {
-			// Extract the package name from the full dependency
-			// Must be in the format `pulumi-foo`
-			re := regexp.MustCompile(`(pulumi*-[a-zA-Z0-9]*)+`)
-			pkgName := re.FindString(pkg)
-			if v == "" {
-				return fmt.Errorf("dependency %s not valid - must be a pulumi-foo package", pkg)
-			}
+			// Get the package name
+			// This is the value after "github.com/foo/bar"
+			pkgName := splitPkg[2]
 			depParts = append([]string{depRoot, pkgName, "sdk"})
 			dep = filepath.Join(depParts...)
 		} else {
-			depParts = append([]string{gopath, "src"}, strings.Split(sanitizedPkg, "/")...)
+			depParts = append([]string{gopath, "src"}, splitPkg...)
 			dep = filepath.Join(depParts...)
 		}
 
