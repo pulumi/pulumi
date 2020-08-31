@@ -34,6 +34,7 @@ func newHostCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var execKind string
 	var stack string
 	var configArray []string
 	var path bool
@@ -119,6 +120,11 @@ func newHostCmd() *cobra.Command {
 				return result.FromError(errors.Wrap(err, "getting stack configuration"))
 			}
 
+			m, err := getUpdateMetadata(message, root, execKind)
+			if err != nil {
+				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			}
+
 			operation := s.Update
 			if isPreview {
 				operation = s.Preview
@@ -130,7 +136,7 @@ func newHostCmd() *cobra.Command {
 				Proj:               proj,
 				Root:               root,
 				Opts:               opts,
-				M:                  &backend.UpdateMetadata{}, // TODO: let this be passed in.
+				M:                  m,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				Scopes:             cancellationScopesWithoutInterrupt,
@@ -232,5 +238,11 @@ func newHostCmd() *cobra.Command {
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
+
+	// internal flag
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+
 	return cmd
 }
