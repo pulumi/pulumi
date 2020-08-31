@@ -1822,6 +1822,36 @@ func getVirtualenvBinPath(cwd, bin string) (string, error) {
 	return virtualenvBinPath, nil
 }
 
+// getSanitizedPkg strips the version string from a go dep
+func getSanitizedPkg(pkg string) string {
+	re := regexp.MustCompile(`v\d`)
+	v := re.FindString(pkg)
+	if v != "" {
+		return strings.TrimSuffix(strings.Replace(pkg, v, "", -1), "/")
+	}
+	return pkg
+
+}
+
+func getRewritePath(pkg string, gopath string, depRoot string) string {
+
+	var depParts []string
+	sanitizedPkg := getSanitizedPkg(pkg)
+
+	splitPkg := strings.Split(sanitizedPkg, "/")
+
+	if depRoot != "" {
+		// Get the package name
+		// This is the value after "github.com/foo/bar"
+		pkgName := splitPkg[2]
+		depParts = append([]string{depRoot, pkgName, "sdk"})
+		return filepath.Join(depParts...)
+	}
+	depParts = append([]string{gopath, "src"}, splitPkg...)
+	return filepath.Join(depParts...)
+
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1865,31 +1895,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
 
-		var depParts []string
-		var dep string
-		var sanitizedPkg string
-
-		// Check if the dependency has version string
-		re := regexp.MustCompile(`v\d`)
-		v := re.FindString(pkg)
-		if v != "" {
-			sanitizedPkg = strings.Replace(pkg, v, "", -1)
-		} else {
-			sanitizedPkg = pkg
-		}
-
-		splitPkg := strings.Split(sanitizedPkg, "/")
-
-		if depRoot != "" {
-			// Get the package name
-			// This is the value after "github.com/foo/bar"
-			pkgName := splitPkg[2]
-			depParts = append([]string{depRoot, pkgName, "sdk"})
-			dep = filepath.Join(depParts...)
-		} else {
-			depParts = append([]string{gopath, "src"}, splitPkg...)
-			dep = filepath.Join(depParts...)
-		}
+		dep := getRewritePath(pkg, gopath, depRoot)
 
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)

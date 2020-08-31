@@ -66,3 +66,25 @@ func TestRunCommandLog(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }
+
+func TestSanitizedPkg(t *testing.T) {
+	v2 := getSanitizedPkg("github.com/pulumi/pulumi-docker/sdk/v2")
+	assert.Equal(t, "github.com/pulumi/pulumi-docker/sdk", v2)
+
+	v3 := getSanitizedPkg("github.com/pulumi/pulumi-aws/sdk/v3")
+	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk", v3)
+
+	nonVersion := getSanitizedPkg("github.com/pulumi/pulumi-auth/sdk")
+	assert.Equal(t, "github.com/pulumi/pulumi-auth/sdk", nonVersion)
+}
+
+func TestDepRootCalc(t *testing.T) {
+	var dep string
+
+	dep = getRewritePath("github.com/pulumi/pulumi-docker/sdk/v2", "/gopath", "")
+	assert.Equal(t, "/gopath/src/github.com/pulumi/pulumi-docker/sdk", dep)
+
+	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v3", "/gopath", "/my-go-src")
+	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", dep)
+
+}
