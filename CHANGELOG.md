@@ -10,6 +10,10 @@ CHANGELOG
   expected type.
   [#5251](https://github.com/pulumi/pulumi/pull/5251)
 
+- Added `--suppress-permalink` option to suppress the permalink output
+  (fixes [#4103](https://github.com/pulumi/pulumi/issues/4103))
+  [#5191](https://github.com/pulumi/pulumi/pull/5191)
+
 ## 2.9.1 (2020-08-127
 
 - Python SDK: Avoid raising an error when an output has a type annotation of Any
@@ -35,10 +39,6 @@ CHANGELOG
 
 - SDK changes to support Python input/output classes
   [#5033](https://github.com/pulumi/pulumi/pull/5033)
-  
-- Added `--suppress-permalink` option to suppress the permalink output
-  (fixes [#4103](https://github.com/pulumi/pulumi/issues/4103))
-  [#5191](https://github.com/pulumi/pulumi/pull/5191)
 
 ## 2.8.2 (2020-08-07)
 
@@ -51,7 +51,6 @@ CHANGELOG
   secrets provider would sort the config alphabetically and new stacks created
   would get created with an empty map `{}` in the config file
   [#5132](https://github.com/pulumi/pulumi/pull/5132)
-
 
 ## 2.8.1 (2020-08-05)
 
