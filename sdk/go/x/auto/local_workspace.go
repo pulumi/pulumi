@@ -42,6 +42,7 @@ type LocalWorkspace struct {
 	workDir    string
 	pulumiHome string
 	program    pulumi.RunFunc
+	envvars    map[string]string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -244,6 +245,47 @@ func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (Config
 	return cfg, nil
 }
 
+// GetEnvVars returns the environment values scoped to the current workspace.
+func (l *LocalWorkspace) GetEnvVars() map[string]string {
+	if l.envvars == nil {
+		return nil
+	}
+	return l.envvars
+}
+
+// SetEnvVars sets the specified map of environment values scoped to the current workspace.
+// These values will be passed to all Workspace and Stack level commands.
+func (l *LocalWorkspace) SetEnvVars(envvars map[string]string) error {
+	if envvars == nil {
+		return errors.New("unable to set nil environment values")
+	}
+	if l.envvars == nil {
+		l.envvars = map[string]string{}
+	}
+	for k, v := range envvars {
+		l.envvars[k] = v
+	}
+	return nil
+}
+
+// SetEnvVar sets the specified environment value scoped to the current workspace.
+// This value will be passed to all Workspace and Stack level commands.
+func (l *LocalWorkspace) SetEnvVar(key, value string) {
+	if l.envvars == nil {
+		l.envvars = map[string]string{}
+	}
+	l.envvars[key] = value
+}
+
+// UnsetEnvVar unsets the specified environment value scoped to the current workspace.
+// This value will be removed from all Workspace and Stack level commands.
+func (l *LocalWorkspace) UnsetEnvVar(key string) {
+	if l.envvars == nil {
+		return
+	}
+	delete(l.envvars, key)
+}
+
 // WorkDir returns the working directory to run Pulumi CLI commands.
 // LocalWorkspace expects that this directory contains a Pulumi.yaml file.
 // For "Inline" Pulumi programs created from NewStackInlineSource, a Pulumi.yaml
@@ -409,6 +451,12 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 	if l.PulumiHome() != "" {
 		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, l.PulumiHome())
 		env = append(env, homeEnv)
+	}
+	if envvars := l.GetEnvVars(); envvars != nil {
+		for k, v := range envvars {
+			e := []string{k, v}
+			env = append(env, strings.Join(e, "="))
+		}
 	}
 	return runPulumiCommandSync(ctx, l.WorkDir(), env, args...)
 }

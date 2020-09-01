@@ -226,6 +226,47 @@ func ExampleLocalWorkspace_GetConfig() {
 	fmt.Println(cfgVal.Secret)
 }
 
+func ExampleLocalWorkspace_GetEnvVars() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	// get all environment values from the workspace for the stack
+	e := w.GetEnvVars()
+	for k, v := range e {
+		fmt.Println(k)
+		fmt.Println(v)
+	}
+}
+
+func ExampleLocalWorkspace_SetEnvVars() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	// set the environment values on the workspace for the stack
+	e := map[string]string{
+		"FOO": "bar",
+	}
+	w.SetEnvVars(e)
+}
+
+func ExampleLocalWorkspace_SetEnvVar() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	// set the environment value on the workspace for the stack
+	w.SetEnvVar("FOO", "bar")
+}
+
+func ExampleLocalWorkspace_UnsetEnvVar() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	// set the environment value on the workspace for the stack
+	w.SetEnvVar("FOO", "bar")
+	// unset the environment value on the workspace for the stack
+	w.UnsetEnvVar("FOO")
+}
+
 func ExampleLocalWorkspace_InstallPlugin() {
 	ctx := context.Background()
 	// create a workspace from a local project
