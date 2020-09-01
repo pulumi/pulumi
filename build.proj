@@ -307,7 +307,7 @@
     <Error Text="examples tests (.\tests\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\integration"
+    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) -tags=all .\integration"
           IgnoreExitCode="true"
           WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />
