@@ -481,6 +481,50 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s\n", argsFlags, argsType,
 		optionsType, trailingBrace)
 
+	genInputProps := func() error {
+		for _, prop := range r.InputProperties {
+			if prop.IsRequired {
+				fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
+				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
+				fmt.Fprintf(w, "            }\n")
+			}
+		}
+		for _, prop := range r.InputProperties {
+			arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+
+			prefix := "            "
+			if prop.ConstValue != nil {
+				cv, err := mod.getConstValue(prop.ConstValue)
+				if err != nil {
+					return err
+				}
+				arg = cv
+			} else {
+				if prop.DefaultValue != nil {
+					dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+					if err != nil {
+						return err
+					}
+					// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
+					// Specifically, this doesn't work right if the first value is set to false but the default value
+					// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
+					arg = fmt.Sprintf("(%s) || %s", arg, dv)
+					if mod.compatibility == kubernetes20 {
+						arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
+					}
+				}
+
+				// provider properties must be marshaled as JSON strings.
+				if r.IsProvider && !isStringType(prop.Type) {
+					arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+				}
+			}
+			fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+		}
+
+		return nil
+	}
+
 	if !r.IsProvider {
 		if r.StateInputs != nil {
 			if r.DeprecationMessage != "" {
@@ -501,50 +545,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-
-		genInputProps := func() error {
-			for _, prop := range r.InputProperties {
-				if prop.IsRequired {
-					fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
-					fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
-					fmt.Fprintf(w, "            }\n")
-				}
-			}
-			for _, prop := range r.InputProperties {
-				arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
-
-				prefix := "            "
-				if prop.ConstValue != nil {
-					cv, err := mod.getConstValue(prop.ConstValue)
-					if err != nil {
-						return err
-					}
-					arg = cv
-				} else {
-					if prop.DefaultValue != nil {
-						dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
-						if err != nil {
-							return err
-						}
-						// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
-						// Specifically, this doesn't work right if the first value is set to false but the default value
-						// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
-						arg = fmt.Sprintf("(%s) || %s", arg, dv)
-						if mod.compatibility == kubernetes20 {
-							arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
-						}
-					}
-
-					// provider properties must be marshaled as JSON strings.
-					if r.IsProvider && !isStringType(prop.Type) {
-						arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
-					}
-				}
-				fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
-			}
-
-			return nil
-		}
 
 		if r.StateInputs != nil {
 			// The lookup case:
@@ -576,6 +576,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	} else {
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        {\n")
+		err := genInputProps()
+		if err != nil {
+			return err
+		}
 	}
 	var secretProps []string
 	for _, prop := range r.Properties {
