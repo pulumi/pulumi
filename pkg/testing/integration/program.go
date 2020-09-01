@@ -1823,7 +1823,8 @@ func getVirtualenvBinPath(cwd, bin string) (string, error) {
 }
 
 // getSanitizedPkg strips the version string from a go dep
-func getSanitizedPkg(pkg string) string {
+// Note: most of the pulumi modules don't use major version subdirectories for modules
+func getSanitizedModulePath(pkg string) string {
 	re := regexp.MustCompile(`v\d`)
 	v := re.FindString(pkg)
 	if v != "" {
@@ -1836,7 +1837,7 @@ func getSanitizedPkg(pkg string) string {
 func getRewritePath(pkg string, gopath string, depRoot string) string {
 
 	var depParts []string
-	sanitizedPkg := getSanitizedPkg(pkg)
+	sanitizedPkg := getSanitizedModulePath(pkg)
 
 	splitPkg := strings.Split(sanitizedPkg, "/")
 

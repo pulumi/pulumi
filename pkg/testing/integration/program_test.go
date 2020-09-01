@@ -68,13 +68,13 @@ func TestRunCommandLog(t *testing.T) {
 }
 
 func TestSanitizedPkg(t *testing.T) {
-	v2 := getSanitizedPkg("github.com/pulumi/pulumi-docker/sdk/v2")
+	v2 := getSanitizedModulePath("github.com/pulumi/pulumi-docker/sdk/v2")
 	assert.Equal(t, "github.com/pulumi/pulumi-docker/sdk", v2)
 
-	v3 := getSanitizedPkg("github.com/pulumi/pulumi-aws/sdk/v3")
+	v3 := getSanitizedModulePath("github.com/pulumi/pulumi-aws/sdk/v3")
 	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk", v3)
 
-	nonVersion := getSanitizedPkg("github.com/pulumi/pulumi-auth/sdk")
+	nonVersion := getSanitizedModulePath("github.com/pulumi/pulumi-auth/sdk")
 	assert.Equal(t, "github.com/pulumi/pulumi-auth/sdk", nonVersion)
 }
 
