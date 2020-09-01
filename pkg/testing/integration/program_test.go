@@ -87,4 +87,10 @@ func TestDepRootCalc(t *testing.T) {
 	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v3", "/gopath", "/my-go-src")
 	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", dep)
 
+	dep = getRewritePath("github.com/example/foo/pkg/v2", "/gopath", "/my-go-src")
+	assert.Equal(t, "/my-go-src/foo/pkg", dep)
+
+	dep = getRewritePath("github.com/example/foo/v2", "/gopath", "/my-go-src")
+	assert.Equal(t, "/my-go-src/foo", dep)
+
 }
