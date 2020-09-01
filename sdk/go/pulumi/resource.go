@@ -229,7 +229,9 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 func merge(opts ...ResourceOption) *resourceOptions {
 	options := &resourceOptions{}
 	for _, o := range opts {
-		o.applyResourceOption(options)
+		if o != nil {
+			o.applyResourceOption(options)
+		}
 	}
 	return options
 }
