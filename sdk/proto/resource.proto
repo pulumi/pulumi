@@ -58,7 +58,7 @@ message ReadResourceRequest {
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 11;           // a list of additional URNs that shoud be considered the same.
+    repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -99,16 +99,23 @@ message RegisterResourceRequest {
     CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
     bool deleteBeforeReplaceDefined = 18;                       // true if the deleteBeforeReplace property should be treated as defined even if it is false.
     bool supportsPartialValues = 19;                            // true if the request is from an SDK that supports partially-known properties during preview.
+    bool remote = 21;                                           // true if the resource is a plugin-managed component resource.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
 // auto-assigned URN, the provider-assigned ID, and any other properties initialized by the engine.
 message RegisterResourceResponse {
-    string urn = 1;                    // the URN assigned by the engine.
-    string id = 2;                     // the unique ID assigned by the provider.
-    google.protobuf.Struct object = 3; // the resulting object properties, including provider defaults.
-    bool stable = 4;                   // if true, the object's state is stable and may be trusted not to change.
-    repeated string stables = 5;       // an optional list of guaranteed-stable properties.
+    // PropertyDependencies describes the resources that a particular property depends on.
+    message PropertyDependencies {
+        repeated string urns = 1; // A list of URNs this property depends on.
+    }
+
+    string urn = 1;                                             // the URN assigned by the engine.
+    string id = 2;                                              // the unique ID assigned by the provider.
+    google.protobuf.Struct object = 3;                          // the resulting object properties, including provider defaults.
+    bool stable = 4;                                            // if true, the object's state is stable and may be trusted not to change.
+    repeated string stables = 5;                                // an optional list of guaranteed-stable properties.
+    map<string, PropertyDependencies> propertyDependencies = 6; // a map from property keys to the dependencies of the property.
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.

@@ -89,6 +89,10 @@ func (r Reference) ID() resource.ID {
 
 // String returns the string representation of this provider reference.
 func (r Reference) String() string {
+	if r.urn == "" && r.id == "" {
+		return ""
+	}
+
 	return string(r.urn) + resource.URNNameDelimiter + string(r.id)
 }
 

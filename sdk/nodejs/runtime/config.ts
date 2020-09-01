@@ -27,6 +27,16 @@ export function allConfig(): {[key: string]: string} {
 }
 
 /**
+ * setAllConfig overwrites the config map.
+ */
+export function setAllConfig(c: {[key: string]: string}) {
+    const obj: {[key: string]: string} = {};
+    for (const k of Object.keys(c)) {
+        obj[cleanKey(k)] = c[k];
+    }
+}
+
+/**
  * setConfig sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {

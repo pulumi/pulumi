@@ -148,6 +148,11 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
+}
+
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 

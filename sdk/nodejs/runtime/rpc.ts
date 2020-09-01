@@ -1,4 +1,3 @@
-// Copyright 2016-2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +14,13 @@
 import * as asset from "../asset";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, Resource } from "../resource";
+import { ComponentResource, CustomResource, Resource, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean) => void>;
+export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[]) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -51,11 +50,13 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         let resolveValue: (v: any) => void;
         let resolveIsKnown: (v: boolean) => void;
         let resolveIsSecret: (v: boolean) => void;
+        let resolveDeps: (v: Resource[]) => void;
 
-        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) => {
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = []) => {
             resolveValue(v);
             resolveIsKnown(isKnown);
             resolveIsSecret(isSecret);
+            resolveDeps(deps);
         };
 
         const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
@@ -70,7 +71,9 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsSecret = resolve),
                 `transferIsSecret(${label}, ${k}, ${props[k]})`),
-            Promise.resolve(onto));
+            debuggablePromise(
+                new Promise<Resource[]>(resolve => resolveDeps = resolve),
+                `transferDeps(${label}, ${k}, ${propString})`));
     }
 
     return resolvers;
@@ -143,8 +146,8 @@ export function deserializeProperties(outputsStruct: any): any {
  * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean) => void>,
-    t: string, name: string, allProps: any): void {
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean, deps?: Resource[]) => void>,
+    t: string, name: string, allProps: any, deps: Record<string, Resource[]>): void {
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
     for (const k of Object.keys(allProps)) {
@@ -183,7 +186,7 @@ export function resolveProperties(
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
             // present during previews (i.e. isDryRun() will be true).
-            resolve(value, /*isKnown*/ true, isSecret);
+            resolve(value, /*isKnown*/ true, isSecret, deps[k]);
         }
         catch (err) {
             throw new Error(
@@ -375,14 +378,14 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 /**
  * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special key set).
  */
-function isRpcSecret(obj: any): boolean {
+export function isRpcSecret(obj: any): boolean {
     return obj && obj[specialSigKey] === specialSecretSig;
 }
 
 /**
  * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a secret.
  */
-function unwrapRpcSecret(obj: any): any {
+export function unwrapRpcSecret(obj: any): any {
     if (!isRpcSecret(obj)) {
         return obj;
     }

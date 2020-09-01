@@ -60,7 +60,7 @@ type provider struct {
 	cfgerr        error                            // non-nil if a configure call fails.
 	cfgknown      bool                             // true if all configuration values are known.
 	cfgdone       chan bool                        // closed when configuration has completed.
-	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
+	acceptSecrets bool                             // true if this plugin can consume strongly-typed secrets.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -154,6 +154,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:        fmt.Sprintf("%s.olds", label),
 		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -162,6 +163,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:        fmt.Sprintf("%s.news", label),
 		KeepUnknowns: allowUnknowns,
+		KeepSecrets:  p.acceptSecrets,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -192,6 +194,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 			Label:          fmt.Sprintf("%s.inputs", label),
 			KeepUnknowns:   allowUnknowns,
 			RejectUnknowns: !allowUnknowns,
+			KeepSecrets:    true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -252,6 +255,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:        fmt.Sprintf("%s.olds", label),
 		KeepUnknowns: true,
+		KeepSecrets:  p.acceptSecrets,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -260,6 +264,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:        fmt.Sprintf("%s.news", label),
 		KeepUnknowns: true,
+		KeepSecrets:  p.acceptSecrets,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -446,6 +451,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	minputs, err := MarshalProperties(inputs, MarshalOptions{
 		Label:        fmt.Sprintf("%s.inputs", label),
 		KeepUnknowns: true,
+		KeepSecrets:  true,
 	})
 	if err != nil {
 		p.cfgerr = errors.Wrapf(err, "marshaling provider inputs")
@@ -467,7 +473,8 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
+		p.acceptSecrets = resp.GetAcceptSecrets()
+		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
 
@@ -955,6 +962,114 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 
 	logging.V(7).Infof("%s success", label)
 	return resource.StatusOK, nil
+}
+
+// Construct allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
+func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
+
+	contract.Assert(typ != "")
+	contract.Assert(name != "")
+	contract.Assert(inputs != nil)
+
+	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), typ, name, parent)
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(inputs))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	// We should only be calling Construct if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
+	if !p.acceptSecrets {
+		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
+	}
+
+	// Marshal the input properties.
+	minputs, err := MarshalProperties(inputs, MarshalOptions{
+		Label:       fmt.Sprintf("%s.inputs", label),
+		KeepSecrets: p.acceptSecrets,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	// Marshal the aliases.
+	aliases := make([]string, len(options.Aliases))
+	for i, alias := range options.Aliases {
+		aliases[i] = string(alias)
+	}
+
+	// Marshal the dependencies.
+	dependencies := make([]string, len(options.Dependencies))
+	for i, dep := range options.Dependencies {
+		dependencies[i] = string(dep)
+	}
+
+	// Marshal the property dependencies.
+	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
+	for name, dependencies := range options.PropertyDependencies {
+		urns := make([]string, len(dependencies))
+		for i, urn := range dependencies {
+			urns[i] = string(urn)
+		}
+		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
+	}
+
+	// Marshal the config.
+	config := map[string]string{}
+	for k, v := range info.Config {
+		config[k.String()] = v
+	}
+
+	resp, err := client.Construct(p.ctx.Request(), &pulumirpc.ConstructRequest{
+		Project:           info.Project,
+		Stack:             info.Stack,
+		Config:            config,
+		DryRun:            info.DryRun,
+		Parallel:          int32(info.Parallel),
+		MonitorEndpoint:   info.MonitorAddress,
+		Type:              string(typ),
+		Name:              string(name),
+		Parent:            string(parent),
+		Inputs:            minputs,
+		Protect:           options.Protect,
+		Providers:         options.Providers,
+		InputDependencies: inputDependencies,
+		Aliases:           aliases,
+		Dependencies:      dependencies,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
+		Label:        fmt.Sprintf("%s.outputs", label),
+		KeepUnknowns: info.DryRun,
+		KeepSecrets:  true,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	outputDependencies := map[resource.PropertyKey][]resource.URN{}
+	for k, rpcDeps := range resp.GetStateDependencies() {
+		urns := make([]resource.URN, len(rpcDeps.Urns))
+		for i, d := range rpcDeps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		outputDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	return ConstructResult{
+		URN:                resource.URN(resp.GetUrn()),
+		Outputs:            outputs,
+		OutputDependencies: outputDependencies,
+	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
