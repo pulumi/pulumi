@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var Dirs = []string{
+	"simple",
+}
+
 func Validator(language string) func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	dynamicResName := "pulumi-" + language + ":dynamic:Resource"
 	return func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

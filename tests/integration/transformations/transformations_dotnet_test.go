@@ -13,12 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dirs = []string{
-	"simple",
-}
+
 
 func TestDotNetTransformations(t *testing.T) {
-	for _, dir := range dirs {
+	for _, dir := range Dirs {
 		d := filepath.Join("dotnet", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
