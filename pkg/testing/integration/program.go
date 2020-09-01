@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,6 +32,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -1821,6 +1822,42 @@ func getVirtualenvBinPath(cwd, bin string) (string, error) {
 	return virtualenvBinPath, nil
 }
 
+// getSanitizedPkg strips the version string from a go dep
+// Note: most of the pulumi modules don't use major version subdirectories for modules
+func getSanitizedModulePath(pkg string) string {
+	re := regexp.MustCompile(`v\d`)
+	v := re.FindString(pkg)
+	if v != "" {
+		return strings.TrimSuffix(strings.Replace(pkg, v, "", -1), "/")
+	}
+	return pkg
+
+}
+
+func getRewritePath(pkg string, gopath string, depRoot string) string {
+
+	var depParts []string
+	sanitizedPkg := getSanitizedModulePath(pkg)
+
+	splitPkg := strings.Split(sanitizedPkg, "/")
+
+	if depRoot != "" {
+		// Get the package name
+		// This is the value after "github.com/foo/bar"
+		repoName := splitPkg[2]
+		basePath := splitPkg[len(splitPkg)-1]
+		if basePath == repoName {
+			depParts = append([]string{depRoot, repoName})
+		} else {
+			depParts = append([]string{depRoot, repoName, basePath})
+		}
+		return filepath.Join(depParts...)
+	}
+	depParts = append([]string{gopath, "src"}, splitPkg...)
+	return filepath.Join(depParts...)
+
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1838,6 +1875,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
+
+	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
@@ -1861,14 +1900,9 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
-		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
-		dep := filepath.Join(depParts...)
-		if strings.Contains(dep, "v2") {
-			// This is something we need to do for a local override. We effectively
-			// map a pkg to a folder location on disk. Local disk doesn't have a v2
-			// in it's path so we need to skip it
-			dep = strings.Replace(dep, "v2", "", -1)
-		}
+
+		dep := getRewritePath(pkg, gopath, depRoot)
+
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
