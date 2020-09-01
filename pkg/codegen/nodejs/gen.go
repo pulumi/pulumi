@@ -555,6 +555,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
+			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 			err := genInputProps()
 			if err != nil {
 				return err
