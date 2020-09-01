@@ -569,7 +569,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 			// The get case:
 			fmt.Fprintf(w, "        } else {\n")
-			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 			for _, prop := range r.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
 			}
