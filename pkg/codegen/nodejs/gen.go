@@ -502,6 +502,50 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
 
+		genInputProps := func() error {
+			for _, prop := range r.InputProperties {
+				if prop.IsRequired {
+					fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
+					fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
+					fmt.Fprintf(w, "            }\n")
+				}
+			}
+			for _, prop := range r.InputProperties {
+				arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+
+				prefix := "            "
+				if prop.ConstValue != nil {
+					cv, err := mod.getConstValue(prop.ConstValue)
+					if err != nil {
+						return err
+					}
+					arg = cv
+				} else {
+					if prop.DefaultValue != nil {
+						dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+						if err != nil {
+							return err
+						}
+						// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
+						// Specifically, this doesn't work right if the first value is set to false but the default value
+						// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
+						arg = fmt.Sprintf("(%s) || %s", arg, dv)
+						if mod.compatibility == kubernetes20 {
+							arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
+						}
+					}
+
+					// provider properties must be marshaled as JSON strings.
+					if r.IsProvider && !isStringType(prop.Type) {
+						arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+					}
+				}
+				fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+			}
+
+			return nil
+		}
+
 		if r.StateInputs != nil {
 			// The lookup case:
 			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
@@ -511,53 +555,28 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
-		} else {
-			// The creation case:
-			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
-		}
-		fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
-	} else {
-		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		fmt.Fprintf(w, "        {\n")
-	}
-	for _, prop := range r.InputProperties {
-		if prop.IsRequired {
-			fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
-			fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
-			fmt.Fprintf(w, "            }\n")
-		}
-	}
-	for _, prop := range r.InputProperties {
-		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
-
-		prefix := "            "
-		if prop.ConstValue != nil {
-			cv, err := mod.getConstValue(prop.ConstValue)
+			err := genInputProps()
 			if err != nil {
 				return err
 			}
-			arg = cv
 		} else {
-			if prop.DefaultValue != nil {
-				dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
-				if err != nil {
-					return err
-				}
-				// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
-				// Specifically, this doesn't work right if the first value is set to false but the default value
-				// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
-				arg = fmt.Sprintf("(%s) || %s", arg, dv)
-				if mod.compatibility == kubernetes20 {
-					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
-				}
+			// The creation case:
+			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
+			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
+			err := genInputProps()
+			if err != nil {
+				return err
 			}
-
-			// provider properties must be marshaled as JSON strings.
-			if r.IsProvider && !isStringType(prop.Type) {
-				arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+			// The get case:
+			fmt.Fprintf(w, "        } else {\n")
+			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
+			for _, prop := range r.Properties {
+				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
 			}
 		}
-		fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+	} else {
+		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        {\n")
 	}
 	var secretProps []string
 	for _, prop := range r.Properties {
