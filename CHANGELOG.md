@@ -4,6 +4,8 @@ CHANGELOG
 ## HEAD (Unreleased)
 _(none)_
 
+- feat(autoapi): add workspace scoped envvars to LocalWorkspace and Stack
+  [#5275](https://github.com/pulumi/pulumi/pull/5275)
 - refactor(autoapi-gitrepo): use Workspace in SetupFn callback
   [#5279](https://github.com/pulumi/pulumi/pull/5279)
 
