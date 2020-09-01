@@ -388,7 +388,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     * @param opts Optional settings to control the behavior of the CustomResource.\n")
 		fmt.Fprintf(w, "     */\n")
 
-		stateParam, stateRef := "", "undefined, "
+		stateParam, stateRef := "", "undefined as any, "
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
@@ -474,6 +474,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.IsProvider {
 		trailingBrace, optionsType = " {", "ResourceOptions"
 	}
+	if r.StateInputs == nil {
+		trailingBrace = " {"
+	}
 
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
@@ -542,11 +545,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			// conditional state into sensible variables using dynamic type tests.
 			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
 				argsType, stateType)
-		} else {
-			// Otherwise, write out a constructor with no state and required opts, then another with all optional params.
-			fmt.Fprintf(w, "    constructor(name: string, state: undefined, opts: pulumi.CustomResourceOptions)\n")
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s, opts?: pulumi.CustomResourceOptions) {\n",
-				argsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
@@ -570,7 +568,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		} else {
 			// The creation case:
 			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
-			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 			err := genInputProps()
 			if err != nil {
 				return err
