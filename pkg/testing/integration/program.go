@@ -1845,7 +1845,7 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 		// Get the package name
 		// This is the value after "github.com/foo/bar"
 		repoName := splitPkg[2]
-		basePath := filepath.Base(sanitizedPkg)
+		basePath := splitPkg[len(splitPkg)-1]
 		if basePath == repoName {
 			depParts = append([]string{depRoot, repoName})
 		} else {
