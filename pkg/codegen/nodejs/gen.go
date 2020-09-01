@@ -522,6 +522,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 		}
 
+		for _, prop := range r.Properties {
+			prefix := "            "
+			if !ins.Has(prop.Name) {
+				fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
+			}
+		}
+
 		return nil
 	}
 
@@ -584,11 +591,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 	var secretProps []string
 	for _, prop := range r.Properties {
-		prefix := "            "
-		if !ins.Has(prop.Name) {
-			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
-		}
-
 		if prop.Secret {
 			secretProps = append(secretProps, prop.Name)
 		}
