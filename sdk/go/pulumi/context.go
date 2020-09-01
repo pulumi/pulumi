@@ -161,7 +161,9 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	options := &invokeOptions{}
 	for _, o := range opts {
-		o.applyInvokeOption(options)
+		if o != nil {
+			o.applyInvokeOption(options)
+		}
 	}
 
 	var providerRef string
@@ -534,10 +536,7 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 		res := transformation(args)
 		if res != nil {
-			resOptions := &resourceOptions{}
-			for _, o := range res.Opts {
-				o.applyResourceOption(resOptions)
-			}
+			resOptions := merge(res.Opts...)
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
