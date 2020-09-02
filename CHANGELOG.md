@@ -4,6 +4,9 @@ CHANGELOG
 ## HEAD (Unreleased)
 _(none)_
 
+- refactor(autoapi-gitrepo): use Workspace in SetupFn callback
+  [#5279](https://github.com/pulumi/pulumi/pull/5279)
+
 ## 2.9.2 (2020-08-31)
 
 - Alpha version of the Automation API for Go

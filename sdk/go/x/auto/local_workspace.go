@@ -470,6 +470,14 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		}
 	}
 
+	// setup
+	if lwOpts.Repo != nil && lwOpts.Repo.Setup != nil {
+		err := lwOpts.Repo.Setup(ctx, l)
+		if err != nil {
+			return nil, errors.Wrap(err, "error while running setup function")
+		}
+	}
+
 	return l, nil
 }
 
@@ -519,8 +527,8 @@ type GitRepo struct {
 }
 
 // SetupFn is a function to execute after enlisting in a git repo.
-// It is called with a PATH containing the pulumi program post-enlistment.
-type SetupFn func(context.Context, string) error
+// It is called with the workspace after all other options have been processed.
+type SetupFn func(context.Context, Workspace) error
 
 // WorkDir is the directory to execute commands from and store state.
 func WorkDir(workDir string) LocalWorkspaceOption {

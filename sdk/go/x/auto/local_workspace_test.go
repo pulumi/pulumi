@@ -228,9 +228,9 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
-		Setup: func(ctx context.Context, path string) error {
+		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
-			cmd.Dir = path
+			cmd.Dir = workspace.WorkDir()
 			return cmd.Run()
 		},
 	}

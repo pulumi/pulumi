@@ -60,14 +60,5 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	}
 
 	workDir = filepath.Join(workDir, relPath)
-
-	// setup
-	if repoArgs.Setup != nil {
-		err = repoArgs.Setup(ctx, workDir)
-		if err != nil {
-			return "", errors.Wrap(err, "error while running setup function")
-		}
-	}
-
 	return workDir, nil
 }
