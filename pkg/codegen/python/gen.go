@@ -1819,6 +1819,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	seenTypes := codegen.Set{}
 	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 
+	ignorePyNamePanic = info.IgnorePyNamePanic
+
 	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
 

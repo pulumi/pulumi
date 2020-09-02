@@ -42,6 +42,8 @@ var useLegacyName = codegen.StringSet{
 	"GetUptimeCheckIPs": struct{}{}, // GCP
 }
 
+var ignorePyNamePanic = false
+
 // excludeFromPanic are names that are ok to have different results from PyName and PyNameLegacy.
 var excludeFromPanic = codegen.StringSet{
 	// The following all show up as properties of nested input/output classes only, so it's OK that the current
@@ -70,13 +72,13 @@ var excludeFromPanic = codegen.StringSet{
 }
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
-// It panics if the result is different from PyNameLegacy, unless name is in excludeFromPanic, to help catch
-// unintended breaking changes.
+// It panics if the result is different from PyNameLegacy, unless name is in excludeFromPanic or
+// ignorePyNamePanic is true, to help catch unintended breaking changes.
 // TODO[pulumi/pulumi#5201]: Once all providers have been updated to use this version of the codegen (or later),
 // we can go back and remove the panic.
 func PyName(name string) string {
 	current := pyName(name, useLegacyName.Has(name))
-	if excludeFromPanic.Has(name) {
+	if ignorePyNamePanic || excludeFromPanic.Has(name) {
 		return current
 	}
 	legacy := PyNameLegacy(name)
