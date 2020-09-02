@@ -49,7 +49,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		go func() {
 			_, err := s.Up(ctx)
 			c <- err

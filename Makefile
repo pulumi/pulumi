@@ -99,5 +99,7 @@ test_containers_cron:
 .PHONY: travis_cron travis_push travis_pull_request travis_api
 travis_cron: install dist all
 travis_push: install dist publish_tgz only_test publish_packages
-travis_pull_request: install dist all
+travis_pull_request:
+	$(call STEP_MESSAGE)
+	@echo moved to GitHub Actions
 travis_api: install dist all

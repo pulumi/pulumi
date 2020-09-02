@@ -137,7 +137,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 func rangeIn(low, hi int) int {
 	rand.Seed(time.Now().UnixNano())
-	return low + rand.Intn(hi-low)
+	return low + rand.Intn(hi-low) //nolint:gosec
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
@@ -419,6 +419,8 @@ func TestNewStackInlineSource(t *testing.T) {
 }
 
 func TestNestedStackFails(t *testing.T) {
+	// FIXME: see https://github.com/pulumi/pulumi/issues/5301
+	t.Skip("skipping test, see pulumi/pulumi#5301")
 	testCtx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	parentFQSN := FullyQualifiedStackName(pulumiOrg, "parent", sName)
@@ -452,7 +454,10 @@ func TestNestedStackFails(t *testing.T) {
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	_, err = s.Up(testCtx)
+	result, err := s.Up(testCtx)
+
+	t.Log(result)
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "nested stack operations are not supported")
 

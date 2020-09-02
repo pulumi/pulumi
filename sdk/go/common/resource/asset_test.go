@@ -256,7 +256,7 @@ func TestAssetSerialize(t *testing.T) {
 
 func tempArchive(prefix string, fill bool) (string, error) {
 	for {
-		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32()))
+		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32())) //nolint:gosec
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 		switch {
 		case os.IsExist(err):
