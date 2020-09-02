@@ -60,6 +60,8 @@
 //
 //	- Using pulumi behind a REST or GRPC API
 //
+//  - Debugging Pulumi programs (by using a single main entrypoint with "inline" programs)
+//
 // To enable a broad range of runtime customization the API defines a `Workspace` interface.
 // A Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
 // Workspaces are used to manage the execution environment, providing various utilities such as plugin
