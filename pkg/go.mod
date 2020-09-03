@@ -36,6 +36,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/sdk/v2 v2.2.1
 	github.com/rjeczalik/notify v0.9.2
+	github.com/ryboe/q v1.0.12 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.1.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
