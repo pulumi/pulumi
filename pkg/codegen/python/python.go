@@ -69,6 +69,8 @@ var excludeFromPanic = codegen.StringSet{
 	"GuestConfigurationHCRPAssignment":       struct{}{}, // Azure
 	"GetGuestConfigurationHCRPAssignment":    struct{}{}, // Azure
 	"clusterUsersGroupDNs":                   struct{}{}, // Azure
+	"targetRUs":                              struct{}{}, // Azure
+	"boostRUs":                               struct{}{}, // Azure
 }
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
