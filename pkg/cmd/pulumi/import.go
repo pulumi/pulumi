@@ -267,6 +267,7 @@ func newImportCmd() *cobra.Command {
 	var showConfig bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressPermaLink bool
 	var yes bool
 
 	cmd := &cobra.Command{
@@ -373,13 +374,14 @@ func newImportCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:           cmdutil.GetGlobalColorization(),
-				ShowConfig:      showConfig,
-				SuppressOutputs: suppressOutputs,
-				IsInteractive:   interactive,
-				Type:            displayType,
-				EventLogPath:    eventLogPath,
-				Debug:           debug,
+				Color:             cmdutil.GetGlobalColorization(),
+				ShowConfig:        showConfig,
+				SuppressOutputs:   suppressOutputs,
+				SuppressPermaLink: suppressPermaLink,
+				IsInteractive:     interactive,
+				Type:              displayType,
+				EventLogPath:      eventLogPath,
+				Debug:             debug,
 			}
 
 			// Fetch the project.
@@ -498,6 +500,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressPermaLink, "suppress-permalink", false,
+		"Suppress display of the state permalink")
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
