@@ -964,7 +964,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	return resource.StatusOK, nil
 }
 
-// Construct allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
+// Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
+// its URN and outputs.
 func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
 

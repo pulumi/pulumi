@@ -234,7 +234,7 @@ type ConstructOptions struct {
 	Dependencies []resource.URN
 	// Protect is true if the component is protected.
 	Protect bool
-	// Providers is a map from pacakge name to provider reference.
+	// Providers is a map from package name to provider reference.
 	Providers map[string]string
 	// PropertyDependencies is a map from property name to a list of resources that property depends on.
 	PropertyDependencies map[resource.PropertyKey][]resource.URN

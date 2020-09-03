@@ -5942,7 +5942,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions) (resource.URN, resource.PropertyMap, error) {
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
@@ -5960,7 +5960,10 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 				err = monitor.RegisterResourceOutputs(urn, outs)
 				assert.NoError(t, err)
 
-				return urn, outs, nil
+				return plugin.ConstructResult{
+					URN:     urn,
+					Outputs: outs,
+				}, nil
 			}
 
 			return &deploytest.Provider{

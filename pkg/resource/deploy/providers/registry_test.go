@@ -143,6 +143,10 @@ func (prov *testProvider) Delete(urn resource.URN,
 	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
 }
+func (prov *testProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	return plugin.ConstructResult{}, errors.New("unsupported")
+}
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
