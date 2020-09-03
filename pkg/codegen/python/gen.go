@@ -219,7 +219,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK, needsJSON bool, imports 
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
-		fmt.Fprintf(w, "from typing import Any, Dict, List, Mapping, Optional, Tuple, Union\n")
+		fmt.Fprintf(w, "from typing import Any, Mapping, Optional, Sequence, Union\n")
 		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
 		for _, imp := range imports.strings() {
 			fmt.Fprintf(w, "%s\n", imp)
@@ -1492,7 +1492,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 	var typ string
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		typ = fmt.Sprintf("List[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
+		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.MapType:
 		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.ObjectType:
