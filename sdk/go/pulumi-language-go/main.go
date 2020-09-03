@@ -191,7 +191,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	// don't wire up stderr so non-module users don't see error output from list
-	cmd := exec.Command(gobin, "list", "-m", "-json", "all")
+	cmd := exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
 	cmd.Env = os.Environ()
 
 	stdout, err := cmd.Output()
