@@ -67,7 +67,7 @@ export interface DiffResult {
 
     /**
      * If true, and a replacement occurs, the resource will first be deleted before being recreated.  This is to
-     * void potential side-by-side issues with the default create before delete behavior.
+     * avoid potential side-by-side issues with the default create before delete behavior.
      */
     readonly deleteBeforeReplace?: boolean;
 }
