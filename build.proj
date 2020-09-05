@@ -287,8 +287,23 @@
           DependsOnTargets="BuildNodeJSSDK;InstallPulumiPlugin">
   </Target>
 
+  <!-- This is where we build and install the NodeJS SDK -->
+  <Target Name="BuildTests"
+          DependsOnTargets="TestDependencies">
+  </Target>
+
+  <Target Name="TestDependencies">
+    <Exec Command="yarn install"
+          WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+  </Target>
+
+  <Target Name="TestBuild">
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+  </Target>
+
   <!-- Tests -->
-  <Target Name="Tests">
+  <Target Name="Tests"
+	      DependsOnTargets="BuildTests">
     <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\backend\..."
           IgnoreExitCode="true"
           WorkingDirectory="$(PkgDirectory)">

@@ -33,30 +33,6 @@ const provrpc = require("../proto/provider_grpc_pb.js");
 const plugproto = require("../proto/plugin_pb.js");
 const statusproto = require("../proto/status_pb.js");
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
-
-// We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
-// code.
-const uncaughtErrors = new Set<Error>();
-const uncaughtHandler = (err: Error) => {
-    if (!uncaughtErrors.has(err)) {
-        uncaughtErrors.add(err);
-        console.error(err.stack || err.message || ("" + err));
-    }
-};
-
-process.on("uncaughtException", uncaughtHandler);
-// @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
-// suppress the TS strictness here.
-process.on("unhandledRejection", uncaughtHandler);
-process.on("exit", (code: number) => {
-    // If there were any uncaught errors at all, we always want to exit with an error code.
-    if (code === 0 && uncaughtErrors.size > 0) {
-        process.exitCode = 1;
-    }
-});
-
 class Server implements grpc.UntypedServiceImplementation {
     readonly engineAddr: string;
     readonly provider: Provider;
@@ -435,6 +411,27 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
 }
 
 export async function main(provider: Provider, args: string[]) {
+    // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
+    // code.
+    const uncaughtErrors = new Set<Error>();
+    const uncaughtHandler = (err: Error) => {
+        if (!uncaughtErrors.has(err)) {
+            uncaughtErrors.add(err);
+            console.error(err.stack || err.message || ("" + err));
+        }
+    };
+
+    process.on("uncaughtException", uncaughtHandler);
+    // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
+    // suppress the TS strictness here.
+    process.on("unhandledRejection", uncaughtHandler);
+    process.on("exit", (code: number) => {
+        // If there were any uncaught errors at all, we always want to exit with an error code.
+        if (code === 0 && uncaughtErrors.size > 0) {
+            process.exitCode = 1;
+        }
+    });
+
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
     if (args.length === 0) {
@@ -446,7 +443,7 @@ export async function main(provider: Provider, args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": maxRPCMessageSize,
+        "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
     });
     server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider));
     const port: number = await new Promise<number>((resolve, reject) => {

@@ -532,7 +532,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	hasSupport := false
 
 	switch req.Id {
-	case "secrets", "resourceReferences":
+	case "secrets":
 		hasSupport = true
 	}
 
@@ -807,11 +807,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 	if err != nil {
 		return nil, err
-	}
-
-	goalProps := props
-	if !custom {
-		goalProps = resource.PropertyMap{}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)

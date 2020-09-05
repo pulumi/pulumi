@@ -297,6 +297,13 @@ function getSchemaRPC(call: any, callback: any): void {
     }, undefined);
 }
 
+function constructRPC(call: any, callback: any): void {
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "Construct is not implemented by the dynamic provider",
+    }, undefined);
+}
+
 function resultIncludingProvider(result: any, props: any): any {
     return Object.assign(result || {}, {
         [providerKey]: props[providerKey],
@@ -372,6 +379,7 @@ export async function main(args: string[]) {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
         getSchema: getSchemaRPC,
+        consult: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
