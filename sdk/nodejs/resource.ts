@@ -207,6 +207,8 @@ export abstract class Resource {
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param remote True if this is a remote component resource.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {},
                 remote: boolean = false, dependency: boolean = false) {
@@ -687,6 +689,7 @@ export abstract class CustomResource extends Resource {
      * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
     constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}, dependency = false) {
         if ((<ComponentResourceOptions>opts).providers) {
@@ -734,6 +737,7 @@ export abstract class ProviderResource extends CustomResource {
      * @param name The _unique_ name of the provider.
      * @param props The configuration to use for this provider.
      * @param opts A bag of options that control this provider's behavior.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
     constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}, dependency: boolean = false) {
         super(`pulumi:providers:${pkg}`, name, props, opts, dependency);
@@ -786,6 +790,7 @@ export class ComponentResource<TData = any> extends Resource {
      * @param name The _unique_ name of the resource.
      * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.
+     * @param remote True if this is a remote component resource.
      */
     constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}, remote: boolean = false) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,

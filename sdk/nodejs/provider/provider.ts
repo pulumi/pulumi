@@ -201,6 +201,7 @@ export interface Provider {
      * @param name The name of the resource to create.
      * @param type The type of the resource to create.
      * @param inputs The inputs to the resource.
+     * @param options the options for the resource.
      */
     construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions)
         => Promise<ConstructResult>;
