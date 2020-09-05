@@ -900,7 +900,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	} else {
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
-			goal: resource.NewGoal(t, name, custom, goalProps, parent, protect, dependencies,
+			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
 				additionalSecretOutputs, aliases, id, &timeouts),
 			done: make(chan *RegisterResult),
