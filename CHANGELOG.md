@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+- Add internal scaffolding for cross-language components.
+  [#5280](https://github.com/pulumi/pulumi/pull/5280)
 
 ## 2.9.2 (2020-08-31)
 
