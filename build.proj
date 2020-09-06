@@ -289,7 +289,7 @@
 
   <!-- This is where we build and install the NodeJS SDK -->
   <Target Name="BuildTests"
-          DependsOnTargets="TestDependencies">
+          DependsOnTargets="TestDependencies;TestBuild">
   </Target>
 
   <Target Name="TestDependencies">
