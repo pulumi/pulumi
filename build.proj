@@ -294,7 +294,9 @@
 
   <Target Name="TestDependencies">
     <Exec Command="yarn install"
-          WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+		  WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+	<Exec Command="yarn link @pulumi/pulumi"
+		  WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
   </Target>
 
   <Target Name="TestBuild">
