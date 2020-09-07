@@ -612,7 +612,12 @@ func testComponentPathEnv() (string, error) {
 		return "", err
 	}
 	pluginDir := filepath.Join(absCwd, "construct_component", "testcomponent")
-	return "PATH=" + os.Getenv("PATH") + ":" + pluginDir, nil
+
+	pathSeparator := ":"
+	if runtime.GOOS == "windows" {
+		pathSeparator = ";"
+	}
+	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
 }
 
 // Test remote component construction in Node.
