@@ -141,11 +141,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		if t.ModelAsString {
-			typ = "string"
-		} else {
-			typ = t.Name
-		}
+		typ = t.Name
 	case *schema.ArrayType:
 		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
 	case *schema.MapType:
@@ -369,37 +365,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Declare any enums first.
 	var enums []*schema.EnumType
+	var consts []*schema.EnumType
 	enumSet := codegen.NewStringSet()
-	for _, prop := range r.Properties {
-		if enumType, ok := prop.Type.(*schema.EnumType); ok {
-			if !enumType.ModelAsString && !enumSet.Has(enumType.Name) {
-				enumSet.Add(enumType.Name)
-				enums = append(enums, enumType)
-			}
-		}
-	}
-	for _, prop := range r.InputProperties {
-		if enumType, ok := prop.Type.(*schema.EnumType); ok {
-			if !enumType.ModelAsString && !enumSet.Has(enumType.Name) {
-				enumSet.Add(enumType.Name)
-				enums = append(enums, enumType)
-			}
-		}
-	}
+	enums, consts = gatherEnums("", r.Properties, enums, consts, enumSet)
+	enums, consts = gatherEnums("", r.InputProperties, enums, consts, enumSet)
 
-	sort.Slice(enums, func(i, j int) bool {
-		return enums[i].Name < enums[j].Name
-	})
-	for _, enum := range enums {
-		// Write the TypeDoc/JSDoc for the enum type
-		fmt.Fprintf(w, "export enum %s {\n", enum.Name)
-		for _, enum := range enum.Elements {
-			safeName := safeEnumName(enum.Value)
-			fmt.Fprintf(w, "    %s = \"%s\",\n", safeName, enum.Value)
-		}
-		fmt.Fprintf(w, "}")
-		fmt.Fprint(w, "\n\n")
-	}
+	genEnums(w, "", enums, consts)
 
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
@@ -668,6 +639,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	name := tokenToFunctionName(fun.Token)
+
+	// Declare any enums first.
+	var enums []*schema.EnumType
+	var consts []*schema.EnumType
+	enumSet := codegen.NewStringSet()
+	enums, consts = gatherEnums("", fun.Inputs.Properties, enums, consts, enumSet)
+	enums, consts = gatherEnums("", fun.Outputs.Properties, enums, consts, enumSet)
+
+	genEnums(w, "", enums, consts)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1048,49 +1028,20 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	})
 
 	var enums []*schema.EnumType
+	var consts []*schema.EnumType
 	enumSet := codegen.NewStringSet()
 	for i, t := range ns.types {
 		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+			typeName := tokenToName(t.Token)
+			enums, consts = gatherEnums(typeName, t.Properties, enums, consts, enumSet)
 			mod.genType(w, t, input, level)
 			if i != len(ns.types)-1 {
 				fmt.Fprintf(w, "\n")
 			}
-
-			for _, prop := range t.Properties {
-				switch typ := prop.Type.(type) {
-				case *schema.EnumType:
-					if !typ.ModelAsString && !enumSet.Has(typ.Name) {
-						enumSet.Add(typ.Name)
-						enums = append(enums, typ)
-					}
-				case *schema.ArrayType:
-					if enumType, ok := typ.ElementType.(*schema.EnumType); ok {
-						if !enumType.ModelAsString && !enumSet.Has(enumType.Name) {
-							enumSet.Add(enumType.Name)
-							enums = append(enums, enumType)
-						}
-					}
-				default:
-					continue
-				}
-			}
 		}
 	}
 
-	sort.Slice(enums, func(i, j int) bool {
-		return enums[i].Name < enums[j].Name
-	})
-	for i, enum := range enums {
-		fmt.Fprintf(w, "%sexport enum %s {\n", indent, enum.Name)
-		for _, enum := range enum.Elements {
-			safeName := safeEnumName(enum.Value)
-			fmt.Fprintf(w, "%s    %s = \"%s\",\n", indent, safeName, enum.Value)
-		}
-		fmt.Fprintf(w, "%s}\n", indent)
-		if i != len(enums)-1 {
-			fmt.Fprintf(w, "\n")
-		}
-	}
+	genEnums(w, indent, enums, consts)
 
 	sort.Slice(ns.children, func(i, j int) bool {
 		return ns.children[i].name < ns.children[j].name
@@ -1105,7 +1056,76 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	}
 }
 
-var replacer = strings.NewReplacer(".", "", "-", "", ",", "", " ", "")
+func gatherEnums(parentTypeName string, props []*schema.Property, strictEnums, looseEnums []*schema.EnumType, enumSet codegen.StringSet) ([]*schema.EnumType, []*schema.EnumType) {
+	gatherEnum := func(typ *schema.EnumType, propertyName string) {
+		if parentTypeName == typ.Name {
+			typ.Name = fmt.Sprintf("%s%s", typ.Name, strings.Title(propertyName))
+		}
+		if !enumSet.Has(typ.Name) {
+			if typ.ModelAsString {
+				looseEnums = append(looseEnums, typ)
+			} else {
+				strictEnums = append(strictEnums, typ)
+			}
+			enumSet.Add(typ.Name)
+		}
+	}
+
+	for _, prop := range props {
+		switch typ := prop.Type.(type) {
+		case *schema.EnumType:
+			gatherEnum(typ, prop.Name)
+		case *schema.ArrayType:
+			if typ, ok := typ.ElementType.(*schema.EnumType); ok {
+				gatherEnum(typ, prop.Name)
+			}
+		case *schema.MapType:
+			if typ, ok := typ.ElementType.(*schema.EnumType); ok {
+				gatherEnum(typ, prop.Name)
+			}
+		default:
+			// noop
+		}
+	}
+	return strictEnums, looseEnums
+}
+
+// TODO export constants with descriptions
+func genEnums(w io.Writer, indent string, strictEnums, looseEnums []*schema.EnumType) {
+	sort.Slice(strictEnums, func(i, j int) bool {
+		return strictEnums[i].Name < strictEnums[j].Name
+	})
+	sort.Slice(looseEnums, func(i, j int) bool {
+		return looseEnums[i].Name < looseEnums[j].Name
+	})
+
+	for i, enum := range strictEnums {
+		fmt.Fprintf(w, "%sexport type %s = ", indent, enum.Name)
+		for i, e := range enum.Elements {
+			fmt.Fprintf(w, "\"%s\"", e.Value)
+			if i == len(enum.Elements)-1 {
+				fmt.Fprintf(w, ";\n")
+			} else {
+				fmt.Fprintf(w, " | ")
+			}
+		}
+		if i != len(strictEnums) {
+			fmt.Fprintf(w, "\n")
+		}
+	}
+	for i, c := range looseEnums {
+		fmt.Fprintf(w, "%sexport type %s = ", indent, c.Name)
+		for _, c := range c.Elements {
+			fmt.Fprintf(w, "\"%s\" | ", c.Value)
+		}
+		fmt.Fprint(w, "string;\n")
+		if i != len(looseEnums) {
+			fmt.Fprintf(w, "\n")
+		}
+	}
+}
+
+var replacer = strings.NewReplacer(".", "", "-", "", ",", "", " ", "", "+", "_", "*", "Asterisk", "(", "", ")", "")
 
 func safeEnumName(name string) string {
 	return replacer.Replace(name)

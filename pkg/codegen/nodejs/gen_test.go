@@ -31,6 +31,9 @@ var safeEnumNameTests = []struct {
 	{"SystemAssigned, UserAssigned", "SystemAssignedUserAssigned"},
 	{"SystemAssigned,UserAssigned", "SystemAssignedUserAssigned"},
 	{"storage_optimized_l1", "storage_optimized_l1"},
+	{"*", "Asterisk"},
+	{"Dev(NoSLA)_Standard_D11_v2", "DevNoSLA_Standard_D11_v2"},
+	{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS"},
 }
 
 func TestSafeEnumName(t *testing.T) {
