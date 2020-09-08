@@ -18,14 +18,40 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"google.golang.org/grpc"
 )
 
 type ResourceMonitor struct {
+	conn   *grpc.ClientConn
 	resmon pulumirpc.ResourceMonitorClient
+}
+
+func dialMonitor(endpoint string) (*ResourceMonitor, error) {
+	// Connect to the resource monitor and create an appropriate client.
+	conn, err := grpc.Dial(
+		endpoint,
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+	}
+
+	// Fire up a resource monitor client and return.
+	return &ResourceMonitor{
+		conn:   conn,
+		resmon: pulumirpc.NewResourceMonitorClient(conn),
+	}, nil
+}
+
+func (rm *ResourceMonitor) Close() error {
+	return rm.conn.Close()
 }
 
 type ResourceOptions struct {
@@ -42,6 +68,7 @@ type ResourceOptions struct {
 	ImportID              resource.ID
 	CustomTimeouts        *resource.CustomTimeouts
 	SupportsPartialValues *bool
+	Remote                bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -56,7 +83,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{KeepUnknowns: true})
+	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -112,11 +141,13 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		IgnoreChanges:              opts.IgnoreChanges,
+		AcceptSecrets:              true,
 		Version:                    opts.Version,
 		Aliases:                    aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
+		Remote:                     opts.Remote,
 	}
 
 	// submit request
@@ -125,7 +156,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		return "", "", nil, err
 	}
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -133,11 +166,30 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, nil
 }
 
+func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
+	// marshal outputs
+	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	// submit request
+	_, err = rm.resmon.RegisterResourceOutputs(context.Background(), &pulumirpc.RegisterResourceOutputsRequest{
+		Urn:     string(urn),
+		Outputs: outs,
+	})
+	return err
+}
+
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
 	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
+	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return "", nil, err
 	}
@@ -157,7 +209,9 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Properties, plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(resp.Properties, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return "", nil, err
 	}
@@ -169,7 +223,9 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	provider string, version string) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
+	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,7 +247,9 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{KeepUnknowns: true})
+	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
+		KeepUnknowns: true,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

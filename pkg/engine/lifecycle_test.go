@@ -5936,3 +5936,57 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+					Parent:  parent,
+					Aliases: options.Aliases,
+					Protect: options.Protect,
+				})
+				assert.NoError(t, err)
+
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+					Parent: urn,
+				})
+				assert.NoError(t, err)
+
+				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				err = monitor.RegisterResourceOutputs(urn, outs)
+				assert.NoError(t, err)
+
+				return plugin.ConstructResult{
+					URN:     urn,
+					Outputs: outs,
+				}, nil
+			}
+
+			return &deploytest.Provider{
+				ConstructF: construct,
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		}, state)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 3),
+	}
+	p.Run(t, nil)
+}

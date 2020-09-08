@@ -601,3 +601,64 @@ func TestLargeResourceNode(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 	})
 }
+
+func testComponentPathEnv() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	absCwd, err := filepath.Abs(cwd)
+	if err != nil {
+		return "", err
+	}
+	pluginDir := filepath.Join(absCwd, "construct_component", "testcomponent")
+
+	pathSeparator := ":"
+	if runtime.GOOS == "windows" {
+		pathSeparator = ";"
+	}
+	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+}
+
+// Test remote component construction in Node.
+func TestConstructNode(t *testing.T) {
+	pathEnv, err := testComponentPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env:          []string{pathEnv},
+		Dir:          filepath.Join("construct_component", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+
+				// Check that dependencies flow correctly between the originating program and the remote component
+				// plugin.
+				urns := make(map[string]resource.URN)
+				for _, res := range stackInfo.Deployment.Resources[1:] {
+					assert.NotNil(t, res)
+
+					urns[string(res.URN.Name())] = res.URN
+					switch res.URN.Name() {
+					case "child-a", "child-b":
+						for _, deps := range res.PropertyDependencies {
+							assert.Empty(t, deps)
+						}
+					case "child-c":
+						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+					}
+				}
+			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}

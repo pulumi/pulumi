@@ -149,7 +149,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
             resop.resolveURN(resp.getUrn());
             resop.resolveID!(resolvedID, resolvedID !== undefined);
-            await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
+            await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers);
         });
     }), label);
 }
@@ -159,10 +159,10 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
  * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: Inputs, opts: ResourceOptions): void {
+export function registerResource(res: Resource, t: string, name: string, custom: boolean, remote: boolean,
+                                 newDependency: (urn: URN) => Resource, props: Inputs, opts: ResourceOptions): void {
     const label = `resource:${name}[${t}]`;
-    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
+    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
@@ -194,6 +194,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
+        req.setRemote(remote);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -242,6 +243,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     getUrn: () => mockurn,
                     getId: () => undefined,
                     getObject: () => req.getObject(),
+                    getPropertydependenciesMap: () => undefined,
                 };
             }
 
@@ -254,8 +256,17 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 resop.resolveID(id, id !== undefined);
             }
 
+            const deps: Record<string, Resource[]> = {};
+            const rpcDeps = resp.getPropertydependenciesMap();
+            if (rpcDeps) {
+                for (const [k, propertyDeps] of resp.getPropertydependenciesMap().entries()) {
+                    const urns = <URN[]>propertyDeps.getUrnsList();
+                    deps[k] = urns.map(urn => newDependency(urn));
+                }
+            }
+
             // Now resolve the output properties.
-            await resolveOutputs(res, t, name, props, resp.getObject(), resop.resolvers);
+            await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers);
         });
     }), label);
 }
@@ -474,7 +485,9 @@ async function gatherExplicitDependencies(
  * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
  */
 async function resolveOutputs(res: Resource, t: string, name: string,
-                              props: Inputs, outputs: any, resolvers: OutputResolvers): Promise<void> {
+                              props: Inputs, outputs: any, deps: Record<string, Resource[]>,
+                              resolvers: OutputResolvers): Promise<void> {
+
     // Produce a combined set of property states, starting with inputs and then applying
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
@@ -498,7 +511,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
         }
     }
 
-    resolveProperties(res, resolvers, t, name, allProps);
+    resolveProperties(res, resolvers, t, name, allProps, deps);
 }
 
 /**

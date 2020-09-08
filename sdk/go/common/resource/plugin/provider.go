@@ -18,6 +18,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -72,6 +73,11 @@ type Provider interface {
 		ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+
+	// Construct creates a new component resource.
+	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,
+		options ConstructOptions) (ConstructResult, error)
+
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
@@ -208,4 +214,38 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+}
+
+// ConstructInfo contains all of the information required to register resources as part of a call to Construct.
+type ConstructInfo struct {
+	Project        string                // the project name housing the program being run.
+	Stack          string                // the stack name being evaluated.
+	Config         map[config.Key]string // the configuration variables to apply before running.
+	DryRun         bool                  // true if we are performing a dry-run (preview).
+	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress string                // the RPC address to the host resource monitor.
+}
+
+// ConstructOptions captures options for a call to Construct.
+type ConstructOptions struct {
+	// Aliases is the set of aliases for the component.
+	Aliases []resource.URN
+	// Dependencies is the list of resources this component depends on.
+	Dependencies []resource.URN
+	// Protect is true if the component is protected.
+	Protect bool
+	// Providers is a map from package name to provider reference.
+	Providers map[string]string
+	// PropertyDependencies is a map from property name to a list of resources that property depends on.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN
+}
+
+// ConstructResult is the result of a call to Construct.
+type ConstructResult struct {
+	// The URN of the constructed component resource.
+	URN resource.URN
+	// The output properties of the component resource.
+	Outputs resource.PropertyMap
+	// The resources that each output property depends on.
+	OutputDependencies map[resource.PropertyKey][]resource.URN
 }

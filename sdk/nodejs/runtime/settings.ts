@@ -26,7 +26,7 @@ const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
+export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
 /**
@@ -59,6 +59,17 @@ export interface Options {
  */
 let options = loadOptions();
 
+export function setConstructOptions(project: string, stack: string, parallel: number, engineAddr: string,
+                                    monitorAddr: string, preview: boolean) {
+    options = {
+        project,
+        stack,
+        parallel,
+        engineAddr,
+        monitorAddr,
+        dryRun: preview,
+    };
+}
 
 export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean) {
     options = {
@@ -175,6 +186,7 @@ export function _setStack(val: string | undefined) {
  * monitor is a live connection to the resource monitor that tracks deployments (lazily initialized).
  */
 let monitor: any | undefined;
+const featureSupport: Record<string, boolean> = {};
 
 /**
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
@@ -417,32 +429,46 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
 }
 
 /**
+ * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
+ * to is able to support a particular feature.
+ */
+export async function monitorSupportsFeature(feature: string): Promise<boolean> {
+    const monitorRef: any = getMonitor();
+    if (!monitorRef) {
+        return false;
+    }
+
+    if (featureSupport[feature] === undefined) {
+        const req = new resproto.SupportsFeatureRequest();
+        req.setId(feature);
+
+        const result = await new Promise<boolean>((resolve, reject) => {
+            monitorRef.supportsFeature(req, (err: grpc.ServiceError, resp: any) => {
+                // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
+                // secrets.
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(false);
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
+                return resolve(resp.getHassupport());
+            });
+        });
+
+        featureSupport[feature] = result;
+    }
+
+    return featureSupport[feature];
+}
+
+/**
  * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support secrets across it's RPC interface. When it does, we marshal outputs marked with the secret
+ * to is able to support secrets across its RPC interface. When it does, we marshal outputs marked with the secret
  * bit in a special way.
  */
 export function monitorSupportsSecrets(): Promise<boolean> {
-    const monitorRef: any = getMonitor();
-    if (!monitorRef) {
-        return Promise.resolve(false);
-    }
-
-    const req = new resproto.SupportsFeatureRequest();
-    req.setId("secrets");
-
-    return new Promise<boolean>((resolve, reject) => {
-        monitorRef.supportsFeature(req, (err: grpc.ServiceError, resp: any) => {
-            // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
-            // secrets.
-            if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                return resolve(false);
-            }
-
-            if (err) {
-                return reject(err);
-            }
-
-            return resolve(resp.getHassupport());
-        });
-    });
+    return monitorSupportsFeature("secrets");
 }

@@ -207,8 +207,18 @@ export abstract class Resource {
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param remote True if this is a remote component resource.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
+    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {},
+                remote: boolean = false, dependency: boolean = false) {
+
+        if (dependency) {
+            this.__protect = false;
+            this.__providers = {};
+            return;
+        }
+
         if (opts.parent && !Resource.isInstance(opts.parent)) {
             throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
         }
@@ -314,7 +324,7 @@ export abstract class Resource {
         }
 
         if (opts.id) {
-            // If this resource already exists, read its state rather than registering it anew.
+            // If this is a custom resource that already exists, read its state from the provider.
             if (!custom) {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
@@ -325,7 +335,7 @@ export abstract class Resource {
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, t, name, custom, props, opts);
+            registerResource(this, t, name, custom, remote, urn => new DependencyResource(urn), props, opts);
         }
     }
 }
@@ -679,13 +689,14 @@ export abstract class CustomResource extends Resource {
      * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}) {
+    constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}, dependency = false) {
         if ((<ComponentResourceOptions>opts).providers) {
             throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", opts.parent);
         }
 
-        super(t, name, true, props, opts);
+        super(t, name, true, props, opts, false, dependency);
         this.__pulumiCustomResource = true;
         this.__pulumiType = t;
     }
@@ -726,9 +737,10 @@ export abstract class ProviderResource extends CustomResource {
      * @param name The _unique_ name of the provider.
      * @param props The configuration to use for this provider.
      * @param opts A bag of options that control this provider's behavior.
+     * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}) {
-        super(`pulumi:providers:${pkg}`, name, props, opts);
+    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}, dependency: boolean = false) {
+        super(`pulumi:providers:${pkg}`, name, props, opts, dependency);
         this.pkg = pkg;
     }
 
@@ -778,8 +790,9 @@ export class ComponentResource<TData = any> extends Resource {
      * @param name The _unique_ name of the resource.
      * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.
+     * @param remote True if this is a remote component resource.
      */
-    constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}) {
+    constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}, remote: boolean = false) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
@@ -788,8 +801,9 @@ export class ComponentResource<TData = any> extends Resource {
         // for a component resource.  The component is just used for organizational purposes and does
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ {}, opts);
-        this.__data = this.initializeAndRegisterOutputs(args);
+        super(type, name, /*custom:*/ false, /*props:*/ remote ? args : {}, opts, remote);
+        this.__registered = remote;
+        this.__data = remote ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */
@@ -963,3 +977,38 @@ function addToArray(resultArray: any[], value: any) {
         resultArray.push(value);
     }
 }
+
+/**
+ * A DependencyResource is a resource that is used to indicate that an Output has a dependency on a particular
+ * resource. These resources are only created when dealing with remote component resources.
+ */
+export class DependencyResource extends CustomResource {
+    constructor(urn: URN) {
+        super("", "", {}, {}, true);
+
+        (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false),
+            Promise.resolve([]));
+    }
+}
+
+/**
+ * A DependencyProviderResource is a resource that is used by the provider SDK as a stand-in for a provider that
+ * is only used for its reference. Its only valid properties are its URN and ID.
+ */
+export class DependencyProviderResource extends ProviderResource {
+    constructor(ref: string) {
+        super("", "", {}, {}, true);
+
+        // Parse the URN and ID out of the provider reference.
+        const lastSep = ref.lastIndexOf("::");
+        if (lastSep === -1) {
+            throw new Error(`expected '::' in provider reference ${ref}`);
+        }
+        const urn = ref.slice(0, lastSep);
+        const id = ref.slice(lastSep+2);
+
+        (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
+        (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
+    }
+}
+

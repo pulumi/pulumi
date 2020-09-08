@@ -77,6 +77,28 @@ function deserialize_pulumirpc_ConfigureResponse(buffer_arg) {
   return provider_pb.ConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConstructRequest(arg) {
+  if (!(arg instanceof provider_pb.ConstructRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructRequest(buffer_arg) {
+  return provider_pb.ConstructRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ConstructResponse(arg) {
+  if (!(arg instanceof provider_pb.ConstructResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructResponse(buffer_arg) {
+  return provider_pb.ConstructResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CreateRequest(arg) {
   if (!(arg instanceof provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type pulumirpc.CreateRequest');
@@ -385,6 +407,18 @@ delete: {
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Construct creates a new instance of the provided component resource and returns its state.
+construct: {
+    path: '/pulumirpc.ResourceProvider/Construct',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.ConstructRequest,
+    responseType: provider_pb.ConstructResponse,
+    requestSerialize: serialize_pulumirpc_ConstructRequest,
+    requestDeserialize: deserialize_pulumirpc_ConstructRequest,
+    responseSerialize: serialize_pulumirpc_ConstructResponse,
+    responseDeserialize: deserialize_pulumirpc_ConstructResponse,
   },
   // Cancel signals the provider to abort all outstanding resource operations.
 cancel: {

@@ -35,6 +35,10 @@
 
         "log/index.ts",
 
+        "provider/index.ts",
+        "provider/provider.ts",
+        "provider/server.ts",
+
         "runtime/index.ts",
 
         "runtime/closure/codePaths.ts",
@@ -79,4 +83,3 @@
         "tests/runtime/langhost/run.spec.ts"
     ]
 }
-

@@ -37,7 +37,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -512,17 +511,17 @@ func (host *nodeLanguageHost) execNodejs(
 				// If the program ran, but exited with a non-zero error code.  This will happen often,
 				// since user errors will trigger this.  So, the error message should look as nice as
 				// possible.
-				if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				switch code := exiterr.ExitCode(); code {
+				case 0:
+					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+				case nodeJSProcessExitedAfterShowingUserActionableMessage:
 					// Check if we got special exit code that means "we already gave the user an
 					// actionable message". In that case, we can simply bail out and terminate `pulumi`
 					// without showing any more messages.
-					if status.ExitStatus() == nodeJSProcessExitedAfterShowingUserActionableMessage {
-						return &pulumirpc.RunResponse{Error: "", Bail: true}
-					}
-
-					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
-				} else {
-					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+					return &pulumirpc.RunResponse{Error: "", Bail: true}
+				default:
+					err = errors.Errorf("Program exited with non-zero exit code: %d", code)
 				}
 			} else {
 				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's

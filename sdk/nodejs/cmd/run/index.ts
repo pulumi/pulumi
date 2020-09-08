@@ -52,7 +52,6 @@ process.on("uncaughtException", uncaughtHandler);
 // suppress the TS strictness here.
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
-
     // If there were any uncaught errors at all, we always want to exit with an error code. If we
     // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
     // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the

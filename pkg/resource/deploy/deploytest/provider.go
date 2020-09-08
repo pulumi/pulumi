@@ -52,9 +52,12 @@ type Provider struct {
 	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 		timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
-
-	ReadF func(urn resource.URN, id resource.ID,
+	ReadF   func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
+
+	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
+		options plugin.ConstructOptions) (plugin.ConstructResult, error)
+
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 
@@ -161,6 +164,19 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 	}
 	return prov.ReadF(urn, id, inputs, state)
 }
+
+func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	if prov.ConstructF == nil {
+		return plugin.ConstructResult{}, nil
+	}
+	monitor, err := dialMonitor(info.MonitorAddress)
+	if err != nil {
+		return plugin.ConstructResult{}, err
+	}
+	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, options)
+}
+
 func (prov *Provider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.InvokeF == nil {

@@ -66,7 +66,10 @@ lint::
 test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: build $(SUB_PROJECTS:%=%_install)
+test_build:: $(SUB_PROJECTS:%=%_install)
+	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+
+test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
 

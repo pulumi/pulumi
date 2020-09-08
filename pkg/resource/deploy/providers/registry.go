@@ -389,6 +389,11 @@ func (r *Registry) Read(urn resource.URN, id resource.ID,
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("provider resources may not be read")
 }
 
+func (r *Registry) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	return plugin.ConstructResult{}, errors.New("provider resources may not be constructed")
+}
+
 func (r *Registry) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
