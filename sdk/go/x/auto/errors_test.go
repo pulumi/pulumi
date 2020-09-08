@@ -350,7 +350,9 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 
 	_, err = s.Up(ctx)
 	assert.NotNil(t, err)
-	assert.True(t, IsRuntimeError(err))
+	if !assert.True(t, IsRuntimeError(err)) {
+		t.Logf("%v is not a runtime error", err)
+	}
 
 	// -- pulumi destroy --
 

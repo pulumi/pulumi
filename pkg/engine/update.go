@@ -132,9 +132,6 @@ type UpdateOptions struct {
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 
-	// true if we're executing in the context of `pulumi host` command.
-	IsHostCommand bool
-
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 
@@ -389,12 +386,19 @@ func newUpdateSource(
 		return nil, err
 	}
 
+	// If we are connecting to an existing client, stash the address of the engine in its arguments.
+	var args []string
+	if proj.Runtime.Name() == "client" {
+		args = []string{plugctx.Host.ServerAddr()}
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
+		Args:    args,
 		Target:  target,
 	}, defaultProviderVersions, dryRun), nil
 }
