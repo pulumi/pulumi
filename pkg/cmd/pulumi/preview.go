@@ -34,6 +34,7 @@ func newPreviewCmd() *cobra.Command {
 	var stack string
 	var configArray []string
 	var configPath bool
+	var client string
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -106,7 +107,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := readProjectForUpdate(client)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -194,6 +195,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

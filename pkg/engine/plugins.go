@@ -75,11 +75,16 @@ func newPluginSet() pluginSet {
 func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := newPluginSet()
-	langhostPlugins, err := plugctx.Host.GetRequiredPlugins(prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
 	for _, plug := range langhostPlugins {
+		// Ignore language plugins named "client".
+		if plug.Name == "client" && plug.Kind == workspace.LanguagePlugin {
+			continue
+		}
+
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
 			plug.Name, plug.Version, plug.ServerURL)

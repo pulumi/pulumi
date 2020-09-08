@@ -399,6 +399,24 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 	return nil
 }
 
+// readProjectForUpdate attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to its
+// containing directory, which will be used as the root of the project's Pulumi program. If a
+// client address is present, the returned project will always have the runtime set to "client"
+// with the address option set to the client address.
+func readProjectForUpdate(clientAddress string) (*workspace.Project, string, error) {
+	proj, root, err := readProject()
+	if err != nil {
+		return nil, "", err
+	}
+	if clientAddress != "" {
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+			"address": clientAddress,
+		})
+	}
+	return proj, root, nil
+}
+
 // readProject attempts to detect and read a Pulumi project for the current workspace. If the
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.

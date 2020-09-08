@@ -51,6 +51,7 @@ func newUpCmd() *cobra.Command {
 	var stack string
 	var configArray []string
 	var path bool
+	var client string
 
 	// Flags for engine.UpdateOptions.
 	var policyPackPaths []string
@@ -85,7 +86,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := readProjectForUpdate(client)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -398,6 +399,9 @@ func newUpCmd() *cobra.Command {
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
 			"used when creating a new stack from an existing template")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

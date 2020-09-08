@@ -211,7 +211,6 @@ func NewPulumiCmd() *cobra.Command {
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
-	cmd.AddCommand(newHostCmd())
 
 	// We have a set of commands that are still experimental and that we add only when PULUMI_EXPERIMENTAL is set
 	// to true.

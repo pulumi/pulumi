@@ -88,25 +88,28 @@
 package auto
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
-	"runtime/debug"
+	"runtime"
 	"strings"
+	"sync"
 
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 // Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -202,23 +205,26 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
+	if preOpts.Parallel > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
+	}
 
-	var stdout, stderr string
-	var code int
-	if s.Workspace().Program() != nil {
-		hostArgs := []string{"preview", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoInline)}
-		hostArgs = append(hostArgs, sharedArgs...)
-		stdout, stderr, err = s.host(ctx, hostArgs, preOpts.Parallel)
+	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
+	if program := s.Workspace().Program(); program != nil {
+		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
-			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
+			return res, err
 		}
-	} else {
-		args := []string{"preview", "--json", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
-		args = append(args, sharedArgs...)
-		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
-		if err != nil {
-			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
-		}
+		defer contract.IgnoreClose(server)
+
+		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
+	}
+
+	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+	args = append(args, sharedArgs...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &res)
@@ -259,30 +265,26 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
+	if upOpts.Parallel > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
+	}
 
-	var stdout, stderr string
-	var code int
-	if s.Workspace().Program() != nil {
-		// TODO need to figure out how to get error code...
-		stdout, stderr, err = s.host(
-			ctx,
-			append(sharedArgs, fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoInline)),
-			upOpts.Parallel,
-		)
+	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
+	if program := s.Workspace().Program(); program != nil {
+		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
-			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
+			return res, err
 		}
-	} else {
-		args := []string{"up", "--yes", "--skip-preview", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
-		args = append(args, sharedArgs...)
-		if upOpts.Parallel > 0 {
-			args = append(args, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
-		}
+		defer contract.IgnoreClose(server)
 
-		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
-		if err != nil {
-			return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
-		}
+		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
+	}
+
+	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+	args = append(args, sharedArgs...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 	}
 
 	outs, err := s.Outputs(ctx)
@@ -656,143 +658,149 @@ func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, s
 	return stdout, stderr, errCode, nil
 }
 
-func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int) (string, string, error) {
-	proj, err := s.Workspace().ProjectSettings(ctx)
-	if err != nil {
-		return "", "", errors.Wrap(err, "could not start run program, failed to start host")
-	}
+const (
+	stateWaiting = iota
+	stateRunning
+	stateCanceled
+	stateFinished
+)
 
-	var stdout bytes.Buffer
-	var errBuff bytes.Buffer
-	args := []string{"host"}
-	args = append(args, additionalArgs...)
-	workspaceArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
-	if err != nil {
-		return "", "", errors.Wrap(err, "failed to exec command, error getting additional args")
-	}
-	args = append(args, workspaceArgs...)
-	cmd := exec.CommandContext(ctx, "pulumi", args...)
-	cmd.Dir = s.Workspace().WorkDir()
-	if s.Workspace().PulumiHome() != "" {
-		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
-		cmd.Env = append(os.Environ(), homeEnv)
-	}
+type languageRuntimeServer struct {
+	m sync.Mutex
+	c *sync.Cond
 
-	cmd.Stdout = &stdout
-	stderr, _ := cmd.StderrPipe()
-	err = cmd.Start()
-	if err != nil {
-		return "", "", errors.Wrap(err, "failed to start host command")
-	}
-	scanner := bufio.NewScanner(stderr)
-	scanner.Split(bufio.ScanLines)
+	fn      pulumi.RunFunc
+	address string
 
-	resMonAddrChan := make(chan string)
-	engineAddrChan := make(chan string)
-	failChan := make(chan bool)
-	go func() {
-		numAddrs := 0
-		for scanner.Scan() {
-			m := scanner.Text()
-			errBuff.WriteString(m)
-			if strings.HasPrefix(m, "resmon: ") {
-				numAddrs++
-				// resmon: 127.0.0.1:23423
-				resMonAddrChan <- strings.Split(m, " ")[1]
-			}
-			if strings.HasPrefix(m, "engine: ") {
-				numAddrs++
-				// engine: 127.0.0.1:23423
-				engineAddrChan <- strings.Split(m, " ")[1]
-			}
-		}
-		if numAddrs < 2 {
-			failChan <- true
-		}
-	}()
-	var monitorAddr string
-	var engineAddr string
-	for i := 0; i < 2; i++ {
-		select {
-		case <-ctx.Done():
-			return stdout.String(), errBuff.String(), ctx.Err()
-		case <-failChan:
-			return stdout.String(), errBuff.String(), errors.New("failed to launch host")
-		case monitorAddr = <-resMonAddrChan:
-		case engineAddr = <-engineAddrChan:
-		}
-	}
-
-	cfg, err := s.GetAllConfig(ctx)
-	if err != nil {
-		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to serialize config for inline program")
-	}
-	cfgMap := make(map[string]string)
-	for k, v := range cfg {
-		cfgMap[k] = v.Value
-	}
-
-	runInfo := pulumi.RunInfo{
-		EngineAddr:  engineAddr,
-		MonitorAddr: monitorAddr,
-		Config:      cfgMap,
-		Project:     proj.Name.String(),
-		Stack:       s.Name(),
-	}
-	if parallel > 0 {
-		runInfo.Parallel = parallel
-	}
-	err = execUserCode(ctx, s.Workspace().Program(), runInfo)
-	if err != nil {
-		interruptErr := cmd.Process.Signal(os.Interrupt)
-		if interruptErr != nil {
-			return stdout.String(), errBuff.String(),
-				errors.Wrap(err, "failed to run inline program and shutdown gracefully, could not kill host")
-		}
-		waitErr := cmd.Wait()
-		if waitErr != nil {
-			return stdout.String(), errBuff.String(),
-				errors.Wrap(err, "failed to run inline program and shutdown gracefully")
-		}
-		return stdout.String(), errBuff.String(), errors.Wrap(err, "error running inline pulumi program")
-	}
-
-	err = cmd.Process.Signal(os.Interrupt)
-	if err != nil {
-		return stdout.String(), errBuff.String(), errors.Wrap(err, "failed to shutdown host gracefully")
-	}
-	err = cmd.Wait()
-
-	if err != nil {
-		return stdout.String(), errBuff.String(), err
-	}
-
-	err = s.Workspace().PostCommandCallback(ctx, s.Name())
-	if err != nil {
-		return stdout.String(), errBuff.String(),
-			errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
-	}
-
-	return stdout.String(), errBuff.String(), nil
+	state  int
+	cancel chan bool
+	done   chan error
 }
 
-func execUserCode(ctx context.Context, fn pulumi.RunFunc, info pulumi.RunInfo) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if pErr, ok := r.(error); ok {
-				err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred:")
-			} else {
-				err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
+// isNestedInvocation returns true if pulumi.RunWithContext is on the stack.
+func isNestedInvocation() bool {
+	depth, callers := 0, make([]uintptr, 32)
+	for {
+		n := runtime.Callers(depth, callers)
+		if n == 0 {
+			return false
+		}
+		depth += n
+
+		frames := runtime.CallersFrames(callers)
+		for f, more := frames.Next(); more; f, more = frames.Next() {
+			if f.Function == "github.com/pulumi/pulumi/sdk/v2/go/pulumi.RunWithContext" {
+				return true
 			}
 		}
-	}()
-	stack := string(debug.Stack())
-	if strings.Contains(stack, "github.com/pulumi/pulumi/sdk/go/pulumi/run.go") {
-		return errors.New("nested stack operations are not supported https://github.com/pulumi/pulumi/issues/5058")
 	}
-	pulumiCtx, err := pulumi.NewContext(ctx, info)
+}
+
+func startLanguageRuntimeServer(fn pulumi.RunFunc) (*languageRuntimeServer, error) {
+	if isNestedInvocation() {
+		return nil, errors.New("nested stack operations are not supported https://github.com/pulumi/pulumi/issues/5058")
+	}
+
+	s := &languageRuntimeServer{
+		fn:     fn,
+		cancel: make(chan bool),
+	}
+	s.c = sync.NewCond(&s.m)
+
+	port, done, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
+			return nil
+		},
+	}, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return pulumi.RunWithContext(pulumiCtx, fn)
+	s.address, s.done = fmt.Sprintf("127.0.0.1:%d", port), done
+	return s, nil
+}
+
+func (s *languageRuntimeServer) Close() error {
+	s.m.Lock()
+	switch s.state {
+	case stateCanceled:
+		s.m.Unlock()
+		return nil
+	case stateWaiting:
+		// Not started yet; go ahead and cancel
+	default:
+		for s.state != stateFinished {
+			s.c.Wait()
+		}
+	}
+	s.state = stateCanceled
+	s.m.Unlock()
+
+	s.cancel <- true
+	close(s.cancel)
+	return <-s.done
+}
+
+func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return &pulumirpc.GetRequiredPluginsResponse{}, nil
+}
+
+func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	s.m.Lock()
+	if s.state == stateCanceled {
+		s.m.Unlock()
+		return nil, errors.Errorf("program canceled")
+	}
+	s.state = stateRunning
+	s.m.Unlock()
+
+	defer func() {
+		s.m.Lock()
+		s.state = stateFinished
+		s.m.Unlock()
+		s.c.Broadcast()
+	}()
+
+	var engineAddress string
+	if len(req.Args) > 0 {
+		engineAddress = req.Args[0]
+	}
+	runInfo := pulumi.RunInfo{
+		EngineAddr:  engineAddress,
+		MonitorAddr: req.GetMonitorAddress(),
+		Config:      req.GetConfig(),
+		Project:     req.GetProject(),
+		Stack:       req.GetStack(),
+		Parallel:    int(req.GetParallel()),
+	}
+
+	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	err = func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				if pErr, ok := r.(error); ok {
+					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred:")
+				} else {
+					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
+				}
+			}
+		}()
+
+		return pulumi.RunWithContext(pulumiCtx, s.fn)
+	}()
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	}
+	return &pulumirpc.RunResponse{}, nil
+}
+
+func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{
+		Version: "1.0.0",
+	}, nil
 }

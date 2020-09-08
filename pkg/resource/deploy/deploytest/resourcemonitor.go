@@ -54,6 +54,10 @@ func (rm *ResourceMonitor) Close() error {
 	return rm.conn.Close()
 }
 
+func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor {
+	return &ResourceMonitor{resmon: resmon}
+}
+
 type ResourceOptions struct {
 	Parent                resource.URN
 	Protect               bool
