@@ -23,6 +23,7 @@ export * from "./metadata";
 export * from "./output";
 export * from "./resource";
 export * from "./stackReference";
+export * from "./up";
 
 // Export submodules individually.
 import * as asset from "./asset";

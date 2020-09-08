@@ -22,6 +22,7 @@
         "output.ts",
         "resource.ts",
         "stackReference.ts",
+        "up.ts",
         "utils.ts",
         "version.ts",
 

@@ -31,13 +31,13 @@ export function hasErrors(): boolean {
 /**
  * debug logs a debug-level message that is generally hidden from end-users.
  */
-export async function debug(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
+export function debug(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.DEBUG, msg, resource, streamId, ephemeral);
+        return log(engine, engproto.LogSeverity.DEBUG, msg, resource, streamId, ephemeral);
     }
     else {
-        // ignore debug messages when no engine is available.
+        return Promise.resolve();
     }
 }
 
@@ -118,5 +118,5 @@ function log(
         });
     });
 
-    return lastLog;
+    return lastLog.catch(() => {});
 }
