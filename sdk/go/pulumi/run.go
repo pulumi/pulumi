@@ -61,6 +61,18 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 		o(&info)
 	}
 
+	// If there's no monitor, grab the args and start an update.
+	if info.MonitorAddr == "" && info.Mocks == nil {
+		update := Up(context.TODO(), body, &UpOptions{
+			Echo: true,
+			args: os.Args[1:],
+		})
+		if err := update.Start(); err != nil {
+			return err
+		}
+		return update.Wait()
+	}
+
 	// Validate some properties.
 	if info.Project == "" {
 		return errors.New("missing project name")
