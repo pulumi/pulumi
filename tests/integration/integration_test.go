@@ -112,18 +112,18 @@ func TestConfigSave(t *testing.T) {
 		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}).Save(path)
 	assert.NoError(t, err)
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "testing-2")
-	e.RunCommand("pulumi", "stack", "init", "testing-1")
+	_, _ = e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	_, _ = e.RunCommand("pulumi", "stack", "init", "testing-2")
+	_, _ = e.RunCommand("pulumi", "stack", "init", "testing-1")
 
 	// Now configure and save a few different things:
-	e.RunCommand("pulumi", "config", "set", "configA", "value1")
-	e.RunCommand("pulumi", "config", "set", "configB", "value2", "--stack", "testing-2")
+	_, _ = e.RunCommand("pulumi", "config", "set", "configA", "value1")
+	_, _ = e.RunCommand("pulumi", "config", "set", "configB", "value2", "--stack", "testing-2")
 
-	e.RunCommand("pulumi", "stack", "select", "testing-2")
+	_, _ = e.RunCommand("pulumi", "stack", "select", "testing-2")
 
-	e.RunCommand("pulumi", "config", "set", "configD", "value4")
-	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--stack", "testing-1")
+	_, _ = e.RunCommand("pulumi", "config", "set", "configD", "value4")
+	_, _ = e.RunCommand("pulumi", "config", "set", "configC", "value3", "--stack", "testing-1")
 
 	// Now read back the config using the CLI:
 	{
