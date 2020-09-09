@@ -138,7 +138,7 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string)
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--show-secrets", "--json")
 	if err != nil {
-		return val, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable read config")
+		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &val)
 	if err != nil {
@@ -157,7 +157,7 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigM
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json")
 	if err != nil {
-		return val, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable read config")
+		return val, newAutoError(errors.Wrap(err, "unable read config"), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &val)
 	if err != nil {
@@ -181,7 +181,7 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, fqsn string, key string,
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "set", key, val.Value, secretArg)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "unable set config")
+		return newAutoError(errors.Wrap(err, "unable set config"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -208,7 +208,7 @@ func (l *LocalWorkspace) RemoveConfig(ctx context.Context, fqsn string, key stri
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "rm", key)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not remove config")
+		return newAutoError(errors.Wrap(err, "could not remove config"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -235,7 +235,7 @@ func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (Config
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "refresh", "--force")
 	if err != nil {
-		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not refresh config")
+		return nil, newAutoError(errors.Wrap(err, "could not refresh config"), stdout, stderr, errCode)
 	}
 
 	cfg, err := l.GetAllConfig(ctx, fqsn)
@@ -304,7 +304,7 @@ func (l *LocalWorkspace) PulumiHome() string {
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
 	if err != nil {
-		return "", errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not determine authenticated user")
+		return "", newAutoError(errors.Wrap(err, "could not determine authenticated user"), stdout, stderr, errCode)
 	}
 	return strings.TrimSpace(stdout), nil
 }
@@ -332,7 +332,7 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "init", fqsn)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to create stack")
+		return newAutoError(errors.Wrap(err, "failed to create stack"), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -347,7 +347,7 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, fqsn string) error {
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "select", fqsn)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to select stack")
+		return newAutoError(errors.Wrap(err, "failed to select stack"), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -362,7 +362,7 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, fqsn string) error {
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "rm", "--yes", fqsn)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to remove stack")
+		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -383,7 +383,7 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	var stacks []StackSummary
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
 	if err != nil {
-		return stacks, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not list stacks")
+		return stacks, newAutoError(errors.Wrap(err, "could not list stacks"), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
@@ -404,7 +404,7 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "install", "resource", name, version)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to install plugin")
+		return newAutoError(errors.Wrap(err, "failed to install plugin"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -413,7 +413,7 @@ func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version
 func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version)
 	if err != nil {
-		return errors.Wrap(newAutoError(err, stdout, stderr, errCode), "failed to remove plugin")
+		return newAutoError(errors.Wrap(err, "failed to remove plugin"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -422,7 +422,7 @@ func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version 
 func (l *LocalWorkspace) ListPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "ls", "--json")
 	if err != nil {
-		return nil, errors.Wrap(newAutoError(err, stdout, stderr, errCode), "could not list list")
+		return nil, newAutoError(errors.Wrap(err, "could not list list"), stdout, stderr, errCode)
 	}
 	var plugins []workspace.PluginInfo
 	err = json.Unmarshal([]byte(stdout), &plugins)
