@@ -187,7 +187,7 @@ func TestReadingGitRepo(t *testing.T) {
 		name, ok := test.Environment[backend.GitHeadName]
 		t.Log(name)
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
-		// assert.Equal(t, "branch-from-ci", name)
+		// assert.Equal(t, "branch-from-ci", name) # see https://github.com/pulumi/pulumi/issues/5303
 	}
 
 }
