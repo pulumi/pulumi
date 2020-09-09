@@ -44,3 +44,7 @@ from .stack import (
 from .invoke import (
     invoke,
 )
+
+from ._json import (
+    to_json,
+)
