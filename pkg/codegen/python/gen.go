@@ -1543,7 +1543,9 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 		switch t {
 		case schema.BoolType:
 			typ = "bool"
-		case schema.IntType, schema.NumberType:
+		case schema.IntType:
+			typ = "int"
+		case schema.NumberType:
 			typ = "float"
 		case schema.StringType:
 			typ = "str"
@@ -1584,7 +1586,9 @@ func pyType(typ schema.Type) string {
 		switch typ {
 		case schema.BoolType:
 			return "bool"
-		case schema.IntType, schema.NumberType:
+		case schema.IntType:
+			return "int"
+		case schema.NumberType:
 			return "float"
 		case schema.StringType:
 			return "str"
