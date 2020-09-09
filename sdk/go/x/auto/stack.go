@@ -238,6 +238,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, errors.Wrap(err, "failed to run update")
 	}
 
+	async := false
+
 	upOpts := &optup.Options{}
 	for _, o := range opts {
 		o.ApplyOption(upOpts)
@@ -259,6 +261,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
+	if upOpts.UpdateChan != nil {
+		async = true
+	}
 
 	var stdout, stderr string
 	var code int
@@ -277,6 +282,10 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		args = append(args, sharedArgs...)
 		if upOpts.Parallel > 0 {
 			args = append(args, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
+		}
+
+		if async {
+			stdout, stderr, code, err = s.runPulumiCmdAsync(ctx, upOpts.UpdateChan, upOpts.DoneChan, args...)
 		}
 
 		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
@@ -646,6 +655,40 @@ func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, s
 	}
 	args = append(args, additionalArgs...)
 	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), env, args...)
+	if err != nil {
+		return stdout, stderr, errCode, err
+	}
+	err = s.Workspace().PostCommandCallback(ctx, s.Name())
+	if err != nil {
+		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
+	}
+	return stdout, stderr, errCode, nil
+}
+
+// TODO pull out common prep code
+func (s *Stack) runPulumiCmdAsync(
+	ctx context.Context,
+	updates chan string,
+	done chan error,
+	args ...string,
+) (string, string, int, error) {
+	var env []string
+	if s.Workspace().PulumiHome() != "" {
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
+		env = append(env, homeEnv)
+	}
+	if envvars := s.Workspace().GetEnvVars(); envvars != nil {
+		for k, v := range envvars {
+			e := []string{k, v}
+			env = append(env, strings.Join(e, "="))
+		}
+	}
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
+	if err != nil {
+		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
+	}
+	args = append(args, additionalArgs...)
+	stdout, stderr, errCode, err := runPulumiCommandAsync(ctx, s.Workspace().WorkDir(), env, updates, done, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}

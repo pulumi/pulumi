@@ -59,6 +59,15 @@ func TargetDependents() Option {
 	})
 }
 
+// StreamUpdates will incrementally send update output to the specified events chan, sending an event to the done chan
+// when the update is complete.
+func StreamUpdates(events chan string, done chan error) Option {
+	return optionFunc(func(opts *Options) {
+		opts.UpdateChan = events
+		opts.DoneChan = done
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -81,6 +90,10 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Channel to send stdout events during the update
+	UpdateChan chan string
+	// Channel to send completion signal at the end of the update
+	DoneChan chan error
 }
 
 type optionFunc func(*Options)

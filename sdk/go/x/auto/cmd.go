@@ -15,6 +15,7 @@
 package auto
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"os"
@@ -41,6 +42,52 @@ func runPulumiCommandSync(
 	cmd.Stderr = &stderr
 	code := unknownErrorCode
 	err := cmd.Run()
+	if exitError, ok := err.(*exec.ExitError); ok {
+		code = exitError.ExitCode()
+	}
+	return stdout.String(), stderr.String(), code, err
+}
+
+func runPulumiCommandAsync(
+	ctx context.Context,
+	workdir string,
+	additionalEnv []string,
+	updates chan string,
+	done chan error,
+	args ...string,
+) (string, string, int, error) {
+	// all commands should be run in non-interactive mode.
+	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
+	args = append(args, "--non-interactive")
+	cmd := exec.CommandContext(ctx, "pulumi", args...)
+	cmd.Dir = workdir
+	cmd.Env = append(os.Environ(), additionalEnv...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", "", unknownErrorCode, err
+	}
+	go func() {
+		scanner := bufio.NewScanner(out)
+		for scanner.Scan() {
+			m := scanner.Text()
+			updates <- m
+			stdout.WriteString(m)
+		}
+	}()
+
+	code := unknownErrorCode
+	err = cmd.Start()
+	if err != nil {
+		done <- err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		done <- err
+	}
 	if exitError, ok := err.(*exec.ExitError); ok {
 		code = exitError.ExitCode()
 	}
