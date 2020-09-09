@@ -27,6 +27,7 @@ import (
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
+	t.Skip("disabled")
 	ctx := context.Background()
 	pName := "conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
