@@ -7,8 +7,15 @@ CHANGELOG
 
 - feat(autoapi): add workspace scoped envvars to LocalWorkspace and Stack
   [#5275](https://github.com/pulumi/pulumi/pull/5275)
+
 - refactor(autoapi-gitrepo): use Workspace in SetupFn callback
   [#5279](https://github.com/pulumi/pulumi/pull/5279)
+
+- Fix Go SDK plugin acquisition for programs with vendored dependencies
+  [#5286](https://github.com/pulumi/pulumi/pull/5286)
+
+- Python SDK: Add support for `Sequence[T]` for array types
+  [#5282](https://github.com/pulumi/pulumi/pull/5282)
 
 ## 2.9.2 (2020-08-31)
 

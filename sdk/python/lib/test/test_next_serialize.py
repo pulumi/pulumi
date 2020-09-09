@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import unittest
-from typing import Any, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from google.protobuf import struct_pb2
 from pulumi.resource import CustomResource
@@ -275,6 +275,26 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual("unexpected input of type MyClass", str(error))
 
     @async_test
+    async def test_string(self):
+        # Ensure strings are serialized as strings (and not sequences).
+        prop = await rpc.serialize_property("hello world", [])
+        self.assertEqual("hello world", prop)
+
+    @async_test
+    async def test_unsupported_sequences(self):
+        cases = [
+            ("hi", 42),
+            range(10),
+            memoryview(bytes(10)),
+            bytes(10),
+            bytearray(10),
+        ]
+
+        for case in cases:
+            with self.assertRaises(ValueError):
+                await rpc.serialize_property(case, [])
+
+    @async_test
     async def test_distinguished_unknown_output(self):
         fut = asyncio.Future()
         fut.set_result(UNKNOWN)
@@ -530,7 +550,7 @@ class NextSerializationTests(unittest.TestCase):
         settings.SETTINGS.dry_run = True
 
         out = self.create_output(0, is_known=False)
-        r = out.apply(lambda v: self.create_output("inner", is_known=false, is_secret=True))
+        r = out.apply(lambda v: self.create_output("inner", is_known=False, is_secret=True))
 
         self.assertFalse(await r.is_known())
         self.assertFalse(await r.is_secret())
@@ -937,6 +957,23 @@ class FooArgs:
         pulumi.set(self, "first_arg", first_arg)
         pulumi.set(self, "second_arg", second_arg)
 
+@input_type
+class ListDictInputArgs:
+    a: List[Input[str]]
+    b: Sequence[Input[str]]
+    c: Dict[str, Input[str]]
+    d: Mapping[str, Input[str]]
+
+    def __init__(self,
+                 a: List[Input[str]],
+                 b: Sequence[Input[str]],
+                 c: Dict[str, Input[str]],
+                 d: Mapping[str, Input[str]]):
+        pulumi.set(self, "a", a)
+        pulumi.set(self, "b", b)
+        pulumi.set(self, "c", c)
+        pulumi.set(self, "d", d)
+
 
 @input_type
 class BarArgs:
@@ -951,7 +988,18 @@ class InputTypeSerializationTests(unittest.TestCase):
     async def test_simple_input_type(self):
         it = FooArgs(first_arg="hello", second_arg=42)
         prop = await rpc.serialize_property(it, [])
-        self.assertDictEqual(prop, {"firstArg": "hello", "secondArg": 42})
+        self.assertEqual({"firstArg": "hello", "secondArg": 42}, prop)
+
+    @async_test
+    async def test_list_dict_input_type(self):
+        it = ListDictInputArgs(a=["hi"], b=["there"], c={"hello": "world"}, d={"foo": "bar"})
+        prop = await rpc.serialize_property(it, [])
+        self.assertEqual({
+            "a": ["hi"],
+            "b": ["there"],
+            "c": {"hello": "world"},
+            "d": {"foo": "bar"}
+        }, prop)
 
     @async_test
     async def test_input_type_with_dict_property(self):
@@ -964,11 +1012,11 @@ class InputTypeSerializationTests(unittest.TestCase):
 
         it = BarArgs({"foo_bar": "hello", "foo_baz": "world"})
         prop = await rpc.serialize_property(it, [], transformer)
-        # Input type keys are not be transformed, but keys of nested
+        # Input type keys are not transformed, but keys of nested
         # dicts are still transformed.
-        self.assertDictEqual(prop, {
+        self.assertEqual({
             "tagArgs": {
                 "c": "hello",
                 "foo_baz": "world",
             },
-        })
+        }, prop)
