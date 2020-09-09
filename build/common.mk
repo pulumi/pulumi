@@ -127,6 +127,7 @@ only_test:: $(SUB_PROJECTS:%=%_only_test)
 only_test_fast:: $(SUB_PROJECTS:%=%_only_test_fast)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
+test_all:: $(SUB_PROJECTS:%=%_test_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
@@ -212,6 +213,9 @@ $(SUB_PROJECTS:%=%_lint):
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
+$(SUB_PROJECTS:%=%_test_all):
+	@echo foo
+	@$(MAKE) -C ./$(@:%_test_all=%) test_all
 $(SUB_PROJECTS:%=%_install):
 	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
