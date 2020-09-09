@@ -647,6 +647,21 @@ func NewStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...Loca
 	return NewStack(ctx, fqsn, w)
 }
 
+// UpsertStackLocalSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// from the specified WorkDir. If the Stack already exists, it will not error
+// and proceed to selecting the Stack.This Workspace will pick up any available
+// Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+func UpsertStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, WorkDir(workDir))
+	w, err := NewLocalWorkspace(ctx, opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return UpsertStack(ctx, fqsn, w)
+}
+
 // SelectStackLocalSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
 // from the specified WorkDir. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
@@ -674,6 +689,24 @@ func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts .
 	}
 
 	return NewStack(ctx, fqsn, w)
+}
+
+// UpsertStackRemoteSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// with source code cloned from the specified GitRepo. If the Stack already exists,
+// it will not error and proceed to selecting the Stack. This Workspace will pick up
+// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml) that are cloned
+// into the Workspace. Unless a WorkDir option is specified, the GitRepo will be clone
+// into a new temporary directory provided by the OS.
+func UpsertStackRemoteSource(
+	ctx context.Context, fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+	opts = append(opts, Repo(repo))
+	w, err := NewLocalWorkspace(ctx, opts...)
+	var stack Stack
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return UpsertStack(ctx, fqsn, w)
 }
 
 // SelectStackRemoteSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
@@ -719,6 +752,33 @@ func NewStackInlineSource(
 	}
 
 	return NewStack(ctx, fqsn, w)
+}
+
+// UpsertStackInlineSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
+// with the specified program. If the Stack already exists, it will not error and
+// proceed to selecting the Stack. If no Project option is specified, default project
+// settings will be created on behalf of the user. Similarly, unless a WorkDir option
+// is specified, the working directory will default to a new temporary directory provided by the OS.
+func UpsertStackInlineSource(
+	ctx context.Context,
+	fqsn string,
+	program pulumi.RunFunc,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
+	var stack Stack
+	opts = append(opts, Program(program))
+	proj, err := defaultInlineProject(fqsn)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one.
+	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	w, err := NewLocalWorkspace(ctx, opts...)
+	if err != nil {
+		return stack, errors.Wrap(err, "failed to create stack")
+	}
+
+	return UpsertStack(ctx, fqsn, w)
 }
 
 // SelectStackInlineSource selects an existing Stack backed by a new LocalWorkspace created on behalf of the user,

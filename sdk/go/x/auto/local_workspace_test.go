@@ -31,10 +31,10 @@ import (
 )
 
 const pulumiOrg = "pulumi"
+const pName = "testproj"
 
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
-	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -50,6 +50,108 @@ func TestNewStackLocalSource(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// Set environment variables scoped to the workspace.
+	envvars := map[string]string{
+		"foo":    "bar",
+		"barfoo": "foobar",
+	}
+	err = s.Workspace().SetEnvVars(envvars)
+	assert.Nil(t, err, "failed to set environment values")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+
+	s.Workspace().SetEnvVar("bar", "buzz")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment value after setting")
+
+	s.Workspace().UnsetEnvVar("bar")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- pulumi preview --
+
+	prev, err := s.Preview(ctx)
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+
+	ref, err := s.Refresh(ctx)
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestUpsertStackLocalSource(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, fqsn, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -228,6 +330,94 @@ func TestNewStackRemoteSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestUpsertStackRemoteSource(t *testing.T) {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+	}
+
+	// initialize
+	s, err := UpsertStackRemoteSource(ctx, fqsn, repo)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- pulumi preview --
+
+	prev, err := s.Preview(ctx)
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+
+	ref, err := s.Refresh(ctx)
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	ctx := context.Background()
 	pName := "go_remote_proj"
@@ -328,9 +518,108 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+	binName := "examplesBinary"
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		Setup: func(ctx context.Context, workspace Workspace) error {
+			cmd := exec.Command("go", "build", "-o", binName, "main.go")
+			cmd.Dir = workspace.WorkDir()
+			return cmd.Run()
+		},
+	}
+	project := workspace.Project{
+		Name: tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+			"binary": binName,
+		}),
+	}
+
+	// initialize or select
+	s, err := UpsertStackRemoteSource(ctx, fqsn, repo, Project(project))
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- pulumi preview --
+
+	prev, err := s.Preview(ctx)
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+
+	ref, err := s.Refresh(ctx)
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
 func TestNewStackInlineSource(t *testing.T) {
 	ctx := context.Background()
-	pName := "testproj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -345,6 +634,95 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+		c := config.New(ctx, "")
+		ctx.Export("exp_static", pulumi.String("foo"))
+		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- pulumi preview --
+
+	prev, err := s.Preview(ctx)
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+
+	ref, err := s.Refresh(ctx)
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestUpsertStackInlineSource(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize or select
+	s, err := UpsertStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))

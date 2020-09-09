@@ -610,12 +610,47 @@ func ExampleNewStack() error {
 	return err
 }
 
+func ExampleUpsertStack() error {
+	ctx := context.Background()
+	w, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		return err
+	}
+
+	fqsn := FullyQualifiedStackName("org", "proj", "stack")
+	stack, err := UpsertStack(ctx, fqsn, w)
+	if err != nil {
+		return err
+	}
+	_, err = stack.Up(ctx)
+	return err
+}
+
 func ExampleNewStackInlineSource() {
 	ctx := context.Background()
 	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
 	// create a new Stack with a default ProjectSettings file, and a temporary WorkDir created in a new
 	// LocalWorkspace on behalf of the user.
 	stack, _ := NewStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+		pCtx.Export("outputA", pulumi.String("valueA"))
+		return nil
+	})
+	// Stack.Up runs the inline pulumi.RunFunc specified above.
+	stack.Up(ctx)
+	// we can update the Workspace program for subsequent updates if desired
+	stack.Workspace().SetProgram(func(pCtx *pulumi.Context) error {
+		pCtx.Export("outputAA", pulumi.String("valueAA"))
+		return nil
+	})
+	stack.Up(ctx)
+}
+
+func ExampleUpsertStackInlineSource() {
+	ctx := context.Background()
+	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	// create or select a new Stack with a default ProjectSettings file, and a temporary WorkDir created in a new
+	// LocalWorkspace on behalf of the user.
+	stack, _ := UpsertStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
 		pCtx.Export("outputA", pulumi.String("valueA"))
 		return nil
 	})
@@ -655,6 +690,24 @@ func ExampleNewStackLocalSource() {
 	// creates a new stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
 	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
 	stack, _ := NewStackLocalSource(ctx, fqsn, workDir)
+	// Stack.Up runs the program in workDir
+	stack.Up(ctx)
+	// we can update the Workspace program for subsequent updates if desired
+	stack.Workspace().SetProgram(func(pCtx *pulumi.Context) error {
+		pCtx.Export("outputAA", pulumi.String("valueAA"))
+		return nil
+	})
+	// Stack.Up now runs our inline program
+	stack.Up(ctx)
+}
+
+func ExampleUpsertStackLocalSource() {
+	ctx := context.Background()
+	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	workDir := filepath.Join(".", "program", "dir")
+	// create or select a new stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
+	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
+	stack, _ := UpsertStackLocalSource(ctx, fqsn, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
 	// we can update the Workspace program for subsequent updates if desired
@@ -713,6 +766,37 @@ func ExampleNewStackRemoteSource() {
 
 	// initialize a stack from the git repo, specifying our project override
 	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+}
+
+func ExampleUpsertStackRemoteSource() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	// we'll compile a the program into an executable with the name "examplesBinary"
+	binName := "examplesBinary"
+	// a description of the git repo to clone
+	repo := GitRepo{
+		URL: "https://github.com/pulumi/test-repo.git",
+		// the subdirectory relative to the root of the repo
+		ProjectPath: "goproj",
+		// this call back will get executed post-clone to allow for additional program setup
+		Setup: func(ctx context.Context, workspace Workspace) error {
+			cmd := exec.Command("go", "build", "-o", binName, "main.go")
+			cmd.Dir = workspace.WorkDir()
+			return cmd.Run()
+		},
+	}
+	// an override to the project file in the git repo, specifying our pre-built executable
+	project := workspace.Project{
+		Name: tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+			"binary": binName,
+		}),
+	}
+
+	// initialize or select a stack from the git repo, specifying our project override
+	UpsertStackRemoteSource(ctx, fqsn, repo, Project(project))
 }
 
 func ExampleSelectStackRemoteSource() {
