@@ -165,6 +165,59 @@ func TestCompilationErrorGo(t *testing.T) {
 	}
 }
 
+func TestSelectStack404Error(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	opts := []LocalWorkspaceOption{WorkDir(pDir)}
+	w, err := NewLocalWorkspace(ctx, opts...)
+	if err != nil {
+		t.Errorf("failed to initialize workspace, err: %v", err)
+		t.FailNow()
+	}
+
+	// attempt to select stack that has not been created.
+	_, err = SelectStack(ctx, fqsn, w)
+	assert.NotNil(t, err)
+	assert.True(t, IsSelectStack404Error(err))
+}
+
+func TestCreateStack409Error(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
+
+	// initialize first stack
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// initialize workspace for dupe stack
+	opts := []LocalWorkspaceOption{WorkDir(pDir)}
+	w, err := NewLocalWorkspace(ctx, opts...)
+	if err != nil {
+		t.Errorf("failed to initialize workspace, err: %v", err)
+		t.FailNow()
+	}
+
+	// attempt to create a dupe stack.
+	_, err = NewStack(ctx, fqsn, w)
+	assert.NotNil(t, err)
+	assert.True(t, IsCreateStack409Error(err))
+}
+
 func TestCompilationErrorDotnet(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
