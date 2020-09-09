@@ -153,7 +153,7 @@ func (e *Environment) LocalURL() string {
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResults(t *testing.T, command string, args ...string) (string, string, error) {
 	t.Helper()
-	t.Logf("Running command %v %v", command, strings.Join(args, " "))
+	t.Logf("Running command - %v %v", command, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
