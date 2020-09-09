@@ -213,18 +213,19 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
 	} else {
-		args := []string{"preview", "--json", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
+		args := []string{"preview", fmt.Sprintf("--exec-kind=%s", constant.ExecKindAutoLocal)}
 		args = append(args, sharedArgs...)
-		stdout, stderr, code, err = s.runPulumiCmdSync(ctx, args...)
+		stdout, stderr, code, err = s.runPulumiCmdToStdOut(ctx, args...)
 		if err != nil {
 			return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 		}
 	}
 
-	err = json.Unmarshal([]byte(stdout), &res)
-	if err != nil {
-		return res, errors.Wrap(err, "unable to unmarshal preview result")
-	}
+	// we're just hacking things together to pipe everything to stdout for autorun mode
+	// err = json.Unmarshal([]byte(stdout), &res)
+	// if err != nil {
+	// 	return res, errors.Wrap(err, "unable to unmarshal preview result")
+	// }
 
 	return res, nil
 }
@@ -342,7 +343,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdToStdOut(ctx, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
@@ -399,7 +400,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdToStdOut(ctx, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
@@ -628,6 +629,34 @@ type DestroyResult struct {
 // secretSentinel represents the CLI response for an output marked as "secret"
 const secretSentinel = "[secret]"
 
+func (s *Stack) runPulumiCmdToStdOut(ctx context.Context, args ...string) (string, string, int, error) {
+	var env []string
+	if s.Workspace().PulumiHome() != "" {
+		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
+		env = append(env, homeEnv)
+	}
+	if envvars := s.Workspace().GetEnvVars(); envvars != nil {
+		for k, v := range envvars {
+			e := []string{k, v}
+			env = append(env, strings.Join(e, "="))
+		}
+	}
+	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
+	if err != nil {
+		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
+	}
+	args = append(args, additionalArgs...)
+	stdout, stderr, errCode, err := runPulumiCommandToStdout(ctx, s.Workspace().WorkDir(), env, args...)
+	if err != nil {
+		return stdout, stderr, errCode, err
+	}
+	err = s.Workspace().PostCommandCallback(ctx, s.Name())
+	if err != nil {
+		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
+	}
+	return stdout, stderr, errCode, nil
+}
+
 func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, string, int, error) {
 	var env []string
 	if s.Workspace().PulumiHome() != "" {
@@ -678,7 +707,7 @@ func (s *Stack) host(ctx context.Context, additionalArgs []string, parallel int)
 		cmd.Env = append(os.Environ(), homeEnv)
 	}
 
-	cmd.Stdout = &stdout
+	cmd.Stdout = os.Stdout
 	stderr, _ := cmd.StderrPipe()
 	err = cmd.Start()
 	if err != nil {

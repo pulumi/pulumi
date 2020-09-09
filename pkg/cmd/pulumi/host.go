@@ -128,7 +128,8 @@ func newHostCmd() *cobra.Command {
 			operation := s.Update
 			if isPreview {
 				operation = s.Preview
-				opts.Display.JSONDisplay = true
+				// we've disabled JSON for a demo of autorun
+				//opts.Display.JSONDisplay = true
 			}
 
 			// Now perform the update. This will stay alive until the user cancels the host.

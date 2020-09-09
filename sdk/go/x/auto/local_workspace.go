@@ -389,13 +389,15 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal config value")
 	}
-	for _, s := range stacks {
+	for i := range stacks {
+		s := stacks[i]
 		nameParts := strings.Split(s.Name, "/")
 		if len(nameParts) == 1 {
 			s.Name = fmt.Sprintf("%s/%s/%s", user, proj.Name.String(), s.Name)
 		} else {
 			s.Name = fmt.Sprintf("%s/%s/%s", nameParts[0], proj.Name.String(), nameParts[1])
 		}
+		stacks[i] = s
 	}
 	return stacks, nil
 }
