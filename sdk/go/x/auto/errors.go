@@ -15,6 +15,7 @@
 package auto
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -48,6 +49,28 @@ func IsConcurrentUpdateError(e error) bool {
 	}
 
 	return strings.Contains(ae.stderr, "[409] Conflict: Another update is currently in progress.")
+}
+
+// IsSelectStack404Error returns true if the error was a result of selecting a stack that does not exist.
+func IsSelectStack404Error(e error) bool {
+	ae, ok := e.(autoError)
+	if !ok {
+		return false
+	}
+
+	regex := regexp.MustCompile(`no stack named.*found`)
+	return regex.MatchString(ae.stderr)
+}
+
+// IsCreateStack409Error returns true if the error was a result of creating a stack that already exists.
+func IsCreateStack409Error(e error) bool {
+	ae, ok := e.(autoError)
+	if !ok {
+		return false
+	}
+
+	regex := regexp.MustCompile(`stack.*already exists`)
+	return regex.MatchString(ae.stderr)
 }
 
 // IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, .NET)

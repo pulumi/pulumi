@@ -102,6 +102,26 @@ func ExampleIsConcurrentUpdateError() {
 	}
 }
 
+func ExampleIsSelectStack404Error() {
+	ctx := context.Background()
+	s, _ := NewStackLocalSource(ctx, "o/p/s", filepath.Join(".", "stack", "notfound", "program"))
+	_, err := s.Up(ctx)
+	if err != nil && IsSelectStack404Error(err) {
+		// stack "o/p/s" does not exist
+		// implement some retry logic here...
+	}
+}
+
+func ExampleIsCreateStack409Error() {
+	ctx := context.Background()
+	s, _ := NewStackLocalSource(ctx, "o/p/s", filepath.Join(".", "stack", "alreadyexists", "program"))
+	_, err := s.Up(ctx)
+	if err != nil && IsCreateStack409Error(err) {
+		// stack "o/p/s" already exists
+		// implement some retry logic here...
+	}
+}
+
 func ExampleIsRuntimeError() {
 	ctx := context.Background()
 	s, _ := NewStackLocalSource(ctx, "o/p/s", filepath.Join(".", "runtime", "error", "program"))

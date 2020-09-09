@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+
+- Add IsSelectStack404Error and IsCreateStack409Error
+  [#5255](https://github.com/pulumi/pulumi/pull/5255)
+
 - Add internal scaffolding for cross-language components.
   [#5280](https://github.com/pulumi/pulumi/pull/5280)
 
