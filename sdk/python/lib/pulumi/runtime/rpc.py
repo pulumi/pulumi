@@ -17,10 +17,10 @@ out of RPC calls.
 """
 import sys
 import asyncio
-import collections
+from collections import abc
 import functools
 import inspect
-from typing import List, Any, Callable, Dict, Mapping, Optional, Tuple, Union, TYPE_CHECKING, cast, get_type_hints
+from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, TYPE_CHECKING, cast
 
 from google.protobuf import struct_pb2
 import six
@@ -92,7 +92,9 @@ async def serialize_property(value: 'Input[Any]',
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
     """
-    if isinstance(value, list):
+    # Exclude some built-in types that are instances of Sequence that we don't want to treat as sequences here.
+    # From: https://github.com/python/cpython/blob/master/Lib/_collections_abc.py
+    if isinstance(value, abc.Sequence) and not isinstance(value, (tuple, str, range, memoryview, bytes, bytearray)):
         props = []
         for elem in value:
             props.append(await serialize_property(elem, deps, input_transformer))
@@ -125,7 +127,7 @@ async def serialize_property(value: 'Input[Any]',
             remote_asset = cast('RemoteAsset', value)
             obj["uri"] = await serialize_property(remote_asset.uri, deps, input_transformer)
         else:
-            raise AssertionError(f"unknown asset type: {value}")
+            raise AssertionError(f"unknown asset type: {value!r}")
 
         return obj
 
@@ -147,7 +149,7 @@ async def serialize_property(value: 'Input[Any]',
             remote_archive = cast('RemoteArchive', value)
             obj["uri"] = await serialize_property(remote_archive.uri, deps, input_transformer)
         else:
-            raise AssertionError(f"unknown archive type: {value}")
+            raise AssertionError(f"unknown archive type: {value!r}")
 
         return obj
 
@@ -194,7 +196,7 @@ async def serialize_property(value: 'Input[Any]',
         value = _types.input_type_to_dict(value)
         transform_keys = False
 
-    if isinstance(value, Mapping):  # pylint: disable=bad-option-value,isinstance-second-argument-not-valid-type
+    if isinstance(value, abc.Mapping):
         obj = {}
         for k, v in value.items():
             transformed_key = k
@@ -426,7 +428,7 @@ def translate_output_properties(output: Any,
             # If typ is a dict, get the type for its values, to pass
             # along for each key.
             origin = _types.get_origin(typ)
-            if typ is dict or origin in {dict, Dict, Mapping, collections.abc.Mapping}:
+            if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
@@ -456,7 +458,7 @@ def translate_output_properties(output: Any,
             # If typ is a list, get the type for its values, to pass
             # along for each item.
             origin = _types.get_origin(typ)
-            if typ is list or origin in {list, List}:
+            if typ is list or origin in {list, List, Sequence, abc.Sequence}:
                 args = _types.get_args(typ)
                 if len(args) == 1:
                     element_type = args[0]
