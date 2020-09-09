@@ -146,6 +146,8 @@ type Enum struct {
 	Value interface{}
 	// Description for the enum value.
 	Description string
+	// Name for the enum.
+	Name string
 }
 
 func (t *EnumType) String() string {
@@ -614,7 +616,17 @@ type EnumMetadataSpec struct {
 	// ModelAsString, when true, indicates that an enum should be modelled as a string and not strictly enforced.
 	ModelAsString bool `json:"modelAsString"`
 	// Values contains metadata associated with each value of the enum.
-	Values []interface{} `json:"values,omitempty"`
+	Values []*EnumValueSpec `json:"values,omitempty"`
+}
+
+// EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
+type EnumValueSpec struct {
+	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
+	Name string `json:"name,omitempty"`
+	// Description of the enum value
+	Description string `json:"description,omitempty"`
+	// Value is the enum value itself and must match an element in the Enum[] list.
+	Value string `json:"value"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
@@ -977,15 +989,11 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		}
 
 		if spec.EnumMetadata.Values != nil {
-			for _, enumValue := range spec.EnumMetadata.Values {
-				var enumItem Enum
-				if value, ok := enumValue.(map[string]interface{})["value"]; ok {
-					enumItem.Value = value
-				}
-				if desc, ok := enumValue.(map[string]interface{})["description"]; ok {
-					if description, ok := desc.(string); ok {
-						enumItem.Description = description
-					}
+			for _, enumValueSpec := range spec.EnumMetadata.Values {
+				enumItem := Enum{
+					Value:       enumValueSpec.Value,
+					Description: enumValueSpec.Description,
+					Name:        enumValueSpec.Name,
 				}
 				enum.Elements = append(enum.Elements, &enumItem)
 			}
