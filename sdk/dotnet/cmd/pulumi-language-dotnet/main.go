@@ -373,7 +373,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 	// Buffer the writes we see from dotnet from its stdout and stderr streams. We will display
 	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
 	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
-	streamID := rand.Int31()
+	streamID := rand.Int31() //nolint:gosec
 
 	infoBuffer := &bytes.Buffer{}
 	errorBuffer := &bytes.Buffer{}

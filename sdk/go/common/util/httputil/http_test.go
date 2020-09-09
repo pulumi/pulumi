@@ -33,7 +33,8 @@ func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client)
 	// httptest.StartTLS will set NextProtos to ["http/1.1"] if it's unset, so we need to add
 	// HTTP/2 eagerly before starting the server.
 	server := httptest.NewUnstartedServer(handler)
-	server.TLS = &tls.Config{
+	server.TLS = &tls.Config{ //nolint:gosec
+
 		NextProtos: []string{http2.NextProtoTLS},
 	}
 	server.StartTLS()
