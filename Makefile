@@ -69,7 +69,7 @@ test_fast:: build
 test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 
-test_all:: build test_build $(SUB_PROJECTS:%=%_install)
+test_all:: build test_build $(SUB_PROJECTS:%=%_install) $(SUB_PROJECTS:%=%_test_all)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
 
