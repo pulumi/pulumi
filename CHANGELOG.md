@@ -23,6 +23,9 @@ CHANGELOG
 
 - Python SDK: Add support for `Sequence[T]` for array types
   [#5282](https://github.com/pulumi/pulumi/pull/5282)
+  
+- feat(autoapi): Add support for non default secret providers in local workspaces
+  [#5320](https://github.com/pulumi/pulumi/pull/5320)
 
 ## 2.9.2 (2020-08-31)
 

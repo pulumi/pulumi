@@ -39,10 +39,11 @@ import (
 // alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
 // This is identical to the behavior of Pulumi CLI driven workspaces.
 type LocalWorkspace struct {
-	workDir    string
-	pulumiHome string
-	program    pulumi.RunFunc
-	envvars    map[string]string
+	workDir         string
+	pulumiHome      string
+	program         pulumi.RunFunc
+	envvars         map[string]string
+	secretsProvider string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -330,7 +331,11 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
 		return errors.Wrap(err, "failed to create stack")
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "init", fqsn)
+	args := []string{"stack", "init", fqsn}
+	if l.secretsProvider != "" {
+		args = append(args, fmt.Sprintf("--secrets-provider=%s", l.secretsProvider))
+	}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to create stack"), stdout, stderr, errCode)
 	}
@@ -526,6 +531,11 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		}
 	}
 
+	// Secrets providers
+	if lwOpts.SecretsProvider != "" {
+		l.secretsProvider = lwOpts.SecretsProvider
+	}
+
 	return l, nil
 }
 
@@ -545,6 +555,8 @@ type localWorkspaceOptions struct {
 	Stacks map[string]workspace.ProjectStack
 	// Repo is a git repo with a Pulumi Project to clone into the WorkDir.
 	Repo *GitRepo
+	// Secrets Provider to use with the current Stack
+	SecretsProvider string
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -618,6 +630,14 @@ func Stacks(settings map[string]workspace.ProjectStack) LocalWorkspaceOption {
 func Repo(gitRepo GitRepo) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.Repo = &gitRepo
+	})
+}
+
+// SecretsProvider is the secrets provider to use with the current
+// workspace when interacting with a stack
+func SecretsProvider(secretsProvider string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.SecretsProvider = secretsProvider
 	})
 }
 

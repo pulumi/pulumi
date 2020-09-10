@@ -312,6 +312,28 @@ func ExampleNewLocalWorkspace() {
 	_, _ = NewLocalWorkspace(ctx, wd, ph, proj)
 }
 
+func ExampleNewLocalWorkspace_WithSecretsProvider() {
+	ctx := context.Background()
+	// WorkDir sets the working directory for the LocalWorkspace. The workspace will look for a default
+	// project settings file (Pulumi.yaml) in this location for information about the Pulumi program.
+	wd := WorkDir(filepath.Join("..", "path", "to", "pulumi", "project"))
+	// PulumiHome customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+	ph := PulumiHome(filepath.Join("~", ".pulumi"))
+	// Project provides ProjectSettings to set once the workspace is created.
+	proj := Project(workspace.Project{
+		Name:    tokens.PackageName("myproject"),
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Backend: &workspace.ProjectBackend{
+			URL: "https://url.to.custom.saas.backend.com",
+		},
+	})
+	// Secrets provider provides a way of passing a non-default secrets provider to the
+	// workspace and the stacks created from it. Supported secrets providers are:
+	// `awskms`, `azurekeyvault`, `gcpkms`, `hashivault` and `passphrase`
+	secretsProvider := SecretsProvider("awskms://alias/mysecretkeyalias")
+	_, _ = NewLocalWorkspace(ctx, wd, ph, proj, secretsProvider)
+}
+
 func ExampleLocalWorkspace_ListPlugins() {
 	ctx := context.Background()
 	// create a workspace from a local project
