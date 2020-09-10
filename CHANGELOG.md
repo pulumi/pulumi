@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.10.0 (2020-09-10)
 
 - feat(autoapi): add Upsert methods for stacks
   [#5316](https://github.com/pulumi/pulumi/pull/5316)
@@ -23,7 +26,7 @@ CHANGELOG
 
 - Python SDK: Add support for `Sequence[T]` for array types
   [#5282](https://github.com/pulumi/pulumi/pull/5282)
-  
+
 - feat(autoapi): Add support for non default secret providers in local workspaces
   [#5320](https://github.com/pulumi/pulumi/pull/5320)
 
