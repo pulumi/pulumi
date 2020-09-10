@@ -1473,14 +1473,20 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).inputType = true
-				getModFromToken(t.Token).details(t).functionType = true
+				details := getModFromToken(t.Token).details(t)
+				if !details.inputType {
+					details.inputType = true
+					details.functionType = true
+				}
 			})
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).outputType = true
-				getModFromToken(t.Token).details(t).functionType = true
+				details := getModFromToken(t.Token).details(t)
+				if !details.outputType {
+					details.outputType = true
+					details.functionType = true
+				}
 			})
 		}
 	}
