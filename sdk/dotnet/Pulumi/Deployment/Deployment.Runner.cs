@@ -117,7 +117,11 @@ namespace Pulumi
                             await task.ConfigureAwait(false);
 
                             // Log the descriptions of completed tasks.
-                            var descriptions = _inFlightTasks[task];
+                            List<string> descriptions;
+                            lock (_inFlightTasks)
+                            {
+                                descriptions = _inFlightTasks[task];
+                            }
                             foreach (var description in descriptions)
                             {
                                 Serilog.Log.Information($"Completed task: {description}");
