@@ -137,7 +137,7 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string)
 	if err != nil {
 		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
 	}
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--show-secrets", "--json")
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--json")
 	if err != nil {
 		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
 	}

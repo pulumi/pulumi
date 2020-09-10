@@ -31,18 +31,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const pulumiOrg = "pulumi"
+const pulumiOrg = "moolumi"
 const pName = "testproj"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
-	pName := "go_secrets_provider"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// We can't use Workspace EnvVars as the Workspace uses the secrets provider to
 	// create the Stack
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	err := os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	assert.Nil(t, err, "failed to set EnvVar.")
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
@@ -58,7 +58,8 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	}
 
 	defer func() {
-		os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		assert.Nil(t, err, "failed to unset EnvVar.")
 
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
@@ -67,6 +68,10 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 	passwordVal := "Password1234!"
 	err = s.SetConfig(ctx, "MySecretDatabasePassword", ConfigValue{Value: passwordVal, Secret: true})
+	if err != nil {
+		t.Errorf("setConfig failed, err: %v", err)
+		t.FailNow()
+	}
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -79,13 +84,13 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	// -- get config --
-	config, err := s.GetConfig(ctx, "MySecretDatabasePassword")
+	conf, err := s.GetConfig(ctx, "MySecretDatabasePassword")
 	if err != nil {
 		t.Errorf("GetConfig failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, passwordVal, config.Value)
-	assert.Equal(t, true, config.Secret)
+	assert.Equal(t, passwordVal, conf.Value)
+	assert.Equal(t, true, conf.Secret)
 
 	// -- pulumi destroy --
 

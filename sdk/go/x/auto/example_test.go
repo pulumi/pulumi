@@ -312,7 +312,7 @@ func ExampleNewLocalWorkspace() {
 	_, _ = NewLocalWorkspace(ctx, wd, ph, proj)
 }
 
-func ExampleNewLocalWorkspace_WithSecretsProvider() {
+func ExampleLocalWorkspace_secretsProvider() {
 	ctx := context.Background()
 	// WorkDir sets the working directory for the LocalWorkspace. The workspace will look for a default
 	// project settings file (Pulumi.yaml) in this location for information about the Pulumi program.
