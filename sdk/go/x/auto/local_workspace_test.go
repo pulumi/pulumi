@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -30,8 +31,78 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const pulumiOrg = "pulumi"
+const pulumiOrg = "moolumi"
 const pName = "testproj"
+
+func TestWorkspaceSecretsProvider(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	// We can't use Workspace EnvVars as the Workspace uses the secrets provider to
+	// create the Stack
+	err := os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	assert.Nil(t, err, "failed to set EnvVar.")
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+		c := config.New(ctx, "")
+		ctx.Export("exp_static", pulumi.String("foo"))
+		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		return nil
+	}, SecretsProvider("passphrase"))
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		assert.Nil(t, err, "failed to unset EnvVar.")
+
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	passwordVal := "Password1234!"
+	err = s.SetConfig(ctx, "MySecretDatabasePassword", ConfigValue{Value: passwordVal, Secret: true})
+	if err != nil {
+		t.Errorf("setConfig failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- get config --
+	conf, err := s.GetConfig(ctx, "MySecretDatabasePassword")
+	if err != nil {
+		t.Errorf("GetConfig failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, passwordVal, conf.Value)
+	assert.Equal(t, true, conf.Secret)
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
 
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
