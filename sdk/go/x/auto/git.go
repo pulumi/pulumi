@@ -21,11 +21,45 @@ import (
 	"github.com/pkg/errors"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
+	cloneOptions := &git.CloneOptions{
+		URL: repoArgs.URL,
+	}
+
+	// Firstly we will try to check that an SSH Private Key Path has been specified
+	if repoArgs.SSHPrivateKeyPath != "" {
+		publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.SSHPrivateKeyPath, repoArgs.Password)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to use SSH Private Key")
+		}
+
+		cloneOptions.Auth = publicKeys
+	}
+
+	// Then we check to see if a Personal Access Token has been specified
+	// the username for use with a PAT can be *anything* but an empty string
+	// so we are setting this to `git`
+	if repoArgs.PersonalAccessToken != "" {
+		cloneOptions.Auth = &http.BasicAuth{
+			Username: "git",
+			Password: repoArgs.PersonalAccessToken,
+		}
+	}
+
+	// then we check to see if a username and a password has been specified
+	if repoArgs.Password != "" && repoArgs.Username != "" {
+		cloneOptions.Auth = &http.BasicAuth{
+			Username: repoArgs.Username,
+			Password: repoArgs.Password,
+		}
+	}
+
 	// clone
-	repo, err := git.PlainCloneContext(ctx, workDir, false, &git.CloneOptions{URL: repoArgs.URL})
+	repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to clone repo")
 	}

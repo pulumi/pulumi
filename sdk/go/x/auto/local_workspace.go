@@ -584,6 +584,14 @@ type GitRepo struct {
 	CommitHash string
 	// Optional function to execute after enlisting in the specified repo.
 	Setup SetupFn
+	// The absolute path to a private key for access to the github repo
+	SSHPrivateKeyPath string
+	// The password that pairs with a username or as part of an SSH Private Key
+	Password string
+	// PersonalAccessToken is a GitHub personal access token is in replacment of your password
+	PersonalAccessToken string
+	// Username is the username to use when authenticating to a git repository
+	Username string
 }
 
 // SetupFn is a function to execute after enlisting in a git repo.

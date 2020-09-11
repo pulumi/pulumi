@@ -18,6 +18,7 @@ package auto
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -186,6 +187,104 @@ func ExampleGitRepo() {
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
+		// this call back will get executed post-clone to allow for additional program setup
+		Setup: func(ctx context.Context, workspace Workspace) error {
+			cmd := exec.Command("go", "build", "-o", binName, "main.go")
+			cmd.Dir = workspace.WorkDir()
+			return cmd.Run()
+		},
+	}
+	// an override to the project file in the git repo, specifying our pre-built executable
+	project := workspace.Project{
+		Name: tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+			"binary": binName,
+		}),
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+}
+
+func ExampleGitRepo_personalAccessToken() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	// Get the Sourcecode Repository PERSONAL_ACCESS_TOKEN
+	token, _ := os.LookupEnv("PERSONAL_ACCESS_TOKEN")
+
+	// we'll compile a the program into an executable with the name "examplesBinary"
+	binName := "examplesBinary"
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		// This will use a personal access token for the chosen source code repository
+		PersonalAccessToken: token,
+		// this call back will get executed post-clone to allow for additional program setup
+		Setup: func(ctx context.Context, workspace Workspace) error {
+			cmd := exec.Command("go", "build", "-o", binName, "main.go")
+			cmd.Dir = workspace.WorkDir()
+			return cmd.Run()
+		},
+	}
+	// an override to the project file in the git repo, specifying our pre-built executable
+	project := workspace.Project{
+		Name: tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+			"binary": binName,
+		}),
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+}
+
+func ExampleGitRepo_privateKeyPath() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	// we'll compile a the program into an executable with the name "examplesBinary"
+	binName := "examplesBinary"
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		// This will use a private SSH Key on a local filesystem.
+		SSHPrivateKeyPath: "/Users/myuser/.ssh/id_rsa",
+		Password:          "PrivateKeyPassword",
+		// this call back will get executed post-clone to allow for additional program setup
+		Setup: func(ctx context.Context, workspace Workspace) error {
+			cmd := exec.Command("go", "build", "-o", binName, "main.go")
+			cmd.Dir = workspace.WorkDir()
+			return cmd.Run()
+		},
+	}
+	// an override to the project file in the git repo, specifying our pre-built executable
+	project := workspace.Project{
+		Name: tokens.PackageName(pName),
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+			"binary": binName,
+		}),
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+}
+
+func ExampleGitRepo_usernameAndPassword() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	// we'll compile a the program into an executable with the name "examplesBinary"
+	binName := "examplesBinary"
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		// This will use a username and password combination for the private repo
+		Username: "myuser",
+		Password: "myPassword1234!",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
