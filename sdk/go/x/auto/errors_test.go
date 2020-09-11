@@ -79,6 +79,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {
+	t.Skip("disabled, see https://github.com/pulumi/pulumi/issues/5378")
 	ctx := context.Background()
 	pName := "inline_conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
