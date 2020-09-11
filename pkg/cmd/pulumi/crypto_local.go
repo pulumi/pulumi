@@ -19,7 +19,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
@@ -35,8 +37,20 @@ func readPassphrase(prompt string) (string, error) {
 	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
 		return phrase, nil
 	}
+	if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+		phraseFilePath, err := filepath.Abs(phraseFile)
+		if err != nil {
+			return "", errors.New("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+		if err != nil {
+			return "", errors.New("unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+		return string(phraseDetails), nil
+	}
 	if !cmdutil.Interactive() {
-		return "", errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE environment variable")
+		return "", errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
+			"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 	}
 	return cmdutil.ReadConsoleNoEcho(prompt)
 }
@@ -61,7 +75,7 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 	if info.EncryptionSalt != "" {
 		for {
 			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
+				"    (set PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE to remember)")
 			if phraseErr != nil {
 				return nil, phraseErr
 			}

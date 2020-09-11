@@ -2,7 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Allow Pulumi to read a passphrase file, via `PULUMI_CONFIG_PASSPHRASE_FILE` to interact
+  with the passphrase secrets provider. Pulumi will first try and use the `PULUMI_CONFIG_PASSPHRASE`
+  to get the passphrase then will check `PULUMI_CONFIG_PASSPHRASE_FILE` and then all through to 
+  asking interactively as the final option.
+  [#5327](https://github.com/pulumi/pulumi/pull/5327)
 
 ## 2.10.0 (2020-09-10)
 
