@@ -101,6 +101,14 @@ conflicts:
 	if err != nil && IsConcurrentUpdateError(err) { /* retry logic here */ }
 ```
 
+## Developing the Godocs
+This repo has extensive examples and godoc content. To test out your changes locally you can do the following:
+
+1. enlist in the appropriate pulumi branch:
+2. cd $GOPATH/src/github.com/pulumi/pulumi/sdk/go/x/auto
+3. godoc -http=:6060
+4. Navigate to http://localhost:6060/pkg/github.com/pulumi/pulumi/sdk/v2/go/x/auto/
+
 ## Known Issues
 
 The Automation API is currently in Alpha and has several known issues. Please upvote issues,
