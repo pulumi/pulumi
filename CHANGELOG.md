@@ -30,6 +30,9 @@ _(none)_
 - feat(autoapi): Add support for non default secret providers in local workspaces
   [#5320](https://github.com/pulumi/pulumi/pull/5320)
 
+- .NET SDK: Prevent a task completion race condition
+  [#5324](https://github.com/pulumi/pulumi/pull/5324)
+
 ## 2.9.2 (2020-08-31)
 
 - Alpha version of the Automation API for Go
