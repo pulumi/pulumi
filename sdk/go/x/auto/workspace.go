@@ -30,31 +30,31 @@ type Workspace interface {
 	// SaveProjectSettings overwrites the settings object in the current project.
 	// There can only be a single project per workspace. Fails is new project name does not match old.
 	SaveProjectSettings(context.Context, *workspace.Project) error
-	// StackSettings returns the settings object for the stack matching the specified fullyQualifiedStackName if any.
+	// StackSettings returns the settings object for the stack matching the specified stack name if any.
 	StackSettings(context.Context, string) (*workspace.ProjectStack, error)
-	// SaveStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
+	// SaveStackSettings overwrites the settings object for the stack matching the specified stack name.
 	SaveStackSettings(context.Context, string, *workspace.ProjectStack) error
 	// SerializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
-	// Provided with fullyQualifiedStackName,
+	// Provided with stack name,
 	// returns a list of args to append to an invoked command ["--config=...", ].
 	SerializeArgsForOp(context.Context, string) ([]string, error)
-	// PostCommandCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
+	// PostCommandCallback is a hook executed after every command. Called with the stack name.
 	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml).
 	PostCommandCallback(context.Context, string) error
-	// GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
+	// GetConfig returns the value associated with the specified stack name and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)
-	// GetAllConfig returns the config map for the specified fullyQualifiedStackName, scoped to the current workspace.
+	// GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 	GetAllConfig(context.Context, string) (ConfigMap, error)
-	// SetConfig sets the specified key-value pair on the provided fullyQualifiedStackName.
+	// SetConfig sets the specified key-value pair on the provided stack name.
 	SetConfig(context.Context, string, string, ConfigValue) error
-	// SetAllConfig sets all values in the provided config map for the specified fullyQualifiedStackName.
+	// SetAllConfig sets all values in the provided config map for the specified stack name.
 	SetAllConfig(context.Context, string, ConfigMap) error
-	// RemoveConfig removes the specified key-value pair on the provided fullyQualifiedStackName.
+	// RemoveConfig removes the specified key-value pair on the provided stack name.
 	RemoveConfig(context.Context, string, string) error
-	// RemoveAllConfig removes all values in the provided key list for the specified fullyQualifiedStackName.
+	// RemoveAllConfig removes all values in the provided key list for the specified stack name.
 	RemoveAllConfig(context.Context, string, []string) error
-	// RefreshConfig gets and sets the config map used with the last Update for Stack matching fullyQualifiedStackName.
+	// RefreshConfig gets and sets the config map used with the last Update for Stack matching stack name.
 	RefreshConfig(context.Context, string) (ConfigMap, error)
 	// GetEnvVars returns the environment values scoped to the current workspace.
 	GetEnvVars() map[string]string
@@ -76,9 +76,9 @@ type Workspace interface {
 	WhoAmI(context.Context) (string, error)
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
-	// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
+	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
 	CreateStack(context.Context, string) error
-	// SelectStack selects and sets an existing stack matching the fullyQualifiedStackName, failing if none exists.
+	// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
 	RemoveStack(context.Context, string) error

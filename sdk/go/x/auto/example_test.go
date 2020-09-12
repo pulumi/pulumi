@@ -35,8 +35,9 @@ func Example() error {
 	ctx := context.Background()
 
 	// This stack creates an output
-	fqsn := FullyQualifiedStackName("myOrg", "projA", "devStack")
-	stackA, err := NewStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+	projA := "projA"
+	stackName := FullyQualifiedStackName("myOrg", projA, "devStack")
+	stackA, err := NewStackInlineSource(ctx, stackName, projA, func(pCtx *pulumi.Context) error {
 		pCtx.Export("outputA", pulumi.String("valueA"))
 		return nil
 	})
@@ -50,8 +51,9 @@ func Example() error {
 	}
 
 	// this stack creates an uses stackA's output to create a new output
-	fqsn = FullyQualifiedStackName("myOrg", "projB", "devStack")
-	stackB, err := NewStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+	projB := "projB"
+	stackName = FullyQualifiedStackName("myOrg", projB, "devStack")
+	stackB, err := NewStackInlineSource(ctx, stackName, projB, func(pCtx *pulumi.Context) error {
 		// output a new value "valueA/valueB"
 		pCtx.Export(
 			"outputB",
@@ -77,10 +79,10 @@ func Example() error {
 }
 
 func ExampleFullyQualifiedStackName() {
-	fqsn := FullyQualifiedStackName("myOrgName", "myProjectName", "myStackName")
+	stackName := FullyQualifiedStackName("myOrgName", "myProjectName", "myStackName")
 	// "myOrgName/myProjectName/myStackName"
 	ctx := context.Background()
-	_, _ = NewStackLocalSource(ctx, fqsn, filepath.Join(".", "project"))
+	_, _ = NewStackLocalSource(ctx, stackName, filepath.Join(".", "project"))
 }
 
 func ExampleIsCompilationError() {
@@ -141,12 +143,6 @@ func ExampleIsUnexpectedEngineError() {
 	}
 }
 
-func ExampleValidateFullyQualifiedStackName() {
-	badFqsn := "project/stack"
-	// false
-	fmt.Println(ValidateFullyQualifiedStackName(badFqsn))
-}
-
 func ExampleConfigMap() {
 	cfg := ConfigMap{
 		"plaintext": {Value: "unencrypted"},
@@ -179,7 +175,7 @@ func ExampleDestroyResult() {
 func ExampleGitRepo() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
@@ -202,7 +198,7 @@ func ExampleGitRepo() {
 	}
 
 	// initialize a stack from the git repo, specifying our project override
-	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+	NewStackRemoteSource(ctx, stackName, repo, Project(project))
 }
 
 func ExampleLocalWorkspace() {
@@ -394,40 +390,40 @@ func ExampleLocalWorkspace_RefreshConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsnA := FullyQualifiedStackName("org", "proj", "stackA")
+	stackNameA := FullyQualifiedStackName("org", "proj", "stackA")
 	// get the last deployed config from stack A
 	// this overwrites config in pulumi.stackA.yaml
-	cfg, _ := w.RefreshConfig(ctx, fqsnA)
+	cfg, _ := w.RefreshConfig(ctx, stackNameA)
 	// add a key to the ConfigMap
 	cfg["addition_config_key"] = ConfigValue{Value: "additional_config_value"}
 	// create a new stack
-	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
-	w.CreateStack(ctx, fqsnB)
+	stackNameB := FullyQualifiedStackName("org", "proj", "stackB")
+	w.CreateStack(ctx, stackNameB)
 	// save the modified config to stackB
-	w.SetAllConfig(ctx, fqsnB, cfg)
+	w.SetAllConfig(ctx, stackNameB, cfg)
 }
 
 func ExampleLocalWorkspace_RemoveAllConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsn := FullyQualifiedStackName("org", "proj", "stackA")
+	stackName := FullyQualifiedStackName("org", "proj", "stackA")
 	// get all config currently set in the workspace
-	cfg, _ := w.GetAllConfig(ctx, fqsn)
+	cfg, _ := w.GetAllConfig(ctx, stackName)
 	var keys []string
 	for k := range cfg {
 		keys = append(keys, k)
 	}
 	// remove those config values
-	_ = w.RemoveAllConfig(ctx, fqsn, keys)
+	_ = w.RemoveAllConfig(ctx, stackName, keys)
 }
 
 func ExampleLocalWorkspace_RemoveConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsn := FullyQualifiedStackName("org", "proj", "stackA")
-	_ = w.RemoveConfig(ctx, fqsn, "key_to_remove")
+	stackName := FullyQualifiedStackName("org", "proj", "stackA")
+	_ = w.RemoveConfig(ctx, stackName, "key_to_remove")
 }
 
 func ExampleLocalWorkspace_RemovePlugin() {
@@ -441,33 +437,33 @@ func ExampleLocalWorkspace_RemoveStack() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsn := FullyQualifiedStackName("org", "proj", "stack")
-	_ = w.RemoveStack(ctx, fqsn)
+	stackName := FullyQualifiedStackName("org", "proj", "stack")
+	_ = w.RemoveStack(ctx, stackName)
 }
 
 func ExampleLocalWorkspace_SelectStack() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsn := FullyQualifiedStackName("org", "proj", "existing_stack")
-	_ = w.SelectStack(ctx, fqsn)
+	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
+	_ = w.SelectStack(ctx, stackName)
 }
 
 func ExampleLocalWorkspace_SetAllConfig() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsnA := FullyQualifiedStackName("org", "proj", "stackA")
+	stackNameA := FullyQualifiedStackName("org", "proj", "stackA")
 	// get the last deployed config from stack A
 	// this overwrites config in pulumi.stackA.yaml
-	cfg, _ := w.RefreshConfig(ctx, fqsnA)
+	cfg, _ := w.RefreshConfig(ctx, stackNameA)
 	// add a key to the ConfigMap
 	cfg["addition_config_key"] = ConfigValue{Value: "additional_config_value"}
 	// create a new stack
-	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
-	w.CreateStack(ctx, fqsnB)
+	stackNameB := FullyQualifiedStackName("org", "proj", "stackB")
+	w.CreateStack(ctx, stackNameB)
 	// save the modified config to stackB
-	w.SetAllConfig(ctx, fqsnB, cfg)
+	w.SetAllConfig(ctx, stackNameB, cfg)
 }
 
 func ExampleLocalWorkspace_SetProgram() {
@@ -494,32 +490,32 @@ func ExampleLocalWorkspace_StackSettings() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsnA := FullyQualifiedStackName("org", "proj", "stackA")
+	stackNameA := FullyQualifiedStackName("org", "proj", "stackA")
 	// read existing stack settings for stackA if any
-	ss, err := w.StackSettings(ctx, fqsnA)
+	ss, err := w.StackSettings(ctx, stackNameA)
 	if err != nil {
 		// no pulumi.stackA.yaml was found, so create a default
 		ss = &workspace.ProjectStack{}
 	}
-	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
+	stackNameB := FullyQualifiedStackName("org", "proj", "stackB")
 	// copy the settings to stackB
-	w.SaveStackSettings(ctx, fqsnB, ss)
+	w.SaveStackSettings(ctx, stackNameB, ss)
 }
 
 func ExampleLocalWorkspace_SaveStackSettings() {
 	ctx := context.Background()
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
-	fqsnA := FullyQualifiedStackName("org", "proj", "stackA")
+	stackNameA := FullyQualifiedStackName("org", "proj", "stackA")
 	// read existing stack settings for stackA if any
-	ss, err := w.StackSettings(ctx, fqsnA)
+	ss, err := w.StackSettings(ctx, stackNameA)
 	if err != nil {
 		// no pulumi.stackA.yaml was found, so create a default
 		ss = &workspace.ProjectStack{}
 	}
-	fqsnB := FullyQualifiedStackName("org", "proj", "stackB")
+	stackNameB := FullyQualifiedStackName("org", "proj", "stackB")
 	// copy the settings to stackB
-	w.SaveStackSettings(ctx, fqsnB, ss)
+	w.SaveStackSettings(ctx, stackNameB, ss)
 }
 
 func ExampleLocalWorkspace_WhoAmI() {
@@ -532,7 +528,7 @@ func ExampleLocalWorkspace_WhoAmI() {
 
 func ExampleSetupFn() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "nodejs_project", "myStack")
+	stackName := FullyQualifiedStackName("myOrg", "nodejs_project", "myStack")
 
 	repo := GitRepo{
 		URL:         "https://some.example.repo.git",
@@ -547,12 +543,12 @@ func ExampleSetupFn() {
 	}
 
 	// initialize a stack from the git repo
-	NewStackRemoteSource(ctx, fqsn, repo)
+	NewStackRemoteSource(ctx, stackName, repo)
 }
 
 func ExampleStack() error {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "dev_stack")
+	stackName := FullyQualifiedStackName("org", "project", "dev_stack")
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -565,7 +561,7 @@ func ExampleStack() error {
 
 	// initialize
 	pDir := filepath.Join(".", "project")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		return err
 	}
@@ -623,8 +619,8 @@ func ExampleNewStack() error {
 		return err
 	}
 
-	fqsn := FullyQualifiedStackName("org", "proj", "stack")
-	stack, err := NewStack(ctx, fqsn, w)
+	stackName := FullyQualifiedStackName("org", "proj", "stack")
+	stack, err := NewStack(ctx, stackName, w)
 	if err != nil {
 		return err
 	}
@@ -639,8 +635,8 @@ func ExampleUpsertStack() error {
 		return err
 	}
 
-	fqsn := FullyQualifiedStackName("org", "proj", "stack")
-	stack, err := UpsertStack(ctx, fqsn, w)
+	stackName := FullyQualifiedStackName("org", "proj", "stack")
+	stack, err := UpsertStack(ctx, stackName, w)
 	if err != nil {
 		return err
 	}
@@ -650,10 +646,11 @@ func ExampleUpsertStack() error {
 
 func ExampleNewStackInlineSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	projName := "proj"
+	stackName := FullyQualifiedStackName("myOrg", projName, "stack")
 	// create a new Stack with a default ProjectSettings file, and a temporary WorkDir created in a new
 	// LocalWorkspace on behalf of the user.
-	stack, _ := NewStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+	stack, _ := NewStackInlineSource(ctx, stackName, projName, func(pCtx *pulumi.Context) error {
 		pCtx.Export("outputA", pulumi.String("valueA"))
 		return nil
 	})
@@ -669,10 +666,11 @@ func ExampleNewStackInlineSource() {
 
 func ExampleUpsertStackInlineSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	projName := "proj"
+	stackName := FullyQualifiedStackName("myOrg", "proj", "stack")
 	// create or select a new Stack with a default ProjectSettings file, and a temporary WorkDir created in a new
 	// LocalWorkspace on behalf of the user.
-	stack, _ := UpsertStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+	stack, _ := UpsertStackInlineSource(ctx, stackName, projName, func(pCtx *pulumi.Context) error {
 		pCtx.Export("outputA", pulumi.String("valueA"))
 		return nil
 	})
@@ -688,10 +686,11 @@ func ExampleUpsertStackInlineSource() {
 
 func ExampleSelectStackInlineSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "existing_stack")
+	projName := "proj"
+	stackName := FullyQualifiedStackName("myOrg", projName, "existing_stack")
 	// selects an existing stack with a default ProjectSettings file, and a temporary WorkDir in a new LocalWorkspace
 	// created on behalf of the user.
-	stack, _ := SelectStackInlineSource(ctx, fqsn, func(pCtx *pulumi.Context) error {
+	stack, _ := SelectStackInlineSource(ctx, stackName, projName, func(pCtx *pulumi.Context) error {
 		pCtx.Export("outputA", pulumi.String("valueA"))
 		return nil
 	})
@@ -707,11 +706,11 @@ func ExampleSelectStackInlineSource() {
 
 func ExampleNewStackLocalSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	stackName := FullyQualifiedStackName("myOrg", "proj", "stack")
 	workDir := filepath.Join(".", "program", "dir")
 	// creates a new stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
 	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
-	stack, _ := NewStackLocalSource(ctx, fqsn, workDir)
+	stack, _ := NewStackLocalSource(ctx, stackName, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
 	// we can update the Workspace program for subsequent updates if desired
@@ -725,11 +724,11 @@ func ExampleNewStackLocalSource() {
 
 func ExampleUpsertStackLocalSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	stackName := FullyQualifiedStackName("myOrg", "proj", "stack")
 	workDir := filepath.Join(".", "program", "dir")
 	// create or select a new stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
 	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
-	stack, _ := UpsertStackLocalSource(ctx, fqsn, workDir)
+	stack, _ := UpsertStackLocalSource(ctx, stackName, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
 	// we can update the Workspace program for subsequent updates if desired
@@ -743,11 +742,11 @@ func ExampleUpsertStackLocalSource() {
 
 func ExampleSelectStackLocalSource() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("myOrg", "proj", "stack")
+	stackName := FullyQualifiedStackName("myOrg", "proj", "stack")
 	workDir := filepath.Join(".", "program", "dir")
 	// selects an existing stack with a new LocalWorkspace created from provided WorkDir. This Workspace will pick up
 	// any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml)
-	stack, _ := SelectStackLocalSource(ctx, fqsn, workDir)
+	stack, _ := SelectStackLocalSource(ctx, stackName, workDir)
 	// Stack.Up runs the program in workDir
 	stack.Up(ctx)
 	// we can update the Workspace program for subsequent updates if desired
@@ -762,7 +761,7 @@ func ExampleSelectStackLocalSource() {
 func ExampleNewStackRemoteSource() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
@@ -787,13 +786,13 @@ func ExampleNewStackRemoteSource() {
 	}
 
 	// initialize a stack from the git repo, specifying our project override
-	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+	NewStackRemoteSource(ctx, stackName, repo, Project(project))
 }
 
 func ExampleUpsertStackRemoteSource() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
@@ -818,13 +817,13 @@ func ExampleUpsertStackRemoteSource() {
 	}
 
 	// initialize or select a stack from the git repo, specifying our project override
-	UpsertStackRemoteSource(ctx, fqsn, repo, Project(project))
+	UpsertStackRemoteSource(ctx, stackName, repo, Project(project))
 }
 
 func ExampleSelectStackRemoteSource() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
@@ -849,45 +848,45 @@ func ExampleSelectStackRemoteSource() {
 	}
 
 	// select an existing stack using a LocalWorkspace created from the git repo, specifying our project override
-	SelectStackRemoteSource(ctx, fqsn, repo, Project(project))
+	SelectStackRemoteSource(ctx, stackName, repo, Project(project))
 }
 
 func ExampleStack_Destroy() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// select an existing stack to destroy
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Destroy(ctx, optdestroy.Message("a message to save with the destroy operation"))
 }
 
 func ExampleStack_Up() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// create a new stack to update
-	stack, _ := NewStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Up(ctx, optup.Message("a message to save with the up operation"), optup.Parallel(10000))
 }
 
 func ExampleStack_Preview() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// create a new stack and preview changes
-	stack, _ := NewStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Preview(ctx, optpreview.Message("a message to save with the preive operation"))
 }
 
 func ExampleStack_Refresh() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// select an existing stack and refresh the resources under management
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Refresh(ctx, optrefresh.Message("a message to save with the refresh operation"))
 }
 
 func ExampleStack_GetAllConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	cfg, _ := stack.GetAllConfig(ctx)
 	fmt.Println(cfg["config_key"].Value)
 	fmt.Println(cfg["config_key"].Secret)
@@ -895,8 +894,8 @@ func ExampleStack_GetAllConfig() {
 
 func ExampleStack_GetConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	cfgVal, _ := stack.GetConfig(ctx, "config_key")
 	fmt.Println(cfgVal.Value)
 	fmt.Println(cfgVal.Secret)
@@ -904,8 +903,8 @@ func ExampleStack_GetConfig() {
 
 func ExampleStack_History() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	hist, _ := stack.History(ctx)
 	// last operation start time
 	fmt.Println(hist[0].StartTime)
@@ -913,8 +912,8 @@ func ExampleStack_History() {
 
 func ExampleStack_Info() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	info, _ := stack.Info(ctx)
 	// url to view the Stack in the Pulumi SaaS or other backend
 	fmt.Println(info.URL)
@@ -922,8 +921,8 @@ func ExampleStack_Info() {
 
 func ExampleStack_Outputs() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	outs, _ := stack.Outputs(ctx)
 	fmt.Println(outs["key"].Value.(string))
 	fmt.Println(outs["key"].Secret)
@@ -931,40 +930,40 @@ func ExampleStack_Outputs() {
 
 func ExampleStack_RefreshConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// get the last deployed config from stack and overwrite Pulumi.stack.yaml
 	_, _ = stack.RefreshConfig(ctx)
 }
 
 func ExampleStack_RemoveConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// remove config matching the specified key
 	_ = stack.RemoveConfig(ctx, "key_to_remove")
 }
 
 func ExampleStack_RemoveAllConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// remove config matching the specified keys
 	_ = stack.RemoveAllConfig(ctx, []string{"key0", "key1", "...", "keyN"})
 }
 
 func ExampleStack_SetConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// set config key-value pair
 	_ = stack.SetConfig(ctx, "key_to_set", ConfigValue{Value: "abc", Secret: true})
 }
 
 func ExampleStack_SetAllConfig() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	cfg := ConfigMap{
 		"key0": ConfigValue{Value: "abc", Secret: true},
 		"key1": ConfigValue{Value: "def"},

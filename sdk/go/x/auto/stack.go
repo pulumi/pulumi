@@ -111,29 +111,32 @@ import (
 
 // Stack is an isolated, independently configurable instance of a Pulumi program.
 // Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
-// Automation API stacks are addressed by a fully qualified stack name (fqsn) in the form "org/project/stack".
 // Multiple Stacks are commonly used to denote different phases of development
 // (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
 type Stack struct {
 	workspace Workspace
-	fqsn      string
+	stackName string
 }
 
-// FullyQualifiedStackName returns an appropriately formatted name to be used for Stack creation/selection.
+// FullyQualifiedStackName returns a stack name formatted with the greatest possible specificity:
+// org/project/stack or user/project/stack
+// Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
+// Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this format.
+// See: https://github.com/pulumi/pulumi/issues/2522
 func FullyQualifiedStackName(org, project, stack string) string {
 	return fmt.Sprintf("%s/%s/%s", org, project, stack)
 }
 
-// NewStack creates a new stack using the given workspace, and fully qualified stack name (org/project/name).
+// NewStack creates a new stack using the given workspace, and stack name.
 // It fails if a stack with that name already exists
-func NewStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
+func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
 		workspace: ws,
-		fqsn:      fqsn,
+		stackName: stackName,
 	}
 
-	err := ws.CreateStack(ctx, fqsn)
+	err := ws.CreateStack(ctx, stackName)
 	if err != nil {
 		return s, err
 	}
@@ -141,17 +144,17 @@ func NewStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
 	return s, nil
 }
 
-// SelectStack selects stack using the given workspace, and fully qualified stack name (org/project/name).
+// SelectStack selects stack using the given workspace, and stack name.
 // It returns an error if the given Stack does not exist. All LocalWorkspace operations will call SelectStack()
 // before running.
-func SelectStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
+func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
 		workspace: ws,
-		fqsn:      fqsn,
+		stackName: stackName,
 	}
 
-	err := ws.SelectStack(ctx, fqsn)
+	err := ws.SelectStack(ctx, stackName)
 	if err != nil {
 		return s, err
 	}
@@ -159,19 +162,19 @@ func SelectStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) 
 	return s, nil
 }
 
-// UpsertStack tries to create a new stack using the given workspace and fully
-// qualified stack name (org/project/name) if the stack does not already exist,
+// UpsertStack tries to create a new stack using the given workspace and
+// stack name if the stack does not already exist,
 // or falls back to selecting the existing stack. If the stack does not exist,
 // it will be created and selected.
-func UpsertStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) {
-	s, err := NewStack(ctx, fqsn, ws)
+func UpsertStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
+	s, err := NewStack(ctx, stackName, ws)
 	// error for all failures except if the stack already exists, as we'll
 	// just select the stack if it exists.
 	if err != nil && !IsCreateStack409Error(err) {
 		return s, err
 	}
 
-	err = ws.SelectStack(ctx, fqsn)
+	err = ws.SelectStack(ctx, stackName)
 	if err != nil {
 		return s, err
 	}
@@ -179,9 +182,9 @@ func UpsertStack(ctx context.Context, fqsn string, ws Workspace) (Stack, error) 
 	return s, nil
 }
 
-// Name returns the fully qualified stack name in the form "org/project/stack"
+// Name returns the stack name
 func (s *Stack) Name() string {
-	return s.fqsn
+	return s.stackName
 }
 
 // Workspace returns the underlying Workspace backing the Stack.

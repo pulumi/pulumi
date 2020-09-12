@@ -38,7 +38,7 @@ In addition to fine-grained building blocks, Automation API provides three out o
 ```
 3. Programs defined as a function alongside your Automation API code (NewStackInlineSource)
 ```go
-	 stack, err := NewStackInlineSource(ctx, "myOrg/myProj/myStack", func(pCtx *pulumi.Context) error {
+	 stack, err := NewStackInlineSource(ctx, "myOrg/myProj/myStack", "myProj", func(pCtx *pulumi.Context) error {
 		bucket, err := s3.NewBucket(pCtx, "bucket", nil)
 		if err != nil {
 			return err

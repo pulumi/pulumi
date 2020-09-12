@@ -31,11 +31,11 @@ func TestConcurrentUpdateError(t *testing.T) {
 	ctx := context.Background()
 	pName := "conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "conflict_error")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -82,10 +82,10 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	ctx := context.Background()
 	pName := "inline_conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// initialize
-	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		time.Sleep(1 * time.Second)
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
@@ -137,11 +137,11 @@ const compilationErrProj = "compilation_error"
 func TestCompilationErrorGo(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "go")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -169,7 +169,7 @@ func TestCompilationErrorGo(t *testing.T) {
 func TestSelectStack404Error(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
@@ -181,7 +181,7 @@ func TestSelectStack404Error(t *testing.T) {
 	}
 
 	// attempt to select stack that has not been created.
-	_, err = SelectStack(ctx, fqsn, w)
+	_, err = SelectStack(ctx, stackName, w)
 	assert.NotNil(t, err)
 	assert.True(t, IsSelectStack404Error(err))
 }
@@ -189,11 +189,11 @@ func TestSelectStack404Error(t *testing.T) {
 func TestCreateStack409Error(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize first stack
 	pDir := filepath.Join(".", "test", "testproj")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -214,7 +214,7 @@ func TestCreateStack409Error(t *testing.T) {
 	}
 
 	// attempt to create a dupe stack.
-	_, err = NewStack(ctx, fqsn, w)
+	_, err = NewStack(ctx, stackName, w)
 	assert.NotNil(t, err)
 	assert.True(t, IsCreateStack409Error(err))
 }
@@ -222,11 +222,11 @@ func TestCreateStack409Error(t *testing.T) {
 func TestCompilationErrorDotnet(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "dotnet")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -254,7 +254,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 func TestCompilationErrorTypescript(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "typescript")
@@ -267,7 +267,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 		t.FailNow()
 	}
 
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -297,11 +297,11 @@ const runtimeErrProj = "runtime_error"
 func TestRuntimeErrorGo(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "go")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -329,10 +329,10 @@ func TestRuntimeErrorGo(t *testing.T) {
 func TestRuntimeErrorInlineGo(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(ctx, stackName, runtimeErrProj, func(ctx *pulumi.Context) error {
 		var x []string
 		ctx.Export("a", pulumi.String(x[0]))
 		return nil
@@ -364,7 +364,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 func TestRuntimeErrorPython(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "python")
@@ -377,7 +377,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.FailNow()
 	}
 
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -405,7 +405,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 func TestRuntimeErrorJavascript(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "javascript")
@@ -418,7 +418,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 		t.FailNow()
 	}
 
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -446,7 +446,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 func TestRuntimeErrorTypescript(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "typescript")
@@ -459,7 +459,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 		t.FailNow()
 	}
 
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -487,11 +487,11 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 func TestRuntimeErrorDotnet(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "dotnet")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
