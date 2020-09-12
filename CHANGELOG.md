@@ -51,7 +51,7 @@ CHANGELOG
   (fixes [#4103](https://github.com/pulumi/pulumi/issues/4103))
   [#5191](https://github.com/pulumi/pulumi/pull/5191)
 
-## 2.9.1 (2020-08-127
+## 2.9.1 (2020-08-27)
 
 - Python SDK: Avoid raising an error when an output has a type annotation of Any
   and the value is a list or dict.
