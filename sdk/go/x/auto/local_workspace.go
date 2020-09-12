@@ -620,7 +620,12 @@ func NewStackLocalSource(ctx context.Context, stackName, workDir string, opts ..
 // from the specified WorkDir. If the Stack already exists, it will not error
 // and proceed to selecting the Stack.This Workspace will pick up any available
 // Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-func UpsertStackLocalSource(ctx context.Context, stackName, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+func UpsertStackLocalSource(
+	ctx context.Context,
+	stackName,
+	workDir string,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -634,7 +639,12 @@ func UpsertStackLocalSource(ctx context.Context, stackName, workDir string, opts
 // SelectStackLocalSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
 // from the specified WorkDir. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-func SelectStackLocalSource(ctx context.Context, stackName, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+func SelectStackLocalSource(
+	ctx context.Context,
+	stackName,
+	workDir string,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -649,7 +659,12 @@ func SelectStackLocalSource(ctx context.Context, stackName, workDir string, opts
 // with source code cloned from the specified GitRepo. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml) that are cloned into the Workspace.
 // Unless a WorkDir option is specified, the GitRepo will be clone into a new temporary directory provided by the OS.
-func NewStackRemoteSource(ctx context.Context, stackName string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+func NewStackRemoteSource(
+	ctx context.Context,
+	stackName string,
+	repo GitRepo,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
