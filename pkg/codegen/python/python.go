@@ -15,7 +15,6 @@
 package python
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -42,57 +41,15 @@ var useLegacyName = codegen.StringSet{
 	"GetUptimeCheckIPs": struct{}{}, // GCP
 }
 
-var ignorePyNamePanic = false
-
-// excludeFromPanic are names that are ok to have different results from PyName and PyNameLegacy.
-var excludeFromPanic = codegen.StringSet{
-	// The following all show up as properties of nested input/output classes only, so it's OK that the current
-	// and legacy names are different since we haven't previously generated any input/output classes (hence no
-	// breaking change).
-	"nonResourceURLs":                        struct{}{}, // K8s
-	"targetWWNs":                             struct{}{}, // K8s
-	"podCIDRs":                               struct{}{}, // K8s
-	"podIPs":                                 struct{}{}, // K8s
-	"externalIPs":                            struct{}{}, // K8s
-	"publicIPs":                              struct{}{}, // Azure
-	"effectiveOutboundIPs":                   struct{}{}, // Azure
-	"doNotRunExtensionsOnOverprovisionedVMs": struct{}{}, // Azure
-	"vCPUs":                                  struct{}{}, // Azure
-	"networkACLs":                            struct{}{}, // Azure
-	"allocatableVMs":                         struct{}{}, // Azure
-	"publicIPsToAllow":                       struct{}{}, // Azure
-	"managedOutboundIPs":                     struct{}{}, // Azure
-	"outboundIPs":                            struct{}{}, // Azure
-	"staticIPs":                              struct{}{}, // Azure
-	"sendMDNAsynchronously":                  struct{}{}, // Azure
-	"adminGroupObjectIDs":                    struct{}{}, // Azure
-	"GuestConfigurationHCRPAssignment":       struct{}{}, // Azure
-	"GetGuestConfigurationHCRPAssignment":    struct{}{}, // Azure
-	"clusterUsersGroupDNs":                   struct{}{}, // Azure
-	"targetRUs":                              struct{}{}, // Azure
-	"boostRUs":                               struct{}{}, // Azure
-}
-
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
-// It panics if the result is different from PyNameLegacy, unless name is in excludeFromPanic or
-// ignorePyNamePanic is true, to help catch unintended breaking changes.
-// TODO[pulumi/pulumi#5201]: Once all providers have been updated to use this version of the codegen (or later),
-// we can go back and remove the panic.
 func PyName(name string) string {
-	current := pyName(name, useLegacyName.Has(name))
-	if ignorePyNamePanic || excludeFromPanic.Has(name) {
-		return current
-	}
-	legacy := PyNameLegacy(name)
-	if current != legacy {
-		panic(fmt.Sprintf("PyName(%[1]q) != PyNameLegacy(%[1]q) (%q != %q)", name, current, legacy))
-	}
-	return current
+	return pyName(name, useLegacyName.Has(name))
 }
 
-// Deprecated: Use PyName instead.
 // PyNameLegacy is an uncorrected and deprecated version of the PyName algorithm to maintain compatibility and avoid
 // a breaking change. See the linked issue for more context: https://github.com/pulumi/pulumi-kubernetes/issues/1179
+//
+// Deprecated: Use PyName instead.
 func PyNameLegacy(name string) string {
 	return pyName(name, true /*legacy*/)
 }
