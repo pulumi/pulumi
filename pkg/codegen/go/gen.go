@@ -1189,9 +1189,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 		for _, p := range r.InputProperties {
 			if r.IsProvider {
-				visitObjectTypes(inputSeen, p.Type, setOutput);
+				visitObjectTypes(inputSeen, p.Type, setOutput)
 			}
-			visitObjectTypes(inputSeen, p.Type, setInput);
+			visitObjectTypes(inputSeen, p.Type, setInput)
 		}
 		if r.StateInputs != nil {
 			visitObjectTypes(inputSeen, r.StateInputs, setInput)
