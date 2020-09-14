@@ -31,7 +31,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const pulumiOrg = "pulumi-test"
+var pulumiOrg = getTestOrg()
+
 const pName = "testproj"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
@@ -927,4 +928,12 @@ func TestNestedStackFails(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func getTestOrg() string {
+	testOrg := "pulumi-test"
+	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
+		testOrg = os.Getenv("PULUMI_TEST_ORG")
+	}
+	return testOrg
 }

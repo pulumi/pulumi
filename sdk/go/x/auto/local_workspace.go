@@ -809,6 +809,9 @@ func defaultInlineProject(projectName string) (workspace.Project, error) {
 // so just return the last chunk which is what will be used in pulumi.<stack>.yaml
 func getStackSettingsName(stackName string) string {
 	parts := strings.Split(stackName, "/")
+	if len(parts) < 1 {
+		return stackName
+	}
 	return parts[len(parts)-1]
 }
 
