@@ -1,7 +1,5 @@
 import * as yaml from "js-yaml";
 
-export const settingsExtensions = [".yaml", ".yml", ".json"];
-
 export class ProjectSettings {
     name: string
     runtime: ProjectRuntimeInfo
