@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -177,6 +178,12 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	const permalinkSearchStr = "https://app.pulumi.com"
+	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	permalink, err := GetPermalink(res.StdOut)
+	assert.Nil(t, err, "failed to get permalink.")
+	assert.True(t, startRegex.MatchString(permalink))
 
 	// -- pulumi preview --
 
