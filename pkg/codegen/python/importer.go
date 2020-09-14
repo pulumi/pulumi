@@ -42,9 +42,6 @@ type PackageInfo struct {
 	Compatibility string `json:"compatibility,omitempty"`
 	// Indicates whether the package generates input/output classes.
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
-	// Indicates whether the package should ignore if some name has a different
-	// result for PyName and PyNameLegacy.
-	IgnorePyNamePanic bool `json:"ignorePyNamePanic,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
