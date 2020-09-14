@@ -30,31 +30,43 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		URL: repoArgs.URL,
 	}
 
-	// Firstly we will try to check that an SSH Private Key Path has been specified
-	if repoArgs.SSHPrivateKeyPath != "" {
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.SSHPrivateKeyPath, repoArgs.Password)
-		if err != nil {
-			return "", errors.Wrap(err, "unable to use SSH Private Key")
+	if repoArgs.Auth != nil {
+
+		authDetails := repoArgs.Auth
+		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
+		if (authDetails.SSHPrivateKeyPath != "" && authDetails.PersonalAccessToken != "") ||
+			(authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "") ||
+			(authDetails.PersonalAccessToken != "" && authDetails.Username != "") {
+			return "", errors.New("please specify one authentication option of `Personal Access Token`, " +
+				"`Username\\Password` or `SSH Private Key Path`")
 		}
 
-		cloneOptions.Auth = publicKeys
-	}
+		// Firstly we will try to check that an SSH Private Key Path has been specified
+		if authDetails.SSHPrivateKeyPath != "" {
+			publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.Auth.SSHPrivateKeyPath, repoArgs.Auth.Password)
+			if err != nil {
+				return "", errors.Wrap(err, "unable to use SSH Private Key")
+			}
 
-	// Then we check to see if a Personal Access Token has been specified
-	// the username for use with a PAT can be *anything* but an empty string
-	// so we are setting this to `git`
-	if repoArgs.PersonalAccessToken != "" {
-		cloneOptions.Auth = &http.BasicAuth{
-			Username: "git",
-			Password: repoArgs.PersonalAccessToken,
+			cloneOptions.Auth = publicKeys
 		}
-	}
 
-	// then we check to see if a username and a password has been specified
-	if repoArgs.Password != "" && repoArgs.Username != "" {
-		cloneOptions.Auth = &http.BasicAuth{
-			Username: repoArgs.Username,
-			Password: repoArgs.Password,
+		// Then we check to see if a Personal Access Token has been specified
+		// the username for use with a PAT can be *anything* but an empty string
+		// so we are setting this to `git`
+		if authDetails.PersonalAccessToken != "" {
+			cloneOptions.Auth = &http.BasicAuth{
+				Username: "git",
+				Password: repoArgs.Auth.PersonalAccessToken,
+			}
+		}
+
+		// then we check to see if a username and a password has been specified
+		if authDetails.Password != "" && authDetails.Username != "" {
+			cloneOptions.Auth = &http.BasicAuth{
+				Username: repoArgs.Auth.Username,
+				Password: repoArgs.Auth.Password,
+			}
 		}
 	}
 
