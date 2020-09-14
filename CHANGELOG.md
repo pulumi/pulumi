@@ -14,6 +14,11 @@ CHANGELOG
   when interacting with a private repo
   [#5333](https://github.com/pulumi/pulumi/pull/5333)
 
+- Revise the design for connecting an existing language runtime to a CLI invocation.
+  Note that this is a protocol breaking change for the Automation API, so both the
+  API and the CLI must be updated together.
+  [#5317](https://github.com/pulumi/pulumi/pull/5317)
+
 ## 2.10.0 (2020-09-10)
 
 - feat(autoapi): add Upsert methods for stacks
