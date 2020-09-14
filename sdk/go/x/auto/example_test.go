@@ -18,6 +18,7 @@ package auto
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -203,6 +204,63 @@ func ExampleGitRepo() {
 
 	// initialize a stack from the git repo, specifying our project override
 	NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+}
+
+func ExampleGitRepo_personalAccessToken() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	// Get the Sourcecode Repository PERSONAL_ACCESS_TOKEN
+	token, _ := os.LookupEnv("PERSONAL_ACCESS_TOKEN")
+
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		Auth: &GitAuth{
+			PersonalAccessToken: token,
+		},
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo)
+}
+
+func ExampleGitRepo_privateKeyPath() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		Auth: &GitAuth{
+			SSHPrivateKeyPath: "/Users/myuser/.ssh/id_rsa",
+			Password:          "PrivateKeyPassword",
+		},
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo)
+}
+
+func ExampleGitRepo_usernameAndPassword() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	repo := GitRepo{
+		URL:         "https://github.com/pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		Auth: &GitAuth{
+			// This will use a username and password combination for the private repo
+			Username: "myuser",
+			Password: "myPassword1234!",
+		},
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, fqsn, repo)
 }
 
 func ExampleLocalWorkspace() {

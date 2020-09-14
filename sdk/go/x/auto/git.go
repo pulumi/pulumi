@@ -21,11 +21,57 @@ import (
 	"github.com/pkg/errors"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
+	cloneOptions := &git.CloneOptions{
+		URL: repoArgs.URL,
+	}
+
+	if repoArgs.Auth != nil {
+
+		authDetails := repoArgs.Auth
+		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
+		if (authDetails.SSHPrivateKeyPath != "" && authDetails.PersonalAccessToken != "") ||
+			(authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "") ||
+			(authDetails.PersonalAccessToken != "" && authDetails.Username != "") {
+			return "", errors.New("please specify one authentication option of `Personal Access Token`, " +
+				"`Username\\Password` or `SSH Private Key Path`")
+		}
+
+		// Firstly we will try to check that an SSH Private Key Path has been specified
+		if authDetails.SSHPrivateKeyPath != "" {
+			publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.Auth.SSHPrivateKeyPath, repoArgs.Auth.Password)
+			if err != nil {
+				return "", errors.Wrap(err, "unable to use SSH Private Key")
+			}
+
+			cloneOptions.Auth = publicKeys
+		}
+
+		// Then we check to see if a Personal Access Token has been specified
+		// the username for use with a PAT can be *anything* but an empty string
+		// so we are setting this to `git`
+		if authDetails.PersonalAccessToken != "" {
+			cloneOptions.Auth = &http.BasicAuth{
+				Username: "git",
+				Password: repoArgs.Auth.PersonalAccessToken,
+			}
+		}
+
+		// then we check to see if a username and a password has been specified
+		if authDetails.Password != "" && authDetails.Username != "" {
+			cloneOptions.Auth = &http.BasicAuth{
+				Username: repoArgs.Auth.Username,
+				Password: repoArgs.Auth.Password,
+			}
+		}
+	}
+
 	// clone
-	repo, err := git.PlainCloneContext(ctx, workDir, false, &git.CloneOptions{URL: repoArgs.URL})
+	repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to clone repo")
 	}
