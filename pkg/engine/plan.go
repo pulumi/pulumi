@@ -31,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
+const clientRuntimeName = "client"
+
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
 	diag, statusDiag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
@@ -50,7 +52,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// If the project wants to connect to an existing language runtime, do so now.
-	if projinfo.Proj.Runtime.Name() == "client" {
+	if projinfo.Proj.Runtime.Name() == clientRuntimeName {
 		addressValue, ok := projinfo.Proj.Runtime.Options()["address"]
 		if !ok {
 			return "", "", nil, errors.New("missing address of language runtime service")

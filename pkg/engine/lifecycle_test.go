@@ -6012,7 +6012,8 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 		updateResult: make(chan result.Result),
 	}
 
-	port, _, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	stop := make(chan bool)
+	port, _, err := rpcutil.Serve(0, stop, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, ctx)
 			return nil
@@ -6036,6 +6037,7 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 		close(ctx.snap)
 		ctx.updateResult <- res
 		close(ctx.updateResult)
+		stop <- true
 	}()
 
 	ctx.ResourceMonitor = <-ctx.resmon

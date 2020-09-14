@@ -198,6 +198,7 @@ func newPreviewCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

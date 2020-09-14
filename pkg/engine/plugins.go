@@ -81,7 +81,7 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 	}
 	for _, plug := range langhostPlugins {
 		// Ignore language plugins named "client".
-		if plug.Name == "client" && plug.Kind == workspace.LanguagePlugin {
+		if plug.Name == clientRuntimeName && plug.Kind == workspace.LanguagePlugin {
 			continue
 		}
 

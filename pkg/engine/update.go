@@ -388,7 +388,7 @@ func newUpdateSource(
 
 	// If we are connecting to an existing client, stash the address of the engine in its arguments.
 	var args []string
-	if proj.Runtime.Name() == "client" {
+	if proj.Runtime.Name() == clientRuntimeName {
 		args = []string{plugctx.Host.ServerAddr()}
 	}
 

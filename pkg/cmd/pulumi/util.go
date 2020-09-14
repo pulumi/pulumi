@@ -701,14 +701,11 @@ func (s *cancellationScope) Close() {
 	<-s.done
 }
 
-type cancellationScopeSource struct {
-	disableInterrupt bool
-}
+type cancellationScopeSource int
 
-var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource{})
-var cancellationScopesWithoutInterrupt = backend.CancellationScopeSource(cancellationScopeSource{true})
+var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cs cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -719,30 +716,28 @@ func (cs cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview
 
 	go func() {
 		for range c.sigint {
-			if !cs.disableInterrupt {
-				// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
-				// func.
-				if cancelContext.CancelErr() == nil {
-					message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
-					if !isPreview {
-						message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
-							"and other inconsistencies.\n" + colors.Reset
-					}
-					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-						Message: message,
-						Color:   colors.Always,
-					})
-
-					cancelSource.Cancel()
-				} else {
-					message := colors.BrightRed + "^C received; terminating" + colors.Reset
-					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-						Message: message,
-						Color:   colors.Always,
-					})
-
-					cancelSource.Terminate()
+			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
+			// func.
+			if cancelContext.CancelErr() == nil {
+				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+				if !isPreview {
+					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
+						"and other inconsistencies.\n" + colors.Reset
 				}
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+					Message: message,
+					Color:   colors.Always,
+				})
+
+				cancelSource.Cancel()
+			} else {
+				message := colors.BrightRed + "^C received; terminating" + colors.Reset
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+					Message: message,
+					Color:   colors.Always,
+				})
+
+				cancelSource.Terminate()
 			}
 		}
 		close(c.done)
