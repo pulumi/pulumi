@@ -41,6 +41,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v2/nodejs/npm"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 const (
@@ -228,7 +230,10 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
+	return installPlugin(finalDir, tarball)
+}
 
+func installPlugin(finalDir string, tarball io.ReadCloser) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure the path we're going
 	// to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
@@ -259,6 +264,29 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	})()
 	if err != nil {
 		return err
+	}
+
+	// Install dependencies, if needed.
+	proj, err := LoadPluginProject(filepath.Join(tempDir, "PulumiPlugin.yaml"))
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "loading PulumiPlugin.yaml")
+	}
+	if proj != nil {
+		runtime := strings.ToLower(proj.Runtime.Name())
+		// For now, we only do this for Node.js and Python. For Go, the expectation is the binary is
+		// already built. For .NET, similarly, a single self-contained binary could be used, but
+		// otherwise `dotnet run` will implicitly run `dotnet restore`.
+		// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
+		switch runtime {
+		case "nodejs":
+			if _, err := npm.Install(tempDir, nil, os.Stderr); err != nil {
+				return errors.Wrap(err, "installing plugin dependencies")
+			}
+		case "python":
+			if err := python.InstallDependencies(tempDir, false /*showOutput*/, nil /*saveProj*/); err != nil {
+				return errors.Wrap(err, "installing plugin dependencies")
+			}
+		}
 	}
 
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be unable to rename

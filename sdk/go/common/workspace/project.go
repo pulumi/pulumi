@@ -155,6 +155,19 @@ func (proj *PolicyPackProject) Save(path string) error {
 	return save(path, proj, false /*mkDirAll*/)
 }
 
+type PluginProject struct {
+	// Runtime is a required runtime that executes code.
+	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+}
+
+func (proj *PluginProject) Validate() error {
+	if proj.Runtime.Name() == "" {
+		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	return nil
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
@@ -306,6 +319,34 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 	}
 
 	var proj PolicyPackProject
+	err = m.Unmarshal(b, &proj)
+	if err != nil {
+		return nil, err
+	}
+
+	err = proj.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &proj, err
+}
+
+// LoadPluginProject reads a plugin project definition from a file.
+func LoadPluginProject(path string) (*PluginProject, error) {
+	contract.Require(path != "", "path")
+
+	m, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var proj PluginProject
 	err = m.Unmarshal(b, &proj)
 	if err != nil {
 		return nil, err

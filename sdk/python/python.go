@@ -159,8 +159,10 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 	}
 
 	// Save project with venv info.
-	if err := saveProj("venv"); err != nil {
-		return err
+	if saveProj != nil {
+		if err := saveProj("venv"); err != nil {
+			return err
+		}
 	}
 
 	print("Finished creating virtual environment")
