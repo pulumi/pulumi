@@ -207,7 +207,7 @@ func (host *pluginHost) Close() error {
 	host.m.Lock()
 	defer host.m.Unlock()
 
-	host.engine.stop <- true
+	go func() { host.engine.stop <- true }()
 	host.closed = true
 	return nil
 }
