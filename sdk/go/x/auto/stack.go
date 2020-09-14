@@ -92,6 +92,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -603,6 +604,34 @@ type UpResult struct {
 	StdErr  string
 	Outputs OutputMap
 	Summary UpdateSummary
+}
+
+// GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
+func (ur *UpResult) GetPermalink() (string, error) {
+	return GetPermalink(ur.StdOut)
+}
+
+// GetPermalink returns the permalink URL in the Pulumi Console for the update
+// or refresh operation. This will error for alternate, local backends.
+func GetPermalink(stdout string) (string, error) {
+	const permalinkSearchStr = "View Live: "
+	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	var endRegex = regexp.MustCompile("\n")
+
+	// Find the start of the permalink in the output.
+	start := startRegex.FindStringIndex(stdout)
+	if start == nil {
+		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+	}
+	permalinkStart := stdout[start[1]:]
+
+	// Find the end of the permalink.
+	end := endRegex.FindStringIndex(permalinkStart)
+	if end == nil {
+		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+	}
+	permalink := permalinkStart[:end[1]-1]
+	return permalink, nil
 }
 
 // OutputMap is the output result of running a Pulumi program

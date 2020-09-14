@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- feat(autoapi): add GetPermalink for operation result
+  [#5363](https://github.com/pulumi/pulumi/pull/5363)
+
 - Relax stack name validations for Automation API [#5337](https://github.com/pulumi/pulumi/pull/5337)
 
 - Allow Pulumi to read a passphrase file, via `PULUMI_CONFIG_PASSPHRASE_FILE` to interact

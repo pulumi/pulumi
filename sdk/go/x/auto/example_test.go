@@ -938,7 +938,9 @@ func ExampleStack_Up() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// create a new stack to update
 	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
-	stack.Up(ctx, optup.Message("a message to save with the up operation"), optup.Parallel(10000))
+	result, _ := stack.Up(ctx, optup.Message("a message to save with the up operation"), optup.Parallel(10000))
+	permalink, _ := result.GetPermalink()
+	fmt.Println(permalink)
 }
 
 func ExampleStack_Up_streamingProgress() {
