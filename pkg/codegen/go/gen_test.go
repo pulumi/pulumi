@@ -39,4 +39,5 @@ func TestInputUsage(t *testing.T) {
 func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "aws", goPackage("aws"))
 	assert.Equal(t, "azure", goPackage("azure-nextgen"))
+	assert.Equal(t, "", goPackage(""))
 }
