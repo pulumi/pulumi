@@ -60,6 +60,8 @@ type typeDetails struct {
 	ptrElement   bool
 	arrayElement bool
 	mapElement   bool
+	inputType    bool
+	outputType   bool
 }
 
 // Title converts the input string to a title case
@@ -900,9 +902,14 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 }
 
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
+	details := pkg.details(obj)
 	pkg.genPlainType(w, pkg.tokenToType(obj.Token), obj.Comment, "", obj.Properties)
-	pkg.genInputTypes(w, obj, pkg.details(obj))
-	pkg.genOutputTypes(w, obj, pkg.details(obj))
+	if details.inputType {
+		pkg.genInputTypes(w, obj, details)
+	}
+	if details.outputType {
+		pkg.genOutputTypes(w, obj, details)
+	}
 }
 
 func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectType) {
@@ -1117,15 +1124,15 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var markOptionalPropertyTypesAsRequiringPtr func(seen stringSet, props []*schema.Property, parentOptional bool)
-	markOptionalPropertyTypesAsRequiringPtr = func(seen stringSet, props []*schema.Property, parentOptional bool) {
+	var markOptionalPropertyTypesAsRequiringPtr func(seen codegen.Set, props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(seen codegen.Set, props []*schema.Property, parentOptional bool) {
 		for _, p := range props {
 			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
-				if seen.has(obj.Token) {
+				if seen.Has(obj.Token) {
 					continue
 				}
 
-				seen.add(obj.Token)
+				seen.Add(obj.Token)
 				getPkgFromToken(obj.Token).details(obj).ptrElement = true
 				markOptionalPropertyTypesAsRequiringPtr(seen, obj.Properties, true)
 			}
@@ -1135,7 +1142,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
 	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
-	seenMap := stringSet{}
+	seenMap := codegen.Set{}
 	for _, t := range pkg.Types {
 		switch t := t.(type) {
 		case *schema.ArrayType:
@@ -1151,6 +1158,14 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			pkg.types = append(pkg.types, t)
 			markOptionalPropertyTypesAsRequiringPtr(seenMap, t.Properties, false)
 		}
+	}
+
+	inputSeen := codegen.Set{}
+	outputSeen := codegen.Set{}
+	setInput := func(t *schema.ObjectType) { getPkgFromToken(t.Token).details(t).inputType = true }
+	setOutput := func(t *schema.ObjectType) { getPkgFromToken(t.Token).details(t).outputType = true }
+	for _, v := range pkg.Config {
+		visitObjectTypes(outputSeen, v.Type, setOutput)
 	}
 
 	scanResource := func(r *schema.Resource) {
@@ -1169,6 +1184,18 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.InputProperties, !r.IsProvider)
 		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.Properties, !r.IsProvider)
+		for _, p := range r.Properties {
+			visitObjectTypes(outputSeen, p.Type, setOutput)
+		}
+		for _, p := range r.InputProperties {
+			if r.IsProvider {
+				visitObjectTypes(inputSeen, p.Type, setOutput)
+			}
+			visitObjectTypes(inputSeen, p.Type, setInput)
+		}
+		if r.StateInputs != nil {
+			visitObjectTypes(inputSeen, r.StateInputs, setInput)
+		}
 	}
 
 	scanResource(pkg.Provider)
@@ -1201,6 +1228,28 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	return packages
+}
+
+func visitObjectTypes(seen codegen.Set, t schema.Type, visitor func(*schema.ObjectType)) {
+	if seen.Has(t) {
+		return
+	}
+	seen.Add(t)
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		visitObjectTypes(seen, t.ElementType, visitor)
+	case *schema.MapType:
+		visitObjectTypes(seen, t.ElementType, visitor)
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			visitObjectTypes(seen, p.Type, visitor)
+		}
+		visitor(t)
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			visitObjectTypes(seen, e, visitor)
+		}
+	}
 }
 
 // LanguageResource is derived from the schema and can be used by downstream codegen.
