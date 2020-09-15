@@ -16,11 +16,10 @@ package engine
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
@@ -31,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
+
+const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
@@ -48,6 +49,23 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 		projinfo.Proj.Runtime.Options(), tracingSpan)
 	if err != nil {
 		return "", "", nil, err
+	}
+
+	// If the project wants to connect to an existing language runtime, do so now.
+	if projinfo.Proj.Runtime.Name() == clientRuntimeName {
+		addressValue, ok := projinfo.Proj.Runtime.Options()["address"]
+		if !ok {
+			return "", "", nil, errors.New("missing address of language runtime service")
+		}
+		address, ok := addressValue.(string)
+		if !ok {
+			return "", "", nil, errors.New("address of language runtime service must be a string")
+		}
+		host, err := connectToLanguageRuntime(ctx, address)
+		if err != nil {
+			return "", "", nil, err
+		}
+		ctx.Host = host
 	}
 
 	return pwd, main, ctx, nil
@@ -125,10 +143,6 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		opts.Diag, opts.StatusDiag, info.TracingSpan)
 	if err != nil {
 		return nil, err
-	}
-
-	if opts.UpdateOptions.IsHostCommand {
-		fmt.Fprintf(os.Stderr, "engine: %s\n", plugctx.Host.ServerAddr())
 	}
 
 	opts.trustDependencies = proj.TrustResourceDependencies()

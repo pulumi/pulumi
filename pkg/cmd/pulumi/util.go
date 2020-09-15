@@ -399,6 +399,24 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 	return nil
 }
 
+// readProjectForUpdate attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to its
+// containing directory, which will be used as the root of the project's Pulumi program. If a
+// client address is present, the returned project will always have the runtime set to "client"
+// with the address option set to the client address.
+func readProjectForUpdate(clientAddress string) (*workspace.Project, string, error) {
+	proj, root, err := readProject()
+	if err != nil {
+		return nil, "", err
+	}
+	if clientAddress != "" {
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+			"address": clientAddress,
+		})
+	}
+	return proj, root, nil
+}
+
 // readProject attempts to detect and read a Pulumi project for the current workspace. If the
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
@@ -683,14 +701,11 @@ func (s *cancellationScope) Close() {
 	<-s.done
 }
 
-type cancellationScopeSource struct {
-	disableInterrupt bool
-}
+type cancellationScopeSource int
 
-var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource{})
-var cancellationScopesWithoutInterrupt = backend.CancellationScopeSource(cancellationScopeSource{true})
+var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cs cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -701,30 +716,28 @@ func (cs cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview
 
 	go func() {
 		for range c.sigint {
-			if !cs.disableInterrupt {
-				// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
-				// func.
-				if cancelContext.CancelErr() == nil {
-					message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
-					if !isPreview {
-						message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
-							"and other inconsistencies.\n" + colors.Reset
-					}
-					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-						Message: message,
-						Color:   colors.Always,
-					})
-
-					cancelSource.Cancel()
-				} else {
-					message := colors.BrightRed + "^C received; terminating" + colors.Reset
-					events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-						Message: message,
-						Color:   colors.Always,
-					})
-
-					cancelSource.Terminate()
+			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
+			// func.
+			if cancelContext.CancelErr() == nil {
+				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+				if !isPreview {
+					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
+						"and other inconsistencies.\n" + colors.Reset
 				}
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+					Message: message,
+					Color:   colors.Always,
+				})
+
+				cancelSource.Cancel()
+			} else {
+				message := colors.BrightRed + "^C received; terminating" + colors.Reset
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+					Message: message,
+					Color:   colors.Always,
+				})
+
+				cancelSource.Terminate()
 			}
 		}
 		close(c.done)

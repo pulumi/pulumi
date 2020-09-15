@@ -15,16 +15,22 @@
 package deploytest
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/blang/semver"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 type LoadProviderFunc func() (plugin.Provider, error)
@@ -55,11 +61,52 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 	}
 }
 
+type hostEngine struct {
+	sink       diag.Sink
+	statusSink diag.Sink
+
+	address string
+	stop    chan bool
+}
+
+func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	var sev diag.Severity
+	switch req.Severity {
+	case pulumirpc.LogSeverity_DEBUG:
+		sev = diag.Debug
+	case pulumirpc.LogSeverity_INFO:
+		sev = diag.Info
+	case pulumirpc.LogSeverity_WARNING:
+		sev = diag.Warning
+	case pulumirpc.LogSeverity_ERROR:
+		sev = diag.Error
+	default:
+		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
+	}
+
+	if req.Ephemeral {
+		e.statusSink.Logf(sev, diag.StreamMessage(resource.URN(req.Urn), req.Message, req.StreamId))
+	} else {
+		e.sink.Logf(sev, diag.StreamMessage(resource.URN(req.Urn), req.Message, req.StreamId))
+	}
+	return &pbempty.Empty{}, nil
+}
+func (e *hostEngine) GetRootResource(_ context.Context,
+	req *pulumirpc.GetRootResourceRequest) (*pulumirpc.GetRootResourceResponse, error) {
+	return nil, errors.New("unsupported")
+}
+func (e *hostEngine) SetRootResource(_ context.Context,
+	req *pulumirpc.SetRootResourceRequest) (*pulumirpc.SetRootResourceResponse, error) {
+	return nil, errors.New("unsupported")
+}
+
 type pluginHost struct {
 	providerLoaders []*ProviderLoader
 	languageRuntime plugin.LanguageRuntime
 	sink            diag.Sink
 	statusSink      diag.Sink
+
+	engine *hostEngine
 
 	providers map[plugin.Provider]struct{}
 	closed    bool
@@ -69,11 +116,28 @@ type pluginHost struct {
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
 	providerLoaders ...*ProviderLoader) plugin.Host {
 
+	engine := &hostEngine{
+		sink:       sink,
+		statusSink: statusSink,
+		stop:       make(chan bool),
+	}
+	port, _, err := rpcutil.Serve(0, engine.stop, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterEngineServer(srv, engine)
+			return nil
+		},
+	}, nil)
+	if err != nil {
+		panic(fmt.Errorf("could not start engine service: %v", err))
+	}
+	engine.address = fmt.Sprintf("127.0.0.1:%v", port)
+
 	return &pluginHost{
 		providerLoaders: providerLoaders,
 		languageRuntime: languageRuntime,
 		sink:            sink,
 		statusSink:      statusSink,
+		engine:          engine,
 		providers:       make(map[plugin.Provider]struct{}),
 	}
 }
@@ -143,11 +207,12 @@ func (host *pluginHost) Close() error {
 	host.m.Lock()
 	defer host.m.Unlock()
 
+	go func() { host.engine.stop <- true }()
 	host.closed = true
 	return nil
 }
 func (host *pluginHost) ServerAddr() string {
-	panic("Host RPC address not available")
+	return host.engine.address
 }
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {

@@ -25,9 +25,12 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mitchellh/copystructure"
+	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
@@ -44,11 +47,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-
-	combinations "github.com/mxschmitt/golang-combinations"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
 type JournalEntryKind int
@@ -347,14 +350,15 @@ type TestStep struct {
 }
 
 type TestPlan struct {
-	Project       string
-	Stack         string
-	Runtime       string
-	Config        config.Map
-	Decrypter     config.Decrypter
-	BackendClient deploy.BackendClient
-	Options       UpdateOptions
-	Steps         []TestStep
+	Project        string
+	Stack          string
+	Runtime        string
+	RuntimeOptions map[string]interface{}
+	Config         config.Map
+	Decrypter      config.Decrypter
+	BackendClient  deploy.BackendClient
+	Options        UpdateOptions
+	Steps          []TestStep
 }
 
 //nolint: goconst
@@ -392,7 +396,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 
 	return workspace.Project{
 		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, nil),
+		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
 	}
 }
 
@@ -5989,4 +5993,115 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		Steps:   MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
+}
+
+type updateContext struct {
+	*deploytest.ResourceMonitor
+
+	resmon       chan *deploytest.ResourceMonitor
+	programErr   chan error
+	snap         chan *deploy.Snapshot
+	updateResult chan result.Result
+}
+
+func startUpdate(host plugin.Host) (*updateContext, error) {
+	ctx := &updateContext{
+		resmon:       make(chan *deploytest.ResourceMonitor),
+		programErr:   make(chan error),
+		snap:         make(chan *deploy.Snapshot),
+		updateResult: make(chan result.Result),
+	}
+
+	stop := make(chan bool)
+	port, _, err := rpcutil.Serve(0, stop, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, ctx)
+			return nil
+		},
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Runtime: "client",
+		RuntimeOptions: map[string]interface{}{
+			"address": fmt.Sprintf("127.0.0.1:%d", port),
+		},
+	}
+
+	go func() {
+		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+		ctx.snap <- snap
+		close(ctx.snap)
+		ctx.updateResult <- res
+		close(ctx.updateResult)
+		stop <- true
+	}()
+
+	ctx.ResourceMonitor = <-ctx.resmon
+	return ctx, nil
+}
+
+func (ctx *updateContext) Finish(err error) (*deploy.Snapshot, result.Result) {
+	ctx.programErr <- err
+	close(ctx.programErr)
+
+	return <-ctx.snap, <-ctx.updateResult
+}
+
+func (ctx *updateContext) GetRequiredPlugins(_ context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return &pulumirpc.GetRequiredPluginsResponse{}, nil
+}
+
+func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	// Connect to the resource monitor and create an appropriate client.
+	conn, err := grpc.Dial(
+		req.MonitorAddress,
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+	}
+	defer contract.IgnoreClose(conn)
+
+	// Fire up a resource monitor client
+	ctx.resmon <- deploytest.NewResourceMonitor(pulumirpc.NewResourceMonitorClient(conn))
+	close(ctx.resmon)
+
+	// Wait for the program to terminate.
+	if err := <-ctx.programErr; err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	}
+	return &pulumirpc.RunResponse{}, nil
+}
+
+func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{
+		Version: "1.0.0",
+	}, nil
+}
+
+func TestLanguageClient(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	update, err := startUpdate(deploytest.NewPluginHost(nil, nil, nil, loaders...))
+	if err != nil {
+		t.Fatalf("failed to start update: %v", err)
+	}
+
+	// Register resources, etc.
+	_, _, _, err = update.RegisterResource("pkgA:m:typA", "resA", true)
+	assert.NoError(t, err)
+
+	snap, res := update.Finish(nil)
+	assert.Nil(t, res)
+	assert.Len(t, snap.Resources, 2)
 }
