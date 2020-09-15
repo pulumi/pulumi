@@ -17,6 +17,7 @@ package auto
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -1072,4 +1074,99 @@ func ExampleStack_SetAllConfig() {
 	}
 	// set all config in map
 	_ = stack.SetAllConfig(ctx, cfg)
+}
+
+func ExampleStack_Cancel() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	// attempt to cancel the in progress operation
+	// note that this operation is _very dangerous_, and may leave the stack in an inconsistent state.
+	_ = stack.Cancel(ctx)
+}
+
+func ExampleStack_Export() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	dep, _ := stack.Export(ctx)
+	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	if dep.Version != 3 {
+		panic("expected deployment version 3")
+	}
+	var state apitype.DeploymentV3
+	_ = json.Unmarshal(dep.Deployment, &state)
+
+	// ... perform edits on the state ...
+
+	// marshal out updated deployment state
+	bytes, _ := json.Marshal(state)
+	dep.Deployment = bytes
+	// import our edited deployment state back to our stack
+	_ = stack.Import(ctx, dep)
+}
+
+func ExampleStack_Import() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	dep, _ := stack.Export(ctx)
+	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	if dep.Version != 3 {
+		panic("expected deployment version 3")
+	}
+	var state apitype.DeploymentV3
+	_ = json.Unmarshal(dep.Deployment, &state)
+
+	// ... perform edits on the state ...
+
+	// marshal out updated deployment state
+	bytes, _ := json.Marshal(state)
+	dep.Deployment = bytes
+	// import our edited deployment state back to our stack
+	_ = stack.Import(ctx, dep)
+}
+
+func ExampleLocalWorkspace_ExportStack() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
+	dep, _ := w.ExportStack(ctx, stackName)
+	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	if dep.Version != 3 {
+		panic("expected deployment version 3")
+	}
+	var state apitype.DeploymentV3
+	_ = json.Unmarshal(dep.Deployment, &state)
+
+	// ... perform edits on the state ...
+
+	// marshal out updated deployment state
+	bytes, _ := json.Marshal(state)
+	dep.Deployment = bytes
+	// import our edited deployment state back to our stack
+	_ = w.ImportStack(ctx, stackName, dep)
+}
+
+func ExampleLocalWorkspace_ImportStack() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
+	dep, _ := w.ExportStack(ctx, stackName)
+	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	if dep.Version != 3 {
+		panic("expected deployment version 3")
+	}
+	var state apitype.DeploymentV3
+	_ = json.Unmarshal(dep.Deployment, &state)
+
+	// ... perform edits on the state ...
+
+	// marshal out updated deployment state
+	bytes, _ := json.Marshal(state)
+	dep.Deployment = bytes
+	// import our edited deployment state back to our stack
+	_ = w.ImportStack(ctx, stackName, dep)
 }
