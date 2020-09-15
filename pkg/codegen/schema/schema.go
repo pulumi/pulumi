@@ -635,40 +635,22 @@ type PropertySpec struct {
 	Secret bool `json:"secret,omitempty"`
 }
 
-type ComplexTypeSpec interface {
-	isComplexType()
-}
-
-// ObjectTypeSpec is the serializable form of an object type.
-type ObjectTypeSpec struct {
+// ComplexTypeSpec is the serializable form of an object or enum type.
+type ComplexTypeSpec struct {
 	// Description is the description of the type, if any.
 	Description string `json:"description,omitempty"`
-	// Properties is a map from property name to PropertySpec that describes the type's properties.
+	// Properties, if present, is a map from property name to PropertySpec that describes the type's properties.
 	Properties map[string]PropertySpec `json:"properties,omitempty"`
-	// Type must be "object".
+	// Type must be "object" if this is an object type, or the underlying type for an enum.
 	Type string `json:"type,omitempty"`
-	// Required is a list of the names of the type's required properties. These properties must be set for inputs and
-	// will always be set for outputs.
+	// Required, if present is a list of the names of an object type's required properties. These properties must be set
+	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
+	// Enum, if present, if the list of possible values for an enum type.
+	Enum []*EnumValueSpec `json:"enum,omitempty"`
 	// Language specifies additional language-specific data about the type.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
-
-func (*ObjectTypeSpec) isComplexType() {}
-
-// EnumTypeSpec is the serializable form of an enum type.
-type EnumTypeSpec struct {
-	// Description is the description for the enum type, if any.
-	Description string `json:"description,omitempty"`
-	// Type is the underlying type for the enum.
-	Type string `json:"type,omitempty"`
-	// Enum is the list of possible values.
-	Enum []*EnumValueSpec `json:"enum"`
-	// Language specifies additional language-specific data about the type.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
-}
-
-func (*EnumTypeSpec) isComplexType() {}
 
 // EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
 type EnumValueSpec struct {
@@ -692,7 +674,7 @@ type AliasSpec struct {
 
 // ResourceSpec is the serializable form of a resource description.
 type ResourceSpec struct {
-	ObjectTypeSpec
+	ComplexTypeSpec
 
 	// InputProperties is a map from property name to PropertySpec that describes the resource's input properties.
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
@@ -700,7 +682,7 @@ type ResourceSpec struct {
 	RequiredInputs []string `json:"requiredInputs,omitempty"`
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
-	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty"`
+	StateInputs *ComplexTypeSpec `json:"stateInputs,omitempty"`
 	// Aliases is the list of aliases for the resource.
 	Aliases []AliasSpec `json:"aliases,omitempty"`
 	// DeprecationMessage indicates whether or not the resource is deprecated.
@@ -714,9 +696,9 @@ type FunctionSpec struct {
 	// Description is the description of the function, if any.
 	Description string `json:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
-	Inputs *ObjectTypeSpec `json:"inputs,omitempty"`
+	Inputs *ComplexTypeSpec `json:"inputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
-	Outputs *ObjectTypeSpec `json:"outputs,omitempty"`
+	Outputs *ComplexTypeSpec `json:"outputs,omitempty"`
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
@@ -1163,7 +1145,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 	return result, propertyMap, nil
 }
 
-func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec) error {
+func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ComplexTypeSpec) error {
 	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return err
@@ -1183,7 +1165,7 @@ func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec Object
 	return nil
 }
 
-func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
+func (t *types) bindObjectType(token string, spec ComplexTypeSpec) (*ObjectType, error) {
 	obj := &ObjectType{}
 	if err := t.bindObjectTypeDetails(obj, token, spec); err != nil {
 		return nil, err
@@ -1191,7 +1173,7 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 	return obj, nil
 }
 
-func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec EnumTypeSpec) error {
+func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) error {
 	enum.Token = token
 	enum.Elements = t.bindEnumValues(spec.Enum)
 	enum.ElementType = spec.Type
@@ -1212,7 +1194,7 @@ func (t *types) bindEnumValues(values []*EnumValueSpec) (enums []*Enum) {
 	return
 }
 
-func (t *types) bindEnumType(token string, spec EnumTypeSpec) (*EnumType, error) {
+func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, error) {
 	enum := &EnumType{}
 	if err := t.bindEnumTypeDetails(enum, token, spec); err != nil {
 		return nil, err
@@ -1233,37 +1215,27 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 
 	// Declare object and enum types before processing properties.
 	for token, spec := range complexTypes {
-		switch typ := spec.(type) {
-		case *ObjectTypeSpec:
-			if typ.Type != "object" {
-				return nil, errors.Errorf("type %s must be an object, not a %s", token, typ.Type)
-			}
-
+		if spec.Type == "object" {
 			// It's important that we set the token here. This package interns types so that they can be equality-compared
 			// for identity. Types are interned based on their string representation, and the string representation of an
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 			// that reference object types (e.g. arrays, maps, unions)
 			typs.objects[token] = &ObjectType{Token: token}
-		case *EnumTypeSpec:
+		} else if len(spec.Enum) > 0 {
 			typs.enums[token] = &EnumType{Token: token}
-		default:
-			continue
 		}
 	}
 
 	// Process properties.
 	for token, spec := range complexTypes {
-		switch typ := spec.(type) {
-		case *ObjectTypeSpec:
-			if err := typs.bindObjectTypeDetails(typs.objects[token], token, *typ); err != nil {
+		if spec.Type == "object" {
+			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
-		case *EnumTypeSpec:
-			if err := typs.bindEnumTypeDetails(typs.enums[token], token, *typ); err != nil {
+		} else if len(spec.Enum) > 0 {
+			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
-		default:
-			continue
 		}
 	}
 
