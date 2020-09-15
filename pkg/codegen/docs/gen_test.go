@@ -66,7 +66,7 @@ func initTestPackageSpec(t *testing.T) {
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
-		Types: map[string]schema.ObjectTypeSpec{
+		Types: map[string]schema.ComplexTypeSpec{
 			// Package-level types.
 			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
 				Description: "Options object for the package-level function getPackageResource.",
@@ -123,7 +123,7 @@ func initTestPackageSpec(t *testing.T) {
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
+				ComplexTypeSpec: schema.ComplexTypeSpec{
 					Description: `This is a module-level resource called Resource.
 {{% examples %}}
 ## Example Usage
@@ -189,7 +189,7 @@ func initTestPackageSpec(t *testing.T) {
 				},
 			},
 			"prov:/packageLevelResource:PackageLevelResource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
+				ComplexTypeSpec: schema.ComplexTypeSpec{
 					Description: "This is a package-level resource.",
 				},
 				InputProperties: map[string]schema.PropertySpec{
@@ -206,7 +206,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Package-level Functions.
 			"prov:/getPackageResource:getPackageResource": {
 				Description: "A package-level function.",
-				Inputs: &schema.ObjectTypeSpec{
+				Inputs: &schema.ComplexTypeSpec{
 					Description: "Inputs for getPackageResource.",
 					Type:        "object",
 					Properties: map[string]schema.PropertySpec{
@@ -217,7 +217,7 @@ func initTestPackageSpec(t *testing.T) {
 						},
 					},
 				},
-				Outputs: &schema.ObjectTypeSpec{
+				Outputs: &schema.ComplexTypeSpec{
 					Description: "Outputs for getPackageResource.",
 					Properties:  simpleProperties,
 					Type:        "object",
@@ -227,7 +227,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Module-level Functions.
 			"prov:module/getModuleResource:getModuleResource": {
 				Description: "A module-level function.",
-				Inputs: &schema.ObjectTypeSpec{
+				Inputs: &schema.ComplexTypeSpec{
 					Description: "Inputs for getModuleResource.",
 					Type:        "object",
 					Properties: map[string]schema.PropertySpec{
@@ -238,7 +238,7 @@ func initTestPackageSpec(t *testing.T) {
 						},
 					},
 				},
-				Outputs: &schema.ObjectTypeSpec{
+				Outputs: &schema.ComplexTypeSpec{
 					Description: "Outputs for getModuleResource.",
 					Properties:  simpleProperties,
 					Type:        "object",

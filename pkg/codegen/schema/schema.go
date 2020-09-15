@@ -750,7 +750,8 @@ type PackageSpec struct {
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config"`
-	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum) defined by this package.
+	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
+	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty"`
 	// Provider describes the provider type for this package.
 	Provider ResourceSpec `json:"provider"`
