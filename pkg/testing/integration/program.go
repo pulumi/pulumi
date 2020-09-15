@@ -1570,6 +1570,29 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", errors.Wrapf(err, "Failed to prepare %v", projdir)
 	}
 
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until that's been fixed, this environment variable can be set by a test, which results in
+	// a package.json being emitted in the project directory and `yarn install && yarn link @pulumi/pulumi`
+	// being run.
+	// When the underlying issue has been fixed, the use of this environment variable should be removed.
+	if os.Getenv("PULUMI_TEST_YARN_LINK_PULUMI") != "" {
+		const packageJSON = `{
+			"name": "test",
+			"peerDependencies": {
+				"@pulumi/pulumi": "latest"
+			}
+		}`
+		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+			return "", "", err
+		}
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+			return "", "", err
+		}
+		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+			return "", "", err
+		}
+	}
+
 	fprintf(stdout, "projdir: %v\n", projdir)
 	return tmpdir, projdir, nil
 }
