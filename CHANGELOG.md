@@ -21,6 +21,9 @@ CHANGELOG
   API and the CLI must be updated together.
   [#5317](https://github.com/pulumi/pulumi/pull/5317)
 
+- Automation API - support streaming output for Up/Refresh/Destroy operations.
+  [#5367](https://github.com/pulumi/pulumi/pull/5367)
+
 ## 2.10.0 (2020-09-10)
 
 - feat(autoapi): add Upsert methods for stacks
