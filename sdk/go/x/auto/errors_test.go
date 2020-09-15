@@ -50,7 +50,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 50; i++ {
 		go func() {
 			_, err := s.Up(ctx)
 			c <- err
@@ -59,7 +59,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 
 	conflicts := 0
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 50; i++ {
 		err := <-c
 		if IsConcurrentUpdateError(err) {
 			conflicts++
@@ -104,7 +104,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 50; i++ {
 		go func() {
 			_, err := s.Up(ctx)
 			c <- err
@@ -113,7 +113,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 
 	conflicts := 0
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 50; i++ {
 		err := <-c
 		if IsConcurrentUpdateError(err) {
 			conflicts++
