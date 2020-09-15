@@ -44,3 +44,31 @@ func TestImportSpec(t *testing.T) {
 		assert.NotNil(t, r.Package, "expected resource %s to have an associated Package", r.Token)
 	}
 }
+
+func TestImportResourceRef(t *testing.T) {
+	tests := []struct {
+		name       string
+		schemaFile string
+		wantErr    bool
+	}{
+		{"valid", "schema-simple.json", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Read in, decode, and import the schema.
+			schemaBytes, err := ioutil.ReadFile(
+				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+			assert.NoError(t, err)
+
+			var pkgSpec PackageSpec
+			err = json.Unmarshal(schemaBytes, &pkgSpec)
+			assert.NoError(t, err)
+
+			_, err = ImportSpec(pkgSpec, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
