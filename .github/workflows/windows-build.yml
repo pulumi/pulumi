@@ -2,8 +2,8 @@ on:
   push:
     branches:
       - master
-      - 'feature-.*'
-      - 'features/.*'
+      - feature-*
+      - features/*
 
 jobs:
   build:
