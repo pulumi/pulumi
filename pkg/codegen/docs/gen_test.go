@@ -69,53 +69,61 @@ func initTestPackageSpec(t *testing.T) {
 		Types: map[string]schema.ComplexTypeSpec{
 			// Package-level types.
 			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
-				Description: "Options object for the package-level function getPackageResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the package-level function getPackageResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 
 			// Module-level types.
 			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
-				Description: "Options object for the module-level function getModuleResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the module-level function getModuleResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 			"prov:module/ResourceOptions:ResourceOptions": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"stringProp": {
-						Description: "A string prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"stringProp": {
+							Description: "A string prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
 						},
-					},
-					"boolProp": {
-						Description: "A bool prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "boolean",
+						"boolProp": {
+							Description: "A bool prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "boolean",
+							},
 						},
-					},
-					"recursiveType": {
-						Description: "I am a recursive type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						"recursiveType": {
+							Description: "I am a recursive type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+							},
 						},
 					},
 				},
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"uniqueProp": {
-						Description: "This is a property unique to this type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "number",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"uniqueProp": {
+							Description: "This is a property unique to this type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
 						},
 					},
 				},
@@ -123,7 +131,7 @@ func initTestPackageSpec(t *testing.T) {
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module/resource:Resource": {
-				ComplexTypeSpec: schema.ComplexTypeSpec{
+				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: `This is a module-level resource called Resource.
 {{% examples %}}
 ## Example Usage
@@ -189,7 +197,7 @@ func initTestPackageSpec(t *testing.T) {
 				},
 			},
 			"prov:/packageLevelResource:PackageLevelResource": {
-				ComplexTypeSpec: schema.ComplexTypeSpec{
+				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: "This is a package-level resource.",
 				},
 				InputProperties: map[string]schema.PropertySpec{
@@ -206,7 +214,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Package-level Functions.
 			"prov:/getPackageResource:getPackageResource": {
 				Description: "A package-level function.",
-				Inputs: &schema.ComplexTypeSpec{
+				Inputs: &schema.ObjectTypeSpec{
 					Description: "Inputs for getPackageResource.",
 					Type:        "object",
 					Properties: map[string]schema.PropertySpec{
@@ -217,7 +225,7 @@ func initTestPackageSpec(t *testing.T) {
 						},
 					},
 				},
-				Outputs: &schema.ComplexTypeSpec{
+				Outputs: &schema.ObjectTypeSpec{
 					Description: "Outputs for getPackageResource.",
 					Properties:  simpleProperties,
 					Type:        "object",
@@ -227,7 +235,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Module-level Functions.
 			"prov:module/getModuleResource:getModuleResource": {
 				Description: "A module-level function.",
-				Inputs: &schema.ComplexTypeSpec{
+				Inputs: &schema.ObjectTypeSpec{
 					Description: "Inputs for getModuleResource.",
 					Type:        "object",
 					Properties: map[string]schema.PropertySpec{
@@ -238,7 +246,7 @@ func initTestPackageSpec(t *testing.T) {
 						},
 					},
 				},
-				Outputs: &schema.ComplexTypeSpec{
+				Outputs: &schema.ObjectTypeSpec{
 					Description: "Outputs for getModuleResource.",
 					Properties:  simpleProperties,
 					Type:        "object",
