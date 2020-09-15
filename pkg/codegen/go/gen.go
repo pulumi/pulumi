@@ -992,7 +992,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 
 	var pkgName string
 	if pkg.mod == "" {
-		pkgName = pkg.pkg.Name
+		pkgName = goPackage(pkg.pkg.Name)
 	} else {
 		pkgName = path.Base(pkg.mod)
 	}
@@ -1274,7 +1274,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		relPath = path.Join(pkg.Name, relPath)
+		relPath = path.Join(goPackage(pkg.Name), relPath)
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
@@ -1288,7 +1288,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		files[relPath] = formattedSource
 	}
 
-	name := pkg.Name
+	name := goPackage(pkg.Name)
 	for _, mod := range pkgMods {
 		pkg := packages[mod]
 
@@ -1377,6 +1377,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	return files, nil
+}
+
+// goPackage returns the suggested package name for the given string.
+func goPackage(name string) string {
+	return strings.Split(name, "-")[0]
 }
 
 const utilitiesFile = `
