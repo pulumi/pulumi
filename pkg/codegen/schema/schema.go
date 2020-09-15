@@ -52,6 +52,8 @@ const (
 	jsonType    primitiveType = 8
 )
 
+const object = "object"
+
 //nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
@@ -987,7 +989,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			t.arrays[elementType] = typ
 		}
 		return typ, nil
-	case "object":
+	case object:
 		elementType := StringType
 		if spec.AdditionalProperties != nil {
 			et, err := t.bindType(*spec.AdditionalProperties)
@@ -1216,7 +1218,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 
 	// Declare object and enum types before processing properties.
 	for token, spec := range complexTypes {
-		if spec.Type == "object" {
+		if spec.Type == object {
 			// It's important that we set the token here. This package interns types so that they can be equality-compared
 			// for identity. Types are interned based on their string representation, and the string representation of an
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
@@ -1229,7 +1231,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 
 	// Process properties.
 	for token, spec := range complexTypes {
-		if spec.Type == "object" {
+		if spec.Type == object {
 			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
