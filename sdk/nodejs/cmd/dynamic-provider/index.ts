@@ -379,7 +379,7 @@ export async function main(args: string[]) {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
         getSchema: getSchemaRPC,
-        consult: constructRPC,
+        construct: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
