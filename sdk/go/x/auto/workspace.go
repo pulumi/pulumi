@@ -17,6 +17,7 @@ package auto
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
@@ -96,6 +97,12 @@ type Workspace interface {
 	Program() pulumi.RunFunc
 	// SetProgram sets the program associated with the Workspace to the specified `pulumi.RunFunc`.
 	SetProgram(pulumi.RunFunc)
+	// ExportStack exports the deployment state of the stack matching the given name.
+	// This can be combined with ImportStack to edit a stack's state (such as recovery from failed deployments).
+	ExportStack(context.Context, string) (apitype.UntypedDeployment, error)
+	// ImportStack imports the specified deployment state into a pre-existing stack.
+	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
+	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
