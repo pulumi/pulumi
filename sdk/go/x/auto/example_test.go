@@ -207,7 +207,7 @@ func ExampleGitRepo() {
 func ExampleGitRepo_personalAccessToken() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	// Get the Sourcecode Repository PERSONAL_ACCESS_TOKEN
 	token, _ := os.LookupEnv("PERSONAL_ACCESS_TOKEN")
@@ -221,13 +221,13 @@ func ExampleGitRepo_personalAccessToken() {
 	}
 
 	// initialize a stack from the git repo, specifying our project override
-	NewStackRemoteSource(ctx, fqsn, repo)
+	NewStackRemoteSource(ctx, stackName, repo)
 }
 
 func ExampleGitRepo_privateKeyPath() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
@@ -239,13 +239,13 @@ func ExampleGitRepo_privateKeyPath() {
 	}
 
 	// initialize a stack from the git repo, specifying our project override
-	NewStackRemoteSource(ctx, fqsn, repo)
+	NewStackRemoteSource(ctx, stackName, repo)
 }
 
 func ExampleGitRepo_usernameAndPassword() {
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	fqsn := FullyQualifiedStackName("myOrg", pName, "myStack")
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
@@ -258,7 +258,7 @@ func ExampleGitRepo_usernameAndPassword() {
 	}
 
 	// initialize a stack from the git repo, specifying our project override
-	NewStackRemoteSource(ctx, fqsn, repo)
+	NewStackRemoteSource(ctx, stackName, repo)
 }
 
 func ExampleLocalWorkspace() {
@@ -921,9 +921,9 @@ func ExampleStack_Destroy() {
 
 func ExampleStack_Destroy_streamingProgress() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// select an existing stack to destroy
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
 	tmp, _ := ioutil.TempFile(os.TempDir(), "")
 	// optdestroy.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
@@ -943,9 +943,9 @@ func ExampleStack_Up() {
 
 func ExampleStack_Up_streamingProgress() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// create a new stack to update
-	stack, _ := NewStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
 	tmp, _ := ioutil.TempFile(os.TempDir(), "")
 	// optup.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
@@ -973,9 +973,9 @@ func ExampleStack_Refresh() {
 
 func ExampleStack_Refresh_streamingProgress() {
 	ctx := context.Background()
-	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// select an existing stack and refresh the resources under management
-	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
 	tmp, _ := ioutil.TempFile(os.TempDir(), "")
 	// optrefresh.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
