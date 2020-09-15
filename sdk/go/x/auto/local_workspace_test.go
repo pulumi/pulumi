@@ -31,13 +31,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const pulumiOrg = "moolumi"
+var pulumiOrg = getTestOrg()
+
 const pName = "testproj"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// We can't use Workspace EnvVars as the Workspace uses the secrets provider to
 	// create the Stack
@@ -45,7 +46,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Nil(t, err, "failed to set EnvVar.")
 
 	// initialize
-	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
@@ -107,7 +108,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -120,7 +121,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
-	s, err := NewStackLocalSource(ctx, fqsn, pDir)
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -209,7 +210,7 @@ func TestNewStackLocalSource(t *testing.T) {
 func TestUpsertStackLocalSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -222,7 +223,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
-	s, err := UpsertStackLocalSource(ctx, fqsn, pDir)
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -317,7 +318,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -333,7 +334,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackRemoteSource(ctx, fqsn, repo)
+	s, err := NewStackRemoteSource(ctx, stackName, repo)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -405,7 +406,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -421,7 +422,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	}
 
 	// initialize
-	s, err := UpsertStackRemoteSource(ctx, fqsn, repo)
+	s, err := UpsertStackRemoteSource(ctx, stackName, repo)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -493,7 +494,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -521,7 +522,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackRemoteSource(ctx, fqsn, repo, Project(project))
+	s, err := NewStackRemoteSource(ctx, stackName, repo, Project(project))
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -593,7 +594,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -621,7 +622,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 
 	// initialize or select
-	s, err := UpsertStackRemoteSource(ctx, fqsn, repo, Project(project))
+	s, err := UpsertStackRemoteSource(ctx, stackName, repo, Project(project))
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
@@ -692,7 +693,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 func TestNewStackInlineSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -704,7 +705,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
@@ -781,7 +782,7 @@ func TestNewStackInlineSource(t *testing.T) {
 func TestUpsertStackInlineSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	fqsn := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
 			Value: "abc",
@@ -793,7 +794,7 @@ func TestUpsertStackInlineSource(t *testing.T) {
 	}
 
 	// initialize or select
-	s, err := UpsertStackInlineSource(ctx, fqsn, func(ctx *pulumi.Context) error {
+	s, err := UpsertStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
@@ -872,10 +873,10 @@ func TestNestedStackFails(t *testing.T) {
 	t.Skip("skipping test, see pulumi/pulumi#5301")
 	testCtx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
-	parentFQSN := FullyQualifiedStackName(pulumiOrg, "parent", sName)
-	nestedFQSN := FullyQualifiedStackName(pulumiOrg, "nested", sName)
+	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
+	nestedstackName := FullyQualifiedStackName(pulumiOrg, "nested", sName)
 
-	nestedStack, err := NewStackInlineSource(testCtx, nestedFQSN, func(ctx *pulumi.Context) error {
+	nestedStack, err := NewStackInlineSource(testCtx, nestedstackName, "nested", func(ctx *pulumi.Context) error {
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
@@ -885,7 +886,7 @@ func TestNestedStackFails(t *testing.T) {
 	}
 
 	// initialize
-	s, err := NewStackInlineSource(testCtx, parentFQSN, func(ctx *pulumi.Context) error {
+	s, err := NewStackInlineSource(testCtx, parentstackName, "parent", func(ctx *pulumi.Context) error {
 		_, err := nestedStack.Up(testCtx)
 		return err
 	})
@@ -927,4 +928,12 @@ func TestNestedStackFails(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func getTestOrg() string {
+	testOrg := "pulumi-test"
+	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
+		testOrg = os.Getenv("PULUMI_TEST_ORG")
+	}
+	return testOrg
 }

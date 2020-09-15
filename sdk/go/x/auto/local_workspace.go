@@ -73,13 +73,10 @@ func (l *LocalWorkspace) SaveProjectSettings(ctx context.Context, settings *work
 	return settings.Save(pulumiYamlPath)
 }
 
-// StackSettings returns the settings object for the stack matching the specified fullyQualifiedStackName if any.
+// StackSettings returns the settings object for the stack matching the specified stack name if any.
 // LocalWorkspace reads this from a Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) StackSettings(ctx context.Context, fqsn string) (*workspace.ProjectStack, error) {
-	name, err := getStackFromFQSN(fqsn)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load stack settings, invalid stack name")
-	}
+func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*workspace.ProjectStack, error) {
+	name := getStackSettingsName(stackName)
 	for _, ext := range settingsExtensions {
 		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err != nil {
@@ -90,52 +87,49 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, fqsn string) (*works
 			return proj, nil
 		}
 	}
-	return nil, errors.Errorf("unable to find stack settings in workspace for %s", fqsn)
+	return nil, errors.Errorf("unable to find stack settings in workspace for %s", stackName)
 }
 
-// SaveStackSettings overwrites the settings object for the stack matching the specified fullyQualifiedStackName.
+// SaveStackSettings overwrites the settings object for the stack matching the specified stack name.
 // LocalWorkspace writes this value to a Pulumi.<stack>.yaml file in Workspace.WorkDir()
 func (l *LocalWorkspace) SaveStackSettings(
 	ctx context.Context,
-	fqsn string,
+	stackName string,
 	settings *workspace.ProjectStack,
 ) error {
-	name, err := getStackFromFQSN(fqsn)
-	if err != nil {
-		return errors.Wrap(err, "failed to save stack settings, invalid stack name")
-	}
+	name := getStackSettingsName(stackName)
 	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s.yaml:", name))
-	err = settings.Save(stackYamlPath)
+	err := settings.Save(stackYamlPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to save stack setttings for %s", fqsn)
+		return errors.Wrapf(err, "failed to save stack setttings for %s", stackName)
 	}
 	return nil
 }
 
 // SerializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
-// Provided with fullyQualifiedStackName,
+// Provided with stack name,
 // returns a list of args to append to an invoked command ["--config=...", ]
 // LocalWorkspace does not utilize this extensibility point.
-func (l *LocalWorkspace) SerializeArgsForOp(ctx context.Context, fqsn string) ([]string, error) {
+func (l *LocalWorkspace) SerializeArgsForOp(ctx context.Context, stackName string) ([]string, error) {
 	// not utilized for LocalWorkspace
 	return nil, nil
 }
 
-// PostCommandCallback is a hook executed after every command. Called with the fullyQualifiedStackName.
+// PostCommandCallback is a hook executed after every command. Called with the stack name.
 // An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml)
 // LocalWorkspace does not utilize this extensibility point.
-func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, fqsn string) error {
+func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName string) error {
 	// not utilized for LocalWorkspace
 	return nil
 }
 
-// GetConfig returns the value associated with the specified fullyQualifiedStackName and key,
+// GetConfig returns the value associated with the specified stack name and key,
 // scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
-func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string) (ConfigValue, error) {
+func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key string) (ConfigValue, error) {
 	var val ConfigValue
-	err := l.SelectStack(ctx, fqsn)
+	err := l.SelectStack(ctx, stackName)
 	if err != nil {
-		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
+		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", stackName)
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--json")
 	if err != nil {
@@ -148,13 +142,13 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, fqsn string, key string)
 	return val, nil
 }
 
-// GetAllConfig returns the config map for the specified fullyQualifiedStackName, scoped to the current workspace.
+// GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 // LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
-func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigMap, error) {
+func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (ConfigMap, error) {
 	var val ConfigMap
-	err := l.SelectStack(ctx, fqsn)
+	err := l.SelectStack(ctx, stackName)
 	if err != nil {
-		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", fqsn)
+		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", stackName)
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json")
 	if err != nil {
@@ -167,12 +161,12 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, fqsn string) (ConfigM
 	return val, nil
 }
 
-// SetConfig sets the specified key-value pair on the provided fullyQualifiedStackName.
+// SetConfig sets the specified key-value pair on the provided stack name.
 // LocalWorkspace writes this value to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) SetConfig(ctx context.Context, fqsn string, key string, val ConfigValue) error {
-	err := l.SelectStack(ctx, fqsn)
+func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key string, val ConfigValue) error {
+	err := l.SelectStack(ctx, stackName)
 	if err != nil {
-		return errors.Wrapf(err, "could not set config, unable to select stack %s", fqsn)
+		return errors.Wrapf(err, "could not set config, unable to select stack %s", stackName)
 	}
 
 	secretArg := "--plaintext"
@@ -187,11 +181,11 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, fqsn string, key string,
 	return nil
 }
 
-// SetAllConfig sets all values in the provided config map for the specified fullyQualifiedStackName.
+// SetAllConfig sets all values in the provided config map for the specified stack name.
 // LocalWorkspace writes the config to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) SetAllConfig(ctx context.Context, fqsn string, config ConfigMap) error {
+func (l *LocalWorkspace) SetAllConfig(ctx context.Context, stackName string, config ConfigMap) error {
 	for k, v := range config {
-		err := l.SetConfig(ctx, fqsn, k, v)
+		err := l.SetConfig(ctx, stackName, k, v)
 		if err != nil {
 			return err
 		}
@@ -199,12 +193,12 @@ func (l *LocalWorkspace) SetAllConfig(ctx context.Context, fqsn string, config C
 	return nil
 }
 
-// RemoveConfig removes the specified key-value pair on the provided fullyQualifiedStackName.
+// RemoveConfig removes the specified key-value pair on the provided stack name.
 // It will remove any matching values in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) RemoveConfig(ctx context.Context, fqsn string, key string) error {
-	err := l.SelectStack(ctx, fqsn)
+func (l *LocalWorkspace) RemoveConfig(ctx context.Context, stackName string, key string) error {
+	err := l.SelectStack(ctx, stackName)
 	if err != nil {
-		return errors.Wrapf(err, "could not remove config, unable to select stack %s", fqsn)
+		return errors.Wrapf(err, "could not remove config, unable to select stack %s", stackName)
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "rm", key)
@@ -214,11 +208,11 @@ func (l *LocalWorkspace) RemoveConfig(ctx context.Context, fqsn string, key stri
 	return nil
 }
 
-// RemoveAllConfig removes all values in the provided key list for the specified fullyQualifiedStackName
+// RemoveAllConfig removes all values in the provided key list for the specified stack name
 // It will remove any matching values in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, fqsn string, keys []string) error {
+func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, stackName string, keys []string) error {
 	for _, k := range keys {
-		err := l.RemoveConfig(ctx, fqsn, k)
+		err := l.RemoveConfig(ctx, stackName, k)
 		if err != nil {
 			return err
 		}
@@ -226,12 +220,12 @@ func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, fqsn string, keys 
 	return nil
 }
 
-// RefreshConfig gets and sets the config map used with the last Update for Stack matching fullyQualifiedStackName.
+// RefreshConfig gets and sets the config map used with the last Update for Stack matching stack name.
 // It will overwrite all configuration in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
-func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (ConfigMap, error) {
-	err := l.SelectStack(ctx, fqsn)
+func (l *LocalWorkspace) RefreshConfig(ctx context.Context, stackName string) (ConfigMap, error) {
+	err := l.SelectStack(ctx, stackName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not refresh config, unable to select stack %s", fqsn)
+		return nil, errors.Wrapf(err, "could not refresh config, unable to select stack %s", stackName)
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "refresh", "--force")
@@ -239,7 +233,7 @@ func (l *LocalWorkspace) RefreshConfig(ctx context.Context, fqsn string) (Config
 		return nil, newAutoError(errors.Wrap(err, "could not refresh config"), stdout, stderr, errCode)
 	}
 
-	cfg, err := l.GetAllConfig(ctx, fqsn)
+	cfg, err := l.GetAllConfig(ctx, stackName)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not fetch config after refresh")
 	}
@@ -324,14 +318,9 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	return nil, nil
 }
 
-// CreateStack creates and sets a new stack with the fullyQualifiedStackName, failing if one already exists.
-func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
-	err := ValidateFullyQualifiedStackName(fqsn)
-	if err != nil {
-		return errors.Wrap(err, "failed to create stack")
-	}
-
-	args := []string{"stack", "init", fqsn}
+// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
+func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
+	args := []string{"stack", "init", stackName}
 	if l.secretsProvider != "" {
 		args = append(args, fmt.Sprintf("--secrets-provider=%s", l.secretsProvider))
 	}
@@ -343,14 +332,9 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, fqsn string) error {
 	return nil
 }
 
-// SelectStack selects and sets an existing stack matching the fullyQualifiedStackName, failing if none exists.
-func (l *LocalWorkspace) SelectStack(ctx context.Context, fqsn string) error {
-	err := ValidateFullyQualifiedStackName(fqsn)
-	if err != nil {
-		return errors.Wrap(err, "failed to select stack")
-	}
-
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "select", fqsn)
+// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
+func (l *LocalWorkspace) SelectStack(ctx context.Context, stackName string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "select", stackName)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to select stack"), stdout, stderr, errCode)
 	}
@@ -359,13 +343,8 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, fqsn string) error {
 }
 
 // RemoveStack deletes the stack and all associated configuration and history.
-func (l *LocalWorkspace) RemoveStack(ctx context.Context, fqsn string) error {
-	err := ValidateFullyQualifiedStackName(fqsn)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove stack")
-	}
-
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "rm", "--yes", fqsn)
+func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "rm", "--yes", stackName)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, errCode)
 	}
@@ -375,16 +354,6 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, fqsn string) error {
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
 func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
-	user, err := l.WhoAmI(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not list stacks")
-	}
-
-	proj, err := l.ProjectSettings(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not list stacks")
-	}
-
 	var stacks []StackSummary
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
 	if err != nil {
@@ -393,14 +362,6 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal config value")
-	}
-	for _, s := range stacks {
-		nameParts := strings.Split(s.Name, "/")
-		if len(nameParts) == 1 {
-			s.Name = fmt.Sprintf("%s/%s/%s", user, proj.Name.String(), s.Name)
-		} else {
-			s.Name = fmt.Sprintf("%s/%s/%s", nameParts[0], proj.Name.String(), nameParts[1])
-		}
 	}
 	return stacks, nil
 }
@@ -515,9 +476,9 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		}
 	}
 
-	for fqsn := range lwOpts.Stacks {
-		s := lwOpts.Stacks[fqsn]
-		err := l.SaveStackSettings(ctx, fqsn, &s)
+	for stackName := range lwOpts.Stacks {
+		s := lwOpts.Stacks[stackName]
+		err := l.SaveStackSettings(ctx, stackName, &s)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create workspace")
 		}
@@ -551,7 +512,7 @@ type localWorkspaceOptions struct {
 	PulumiHome string
 	// Project is the project settings for the workspace.
 	Project *workspace.Project
-	// Stacks is a map of [fqsn -> stack settings objects] to seed the workspace.
+	// Stacks is a map of [stackName -> stack settings objects] to seed the workspace.
 	Stacks map[string]workspace.ProjectStack
 	// Repo is a git repo with a Pulumi Project to clone into the WorkDir.
 	Repo *GitRepo
@@ -660,22 +621,10 @@ func SecretsProvider(secretsProvider string) LocalWorkspaceOption {
 	})
 }
 
-// ValidateFullyQualifiedStackName validates that the fqsn is in the form "org/project/name".
-func ValidateFullyQualifiedStackName(fqsn string) error {
-	parts := strings.Split(fqsn, "/")
-	if len(parts) != 3 {
-		return errors.Errorf(
-			"invalid fully qualified stack name: %s, expected in the form 'org/project/stack'",
-			fqsn,
-		)
-	}
-	return nil
-}
-
 // NewStackLocalSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
 // from the specified WorkDir. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-func NewStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+func NewStackLocalSource(ctx context.Context, stackName, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -683,14 +632,19 @@ func NewStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...Loca
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return NewStack(ctx, fqsn, w)
+	return NewStack(ctx, stackName, w)
 }
 
 // UpsertStackLocalSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
 // from the specified WorkDir. If the Stack already exists, it will not error
 // and proceed to selecting the Stack.This Workspace will pick up any available
 // Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-func UpsertStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+func UpsertStackLocalSource(
+	ctx context.Context,
+	stackName,
+	workDir string,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -698,13 +652,18 @@ func UpsertStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...L
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return UpsertStack(ctx, fqsn, w)
+	return UpsertStack(ctx, stackName, w)
 }
 
 // SelectStackLocalSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
 // from the specified WorkDir. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-func SelectStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...LocalWorkspaceOption) (Stack, error) {
+func SelectStackLocalSource(
+	ctx context.Context,
+	stackName,
+	workDir string,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, WorkDir(workDir))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -712,14 +671,19 @@ func SelectStackLocalSource(ctx context.Context, fqsn, workDir string, opts ...L
 		return stack, errors.Wrap(err, "failed to select stack")
 	}
 
-	return SelectStack(ctx, fqsn, w)
+	return SelectStack(ctx, stackName, w)
 }
 
 // NewStackRemoteSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
 // with source code cloned from the specified GitRepo. This Workspace will pick up
 // any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml) that are cloned into the Workspace.
 // Unless a WorkDir option is specified, the GitRepo will be clone into a new temporary directory provided by the OS.
-func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+func NewStackRemoteSource(
+	ctx context.Context,
+	stackName string,
+	repo GitRepo,
+	opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -727,7 +691,7 @@ func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts .
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return NewStack(ctx, fqsn, w)
+	return NewStack(ctx, stackName, w)
 }
 
 // UpsertStackRemoteSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
@@ -737,7 +701,7 @@ func NewStackRemoteSource(ctx context.Context, fqsn string, repo GitRepo, opts .
 // into the Workspace. Unless a WorkDir option is specified, the GitRepo will be clone
 // into a new temporary directory provided by the OS.
 func UpsertStackRemoteSource(
-	ctx context.Context, fqsn string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+	ctx context.Context, stackName string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
@@ -745,7 +709,7 @@ func UpsertStackRemoteSource(
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return UpsertStack(ctx, fqsn, w)
+	return UpsertStack(ctx, stackName, w)
 }
 
 // SelectStackRemoteSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
@@ -754,7 +718,7 @@ func UpsertStackRemoteSource(
 // Unless a WorkDir option is specified, the GitRepo will be clone into a new temporary directory provided by the OS.
 func SelectStackRemoteSource(
 	ctx context.Context,
-	fqsn string, repo GitRepo,
+	stackName string, repo GitRepo,
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	opts = append(opts, Repo(repo))
@@ -764,7 +728,7 @@ func SelectStackRemoteSource(
 		return stack, errors.Wrap(err, "failed to select stack")
 	}
 
-	return SelectStack(ctx, fqsn, w)
+	return SelectStack(ctx, stackName, w)
 }
 
 // NewStackInlineSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
@@ -773,13 +737,14 @@ func SelectStackRemoteSource(
 // to a new temporary directory provided by the OS.
 func NewStackInlineSource(
 	ctx context.Context,
-	fqsn string,
+	stackName string,
+	projectName string,
 	program pulumi.RunFunc,
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(fqsn)
+	proj, err := defaultInlineProject(projectName)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
@@ -790,7 +755,7 @@ func NewStackInlineSource(
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return NewStack(ctx, fqsn, w)
+	return NewStack(ctx, stackName, w)
 }
 
 // UpsertStackInlineSource creates a Stack backed by a LocalWorkspace created on behalf of the user,
@@ -800,13 +765,14 @@ func NewStackInlineSource(
 // is specified, the working directory will default to a new temporary directory provided by the OS.
 func UpsertStackInlineSource(
 	ctx context.Context,
-	fqsn string,
+	stackName string,
+	projectName string,
 	program pulumi.RunFunc,
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(fqsn)
+	proj, err := defaultInlineProject(projectName)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
@@ -817,7 +783,7 @@ func UpsertStackInlineSource(
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
 
-	return UpsertStack(ctx, fqsn, w)
+	return UpsertStack(ctx, stackName, w)
 }
 
 // SelectStackInlineSource selects an existing Stack backed by a new LocalWorkspace created on behalf of the user,
@@ -826,13 +792,14 @@ func UpsertStackInlineSource(
 // to a new temporary directory provided by the OS.
 func SelectStackInlineSource(
 	ctx context.Context,
-	fqsn string,
+	stackName string,
+	projectName string,
 	program pulumi.RunFunc,
 	opts ...LocalWorkspaceOption,
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(fqsn)
+	proj, err := defaultInlineProject(projectName)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to select stack")
 	}
@@ -843,29 +810,28 @@ func SelectStackInlineSource(
 		return stack, errors.Wrap(err, "failed to select stack")
 	}
 
-	return SelectStack(ctx, fqsn, w)
+	return SelectStack(ctx, stackName, w)
 }
 
-func defaultInlineProject(fqsn string) (workspace.Project, error) {
+func defaultInlineProject(projectName string) (workspace.Project, error) {
 	var proj workspace.Project
-	err := ValidateFullyQualifiedStackName(fqsn)
-	if err != nil {
-		return proj, err
-	}
-	pName := strings.Split(fqsn, "/")[1]
 	proj = workspace.Project{
-		Name:    tokens.PackageName(pName),
+		Name:    tokens.PackageName(projectName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 	}
 
 	return proj, nil
 }
 
-func getStackFromFQSN(fqsn string) (string, error) {
-	if err := ValidateFullyQualifiedStackName(fqsn); err != nil {
-		return "", err
+// stack names come in many forms:
+// s, o/p/s, u/p/s o/s
+// so just return the last chunk which is what will be used in pulumi.<stack>.yaml
+func getStackSettingsName(stackName string) string {
+	parts := strings.Split(stackName, "/")
+	if len(parts) < 1 {
+		return stackName
 	}
-	return strings.Split(fqsn, "/")[2], nil
+	return parts[len(parts)-1]
 }
 
 const pulumiHomeEnv = "PULUMI_HOME"

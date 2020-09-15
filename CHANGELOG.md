@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Relax stack name validations for Automation API [#5337](https://github.com/pulumi/pulumi/pull/5337)
+
 - Allow Pulumi to read a passphrase file, via `PULUMI_CONFIG_PASSPHRASE_FILE` to interact
   with the passphrase secrets provider. Pulumi will first try and use the `PULUMI_CONFIG_PASSPHRASE`
   to get the passphrase then will check `PULUMI_CONFIG_PASSPHRASE_FILE` and then all through to 
