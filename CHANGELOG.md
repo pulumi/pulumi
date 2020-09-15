@@ -35,6 +35,9 @@ CHANGELOG
 - Automation API - add recovery APIs (cancel/export/import)
   [#5369](https://github.com/pulumi/pulumi/pull/5369)
 
+- Add `pulumi console` command which  opens the currently selected stack in the Pulumi console.
+  [#5368](https://github.com/pulumi/pulumi/pull/5368)
+
 ## 2.10.0 (2020-09-10)
 
 - feat(autoapi): add Upsert methods for stacks
