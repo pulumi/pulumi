@@ -568,6 +568,36 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	return info, nil
 }
 
+// Cancel stops a stack's currently running update. It returns an error if no update is currently running.
+// Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+// if a resource operation was pending when the update was canceled.
+// This command is not supported for local backends.
+func (s *Stack) Cancel(ctx context.Context) error {
+	err := s.Workspace().SelectStack(ctx, s.Name())
+	if err != nil {
+		return errors.Wrap(err, "failed to cancel update")
+	}
+
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, "cancel", "--yes")
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
+	}
+
+	return nil
+}
+
+// Export exports the deployment state of the stack.
+// This can be combined with Stack.Import to edit a stack's state (such as recovery from failed deployments).
+func (s *Stack) Export(ctx context.Context) (apitype.UntypedDeployment, error) {
+	return s.Workspace().ExportStack(ctx, s.Name())
+}
+
+// Import imports the specified deployment state into the stack.
+// This can be combined with Stack.Export to edit a stack's state (such as recovery from failed deployments).
+func (s *Stack) Import(ctx context.Context, state apitype.UntypedDeployment) error {
+	return s.Workspace().ImportStack(ctx, s.Name(), state)
+}
+
 // UpdateSummary provides a summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
 	Kind        string            `json:"kind"`

@@ -930,6 +930,78 @@ func TestNestedStackFails(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestImportExportStack(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		c := config.New(ctx, "")
+		ctx.Export("exp_static", pulumi.String("foo"))
+		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	_, err = s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi stack export --
+	state, err := s.Export(ctx)
+	if err != nil {
+		t.Errorf("export failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi stack import --
+	err = s.Import(ctx, state)
+	if err != nil {
+		t.Errorf("import failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi destroy --
+
+	dRes, err := s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
 func getTestOrg() string {
 	testOrg := "pulumi-test"
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {

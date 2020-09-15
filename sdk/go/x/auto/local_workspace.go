@@ -24,7 +24,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
@@ -407,6 +409,62 @@ func (l *LocalWorkspace) Program() pulumi.RunFunc {
 // SetProgram sets the program associated with the Workspace to the specified `pulumi.RunFunc`.
 func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
 	l.program = fn
+}
+
+// ExportStack exports the deployment state of the stack matching the given name.
+// This can be combined with ImportStack to edit a stack's state (such as recovery from failed deployments).
+func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (apitype.UntypedDeployment, error) {
+	var state apitype.UntypedDeployment
+	err := l.SelectStack(ctx, stackName)
+	if err != nil {
+		return state, errors.Wrapf(err, "could not export stack, unable to select stack %s.", stackName)
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets")
+	if err != nil {
+		return state, newAutoError(errors.Wrap(err, "could not export stack."), stdout, stderr, errCode)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &state)
+	if err != nil {
+		return state, newAutoError(
+			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state."), stdout, stderr, errCode,
+		)
+	}
+
+	return state, nil
+}
+
+// ImportStack imports the specified deployment state into a pre-existing stack.
+// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
+func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, state apitype.UntypedDeployment) error {
+	err := l.SelectStack(ctx, stackName)
+	if err != nil {
+		return errors.Wrapf(err, "could not import stack, failed to select stack %s.", stackName)
+	}
+
+	f, err := ioutil.TempFile(os.TempDir(), "")
+	if err != nil {
+		return errors.Wrap(err, "could not import stack. failed to get allocate temp file.")
+	}
+	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
+
+	bytes, err := json.Marshal(state)
+	if err != nil {
+		return errors.Wrap(err, "could not import stack, failed to marshal stack state.")
+	}
+
+	_, err = f.Write(bytes)
+	if err != nil {
+		return errors.Wrap(err, "could not import stack. failed to write out stack intermediate.")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "import", "--file", f.Name())
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "could not import stack."), stdout, stderr, errCode)
+	}
+
+	return nil
 }
 
 func (l *LocalWorkspace) runPulumiCmdSync(

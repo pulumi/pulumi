@@ -70,7 +70,7 @@ func newCancelCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			stackName := string(s.Ref().Name())
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
-			if !yes && !confirmPrompt(prompt, stackName, opts) {
+			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
 				fmt.Println("confirmation declined")
 				return result.Bail()
 			}
