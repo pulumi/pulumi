@@ -24,6 +24,9 @@ CHANGELOG
 - Automation API - support streaming output for Up/Refresh/Destroy operations.
   [#5367](https://github.com/pulumi/pulumi/pull/5367)
 
+- Automation API - add recovery APIs (cancel/export/import)
+  [#5369](https://github.com/pulumi/pulumi/pull/5369)
+
 ## 2.10.0 (2020-09-10)
 
 - feat(autoapi): add Upsert methods for stacks
