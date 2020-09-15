@@ -1590,7 +1590,7 @@ func isStringType(t schema.Type) bool {
 
 // pyPack returns the suggested package name for the given string.
 func pyPack(s string) string {
-	return "pulumi_" + s
+	return "pulumi_" + strings.ReplaceAll(s, "-", "_")
 }
 
 // pyClassName turns a raw name into one that is suitable as a Python class name.
