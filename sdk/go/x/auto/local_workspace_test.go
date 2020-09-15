@@ -15,6 +15,7 @@
 package auto
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -28,6 +29,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -928,6 +932,77 @@ func TestNestedStackFails(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestProgressStreams(t *testing.T) {
+	ctx := context.Background()
+	pName := "inline_progress_streams"
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		c := config.New(ctx, "")
+		ctx.Export("exp_static", pulumi.String("foo"))
+		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- pulumi up --
+	var upOut bytes.Buffer
+	res, err := s.Up(ctx, optup.ProgressStreams(&upOut))
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, upOut.String(), res.StdOut, "expected stdout writers to contain same contents")
+
+	// -- pulumi refresh --
+	var refOut bytes.Buffer
+	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(&refOut))
+
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, refOut.String(), ref.StdOut, "expected stdout writers to contain same contents")
+
+	// -- pulumi destroy --
+	var desOut bytes.Buffer
+	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(&desOut))
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, desOut.String(), dRes.StdOut, "expected stdout writers to contain same contents")
 }
 
 func getTestOrg() string {

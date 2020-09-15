@@ -18,6 +18,8 @@ package auto
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -917,12 +919,40 @@ func ExampleStack_Destroy() {
 	stack.Destroy(ctx, optdestroy.Message("a message to save with the destroy operation"))
 }
 
+func ExampleStack_Destroy_streamingProgress() {
+	ctx := context.Background()
+	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	// select an existing stack to destroy
+	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	// create a temp file that we can tail during while our program runs
+	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	// optdestroy.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
+	// this gives us incremental status over time
+	progressStreams := []io.Writer{os.Stdout, tmp}
+	// this destroy will incrementally stream unstructured progress messages to stdout and our temp file
+	stack.Destroy(ctx, optdestroy.ProgressStreams(progressStreams...))
+}
+
 func ExampleStack_Up() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	// create a new stack to update
 	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Up(ctx, optup.Message("a message to save with the up operation"), optup.Parallel(10000))
+}
+
+func ExampleStack_Up_streamingProgress() {
+	ctx := context.Background()
+	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	// create a new stack to update
+	stack, _ := NewStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	// create a temp file that we can tail during while our program runs
+	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	// optup.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
+	// this gives us incremental status over time
+	progressStreams := []io.Writer{os.Stdout, tmp}
+	// this update will incrementally stream unstructured progress messages to stdout and our temp file
+	stack.Up(ctx, optup.ProgressStreams(progressStreams...))
 }
 
 func ExampleStack_Preview() {
@@ -939,6 +969,20 @@ func ExampleStack_Refresh() {
 	// select an existing stack and refresh the resources under management
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Refresh(ctx, optrefresh.Message("a message to save with the refresh operation"))
+}
+
+func ExampleStack_Refresh_streamingProgress() {
+	ctx := context.Background()
+	fqsn := FullyQualifiedStackName("org", "project", "stack")
+	// select an existing stack and refresh the resources under management
+	stack, _ := SelectStackLocalSource(ctx, fqsn, filepath.Join(".", "program"))
+	// create a temp file that we can tail during while our program runs
+	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	// optrefresh.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
+	// this gives us incremental status over time
+	progressStreams := []io.Writer{os.Stdout, tmp}
+	// this refresh will incrementally stream unstructured progress messages to stdout and our temp file
+	stack.Refresh(ctx, optrefresh.ProgressStreams(progressStreams...))
 }
 
 func ExampleStack_GetAllConfig() {

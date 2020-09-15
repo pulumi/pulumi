@@ -91,6 +91,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"runtime"
 	"strings"
 	"sync"
@@ -246,7 +247,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
@@ -306,7 +307,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 	}
@@ -368,7 +369,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
@@ -425,7 +426,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
@@ -457,13 +458,17 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 	}
 
 	// standard outputs
-	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, "stack", "output", "--json")
+	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
+		"stack", "output", "--json",
+	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
 	}
 
 	// secret outputs
-	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, "stack", "output", "--json", "--show-secrets")
+	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
+		"stack", "output", "--json", "--show-secrets",
+	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
 	}
@@ -499,7 +504,9 @@ func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, "history", "--json", "--show-secrets")
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
+		"history", "--json", "--show-secrets",
+	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
@@ -654,7 +661,11 @@ type DestroyResult struct {
 // secretSentinel represents the CLI response for an output marked as "secret"
 const secretSentinel = "[secret]"
 
-func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, string, int, error) {
+func (s *Stack) runPulumiCmdSync(
+	ctx context.Context,
+	additionalOutput []io.Writer,
+	args ...string,
+) (string, string, int, error) {
 	var env []string
 	if s.Workspace().PulumiHome() != "" {
 		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
@@ -671,7 +682,7 @@ func (s *Stack) runPulumiCmdSync(ctx context.Context, args ...string) (string, s
 		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
-	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), env, args...)
+	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}

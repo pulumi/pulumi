@@ -17,6 +17,7 @@ package auto
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 )
@@ -26,6 +27,7 @@ const unknownErrorCode = -2
 func runPulumiCommandSync(
 	ctx context.Context,
 	workdir string,
+	additionalOutput []io.Writer,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
@@ -35,10 +37,13 @@ func runPulumiCommandSync(
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = workdir
 	cmd.Env = append(os.Environ(), additionalEnv...)
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
+	additionalOutput = append(additionalOutput, &stdout)
+	cmd.Stdout = io.MultiWriter(additionalOutput...)
 	cmd.Stderr = &stderr
+
 	code := unknownErrorCode
 	err := cmd.Run()
 	if exitError, ok := err.(*exec.ExitError); ok {

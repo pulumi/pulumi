@@ -16,6 +16,8 @@
 // github.com/sdk/v2/go/x/auto Stack.Destroy(...optdestroy.Option)
 package optdestroy
 
+import "io"
+
 // Parallel is the number of resource operations to run in parallel at once during the destroy
 // (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 func Parallel(n int) Option {
@@ -45,6 +47,13 @@ func TargetDependents() Option {
 	})
 }
 
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+func ProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ProgressStreams = writers
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -63,6 +72,8 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+	ProgressStreams []io.Writer
 }
 
 type optionFunc func(*Options)
