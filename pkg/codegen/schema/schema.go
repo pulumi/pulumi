@@ -643,7 +643,7 @@ type ObjectTypeSpec struct {
 	Properties map[string]PropertySpec `json:"properties,omitempty"`
 	// Type must be "object" if this is an object type, or the underlying type for an enum.
 	Type string `json:"type,omitempty"`
-	// Required, if present is a list of the names of an object type's required properties. These properties must be set
+	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
 	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
 	// Language specifies additional language-specific data about the type.
