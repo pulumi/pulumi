@@ -161,7 +161,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("@pulumi/" + makeValidIdentifier(pkg))
+			importSet.Add("@pulumi/" + pkg)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {

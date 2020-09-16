@@ -48,7 +48,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
-	path := fmt.Sprintf("%s/%s", pkg.Name, moduleName)
+	path := fmt.Sprintf("%s/%s", goPackage(pkg.Name), moduleName)
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
@@ -131,9 +131,9 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	var displayName string
 	var link string
 	if modName == "" {
-		displayName = fmt.Sprintf("%s", pkg.Name)
+		displayName = goPackage(pkg.Name)
 	} else {
-		displayName = fmt.Sprintf("%s/%s", pkg.Name, modName)
+		displayName = fmt.Sprintf("%s/%s", goPackage(pkg.Name), modName)
 	}
 	link = d.GetDocLinkForResourceType(pkg, modName, "")
 	return displayName, link
