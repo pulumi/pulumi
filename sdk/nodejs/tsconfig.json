@@ -82,6 +82,7 @@
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
         "tests/automation/projectSettings.spec.ts",
+        "tests/automation/stackSettings.spec.ts",
         "tests/automation/localWorkspace.spec.ts"
     ]
 }
