@@ -53,6 +53,40 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         }
         return Promise.resolve(fs.writeFileSync(path, contents))
     }
+    stackSettings(stackName: string): Promise<StackSettings>{
+        const stackSettingsName = getStackSettingsName(stackName);
+        for (let ext of settingsExtensions) {
+            const isJSON = ext === ".json";
+            const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${ext}`);
+            if (!fs.existsSync(path)) continue;
+            const contents = fs.readFileSync(path).toString();
+            if (isJSON) {
+                return Promise.resolve(StackSettings.fromJSON(JSON.parse(contents)))
+            }
+            return Promise.resolve(StackSettings.fromYAML(contents))
+        }
+        return Promise.reject(new Error(`failed to find stack settings file in workdir: ${this.workDir}`));
+    }
+    saveStackSettings(settings: StackSettings, stackName: string): Promise<void> {
+        const stackSettingsName = getStackSettingsName(stackName);
+        let foundExt = ".yaml";
+        for (let ext of settingsExtensions) {
+           const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${ext}`);
+           if (fs.existsSync(path)) {
+               foundExt = ext;
+               break;
+           }
+        }
+        const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${foundExt}`);
+        let contents;
+        if (foundExt === ".json") {
+            contents = JSON.stringify(settings, null, 4);
+        }
+        else {
+            contents = settings.toYAML();
+        }
+        return Promise.resolve(fs.writeFileSync(path, contents))
+    }
 }
 
 export type LocalWorkspaceOpts = {
@@ -63,3 +97,11 @@ export type LocalWorkspaceOpts = {
 }
 
 export const settingsExtensions = [".yaml", ".yml", ".json"];
+
+const getStackSettingsName = (name: string): string => {
+    const parts = name.split("/");
+    if (parts.length < 1) {
+        return name;
+    }
+    return parts[parts.length - 1];
+}
