@@ -52,8 +52,6 @@ const (
 	jsonType    primitiveType = 8
 )
 
-const object = "object"
-
 //nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
@@ -139,15 +137,15 @@ type EnumType struct {
 	// Elements are the predefined enum values.
 	Elements []*Enum
 	// ElementType is the underlying type for the enum.
-	ElementType string
+	ElementType Type
 }
 
 // Enum contains information about an enum.
 type Enum struct {
 	// Value is the value of the enum.
 	Value interface{}
-	// Description for the enum value.
-	Description string
+	// Comment is the description for the enum value.
+	Comment string
 	// Name for the enum.
 	Name string
 }
@@ -664,9 +662,9 @@ type ComplexTypeSpec struct {
 type EnumValueSpec struct {
 	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
 	Name string `json:"name,omitempty"`
-	// Description of the enum value
+	// Description of the enum value.
 	Description string `json:"description,omitempty"`
-	// Value is the enum value itself and must match an element in the Enum[] list.
+	// Value is the enum value itself.
 	Value interface{} `json:"value"`
 }
 
@@ -976,6 +974,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		return union, nil
 	}
 
+	// nolint: goconst
 	switch spec.Type {
 	case "boolean", "integer", "number", "string":
 		return t.bindPrimitiveType(spec.Type)
@@ -995,7 +994,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			t.arrays[elementType] = typ
 		}
 		return typ, nil
-	case object:
+	case "object":
 		elementType := StringType
 		if spec.AdditionalProperties != nil {
 			et, err := t.bindType(*spec.AdditionalProperties)
@@ -1183,9 +1182,13 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 }
 
 func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) error {
+	typ, err := t.bindType(TypeSpec{Type: spec.Type})
+	if err != nil {
+		return err
+	}
 	enum.Token = token
 	enum.Elements = t.bindEnumValues(spec.Enum)
-	enum.ElementType = spec.Type
+	enum.ElementType = typ
 	enum.Comment = spec.Description
 
 	return nil
@@ -1194,9 +1197,11 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 func (t *types) bindEnumValues(values []*EnumValueSpec) (enums []*Enum) {
 	for _, spec := range values {
 		enum := &Enum{
-			Value:       spec.Value,
-			Description: spec.Description,
-			Name:        spec.Name,
+			// TODO: check that the type of the value matches the enum type.
+			// https://github.com/pulumi/pulumi/issues/5387
+			Value:   spec.Value,
+			Comment: spec.Description,
+			Name:    spec.Name,
 		}
 		enums = append(enums, enum)
 	}
@@ -1224,7 +1229,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 
 	// Declare object and enum types before processing properties.
 	for token, spec := range complexTypes {
-		if spec.Type == object {
+		if spec.Type == "object" {
 			// It's important that we set the token here. This package interns types so that they can be equality-compared
 			// for identity. Types are interned based on their string representation, and the string representation of an
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
@@ -1237,7 +1242,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 
 	// Process properties.
 	for token, spec := range complexTypes {
-		if spec.Type == object {
+		if spec.Type == "object" {
 			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
