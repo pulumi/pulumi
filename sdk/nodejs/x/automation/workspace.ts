@@ -5,7 +5,7 @@ import { ConfigValue, ConfigMap } from "./config";
 export interface Workspace {
     projectSettings(): Promise<ProjectSettings>
     saveProjectSettings(settings: ProjectSettings): Promise<void>
-    stackSettings(): Promise<StackSettings>
+    stackSettings(stackName: string): Promise<StackSettings>
     saveStackSettings(settings: StackSettings, stackName: string): Promise<void>
     serializeArgsForOp(stackName: string): string[]
     postCommandCallback(stackName: string): void
