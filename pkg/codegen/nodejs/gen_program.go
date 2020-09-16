@@ -179,7 +179,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
-		as := path.Base(pkg)
+		as := makeValidIdentifier(path.Base(pkg))
 		if as != pkg {
 			imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 		} else {
