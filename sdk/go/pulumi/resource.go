@@ -192,6 +192,8 @@ type invokeOptions struct {
 	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
+	// Version is an optional version of the provider plugin to use for the invoke.
+	Version string
 }
 
 type ResourceOption interface {
