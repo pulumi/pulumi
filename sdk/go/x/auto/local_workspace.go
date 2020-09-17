@@ -324,7 +324,7 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
 	args := []string{"stack", "init", stackName}
 	if l.secretsProvider != "" {
-		args = append(args, fmt.Sprintf("--secrets-provider=%s", l.secretsProvider))
+		args = append(args, "--secrets-provider", l.secretsProvider)
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
