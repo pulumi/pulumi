@@ -232,7 +232,7 @@ func ExampleGitRepo_privateKeyPath() {
 	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "git@github.com:pulumi/test-repo.git",
 		ProjectPath: "goproj",
 		Auth: &GitAuth{
 			SSHPrivateKeyPath: "/Users/myuser/.ssh/id_rsa",
