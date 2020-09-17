@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Do not oversimplify types for display when running an update or preview.
+  [#5440](https://github.com/pulumi/pulumi/pull/5440)
+
 _(None)_
 
 ## 2.10.2 (2020-09-21)
