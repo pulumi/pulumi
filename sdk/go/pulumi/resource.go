@@ -326,9 +326,14 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 // An optional version, corresponding to the version of the provider plugin that should be used when operating on
 // this resource. This version overrides the version information inferred from the current package and should
 // rarely be used.
-func Version(o string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Version = o
+func Version(o string) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.Version = o
+		case io != nil:
+			io.Version = o
+		}
 	})
 }
 
