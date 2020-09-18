@@ -22,6 +22,7 @@ import { asyncTest } from "../util";
 
 
 describe("LocalWorkspace", () => {
+
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
@@ -30,6 +31,16 @@ describe("LocalWorkspace", () => {
             assert(settings.runtime.name, "go");
             assert(settings.description, "A minimal Go Pulumi program");
 
+        }
+    }));
+
+    it(`stackSettings from yaml/yml/json`, asyncTest(async () => {
+        for (const ext of ["yaml", "yml", "json"]) {
+            const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
+            const settings = await ws.stackSettings("dev");
+            assert.equal(settings.secretsProvider, "abc");
+            assert.equal(settings.config!["plain"].value, "plain");
+            assert.equal(settings.config!["secure"].secure, "secret");
         }
     }));
 
