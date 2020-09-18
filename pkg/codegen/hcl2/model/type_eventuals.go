@@ -33,19 +33,11 @@ func (f typeTransform) do(t Type) Type {
 	}
 }
 
-type resolveEventualsResult struct {
-	t  Type
-	tt typeTransform
-}
-
 func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
-	return resolveEventualsImpl(t, resolveOutputs, map[Type]resolveEventualsResult{})
+	return resolveEventualsImpl(t, resolveOutputs, map[Type]Type{})
 }
 
-func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]resolveEventualsResult) (Type, typeTransform) {
-	if already, ok := seen[t]; ok {
-		return already.t, already.tt
-	}
+func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type, typeTransform) {
 	switch t := t.(type) {
 	case *OutputType:
 		if resolveOutputs {
@@ -80,12 +72,12 @@ func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]resolveEven
 		return NewUnionType(elementTypes...), transform
 	case *ObjectType:
 		transform := makeIdentity
+		if already, ok := seen[t]; ok {
+			return already, transform
+		}
 		properties := map[string]Type{}
 		objType := NewObjectType(properties, t.Annotations...)
-		seen[t] = resolveEventualsResult{
-			t:  objType,
-			tt: transform,
-		}
+		seen[t] = objType
 		for k, t := range t.Properties {
 			property, propertyTransform := resolveEventualsImpl(t, resolveOutputs, seen)
 			if propertyTransform > transform {

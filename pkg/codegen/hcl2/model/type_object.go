@@ -85,8 +85,12 @@ func (t *ObjectType) Equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
-	if _, ok := seen[t]; ok {
-		return true
+	if seen != nil {
+		if _, ok := seen[t]; ok {
+			return true
+		}
+	} else {
+		seen = map[Type]struct{}{}
 	}
 	seen[t] = struct{}{}
 

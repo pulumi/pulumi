@@ -50,7 +50,7 @@ func NewUnionType(types ...Type) Type {
 
 	dst := 0
 	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst], map[Type]struct{}{}) {
+		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst], nil) {
 			src++
 		}
 		dst++
