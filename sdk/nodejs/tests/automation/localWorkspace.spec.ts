@@ -44,4 +44,19 @@ describe("LocalWorkspace", () => {
         }
     }));
 
+    it(`create/select/remove stack`, asyncTest(async () => {
+        const projectSettings = new ProjectSettings();
+        projectSettings.name = "node_test";
+        projectSettings.runtime.name = "nodejs";
+        const ws = new LocalWorkspace({ projectSettings });
+        await ws.ready;
+        const stackName = `int_test${getTestSuffix()}`;
+        await ws.createStack(stackName);
+        await ws.selectStack(stackName);
+        await ws.removeStack(stackName);
+    }));
 });
+
+const getTestSuffix = () => {
+    return Math.floor(100000 + Math.random() * 900000);
+};
