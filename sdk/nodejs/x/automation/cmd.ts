@@ -14,12 +14,29 @@
 
 import * as childProcess from "child_process";
 
-export type CommandResult = {
-    stdout: string,
-    stderr: string,
-    code: number,
-    err?: Error,
-};
+// TODO the error design here needs some work.
+// need to investigate the state of the art in structured promise error handling in nodejs libs
+export class CommandResult {
+    stdout: string;
+    stderr: string;
+    code: number;
+    err?: Error;
+    constructor(stdout: string, stderr: string, code: number, err?: Error) {
+        this.stdout = stdout;
+        this.stderr = stderr;
+        this.code = code;
+        this.err = err;
+    }
+    Error(): string {
+        let errStr = "";
+        if (this.err) {
+            errStr = this.err.toString();
+        }
+        return `code: ${this.code}\n stdout: ${this.stdout}\n stderr: ${this.stderr}\n err?: ${errStr}\n`;
+    }
+}
+
+const unknownErrCode = -2;
 
 export function runPulumiCmd(
     args: string[],
@@ -48,23 +65,15 @@ export function runPulumiCmd(
             stderr += data;
         });
         proc.on("exit", (code, signal) => {
-            const result: CommandResult = {
-                stdout,
-                stderr,
-                code : code !== null ? code : -1,
-            };
+            const resCode = code !== null ? code : unknownErrCode;
+            const result = new CommandResult(stdout, stderr, resCode);
             if (code !== 0) {
                 return reject(result);
             }
             return resolve(result);
         });
         proc.on("error", (err) => {
-            const result: CommandResult = {
-                stdout,
-                stderr,
-                code : -1,
-                err,
-            };
+            const result = new CommandResult(stdout, stderr, unknownErrCode, err);
             return reject(result);
         });
     });

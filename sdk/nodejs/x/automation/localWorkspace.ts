@@ -13,38 +13,55 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as os from "os";
 import * as upath from "upath";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ProjectSettings } from "./projectSettings";
 import { StackSettings } from "./stackSettings";
 import { Workspace } from "./workspace";
 
-
 export class LocalWorkspace /*implements Workspace TODO */ {
+    ready: Promise<any[]>;
     private workDir: string;
     private pulumiHome?: string;
     private program?: () => void;
     private envVars?: { [key: string]: string };
+    private secretsProvider?: string;
     constructor(opts?: LocalWorkspaceOpts) {
         let dir = "";
         let envs = {};
+
         if (opts) {
-            const {workDir, pulumiHome, program, envVars} = opts;
+            const { workDir, pulumiHome, program, envVars, secretsProvider } = opts;
             if (workDir) {
                 dir = workDir;
             }
             this.pulumiHome = pulumiHome;
             this.program = program;
-            envs = {...envVars};
+            this.secretsProvider = secretsProvider;
+            envs = { ...envVars };
         }
 
         if (!dir) {
-            dir = fs.mkdtempSync("automation-");
+            dir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-"));
         }
         this.workDir = dir;
         this.envVars = envs;
+
+        const readinessPromises: Promise<any>[] = [];
+
+        if (opts && opts.projectSettings) {
+            readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
+        }
+        if (opts && opts.stackSettings) {
+            for (const [name, value] of Object.entries(opts.stackSettings)) {
+                readinessPromises.push(this.saveStackSettings(value, name));
+            }
+        }
+
+        this.ready = Promise.all(readinessPromises);
     }
-    projectSettings(): Promise<ProjectSettings> {
+    async projectSettings(): Promise<ProjectSettings> {
         for (const ext of settingsExtensions) {
             const isJSON = ext === ".json";
             const path = upath.joinSafe(this.workDir, `Pulumi${ext}`);
@@ -57,14 +74,14 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         }
         return Promise.reject(new Error(`failed to find project settings file in workdir: ${this.workDir}`));
     }
-    saveProjectSettings(settings: ProjectSettings): Promise<void> {
+    async saveProjectSettings(settings: ProjectSettings): Promise<void> {
         let foundExt = ".yaml";
         for (const ext of settingsExtensions) {
-           const testPath = upath.joinSafe(this.workDir, `Pulumi${ext}`);
-           if (fs.existsSync(testPath)) {
-               foundExt = ext;
-               break;
-           }
+            const testPath = upath.joinSafe(this.workDir, `Pulumi${ext}`);
+            if (fs.existsSync(testPath)) {
+                foundExt = ext;
+                break;
+            }
         }
         const path = upath.joinSafe(this.workDir, `Pulumi${foundExt}`);
         let contents;
@@ -76,7 +93,7 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         }
         return Promise.resolve(fs.writeFileSync(path, contents));
     }
-    stackSettings(stackName: string): Promise<StackSettings> {
+    async stackSettings(stackName: string): Promise<StackSettings> {
         const stackSettingsName = getStackSettingsName(stackName);
         for (const ext of settingsExtensions) {
             const isJSON = ext === ".json";
@@ -90,15 +107,15 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         }
         return Promise.reject(new Error(`failed to find stack settings file in workdir: ${this.workDir}`));
     }
-    saveStackSettings(settings: StackSettings, stackName: string): Promise<void> {
+    async saveStackSettings(settings: StackSettings, stackName: string): Promise<void> {
         const stackSettingsName = getStackSettingsName(stackName);
         let foundExt = ".yaml";
         for (const ext of settingsExtensions) {
-           const testPath = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${ext}`);
-           if (fs.existsSync(testPath)) {
-               foundExt = ext;
-               break;
-           }
+            const testPath = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${ext}`);
+            if (fs.existsSync(testPath)) {
+                foundExt = ext;
+                break;
+            }
         }
         const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${foundExt}`);
         let contents;
@@ -110,6 +127,34 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         }
         return Promise.resolve(fs.writeFileSync(path, contents));
     }
+    async createStack(stackName: string): Promise<void> {
+        const args = ["stack", "init", stackName];
+        if (this.secretsProvider) {
+            args.push("--secrets-provider", this.secretsProvider);
+        }
+        try {
+            const result = await this.runPulumiCmd(args);
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+    async selectStack(stackName: string): Promise<void> {
+        try {
+            const result = await this.runPulumiCmd(["stack", "select", stackName]);
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+    async removeStack(stackName: string): Promise<void> {
+        try {
+            const result = await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
     serializeArgsForOp(_: string): string[] {
         // LocalWorkspace does not take advantage of this extensibility point.
         return [];
@@ -118,7 +163,7 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         // LocalWorkspace does not take advantage of this extensibility point.
         return;
     }
-    runPulumiCmd(
+    async runPulumiCmd(
         args: string[],
         onOutput?: (data: string) => void,
     ): Promise<CommandResult> {
@@ -129,8 +174,11 @@ export class LocalWorkspace /*implements Workspace TODO */ {
 export type LocalWorkspaceOpts = {
     workDir?: string,
     pulumiHome?: string,
-    program?: ()=>void,
+    program?: () => void,
     envVars?: { [key: string]: string },
+    secretsProvider?: string,
+    projectSettings?: ProjectSettings,
+    stackSettings?: { [key: string]: StackSettings },
 };
 
 export const settingsExtensions = [".yaml", ".yml", ".json"];
