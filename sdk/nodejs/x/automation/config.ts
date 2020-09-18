@@ -14,7 +14,16 @@
 
 export type ConfigValue = {
     value: string;
-    secret: boolean;
+    secret?: boolean;
 };
 
 export type ConfigMap = { [key: string]: ConfigValue };
+
+// TODO we should provide some layer to do this automatically when getting/setting config
+export const normalizeConfigKey = (key: string, projectName: string) => {
+    const parts = key.split(":");
+    if (parts.length < 2) {
+        return `${projectName}:${key}`;
+    }
+    return "";
+};

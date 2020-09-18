@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { ConfigMap, ConfigValue } from "./config";
 import { Workspace } from "./workspace";
 
 export type StackInitMode = "create" | "select" | "upsert";
@@ -47,13 +48,36 @@ export class Stack {
                 this.ready = workspace.selectStack(name);
                 return this;
             case "upsert":
-                this.ready = workspace.createStack(name).catch(()=> {
+                this.ready = workspace.createStack(name).catch(() => {
                     return workspace.selectStack(name);
                 });
                 return this;
             default:
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
+    }
+    getName(): string { return this.name; }
+    getWorkspace(): Workspace { return this.workspace; }
+    getConfig(key: string): Promise<ConfigValue> {
+        return this.workspace.getConfig(this.name, key);
+    }
+    getAllConfig(): Promise<ConfigMap> {
+        return this.workspace.getAllConfig(this.name);
+    }
+    setConfig(key: string, value: ConfigValue): Promise<void> {
+        return this.workspace.setConfig(this.name, key, value);
+    }
+    setAllConfig(config: ConfigMap): Promise<void> {
+        return this.workspace.setAllConfig(this.name, config);
+    }
+    removeConfig(key: string): Promise<void> {
+        return this.workspace.removeConfig(this.name, key);
+    }
+    removeAllConfig(keys: string[]): Promise<void> {
+        return this.workspace.removeAllConfig(this.name, keys);
+    }
+    refreshConfig(): Promise<ConfigMap> {
+        return this.workspace.refreshConfig(this.name);
     }
 }
 
