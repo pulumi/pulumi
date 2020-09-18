@@ -16,16 +16,17 @@ import * as fs from "fs";
 import * as os from "os";
 import * as upath from "upath";
 import { CommandResult, runPulumiCmd } from "./cmd";
+import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { StackSettings } from "./stackSettings";
-import { Workspace } from "./workspace";
+import { StackSummary, Workspace } from "./workspace";
 
-export class LocalWorkspace /*implements Workspace TODO */ {
+export class LocalWorkspace implements Workspace {
     ready: Promise<any[]>;
     private workDir: string;
     private pulumiHome?: string;
     private program?: () => void;
-    private envVars?: { [key: string]: string };
+    private envVars: { [key: string]: string };
     private secretsProvider?: string;
     constructor(opts?: LocalWorkspaceOpts) {
         let dir = "";
@@ -155,6 +156,71 @@ export class LocalWorkspace /*implements Workspace TODO */ {
             return Promise.reject(error);
         }
     }
+    getConfig(stackName: string, key: string): Promise<ConfigValue> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    getAllConfig(stackName: string): Promise<ConfigMap> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    removeConfig(stackName: string, key: string): Promise<void> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    removeAllConfig(stackName: string, keys: string[]): Promise<void> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    refreshConfig(stackName: string): Promise<ConfigMap> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    getEnvVars(): { [key: string]: string } {
+        return this.envVars;
+    }
+    setEnvVars(envs: { [key: string]: string }): void {
+        this.envVars = { ...this.envVars, ...envs };
+    }
+    setEnvVar(key: string, value: string): void {
+        this.envVars[key] = value;
+    }
+    unsetEnvVar(key: string): void {
+        delete this.envVars[key];
+    }
+    getWorkDir(): string {
+        return this.workDir;
+    }
+    getPulumiHome(): string | undefined {
+        return this.pulumiHome;
+    }
+
+    whoAmI(): Promise<string> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    stack(): Promise<string> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    listStacks(): Promise<StackSummary[]> {
+        // TODO
+        return Promise.resolve(<any>{});
+    }
+    getProgram(): (() => void) | undefined {
+        return this.program;
+    }
+    setProgram(program: () => void): void {
+        this.program = program;
+    }
     serializeArgsForOp(_: string): string[] {
         // LocalWorkspace does not take advantage of this extensibility point.
         return [];
@@ -163,7 +229,7 @@ export class LocalWorkspace /*implements Workspace TODO */ {
         // LocalWorkspace does not take advantage of this extensibility point.
         return;
     }
-    async runPulumiCmd(
+    private async runPulumiCmd(
         args: string[],
         onOutput?: (data: string) => void,
     ): Promise<CommandResult> {

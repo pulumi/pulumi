@@ -35,14 +35,14 @@ export interface Workspace {
     setEnvVar(key: string, value: string): void;
     unsetEnvVar(key: string): void;
     getWorkDir(): string;
-    getPulumiHome(): string;
+    getPulumiHome(): string | undefined;
     whoAmI(): Promise<string>;
     stack(): Promise<string>;
     createStack(stackName: string): Promise<void>;
     selectStack(stackName: string): Promise<void>;
     removeStack(stackName: string): Promise<void>;
     listStacks(): Promise<StackSummary[]>;
-    getProgram(): () => void;
+    getProgram(): (() => void) | undefined;
     setProgram(program: () => void): void;
 }
 
