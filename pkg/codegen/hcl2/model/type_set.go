@@ -44,12 +44,12 @@ func (t *SetType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *SetType) Equals(other Type) bool {
+func (t *SetType) Equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 	otherSet, ok := other.(*SetType)
-	return ok && t.ElementType.Equals(otherSet.ElementType)
+	return ok && t.ElementType.Equals(otherSet.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A set(T) is assignable

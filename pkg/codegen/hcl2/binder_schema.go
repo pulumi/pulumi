@@ -145,25 +145,35 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 // schemaTypeToType converts a schema.Type to a model Type.
 func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
+	return b.schemaTypeToTypeImpl(src, map[schema.Type]model.Type{})
+}
+
+func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]model.Type) (result model.Type) {
 	defer func() {
 		b.typeSchemas[result] = src
 	}()
 
+	if already, ok := seen[src]; ok {
+		return already
+	}
+
 	switch src := src.(type) {
 	case *schema.ArrayType:
-		return model.NewListType(b.schemaTypeToType(src.ElementType))
+		return model.NewListType(b.schemaTypeToTypeImpl(src.ElementType, seen))
 	case *schema.MapType:
-		return model.NewMapType(b.schemaTypeToType(src.ElementType))
+		return model.NewMapType(b.schemaTypeToTypeImpl(src.ElementType, seen))
 	case *schema.ObjectType:
 		properties := map[string]model.Type{}
+		objType := model.NewObjectType(properties, src)
+		seen[src] = objType
 		for _, prop := range src.Properties {
-			t := b.schemaTypeToType(prop.Type)
+			t := b.schemaTypeToTypeImpl(prop.Type, seen)
 			if !prop.IsRequired {
 				t = model.NewOptionalType(t)
 			}
 			properties[prop.Name] = t
 		}
-		return model.NewObjectType(properties, src)
+		return objType
 	case *schema.TokenType:
 		t, ok := model.GetOpaqueType(src.Token)
 		if !ok {
@@ -173,14 +183,14 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 		}
 
 		if src.UnderlyingType != nil {
-			underlyingType := b.schemaTypeToType(src.UnderlyingType)
+			underlyingType := b.schemaTypeToTypeImpl(src.UnderlyingType, seen)
 			return model.NewUnionType(t, underlyingType)
 		}
 		return t
 	case *schema.UnionType:
 		types := make([]model.Type, len(src.ElementTypes))
 		for i, src := range src.ElementTypes {
-			types[i] = b.schemaTypeToType(src)
+			types[i] = b.schemaTypeToTypeImpl(src, seen)
 		}
 		return model.NewUnionType(types...)
 	default:

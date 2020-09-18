@@ -50,7 +50,7 @@ func NewUnionType(types ...Type) Type {
 
 	dst := 0
 	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
+		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst], map[Type]struct{}{}) {
 			src++
 		}
 		dst++
@@ -113,7 +113,7 @@ func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *UnionType) Equals(other Type) bool {
+func (t *UnionType) Equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
@@ -125,7 +125,7 @@ func (t *UnionType) Equals(other Type) bool {
 		return false
 	}
 	for i, t := range t.ElementTypes {
-		if !t.Equals(otherUnion.ElementTypes[i]) {
+		if !t.Equals(otherUnion.ElementTypes[i], seen) {
 			return false
 		}
 	}

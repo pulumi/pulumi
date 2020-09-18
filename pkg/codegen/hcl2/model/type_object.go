@@ -81,10 +81,14 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *ObjectType) Equals(other Type) bool {
+func (t *ObjectType) Equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
+	if _, ok := seen[t]; ok {
+		return true
+	}
+	seen[t] = struct{}{}
 
 	otherObject, ok := other.(*ObjectType)
 	if !ok {
@@ -94,7 +98,7 @@ func (t *ObjectType) Equals(other Type) bool {
 		return false
 	}
 	for k, t := range t.Properties {
-		if u, ok := otherObject.Properties[k]; !ok || !t.Equals(u) {
+		if u, ok := otherObject.Properties[k]; !ok || !t.Equals(u, seen) {
 			return false
 		}
 	}

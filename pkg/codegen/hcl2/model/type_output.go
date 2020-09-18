@@ -47,12 +47,12 @@ func (t *OutputType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *OutputType) Equals(other Type) bool {
+func (t *OutputType) Equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 	otherOutput, ok := other.(*OutputType)
-	return ok && t.ElementType.Equals(otherOutput.ElementType)
+	return ok && t.ElementType.Equals(otherOutput.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. An output(T) is assignable
