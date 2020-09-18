@@ -13,16 +13,15 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as upath from "upath";
+
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";
-
-import * as upath from "upath";
-import { fileURLToPath } from "url";
+import { Stack } from "../../x/automation/stack";
 import { asyncTest } from "../util";
 
 
 describe("LocalWorkspace", () => {
-
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
@@ -44,7 +43,7 @@ describe("LocalWorkspace", () => {
         }
     }));
 
-    it(`create/select/remove stack`, asyncTest(async () => {
+    it(`create/select/remove LocalWorkspace stack`, asyncTest(async () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = "node_test";
         projectSettings.runtime.name = "nodejs";
@@ -53,6 +52,19 @@ describe("LocalWorkspace", () => {
         const stackName = `int_test${getTestSuffix()}`;
         await ws.createStack(stackName);
         await ws.selectStack(stackName);
+        await ws.removeStack(stackName);
+    }));
+
+    it(`Create/Select/Upsert Stack`, asyncTest(async () => {
+        const projectSettings = new ProjectSettings();
+        projectSettings.name = "node_test";
+        projectSettings.runtime.name = "nodejs";
+        const ws = new LocalWorkspace({ projectSettings });
+        await ws.ready;
+        const stackName = `int_test${getTestSuffix()}`;
+        await Stack.Create(stackName, ws);
+        await Stack.Select(stackName, ws);
+        await Stack.Upsert(stackName, ws);
         await ws.removeStack(stackName);
     }));
 });
