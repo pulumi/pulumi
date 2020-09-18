@@ -681,7 +681,7 @@ func TestRecursiveObjectType(t *testing.T) {
 	propsOther["next"] = linkedListTypeOther
 
 	// Equals
-	assert.True(t, linkedListType.Equals(linkedListTypeOther, nil))
+	assert.True(t, linkedListType.Equals(linkedListTypeOther))
 
 	// Contains eventuals
 	hasOutputs, hasPromises := ContainsEventuals(linkedListType)
@@ -690,7 +690,7 @@ func TestRecursiveObjectType(t *testing.T) {
 
 	// Resolving eventuals
 	resolvedLinkedListType := ResolveOutputs(linkedListType)
-	assert.True(t, resolvedLinkedListType.(*UnionType).ElementTypes[1].(*ObjectType).Properties["data"].Equals(IntType, nil))
+	assert.True(t, resolvedLinkedListType.(*UnionType).ElementTypes[1].(*ObjectType).Properties["data"].Equals(IntType))
 	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
 	assert.False(t, hasOutputs)
 

@@ -696,7 +696,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				elmType = t
 			}
 
-			if !elmType.Equals(t, nil) {
+			if !elmType.Equals(t) {
 				elmType = nil
 				break
 			}

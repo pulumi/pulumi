@@ -70,7 +70,11 @@ func (t *TupleType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *TupleType) Equals(other Type, seen map[Type]struct{}) bool {
+func (t *TupleType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *TupleType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
@@ -82,7 +86,7 @@ func (t *TupleType) Equals(other Type, seen map[Type]struct{}) bool {
 		return false
 	}
 	for i, t := range t.ElementTypes {
-		if !t.Equals(otherTuple.ElementTypes[i], seen) {
+		if !t.equals(otherTuple.ElementTypes[i], seen) {
 			return false
 		}
 	}

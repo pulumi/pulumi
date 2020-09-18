@@ -35,11 +35,12 @@ func (k ConversionKind) Exists() bool {
 type Type interface {
 	Definition
 
-	Equals(other Type, seen map[Type]struct{}) bool
+	Equals(other Type) bool
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
 	String() string
 
+	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool) ConversionKind
 	unify(other Type) (Type, ConversionKind)
 	isType()
@@ -61,11 +62,11 @@ var (
 )
 
 func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
-	return dest.Equals(src, nil) || dest == DynamicType || assignableFrom()
+	return dest.Equals(src) || dest == DynamicType || assignableFrom()
 }
 
 func conversionFrom(dest, src Type, unifying bool, conversionFrom func() ConversionKind) ConversionKind {
-	if dest.Equals(src, nil) || dest == DynamicType {
+	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion
 	}
 	if src, isUnion := src.(*UnionType); isUnion {
@@ -86,7 +87,7 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 	}
 
 	switch {
-	case t0.Equals(t1, nil):
+	case t0.Equals(t1):
 		return t0, SafeConversion
 	case t1 == DynamicType:
 		// The dynamic type unifies with any other type by selecting that other type.
@@ -144,7 +145,7 @@ func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
 		unsafeType = NoneType
 	}
 
-	contract.Assertf(unsafeType.Equals(safeType, nil) || unsafeType.ConversionFrom(safeType).Exists(),
+	contract.Assertf(unsafeType.Equals(safeType) || unsafeType.ConversionFrom(safeType).Exists(),
 		"no conversion from %v to %v", safeType, unsafeType)
 	return safeType, unsafeType
 }

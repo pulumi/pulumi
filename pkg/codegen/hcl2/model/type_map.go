@@ -51,13 +51,17 @@ func (*MapType) SyntaxNode() hclsyntax.Node {
 }
 
 // Equals returns true if this type has the same identity as the given type.
-func (t *MapType) Equals(other Type, seen map[Type]struct{}) bool {
+func (t *MapType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 
 	otherMap, ok := other.(*MapType)
-	return ok && t.ElementType.Equals(otherMap.ElementType, seen)
+	return ok && t.ElementType.equals(otherMap.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A map(T) is assignable
