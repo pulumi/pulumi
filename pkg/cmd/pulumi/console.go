@@ -29,7 +29,7 @@ import (
 func newConsoleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "console",
-		Short: "Opens the current stack in the Pulumi console",
+		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -64,8 +64,9 @@ func newConsoleCmd() *cobra.Command {
 				}
 				return nil
 			}
-			fmt.Println("This command is currently only supported when using a Pulumi managed backend" +
-				"For more information please visit, https://www.pulumi.com/pricing")
+			fmt.Println("This command is not available for your backend. " +
+				"To migrate to the Pulumi managed backend, " +
+				"please see https://www.pulumi.com/docs/intro/concepts/state/#adopting-the-pulumi-service-backend")
 			return nil
 		}),
 	}
