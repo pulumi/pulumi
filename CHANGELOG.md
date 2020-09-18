@@ -6,6 +6,9 @@ CHANGELOG
 - [sdk/go] Add missing Version field to invokeOptions
   [#5401](https://github.com/pulumi/pulumi/pull/5401)
 
+- Add `pulumi console` command which opens the currently selected stack in the Pulumi console.
+  [#5368](https://github.com/pulumi/pulumi/pull/5368)
+
 ## 2.10.1 (2020-09-16)
 
 - feat(autoapi): add GetPermalink for operation result
