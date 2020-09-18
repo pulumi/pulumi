@@ -23,17 +23,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestImportSpec(t *testing.T) {
+func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", "kubernetes.json"))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
 
-	var pkgSpec PackageSpec
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
+
+	return pkgSpec
+}
+
+func TestImportSpec(t *testing.T) {
+	// Read in, decode, and import the schema.
+	pkgSpec := readSchemaFile("kubernetes.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil)
 	if err != nil {
@@ -42,5 +48,36 @@ func TestImportSpec(t *testing.T) {
 
 	for _, r := range pkg.Resources {
 		assert.NotNil(t, r.Package, "expected resource %s to have an associated Package", r.Token)
+	}
+}
+
+var enumTests = []struct {
+	filename    string
+	shouldError bool
+}{
+	{"bad-enum-1.json", true},
+	{"bad-enum-2.json", true},
+	{"bad-enum-3.json", true},
+	{"bad-enum-4.json", true},
+	{"good-enum-1.json", false},
+	{"good-enum-2.json", false},
+	{"good-enum-3.json", false},
+	{"good-enum-4.json", false},
+}
+
+func TestEnums(t *testing.T) {
+	for _, tt := range enumTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			if tt.shouldError {
+				assert.Error(t, err)
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
+			}
+		})
 	}
 }
