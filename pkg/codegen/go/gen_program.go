@@ -600,8 +600,8 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 		fn = Title(modSplit[1])
 	}
 	fnLookup := "Lookup" + fn[3:]
-	pkgContext := g.contexts[pkg][mod]
-	if pkgContext.names.has(fnLookup) {
+	pkgContext, has := g.contexts[pkg][mod]
+	if has && pkgContext.names.has(fnLookup) {
 		return true
 	}
 
