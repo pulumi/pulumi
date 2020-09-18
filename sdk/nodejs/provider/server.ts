@@ -262,8 +262,8 @@ class Server implements grpc.UntypedServiceImplementation {
             //
             // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
             // refactor so we can avoid the global state.
-            runtime.setConstructOptions(req.getProject(), req.getStack(), req.getParallel(), this.engineAddr,
-                                        req.getMonitorendpoint(), req.getDryrun());
+            runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), this.engineAddr,
+                                 req.getMonitorendpoint(), req.getDryrun());
 
             const pulumiConfig: {[key: string]: string} = {};
             const rpcConfig = req.getConfigMap();
