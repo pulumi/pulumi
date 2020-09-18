@@ -65,7 +65,7 @@ func newConsoleCmd() *cobra.Command {
 				return nil
 			}
 			fmt.Println("This command is not available for your backend. " +
-				"To migrate to the Pulumi managed backend, " +
+				"To migrate to the Pulumi Service backend, " +
 				"please see https://www.pulumi.com/docs/intro/concepts/state/#adopting-the-pulumi-service-backend")
 			return nil
 		}),
@@ -73,7 +73,7 @@ func newConsoleCmd() *cobra.Command {
 	return cmd
 }
 
-// launchConsole attmepts to open the console in the browser using the specified URL.
+// launchConsole attempts to open the console in the browser using the specified URL.
 func launchConsole(url string) {
 	if openErr := open.Run(url); openErr != nil {
 		fmt.Printf("We couldn't launch your web browser for some reason. \n"+
