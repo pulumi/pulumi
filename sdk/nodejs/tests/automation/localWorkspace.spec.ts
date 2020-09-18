@@ -13,24 +13,24 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { ProjectSettings } from "../../x/automation/projectSettings";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
+import { ProjectSettings } from "../../x/automation/projectSettings";
 
-import { asyncTest } from "../util";
-import { fileURLToPath } from "url";
 import * as upath from "upath";
+import { fileURLToPath } from "url";
+import { asyncTest } from "../util";
 
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
-        for (let ext of ["yaml", "yml", "json"]) {
-            const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) })
+        for (const ext of ["yaml", "yml", "json"]) {
+            const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.projectSettings();
-            assert(settings.name, "testproj")
-            assert(settings.runtime.name, "go")
-            assert(settings.description, "A minimal Go Pulumi program")
+            assert(settings.name, "testproj");
+            assert(settings.runtime.name, "go");
+            assert(settings.description, "A minimal Go Pulumi program");
 
         }
-    }))
+    }));
 
-}) 
+});

@@ -22,53 +22,53 @@ describe("StackSettings", () => {
             secretsProvider: "abc",
             config: {
                 plain: "plain",
-                secure: { 
-                    secure: "secret"
+                secure: {
+                    secure: "secret",
                 },
             },
         };
-        const result = StackSettings.fromJSON(testStack)
+        const result = StackSettings.fromJSON(testStack);
         assert.equal(result.secretsProvider, "abc");
         assert.equal(result.config!["plain"].value, "plain");
         assert.equal(result.config!["secure"].secure, "secret");
 
-    })
+    });
 
     it("JSON serializes", () => {
         const testStack = {
             secretsProvider: "abc",
             config: {
                 plain: "plain",
-                secure: { 
-                    secure: "secret"
+                secure: {
+                    secure: "secret",
                 },
             },
         };
-        const result = StackSettings.fromJSON(testStack)
+        const result = StackSettings.fromJSON(testStack);
         const expected = `{"secretsProvider":"abc","config":{"plain":"plain","secure":{"secure":"secret"}}}`;
-        assert.equal(JSON.stringify(result), expected)
-    })
+        assert.equal(JSON.stringify(result), expected);
+    });
 
     it("parses YAML", () => {
         const stackYaml = `secretsProvider: abc\nconfig:\n  plain: plain\n  secure:\n    secure: secret\n`;
-        const result = StackSettings.fromYAML(stackYaml)
+        const result = StackSettings.fromYAML(stackYaml);
         assert.equal(result.secretsProvider, "abc");
         assert.equal(result.config!["plain"].value, "plain");
         assert.equal(result.config!["secure"].secure, "secret");
-    })
+    });
 
     it("YAML serializes", () => {
         const testStack = {
             secretsProvider: "abc",
             config: {
                 plain: "plain",
-                secure: { 
-                    secure: "secret"
+                secure: {
+                    secure: "secret",
                 },
             },
         };
         const result = StackSettings.fromJSON(testStack).toYAML();
         const expected = `secretsProvider: abc\nconfig:\n  plain: plain\n  secure:\n    secure: secret\n`;
         assert.equal(result, expected);
-    })
-})
+    });
+});
