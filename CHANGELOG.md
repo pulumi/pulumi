@@ -6,6 +6,9 @@ CHANGELOG
 - [sdk/go] Add missing Version field to invokeOptions
   [#5401](https://github.com/pulumi/pulumi/pull/5401)
 
+- Add `pulumi console` command which opens the currently selected stack in the Pulumi console.
+  [#5368](https://github.com/pulumi/pulumi/pull/5368)
+
 - Pulumi Windows CLI now uploads all VCS information to console
   (fixes [#5014](https://github.com/pulumi/pulumi/issues/5014))
   [#5406](https://github.com/pulumi/pulumi/pull/5406)
