@@ -32,7 +32,7 @@ import * as log from "./log";
 import * as provider from "./provider";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
-import * as automation from "./x/automation"
+import * as automation from "./x/automation";
 export { asset, dynamic, iterable, log, provider, runtime, utils, automation };
 
 // @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
