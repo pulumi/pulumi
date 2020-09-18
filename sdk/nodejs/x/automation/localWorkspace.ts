@@ -156,33 +156,48 @@ export class LocalWorkspace implements Workspace {
             return Promise.reject(error);
         }
     }
-    getConfig(stackName: string, key: string): Promise<ConfigValue> {
-        // TODO
+    async getConfig(stackName: string, key: string): Promise<ConfigValue> {
+        await this.selectStack(stackName);
+        const result = await this.runPulumiCmd(["config", "get", key, "--json"]);
+        const val = JSON.parse(result.stdout);
+        return Promise.resolve(val);
+    }
+    async getAllConfig(stackName: string): Promise<ConfigMap> {
+        await this.selectStack(stackName);
+        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json"]);
+        const val = JSON.parse(result.stdout);
+        return Promise.resolve(val);
+    }
+    async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
+        await this.selectStack(stackName);
+        const secretArg = value.secret ? "--secret": "--plaintext";
+        await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
+        return Promise.resolve();
+    }
+    async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
+        const promises: Promise<void>[] = [];
+        for (const [key, value] of Object.entries(config)) {
+            promises.push(this.setConfig(stackName, key, value));
+        }
+        await Promise.all(promises);
+        return Promise.resolve();
+    }
+    async removeConfig(stackName: string, key: string): Promise<void> {
+        await this.selectStack(stackName);
+        await this.runPulumiCmd(["config", "rm", key]);
+        return Promise.resolve();
+    }
+    async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
+        const promises: Promise<void>[] = [];
+        for (const key of keys) {
+            promises.push(this.removeConfig(stackName, key));
+        }
         return Promise.resolve(<any>{});
     }
-    getAllConfig(stackName: string): Promise<ConfigMap> {
-        // TODO
-        return Promise.resolve(<any>{});
-    }
-    setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
-        // TODO
-        return Promise.resolve(<any>{});
-    }
-    setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
-        // TODO
-        return Promise.resolve(<any>{});
-    }
-    removeConfig(stackName: string, key: string): Promise<void> {
-        // TODO
-        return Promise.resolve(<any>{});
-    }
-    removeAllConfig(stackName: string, keys: string[]): Promise<void> {
-        // TODO
-        return Promise.resolve(<any>{});
-    }
-    refreshConfig(stackName: string): Promise<ConfigMap> {
-        // TODO
-        return Promise.resolve(<any>{});
+    async refreshConfig(stackName: string): Promise<ConfigMap> {
+        await this.selectStack(stackName);
+        await this.runPulumiCmd(["config", "refresh", "--force"]);
+        return this.getAllConfig(stackName);
     }
     getEnvVars(): { [key: string]: string } {
         return this.envVars;

@@ -15,11 +15,11 @@
 import * as assert from "assert";
 import * as upath from "upath";
 
+import { normalizeConfigKey } from "../../x/automation/config";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";
 import { Stack } from "../../x/automation/stack";
 import { asyncTest } from "../util";
-
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -65,6 +65,50 @@ describe("LocalWorkspace", () => {
         await Stack.Create(stackName, ws);
         await Stack.Select(stackName, ws);
         await Stack.Upsert(stackName, ws);
+        await ws.removeStack(stackName);
+    }));
+    it(`Config`, asyncTest(async () => {
+        const projectName = "node_test";
+        const projectSettings = new ProjectSettings();
+        projectSettings.name = projectName;
+        projectSettings.runtime.name = "nodejs";
+        const ws = new LocalWorkspace({ projectSettings });
+        await ws.ready;
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await Stack.Create(stackName, ws);
+
+        const config = {
+            plain: { value: "abc" },
+            secret: { value: "def", secret: true },
+        };
+        let caught = 0;
+
+        const plainKey = normalizeConfigKey("plain", projectName);
+        const secretKey = normalizeConfigKey("secret", projectName);
+
+        try {
+            const empty = await stack.getConfig(plainKey);
+        } catch (error) {
+            caught++;
+        }
+        assert.equal(caught, 1, "expected config get on empty value to throw");
+
+        let values = await stack.getAllConfig();
+        assert.equal(Object.keys(values).length, 0, "expected stack config to be empty");
+        await stack.setAllConfig(config);
+        values = await stack.getAllConfig();
+        assert.equal(values[plainKey].value, "abc");
+        assert.equal(values[plainKey].secret, false);
+        assert.equal(values[secretKey].value, "def");
+        assert.equal(values[secretKey].secret, true);
+
+        await stack.removeConfig("plain");
+        values = await stack.getAllConfig();
+        assert.equal(Object.keys(values).length, 1, "expected stack config to be empty");
+        await stack.setConfig("foo", { value: "bar" });
+        values = await stack.getAllConfig();
+        assert.equal(Object.keys(values).length, 2, "expected stack config to be empty");
+
         await ws.removeStack(stackName);
     }));
 });
