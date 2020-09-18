@@ -6,6 +6,10 @@ CHANGELOG
 - [sdk/go] Add missing Version field to invokeOptions
   [#5401](https://github.com/pulumi/pulumi/pull/5401)
 
+- Pulumi Windows CLI now uploads all VCS information to console
+  (fixes [#5014](https://github.com/pulumi/pulumi/issues/5014))
+  [#5406](https://github.com/pulumi/pulumi/pull/5406)
+
 ## 2.10.1 (2020-09-16)
 
 - feat(autoapi): add GetPermalink for operation result
