@@ -12,4 +12,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export class Stack {}
+import { Workspace } from "./workspace";
+
+export type StackInitMode = "create" | "select" | "upsert";
+
+export class Stack {
+    ready: Promise<any>;
+    private name: string;
+    private workspace: Workspace;
+    public static async Create(name: string, workspace: Workspace): Promise<Stack> {
+        const stack = new Stack(name, workspace, "create");
+        await stack.ready;
+        return Promise.resolve(stack);
+    }
+    public static async Select(name: string, workspace: Workspace): Promise<Stack> {
+        const stack = new Stack(name, workspace, "select");
+        await stack.ready;
+        return Promise.resolve(stack);
+    }
+    public static async Upsert(name: string, workspace: Workspace): Promise<Stack> {
+        const stack = new Stack(name, workspace, "upsert");
+        await stack.ready;
+        return Promise.resolve(stack);
+    }
+    constructor(name: string, workspace: Workspace, mode: StackInitMode) {
+        this.name = name;
+        this.workspace = workspace;
+
+        switch (mode) {
+            case "create":
+                this.ready = workspace.createStack(name);
+                return this;
+            case "select":
+                this.ready = workspace.selectStack(name);
+                return this;
+            case "upsert":
+                this.ready = workspace.createStack(name).catch(()=> {
+                    return workspace.selectStack(name);
+                });
+                return this;
+            default:
+                throw new Error(`unexpected Stack creation mode: ${mode}`);
+        }
+    }
+}
+
+export function FullyQualifiedStackName(org: string, project: string, stack: string): string {
+    return `${org}/${project}/${stack}`;
+}
