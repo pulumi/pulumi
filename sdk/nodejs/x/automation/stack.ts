@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { Workspace } from "./workspace";
 
@@ -58,26 +59,41 @@ export class Stack {
     }
     getName(): string { return this.name; }
     getWorkspace(): Workspace { return this.workspace; }
-    getConfig(key: string): Promise<ConfigValue> {
+    async getConfig(key: string): Promise<ConfigValue> {
         return this.workspace.getConfig(this.name, key);
     }
-    getAllConfig(): Promise<ConfigMap> {
+    async getAllConfig(): Promise<ConfigMap> {
         return this.workspace.getAllConfig(this.name);
     }
-    setConfig(key: string, value: ConfigValue): Promise<void> {
+    async setConfig(key: string, value: ConfigValue): Promise<void> {
         return this.workspace.setConfig(this.name, key, value);
     }
-    setAllConfig(config: ConfigMap): Promise<void> {
+    async setAllConfig(config: ConfigMap): Promise<void> {
         return this.workspace.setAllConfig(this.name, config);
     }
-    removeConfig(key: string): Promise<void> {
+    async removeConfig(key: string): Promise<void> {
         return this.workspace.removeConfig(this.name, key);
     }
-    removeAllConfig(keys: string[]): Promise<void> {
+    async removeAllConfig(keys: string[]): Promise<void> {
         return this.workspace.removeAllConfig(this.name, keys);
     }
-    refreshConfig(): Promise<ConfigMap> {
+    async refreshConfig(): Promise<ConfigMap> {
         return this.workspace.refreshConfig(this.name);
+    }
+    private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
+        const ws = this.getWorkspace();
+        let envs: { [key: string]: string } = {};
+        const pulumiHome = ws.getPulumiHome();
+        if (pulumiHome) {
+            envs["PULUMI_HOME"] = pulumiHome;
+        }
+        const additionalEnvs = await ws.getEnvVars();
+        envs = { ...envs, ...additionalEnvs };
+        const additionalArgs = await ws.serializeArgsForOp(this.name);
+        args = [...args, ...additionalArgs];
+        const result = await runPulumiCmd(args, ws.getWorkDir(), envs, onOutput);
+        await ws.postCommandCallback(this.name);
+        return Promise.resolve(result);
     }
 }
 

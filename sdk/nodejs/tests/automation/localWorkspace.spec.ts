@@ -122,7 +122,7 @@ describe("LocalWorkspace", () => {
         for (let i = 0; i < 2; i++) {
             const stackName = stackNamer();
             stackNames[i] = stackName;
-            const _ = await Stack.Create(stackName, ws);
+            await Stack.Create(stackName, ws);
             const stackSummary = await ws.stack();
             assert.equal(stackSummary?.current, true);
             const stacks = await ws.listStacks();

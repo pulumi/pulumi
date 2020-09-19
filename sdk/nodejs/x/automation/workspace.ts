@@ -21,8 +21,8 @@ export interface Workspace {
     saveProjectSettings(settings: ProjectSettings): Promise<void>;
     stackSettings(stackName: string): Promise<StackSettings>;
     saveStackSettings(settings: StackSettings, stackName: string): Promise<void>;
-    serializeArgsForOp(stackName: string): string[];
-    postCommandCallback(stackName: string): void;
+    serializeArgsForOp(stackName: string): Promise<string[]>;
+    postCommandCallback(stackName: string): Promise<void>;
     getConfig(stackName: string, key: string): Promise<ConfigValue>;
     getAllConfig(stackName: string): Promise<ConfigMap>;
     setConfig(stackName: string, key: string, value: ConfigValue): Promise<void>;
