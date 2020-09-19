@@ -40,6 +40,7 @@ type Type interface {
 	ConversionFrom(src Type) ConversionKind
 	String() string
 
+	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool) ConversionKind
 	unify(other Type) (Type, ConversionKind)
 	isType()

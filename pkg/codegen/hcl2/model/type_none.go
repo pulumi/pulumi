@@ -30,7 +30,11 @@ func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics)
 	return NoneType, hcl.Diagnostics{unsupportedReceiverType(NoneType, traverser.SourceRange())}
 }
 
-func (noneType) Equals(other Type) bool {
+func (n noneType) Equals(other Type) bool {
+	return n.equals(other, nil)
+}
+
+func (noneType) equals(other Type, seen map[Type]struct{}) bool {
 	return other == NoneType
 }
 

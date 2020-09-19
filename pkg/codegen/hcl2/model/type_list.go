@@ -52,12 +52,16 @@ func (t *ListType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 
 // Equals returns true if this type has the same identity as the given type.
 func (t *ListType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 
 	otherList, ok := other.(*ListType)
-	return ok && t.ElementType.Equals(otherList.ElementType)
+	return ok && t.ElementType.equals(otherList.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A list(T) is assignable
