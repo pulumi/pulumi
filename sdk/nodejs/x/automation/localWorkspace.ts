@@ -171,7 +171,7 @@ export class LocalWorkspace implements Workspace {
     }
     async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
         await this.selectStack(stackName);
-        const secretArg = value.secret ? "--secret": "--plaintext";
+        const secretArg = value.secret ? "--secret" : "--plaintext";
         await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
         return Promise.resolve();
     }
@@ -242,18 +242,23 @@ export class LocalWorkspace implements Workspace {
     setProgram(program: () => void): void {
         this.program = program;
     }
-    serializeArgsForOp(_: string): string[] {
+    serializeArgsForOp(_: string): Promise<string[]> {
         // LocalWorkspace does not take advantage of this extensibility point.
-        return [];
+        return Promise.resolve([]);
     }
-    postCommandCallback(_: string): void {
+    postCommandCallback(_: string): Promise<void> {
         // LocalWorkspace does not take advantage of this extensibility point.
-        return;
+        return Promise.resolve();
     }
     private async runPulumiCmd(
         args: string[],
     ): Promise<CommandResult> {
-        return runPulumiCmd(args, this.workDir, this.getEnvVars());
+        let envs: { [key: string]: string } = {};
+        if (this.pulumiHome) {
+            envs["PULUMI_HOME"] = this.pulumiHome;
+        }
+        envs = { ...envs, ...this.getEnvVars() };
+        return runPulumiCmd(args, this.workDir, envs);
     }
 }
 
