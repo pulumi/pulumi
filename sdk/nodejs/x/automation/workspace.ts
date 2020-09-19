@@ -37,20 +37,21 @@ export interface Workspace {
     getWorkDir(): string;
     getPulumiHome(): string | undefined;
     whoAmI(): Promise<string>;
-    stack(): Promise<string>;
+    stack(): Promise<StackSummary | undefined>;
     createStack(stackName: string): Promise<void>;
     selectStack(stackName: string): Promise<void>;
     removeStack(stackName: string): Promise<void>;
     listStacks(): Promise<StackSummary[]>;
     getProgram(): (() => void) | undefined;
     setProgram(program: () => void): void;
+    // TODO import/export
 }
 
 export type StackSummary = {
     name: string,
     current: boolean,
-    lastUpdate: string,
+    lastUpdate?: string,
     updateInProgress: boolean,
     resourceCount?: number,
-    url: string,
+    url?: string,
 };

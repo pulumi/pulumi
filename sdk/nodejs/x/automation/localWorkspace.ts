@@ -15,6 +15,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as upath from "upath";
+
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
@@ -217,18 +218,23 @@ export class LocalWorkspace implements Workspace {
     getPulumiHome(): string | undefined {
         return this.pulumiHome;
     }
-
-    whoAmI(): Promise<string> {
-        // TODO
-        return Promise.resolve(<any>{});
+    async whoAmI(): Promise<string> {
+        const result = await this.runPulumiCmd(["whoami"]);
+        return Promise.resolve(result.stdout.trim());
     }
-    stack(): Promise<string> {
-        // TODO
-        return Promise.resolve(<any>{});
+    async stack(): Promise<StackSummary | undefined> {
+        const stacks = await this.listStacks();
+        for (const stack of stacks) {
+            if (stack.current) {
+                return Promise.resolve(stack);
+            }
+        }
+        return Promise.resolve(undefined);
     }
-    listStacks(): Promise<StackSummary[]> {
-        // TODO
-        return Promise.resolve(<any>{});
+    async listStacks(): Promise<StackSummary[]> {
+        const result = await this.runPulumiCmd(["stack", "ls", "--json"]);
+        const stacks: StackSummary[] = JSON.parse(result.stdout);
+        return Promise.resolve(stacks);
     }
     getProgram(): (() => void) | undefined {
         return this.program;
@@ -246,9 +252,8 @@ export class LocalWorkspace implements Workspace {
     }
     private async runPulumiCmd(
         args: string[],
-        onOutput?: (data: string) => void,
     ): Promise<CommandResult> {
-        return runPulumiCmd(args, this.workDir, {});
+        return runPulumiCmd(args, this.workDir, this.getEnvVars());
     }
 }
 

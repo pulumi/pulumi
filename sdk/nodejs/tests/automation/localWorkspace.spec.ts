@@ -111,6 +111,28 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     }));
+    it(`can list stacks and currently selected stack`, asyncTest(async () => {
+        const projectSettings = new ProjectSettings();
+        projectSettings.name = `node_list_test${getTestSuffix()}`;
+        projectSettings.runtime.name = "nodejs";
+        const ws = new LocalWorkspace({ projectSettings });
+        await ws.ready;
+        const stackNamer = () => `int_test${getTestSuffix()}`;
+        const stackNames: string[] = [];
+        for (let i = 0; i < 2; i++) {
+            const stackName = stackNamer();
+            stackNames[i] = stackName;
+            const _ = await Stack.Create(stackName, ws);
+            const stackSummary = await ws.stack();
+            assert.equal(stackSummary?.current, true);
+            const stacks = await ws.listStacks();
+            assert.equal(stacks.length, i + 1);
+        }
+
+        for (const name of stackNames) {
+            await ws.removeStack(name);
+        }
+    }));
 });
 
 const getTestSuffix = () => {
