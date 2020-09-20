@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as upath from "upath";
 
-import { normalizeConfigKey } from "../../x/automation/config";
+import { ConfigMap, normalizeConfigKey } from "../../x/automation/config";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";
 import { Stack } from "../../x/automation/stack";
@@ -144,7 +144,47 @@ describe("LocalWorkspace", () => {
         const histroy = await stack.history();
         assert.equal(histroy.length, 0);
         const info = await stack.info();
-        assert.equal(typeof(info), "undefined");
+        assert.equal(typeof (info), "undefined");
+        await ws.removeStack(stackName);
+    }));
+    it(`runs through the local stack lifecycle`, asyncTest(async () => {
+        const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", "testproj") });
+        await ws.ready;
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await Stack.Create(stackName, ws);
+
+        const config: ConfigMap = {
+            "bar": { value: "abc" },
+            "buzz": { value: "secret", secret: true },
+        };
+        await stack.setAllConfig(config);
+
+        // pulumi up
+        const upRes = await stack.up();
+        assert.equal(Object.keys(upRes.outputs).length, 3);
+        assert.equal(upRes.outputs["exp_static"].value, "foo");
+        assert.equal(upRes.outputs["exp_static"].secret, false);
+        assert.equal(upRes.outputs["exp_cfg"].value, "abc");
+        assert.equal(upRes.outputs["exp_cfg"].secret, false);
+        assert.equal(upRes.outputs["exp_secret"].value, "secret");
+        assert.equal(upRes.outputs["exp_secret"].secret, true);
+        assert.equal(upRes.summary.kind, "update");
+        assert.equal(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        await stack.preview();
+        // TODO: update assertions when we have stuctured output
+
+        // pulumi refresh
+        const refRes = await stack.refresh();
+        assert.equal(refRes.summary.kind, "refresh");
+        assert.equal(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.equal(destroyRes.summary.kind, "destroy");
+        assert.equal(destroyRes.summary.result, "succeeded");
+
         await ws.removeStack(stackName);
     }));
 });
