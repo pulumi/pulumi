@@ -1,4 +1,5 @@
 {{ define "language_sdk_links" }}
+{{ if . -}}
 <dl class="tabular">
 {{ range $key,$value := . }}
     <dt>{{ $key }}</dt>
@@ -6,3 +7,4 @@
 {{ end }}
 </dl>
 {{ end }}
+{{- end }}
