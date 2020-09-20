@@ -42,7 +42,7 @@ install_plugin:: build
 install:: install_package install_plugin
 
 istanbul_tests:: build
-	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 30000 'bin/tests/automation/*.spec.js'
+	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 300000 'bin/tests/automation/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
 
