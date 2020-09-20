@@ -80,6 +80,34 @@ export class Stack {
     async refreshConfig(): Promise<ConfigMap> {
         return this.workspace.refreshConfig(this.name);
     }
+    async outputs(): Promise<OutputMap> {
+        await this.workspace.selectStack(this.name);
+        const maskedPromise = this.runPulumiCmd(["stack", "output", "--json"]);
+        const plaintextPromise = this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
+        const results = await Promise.all([maskedPromise, plaintextPromise]);
+        const maskedOuts = JSON.parse(results[0].stdout);
+        const plaintextOuts = JSON.parse(results[1].stdout);
+        const outputs: OutputMap = {};
+        const secretSentinal = "[secret]";
+        for (const [key, value] of plaintextOuts) {
+            const secret = maskedOuts[key] === secretSentinal;
+            outputs[key] = { value, secret };
+        }
+
+        return Promise.resolve(outputs);
+    }
+    async history(): Promise<UpdateSummary[]> {
+        const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
+        const summaries: UpdateSummary[] = JSON.parse(result.stdout);
+        return Promise.resolve(summaries);
+    }
+    async info(): Promise<UpdateSummary | undefined> {
+        const history = await this.history();
+        if (!history || history.length === 0) {
+            return Promise.resolve(undefined);
+        }
+        return Promise.resolve(history[0]);
+    }
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         const ws = this.getWorkspace();
         let envs: { [key: string]: string } = {};
@@ -100,3 +128,38 @@ export class Stack {
 export function FullyQualifiedStackName(org: string, project: string, stack: string): string {
     return `${org}/${project}/${stack}`;
 }
+
+export type OutputValue = {
+    value: any;
+    secret: boolean;
+};
+
+export type OutputMap = { [key: string]: OutputValue };
+
+export type UpdateSummary = {
+    // pre-update info
+    kind: UpdateKind;
+    startTime: number;
+    message: string;
+    environment: { [key: string]: string };
+    config: ConfigMap;
+
+    // post-update info
+    result: UpdateResult;
+    endTime: number;
+    version: number;
+    Deployment?: RawJSON;
+    resourceChanges?: OpMap;
+};
+
+export type UpdateKind = "update" | "preview" | "refresh" | "rename" | "destroy" | "import";
+
+export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed";
+
+export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced";
+
+export type OpMap = {
+    [key in OpType]: number;
+};
+
+export type RawJSON = string;

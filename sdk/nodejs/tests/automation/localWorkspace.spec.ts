@@ -133,6 +133,20 @@ describe("LocalWorkspace", () => {
             await ws.removeStack(name);
         }
     }));
+    it(`stack status methods`, asyncTest(async () => {
+        const projectSettings = new ProjectSettings();
+        projectSettings.name = "node_test";
+        projectSettings.runtime.name = "nodejs";
+        const ws = new LocalWorkspace({ projectSettings });
+        await ws.ready;
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await Stack.Create(stackName, ws);
+        const histroy = await stack.history();
+        assert.equal(histroy.length, 0);
+        const info = await stack.info();
+        assert.equal(typeof(info), "undefined");
+        await ws.removeStack(stackName);
+    }));
 });
 
 const getTestSuffix = () => {
