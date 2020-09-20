@@ -391,15 +391,21 @@ def translate_output_properties(output: Any,
     Recursively rewrite keys of objects returned by the engine to conform with a naming
     convention specified by `output_transformer`.
 
-    Additionally, if output is a `dict` and `typ` is an output type, instantiate the output type,
-    passing the dict as an argument to the output type's __init__() method.
+    Additionally, perform any type conversions as necessary, based on the optional `typ` parameter.
 
     If output is a `dict`, every key is translated using `translate_output_property` while every value is transformed
     by recursing.
 
     If output is a `list`, every value is recursively transformed.
 
-    If output is a primitive (i.e. not a dict or list), the value is returned without modification.
+    If output is a `dict` and `typ` is an output type, instantiate the output type,
+    passing the values in the dict to the output type's __init__() method.
+
+    If output is a `float` and `typ` is `int`, the value is cast to `int`.
+
+    Otherwise, if output is a primitive (i.e. not a dict or list), the value is returned without modification.
+
+    :param Optional[type] typ: The output's target type.
     """
 
     # If it's a secret, unwrap the value so the output is in alignment with the expected type.
@@ -465,6 +471,9 @@ def translate_output_properties(output: Any,
             else:
                 raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
+
+    if isinstance(output, float) and typ is int:
+        return int(output)
 
     return output
 
