@@ -1280,10 +1280,6 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 			// that reference object types (e.g. arrays, maps, unions)
 			typs.objects[token] = &ObjectType{Token: token}
-
-			if strings.Contains(token, "#/resources") {
-				typs.resources[token] = &ResourceType{Token: token}
-			}
 		} else if len(spec.Enum) > 0 {
 			typs.enums[token] = &EnumType{Token: token}
 		}
