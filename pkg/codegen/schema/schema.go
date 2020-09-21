@@ -217,9 +217,6 @@ func (*ObjectType) isType() {}
 type ResourceType struct {
 	// Token is the type's Pulumi type token.
 	Token string
-
-	// TODO: Might want to include the actual resource as well.
-	//Resource *Resource
 }
 
 func (t *ResourceType) String() string {
@@ -931,49 +928,47 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		}
 
 		// Parse the ref and look up the type in the type map.
-		var token string
-		isResource := false
-		var err error
 		switch {
 		case strings.HasPrefix(spec.Ref, "#/types/"):
-			token, err = url.PathUnescape(spec.Ref[len("#/types/"):])
-		case strings.HasPrefix(spec.Ref, "#/resources/"):
-			token, err = url.PathUnescape(spec.Ref[len("#/resources/"):])
-			isResource = true
-		default:
-			err = fmt.Errorf("unknown ref")
-		}
-		if err != nil {
-			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
-		}
+			token, err := url.PathUnescape(spec.Ref[len("#/types/"):])
+			if err != nil {
+				return nil, err
+			}
 
-		if isResource {
+			if typ, ok := t.objects[token]; ok {
+				return typ, nil
+			}
+			if typ, ok := t.enums[token]; ok {
+				return typ, nil
+			}
+			typ, ok := t.tokens[token]
+			if !ok {
+				typ = &TokenType{Token: token}
+				if spec.Type != "" {
+					ut, err := t.bindType(TypeSpec{Type: spec.Type})
+					if err != nil {
+						return nil, err
+					}
+					typ.UnderlyingType = ut
+				}
+				t.tokens[token] = typ
+			}
+			return typ, nil
+		case strings.HasPrefix(spec.Ref, "#/resources/"):
+			token, err := url.PathUnescape(spec.Ref[len("#/resources/"):])
+			if err != nil {
+				return nil, err
+			}
+
 			typ, ok := t.resources[token]
 			if !ok {
 				typ = &ResourceType{Token: token}
 				t.resources[token] = typ
 			}
 			return typ, nil
+		default:
+			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
 		}
-		if typ, ok := t.objects[token]; ok {
-			return typ, nil
-		}
-		if typ, ok := t.enums[token]; ok {
-			return typ, nil
-		}
-		typ, ok := t.tokens[token]
-		if !ok {
-			typ = &TokenType{Token: token}
-			if spec.Type != "" {
-				ut, err := t.bindType(TypeSpec{Type: spec.Type})
-				if err != nil {
-					return nil, err
-				}
-				typ.UnderlyingType = ut
-			}
-			t.tokens[token] = typ
-		}
-		return typ, nil
 	}
 
 	if spec.OneOf != nil {
@@ -1285,6 +1280,10 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 			// that reference object types (e.g. arrays, maps, unions)
 			typs.objects[token] = &ObjectType{Token: token}
+
+			if strings.Contains(token, "#/resources") {
+				typs.resources[token] = &ResourceType{Token: token}
+			}
 		} else if len(spec.Enum) > 0 {
 			typs.enums[token] = &EnumType{Token: token}
 		}
@@ -1312,8 +1311,6 @@ func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
 }
 
 func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
-	types.resources[token] = &ResourceType{Token: token}
-
 	properties, _, err := types.bindProperties(spec.Properties, spec.Required)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
@@ -1324,8 +1321,6 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	// TODO: Do we need to extend StateInputs to accept either an ObjectType or ResourceType?
-	// 		 This might require a new interface type.
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
 		si, err := types.bindObjectType(token+"Args", *spec.StateInputs)
