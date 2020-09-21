@@ -61,3 +61,9 @@ dist::
 
 brew:: dist
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+publish:: build install
+	echo "Publishing .nupkgs to nuget.org:"
+	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
+		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
+
