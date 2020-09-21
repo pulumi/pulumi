@@ -23,17 +23,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestImportSpec(t *testing.T) {
+func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", "kubernetes.json"))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
 
-	var pkgSpec PackageSpec
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
+
+	return pkgSpec
+}
+
+func TestImportSpec(t *testing.T) {
+	// Read in, decode, and import the schema.
+	pkgSpec := readSchemaFile("kubernetes.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil)
 	if err != nil {
@@ -42,6 +48,75 @@ func TestImportSpec(t *testing.T) {
 
 	for _, r := range pkg.Resources {
 		assert.NotNil(t, r.Package, "expected resource %s to have an associated Package", r.Token)
+	}
+}
+
+var enumTests = []struct {
+	filename    string
+	shouldError bool
+	expected    *EnumType
+}{
+	{"bad-enum-1.json", true, nil},
+	{"bad-enum-2.json", true, nil},
+	{"bad-enum-3.json", true, nil},
+	{"bad-enum-4.json", true, nil},
+	{"good-enum-1.json", false, &EnumType{
+		Token:       "fake-provider:module1:Color",
+		ElementType: stringType,
+		Elements: []*Enum{
+			{Value: "Red"},
+			{Value: "Orange"},
+			{Value: "Yellow"},
+			{Value: "Green"},
+		},
+	}},
+	{"good-enum-2.json", false, &EnumType{
+		Token:       "fake-provider:module1:Number",
+		ElementType: intType,
+		Elements: []*Enum{
+			{Value: int32(1), Name: "One"},
+			{Value: int32(2), Name: "Two"},
+			{Value: int32(3), Name: "Three"},
+			{Value: int32(6), Name: "Six"},
+		},
+	}},
+	{"good-enum-3.json", false, &EnumType{
+		Token:       "fake-provider:module1:Boolean",
+		ElementType: boolType,
+		Elements: []*Enum{
+			{Value: true, Name: "One"},
+			{Value: false, Name: "Zero"},
+		},
+	}},
+	{"good-enum-4.json", false, &EnumType{
+		Token:       "fake-provider:module1:Number2",
+		ElementType: numberType,
+		Comment:     "what a great description",
+		Elements: []*Enum{
+			{Value: float64(1), Comment: "one", Name: "One"},
+			{Value: float64(2), Comment: "two", Name: "Two"},
+			{Value: 3.4, Comment: "3.4", Name: "ThreePointFour"},
+			{Value: float64(6), Comment: "six", Name: "Six"},
+		},
+	}},
+}
+
+func TestEnums(t *testing.T) {
+	for _, tt := range enumTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			pkg, err := ImportSpec(pkgSpec, nil)
+			if tt.shouldError {
+				assert.Error(t, err)
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
+				result := pkg.Types[0]
+				assert.Equal(t, tt.expected, result)
+			}
+		})
 	}
 }
 

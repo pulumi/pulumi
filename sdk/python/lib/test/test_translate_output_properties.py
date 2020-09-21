@@ -874,3 +874,34 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         self.assertEqual([["hello"]], result.value_list_list)
         self.assertEqual([["hello"]], result.value_list_sequence)
         self.assertEqual("hello", result.value_str)
+
+    def test_int(self):
+        @pulumi.output_type
+        class OutputTypeWithInt(dict):
+            value_dict: Dict[str, int]
+            value_mapping: Mapping[str, int]
+            value_list: List[int]
+            value_sequence: Sequence[int]
+            value_int: int
+
+        output = {
+            "value_dict": {"hello": 42.0},
+            "value_mapping": {"world": 100.0},
+            "value_list": [42.0],
+            "value_sequence": [100.0],
+            "value_int": 50.0,
+        }
+
+        result = rpc.translate_output_properties(output, translate_output_property, OutputTypeWithInt)
+
+        self.assertIsInstance(result, OutputTypeWithInt)
+        self.assertEqual({"hello": 42}, result.value_dict)
+        self.assertIsInstance(result.value_dict["hello"], int)
+        self.assertEqual({"world": 100}, result.value_mapping)
+        self.assertIsInstance(result.value_mapping["world"], int)
+        self.assertEqual([42], result.value_list)
+        self.assertIsInstance(result.value_list[0], int)
+        self.assertEqual([100], result.value_sequence)
+        self.assertIsInstance(result.value_sequence[0], int)
+        self.assertEqual(50, result.value_int)
+        self.assertIsInstance(result.value_int, int)

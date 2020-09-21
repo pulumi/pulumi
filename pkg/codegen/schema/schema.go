@@ -849,6 +849,9 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	for _, t := range types.tokens {
 		typeList = append(typeList, t)
 	}
+	for _, t := range types.enums {
+		typeList = append(typeList, t)
+	}
 
 	sort.Slice(typeList, func(i, j int) bool {
 		return typeList[i].String() < typeList[j].String()
@@ -1230,26 +1233,60 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 	if err != nil {
 		return err
 	}
+
+	values, err := t.bindEnumValues(spec.Enum, typ)
+	if err != nil {
+		return err
+	}
+
 	enum.Token = token
-	enum.Elements = t.bindEnumValues(spec.Enum)
+	enum.Elements = values
 	enum.ElementType = typ
 	enum.Comment = spec.Description
 
 	return nil
 }
 
-func (t *types) bindEnumValues(values []*EnumValueSpec) (enums []*Enum) {
+func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, error) {
+	var enums []*Enum
+
+	errorMessage := func(val interface{}, expectedType string) error {
+		return fmt.Errorf("cannot assign enum value of type '%T' to enum of type '%s'", val, expectedType)
+	}
 	for _, spec := range values {
+		switch typ {
+		case StringType:
+			if _, ok := spec.Value.(string); !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+		case IntType:
+			v, ok := spec.Value.(float64)
+			if !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+				return nil, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
+			}
+			spec.Value = int32(v)
+		case NumberType:
+			if _, ok := spec.Value.(float64); !ok {
+				return nil, errorMessage(spec.Value, typ.String())
+			}
+		case BoolType:
+			if _, ok := spec.Value.(bool); !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+		default:
+			return enums, fmt.Errorf("enum values may only be of string, integer, number or boolean types")
+		}
 		enum := &Enum{
-			// TODO: check that the type of the value matches the enum type.
-			// https://github.com/pulumi/pulumi/issues/5387
 			Value:   spec.Value,
 			Comment: spec.Description,
 			Name:    spec.Name,
 		}
 		enums = append(enums, enum)
 	}
-	return
+	return enums, nil
 }
 
 func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, error) {

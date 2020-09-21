@@ -312,12 +312,13 @@ func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
 }
 
 type modContext struct {
-	pkg       *schema.Package
-	mod       string
-	resources []*schema.Resource
-	functions []*schema.Function
-	children  []*modContext
-	tool      string
+	pkg          *schema.Package
+	mod          string
+	resources    []*schema.Resource
+	functions    []*schema.Function
+	children     []*modContext
+	tool         string
+	emitAPILinks bool
 }
 
 func resourceName(r *schema.Resource) string {
@@ -558,7 +559,9 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	} else {
 		argsType = name + "Args"
 		// All args types are in the same module path as the resource class itself even though it is an "input" type.
-		argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
+		if mod.emitAPILinks {
+			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
+		}
 	}
 
 	argsFlag := ""
@@ -607,6 +610,12 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 	docLangHelper := getLanguageDocHelper("go")
 	// Use the Go module to package lookup to transform the module name to its normalized package name.
 	modName := mod.getLanguageModuleName("go")
+
+	var argsTypeLink string
+	if mod.emitAPILinks {
+		argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
+	}
+
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -630,7 +639,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType),
+				Link: argsTypeLink,
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -696,6 +705,12 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("csharp")
+
+	var argsTypeLink string
+	if mod.emitAPILinks {
+		argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName)
+	}
+
 	return []formalParam{
 		{
 			Name: "name",
@@ -711,7 +726,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName),
+				Link: argsTypeLink,
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -1053,10 +1068,16 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 		parts := strings.Split(resourceTypeName, ".")
 		displayName := parts[len(parts)-1]
+
+		var link string
+		if mod.emitAPILinks {
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, resourceTypeName)
+		}
+
 		resourceMap[lang] = propertyType{
 			Name:        resourceDisplayName,
 			DisplayName: displayName,
-			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, resourceTypeName),
+			Link:        link,
 		}
 	}
 
@@ -1067,6 +1088,12 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 	docLangHelper := getLanguageDocHelper("nodejs")
 	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
 	modName := mod.getLanguageModuleName("nodejs")
+
+	var stateLink string
+	if mod.emitAPILinks {
+		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam)
+	}
+
 	return []formalParam{
 		{
 			Name: "name",
@@ -1088,7 +1115,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam),
+				Link: stateLink,
 			},
 		},
 		{
@@ -1106,6 +1133,12 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 	docLangHelper := getLanguageDocHelper("go")
 	// Use the Go module to package lookup to transform the module name to its normalized package name.
 	modName := mod.getLanguageModuleName("go")
+
+	var stateLink string
+	if mod.emitAPILinks {
+		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam)
+	}
+
 	return []formalParam{
 		{
 			Name:         "ctx",
@@ -1134,7 +1167,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam),
+				Link: stateLink,
 			},
 		},
 		{
@@ -1157,6 +1190,12 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, stateParam)
 
 	docLangHelper := getLanguageDocHelper("csharp")
+
+	var stateLink string
+	if mod.emitAPILinks {
+		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", stateParamFQDN)
+	}
+
 	return []formalParam{
 		{
 			Name: "name",
@@ -1177,7 +1216,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", stateParamFQDN),
+				Link: stateLink,
 			},
 		},
 		{
@@ -1601,6 +1640,11 @@ func sortIndexEntries(entries []indexEntry) {
 // docs by language.
 func (mod *modContext) getLanguageLinks() map[string]string {
 	languageLinks := map[string]string{}
+
+	if !mod.emitAPILinks {
+		return languageLinks
+	}
+
 	isK8s := isKubernetesPackage(mod.pkg)
 
 	for _, lang := range supportedLanguages {
@@ -1733,14 +1777,16 @@ func formatTitleText(title string) string {
 	return title
 }
 
-func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
+func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string,
+	emitAPILinks bool) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
 	if !ok {
 		mod = &modContext{
-			pkg:  pkg,
-			mod:  modName,
-			tool: tool,
+			pkg:          pkg,
+			mod:          modName,
+			tool:         tool,
+			emitAPILinks: emitAPILinks,
 		}
 
 		if modName != "" {
@@ -1751,7 +1797,7 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 			} else {
 				parentName = ":" + parentName + ":"
 			}
-			parent := getMod(pkg, parentName, modules, tool)
+			parent := getMod(pkg, parentName, modules, tool, emitAPILinks)
 			parent.children = append(parent.children, mod)
 		}
 
@@ -1771,7 +1817,7 @@ func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource, seenTyp
 	}
 }
 
-func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
+func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPILinks bool) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
@@ -1798,7 +1844,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(pkg, r.Token, modules, tool)
+		mod := getMod(pkg, r.Token, modules, tool, emitAPILinks)
 		mod.resources = append(mod.resources, r)
 
 		generatePythonPropertyCaseMaps(mod, r, seenCasingTypes)
@@ -1824,7 +1870,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
-		mod := getMod(pkg, f.Token, modules, tool)
+		mod := getMod(pkg, f.Token, modules, tool, emitAPILinks)
 		mod.functions = append(mod.functions, f)
 	}
 	return modules
@@ -1833,6 +1879,8 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 // GeneratePackage generates the docs package with docs for each resource given the Pulumi
 // schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	emitAPILinks := pkg.Name != "azure-nextgen"
+
 	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
@@ -1842,6 +1890,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			return template.HTML(html)
 		},
 		"hasDocLinksForLang": func(m map[string]apiTypeDocLinks, lang string) bool {
+			if !emitAPILinks {
+				return false
+			}
+
 			_, ok := m[lang]
 			return ok
 		},
@@ -1855,7 +1907,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	modules := generateModulesFromSchemaPackage(tool, pkg)
+	modules := generateModulesFromSchemaPackage(tool, pkg, emitAPILinks)
 	glog.V(3).Infoln("generating package now...")
 	files := fs{}
 	for _, mod := range modules {

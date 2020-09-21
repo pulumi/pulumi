@@ -264,7 +264,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg, true)
 	mod := modules["module"]
 	for _, r := range mod.resources {
 		nestedTypes := mod.genNestedTypes(r, true)
@@ -374,7 +374,7 @@ func TestResourceDocHeader(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg, true)
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]

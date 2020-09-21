@@ -277,6 +277,12 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 	}
 
+	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
+	// a means to override this assumption.
+	if info.ImportBasePath != "" {
+		imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+	}
+
 	if alias, ok := info.PackageImportAliases[imp]; ok {
 		return fmt.Sprintf("%s %q", alias, imp)
 	}
@@ -600,8 +606,8 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 		fn = Title(modSplit[1])
 	}
 	fnLookup := "Lookup" + fn[3:]
-	pkgContext := g.contexts[pkg][mod]
-	if pkgContext.names.has(fnLookup) {
+	pkgContext, has := g.contexts[pkg][mod]
+	if has && pkgContext.names.has(fnLookup) {
 		return true
 	}
 

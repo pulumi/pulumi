@@ -210,6 +210,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		Tok:      tok,
 		Args:     rpcArgs,
 		Provider: providerRef,
+		Version:  options.Version,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
