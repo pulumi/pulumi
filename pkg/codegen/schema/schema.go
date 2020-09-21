@@ -1289,6 +1289,11 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 		}
 	}
 
+	// Process resources.
+	for _, r := range pkg.Resources {
+		typs.resources[r.Token] = &ResourceType{Token: r.Token}
+	}
+
 	// Process properties.
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
