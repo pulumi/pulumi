@@ -50,8 +50,24 @@ func TestImportResourceRef(t *testing.T) {
 		name       string
 		schemaFile string
 		wantErr    bool
+		validator  func(pkg *Package)
 	}{
-		{"valid", "schema-simple.json", false},
+		{
+			"valid",
+			"schema-simple.json",
+			false,
+			func(pkg *Package) {
+				for _, r := range pkg.Resources {
+					if r.Token == "example::OtherResource" {
+						for _, p := range r.Properties {
+							if p.Name == "foo" {
+								assert.IsType(t, &ResourceType{}, p.Type)
+							}
+						}
+					}
+				}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -64,11 +80,12 @@ func TestImportResourceRef(t *testing.T) {
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			assert.NoError(t, err)
 
-			_, err = ImportSpec(pkgSpec, nil)
+			pkg, err := ImportSpec(pkgSpec, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			tt.validator(pkg)
 		})
 	}
 }
