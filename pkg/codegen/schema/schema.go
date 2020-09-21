@@ -835,6 +835,9 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	for _, t := range types.tokens {
 		typeList = append(typeList, t)
 	}
+	for _, t := range types.enums {
+		typeList = append(typeList, t)
+	}
 
 	sort.Slice(typeList, func(i, j int) bool {
 		return typeList[i].String() < typeList[j].String()
@@ -1220,6 +1223,7 @@ func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, erro
 			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
 				return nil, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
 			}
+			spec.Value = int32(v)
 		case NumberType:
 			if _, ok := spec.Value.(float64); !ok {
 				return nil, errorMessage(spec.Value, typ.String())
