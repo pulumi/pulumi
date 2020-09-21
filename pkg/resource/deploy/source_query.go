@@ -226,7 +226,7 @@ func newQueryResourceMonitor(
 				providerRegErrChan <- result.FromError(err)
 				return
 			}
-			_, _, _, err = reg.Create(urn, inputs, 9999)
+			_, _, _, err = reg.Create(urn, inputs, 9999, false)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return

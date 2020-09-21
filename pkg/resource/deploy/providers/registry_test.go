@@ -122,8 +122,8 @@ func (prov *testProvider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Read(urn resource.URN, id resource.ID,
@@ -135,8 +135,8 @@ func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64, ignoreChanges []string) (resource.PropertyMap,
-	resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Delete(urn resource.URN,
@@ -450,7 +450,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs, timeout)
+		id, outs, status, err := r.Create(urn, inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
 		assert.NotEqual(t, UnknownID, id)
@@ -496,7 +496,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil)
+		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil, false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -507,7 +507,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, p3.(*testProvider).configured)
 	}
 
-	// Delete the existingv provider for the last entry in olds.
+	// Delete the existing provider for the last entry in olds.
 	{
 		urn, id := olds[len(olds)-1].URN, olds[len(olds)-1].ID
 		timeout := float64(120)
@@ -587,10 +587,10 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should not be configured: configuration will occur during the previewed Create.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
 	}
 
 	// Update the existing provider for the first entry in olds.
@@ -608,11 +608,11 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should remain unconfigured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
@@ -641,11 +641,11 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
 
-		// Since this is a preview, the provider should be configured.
+		// The provider should remain unconfigured.
 		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
-		assert.True(t, p.(*testProvider).configured)
+		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
 		diff, err := r.Diff(urn, id, olds, news, false, nil)
