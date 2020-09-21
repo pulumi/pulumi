@@ -324,7 +324,7 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
 	args := []string{"stack", "init", stackName}
 	if l.secretsProvider != "" {
-		args = append(args, fmt.Sprintf("--secrets-provider=%s", l.secretsProvider))
+		args = append(args, "--secrets-provider", l.secretsProvider)
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
@@ -615,6 +615,9 @@ type GitRepo struct {
 // Only 1 authentication path is valid. If more than 1 is specified it will result in an error
 type GitAuth struct {
 	// The absolute path to a private key for access to the git repo
+	// When using `SSHPrivateKeyPath`, the URL of the repository must be in the format
+	// git@github.com:org/repository.git - if the url is not in this format, then an error
+	// `unable to clone repo: invalid auth method` will be returned
 	SSHPrivateKeyPath string
 	// The password that pairs with a username or as part of an SSH Private Key
 	Password string

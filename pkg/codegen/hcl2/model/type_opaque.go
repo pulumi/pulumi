@@ -80,6 +80,10 @@ func (t *OpaqueType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 
 // Equals returns true if this type has the same identity as the given type.
 func (t *OpaqueType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
 	return t == other
 }
 

@@ -3,6 +3,17 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [sdk/go] Add missing Version field to invokeOptions
+  [#5401](https://github.com/pulumi/pulumi/pull/5401)
+
+- Add `pulumi console` command which opens the currently selected stack in the Pulumi console.
+  [#5368](https://github.com/pulumi/pulumi/pull/5368)
+
+- Python SDK: Cast numbers intended to be integers to `int`.
+  [#5419](https://github.com/pulumi/pulumi/pull/5419)
+
+## 2.10.1 (2020-09-16)
+
 - feat(autoapi): add GetPermalink for operation result
   [#5363](https://github.com/pulumi/pulumi/pull/5363)
 
@@ -10,7 +21,7 @@ CHANGELOG
 
 - Allow Pulumi to read a passphrase file, via `PULUMI_CONFIG_PASSPHRASE_FILE` to interact
   with the passphrase secrets provider. Pulumi will first try and use the `PULUMI_CONFIG_PASSPHRASE`
-  to get the passphrase then will check `PULUMI_CONFIG_PASSPHRASE_FILE` and then all through to 
+  to get the passphrase then will check `PULUMI_CONFIG_PASSPHRASE_FILE` and then all through to
   asking interactively as the final option.
   [#5327](https://github.com/pulumi/pulumi/pull/5327)
 

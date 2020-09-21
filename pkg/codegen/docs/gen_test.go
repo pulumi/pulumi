@@ -66,56 +66,64 @@ func initTestPackageSpec(t *testing.T) {
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
-		Types: map[string]schema.ObjectTypeSpec{
+		Types: map[string]schema.ComplexTypeSpec{
 			// Package-level types.
 			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
-				Description: "Options object for the package-level function getPackageResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the package-level function getPackageResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 
 			// Module-level types.
 			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
-				Description: "Options object for the module-level function getModuleResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the module-level function getModuleResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 			"prov:module/ResourceOptions:ResourceOptions": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"stringProp": {
-						Description: "A string prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"stringProp": {
+							Description: "A string prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
 						},
-					},
-					"boolProp": {
-						Description: "A bool prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "boolean",
+						"boolProp": {
+							Description: "A bool prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "boolean",
+							},
 						},
-					},
-					"recursiveType": {
-						Description: "I am a recursive type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						"recursiveType": {
+							Description: "I am a recursive type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+							},
 						},
 					},
 				},
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"uniqueProp": {
-						Description: "This is a property unique to this type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "number",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"uniqueProp": {
+							Description: "This is a property unique to this type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
 						},
 					},
 				},
@@ -256,7 +264,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg, true)
 	mod := modules["module"]
 	for _, r := range mod.resources {
 		nestedTypes := mod.genNestedTypes(r, true)
@@ -366,7 +374,7 @@ func TestResourceDocHeader(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg, true)
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]

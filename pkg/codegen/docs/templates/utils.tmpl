@@ -2,7 +2,7 @@
 {{ define "linkify_param" }}<span class="nx">{{ if ne .Link "" }}<a href="{{ .Link }}">{{ end }}{{ if ne .DisplayName "" }}{{ .DisplayName }}{{ else }}{{ .Name }}{{ end }}{{ if ne .Link "" }}</a>{{ end }}</span>{{ end }}
 
 <!-- linkify_go_param is used to wrap constructor/function params in an anchor tag specifically for go constuctors. We are treating this as a snowflake for now. -->
-{{ define "linkify_go_param" }}<span class="nx"><a href="{{ .Link }}">New{{ if ne .DisplayName "" }}{{ .DisplayName }}{{ else }}{{ .Name }}{{ end }}</a></span>{{ end }}
+{{ define "linkify_go_param" }}<span class="nx">{{ if ne .Link "" }}<a href="{{ .Link }}">{{ end }}New{{ if ne .DisplayName "" }}{{ .DisplayName }}{{ else }}{{ .Name }}{{ end }}{{ if ne .Link "" }}</a>{{ end }}</span>{{ end }}
 
 <!-- linkify wraps any propertyType instance in an anchor tag. The display name/name is rendered as-is by passing it through the htmlSafe function
 to avoid double-encoding html characters, which is typical of properties type names. -->

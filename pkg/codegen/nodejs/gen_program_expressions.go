@@ -215,7 +215,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), member, diagnostics
+	return pkg, strings.Replace(module, "/", ".", -1), member, diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
@@ -324,7 +324,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", pkg, module, fn)
+		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
 
 		optionsBag := ""
 		if len(expr.Args) == 3 {

@@ -128,6 +128,34 @@ func (t *ArrayType) String() string {
 
 func (*ArrayType) isType() {}
 
+// EnumType represents an enum.
+type EnumType struct {
+	// Token is the type's Pulumi type token.
+	Token string
+	// Comment is the description of the type, if any.
+	Comment string
+	// Elements are the predefined enum values.
+	Elements []*Enum
+	// ElementType is the underlying type for the enum.
+	ElementType Type
+}
+
+// Enum contains information about an enum.
+type Enum struct {
+	// Value is the value of the enum.
+	Value interface{}
+	// Comment is the description for the enum value.
+	Comment string
+	// Name for the enum.
+	Name string
+}
+
+func (t *EnumType) String() string {
+	return t.Token
+}
+
+func (*EnumType) isType() {}
+
 // UnionType represents values that may be any one of a specified set of types.
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
@@ -611,15 +639,33 @@ type PropertySpec struct {
 type ObjectTypeSpec struct {
 	// Description is the description of the type, if any.
 	Description string `json:"description,omitempty"`
-	// Properties is a map from property name to PropertySpec that describes the type's properties.
+	// Properties, if present, is a map from property name to PropertySpec that describes the type's properties.
 	Properties map[string]PropertySpec `json:"properties,omitempty"`
-	// Type must be "object".
+	// Type must be "object" if this is an object type, or the underlying type for an enum.
 	Type string `json:"type,omitempty"`
-	// Requires is a list of the names of the type's required properties. These properties must be set for inputs and
-	// will always be set for outputs.
+	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
+	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
 	// Language specifies additional language-specific data about the type.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
+}
+
+// ComplexTypeSpec is the serializable form of an object or enum type.
+type ComplexTypeSpec struct {
+	ObjectTypeSpec
+
+	// Enum, if present, if the list of possible values for an enum type.
+	Enum []*EnumValueSpec `json:"enum,omitempty"`
+}
+
+// EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
+type EnumValueSpec struct {
+	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
+	Name string `json:"name,omitempty"`
+	// Description of the enum value.
+	Description string `json:"description,omitempty"`
+	// Value is the enum value itself.
+	Value interface{} `json:"value"`
 }
 
 // AliasSpec is the serializable form of an alias description.
@@ -676,7 +722,7 @@ type ConfigSpec struct {
 // MetadataSpec contains information for the importer about this package.
 type MetadataSpec struct {
 	// ModuleFormat is a regex that is used by the importer to extract a module name from the module portion of a
-	// type token. Pacakages that use the module format "namespace1/namespace2/.../namespaceN" do not need to specify
+	// type token. Packages that use the module format "namespace1/namespace2/.../namespaceN" do not need to specify
 	// a format. The regex must define one capturing group that contains the module name, which must be formatted as
 	// "namespace1/namespace2/...namespaceN".
 	ModuleFormat string `json:"moduleFormat,omitempty"`
@@ -684,7 +730,7 @@ type MetadataSpec struct {
 
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
-	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
+	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
 	Name string `json:"name"`
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty"`
@@ -710,8 +756,9 @@ type PackageSpec struct {
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config"`
-	// Types is a map from type token to ObjectTypeSpec that describes the set of object types defined by this package.
-	Types map[string]ObjectTypeSpec `json:"types,omitempty"`
+	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
+	// defined by this package.
+	Types map[string]ComplexTypeSpec `json:"types,omitempty"`
 	// Provider describes the provider type for this package.
 	Provider ResourceSpec `json:"provider"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
@@ -832,6 +879,7 @@ type types struct {
 	maps    map[Type]*MapType
 	unions  map[string]*UnionType
 	tokens  map[string]*TokenType
+	enums   map[string]*EnumType
 }
 
 func (t *types) bindPrimitiveType(name string) (Type, error) {
@@ -872,6 +920,9 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
 		}
 		if typ, ok := t.objects[token]; ok {
+			return typ, nil
+		}
+		if typ, ok := t.enums[token]; ok {
 			return typ, nil
 		}
 		typ, ok := t.tokens[token]
@@ -923,6 +974,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		return union, nil
 	}
 
+	// nolint: goconst
 	switch spec.Type {
 	case "boolean", "integer", "number", "string":
 		return t.bindPrimitiveType(spec.Type)
@@ -1129,7 +1181,42 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 	return obj, nil
 }
 
-func bindTypes(pkg *Package, objects map[string]ObjectTypeSpec) (*types, error) {
+func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) error {
+	typ, err := t.bindType(TypeSpec{Type: spec.Type})
+	if err != nil {
+		return err
+	}
+	enum.Token = token
+	enum.Elements = t.bindEnumValues(spec.Enum)
+	enum.ElementType = typ
+	enum.Comment = spec.Description
+
+	return nil
+}
+
+func (t *types) bindEnumValues(values []*EnumValueSpec) (enums []*Enum) {
+	for _, spec := range values {
+		enum := &Enum{
+			// TODO: check that the type of the value matches the enum type.
+			// https://github.com/pulumi/pulumi/issues/5387
+			Value:   spec.Value,
+			Comment: spec.Description,
+			Name:    spec.Name,
+		}
+		enums = append(enums, enum)
+	}
+	return
+}
+
+func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, error) {
+	enum := &EnumType{}
+	if err := t.bindEnumTypeDetails(enum, token, spec); err != nil {
+		return nil, err
+	}
+	return enum, nil
+}
+
+func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, error) {
 	typs := &types{
 		pkg:     pkg,
 		objects: map[string]*ObjectType{},
@@ -1137,25 +1224,32 @@ func bindTypes(pkg *Package, objects map[string]ObjectTypeSpec) (*types, error) 
 		maps:    map[Type]*MapType{},
 		unions:  map[string]*UnionType{},
 		tokens:  map[string]*TokenType{},
+		enums:   map[string]*EnumType{},
 	}
 
-	// Declare object types before processing properties.
-	for token, spec := range objects {
-		if spec.Type != "object" {
-			return nil, errors.Errorf("type %s must be an object, not a %s", token, spec.Type)
+	// Declare object and enum types before processing properties.
+	for token, spec := range complexTypes {
+		if spec.Type == "object" {
+			// It's important that we set the token here. This package interns types so that they can be equality-compared
+			// for identity. Types are interned based on their string representation, and the string representation of an
+			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
+			// that reference object types (e.g. arrays, maps, unions)
+			typs.objects[token] = &ObjectType{Token: token}
+		} else if len(spec.Enum) > 0 {
+			typs.enums[token] = &EnumType{Token: token}
 		}
-
-		// It's important that we set the token here. This package interns types so that they can be equality-compared
-		// for identity. Types are interned based on their string representation, and the string representation of an
-		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
-		// that reference object types (e.g. arrays, maps, unions)
-		typs.objects[token] = &ObjectType{Token: token}
 	}
 
 	// Process properties.
-	for token, spec := range objects {
-		if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec); err != nil {
-			return nil, errors.Wrapf(err, "failed to bind type %s", token)
+	for token, spec := range complexTypes {
+		if spec.Type == "object" {
+			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
+				return nil, errors.Wrapf(err, "failed to bind type %s", token)
+			}
+		} else if len(spec.Enum) > 0 {
+			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
+				return nil, errors.Wrapf(err, "failed to bind type %s", token)
+			}
 		}
 	}
 
