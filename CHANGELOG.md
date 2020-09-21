@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+_(None)_
+
+## 2.10.2 (2020-09-21)
+
 - [sdk/go] Add missing Version field to invokeOptions
   [#5401](https://github.com/pulumi/pulumi/pull/5401)
 
