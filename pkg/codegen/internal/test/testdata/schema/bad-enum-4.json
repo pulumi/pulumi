@@ -1,0 +1,18 @@
+{
+  "types": {
+    "fake-provider:module1:BadEnum": {
+      "type": "boolean",
+      "enum": [
+        {
+          "value": true
+        },
+        {
+          "value": "marshmallow"
+        },
+        {
+          "value": false
+        }
+      ]
+    }
+  }
+}
