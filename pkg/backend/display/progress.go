@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -167,16 +166,44 @@ type ProgressDisplay struct {
 }
 
 var (
-	// simple regex to take our names like "aws:function:Function" and convert to
-	// "aws:Function"
-	typeNameRegex = regexp.MustCompile("^(.*):(.*)/(.*):(.*)$")
 	// policyPayloads is a collection of policy violation events for a single resource.
 	policyPayloads []engine.PolicyViolationEventPayload
 )
 
+func camelCase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+
+	runes := []rune(s)
+	runes[0] = unicode.ToLower(runes[0])
+	return string(runes)
+}
+
 func simplifyTypeName(typ tokens.Type) string {
 	typeString := string(typ)
-	return typeNameRegex.ReplaceAllString(typeString, "$1:$2:$4")
+
+	components := strings.Split(typeString, ":")
+	if len(components) != 3 {
+		return typeString
+	}
+	pkg, module, name := components[0], components[1], components[2]
+
+	if len(name) == 0 {
+		return typeString
+	}
+
+	lastSlashInModule := strings.LastIndexByte(module, '/')
+	if lastSlashInModule == -1 {
+		return typeString
+	}
+	file := module[lastSlashInModule+1:]
+
+	if file != camelCase(name) {
+		return typeString
+	}
+
+	return fmt.Sprintf("%v:%v:%v", pkg, module[:lastSlashInModule], name)
 }
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
