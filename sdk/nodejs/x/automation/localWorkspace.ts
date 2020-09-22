@@ -19,16 +19,81 @@ import * as upath from "upath";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
+import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { StackSummary, Workspace } from "./workspace";
+import { PulumiFn, StackSummary, Workspace } from "./workspace";
 
 export class LocalWorkspace implements Workspace {
     ready: Promise<any[]>;
     private workDir: string;
     private pulumiHome?: string;
-    private program?: () => void;
+    private program?: PulumiFn;
     private envVars: { [key: string]: string };
     private secretsProvider?: string;
+    public static async NewStackLocalSource(
+        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.localSourceStackHelper(stackName, workDir, Stack.Create, opts);
+    }
+    public static async UpsertStackLocalSource(
+        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.localSourceStackHelper(stackName, workDir, Stack.Upsert, opts);
+    }
+    public static async SelectStackLocalSource(
+        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.localSourceStackHelper(stackName, workDir, Stack.Select, opts);
+    }
+    private static async localSourceStackHelper(
+        stackName: string, workDir: string, initFn: stackInitFunc, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        let wsOpts = { workDir };
+        if (opts) {
+            wsOpts = { ...opts, workDir };
+        }
+
+        const ws = new LocalWorkspace(opts);
+        await ws.ready;
+
+        const stack = await initFn(stackName, ws);
+
+        return Promise.resolve(stack);
+    }
+    public static async NewStackInlineSource(
+        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Create, opts);
+    }
+    public static async UpsertStackInlinSource(
+        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Upsert, opts);
+    }
+    public static async SelectStackInlineSource(
+        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Select, opts);
+    }
+    private static async inlineSourceStackHelper(
+        stackName: string, projectName: string, program: PulumiFn, initFn: stackInitFunc, opts?: LocalWorkspaceOpts,
+    ): Promise<Stack> {
+        let wsOpts: LocalWorkspaceOpts = { program };
+        if (opts) {
+            wsOpts = { ...opts, program };
+        }
+
+        if (!wsOpts.projectSettings) {
+            wsOpts.projectSettings = defaultProject(projectName);
+        }
+
+        const ws = new LocalWorkspace(opts);
+        await ws.ready;
+
+        const stack = await initFn(stackName, ws);
+
+        return Promise.resolve(stack);
+    }
     constructor(opts?: LocalWorkspaceOpts) {
         let dir = "";
         let envs = {};
@@ -236,10 +301,10 @@ export class LocalWorkspace implements Workspace {
         const stacks: StackSummary[] = JSON.parse(result.stdout);
         return Promise.resolve(stacks);
     }
-    getProgram(): (() => void) | undefined {
+    getProgram(): PulumiFn | undefined {
         return this.program;
     }
-    setProgram(program: () => void): void {
+    setProgram(program: PulumiFn): void {
         this.program = program;
     }
     serializeArgsForOp(_: string): Promise<string[]> {
@@ -265,7 +330,7 @@ export class LocalWorkspace implements Workspace {
 export type LocalWorkspaceOpts = {
     workDir?: string,
     pulumiHome?: string,
-    program?: () => void,
+    program?: PulumiFn,
     envVars?: { [key: string]: string },
     secretsProvider?: string,
     projectSettings?: ProjectSettings,
@@ -280,4 +345,13 @@ const getStackSettingsName = (name: string): string => {
         return name;
     }
     return parts[parts.length - 1];
+};
+
+type stackInitFunc = (name: string, workspace: Workspace) => Promise<Stack>;
+
+const defaultProject = (projectName: string) => {
+    const settings = new ProjectSettings();
+    settings.name = projectName;
+    settings.runtime.name = "nodejs";
+    return settings;
 };

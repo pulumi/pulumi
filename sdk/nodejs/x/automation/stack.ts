@@ -14,7 +14,7 @@
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { Workspace } from "./workspace";
+import { PulumiFn, Workspace } from "./workspace";
 
 export type StackInitMode = "create" | "select" | "upsert";
 
@@ -49,6 +49,7 @@ export class Stack {
                 this.ready = workspace.selectStack(name);
                 return this;
             case "upsert":
+                // TODO update this based on structured errors (check for 409)
                 this.ready = workspace.createStack(name).catch(() => {
                     return workspace.selectStack(name);
                 });
@@ -60,7 +61,7 @@ export class Stack {
     async up(opts?: UpOptions): Promise<UpResult> {
         const args = ["up", "--yes", "--skip-preview"];
         let kind = execKind.local;
-        let program: (() => void) | undefined = this.workspace.getProgram();
+        let program: PulumiFn | undefined = this.workspace.getProgram();
         await this.workspace.selectStack(this.name);
 
         if (opts) {
@@ -112,7 +113,7 @@ export class Stack {
         // TODO JSON
         const args = ["preview"];
         let kind = execKind.local;
-        let program: (() => void) | undefined = this.workspace.getProgram();
+        let program: PulumiFn | undefined = this.workspace.getProgram();
         await this.workspace.selectStack(this.name);
 
         if (opts) {
@@ -359,7 +360,7 @@ export type UpOptions = {
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
-    program?: () => void;
+    program?: PulumiFn;
 };
 
 export type PreviewOptions = {
@@ -369,7 +370,7 @@ export type PreviewOptions = {
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;
-    program?: () => void;
+    program?: PulumiFn;
 };
 
 export type RefreshOptions = {
