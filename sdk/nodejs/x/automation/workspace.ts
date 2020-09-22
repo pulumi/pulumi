@@ -42,8 +42,8 @@ export interface Workspace {
     selectStack(stackName: string): Promise<void>;
     removeStack(stackName: string): Promise<void>;
     listStacks(): Promise<StackSummary[]>;
-    getProgram(): (() => void) | undefined;
-    setProgram(program: () => void): void;
+    getProgram(): PulumiFn | undefined;
+    setProgram(program: PulumiFn): void;
     // TODO import/export
 }
 
@@ -55,3 +55,5 @@ export type StackSummary = {
     resourceCount?: number,
     url?: string,
 };
+
+export type PulumiFn = () => void;
