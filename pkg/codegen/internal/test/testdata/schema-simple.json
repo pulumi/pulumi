@@ -47,14 +47,14 @@
       "inputs": {
         "properties": {
           "arg1": {
-            "type": "string"
+            "$ref": "#/resources/example::Resource"
           }
         }
       },
       "outputs": {
         "properties": {
           "result": {
-            "type": "string"
+            "$ref": "#/resources/example::Resource"
           }
         }
       }
