@@ -62,7 +62,7 @@ func (imports imports) add(mod *modContext, tok string, input bool) {
 }
 
 func (imports imports) addIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
-	if imp := mod.importFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
+	if imp := mod.importTypeFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
 		stringSet(imports).add(imp)
 	}
 }
@@ -459,7 +459,7 @@ func (mod *modContext) genInit(exports []string) string {
 	return w.String()
 }
 
-func (mod *modContext) importFromToken(tok string, input bool) string {
+func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 	modName := mod.tokenToModule(tok)
 	if modName == mod.mod {
 		if input {
