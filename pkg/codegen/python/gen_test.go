@@ -44,14 +44,24 @@ func TestGeneratePackage(t *testing.T) {
 	}{
 		{
 			"Simple schema with local resource properties",
-			"schema-simple.json",
+			"simple-resource-schema.json",
 			false,
 			func(files map[string][]byte) {
 				assert.Contains(t, files, filepath.Join("pulumi_example", "resource.py"))
 				assert.Contains(t, files, filepath.Join("pulumi_example", "other_resource.py"))
 
 				for fileName, file := range files {
+					if fileName == filepath.Join("pulumi_example", "resource.py") {
+						// Correct parent class
+						assert.Contains(t, string(file), "class Resource(pulumi.CustomResource):")
+						// Remote option not set
+						assert.NotContains(t, string(file), "remote=True)")
+					}
 					if fileName == filepath.Join("pulumi_example", "other_resource.py") {
+						// Correct parent class
+						assert.Contains(t, string(file), "class OtherResource(pulumi.ComponentResource):")
+						// Remote resource option is set
+						assert.Contains(t, string(file), "remote=True)")
 						// Correct import for local resource
 						assert.Contains(t, string(file), "from . import Resource")
 						// Correct type for resource input property

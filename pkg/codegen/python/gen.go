@@ -737,9 +737,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = ['%s']\n\n", name)
 
-	baseType := "pulumi.CustomResource"
-	if res.IsProvider {
+	var baseType string
+	switch {
+	case res.IsProvider:
 		baseType = "pulumi.ProviderResource"
+	case res.IsComponent:
+		baseType = "pulumi.ComponentResource"
+	default:
+		baseType = "pulumi.CustomResource"
 	}
 
 	if !res.IsProvider && res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
@@ -894,7 +899,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            '%s',\n", tok)
 	fmt.Fprintf(w, "            resource_name,\n")
 	fmt.Fprintf(w, "            __props__,\n")
-	fmt.Fprintf(w, "            opts)\n")
+	if res.IsComponent {
+		fmt.Fprintf(w, "            opts,\n")
+		fmt.Fprintf(w, "            remote=True)\n")
+	} else {
+		fmt.Fprintf(w, "            opts)\n")
+	}
 	fmt.Fprintf(w, "\n")
 
 	if !res.IsProvider {
