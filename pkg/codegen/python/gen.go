@@ -1932,8 +1932,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		switch T := t.(type) {
 		case *schema.ObjectType:
 			getModFromToken(T.Token).details(T).outputType = true
-		case *schema.ResourceType:
-			getModFromToken(T.Token)
 		}
 	})
 
@@ -1945,8 +1943,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				getModFromToken(T.Token).details(T).outputType = true
-			case *schema.ResourceType:
-				getModFromToken(T.Token)
 			}
 		})
 		visitObjectTypesFromProperties(r.InputProperties, inputSeen, func(t interface{}) {
@@ -1956,8 +1952,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 					getModFromToken(T.Token).details(T).outputType = true
 				}
 				getModFromToken(T.Token).details(T).inputType = true
-			case *schema.ResourceType:
-				getModFromToken(T.Token)
 			}
 		})
 		if r.StateInputs != nil {
