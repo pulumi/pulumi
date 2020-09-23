@@ -57,11 +57,11 @@ func (ss stringSet) has(s string) bool {
 
 type imports stringSet
 
-func (imports imports) add(mod *modContext, tok string, input bool) {
-	imports.addIf(mod, tok, input, nil /*predicate*/)
+func (imports imports) addType(mod *modContext, tok string, input bool) {
+	imports.addTypeIf(mod, tok, input, nil /*predicate*/)
 }
 
-func (imports imports) addIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
+func (imports imports) addTypeIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
 	if imp := mod.importTypeFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
 		stringSet(imports).add(imp)
 	}
@@ -505,7 +505,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	visitObjectTypesFromProperties(variables, seen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.add(mod, T.Token, false /*input*/)
+			imports.addType(mod, T.Token, false /*input*/)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -555,7 +555,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				visitObjectTypesFromProperties(t.Properties, inputSeen, func(t interface{}) {
 					switch T := t.(type) {
 					case *schema.ObjectType:
-						imports.addIf(mod, T.Token, true /*input*/, func(imp string) bool {
+						imports.addTypeIf(mod, T.Token, true /*input*/, func(imp string) bool {
 							// No need to import `._inputs` inside _inputs.py.
 							return imp != "from ._inputs import *"
 						})
@@ -568,7 +568,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				visitObjectTypesFromProperties(t.Properties, outputSeen, func(t interface{}) {
 					switch T := t.(type) {
 					case *schema.ObjectType:
-						imports.add(mod, T.Token, false /*input*/)
+						imports.addType(mod, T.Token, false /*input*/)
 					case *schema.ResourceType:
 						imports.addResource(mod, T.Token)
 					}
@@ -703,7 +703,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	visitObjectTypesFromProperties(res.Properties, outputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.add(mod, T.Token, false /*input*/)
+			imports.addType(mod, T.Token, false /*input*/)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -711,7 +711,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	visitObjectTypesFromProperties(res.InputProperties, inputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.add(mod, T.Token, !res.IsProvider)
+			imports.addType(mod, T.Token, !res.IsProvider)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -720,7 +720,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		visitObjectTypesFromProperties(res.StateInputs.Properties, inputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.add(mod, T.Token, true /*input*/)
+				imports.addType(mod, T.Token, true /*input*/)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1017,7 +1017,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		visitObjectTypesFromProperties(fun.Inputs.Properties, inputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.add(mod, T.Token, true /*input*/)
+				imports.addType(mod, T.Token, true /*input*/)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1027,7 +1027,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		visitObjectTypesFromProperties(fun.Outputs.Properties, outputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.add(mod, T.Token, false /*input*/)
+				imports.addType(mod, T.Token, false /*input*/)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
