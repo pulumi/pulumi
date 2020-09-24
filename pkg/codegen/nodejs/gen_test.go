@@ -30,13 +30,13 @@ func TestGeneratePackage(t *testing.T) {
 						// Correct parent class
 						assert.Contains(t, string(file), "export class Resource extends pulumi.CustomResource {")
 						// Remote option not set
-						assert.NotContains(t, string(file), "opts.remote = true;")
+						assert.NotContains(t, string(file), ", true /*remote*/);")
 					}
 					if fileName == "otherResource.ts" {
 						// Correct parent class
 						assert.Contains(t, string(file), "export class OtherResource extends pulumi.ComponentResource {")
 						// Remote resource option is set
-						assert.Contains(t, string(file), "opts.remote = true;")
+						assert.Contains(t, string(file), "super(OtherResource.__pulumiType, name, inputs, opts, true /*remote*/);")
 						// Correct import for local resource
 						assert.Contains(t, string(file), `import {Resource} from "./index";`)
 						// Correct type for resource input property

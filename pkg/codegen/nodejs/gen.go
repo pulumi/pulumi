@@ -655,11 +655,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            opts.version = utilities.getVersion();\n")
 	fmt.Fprintf(w, "        }\n")
 
-	// If it's a ComponentResource, set the remote option.
-	if r.IsComponent {
-		fmt.Fprintf(w, "        opts.remote = true;\n")
-	}
-
 	// Now invoke the super constructor with the type, name, and a property map.
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
@@ -685,7 +680,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
 	}
 
-	fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts, true /*remote*/);\n", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	}
 
 	// Finish the class.
 	fmt.Fprintf(w, "    }\n")
