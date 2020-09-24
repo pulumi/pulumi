@@ -10,32 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//func TestGeneratePackage(t *testing.T) {
-//	// Read in, decode, and import the schema.
-//	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", "schema-simple.json"))
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	var pkgSpec schema.PackageSpec
-//	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-//		panic(err)
-//	}
-//
-//	pkg, err := schema.ImportSpec(pkgSpec, nil)
-//	if err != nil {
-//		t.Errorf("ImportSpec() error = %v", err)
-//	}
-//
-//	files, err := GeneratePackage("test", pkg, nil)
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	assert.Contains(t, files, filepath.Join("pulumi_example", "resource.py"))
-//	assert.Contains(t, files, filepath.Join("pulumi_example", "other_resource.py"))
-//}
-
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
 		name       string
