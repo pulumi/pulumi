@@ -385,9 +385,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
-	baseType := "CustomResource"
-	if r.IsProvider {
+	var baseType string
+	switch {
+	case r.IsComponent:
+		baseType = "ComponentResource"
+	case r.IsProvider:
 		baseType = "ProviderResource"
+	default:
+		baseType = "CustomResource"
 	}
 
 	// Begin defining the class.
@@ -414,7 +419,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
 
-		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.CustomResourceOptions): %s {\n", stateParam, name)
+		var optionsType string
+		switch {
+		case r.IsComponent:
+			optionsType = "pulumi.ComponentResourceOptions"
+		default:
+			optionsType = "pulumi.CustomResourceOptions"
+		}
+		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: %s): %s {\n", stateParam, optionsType, name)
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
@@ -491,12 +503,23 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsFlags = "?"
 	}
 	argsType := name + "Args"
-	trailingBrace, optionsType := "", "CustomResourceOptions"
-	if r.IsProvider {
-		trailingBrace, optionsType = " {", "ResourceOptions"
+	var optionsType string
+	switch {
+	case r.IsComponent:
+		optionsType = "ComponentResourceOptions"
+	case r.IsProvider:
+		optionsType = "ResourceOptions"
+	default:
+		optionsType = "CustomResourceOptions"
 	}
-	if r.StateInputs == nil {
+	var trailingBrace string
+	switch {
+	case r.IsProvider:
 		trailingBrace = " {"
+	case r.StateInputs == nil:
+		trailingBrace = " {"
+	default:
+		trailingBrace = ""
 	}
 
 	if r.DeprecationMessage != "" {
@@ -561,11 +584,19 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			if r.DeprecationMessage != "" {
 				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 			}
+
+			var optionsType string
+			switch {
+			case r.IsComponent:
+				optionsType = "pulumi.ComponentResourceOptions"
+			default:
+				optionsType = "pulumi.CustomResourceOptions"
+			}
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
 			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 			// conditional state into sensible variables using dynamic type tests.
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
-				argsType, stateType)
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: %s) {\n",
+				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
@@ -623,6 +654,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        if (!opts.version) {\n")
 	fmt.Fprintf(w, "            opts.version = utilities.getVersion();\n")
 	fmt.Fprintf(w, "        }\n")
+
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        opts.remote = true;\n")
+	}
 
 	// Now invoke the super constructor with the type, name, and a property map.
 	if len(r.Aliases) > 0 {
