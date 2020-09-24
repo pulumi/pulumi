@@ -59,8 +59,15 @@ export interface Options {
  */
 let options = loadOptions();
 
-export function setConstructOptions(project: string, stack: string, parallel: number, engineAddr: string,
-                                    monitorAddr: string, preview: boolean) {
+export function resetOptions(
+    project: string, stack: string, parallel: number, engineAddr: string,
+    monitorAddr: string, preview: boolean) {
+
+    monitor = undefined;
+    engine = undefined;
+    rootResource = undefined;
+    rpcDone = Promise.resolve();
+
     options = {
         project,
         stack,
@@ -199,7 +206,7 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object | undefined {
-    if (!monitor) {
+    if (monitor === undefined) {
         const addr = options.monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
@@ -227,8 +234,8 @@ let syncInvokes: SyncInvokes | undefined;
 /** @internal */
 export function tryGetSyncInvokes(): SyncInvokes | undefined {
     if (syncInvokes === undefined && options.syncDir) {
-        const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY|fs.constants.O_SYNC);
-        const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY|fs.constants.O_SYNC);
+        const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY | fs.constants.O_SYNC);
+        const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY | fs.constants.O_SYNC);
         syncInvokes = { requests, responses };
     }
 
@@ -239,6 +246,13 @@ export function tryGetSyncInvokes(): SyncInvokes | undefined {
  * engine is a live connection to the engine, used for logging, etc. (lazily initialized).
  */
 let engine: any | undefined;
+
+/**
+ * hasEngine returns true if we are currently connected to an engine.
+ */
+export function hasEngine(): boolean {
+    return !!engine && !!options.engineAddr;
+}
 
 /**
  * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
@@ -258,6 +272,10 @@ export function getEngine(): Object | undefined {
     return engine;
 }
 
+export function terminateRpcs() {
+    disconnectSync();
+}
+
 /**
  * serialize returns true if resource operations should be serialized.
  */
@@ -275,7 +293,7 @@ function loadOptions(): Options {
     const parallelOpt = process.env["PULUMI_NODEJS_PARALLEL"];
     if (parallelOpt) {
         try {
-           parallel = parseInt(parallelOpt, 10);
+            parallel = parseInt(parallelOpt, 10);
         }
         catch (err) {
             // ignore.
@@ -302,7 +320,7 @@ function loadOptions(): Options {
  * disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
  * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
  */
-export function disconnect(): void {
+export function disconnect(): Promise<void> {
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
         if (done !== rpcDone) {
@@ -313,7 +331,7 @@ export function disconnect(): void {
         disconnectSync();
         return Promise.resolve();
     };
-    closeCallback();
+    return closeCallback();
 }
 
 /**
@@ -353,7 +371,7 @@ let rpcDone: Promise<any> = Promise.resolve();
  */
 export function rpcKeepAlive(): () => void {
     let done: (() => void) | undefined = undefined;
-    const donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }), "rpcKeepAlive");
+    const donePromise = debuggablePromise(new Promise<void>(resolve => done = resolve), "rpcKeepAlive");
     rpcDone = rpcDone.then(() => donePromise);
     return done!;
 }

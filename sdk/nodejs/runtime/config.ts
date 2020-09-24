@@ -17,7 +17,7 @@
  */
 const configEnvKey = "PULUMI_CONFIG";
 
-const config: {[key: string]: string} = parseConfig();
+let config: {[key: string]: string} = parseConfig();
 
 /**
  * allConfig returns a copy of the full config map.
@@ -34,6 +34,7 @@ export function setAllConfig(c: {[key: string]: string}) {
     for (const k of Object.keys(c)) {
         obj[cleanKey(k)] = c[k];
     }
+    config = obj;
 }
 
 /**

@@ -74,6 +74,7 @@
         "x/automation/localWorkspace.ts",
         "x/automation/projectSettings.ts",
         "x/automation/stackSettings.ts",
+        "x/automation/server.ts",
         "x/automation/stack.ts",
         "x/automation/workspace.ts",
 

@@ -56,4 +56,4 @@ export type StackSummary = {
     url?: string,
 };
 
-export type PulumiFn = () => void;
+export type PulumiFn = () => Promise<any>;

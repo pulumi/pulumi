@@ -13,15 +13,16 @@
 // limitations under the License.
 
 import * as asset from "../asset";
+import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, Resource, URN } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
+import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[]) => void>;
+export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -53,9 +54,9 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         let resolveIsSecret: (v: boolean) => void;
         let resolveDeps: (v: Resource[]) => void;
 
-        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = []) => {
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
             resolveValue(v);
-            resolveIsKnown(isKnown);
+            resolveIsKnown(err ? false : isKnown);
             resolveIsSecret(isSecret);
             resolveDeps(deps);
         };
@@ -147,8 +148,17 @@ export function deserializeProperties(outputsStruct: any): any {
  * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean, deps?: Resource[]) => void>,
-    t: string, name: string, allProps: any, deps: Record<string, Resource[]>): void {
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>,
+    t: string, name: string, allProps: any, deps: Record<string, Resource[]>, err?: Error): void {
+
+    // If there is an error, just reject everything.
+    if (err) {
+        for (const k of Object.keys(resolvers)) {
+            const resolve = resolvers[k];
+            resolve(undefined, true, false, [], err);
+        }
+        return;
+    }
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
     for (const k of Object.keys(allProps)) {
@@ -497,4 +507,17 @@ export function deserializeProperty(prop: any): any {
         }
         return obj;
     }
+}
+
+/**
+ * suppressUnhandledGrpcRejections silences any unhandled promise rejections that occur due to gRPC errors. The input
+ * promise may still be rejected.
+ */
+export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
+    p.catch(err => {
+        if (!isGrpcError(err)) {
+            throw err;
+        }
+    });
+    return p;
 }
