@@ -305,6 +305,8 @@ type Resource struct {
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the resource.
 	Language map[string]interface{}
+	// IsComponent indicates whether the resource is a ComponentResource.
+	IsComponent bool
 }
 
 // Function describes a Pulumi function.
@@ -706,6 +708,8 @@ type ResourceSpec struct {
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the resource.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
+	// IsComponent indicates whether the resource is a ComponentResource.
+	IsComponent bool `json:"isComponent,omitempty"`
 }
 
 // FunctionSpec is the serializable form of a function description.
@@ -1388,6 +1392,7 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		Aliases:            aliases,
 		DeprecationMessage: spec.DeprecationMessage,
 		Language:           language,
+		IsComponent:        spec.IsComponent,
 	}, nil
 }
 

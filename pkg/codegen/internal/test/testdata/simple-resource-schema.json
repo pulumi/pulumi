@@ -29,6 +29,7 @@
       "type": "object"
     },
     "example::OtherResource": {
+      "isComponent": true,
       "properties": {
         "foo": {
           "$ref": "#/resources/example::Resource"
