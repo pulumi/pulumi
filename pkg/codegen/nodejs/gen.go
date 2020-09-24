@@ -120,6 +120,25 @@ func (mod *modContext) tokenToType(tok string, input bool) string {
 	return root + modName + title(name)
 }
 
+func (mod *modContext) tokenToResource(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
+	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+
+	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
+	if override, ok := mod.modToPkg[modName]; ok {
+		modName = override
+	}
+
+	if modName != "" {
+		modName = strings.Replace(modName, "/", ".", -1) + "."
+	}
+
+	return modName + title(name)
+}
+
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
@@ -146,6 +165,8 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
 	case *schema.ObjectType:
 		typ = mod.tokenToType(t.Token, input)
+	case *schema.ResourceType:
+		typ = mod.tokenToResource(t.Token)
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
@@ -335,7 +356,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, "{ ")
 
-	parts := []string{}
+	var parts []string
 	if alias.Name != nil {
 		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
 	}
@@ -785,7 +806,25 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
 		return true
+	case *schema.ResourceType:
+		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
+		if modName != mod.mod {
+			mp, err := filepath.Rel(mod.mod, modName)
+			contract.Assert(err == nil)
+			if path.Base(mp) == "." {
+				mp = path.Dir(mp)
+			}
+			modPath = filepath.ToSlash(mp)
+		}
+		if imports[modPath] == nil {
+			imports[modPath] = codegen.NewStringSet()
+		}
+		imports[modPath].Add(name)
+		return false
 	case *schema.TokenType:
 		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
@@ -824,6 +863,9 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 			needsTypes = mod.getTypeImports(p.Type, true, imports, seen) || needsTypes
 		}
 		return needsTypes
+	case *schema.ResourceType:
+		mod.getTypeImports(member, true, imports, seen)
+		return false
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {
