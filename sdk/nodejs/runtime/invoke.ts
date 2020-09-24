@@ -24,7 +24,12 @@ import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, SyncInvokes, tryGetSyncInvokes } from "./settings";
+import {
+    excessiveDebugOutput,
+    getMonitor,
+    rpcKeepAlive,
+    terminateRpcs,
+} from "./settings";
 
 import { ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
@@ -139,14 +144,16 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         const req = createInvokeRequest(tok, serialized, provider, opts);
 
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
-            monitor.invoke(req, (err: grpc.StatusObject, innerResponse: any) => {
+            monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     // If the monitor is unavailable, it is in the process of shutting down or has already
                     // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                    if (err.code === grpc.status.UNAVAILABLE) {
-                        log.debug("Resource monitor is terminating");
-                        process.exit(0);
+                    if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
+                        terminateRpcs();
+                        err.message = "Resource monitor is terminating";
+                        innerReject(err);
+                        return;
                     }
 
                     // If the RPC failed, rethrow the error with a native exception and the message that

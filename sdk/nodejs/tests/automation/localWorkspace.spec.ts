@@ -15,6 +15,7 @@
 import * as assert from "assert";
 import * as upath from "upath";
 
+import { Config } from "../../config";
 import { ConfigMap, normalizeConfigKey } from "../../x/automation/config";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";
@@ -147,11 +148,10 @@ describe("LocalWorkspace", () => {
         assert.equal(typeof (info), "undefined");
         await ws.removeStack(stackName);
     }));
-    it(`runs through the local stack lifecycle`, asyncTest(async () => {
-        const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", "testproj") });
-        await ws.ready;
+    it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
         const stackName = `int_test${getTestSuffix()}`;
-        const stack = await Stack.Create(stackName, ws);
+        const workDir = upath.joinSafe(__dirname, "data", "testproj");
+        const stack = await LocalWorkspace.NewStackLocalSource(stackName, workDir);
 
         const config: ConfigMap = {
             "bar": { value: "abc" },
@@ -185,7 +185,53 @@ describe("LocalWorkspace", () => {
         assert.equal(destroyRes.summary.kind, "destroy");
         assert.equal(destroyRes.summary.result, "succeeded");
 
-        await ws.removeStack(stackName);
+        await stack.getWorkspace().removeStack(stackName);
+    }));
+    it(`runs through the stack lifecycle with an inline program`, asyncTest(async () => {
+        const program = () => {
+            const config = new Config();
+            return Promise.resolve({
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            });
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await LocalWorkspace.NewStackInlineSource(stackName, "inline_node", program);
+
+        const stackConfig: ConfigMap = {
+            "bar": { value: "abc" },
+            "buzz": { value: "secret", secret: true },
+        };
+        await stack.setAllConfig(stackConfig);
+
+        // pulumi up
+        const upRes = await stack.up();
+        assert.equal(Object.keys(upRes.outputs).length, 3);
+        assert.equal(upRes.outputs["exp_static"].value, "foo");
+        assert.equal(upRes.outputs["exp_static"].secret, false);
+        assert.equal(upRes.outputs["exp_cfg"].value, "abc");
+        assert.equal(upRes.outputs["exp_cfg"].secret, false);
+        assert.equal(upRes.outputs["exp_secret"].value, "secret");
+        assert.equal(upRes.outputs["exp_secret"].secret, true);
+        assert.equal(upRes.summary.kind, "update");
+        assert.equal(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        await stack.preview();
+        // TODO: update assertions when we have stuctured output
+
+        // pulumi refresh
+        const refRes = await stack.refresh();
+        assert.equal(refRes.summary.kind, "refresh");
+        assert.equal(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.equal(destroyRes.summary.kind, "destroy");
+        assert.equal(destroyRes.summary.result, "succeeded");
+
+        await stack.getWorkspace().removeStack(stackName);
     }));
 });
 

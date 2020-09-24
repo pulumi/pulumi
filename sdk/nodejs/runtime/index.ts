@@ -20,6 +20,7 @@ export {
 }  from "./closure/serializeClosure";
 
 export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
+export { leakedPromises } from "./debuggable";
 export { Mocks, setMocks } from "./mocks";
 
 export * from "./config";

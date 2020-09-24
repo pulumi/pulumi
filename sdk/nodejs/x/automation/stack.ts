@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
+
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { PulumiFn, Workspace } from "./workspace";
+
+const langrpc = require("../../proto/language_grpc_pb.js");
 
 export type StackInitMode = "create" | "select" | "upsert";
 
@@ -92,14 +97,35 @@ export class Stack {
             }
         }
 
+        let onExit = (code: number) => { return; };
+
         if (program) {
             kind = execKind.inline;
-            // TODO: inline program execution, setup server, add client args, etc.
-            throw new Error("NYI: inline programs");
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            server.start();
+            onExit = (code: number) => {
+                languageServer.onPulumiExit(code, false /* preview */);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
         }
 
         args.push("--exec-kind", kind);
         const upResult = await this.runPulumiCmd(args, opts?.onOutput);
+        onExit(upResult.code);
         const status = await Promise.all([this.info(), this.outputs()]);
         const result: UpResult = {
             stdout: upResult.stdout,
@@ -144,14 +170,35 @@ export class Stack {
             }
         }
 
+        let onExit = (code: number) => { return; };
+
         if (program) {
             kind = execKind.inline;
-            // TODO: inline program execution, setup server, add client args, etc.
-            throw new Error("NYI: inline programs");
+            const server = new grpc.Server({
+                "grpc.max_receive_message_length": maxRPCMessageSize,
+            });
+            const languageServer = new LanguageServer(program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            server.start();
+            onExit = (code: number) => {
+                languageServer.onPulumiExit(code, false /* preview */);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
         }
 
         args.push("--exec-kind", kind);
         const preResult = await this.runPulumiCmd(args);
+        onExit(preResult.code);
         const summary = await this.info();
         const result: PreviewResult = {
             stdout: preResult.stdout,

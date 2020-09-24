@@ -53,7 +53,7 @@ export class LocalWorkspace implements Workspace {
             wsOpts = { ...opts, workDir };
         }
 
-        const ws = new LocalWorkspace(opts);
+        const ws = new LocalWorkspace(wsOpts);
         await ws.ready;
 
         const stack = await initFn(stackName, ws);
@@ -65,7 +65,7 @@ export class LocalWorkspace implements Workspace {
     ): Promise<Stack> {
         return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Create, opts);
     }
-    public static async UpsertStackInlinSource(
+    public static async UpsertStackInlineSource(
         stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
     ): Promise<Stack> {
         return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Upsert, opts);
@@ -87,7 +87,7 @@ export class LocalWorkspace implements Workspace {
             wsOpts.projectSettings = defaultProject(projectName);
         }
 
-        const ws = new LocalWorkspace(opts);
+        const ws = new LocalWorkspace(wsOpts);
         await ws.ready;
 
         const stack = await initFn(stackName, ws);

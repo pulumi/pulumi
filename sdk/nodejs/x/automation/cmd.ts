@@ -56,6 +56,9 @@ export function runPulumiCmd(
         let stdout = "";
         let stderr = "";
         proc.stdout.on("data", (data) => {
+            if (data && data.toString) {
+                data = data.toString();
+            }
             if (onOutput) {
                 onOutput(data);
             }
