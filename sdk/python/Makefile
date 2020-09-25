@@ -52,3 +52,10 @@ dist::
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
 brew:: dist
+
+publish:: build_package
+	twine upload \
+    	-u pulumi -p "${PYPI_PASSWORD}" \
+        "env/src/dist"/*.whl \
+        --skip-existing \
+        --verbose

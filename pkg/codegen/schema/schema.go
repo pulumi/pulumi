@@ -29,7 +29,6 @@ import (
 
 // TODO:
 // - Providerless packages
-// - Adjustments to accommodate docs + cross-lang packages (e.g references to resources from POD types)
 
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
 // equal values.
@@ -215,6 +214,17 @@ func (t *ObjectType) String() string {
 
 func (*ObjectType) isType() {}
 
+type ResourceType struct {
+	// Token is the type's Pulumi type token.
+	Token string
+}
+
+func (t *ResourceType) String() string {
+	return t.Token
+}
+
+func (t *ResourceType) isType() {}
+
 // TokenType represents an opaque type that is referred to only by its token. A TokenType may have an underlying type
 // that can be used in place of the token.
 type TokenType struct {
@@ -295,6 +305,8 @@ type Resource struct {
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the resource.
 	Language map[string]interface{}
+	// IsComponent indicates whether the resource is a ComponentResource.
+	IsComponent bool
 }
 
 // Function describes a Pulumi function.
@@ -596,6 +608,7 @@ type TypeSpec struct {
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
 	// types are referenced as "pulumi.json#/Archive", "pulumi.json#/Asset", and "pulumi.json#/Any", respectively.
 	// A type from this document is referenced as "#/types/pulumi:type:token".
+	// A resource from this document is referenced as "#/resources/pulumi:type:token".
 	Ref string `json:"$ref,omitempty"`
 	// AdditionalProperties, if set, describes the element type of an "object" (i.e. a string -> value map).
 	AdditionalProperties *TypeSpec `json:"additionalProperties,omitempty"`
@@ -695,6 +708,8 @@ type ResourceSpec struct {
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the resource.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
+	// IsComponent indicates whether the resource is a ComponentResource.
+	IsComponent bool `json:"isComponent,omitempty"`
 }
 
 // FunctionSpec is the serializable form of a function description.
@@ -820,6 +835,9 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 
 	// Build the type list.
 	var typeList []Type
+	for _, t := range types.resources {
+		typeList = append(typeList, t)
+	}
 	for _, t := range types.objects {
 		typeList = append(typeList, t)
 	}
@@ -833,6 +851,9 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.tokens {
+		typeList = append(typeList, t)
+	}
+	for _, t := range types.enums {
 		typeList = append(typeList, t)
 	}
 
@@ -871,15 +892,18 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	return pkg, nil
 }
 
+// types facilitates interning (only storing a single reference to an object) during schema processing. The fields
+// correspond to fields in the schema, and are populated during the binding process.
 type types struct {
 	pkg *Package
 
-	objects map[string]*ObjectType
-	arrays  map[Type]*ArrayType
-	maps    map[Type]*MapType
-	unions  map[string]*UnionType
-	tokens  map[string]*TokenType
-	enums   map[string]*EnumType
+	resources map[string]*ResourceType
+	objects   map[string]*ObjectType
+	arrays    map[Type]*ArrayType
+	maps      map[Type]*MapType
+	unions    map[string]*UnionType
+	tokens    map[string]*TokenType
+	enums     map[string]*EnumType
 }
 
 func (t *types) bindPrimitiveType(name string) (Type, error) {
@@ -911,33 +935,47 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 		}
 
 		// Parse the ref and look up the type in the type map.
-		if !strings.HasPrefix(spec.Ref, "#/types/") {
-			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
-		}
-
-		token, err := url.PathUnescape(spec.Ref[len("#/types/"):])
-		if err != nil {
-			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
-		}
-		if typ, ok := t.objects[token]; ok {
-			return typ, nil
-		}
-		if typ, ok := t.enums[token]; ok {
-			return typ, nil
-		}
-		typ, ok := t.tokens[token]
-		if !ok {
-			typ = &TokenType{Token: token}
-			if spec.Type != "" {
-				ut, err := t.bindType(TypeSpec{Type: spec.Type})
-				if err != nil {
-					return nil, err
-				}
-				typ.UnderlyingType = ut
+		switch {
+		case strings.HasPrefix(spec.Ref, "#/types/"):
+			token, err := url.PathUnescape(spec.Ref[len("#/types/"):])
+			if err != nil {
+				return nil, err
 			}
-			t.tokens[token] = typ
+
+			if typ, ok := t.objects[token]; ok {
+				return typ, nil
+			}
+			if typ, ok := t.enums[token]; ok {
+				return typ, nil
+			}
+			typ, ok := t.tokens[token]
+			if !ok {
+				typ = &TokenType{Token: token}
+				if spec.Type != "" {
+					ut, err := t.bindType(TypeSpec{Type: spec.Type})
+					if err != nil {
+						return nil, err
+					}
+					typ.UnderlyingType = ut
+				}
+				t.tokens[token] = typ
+			}
+			return typ, nil
+		case strings.HasPrefix(spec.Ref, "#/resources/"):
+			token, err := url.PathUnescape(spec.Ref[len("#/resources/"):])
+			if err != nil {
+				return nil, err
+			}
+
+			typ, ok := t.resources[token]
+			if !ok {
+				typ = &ResourceType{Token: token}
+				t.resources[token] = typ
+			}
+			return typ, nil
+		default:
+			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
 		}
-		return typ, nil
 	}
 
 	if spec.OneOf != nil {
@@ -1181,31 +1219,78 @@ func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, 
 	return obj, nil
 }
 
+func (t *types) bindResourceTypeDetails(obj *ResourceType, token string) error {
+	obj.Token = token
+	return nil
+}
+
+func (t *types) bindResourceType(token string) (*ResourceType, error) {
+	r := &ResourceType{}
+	if err := t.bindResourceTypeDetails(r, token); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) error {
 	typ, err := t.bindType(TypeSpec{Type: spec.Type})
 	if err != nil {
 		return err
 	}
+
+	values, err := t.bindEnumValues(spec.Enum, typ)
+	if err != nil {
+		return err
+	}
+
 	enum.Token = token
-	enum.Elements = t.bindEnumValues(spec.Enum)
+	enum.Elements = values
 	enum.ElementType = typ
 	enum.Comment = spec.Description
 
 	return nil
 }
 
-func (t *types) bindEnumValues(values []*EnumValueSpec) (enums []*Enum) {
+func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, error) {
+	var enums []*Enum
+
+	errorMessage := func(val interface{}, expectedType string) error {
+		return fmt.Errorf("cannot assign enum value of type '%T' to enum of type '%s'", val, expectedType)
+	}
 	for _, spec := range values {
+		switch typ {
+		case StringType:
+			if _, ok := spec.Value.(string); !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+		case IntType:
+			v, ok := spec.Value.(float64)
+			if !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+				return nil, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
+			}
+			spec.Value = int32(v)
+		case NumberType:
+			if _, ok := spec.Value.(float64); !ok {
+				return nil, errorMessage(spec.Value, typ.String())
+			}
+		case BoolType:
+			if _, ok := spec.Value.(bool); !ok {
+				return enums, errorMessage(spec.Value, typ.String())
+			}
+		default:
+			return enums, fmt.Errorf("enum values may only be of string, integer, number or boolean types")
+		}
 		enum := &Enum{
-			// TODO: check that the type of the value matches the enum type.
-			// https://github.com/pulumi/pulumi/issues/5387
 			Value:   spec.Value,
 			Comment: spec.Description,
 			Name:    spec.Name,
 		}
 		enums = append(enums, enum)
 	}
-	return
+	return enums, nil
 }
 
 func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, error) {
@@ -1218,13 +1303,14 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, err
 
 func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, error) {
 	typs := &types{
-		pkg:     pkg,
-		objects: map[string]*ObjectType{},
-		arrays:  map[Type]*ArrayType{},
-		maps:    map[Type]*MapType{},
-		unions:  map[string]*UnionType{},
-		tokens:  map[string]*TokenType{},
-		enums:   map[string]*EnumType{},
+		pkg:       pkg,
+		resources: map[string]*ResourceType{},
+		objects:   map[string]*ObjectType{},
+		arrays:    map[Type]*ArrayType{},
+		maps:      map[Type]*MapType{},
+		unions:    map[string]*UnionType{},
+		tokens:    map[string]*TokenType{},
+		enums:     map[string]*EnumType{},
 	}
 
 	// Declare object and enum types before processing properties.
@@ -1238,6 +1324,11 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 		} else if len(spec.Enum) > 0 {
 			typs.enums[token] = &EnumType{Token: token}
 		}
+	}
+
+	// Process resources.
+	for _, r := range pkg.Resources {
+		typs.resources[r.Token] = &ResourceType{Token: r.Token}
 	}
 
 	// Process properties.
@@ -1301,6 +1392,7 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		Aliases:            aliases,
 		DeprecationMessage: spec.DeprecationMessage,
 		Language:           language,
+		IsComponent:        spec.IsComponent,
 	}, nil
 }
 

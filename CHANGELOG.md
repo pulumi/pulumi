@@ -3,15 +3,25 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Do not oversimplify types for display when running an update or preview.
+  [#5440](https://github.com/pulumi/pulumi/pull/5440)
+
+- Pulumi Windows CLI now uploads all VCS information to console
+  (fixes [#5014](https://github.com/pulumi/pulumi/issues/5014))
+  [#5406](https://github.com/pulumi/pulumi/pull/5406)
+
+_(None)_
+
+## 2.10.2 (2020-09-21)
+
 - [sdk/go] Add missing Version field to invokeOptions
   [#5401](https://github.com/pulumi/pulumi/pull/5401)
 
 - Add `pulumi console` command which opens the currently selected stack in the Pulumi console.
   [#5368](https://github.com/pulumi/pulumi/pull/5368)
-
-- Pulumi Windows CLI now uploads all VCS information to console
-  (fixes [#5014](https://github.com/pulumi/pulumi/issues/5014))
-  [#5406](https://github.com/pulumi/pulumi/pull/5406)
+  
+- Python SDK: Cast numbers intended to be integers to `int`.
+  [#5419](https://github.com/pulumi/pulumi/pull/5419)
 
 ## 2.10.1 (2020-09-16)
 

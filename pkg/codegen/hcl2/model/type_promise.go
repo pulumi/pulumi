@@ -48,11 +48,15 @@ func (t *PromiseType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagno
 
 // Equals returns true if this type has the same identity as the given type.
 func (t *PromiseType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *PromiseType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 	otherPromise, ok := other.(*PromiseType)
-	return ok && t.ElementType.Equals(otherPromise.ElementType)
+	return ok && t.ElementType.equals(otherPromise.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A promise(T) is assignable
