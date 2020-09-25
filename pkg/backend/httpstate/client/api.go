@@ -141,6 +141,11 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		if err := writer.Flush(); err != nil {
 			return "", nil, errors.Wrapf(err, "flushing compressed payload")
 		}
+		// gzip.Writer will not actually write everything unless it is closed.
+		// without this, the compressed bytes do not decompress properly e.g. in python.
+		if err := writer.Close(); err != nil {
+			return "", nil, errors.Wrapf(err, "closing compressed payload")
+		}
 
 		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
 			float64(len(body))/float64(len(buf.Bytes())), len(body))
