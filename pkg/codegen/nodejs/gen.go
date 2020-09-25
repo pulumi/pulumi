@@ -489,9 +489,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	argsType := name + "Args"
 	var trailingBrace string
 	switch {
-	case r.IsProvider:
-		trailingBrace = " {"
-	case r.StateInputs == nil:
+	case r.IsProvider, r.StateInputs == nil:
 		trailingBrace = " {"
 	default:
 		trailingBrace = ""
