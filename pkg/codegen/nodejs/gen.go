@@ -802,33 +802,9 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		return false
 	}
 	seen.Add(t)
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			mod.getTypeImports(p.Type, recurse, imports, seen)
-		}
-		return true
-	case *schema.ResourceType:
-		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
-		if modName != mod.mod {
-			mp, err := filepath.Rel(mod.mod, modName)
-			contract.Assert(err == nil)
-			if path.Base(mp) == "." {
-				mp = path.Dir(mp)
-			}
-			modPath = filepath.ToSlash(mp)
-		}
-		if imports[modPath] == nil {
-			imports[modPath] = codegen.NewStringSet()
-		}
-		imports[modPath].Add(name)
-		return false
-	case *schema.TokenType:
-		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
+
+	resourceOrTokenImport := func(tok string) bool {
+		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}
@@ -845,6 +821,22 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		imports[modPath].Add(name)
 		return false
+	}
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.MapType:
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
+		return true
+	case *schema.ResourceType:
+		return resourceOrTokenImport(t.Token)
+	case *schema.TokenType:
+		return resourceOrTokenImport(t.Token)
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
