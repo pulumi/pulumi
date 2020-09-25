@@ -196,6 +196,20 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	return typ
 }
 
+func (mod *modContext) tokenToResource(tok string) string {
+	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+
+	// TODO: not sure the prefix is correct
+	pkg, nsName := "Pulumi."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
+
+	typ := pkg
+	if nsName != "" {
+		typ += "." + namespaceName(mod.namespaces, nsName)
+	}
+	return typ
+}
+
 func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
 	var typ string
 	switch t := t.(type) {
@@ -242,6 +256,13 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		case mod.details(t).functionType:
 			typ += "Result"
 		}
+	case *schema.ResourceType:
+		typ = mod.tokenToResource(t.Token)
+		if typ != "" {
+			typ += "."
+		}
+		typ += tokenToName(t.Token)
+		// TODO: do we need the switch?
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -628,13 +649,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Open the class.
 	className := name
-	baseType := "Pulumi.CustomResource"
-	if mod.isK8sCompatMode() {
+	var baseType, optionsType string
+	switch {
+	case mod.isK8sCompatMode():
 		baseType = "KubernetesResource"
+	case r.IsComponent:
+		baseType, optionsType = "Pulumi.ComponentResource", "ComponentResourceOptions"
+	case r.IsProvider:
+		baseType, optionsType = "Pulumi.ProviderResource", "CustomResourceOptions"
+	default:
+		baseType, optionsType = "Pulumi.CustomResource", "CustomResourceOptions"
 	}
-	if r.IsProvider {
-		baseType = "Pulumi.ProviderResource"
-	}
+
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
@@ -691,8 +717,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsType += "?"
 	}
 
-	optionsType := "CustomResourceOptions"
-
 	tok := r.Token
 	if r.IsProvider {
 		tok = mod.pkg.Name
@@ -718,7 +742,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        }\n")
 
 	if mod.dictionaryConstructors {
-		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, CustomResourceOptions? options = null)\n", className)
+		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, %s? options = null)\n",
+			className, optionsType)
 		fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
 		fmt.Fprintf(w, "        {\n")
 		fmt.Fprintf(w, "        }\n")
@@ -793,8 +818,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            return merged;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	// Write the `Get` method for reading instances of this resource unless this is a provider resource.
-	if !r.IsProvider {
+	// Write the `Get` method for reading instances of this resource unless this is a provider resource or ComponentResource.
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "        /// <summary>\n")
 		fmt.Fprintf(w, "        /// Get an existing %s resource's state with the given name, ID, and optional extra\n", className)
 		fmt.Fprintf(w, "        /// properties used to qualify the lookup.\n")
@@ -1007,14 +1032,13 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 	return nil
 }
 
-func (mod *modContext) genPulumiHeader(w io.Writer) {
-	mod.genHeader(w, []string{
-		"System",
-		"System.Collections.Generic",
-		"System.Collections.Immutable",
-		"System.Threading.Tasks",
-		"Pulumi.Serialization",
-	})
+// pulumiImports is a slice of common imports that are used with the genHeader method.
+var pulumiImports = []string{
+	"System",
+	"System.Collections.Generic",
+	"System.Collections.Immutable",
+	"System.Threading.Tasks",
+	"Pulumi.Serialization",
 }
 
 func (mod *modContext) genHeader(w io.Writer, using []string) {
@@ -1221,7 +1245,8 @@ func (mod *modContext) gen(fs fs) error {
 	// Resources
 	for _, r := range mod.resources {
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		// TODO: determine if this resource references any resources that need to be imported from another namespace
+		mod.genHeader(buffer, pulumiImports)
 
 		if err := mod.genResource(buffer, r); err != nil {
 			return err
@@ -1233,7 +1258,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Functions
 	for _, f := range mod.functions {
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		mod.genHeader(buffer, pulumiImports)
 
 		if err := mod.genFunction(buffer, f); err != nil {
 			return err
@@ -1246,7 +1271,7 @@ func (mod *modContext) gen(fs fs) error {
 	for _, t := range mod.types {
 		if mod.details(t).inputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
@@ -1259,7 +1284,7 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).stateType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
@@ -1272,7 +1297,7 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).outputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Outputs"))
 			fmt.Fprintf(buffer, "{\n")
