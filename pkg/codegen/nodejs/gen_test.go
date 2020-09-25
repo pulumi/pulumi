@@ -31,6 +31,8 @@ func TestGeneratePackage(t *testing.T) {
 						assert.Contains(t, string(file), "export class Resource extends pulumi.CustomResource {")
 						// Remote option not set
 						assert.NotContains(t, string(file), ", true /*remote*/);")
+						// CustomResource class contains a get method
+						assert.Contains(t, string(file), "public static get(name: string")
 					}
 					if fileName == "otherResource.ts" {
 						// Correct parent class
@@ -43,6 +45,8 @@ func TestGeneratePackage(t *testing.T) {
 						assert.Contains(t, string(file), "readonly foo?: pulumi.Input<Resource>;")
 						// Correct type for resource property
 						assert.Contains(t, string(file), "public readonly foo!: pulumi.Output<Resource | undefined>;")
+						// ComponentResource class does not contain a get method
+						assert.NotContains(t, string(file), "public static get(name: string")
 					}
 					if fileName == "argFunction.ts" {
 						// Correct import for local resource

@@ -390,7 +390,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Emit a static factory to read instances of this resource unless this is a provider resource.
 	stateType := name + "State"
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "    /**\n")
 		fmt.Fprintf(w, "     * Get an existing %s resource's state with the given name, ID, and optional extra\n", name)
 		fmt.Fprintf(w, "     * properties used to qualify the lookup.\n")
