@@ -375,14 +375,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
-	var baseType string
+	var baseType, optionsType string
 	switch {
 	case r.IsComponent:
-		baseType = "ComponentResource"
+		baseType, optionsType = "ComponentResource", "ComponentResourceOptions"
 	case r.IsProvider:
-		baseType = "ProviderResource"
+		baseType, optionsType = "ProviderResource", "ResourceOptions"
 	default:
-		baseType = "CustomResource"
+		baseType, optionsType = "CustomResource", "CustomResourceOptions"
 	}
 
 	// Begin defining the class.
@@ -409,14 +409,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
 
-		var optionsType string
-		switch {
-		case r.IsComponent:
-			optionsType = "pulumi.ComponentResourceOptions"
-		default:
-			optionsType = "pulumi.CustomResourceOptions"
-		}
-		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: %s): %s {\n", stateParam, optionsType, name)
+		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): %s {\n",
+			stateParam, optionsType, name)
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
@@ -493,15 +487,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsFlags = "?"
 	}
 	argsType := name + "Args"
-	var optionsType string
-	switch {
-	case r.IsComponent:
-		optionsType = "ComponentResourceOptions"
-	case r.IsProvider:
-		optionsType = "ResourceOptions"
-	default:
-		optionsType = "CustomResourceOptions"
-	}
 	var trailingBrace string
 	switch {
 	case r.IsProvider:
@@ -575,17 +560,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 			}
 
-			var optionsType string
-			switch {
-			case r.IsComponent:
-				optionsType = "pulumi.ComponentResourceOptions"
-			default:
-				optionsType = "pulumi.CustomResourceOptions"
-			}
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
 			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 			// conditional state into sensible variables using dynamic type tests.
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: %s) {\n",
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.%s) {\n",
 				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
