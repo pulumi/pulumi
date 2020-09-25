@@ -56,6 +56,8 @@ func TestGeneratePackage(t *testing.T) {
 						assert.Contains(t, string(file), "class Resource(pulumi.CustomResource):")
 						// Remote option not set
 						assert.NotContains(t, string(file), "remote=True)")
+						// CustomResource class contains a get method
+						assert.Contains(t, string(file), "def get(resource_name: str,")
 					}
 					if fileName == filepath.Join("pulumi_example", "other_resource.py") {
 						// Correct parent class
@@ -68,6 +70,8 @@ func TestGeneratePackage(t *testing.T) {
 						assert.Contains(t, string(file), "foo: Optional[pulumi.Input['Resource']] = None,")
 						// Correct type for resource property
 						assert.Contains(t, string(file), "def foo(self) -> pulumi.Output[Optional['Resource']]:")
+						// ComponentResource class does not contain a get method
+						assert.NotContains(t, string(file), "def get(resource_name: str,")
 					}
 					if fileName == filepath.Join("pulumi_example", "arg_function.py") {
 						// Correct type for function arg

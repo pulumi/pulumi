@@ -907,7 +907,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 	fmt.Fprintf(w, "\n")
 
-	if !res.IsProvider {
+	if !res.IsProvider && !res.IsComponent {
 		fmt.Fprintf(w, "    @staticmethod\n")
 		fmt.Fprintf(w, "    def get(resource_name: str,\n")
 		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
