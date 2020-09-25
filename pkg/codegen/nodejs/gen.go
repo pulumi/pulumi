@@ -96,45 +96,35 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
+func (mod *modContext) tokenToModName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
+	modName := mod.pkg.TokenToModule(tok)
 	if override, ok := mod.modToPkg[modName]; ok {
 		modName = override
 	}
+
+	if modName != "" {
+		modName = strings.Replace(modName, "/", ".", -1) + "."
+	}
+
+	return modName
+}
+
+func (mod *modContext) tokenToType(tok string, input bool) string {
+	modName, name := mod.tokenToModName(tok), tokenToName(tok)
 
 	root := "outputs."
 	if input {
 		root = "inputs."
 	}
 
-	if modName != "" {
-		modName = strings.Replace(modName, "/", ".", -1) + "."
-	}
-
 	return root + modName + title(name)
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-
-	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
-	if override, ok := mod.modToPkg[modName]; ok {
-		modName = override
-	}
-
-	if modName != "" {
-		modName = strings.Replace(modName, "/", ".", -1) + "."
-	}
+	modName, name := mod.tokenToModName(tok), tokenToName(tok)
 
 	return modName + title(name)
 }
