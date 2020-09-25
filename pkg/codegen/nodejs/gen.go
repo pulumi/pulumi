@@ -388,7 +388,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Begin defining the class.
 	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", name, baseType)
 
-	// Emit a static factory to read instances of this resource unless this is a provider resource.
+	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
 	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "    /**\n")
