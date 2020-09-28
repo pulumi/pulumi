@@ -9,7 +9,7 @@ FROM ${PULUMI_IMAGE}:${PULUMI_VERSION} as pulumi
 FROM ubuntu:bionic AS builder
 
 # Set go versions
-ARG RUNTIME_VERSION=1.14.9
+ARG RUNTIME_VERSION=1.15.2
 
 WORKDIR /golang
 RUN apt-get update -y && \

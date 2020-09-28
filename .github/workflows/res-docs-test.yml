@@ -7,6 +7,9 @@ on:
       - 'pkg/codegen/docs/docs_test.go'
       - '.github/workflows/res-docs-test.yml'
 
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+
 jobs:
   aws:
     name: Resource Docs
@@ -23,7 +26,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.14.x
+          go-version: 1.15.x
       - name: Add GOBIN to PATH
         run: |
           mkdir -p "$(go env GOPATH)/bin"
@@ -34,7 +37,10 @@ jobs:
           node-version: '12.x'
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
-
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        with:
+          repo: pulumi/pulumictl
       - name: Check out source code
         uses: actions/checkout@master
         with:
