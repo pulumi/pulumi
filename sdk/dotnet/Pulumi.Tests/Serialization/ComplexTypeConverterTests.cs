@@ -22,11 +22,12 @@ namespace Pulumi.Tests.Serialization
             public readonly double D;
             public readonly ImmutableArray<bool> Array;
             public readonly ImmutableDictionary<string, int> Dict;
+            public readonly object Obj;
 
             [OutputConstructor]
             public ComplexType1(
                 string s, bool b, int i, double d,
-                ImmutableArray<bool> array, ImmutableDictionary<string, int> dict)
+                ImmutableArray<bool> array, ImmutableDictionary<string, int> dict, object obj)
             {
                 S = s;
                 B = b;
@@ -34,6 +35,7 @@ namespace Pulumi.Tests.Serialization
                 D = d;
                 Array = array;
                 Dict = dict;
+                Obj = obj;
             }
         }
 
@@ -48,6 +50,7 @@ namespace Pulumi.Tests.Serialization
                 { "d", 1.5 },
                 { "array", new List<object> { true, false } },
                 { "dict", new Dictionary<object, object> { { "k", 10 } } },
+                { "obj", "test" }
             }));
 
             Assert.Equal("str", data.Value.S);
@@ -56,6 +59,7 @@ namespace Pulumi.Tests.Serialization
             Assert.Equal(1.5, data.Value.D);
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true).Add(false), data.Value.Array);
             AssertEx.MapEqual(ImmutableDictionary<string, int>.Empty.Add("k", 10), data.Value.Dict);
+            Assert.Equal("test", data.Value.Obj);
 
             Assert.True(data.IsKnown);
         }
@@ -98,6 +102,7 @@ namespace Pulumi.Tests.Serialization
                         { "d", 1.1 },
                         { "array", new List<object> { false, false } },
                         { "dict", new Dictionary<object, object> { { "k", 1 } } },
+                        { "obj", 50.0 },
                     }
                 },
                 {
@@ -112,6 +117,7 @@ namespace Pulumi.Tests.Serialization
                             { "d", 2.2 },
                             { "array", new List<object> { false, true } },
                             { "dict", new Dictionary<object, object> { { "k", 2 } } },
+                            { "obj", true },
                         }
                     }
                 },
@@ -129,6 +135,7 @@ namespace Pulumi.Tests.Serialization
                                 { "d", 3.3 },
                                 { "array", new List<object> { true, false } },
                                 { "dict", new Dictionary<object, object> { { "k", 3 } } },
+                                { "obj", new Dictionary<object, object> { { "o", 5.5 } } },
                             }
                         }
                     }
@@ -142,6 +149,7 @@ namespace Pulumi.Tests.Serialization
             Assert.Equal(1.1, value.D);
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(false).Add(false), value.Array);
             AssertEx.MapEqual(ImmutableDictionary<string, int>.Empty.Add("k", 1), value.Dict);
+            Assert.Equal(50.0, value.Obj);
 
             Assert.Single(data.C2Array);
             value = data.C2Array[0];
@@ -151,6 +159,7 @@ namespace Pulumi.Tests.Serialization
             Assert.Equal(2.2, value.D);
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(false).Add(true), value.Array);
             AssertEx.MapEqual(ImmutableDictionary<string, int>.Empty.Add("k", 2), value.Dict);
+            Assert.Equal(true, value.Obj);
 
             Assert.Single(data.C2Map);
             var (key, val) = data.C2Map.Single();
@@ -163,6 +172,7 @@ namespace Pulumi.Tests.Serialization
             Assert.Equal(3.3, value.D);
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true).Add(false), value.Array);
             AssertEx.MapEqual(ImmutableDictionary<string, int>.Empty.Add("k", 3), value.Dict);
+            AssertEx.MapEqual(ImmutableDictionary<string, object>.Empty.Add("o", 5.5), (IDictionary<string, object>)value.Obj);
         }
 
         #endregion
