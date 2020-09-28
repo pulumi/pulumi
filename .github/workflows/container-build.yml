@@ -3,7 +3,6 @@ on:
   repository_dispatch:
     types:
       - docker-build
-      - 
 env:
   VERSION: ${{ github.event.client_payload.ref }}
 
