@@ -86,6 +86,9 @@ namespace Pulumi.Serialization
                 return ((int)d, exception);
             }
 
+            if (targetType == typeof(object))
+                return (val, null);
+
             if (targetType == typeof(Asset))
                 return TryEnsureType<Asset>(context, val);
 
@@ -310,6 +313,7 @@ namespace Pulumi.Serialization
                 targetType == typeof(int) ||
                 targetType == typeof(double) ||
                 targetType == typeof(string) ||
+                targetType == typeof(object) ||
                 targetType == typeof(Asset) ||
                 targetType == typeof(Archive) ||
                 targetType == typeof(AssetOrArchive) ||

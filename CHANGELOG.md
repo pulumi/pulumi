@@ -10,6 +10,10 @@ CHANGELOG
   (fixes [#5014](https://github.com/pulumi/pulumi/issues/5014))
   [#5406](https://github.com/pulumi/pulumi/pull/5406)
 
+- .NET SDK: Support `Output<object>` for resource output properties
+  (fixes [#5446](https://github.com/pulumi/pulumi/issues/5446))
+  [#5465](https://github.com/pulumi/pulumi/pull/5465)
+
 _(None)_
 
 ## 2.10.2 (2020-09-21)
