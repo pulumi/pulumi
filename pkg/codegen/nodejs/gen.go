@@ -41,6 +41,7 @@ type typeDetails struct {
 	outputType   bool
 	inputType    bool
 	functionType bool
+	enumType     bool
 }
 
 func title(s string) string {
@@ -71,6 +72,7 @@ type modContext struct {
 	pkg              *schema.Package
 	mod              string
 	types            []*schema.ObjectType
+	enums            []*schema.EnumType
 	resources        []*schema.Resource
 	functions        []*schema.Function
 	typeDetails      map[*schema.ObjectType]*typeDetails
@@ -112,9 +114,12 @@ func (mod *modContext) tokenToModName(tok string) string {
 	return modName
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
+func (mod *modContext) tokenToType(tok string, input, enum bool) string {
 	modName, name := mod.tokenToModName(tok), tokenToName(tok)
 
+	if enum {
+		return "enums." + modName + title(name)
+	}
 	root := "outputs."
 	if input {
 		root = "inputs."
@@ -149,12 +154,14 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.tokenToType(t.Token, input, true)
 	case *schema.ArrayType:
 		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
 	case *schema.MapType:
 		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input)
+		typ = mod.tokenToType(t.Token, input, false)
 	case *schema.ResourceType:
 		typ = mod.tokenToResource(t.Token)
 	case *schema.TokenType:
@@ -987,6 +994,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	if nested {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
+		imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enum\";", relRoot))
 	}
 	if utilities {
 		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
@@ -995,28 +1003,31 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	return imports
 }
 
-func (mod *modContext) genTypes() (string, string) {
+func (mod *modContext) genTypes() (string, string, string) {
 	imports := map[string]codegen.StringSet{}
 	for _, t := range mod.types {
 		mod.getImports(t, imports)
 	}
 
-	inputs, outputs := &bytes.Buffer{}, &bytes.Buffer{}
+	inputs, outputs, enums := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 
 	mod.genHeader(inputs, mod.sdkImports(true, false), imports)
 	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
+	mod.genHeader(enums, mod.sdkImports(false, false), imports)
 
 	// Build a namespace tree out of the types, then emit them.
 	namespaces := mod.getNamespaces()
-	mod.genNamespace(inputs, namespaces[""], true, 0)
-	mod.genNamespace(outputs, namespaces[""], false, 0)
+	mod.genNamespace(inputs, namespaces[""], true, false, 0)
+	mod.genNamespace(outputs, namespaces[""], false, false, 0)
+	mod.genNamespace(enums, namespaces[""], false, true, 0)
 
-	return inputs.String(), outputs.String()
+	return inputs.String(), outputs.String(), enums.String()
 }
 
 type namespace struct {
 	name     string
 	types    []*schema.ObjectType
+	enums    []*schema.EnumType
 	children []*namespace
 }
 
@@ -1047,18 +1058,28 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 	}
 
 	for _, t := range mod.types {
-		modName := mod.pkg.TokenToModule(t.Token)
-		if override, ok := mod.modToPkg[modName]; ok {
-			modName = override
-		}
+		modName := mod.getModName(t.Token)
 		ns := getNamespace(modName)
 		ns.types = append(ns.types, t)
+	}
+	for _, e := range mod.enums {
+		modName := mod.getModName(e.Token)
+		ns := getNamespace(modName)
+		ns.enums = append(ns.enums, e)
 	}
 
 	return namespaces
 }
 
-func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) {
+func (mod *modContext) getModName(token string) string {
+	modName := mod.pkg.TokenToModule(token)
+	if override, ok := mod.modToPkg[modName]; ok {
+		modName = override
+	}
+	return modName
+}
+
+func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	sort.Slice(ns.types, func(i, j int) bool {
@@ -1072,16 +1093,60 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 			}
 		}
 	}
+	for i, e := range ns.enums {
+		if enum {
+			mod.genEnum(w, e, level)
+			if i != len(ns.enums)-1 {
+				fmt.Fprintf(w, "\n")
+			}
+		}
+	}
 
 	sort.Slice(ns.children, func(i, j int) bool {
 		return ns.children[i].name < ns.children[j].name
 	})
 	for i, child := range ns.children {
 		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, child.name)
-		mod.genNamespace(w, child, input, level+1)
+		mod.genNamespace(w, child, input, enum, level+1)
 		fmt.Fprintf(w, "%s}\n", indent)
 		if i != len(ns.children)-1 {
 			fmt.Fprintf(w, "\n")
+		}
+	}
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
+	indent := strings.Repeat("    ", level)
+
+	enumName := tokenToName(enum.Token)
+	for _, e := range enum.Elements {
+		if e.Name == "" {
+			e.Name = makeValidIdentifier(fmt.Sprintf("%v", e.Value))
+		}
+		if e.Comment != "" {
+			fmt.Fprintf(w, "/** %s */\n", e.Comment)
+		}
+		fmt.Fprintf(w, "export const %[1]s%[2]s: %[2]s = ", e.Name, enumName)
+		if val, ok := e.Value.(string); ok {
+			fmt.Fprintf(w, "\"%v\";\n", val)
+		} else {
+			fmt.Fprintf(w, "%v;\n", e.Value)
+		}
+	}
+	fmt.Fprintf(w, "\n")
+
+	fmt.Fprintf(w, "%sexport type %s = ", indent, enumName)
+	for i, e := range enum.Elements {
+		if val, ok := e.Value.(string); ok {
+			fmt.Fprintf(w, "\"%v\"", val)
+		} else {
+			fmt.Fprintf(w, "%v", e.Value)
+		}
+
+		if i == len(enum.Elements)-1 {
+			fmt.Fprintf(w, ";\n")
+		} else {
+			fmt.Fprintf(w, " | ")
 		}
 	}
 }
@@ -1194,9 +1259,10 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Nested types
 	if len(mod.types) > 0 {
-		input, output := mod.genTypes()
+		input, output, enum := mod.genTypes()
 		fs.add(path.Join(modDir, "input.ts"), []byte(input))
 		fs.add(path.Join(modDir, "output.ts"), []byte(output))
+		fs.add(path.Join(modDir, "enum.ts"), []byte(enum))
 	}
 
 	// Index
@@ -1518,14 +1584,19 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 
 	// Create the types module.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			types.types = append(types.types, obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			types.types = append(types.types, typ)
+		case *schema.EnumType:
+			types.enums = append(types.enums, typ)
+		default:
+			continue
 		}
 	}
-	if len(types.types) > 0 {
-		typeDetails, typeList := types.typeDetails, types.types
+	if len(types.types) > 0 || len(types.enums) > 0 {
+		typeDetails, typeList, enumList := types.typeDetails, types.types, types.enums
 		types = getMod("types")
-		types.typeDetails, types.types = typeDetails, typeList
+		types.typeDetails, types.types, types.enums = typeDetails, typeList, enumList
 	}
 
 	// Add Typescript source files to the corresponding modules. Note that we only add the file names; the contents are
