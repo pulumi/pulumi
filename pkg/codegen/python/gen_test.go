@@ -44,7 +44,7 @@ func TestGeneratePackage(t *testing.T) {
 	}{
 		{
 			"Simple schema with local resource properties",
-			"simple-resource-schema.json",
+			"simple-resource-schema/schema.json",
 			false,
 			func(files map[string][]byte) {
 				assert.Contains(t, files, filepath.Join("pulumi_example", "resource.py"))
