@@ -37,60 +37,45 @@ func TestRelPathToRelImport(t *testing.T) {
 
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
-		name       string
-		schemaFile string
-		wantErr    bool
-		validator  func(files map[string][]byte)
+		name          string
+		schemaDir     string
+		expectedFiles []string
+		wantErr       bool
+		validator     func(files, expectedFiles map[string][]byte)
 	}{
 		{
 			"Simple schema with local resource properties",
-			"simple-resource-schema.json",
+			"simple-resource-schema",
+			[]string{
+				filepath.Join("pulumi_example", "resource.py"),
+				filepath.Join("pulumi_example", "other_resource.py"),
+				filepath.Join("pulumi_example", "arg_function.py"),
+			},
 			false,
-			func(files map[string][]byte) {
-				assert.Contains(t, files, filepath.Join("pulumi_example", "resource.py"))
-				assert.Contains(t, files, filepath.Join("pulumi_example", "other_resource.py"))
-
-				for fileName, file := range files {
-					if fileName == filepath.Join("pulumi_example", "resource.py") {
-						// Correct parent class
-						assert.Contains(t, string(file), "class Resource(pulumi.CustomResource):")
-						// Remote option not set
-						assert.NotContains(t, string(file), "remote=True)")
-						// CustomResource class contains a get method
-						assert.Contains(t, string(file), "def get(resource_name: str,")
-					}
-					if fileName == filepath.Join("pulumi_example", "other_resource.py") {
-						// Correct parent class
-						assert.Contains(t, string(file), "class OtherResource(pulumi.ComponentResource):")
-						// Remote resource option is set
-						assert.Contains(t, string(file), "remote=True)")
-						// Correct import for local resource
-						assert.Contains(t, string(file), "from . import Resource")
-						// Correct type for resource input property
-						assert.Contains(t, string(file), "foo: Optional[pulumi.Input['Resource']] = None,")
-						// Correct type for resource property
-						assert.Contains(t, string(file), "def foo(self) -> pulumi.Output[Optional['Resource']]:")
-						// ComponentResource class does not contain a get method
-						assert.NotContains(t, string(file), "def get(resource_name: str,")
-					}
-					if fileName == filepath.Join("pulumi_example", "arg_function.py") {
-						// Correct type for function arg
-						assert.Contains(t, string(file), "arg1: Optional['Resource'] = None")
-						// Correct result type for resource ref
-						assert.Contains(t, string(file), "if result and not isinstance(result, Resource):")
-						// Correct type for result property
-						assert.Contains(t, string(file), "def result(self) -> Optional['Resource']:")
-					}
+			func(files, expectedFiles map[string][]byte) {
+				for name, file := range expectedFiles {
+					assert.Contains(t, files, name)
+					assert.Equal(t, file, files[name])
 				}
 			},
 		},
 	}
+
+	testDir := filepath.Join("..", "internal", "test", "testdata")
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Read in, decode, and import the schema.
-			schemaBytes, err := ioutil.ReadFile(
-				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+			schemaBytes, err := ioutil.ReadFile(filepath.Join(testDir, tt.schemaDir, "schema.json"))
 			assert.NoError(t, err)
+
+			expectedFiles := map[string][]byte{}
+			for _, file := range tt.expectedFiles {
+				fileBytes, err := ioutil.ReadFile(filepath.Join(testDir, tt.schemaDir, file))
+				assert.NoError(t, err)
+
+				expectedFiles[file] = fileBytes
+			}
 
 			var pkgSpec schema.PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
@@ -106,7 +91,7 @@ func TestGeneratePackage(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			tt.validator(files)
+			tt.validator(files, expectedFiles)
 		})
 	}
 }
