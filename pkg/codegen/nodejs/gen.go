@@ -41,7 +41,6 @@ type typeDetails struct {
 	outputType   bool
 	inputType    bool
 	functionType bool
-	enumType     bool
 }
 
 func title(s string) string {
