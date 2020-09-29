@@ -1131,7 +1131,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 		}
 		fmt.Fprintf(w, "%[1]sexport const %[2]s%[3]s: %[3]s = ", indent, e.Name, enumName)
 		if val, ok := e.Value.(string); ok {
-			fmt.Fprintf(w, "\"%v\";\n", val)
+			fmt.Fprintf(w, "%q;\n", val)
 		} else {
 			fmt.Fprintf(w, "%v;\n", e.Value)
 		}

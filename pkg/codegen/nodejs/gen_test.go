@@ -26,46 +26,18 @@ func TestGeneratePackage(t *testing.T) {
 		},
 		{
 			"Simple schema with enum types",
-			filepath.Join("schema", "simple-enum-schema.json"),
+			"simple-enum-schema",
+			[]string{
+				"rubberTree.ts",
+				"types/input.ts",
+				"types/enums.ts",
+				"types/index.ts",
+			},
 			false,
-			func(files map[string][]byte) {
-				assert.Contains(t, files, "rubberTree.ts")
-				assert.Contains(t, files, "types/input.ts")
-				assert.Contains(t, files, "types/enums.ts")
-				assert.Contains(t, files, "types/index.ts")
-
-				for fileName, file := range files {
-					if fileName == "rubberTree.ts" {
-						// Import for enums
-						assert.Contains(t, string(file), `import * as enums from "./types/enums";`)
-						// Correct references to enum types
-						assert.Contains(t, string(file), "readonly type?: pulumi.Input<enums.RubberTreeVariety>;")
-						// Correct references to object types
-						assert.Contains(t, string(file), "readonly container?: pulumi.Input<inputs.Container>;")
-					}
-					if fileName == "types/input.ts" {
-						// Import for enums
-						assert.Contains(t, string(file), `import * as enums from "../types/enums";`)
-						// Correct references to enum types
-						assert.Contains(t, string(file), "color?: pulumi.Input<enums.ContainerColor | string>;")
-						assert.Contains(t, string(file), "size: pulumi.Input<enums.ContainerSize>;")
-					}
-					if fileName == "types/enum.ts" {
-						// Correct string enum definitions
-						assert.Contains(t, string(file), `export const redContainerColor: ContainerColor = "red";`)
-						assert.Contains(t, string(file), `export type ContainerColor = "red" | "blue" | "yellow";`)
-						// Correct integer enum definitions
-						assert.Contains(t, string(file), "export const FourInchContainerSize: ContainerSize = 4;")
-						assert.Contains(t, string(file), "export type ContainerSize = 4 | 6 | 8;")
-						// Correct enum with docstring
-						assert.Contains(t, string(file), "/** A burgundy rubber tree. */\nexport const BurgundyRubberTreeVariety: RubberTreeVariety = \"Burgundy\";")
-						assert.Contains(t, string(file), `export type RubberTreeVariety = "Burgundy" | "Ruby" | "Tineke";`)
-					}
-					if fileName == "types/index.ts" {
-						// Enums export
-						assert.Contains(t, string(file), `import * as enums from "./enums";`)
-						assert.Contains(t, string(file), "export {enums, input, output};")
-					}
+			func(files, expectedFiles map[string][]byte) {
+				for name, file := range expectedFiles {
+					assert.Contains(t, files, name)
+					assert.Equal(t, file, files[name])
 				}
 			},
 		},
