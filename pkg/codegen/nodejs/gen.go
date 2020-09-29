@@ -1085,19 +1085,23 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool
 	sort.Slice(ns.types, func(i, j int) bool {
 		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
 	})
-	for i, t := range ns.types {
-		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
-			mod.genType(w, t, input, level)
-			if i != len(ns.types)-1 {
-				fmt.Fprintf(w, "\n")
-			}
-		}
-	}
-	for i, e := range ns.enums {
-		if enum {
+	sort.Slice(ns.enums, func(i, j int) bool {
+		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
+	})
+	if enum {
+		for i, e := range ns.enums {
 			mod.genEnum(w, e, level)
 			if i != len(ns.enums)-1 {
 				fmt.Fprintf(w, "\n")
+			}
+		}
+	} else {
+		for i, t := range ns.types {
+			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+				mod.genType(w, t, input, level)
+				if i != len(ns.types)-1 {
+					fmt.Fprintf(w, "\n")
+				}
 			}
 		}
 	}
@@ -1124,9 +1128,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 			e.Name = makeValidIdentifier(fmt.Sprintf("%v", e.Value))
 		}
 		if e.Comment != "" {
-			fmt.Fprintf(w, "/** %s */\n", e.Comment)
+			fmt.Fprintf(w, "%s/** %s */\n", indent, e.Comment)
 		}
-		fmt.Fprintf(w, "export const %[1]s%[2]s: %[2]s = ", e.Name, enumName)
+		fmt.Fprintf(w, "%[1]sexport const %[2]s%[3]s: %[3]s = ", indent, e.Name, enumName)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "\"%v\";\n", val)
 		} else {
