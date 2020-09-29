@@ -993,7 +993,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	if nested {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
-		imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enum\";", relRoot))
+		imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enums\";", relRoot))
 	}
 	if utilities {
 		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
@@ -1265,7 +1265,7 @@ func (mod *modContext) gen(fs fs) error {
 		input, output, enum := mod.genTypes()
 		fs.add(path.Join(modDir, "input.ts"), []byte(input))
 		fs.add(path.Join(modDir, "output.ts"), []byte(output))
-		fs.add(path.Join(modDir, "enum.ts"), []byte(enum))
+		fs.add(path.Join(modDir, "enums.ts"), []byte(enum))
 	}
 
 	// Index
@@ -1309,7 +1309,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	if len(mod.types) > 0 {
 		children.Add("input")
 		children.Add("output")
-		children.Add("enum")
+		children.Add("enums")
 	}
 
 	// Finally, if there are submodules, export them.

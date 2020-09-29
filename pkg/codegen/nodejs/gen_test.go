@@ -31,13 +31,13 @@ func TestGeneratePackage(t *testing.T) {
 			func(files map[string][]byte) {
 				assert.Contains(t, files, "rubberTree.ts")
 				assert.Contains(t, files, "types/input.ts")
-				assert.Contains(t, files, "types/enum.ts")
+				assert.Contains(t, files, "types/enums.ts")
 				assert.Contains(t, files, "types/index.ts")
 
 				for fileName, file := range files {
 					if fileName == "rubberTree.ts" {
 						// Import for enums
-						assert.Contains(t, string(file), `import * as enums from "./types/enum";`)
+						assert.Contains(t, string(file), `import * as enums from "./types/enums";`)
 						// Correct references to enum types
 						assert.Contains(t, string(file), "readonly type?: pulumi.Input<enums.RubberTreeVariety>;")
 						// Correct references to object types
@@ -45,7 +45,7 @@ func TestGeneratePackage(t *testing.T) {
 					}
 					if fileName == "types/input.ts" {
 						// Import for enums
-						assert.Contains(t, string(file), `import * as enums from "../types/enum";`)
+						assert.Contains(t, string(file), `import * as enums from "../types/enums";`)
 						// Correct references to enum types
 						assert.Contains(t, string(file), "color?: pulumi.Input<enums.ContainerColor | string>;")
 						assert.Contains(t, string(file), "size: pulumi.Input<enums.ContainerSize>;")
@@ -63,8 +63,8 @@ func TestGeneratePackage(t *testing.T) {
 					}
 					if fileName == "types/index.ts" {
 						// Enums export
-						assert.Contains(t, string(file), `import * as enum from "./enum";`)
-						assert.Contains(t, string(file), "export {enum, input, output};")
+						assert.Contains(t, string(file), `import * as enums from "./enums";`)
+						assert.Contains(t, string(file), "export {enums, input, output};")
 					}
 				}
 			},
