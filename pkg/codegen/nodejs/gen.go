@@ -1309,6 +1309,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	if len(mod.types) > 0 {
 		children.Add("input")
 		children.Add("output")
+		children.Add("enum")
 	}
 
 	// Finally, if there are submodules, export them.

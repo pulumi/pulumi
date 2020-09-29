@@ -32,6 +32,7 @@ func TestGeneratePackage(t *testing.T) {
 				assert.Contains(t, files, "rubberTree.ts")
 				assert.Contains(t, files, "types/input.ts")
 				assert.Contains(t, files, "types/enum.ts")
+				assert.Contains(t, files, "types/index.ts")
 
 				for fileName, file := range files {
 					if fileName == "rubberTree.ts" {
@@ -59,6 +60,11 @@ func TestGeneratePackage(t *testing.T) {
 						// Correct enum with docstring
 						assert.Contains(t, string(file), "/** A burgundy rubber tree. */\nexport const BurgundyRubberTreeVariety: RubberTreeVariety = \"Burgundy\";")
 						assert.Contains(t, string(file), `export type RubberTreeVariety = "Burgundy" | "Ruby" | "Tineke";`)
+					}
+					if fileName == "types/index.ts" {
+						// Enums export
+						assert.Contains(t, string(file), `import * as enum from "./enum";`)
+						assert.Contains(t, string(file), "export {enum, input, output};")
 					}
 				}
 			},
