@@ -12,60 +12,44 @@ import (
 
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
-		name       string
-		schemaFile string
-		wantErr    bool
-		validator  func(files map[string][]byte)
+		name          string
+		schemaDir     string
+		expectedFiles []string
+		wantErr       bool
+		validator     func(files, expectedFiles map[string][]byte)
 	}{
 		{
 			"Simple schema with local resource properties",
-			"simple-resource-schema.json",
+			"simple-resource-schema",
+			[]string{
+				"resource.ts",
+				"otherResource.ts",
+				"argFunction.ts",
+			},
 			false,
-			func(files map[string][]byte) {
-				assert.Contains(t, files, "resource.ts")
-				assert.Contains(t, files, "otherResource.ts")
-
-				for fileName, file := range files {
-					if fileName == "resource.ts" {
-						// Correct parent class
-						assert.Contains(t, string(file), "export class Resource extends pulumi.CustomResource {")
-						// Remote option not set
-						assert.NotContains(t, string(file), ", true /*remote*/);")
-						// CustomResource class contains a get method
-						assert.Contains(t, string(file), "public static get(name: string")
-					}
-					if fileName == "otherResource.ts" {
-						// Correct parent class
-						assert.Contains(t, string(file), "export class OtherResource extends pulumi.ComponentResource {")
-						// Remote resource option is set
-						assert.Contains(t, string(file), "super(OtherResource.__pulumiType, name, inputs, opts, true /*remote*/);")
-						// Correct import for local resource
-						assert.Contains(t, string(file), `import {Resource} from "./index";`)
-						// Correct type for resource input property
-						assert.Contains(t, string(file), "readonly foo?: pulumi.Input<Resource>;")
-						// Correct type for resource property
-						assert.Contains(t, string(file), "public readonly foo!: pulumi.Output<Resource | undefined>;")
-						// ComponentResource class does not contain a get method
-						assert.NotContains(t, string(file), "public static get(name: string")
-					}
-					if fileName == "argFunction.ts" {
-						// Correct import for local resource
-						assert.Contains(t, string(file), `import {Resource} from "./index";`)
-						// Correct type for function arg
-						assert.Contains(t, string(file), "readonly arg1?: Resource;")
-						// Correct type for result
-						assert.Contains(t, string(file), "readonly result?: Resource;")
-					}
+			func(files, expectedFiles map[string][]byte) {
+				for name, file := range expectedFiles {
+					assert.Contains(t, files, name)
+					assert.Equal(t, file, files[name])
 				}
 			},
 		},
 	}
+	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Read in, decode, and import the schema.
 			schemaBytes, err := ioutil.ReadFile(
-				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+				filepath.Join(testDir, tt.schemaDir, "schema.json"))
 			assert.NoError(t, err)
+
+			expectedFiles := map[string][]byte{}
+			for _, file := range tt.expectedFiles {
+				fileBytes, err := ioutil.ReadFile(filepath.Join(testDir, tt.schemaDir, file))
+				assert.NoError(t, err)
+
+				expectedFiles[file] = fileBytes
+			}
 
 			var pkgSpec schema.PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
@@ -81,7 +65,7 @@ func TestGeneratePackage(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			tt.validator(files)
+			tt.validator(files, expectedFiles)
 		})
 	}
 }

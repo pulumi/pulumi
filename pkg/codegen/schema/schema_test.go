@@ -129,7 +129,7 @@ func TestImportResourceRef(t *testing.T) {
 	}{
 		{
 			"valid",
-			"simple-resource-schema.json",
+			"simple-resource-schema/schema.json",
 			false,
 			func(pkg *Package) {
 				for _, r := range pkg.Resources {
