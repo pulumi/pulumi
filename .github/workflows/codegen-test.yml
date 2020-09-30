@@ -4,8 +4,9 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '.github/workflows/codegen-test.yml'
+
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
 
 jobs:
   downstream-aws:
@@ -27,7 +28,7 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
