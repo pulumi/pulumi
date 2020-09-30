@@ -1575,7 +1575,14 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// a package.json being emitted in the project directory and `yarn install && yarn link @pulumi/pulumi`
 	// being run.
 	// When the underlying issue has been fixed, the use of this environment variable should be removed.
-	if os.Getenv("PULUMI_TEST_YARN_LINK_PULUMI") != "" {
+	var yarnLinkPulumi bool
+	for _, env := range pt.opts.Env {
+		if env == "PULUMI_TEST_YARN_LINK_PULUMI=true" {
+			yarnLinkPulumi = true
+			break
+		}
+	}
+	if yarnLinkPulumi {
 		const packageJSON = `{
 			"name": "test",
 			"peerDependencies": {

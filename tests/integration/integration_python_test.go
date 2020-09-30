@@ -355,11 +355,11 @@ func TestConstructPython(t *testing.T) {
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	os.Setenv("PULUMI_TEST_YARN_LINK_PULUMI", "true")
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv},
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
