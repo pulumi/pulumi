@@ -8,6 +8,15 @@ before:
     - cd sdk && go mod download
     - cd pkg && go mod tidy
     - cd pkg && go mod download
+blobs:
+- bucket: get.pulumi.com
+  folder: releases/sdk/
+  ids:
+    - pulumi-unix
+  provider: s3
+  region: us-west-2
+changelog:
+  skip: true
 builds:
 # UNIX builds
 - id: pulumi-unix
@@ -119,6 +128,7 @@ builds:
 #  main: ./go/pulumi-language-go
 archives:
 - id: pulumi-unix
+  wrap_in_directory: "pulumi"
   builds:
     - pulumi-language-dotnet-unix
     - pulumi-language-go-unix
@@ -135,6 +145,7 @@ archives:
     - sdk/python/cmd/pulumi-language-python-exec
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 #- id: pulumi-windows
+#  wrap_in_directory: true
 #  builds:
 #    - pulumi-language-dotnet-windows
 #    - pulumi-language-go-windows
