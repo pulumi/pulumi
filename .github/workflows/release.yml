@@ -23,7 +23,7 @@ jobs:
     needs: publish-sdks
     steps:
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
       - name: Set version
