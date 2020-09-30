@@ -96,28 +96,37 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
+func (mod *modContext) tokenToModName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
+	modName := mod.pkg.TokenToModule(tok)
 	if override, ok := mod.modToPkg[modName]; ok {
 		modName = override
-	}
-
-	root := "outputs."
-	if input {
-		root = "inputs."
 	}
 
 	if modName != "" {
 		modName = strings.Replace(modName, "/", ".", -1) + "."
 	}
 
+	return modName
+}
+
+func (mod *modContext) tokenToType(tok string, input bool) string {
+	modName, name := mod.tokenToModName(tok), tokenToName(tok)
+
+	root := "outputs."
+	if input {
+		root = "inputs."
+	}
+
 	return root + modName + title(name)
+}
+
+func (mod *modContext) tokenToResource(tok string) string {
+	modName, name := mod.tokenToModName(tok), tokenToName(tok)
+
+	return modName + title(name)
 }
 
 func tokenToName(tok string) string {
@@ -146,6 +155,8 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
 	case *schema.ObjectType:
 		typ = mod.tokenToType(t.Token, input)
+	case *schema.ResourceType:
+		typ = mod.tokenToResource(t.Token)
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
@@ -335,7 +346,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, "{ ")
 
-	parts := []string{}
+	var parts []string
 	if alias.Name != nil {
 		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
 	}
@@ -364,17 +375,22 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
-	baseType := "CustomResource"
-	if r.IsProvider {
-		baseType = "ProviderResource"
+	var baseType, optionsType string
+	switch {
+	case r.IsComponent:
+		baseType, optionsType = "ComponentResource", "ComponentResourceOptions"
+	case r.IsProvider:
+		baseType, optionsType = "ProviderResource", "ResourceOptions"
+	default:
+		baseType, optionsType = "CustomResource", "CustomResourceOptions"
 	}
 
 	// Begin defining the class.
 	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", name, baseType)
 
-	// Emit a static factory to read instances of this resource unless this is a provider resource.
+	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "    /**\n")
 		fmt.Fprintf(w, "     * Get an existing %s resource's state with the given name, ID, and optional extra\n", name)
 		fmt.Fprintf(w, "     * properties used to qualify the lookup.\n")
@@ -393,7 +409,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
 
-		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.CustomResourceOptions): %s {\n", stateParam, name)
+		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): %s {\n",
+			stateParam, optionsType, name)
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
@@ -470,12 +487,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsFlags = "?"
 	}
 	argsType := name + "Args"
-	trailingBrace, optionsType := "", "CustomResourceOptions"
-	if r.IsProvider {
-		trailingBrace, optionsType = " {", "ResourceOptions"
-	}
-	if r.StateInputs == nil {
+	var trailingBrace string
+	switch {
+	case r.IsProvider, r.StateInputs == nil:
 		trailingBrace = " {"
+	default:
+		trailingBrace = ""
 	}
 
 	if r.DeprecationMessage != "" {
@@ -540,11 +557,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			if r.DeprecationMessage != "" {
 				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 			}
+
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
 			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 			// conditional state into sensible variables using dynamic type tests.
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
-				argsType, stateType)
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.%s) {\n",
+				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
@@ -628,7 +646,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
 	}
 
-	fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts, true /*remote*/);\n", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	}
 
 	// Finish the class.
 	fmt.Fprintf(w, "    }\n")
@@ -779,15 +802,9 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		return false
 	}
 	seen.Add(t)
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.ObjectType:
-		return true
-	case *schema.TokenType:
-		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
+
+	resourceOrTokenImport := func(tok string) bool {
+		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}
@@ -804,6 +821,22 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		imports[modPath].Add(name)
 		return false
+	}
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.MapType:
+		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
+		return true
+	case *schema.ResourceType:
+		return resourceOrTokenImport(t.Token)
+	case *schema.TokenType:
+		return resourceOrTokenImport(t.Token)
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
@@ -824,6 +857,9 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 			needsTypes = mod.getTypeImports(p.Type, true, imports, seen) || needsTypes
 		}
 		return needsTypes
+	case *schema.ResourceType:
+		mod.getTypeImports(member, true, imports, seen)
+		return false
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {

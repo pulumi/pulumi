@@ -119,3 +119,48 @@ func TestEnums(t *testing.T) {
 		})
 	}
 }
+
+func TestImportResourceRef(t *testing.T) {
+	tests := []struct {
+		name       string
+		schemaFile string
+		wantErr    bool
+		validator  func(pkg *Package)
+	}{
+		{
+			"valid",
+			"simple-resource-schema/schema.json",
+			false,
+			func(pkg *Package) {
+				for _, r := range pkg.Resources {
+					if r.Token == "example::OtherResource" {
+						for _, p := range r.Properties {
+							if p.Name == "foo" {
+								assert.IsType(t, &ResourceType{}, p.Type)
+							}
+						}
+					}
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Read in, decode, and import the schema.
+			schemaBytes, err := ioutil.ReadFile(
+				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+			assert.NoError(t, err)
+
+			var pkgSpec PackageSpec
+			err = json.Unmarshal(schemaBytes, &pkgSpec)
+			assert.NoError(t, err)
+
+			pkg, err := ImportSpec(pkgSpec, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			tt.validator(pkg)
+		})
+	}
+}

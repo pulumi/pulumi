@@ -17,7 +17,6 @@ package gitutil
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -80,7 +79,7 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpen(path.Join(gitRoot, ".."))
+	repo, err := git.PlainOpen(filepath.Dir(gitRoot))
 	if err == git.ErrRepositoryNotExists {
 		return nil, nil
 	}

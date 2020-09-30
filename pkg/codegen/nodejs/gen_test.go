@@ -1,4 +1,4 @@
-package python
+package nodejs
 
 import (
 	"encoding/json"
@@ -9,31 +9,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
-
-var pathTests = []struct {
-	input    string
-	expected string
-}{
-	{".", "."},
-	{"", "."},
-	{"../", ".."},
-	{"../..", "..."},
-	{"../../..", "...."},
-	{"something", ".something"},
-	{"../parent", "..parent"},
-	{"../../module", "...module"},
-}
-
-func TestRelPathToRelImport(t *testing.T) {
-	for _, tt := range pathTests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := relPathToRelImport(tt.input)
-			if result != tt.expected {
-				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
-			}
-		})
-	}
-}
 
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
@@ -47,9 +22,9 @@ func TestGeneratePackage(t *testing.T) {
 			"Simple schema with local resource properties",
 			"simple-resource-schema",
 			[]string{
-				filepath.Join("pulumi_example", "resource.py"),
-				filepath.Join("pulumi_example", "other_resource.py"),
-				filepath.Join("pulumi_example", "arg_function.py"),
+				"resource.ts",
+				"otherResource.ts",
+				"argFunction.ts",
 			},
 			false,
 			func(files, expectedFiles map[string][]byte) {
@@ -60,13 +35,12 @@ func TestGeneratePackage(t *testing.T) {
 			},
 		},
 	}
-
 	testDir := filepath.Join("..", "internal", "test", "testdata")
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Read in, decode, and import the schema.
-			schemaBytes, err := ioutil.ReadFile(filepath.Join(testDir, tt.schemaDir, "schema.json"))
+			schemaBytes, err := ioutil.ReadFile(
+				filepath.Join(testDir, tt.schemaDir, "schema.json"))
 			assert.NoError(t, err)
 
 			expectedFiles := map[string][]byte{}

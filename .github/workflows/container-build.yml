@@ -3,7 +3,6 @@ on:
   repository_dispatch:
     types:
       - docker-build
-      - 
 env:
   VERSION: ${{ github.event.client_payload.ref }}
 
@@ -76,6 +75,7 @@ jobs:
           dockerfile: docker/${{ matrix.sdk }}/Dockerfile
           additional-tags: ${{ env.VERSION }}
           build-args: PULUMI_VERSION=${{ env.VERSION }}
+          tag-latest: true
       - uses: meeDamian/sync-readme@v1.0.6
         name: Sync readme to Docker Hub
         with:
@@ -106,6 +106,7 @@ jobs:
           dockerfile: docker/${{ matrix.sdk }}/Dockerfile.${{ matrix.os }}
           additional-tags: ${{ env.VERSION }}-${{ matrix.os }}
           build-args: PULUMI_VERSION=${{ env.VERSION }}
+          tag-latest: true
 
   image-scan:
     name: scan container images

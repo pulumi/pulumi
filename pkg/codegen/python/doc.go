@@ -109,7 +109,8 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 // TODO[pulumi/pulumi#5145]: Delete this function once all providers have UsesIOClasses set to true in their schema.
 // GetLanguageTypeStringLegacy returns the legacy type strings.
 func (d DocLanguageHelper) GetLanguageTypeStringLegacy(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	name := pyType(t)
+	mod := modContext{} // This is a dummy context since pyType is a method and is only needed for resource refs.
+	name := mod.pyType(t)
 
 	// The Python SDK generator will simply return "list" or "dict" for enumerables.
 	// So we examine the underlying types to provide some more information on
