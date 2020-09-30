@@ -67,56 +67,56 @@ builds:
   main: ./go/pulumi-language-go
 
 # Windows builds
-- id: pulumi-windows
-  binary: pulumi
-  dir: pkg
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
-  main: ./cmd/pulumi
-- id: pulumi-language-nodejs-windows
-  binary: pulumi-language-nodejs
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
-  main: ./nodejs/cmd/pulumi-language-nodejs
-- id: pulumi-language-python-windows
-  binary: pulumi-language-python
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
-  main: ./python/cmd/pulumi-language-python
-- id: pulumi-language-dotnet-windows
-  binary: pulumi-language-dotnet
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
-  main: ./dotnet/cmd/pulumi-language-dotnet
-- id: pulumi-language-go-windows
-  binary: pulumi-language-go
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
-  main: ./go/pulumi-language-go
+#- id: pulumi-windows
+#  binary: pulumi
+#  dir: pkg
+#  goarch:
+#    - amd64
+#  goos:
+#    - windows
+#  ldflags:
+#    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+#  main: ./cmd/pulumi
+#- id: pulumi-language-nodejs-windows
+#  binary: pulumi-language-nodejs
+#  dir: sdk
+#  goarch:
+#    - amd64
+#  goos:
+#    - windows
+#  ldflags:
+#    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+#  main: ./nodejs/cmd/pulumi-language-nodejs
+#- id: pulumi-language-python-windows
+#  binary: pulumi-language-python
+#  dir: sdk
+#  goarch:
+#    - amd64
+#  goos:
+#    - windows
+#  ldflags:
+#    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+#  main: ./python/cmd/pulumi-language-python
+#- id: pulumi-language-dotnet-windows
+#  binary: pulumi-language-dotnet
+#  dir: sdk
+#  goarch:
+#    - amd64
+#  goos:
+#    - windows
+#  ldflags:
+#    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+#  main: ./dotnet/cmd/pulumi-language-dotnet
+#- id: pulumi-language-go-windows
+#  binary: pulumi-language-go
+#  dir: sdk
+#  goarch:
+#    - amd64
+#  goos:
+#    - windows
+#  ldflags:
+#    - github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+#  main: ./go/pulumi-language-go
 archives:
 - id: pulumi-unix
   builds:
@@ -134,25 +134,25 @@ archives:
     - sdk/python/dist/pulumi-analyzer-policy-python
     - sdk/python/cmd/pulumi-language-python-exec
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
-- id: pulumi-windows
-  builds:
-    - pulumi-language-dotnet-windows
-    - pulumi-language-go-windows
-    - pulumi-language-python-windows
-    - pulumi-language-nodejs-windows
-    - pulumi-windows
-  replacements:
-    amd64: x64
-  format_overrides:
-    - goos: windows
-      format: zip
-  files:
-    - sdk/nodejs/dist/pulumi-resource-pulumi-nodejs.cmd
-    - sdk/python/dist/pulumi-resource-pulumi-python.cmd
-    - sdk/nodejs/dist/pulumi-analyzer-policy.cmd
-    - sdk/python/dist/pulumi-analyzer-policy-python.cmd
-    - sdk/python/cmd/pulumi-language-python-exec
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+#- id: pulumi-windows
+#  builds:
+#    - pulumi-language-dotnet-windows
+#    - pulumi-language-go-windows
+#    - pulumi-language-python-windows
+#    - pulumi-language-nodejs-windows
+#    - pulumi-windows
+#  replacements:
+#    amd64: x64
+#  format_overrides:
+#    - goos: windows
+#      format: zip
+#  files:
+#    - sdk/nodejs/dist/pulumi-resource-pulumi-nodejs.cmd
+#    - sdk/python/dist/pulumi-resource-pulumi-python.cmd
+#    - sdk/nodejs/dist/pulumi-analyzer-policy.cmd
+#    - sdk/python/dist/pulumi-analyzer-policy-python.cmd
+#    - sdk/python/cmd/pulumi-language-python-exec
+#  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
 checksum: 
