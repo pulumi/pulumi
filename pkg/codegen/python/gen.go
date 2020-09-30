@@ -791,7 +791,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
 	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
-	fmt.Fprintf(w, "        if opts.id is None:\n")
+	if res.IsComponent {
+		fmt.Fprintf(w, "        if opts.id is not None:\n")
+		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
+		fmt.Fprintf(w, "        else:\n")
+	} else {
+		fmt.Fprintf(w, "        if opts.id is None:\n")
+	}
 	fmt.Fprintf(w, "            if __props__ is not None:\n")
 	fmt.Fprintf(w, "                raise TypeError(")
 	fmt.Fprintf(w, "'__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')\n")
@@ -907,7 +913,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 	fmt.Fprintf(w, "\n")
 
-	if !res.IsProvider {
+	if !res.IsProvider && !res.IsComponent {
 		fmt.Fprintf(w, "    @staticmethod\n")
 		fmt.Fprintf(w, "    def get(resource_name: str,\n")
 		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
