@@ -4,10 +4,7 @@ dist: goreleaser
 project_name: pulumi
 before:
   hooks:
-    - cd sdk && go mod tidy
-    - cd sdk && go mod download
-    - cd pkg && go mod tidy
-    - cd pkg && go mod download
+    - ./scripts/prep-for-goreleaser.sh
 blobs:
 - bucket: get.pulumi.com
   folder: releases/sdk/
@@ -131,7 +128,7 @@ builds:
   main: ./go/pulumi-language-go
 archives:
 - id: pulumi-unix
-  wrap_in_directory: true
+  wrap_in_directory: pulumi
   builds:
     - pulumi-language-dotnet-unix
     - pulumi-language-go-unix
@@ -141,11 +138,11 @@ archives:
   replacements:
     amd64: x64
   files:
-    - sdk/nodejs/dist/pulumi-resource-pulumi-nodejs
-    - sdk/python/dist/pulumi-resource-pulumi-python
-    - sdk/nodejs/dist/pulumi-analyzer-policy
-    - sdk/python/dist/pulumi-analyzer-policy-python
-    - sdk/python/cmd/pulumi-language-python-exec
+    - pulumi-resource-pulumi-nodejs
+    - pulumi-resource-pulumi-python
+    - pulumi-analyzer-policy
+    - pulumi-analyzer-policy-python
+    - pulumi-language-python-exec
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 - id: pulumi-windows
   wrap_in_directory: true

@@ -23,3 +23,11 @@ coverage.cov
 **/yarn.lock
 
 .mypy_cache
+
+# for goreleaser
+goreleaser
+pulumi-resource-pulumi-nodejs
+pulumi-resource-pulumi-python
+pulumi-analyzer-policy
+pulumi-analyzer-policy-python
+pulumi-language-python-exec
