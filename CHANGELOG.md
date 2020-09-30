@@ -3,7 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-_(None)_
+- Fixing gzip compression for alternative backends.
 
 ## 2.11.0 (2020-09-30)
 
