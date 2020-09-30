@@ -4,7 +4,9 @@ package ints
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -563,5 +565,21 @@ func TestConfigPaths(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
-// The following 4 tests are testing to ensure that we can make RPC calls >4mb
-// Issue: https://github.com/pulumi/pulumi/issues/4155
+//nolint:golint,deadcode
+func testComponentPathEnv() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	absCwd, err := filepath.Abs(cwd)
+	if err != nil {
+		return "", err
+	}
+	pluginDir := filepath.Join(absCwd, "construct_component", "testcomponent")
+
+	pathSeparator := ":"
+	if runtime.GOOS == "windows" {
+		pathSeparator = ";"
+	}
+	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+}

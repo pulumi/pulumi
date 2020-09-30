@@ -228,7 +228,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props, None)
 
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
@@ -256,19 +256,26 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn)
         resolve_id(resolved_id, True, None)  # Read IDs are always known.
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, resolvers)
+        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
 
-def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 'Inputs', opts: Optional['ResourceOptions']) -> None:
+def register_resource(res: 'Resource',
+                      ty: str,
+                      name: str,
+                      custom: bool,
+                      remote: bool,
+                      new_dependency: Callable[[str], 'Resource'],
+                      props: 'Inputs',
+                      opts: Optional['ResourceOptions']) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
     auto-generated URN and the ID that will resolve after the deployment has completed.  All
     properties will be initialized to property objects that the registration operation will resolve
     at the right time (or remain unresolved for deployments).
     """
-    log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}")
+    log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}, remote={remote}")
     monitor = settings.get_monitor()
     from .. import Output  # pylint: disable=import-outside-toplevel
 
@@ -381,6 +388,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
                 customTimeouts=custom_timeouts,
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
+                remote=remote,
             )
 
             from ..resource import create_urn # pylint: disable=import-outside-toplevel
@@ -389,7 +397,7 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(mock_urn, None, resolver.serialized_props)
+                    return RegisterResponse(mock_urn, None, resolver.serialized_props, None)
 
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
@@ -423,7 +431,15 @@ def register_resource(res: 'Resource', ty: str, name: str, custom: bool, props: 
             is_known = bool(resp.id)
             resolve_id(resp.id, is_known, None)
 
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, resolvers)
+        deps = {}
+        rpc_deps = resp.propertyDependencies
+        if rpc_deps:
+            for k, v in rpc_deps.items():
+                urns = list(v.urns)
+                deps[k] = set(map(new_dependency, urns))
+
+
+        await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())
@@ -464,13 +480,26 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[In
         "register resource outputs", do_register_resource_outputs)())
 
 
+class PropertyDependencies:
+    urns: List[str]
+
+    def __init__(self, urns: List[str]):
+        self.urns = urns
+
+
 class RegisterResponse:
     urn: str
     id: str
     object: struct_pb2.Struct
+    propertyDependencies: Dict[str, PropertyDependencies]
 
     # pylint: disable=redefined-builtin
-    def __init__(self, urn: str, id: str, object: struct_pb2.Struct):
+    def __init__(self,
+                 urn: str,
+                 id: str,
+                 object: struct_pb2.Struct,
+                 propertyDependencies: Dict[str, PropertyDependencies]):
         self.urn = urn
         self.id = id
         self.object = object
+        self.propertyDependencies = propertyDependencies
