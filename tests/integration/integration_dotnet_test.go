@@ -170,3 +170,54 @@ func TestLargeResourceDotNet(t *testing.T) {
 		Dir:          filepath.Join("large_resource", "dotnet"),
 	})
 }
+
+// Test remote component construction in .NET.
+func TestConstructDotnet(t *testing.T) {
+	pathEnv, err := testComponentPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+	// module to run `yarn install && yarn link @pulumi/pulumi` in the .NET program's directory, allowing
+	// the Node.js dynamic provider plugin to load.
+	// When the underlying issue has been fixed, the use of this environment variable inside the integration
+	// test module should be removed.
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir:          filepath.Join("construct_component", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+
+				// Check that dependencies flow correctly between the originating program and the remote component
+				// plugin.
+				urns := make(map[string]resource.URN)
+				for _, res := range stackInfo.Deployment.Resources[1:] {
+					assert.NotNil(t, res)
+
+					urns[string(res.URN.Name())] = res.URN
+					switch res.URN.Name() {
+					case "child-a", "child-b":
+						for _, deps := range res.PropertyDependencies {
+							assert.Empty(t, deps)
+						}
+					case "child-c":
+						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+					}
+				}
+			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}

@@ -23,6 +23,7 @@ Pulumi.AssetArchive.AssetArchive(System.Collections.Generic.IDictionary<string, 
 Pulumi.AssetOrArchive
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
+Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
 Pulumi.ComponentResource.RegisterOutputs() -> void
 Pulumi.ComponentResource.RegisterOutputs(Pulumi.Output<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
 Pulumi.ComponentResource.RegisterOutputs(System.Collections.Generic.IDictionary<string, object> outputs) -> void
@@ -50,7 +51,8 @@ Pulumi.Config.RequireSecretBoolean(string key) -> Pulumi.Output<bool>
 Pulumi.Config.RequireSecretInt32(string key) -> Pulumi.Output<int>
 Pulumi.Config.RequireSecretObject<T>(string key) -> Pulumi.Output<T>
 Pulumi.CustomResource
-Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null) -> void
+Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options) -> void
+Pulumi.CustomResource.CustomResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null, bool dependency = false) -> void
 Pulumi.CustomResource.Id.get -> Pulumi.Output<string>
 Pulumi.CustomResourceOptions
 Pulumi.CustomResourceOptions.AdditionalSecretOutputs.get -> System.Collections.Generic.List<string>
@@ -68,6 +70,10 @@ Pulumi.CustomTimeouts.Delete.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Delete.set -> void
 Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Update.set -> void
+Pulumi.DependencyProviderResource
+Pulumi.DependencyProviderResource.DependencyProviderResource(string reference) -> void
+Pulumi.DependencyResource
+Pulumi.DependencyResource.DependencyResource(string urn) -> void
 Pulumi.DictionaryResourceArgs
 Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
@@ -127,7 +133,8 @@ Pulumi.OutputTypeAttribute
 Pulumi.OutputTypeAttribute.OutputTypeAttribute() -> void
 Pulumi.OutputExtensions
 Pulumi.ProviderResource
-Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null) -> void
+Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options) -> void
+Pulumi.ProviderResource.ProviderResource(string package, string name, Pulumi.ResourceArgs args, Pulumi.CustomResourceOptions options = null, bool dependency = false) -> void
 Pulumi.RemoteArchive
 Pulumi.RemoteArchive.RemoteArchive(string uri) -> void
 Pulumi.RemoteAsset

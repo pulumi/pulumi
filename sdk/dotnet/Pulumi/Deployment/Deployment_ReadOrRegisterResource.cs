@@ -11,7 +11,8 @@ namespace Pulumi
     public partial class Deployment
     {
         void IDeploymentInternal.ReadOrRegisterResource(
-            Resource resource, ResourceArgs args, ResourceOptions options)
+            Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
+            ResourceOptions options)
         {
             // ReadOrRegisterResource is called in a fire-and-forget manner.  Make sure we keep
             // track of this task so that the application will not quit until this async work
@@ -31,11 +32,12 @@ namespace Pulumi
 
             _runner.RegisterTask(
                 $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                CompleteResourceAsync(resource, args, options, completionSources));
+                CompleteResourceAsync(resource, remote, newDependency, args, options, completionSources));
         }
 
-        private async Task<(string urn, string id, Struct data)> ReadOrRegisterResourceAsync(
-            Resource resource, ResourceArgs args, ResourceOptions options)
+        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> deps)> ReadOrRegisterResourceAsync(
+            Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
+            ResourceOptions options)
         {
             if (options.Id != null)
             {
@@ -54,7 +56,7 @@ namespace Pulumi
             // resource's properties will be resolved asynchronously after the operation completes,
             // so that dependent computations resolve normally.  If we are just planning, on the
             // other hand, values will never resolve.
-            return await RegisterResourceAsync(resource, args, options).ConfigureAwait(false);
+            return await RegisterResourceAsync(resource, remote, newDependency, args, options).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -63,14 +65,16 @@ namespace Pulumi
         /// the results of it.
         /// </summary>
         private async Task CompleteResourceAsync(
-            Resource resource, ResourceArgs args, ResourceOptions options,
-            ImmutableDictionary<string, IOutputCompletionSource> completionSources)
+            Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
+            ResourceOptions options, ImmutableDictionary<string, IOutputCompletionSource> completionSources)
         {
             // Run in a try/catch/finally so that we always resolve all the outputs of the resource
             // regardless of whether we encounter an errors computing the action.
             try
             {
-                var response = await ReadOrRegisterResourceAsync(resource, args, options).ConfigureAwait(false);
+                var response = await ReadOrRegisterResourceAsync(
+                    resource, remote, newDependency, args, options).ConfigureAwait(false);
+
                 completionSources[Constants.UrnPropertyName].SetStringValue(response.urn, isKnown: true);
                 if (resource is CustomResource customResource)
                 {
@@ -94,8 +98,13 @@ namespace Pulumi
                     // rest.
                     if (response.data.Fields.TryGetValue(fieldName, out var value))
                     {
+                        if (!response.deps.TryGetValue(fieldName, out var deps))
+                        {
+                            deps = ImmutableHashSet<Resource>.Empty;
+                        }
+
                         var converted = Converter.ConvertValue(
-                            $"{resource.GetType().FullName}.{fieldName}", value, completionSource.TargetType);
+                            $"{resource.GetType().FullName}.{fieldName}", value, completionSource.TargetType, deps);
                         completionSource.SetValue(converted);
                     }
                 }

@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
@@ -10,7 +11,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        private async Task<(string urn, string id, Struct data)> ReadResourceAsync(
+        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> deps)> ReadResourceAsync(
             Resource resource, string id, ResourceArgs args, ResourceOptions options)
         {
             var name = resource.GetResourceName();
@@ -43,7 +44,7 @@ namespace Pulumi
             // Now run the operation, serializing the invocation if necessary.
             var response = await this.Monitor.ReadResourceAsync(resource, request);
 
-            return (response.Urn, id, response.Properties);
+            return (response.Urn, id, response.Properties, ImmutableDictionary<string, ImmutableHashSet<Resource>>.Empty);
         }
     }
 }

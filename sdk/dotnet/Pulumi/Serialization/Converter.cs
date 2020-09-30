@@ -21,13 +21,18 @@ namespace Pulumi.Serialization
 
         public static OutputData<object?> ConvertValue(string context, Value value, System.Type targetType)
         {
+            return ConvertValue(context, value, targetType, ImmutableHashSet<Resource>.Empty);
+        }
+
+        public static OutputData<object?> ConvertValue(
+            string context, Value value, System.Type targetType, ImmutableHashSet<Resource> resources)
+        {
             CheckTargetType(context, targetType, new HashSet<System.Type>());
 
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = ConvertObject(context, deserialized, targetType);
 
-            return new OutputData<object?>(
-                ImmutableHashSet<Resource>.Empty, converted, isKnown, isSecret);
+            return new OutputData<object?>(resources, converted, isKnown, isSecret);
         }
 
         private static object? ConvertObject(string context, object? val, System.Type targetType)
