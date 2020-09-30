@@ -336,10 +336,10 @@ func readBody(resp *http.Response) ([]byte, error) {
 	case "gzip":
 		logging.V(apiRequestDetailLogLevel).Infoln("decompressing gzipped response from service")
 		reader, err := gzip.NewReader(resp.Body)
-		defer contract.IgnoreClose(reader)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading gzip-compressed body")
 		}
+		defer contract.IgnoreClose(reader)
 
 		return ioutil.ReadAll(reader)
 	default:
