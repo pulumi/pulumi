@@ -2,6 +2,10 @@ on:
   push:
     branches:
       [ "master", "feature/**", "feature-**" ]
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'README.md'
+
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

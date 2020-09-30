@@ -5,7 +5,6 @@ on:
     paths-ignore:
       - 'CHANGELOG.md'
       - 'README.md'
-      - '.github/**'
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
