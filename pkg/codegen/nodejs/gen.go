@@ -1124,7 +1124,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 	enumName := tokenToName(enum.Token)
 	for _, e := range enum.Elements {
 		if e.Name == "" {
-			e.Name = makeValidIdentifier(fmt.Sprintf("%v", e.Value))
+			e.Name = strings.Title(makeValidIdentifier(fmt.Sprintf("%v", e.Value)))
 		}
 		if e.Comment != "" {
 			fmt.Fprintf(w, "%s/** %s */\n", indent, e.Comment)

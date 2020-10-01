@@ -3,9 +3,9 @@
 
 import * as pulumi from "@pulumi/pulumi";
 
-export const redContainerColor: ContainerColor = "red";
-export const blueContainerColor: ContainerColor = "blue";
-export const yellowContainerColor: ContainerColor = "yellow";
+export const RedContainerColor: ContainerColor = "red";
+export const BlueContainerColor: ContainerColor = "blue";
+export const YellowContainerColor: ContainerColor = "yellow";
 
 export type ContainerColor = "red" | "blue" | "yellow";
 
