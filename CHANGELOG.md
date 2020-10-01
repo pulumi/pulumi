@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+_(none)_
+
+## 2.11.1 (2020-09-30)
+
 - Add internal scaffolding for using cross-language components from Python.
   [#5375](https://github.com/pulumi/pulumi/pull/5375)
 
