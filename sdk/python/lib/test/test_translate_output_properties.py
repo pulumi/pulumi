@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, NamedTuple, Mapping, Optional, Sequence
 
 from pulumi.runtime import rpc
 import pulumi
@@ -710,10 +710,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             }],
         }
 
-        def convert_properties_to_secrets(output: dict) -> dict:
-            return {k: {rpc._special_sig_key: rpc._special_secret_sig, "value": v } for k, v in output.items()}
-
-        def run_test(output: dict):
+        for typ in [Bar, BarMappingSequence, BarDeclared, BarMappingSequenceDeclared]:
             result = rpc.translate_output_properties(output, translate_output_property, typ)
             self.assertIsInstance(result, typ)
 
@@ -754,10 +751,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             assertFoo(result.eighth_optional_optional_arg[0]["blah"][0], "farewell-opt-opt", 1137)
             self.assertIs(result.eighth_optional_optional_optional_arg, result["eighthOptionalOptionalOptionalArg"])
             assertFoo(result.eighth_optional_optional_optional_arg[0]["blah"][0], "farewell-opt-opt-opt", 11137)
-
-        for typ in [Bar, BarMappingSequence, BarDeclared, BarMappingSequenceDeclared]:
-            run_test(output)
-            run_test(convert_properties_to_secrets(output))
 
     def test_nested_types_raises(self):
         dict_value = {
@@ -905,3 +898,98 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         self.assertIsInstance(result.value_sequence[0], int)
         self.assertEqual(50, result.value_int)
         self.assertIsInstance(result.value_int, int)
+
+    def test_individual_values(self):
+        @pulumi.output_type
+        class MyOutput:
+            first_arg: str = pulumi.property("firstArg")
+            second_arg: int = pulumi.property("secondArg")
+
+            def __init__(self, first_arg: str, second_arg: int):
+                pulumi.set(self, "first_arg", first_arg)
+                pulumi.set(self, "second_arg", second_arg)
+
+            def _translate_property(self, prop: str) -> str:
+                return camel_case_to_snake_case.get(prop) or prop
+
+        class TestCase(NamedTuple):
+            output: Any
+            typ: type
+            expected: Any
+
+        testcases = [
+            TestCase(
+                {
+                    "firstArg": "hello",
+                    "secondArg": 42,
+                },
+                MyOutput,
+                MyOutput("hello", 42),
+            ),
+            TestCase(
+                {
+                    "foo": {
+                        "firstArg": "hi",
+                        "secondArg": 41,
+                    },
+                },
+                Mapping[str, MyOutput],
+                {
+                    "foo": MyOutput("hi", 41),
+                },
+            ),
+            TestCase(
+                [{
+                    "firstArg": "bye",
+                    "secondArg": 40,
+                }],
+                Sequence[MyOutput],
+                [MyOutput("bye", 40)],
+            ),
+            TestCase(
+                {
+                    "bar": [{
+                        "firstArg": "goodbye",
+                        "secondArg": 39,
+                    }],
+                },
+                Mapping[str, Sequence[MyOutput]],
+                {
+                    "bar": [MyOutput("goodbye", 39)],
+                }
+            ),
+            TestCase(
+                [{
+                    "baz": {
+                        "firstArg": "adios",
+                        "secondArg": 38,
+                    },
+                }],
+                Sequence[Mapping[str, MyOutput]],
+                [{
+                    "baz": MyOutput("adios", 38),
+                }]
+            ),
+            TestCase(
+                [{
+                    "blah": [{
+                        "firstArg": "farewell",
+                        "secondArg": 37,
+                    }],
+                }],
+                Sequence[Mapping[str, Sequence[MyOutput]]],
+                [{
+                    "blah": [MyOutput("farewell", 37)],
+                }],
+            ),
+        ]
+
+        for case in testcases:
+            actual = rpc.translate_output_properties(case.output, translate_output_property, case.typ)
+            self.assertEqual(case.expected, actual)
+
+        for case in testcases:
+            wrapped_output = {rpc._special_sig_key: rpc._special_secret_sig, "value": case.output}
+            actual = rpc.translate_output_properties(wrapped_output, translate_output_property, case.typ)
+            wrapped_expected = {rpc._special_sig_key: rpc. _special_secret_sig, "value": case.expected}
+            self.assertEqual(wrapped_expected, actual)

@@ -245,10 +245,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
                 return RemoteArchive(props_struct["uri"])
             raise AssertionError("Invalid archive encountered when unmarshalling resource property")
         if props_struct[_special_sig_key] == _special_secret_sig:
-            return {
-                _special_sig_key: _special_secret_sig,
-                "value": deserialize_property(props_struct["value"])
-            }
+            return wrap_rpc_secret(deserialize_property(props_struct["value"]))
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
@@ -274,9 +271,21 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
 
 def is_rpc_secret(value: Any) -> bool:
     """
-    Returns if a given python value is actually a wrapped secret
+    Returns if a given python value is actually a wrapped secret.
     """
     return isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig
+
+def wrap_rpc_secret(value: Any) -> Any:
+    """
+    Given a value, wrap it as a secret value if it isn't already a secret, otherwise return the value unmodified.
+    """
+    if is_rpc_secret(value):
+        return value
+
+    return {
+        _special_sig_key: _special_secret_sig,
+        "value": value,
+    }
 
 def unwrap_rpc_secret(value: Any) -> Any:
     """
@@ -303,10 +312,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
-            return {
-                _special_sig_key: _special_secret_sig,
-                "value": [unwrap_rpc_secret(v) for v in values]
-            }
+            return wrap_rpc_secret([unwrap_rpc_secret(v) for v in values])
 
         return values
 
@@ -314,14 +320,11 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     if isinstance(value, struct_pb2.Struct):
         props = deserialize_properties(value, keep_unknowns)
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
-        # a dictionary that is marked as a secret with raw values inside. Note: thje isinstance check here is
+        # a dictionary that is marked as a secret with raw values inside. Note: the isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of
         # assets).
         if isinstance(props, dict) and any(is_rpc_secret(v) for v in props.values()):
-            return {
-                _special_sig_key: _special_secret_sig,
-                "value": {k: unwrap_rpc_secret(v) for k, v in props.items()}
-            }
+            return wrap_rpc_secret({k: unwrap_rpc_secret(v) for k, v in props.items()})
 
         return props
 
@@ -418,9 +421,12 @@ def translate_output_properties(output: Any,
     :param Optional[type] typ: The output's target type.
     """
 
-    # If it's a secret, unwrap the value so the output is in alignment with the expected type.
+    # If it's a secret, unwrap the value so the output is in alignment with the expected type, call
+    # translate_output_properties with the unwrapped value, and then rewrap the result as a secret.
     if is_rpc_secret(output):
-        output = unwrap_rpc_secret(output)
+        unwrapped = unwrap_rpc_secret(output)
+        result = translate_output_properties(unwrapped, output_transformer, typ)
+        return wrap_rpc_secret(result)
 
     # Unwrap optional types.
     typ = _types.unwrap_optional_type(typ) if typ else typ
@@ -557,12 +563,9 @@ async def resolve_outputs(res: 'Resource',
             #     the type at some non-deterministic point in the future.
             continue
 
-        # Secrets are passed back as object with our special signiture key set to _special_secret_sig, in this case
-        # we have to unwrap the object to get the actual underlying value.
-        is_secret = False
-        if isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig:
-            is_secret = True
-            value = value["value"]
+        # If this value is a secret, unwrap its inner value.
+        is_secret = is_rpc_secret(value)
+        value = unwrap_rpc_secret(value)
 
         # If either we are performing a real deployment, or this is a stable property value, we
         # can propagate its final value.  Otherwise, it must be undefined, since we don't know

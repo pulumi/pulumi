@@ -489,6 +489,44 @@ func TestProviderSecretConfig(t *testing.T) {
 	})
 }
 
+func TestResourceWithSecretSerializationNodejs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("secret_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// The program exports three resources:
+			//   1. One named `withSecret` who's prefix property should be secret, specified via `pulumi.secret()`.
+			//   2. One named `withSecretAdditional` who's prefix property should be a secret, specified via
+			//      additionalSecretOutputs.
+			//   3. One named `withoutSecret` which should not be a secret.
+			// We serialize both of the these as POJO objects, so they appear as maps in the output.
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			assert.Truef(t, ok, "POJO output was not serialized as a map")
+
+			// The secret prop should have been serialized as a secret
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			assert.Truef(t, ok, "secret output was not serialized as a secret")
+			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+
+			// The other secret prop should have been serialized as a secret
+			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]interface{})
+			assert.Truef(t, ok, "secret output was not serialized as a secret")
+			assert.Equal(t, resource.SecretSig, secretAdditionalPropValue[resource.SigKey].(string))
+
+			// And here, the prop was not set, it should just be a string value
+			_, isString := withoutSecretProps["prefix"].(string)
+			assert.Truef(t, isString, "non-secret output was not a string")
+		},
+	})
+}
+
 func TestStackReferenceSecretsNodejs(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
