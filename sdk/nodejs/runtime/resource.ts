@@ -267,6 +267,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                         getUrn: () => mockurn,
                         getId: () => undefined,
                         getObject: () => req.getObject(),
+                        getPropertydependenciesMap: () => undefined,
                     };
                 }
             } catch (e) {
