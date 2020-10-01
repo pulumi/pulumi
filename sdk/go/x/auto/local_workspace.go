@@ -253,6 +253,10 @@ func (l *LocalWorkspace) GetEnvVars() map[string]string {
 // SetEnvVars sets the specified map of environment values scoped to the current workspace.
 // These values will be passed to all Workspace and Stack level commands.
 func (l *LocalWorkspace) SetEnvVars(envvars map[string]string) error {
+	return setEnvVars(l, envvars)
+}
+
+func setEnvVars(l *LocalWorkspace, envvars map[string]string) error {
 	if envvars == nil {
 		return errors.New("unable to set nil environment values")
 	}
@@ -555,6 +559,13 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		l.secretsProvider = lwOpts.SecretsProvider
 	}
 
+	// Environment values
+	if lwOpts.EnvVars != nil {
+		if err := setEnvVars(l, lwOpts.EnvVars); err != nil {
+			return nil, errors.Wrap(err, "failed to set environment values")
+		}
+	}
+
 	return l, nil
 }
 
@@ -576,6 +587,9 @@ type localWorkspaceOptions struct {
 	Repo *GitRepo
 	// Secrets Provider to use with the current Stack
 	SecretsProvider string
+	// EnvVars is a map of environment values scoped to the workspace.
+	// These values will be passed to all Workspace and Stack level commands.
+	EnvVars map[string]string
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -679,6 +693,14 @@ func Repo(gitRepo GitRepo) LocalWorkspaceOption {
 func SecretsProvider(secretsProvider string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.SecretsProvider = secretsProvider
+	})
+}
+
+// EnvVars is a map of environment values scoped to the workspace.
+// These values will be passed to all Workspace and Stack level commands.
+func EnvVars(envvars map[string]string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.EnvVars = envvars
 	})
 }
 
