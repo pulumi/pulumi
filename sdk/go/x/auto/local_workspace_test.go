@@ -45,10 +45,12 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
-	// We can't use Workspace EnvVars as the Workspace uses the secrets provider to
-	// create the Stack
-	err := os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
-	assert.Nil(t, err, "failed to set EnvVar.")
+	opts := []LocalWorkspaceOption{
+		SecretsProvider("passphrase"),
+		EnvVars(map[string]string{
+			"PULUMI_CONFIG_PASSPHRASE": "password",
+		}),
+	}
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
@@ -57,7 +59,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
 		ctx.Export("exp_secret", c.GetSecret("buzz"))
 		return nil
-	}, SecretsProvider("passphrase"))
+	}, opts...)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()

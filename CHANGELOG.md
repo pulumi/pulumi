@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
+  [#5499](https://github.com/pulumi/pulumi/pull/5499)
+
 - [sdk/python] Fix secret regression: ensure unwrapped secrets during deserialization
   are rewrapped before being returned.
   [#5496](https://github.com/pulumi/pulumi/pull/5496)
