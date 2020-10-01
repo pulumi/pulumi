@@ -56,3 +56,24 @@ func TestGeneratePackage(t *testing.T) {
 		})
 	}
 }
+
+func TestMakeSafeEnumName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"red", "Red"},
+		{"snake_cased_name", "Snake_cased_name"},
+		{"8", "_8"},
+		{"Microsoft-Windows-Shell-Startup", "Microsoft_Windows_Shell_Startup"},
+		{"Microsoft.Batch", "Microsoft_Batch"},
+		{"readonly", "Readonly"},
+		{"SystemAssigned, UserAssigned", "SystemAssigned__UserAssigned"},
+		{"Dev(NoSLA)_Standard_D11_v2", "Dev_NoSLA__Standard_D11_v2"},
+		{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS"},
+	}
+	for _, tt := range tests {
+		result := makeSafeEnumName(tt.input)
+		assert.Equal(t, tt.expected, result)
+	}
+}

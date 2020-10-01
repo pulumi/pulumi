@@ -1118,14 +1118,19 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool
 	}
 }
 
+func makeSafeEnumName(name string) string {
+	return makeValidIdentifier(title(name))
+}
+
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 	indent := strings.Repeat("    ", level)
 
 	enumName := tokenToName(enum.Token)
 	for _, e := range enum.Elements {
 		if e.Name == "" {
-			e.Name = strings.Title(makeValidIdentifier(fmt.Sprintf("%v", e.Value)))
+			e.Name = fmt.Sprintf("%v", e.Value)
 		}
+		e.Name = makeSafeEnumName(e.Name)
 		if e.Comment != "" {
 			fmt.Fprintf(w, "%s/** %s */\n", indent, e.Comment)
 		}
