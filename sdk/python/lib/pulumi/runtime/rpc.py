@@ -20,7 +20,7 @@ import asyncio
 from collections import abc
 import functools
 import inspect
-from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, TYPE_CHECKING, cast
+from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
 
 from google.protobuf import struct_pb2
 import six
@@ -329,7 +329,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     return value
 
 
-Resolver = Callable[[Any, bool, bool, Optional[Exception]], None]
+Resolver = Callable[[Any, bool, bool, Optional[Set['Resource']], Optional[Exception]], None]
 """
 A Resolver is a function that takes four arguments:
     1. A value, which represents the "resolved" value of a particular output (from the engine)
@@ -355,14 +355,24 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         resolve_value: 'asyncio.Future' = asyncio.Future()
         resolve_is_known: 'asyncio.Future' = asyncio.Future()
         resolve_is_secret: 'asyncio.Future' = asyncio.Future()
+        resolve_deps: 'asyncio.Future' = asyncio.Future()
 
-        def do_resolve(value_fut: 'asyncio.Future',
+        def do_resolve(r: 'Resource',
+                       value_fut: 'asyncio.Future',
                        known_fut: 'asyncio.Future[bool]',
                        secret_fut: 'asyncio.Future[bool]',
+                       deps_fut: 'asyncio.Future[Set[Resource]]',
                        value: Any,
                        is_known: bool,
                        is_secret: bool,
+                       deps: Set['Resource'],
                        failed: Optional[Exception]):
+
+            # Create a union of deps and the resource.
+            deps_union = set(deps) if deps else set()
+            deps_union.add(r)
+            deps_fut.set_result(deps_union)
+
             # Was an exception provided? If so, this is an abnormal (exceptional) resolution. Resolve the futures
             # using set_exception so that any attempts to wait for their resolution will also fail.
             if failed is not None:
@@ -378,8 +388,8 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         # name before translation. When properties are returned from the engine, we must first translate the name
         # using res.translate_output_property and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
-        resolvers[name] = functools.partial(do_resolve, resolve_value, resolve_is_known, resolve_is_secret)
-        res.__dict__[name] = Output({res}, resolve_value, resolve_is_known, resolve_is_secret)
+        resolvers[name] = functools.partial(do_resolve, res, resolve_value, resolve_is_known, resolve_is_secret, resolve_deps)
+        res.__dict__[name] = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
     return resolvers
 
@@ -497,6 +507,7 @@ def contains_unknowns(val: Any) -> bool:
 async def resolve_outputs(res: 'Resource',
                           serialized_props: struct_pb2.Struct,
                           outputs: struct_pb2.Struct,
+                          deps: Mapping[str, Set['Resource']],
                           resolvers: Dict[str, Resolver]):
 
     # Produce a combined set of property states, starting with inputs and then applying
@@ -559,18 +570,18 @@ async def resolve_outputs(res: 'Resource',
         if not settings.is_dry_run():
             # normal 'pulumi up'.  resolve the output with the value we got back
             # from the engine.  That output can always run its .apply calls.
-            resolve(value, True, is_secret, None)
+            resolve(value, True, is_secret, deps.get(key), None)
         else:
             # We're previewing. If the engine was able to give us a reasonable value back,
             # then use it. Otherwise, inform the Output that the value isn't known.
-            resolve(value, value is not None, is_secret, None)
+            resolve(value, value is not None, is_secret, deps.get(key), None)
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
     # preview.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run(), False, None)
+            resolve(None, not settings.is_dry_run(), False, deps.get(key), None)
 
 
 def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Exception):
@@ -583,4 +594,4 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     """
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
-        resolve(None, False, False, exn)
+        resolve(None, False, False, None, exn)

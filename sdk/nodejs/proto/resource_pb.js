@@ -1252,7 +1252,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
     deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 18, false),
     supportspartialvalues: jspb.Message.getBooleanFieldWithDefault(msg, 19, false),
-    remote: jspb.Message.getBooleanFieldWithDefault(msg, 21, false)
+    remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false)
   };
 
   if (includeInstance) {
@@ -1369,7 +1369,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportspartialvalues(value);
       break;
-    case 21:
+    case 20:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRemote(value);
       break;
@@ -1537,7 +1537,7 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getRemote();
   if (f) {
     writer.writeBool(
-      21,
+      20,
       f
     );
   }
@@ -2351,11 +2351,11 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setSupportspartialvalues = fun
 
 
 /**
- * optional bool remote = 21;
+ * optional bool remote = 20;
  * @return {boolean}
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.getRemote = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 21, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 20, false));
 };
 
 
@@ -2364,7 +2364,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getRemote = function() {
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setRemote = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 21, value);
+  return jspb.Message.setProto3BooleanField(this, 20, value);
 };
 
 

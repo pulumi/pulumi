@@ -13,6 +13,9 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
+
+import asyncio
+
 from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
 
 import copy
@@ -594,7 +597,9 @@ class Resource:
                  name: str,
                  custom: bool,
                  props: Optional['Inputs'] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 remote: bool = False,
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -602,7 +607,15 @@ class Resource:
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool remote: True if this is a remote component resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
+
+        if dependency:
+            self._protect = False
+            self._providers = {}
+            return
+
         if props is None:
             props = {}
         if not t:
@@ -699,13 +712,13 @@ class Resource:
                     alias, name, t, opts.parent))
 
         if opts.id is not None:
-            # If this resource already exists, read its state rather than registering it anew.
+            # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
             read_resource(cast('CustomResource', self), t, name, props, opts)
         else:
-            register_resource(self, t, name, custom, props, opts)
+            register_resource(self, t, name, custom, remote, DependencyResource, props, opts)
 
     @property
     def urn(self) -> 'Output[str]':
@@ -790,15 +803,17 @@ class CustomResource(Resource):
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
-        Resource.__init__(self, t, name, True, props, opts)
+        Resource.__init__(self, t, name, True, props, opts, False, dependency)
         self.__pulumi_type = t
 
     @property
@@ -821,16 +836,18 @@ class ComponentResource(Resource):
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 remote: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool remote: True if this is a remote component resource.
         """
-        Resource.__init__(self, t, name, False, props, opts)
-        self.id = None
+        Resource.__init__(self, t, name, False, props, opts, remote)
+        self.__dict__["id"] = None
 
     def register_outputs(self, outputs):
         """
@@ -858,13 +875,15 @@ class ProviderResource(CustomResource):
                  pkg: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 dependency: bool = False) -> None:
         """
         :param str pkg: The package type of this provider resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
 
         if opts is not None and opts.provider is not None:
@@ -872,8 +891,61 @@ class ProviderResource(CustomResource):
                 "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts)
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency)
         self.package = pkg
+
+
+class DependencyResource(CustomResource):
+    """
+    A DependencyResource is a resource that is used to indicate that an Output has a dependency on a particular
+    resource. These resources are only created when dealing with remote component resources.
+    """
+
+    def __init__(self, urn: str) -> None:
+        super().__init__(t="", name="", props={}, opts=None, dependency=True)
+
+        from . import Output  # pylint: disable=import-outside-toplevel
+
+        urn_future: asyncio.Future[str] = asyncio.Future()
+        urn_known: asyncio.Future[bool] = asyncio.Future()
+        urn_secret: asyncio.Future[bool] = asyncio.Future()
+        urn_future.set_result(urn)
+        urn_known.set_result(True)
+        urn_secret.set_result(False)
+        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+
+
+class DependencyProviderResource(ProviderResource):
+    """
+    A DependencyProviderResource is a resource that is used by the provider SDK as a stand-in for a provider that
+    is only used for its reference. Its only valid properties are its URN and ID.
+    """
+
+    def __init__(self, ref: str) -> None:
+        super().__init__(pkg="", name="", props={}, opts=None, dependency=True)
+
+        # Parse the URN and ID out of the provider reference.
+        last_sep = ref.rindex("::")
+        ref_urn = ref[:last_sep]
+        ref_id = ref[last_sep+2:]
+
+        from . import Output  # pylint: disable=import-outside-toplevel
+
+        urn_future: asyncio.Future[str] = asyncio.Future()
+        urn_known: asyncio.Future[bool] = asyncio.Future()
+        urn_secret: asyncio.Future[bool] = asyncio.Future()
+        urn_future.set_result(ref_urn)
+        urn_known.set_result(True)
+        urn_secret.set_result(False)
+        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+
+        id_future: asyncio.Future[str] = asyncio.Future()
+        id_known: asyncio.Future[bool] = asyncio.Future()
+        id_secret: asyncio.Future[bool] = asyncio.Future()
+        id_future.set_result(ref_id)
+        id_known.set_result(True)
+        id_secret.set_result(False)
+        self.__dict__["id"] = Output({self}, id_future, id_known, id_secret)
 
 
 def export(name: str, value: Any):

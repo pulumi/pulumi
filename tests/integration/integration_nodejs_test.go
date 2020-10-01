@@ -602,24 +602,6 @@ func TestLargeResourceNode(t *testing.T) {
 	})
 }
 
-func testComponentPathEnv() (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	absCwd, err := filepath.Abs(cwd)
-	if err != nil {
-		return "", err
-	}
-	pluginDir := filepath.Join(absCwd, "construct_component", "testcomponent")
-
-	pathSeparator := ":"
-	if runtime.GOOS == "windows" {
-		pathSeparator = ";"
-	}
-	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
-}
-
 // Test remote component construction in Node.
 func TestConstructNode(t *testing.T) {
 	pathEnv, err := testComponentPathEnv()
