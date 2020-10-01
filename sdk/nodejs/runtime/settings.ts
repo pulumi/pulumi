@@ -258,7 +258,7 @@ export function hasEngine(): boolean {
  * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
  */
 export function getEngine(): Object | undefined {
-    if (!engine) {
+    if (engine === undefined) {
         const addr = options.engineAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the engine.

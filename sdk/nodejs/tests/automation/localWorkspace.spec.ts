@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as upath from "upath";
 
-import { Config } from "../../config";
+import { Config } from "../../index";
 import { ConfigMap, normalizeConfigKey } from "../../x/automation/config";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";

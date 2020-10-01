@@ -134,6 +134,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                             log.debug(`ReadResource RPC finished: ${label}; err: ${rpcError}, resp: ${innerResponse}`);
                             if (rpcError) {
                                 if (rpcError.code === grpc.status.UNAVAILABLE || rpcError.code === grpc.status.CANCELLED) {
+                                    err = rpcError;
                                     terminateRpcs();
                                     rpcError.message = "Resource monitor is terminating";
                                     (<any>preallocError).code = rpcError.code;
@@ -239,6 +240,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     resp = await debuggablePromise(new Promise((resolve, reject) =>
                         (monitor as any).registerResource(req, (rpcErr: grpc.ServiceError, innerResponse: any) => {
                             if (rpcErr) {
+                                err = rpcErr;
                                 // If the monitor is unavailable, it is in the process of shutting down or has already
                                 // shut down. Don't emit an error and don't do any more RPCs, just exit.
                                 if (rpcErr.code === grpc.status.UNAVAILABLE || rpcErr.code === grpc.status.CANCELLED) {
