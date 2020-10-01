@@ -23,7 +23,7 @@ namespace Pulumi.Example
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
         public OtherResource(string name, OtherResourceArgs? args = null, ComponentResourceOptions? options = null)
-            : base("example::OtherResource", name, args ?? new OtherResourceArgs(), MakeResourceOptions(options, ""))
+            : base("example::OtherResource", name, args ?? new OtherResourceArgs(), MakeResourceOptions(options, ""), remote: true)
         {
         }
 
