@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-docker-build@release/v3.beta
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-docker-build@release/v3.beta
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-docker-build@release/v3.beta
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-docker-build@release/v3.beta
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
