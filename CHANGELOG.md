@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.11.2 (2020-10-01)
 
 - [sdk/python] Fix secret regression: ensure unwrapped secrets during deserialization
   are rewrapped before being returned.
