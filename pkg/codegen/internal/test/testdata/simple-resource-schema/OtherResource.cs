@@ -27,11 +27,6 @@ namespace Pulumi.Example
         {
         }
 
-        private OtherResource(string name, Input<string> id, ComponentResourceOptions? options = null)
-            : base("example::OtherResource", name, null, MakeResourceOptions(options, id))
-        {
-        }
-
         private static ComponentResourceOptions MakeResourceOptions(ComponentResourceOptions? options, Input<string>? id)
         {
             var defaultOptions = new ComponentResourceOptions

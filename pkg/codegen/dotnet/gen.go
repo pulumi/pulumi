@@ -750,7 +750,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	// Write a private constructor for the use of `Get`.
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		stateParam, stateRef := "", "null"
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state"
