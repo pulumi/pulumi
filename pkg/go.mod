@@ -28,6 +28,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/json-iterator/go v1.1.9
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
@@ -36,7 +37,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/sdk/v2 v2.2.1
 	github.com/rjeczalik/notify v0.9.2
-	github.com/ryboe/q v1.0.12 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.1.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect

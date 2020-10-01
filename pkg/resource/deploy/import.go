@@ -23,6 +23,7 @@ type Import struct {
 	Parent   resource.URN    // The parent of the resource, if any.
 	Provider resource.URN    // The specific provider to use for the resource, if any.
 	Version  *semver.Version // The provider version to use for the resource, if any.
+	Protect  bool            // Whether to mark the resource as protected after import
 }
 
 // ImportOptions controls the import process.
@@ -306,7 +307,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		contract.Assert(ok)
 
 		// Create the new desired state. Note that the resource is protected.
-		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, true,
+		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "")
 		steps = append(steps, newImportPlanStep(i.plan, new))
 	}

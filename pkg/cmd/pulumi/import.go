@@ -122,7 +122,7 @@ func readImportFile(p string) (importFile, error) {
 	return result, nil
 }
 
-func parseImportFile(f importFile) ([]deploy.Import, importer.NameTable, error) {
+func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, importer.NameTable, error) {
 	// Build the name table.
 	names := importer.NameTable{}
 	for name, urn := range f.NameTable {
@@ -132,9 +132,10 @@ func parseImportFile(f importFile) ([]deploy.Import, importer.NameTable, error) 
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		imp := deploy.Import{
-			Type: spec.Type,
-			Name: spec.Name,
-			ID:   spec.ID,
+			Type:    spec.Type,
+			Name:    spec.Name,
+			ID:      spec.ID,
+			Protect: protectResources,
 		}
 
 		if spec.Parent != "" {
@@ -194,7 +195,7 @@ type programGeneratorFunc func(p *hcl2.Program) (map[string][]byte, hcl.Diagnost
 
 func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import) error {
+	imports []deploy.Import, protectResources bool) error {
 
 	resourceTable := map[resource.URN]*resource.State{}
 	for _, r := range snap.Resources {
@@ -213,7 +214,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
 			s := *state
-			s.Protect = false
+			s.Protect = protectResources
 			resources = append(resources, &s)
 		}
 	}
@@ -270,6 +271,7 @@ func newImportCmd() *cobra.Command {
 	var suppressOutputs bool
 	var suppressPermaLink bool
 	var yes bool
+	var protectResources bool
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
@@ -353,7 +355,7 @@ func newImportCmd() *cobra.Command {
 				output = f
 			}
 
-			imports, nameTable, err := parseImportFile(importFile)
+			imports, nameTable, err := parseImportFile(importFile, protectResources)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -448,7 +450,8 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if err = generateImportedDefinitions(
-				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports); err != nil {
+				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+				protectResources); err != nil {
 
 				if _, ok := err.(*importer.DiagnosticsError); ok {
 					err = errors.Wrap(err, "internal error")
@@ -507,6 +510,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
+	cmd.PersistentFlags().BoolVarP(
+		&protectResources, "protect", "", true,
+		"Allow resources to be imported with protection from deletion enabled")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
