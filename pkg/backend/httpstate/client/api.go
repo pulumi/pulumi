@@ -137,12 +137,9 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 			return "", nil, errors.Wrapf(err, "compressing payload")
 		}
 
-		// gzip.Writer will not actually write anything unless it is flushed.
-		if err := writer.Flush(); err != nil {
-			return "", nil, errors.Wrapf(err, "flushing compressed payload")
-		}
-		// gzip.Writer will not actually write everything unless it is closed.
-		// without this, the compressed bytes do not decompress properly e.g. in python.
+		// gzip.Writer will not actually write anything unless it is flushed,
+		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
+		// Without this, the compressed bytes do not decompress properly e.g. in python.
 		if err := writer.Close(); err != nil {
 			return "", nil, errors.Wrapf(err, "closing compressed payload")
 		}
