@@ -166,6 +166,32 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
+func (pkg *pkgContext) tokenToResource(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
+	components := strings.Split(tok, ":")
+	contract.Assert(len(components) == 3)
+	if pkg == nil {
+		panic(fmt.Errorf("pkg is nil. token %s", tok))
+	}
+	if pkg.pkg == nil {
+		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
+	}
+
+	mod, name := pkg.tokenToPackage(tok), components[2]
+
+	name = Title(name)
+
+	if mod == pkg.mod {
+		return name
+	}
+	if mod == "" {
+		mod = components[0]
+	}
+	return strings.Replace(mod, "/", "", -1) + "." + name
+}
+
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assert(len(components) == 3)
@@ -188,6 +214,8 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		return "map[string]" + pkg.plainType(t.ElementType, false)
 	case *schema.ObjectType:
 		typ = pkg.tokenToType(t.Token)
+	case *schema.ResourceType:
+		typ = pkg.tokenToResource(t.Token)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -235,6 +263,9 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 		return strings.TrimSuffix(en, "Input") + "MapInput"
 	case *schema.ObjectType:
 		typ = pkg.tokenToType(t.Token)
+	case *schema.ResourceType:
+		typ = pkg.tokenToResource(t.Token)
+		return typ + "Input"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -288,6 +319,9 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 		return en + "MapOutput"
 	case *schema.ObjectType:
 		typ = pkg.tokenToType(t.Token)
+	case *schema.ResourceType:
+		typ = pkg.tokenToResource(t.Token)
+		return typ + "Output"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -676,11 +710,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
-	if r.IsProvider {
+	switch {
+	case r.IsProvider:
 		fmt.Fprintf(w, "\tpulumi.ProviderResourceState\n\n")
-	} else {
+	case r.IsComponent:
+		fmt.Fprintf(w, "\tpulumi.ResourceState\n\n")
+	default:
 		fmt.Fprintf(w, "\tpulumi.CustomResourceState\n\n")
 	}
+
 	var secretProps []string
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
@@ -781,7 +819,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "}\n\n")
 
 	// Emit a factory function that reads existing instances of this resource.
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "// Get%[1]s gets an existing %[1]s resource's state with the given name, ID, and optional\n", name)
 		fmt.Fprintf(w, "// state properties that are used to uniquely qualify the lookup (nil if not required).\n")
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context,\n", name)
@@ -833,6 +871,24 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	fmt.Fprintf(w, "func (%sArgs) ElementType() reflect.Type {\n", name)
 	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sArgs)(nil)).Elem()\n", camel(name))
+	fmt.Fprintf(w, "}\n\n")
+
+	// Emit the input types.
+	fmt.Fprintf(w, "type %sInput interface {\n", name)
+	fmt.Fprintf(w, "\tpulumi.Input\n\n")
+	fmt.Fprintf(w, "\tTo%[1]sOutput() %[1]sOutput\n", name)
+	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
+	fmt.Fprintf(w, "}\n\n")
+	genInputMethods(w, name, name, name, false)
+
+	// Emit the output types.
+	fmt.Fprintf(w, "type %sOutput struct {\n", name)
+	fmt.Fprintf(w, "\t*pulumi.OutputState\n")
+	fmt.Fprintf(w, "}\n\n")
+	genOutputMethods(w, name, name+"Output")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "func init() {\n")
+	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
 	return nil
@@ -945,6 +1001,11 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports strin
 				pkg.getTypeImports(p.Type, recurse, imports, seen)
 			}
 		}
+	case *schema.ResourceType:
+		mod := pkg.tokenToPackage(t.Token)
+		if mod != pkg.mod {
+			imports.add(path.Join(pkg.importBasePath, mod))
+		}
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
 			pkg.getTypeImports(e, recurse, imports, seen)
@@ -956,6 +1017,8 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
+		pkg.getTypeImports(member, true, imports, seen)
+	case *schema.ResourceType:
 		pkg.getTypeImports(member, true, imports, seen)
 	case *schema.Resource:
 		for _, p := range member.Properties {
@@ -1161,7 +1224,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pkg.names.add(resourceName(r) + "Args")
 		pkg.names.add(camel(resourceName(r)) + "Args")
 		pkg.names.add("New" + resourceName(r))
-		if !r.IsProvider {
+		if !r.IsProvider && !r.IsComponent {
 			pkg.names.add(resourceName(r) + "State")
 			pkg.names.add(camel(resourceName(r)) + "State")
 			pkg.names.add("Get" + resourceName(r))
@@ -1254,7 +1317,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
@@ -1324,7 +1387,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.getImports(r, imports)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
 
 			if err := pkg.genResource(buffer, r); err != nil {
 				return nil, err
