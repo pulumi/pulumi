@@ -3,7 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-_(None)_
+_(none)_
+
+## 2.11.1 (2020-09-30)
+
+- Add internal scaffolding for using cross-language components from Python.
+  [#5375](https://github.com/pulumi/pulumi/pull/5375)
 
 ## 2.11.0 (2020-09-30)
 
@@ -18,7 +23,6 @@ _(None)_
   (fixes [#5446](https://github.com/pulumi/pulumi/issues/5446))
   [#5465](https://github.com/pulumi/pulumi/pull/5465)
 
-
 ## 2.10.2 (2020-09-21)
 
 - [sdk/go] Add missing Version field to invokeOptions
@@ -26,7 +30,7 @@ _(None)_
 
 - Add `pulumi console` command which opens the currently selected stack in the Pulumi console.
   [#5368](https://github.com/pulumi/pulumi/pull/5368)
-  
+
 - Python SDK: Cast numbers intended to be integers to `int`.
   [#5419](https://github.com/pulumi/pulumi/pull/5419)
 
