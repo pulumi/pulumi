@@ -52,6 +52,8 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
     public onPulumiExit(code: number, preview: boolean) {
         this.pulumiExitCode = code;
+        // these are globals and we need to clean up after ourselves
+        runtime.resetOptions("", "", -1, "", "", false);
         if (!this.running) {
             this.rejectResult(this.getExitError(preview));
         }
