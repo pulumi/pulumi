@@ -26,36 +26,31 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
-      - name: Set version
-        run: |
-          echo "::set-env name=NPM_VERSION::$(./scripts/get-version HEAD)"
-      - name: Trigger Docker Build
-        run: ./scripts/build-docker.sh" "${NPM_VERSION}" --publish
+      - name: Dispatch event
+        run: # FIXME: add dispatch event here
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
-      - name: Checkout Scripts Repo
-        uses: actions/checkout@v2
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
         with:
-          path: ci-scripts
-          repository: pulumi/scripts
-      - name: Trigger Docs Build
-        run: |
-          ./ci-scripts/ci/build-package-docs.sh "pulumi"
-        env:
-          TRAVIS: true
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          event-type: homebrew-bump
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
   homebrew:
     name: Update Homebrew
     runs-on: macos-latest
     needs: publish-sdks
     steps:
-      - name : Bump Homebrew Formula
-        uses: dawidd6/action-homebrew-bump-formula@v3
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          formula: pulumi
+      - name: Repository Dispatch
+          uses: peter-evans/repository-dispatch@v1
+          with:
+            token: ${{ secrets.PULUMI_BOT_TOKEN }}
+            event-type: homebrew-bump
+            client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+
   publish-sdks:
     name: Publish SDKs
     runs-on: ubuntu-latest
