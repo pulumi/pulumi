@@ -196,10 +196,6 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	return typ
 }
 
-func (mod *modContext) tokenToResource(tok string) string {
-	return mod.tokenToNamespace(tok, "")
-}
-
 func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
 	var typ string
 	switch t := t.(type) {
@@ -247,7 +243,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ += "Result"
 		}
 	case *schema.ResourceType:
-		typ = mod.tokenToResource(t.Token)
+		typ = mod.tokenToNamespace(t.Token, "")
 		if typ != "" {
 			typ += "."
 		}
