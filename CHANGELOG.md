@@ -3,7 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-_(none)_
+- [sdk/python] Fix secret regression: ensure unwrapped secrets during deserialization
+  are rewrapped before being returned.
+  [#5496](https://github.com/pulumi/pulumi/pull/5496)
 
 ## 2.11.1 (2020-09-30)
 
