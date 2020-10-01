@@ -33,13 +33,6 @@ func TestGeneratePackage(t *testing.T) {
 				"types/enums.ts",
 				"types/index.ts",
 			},
-			false,
-			func(files, expectedFiles map[string][]byte) {
-				for name, file := range expectedFiles {
-					assert.Contains(t, files, name)
-					assert.Equal(t, file, files[name])
-				}
-			},
 		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")

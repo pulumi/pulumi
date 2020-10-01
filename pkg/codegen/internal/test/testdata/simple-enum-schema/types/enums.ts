@@ -7,12 +7,14 @@ export const RedContainerColor: ContainerColor = "red";
 export const BlueContainerColor: ContainerColor = "blue";
 export const YellowContainerColor: ContainerColor = "yellow";
 
+/** plant container colors */
 export type ContainerColor = "red" | "blue" | "yellow";
 
 export const FourInchContainerSize: ContainerSize = 4;
 export const SixInchContainerSize: ContainerSize = 6;
 export const EightInchContainerSize: ContainerSize = 8;
 
+/** plant container sizes */
 export type ContainerSize = 4 | 6 | 8;
 
 /** A burgundy rubber tree. */
@@ -22,4 +24,5 @@ export const RubyRubberTreeVariety: RubberTreeVariety = "Ruby";
 /** A tineke rubber tree. */
 export const TinekeRubberTreeVariety: RubberTreeVariety = "Tineke";
 
+/** types of rubber trees */
 export type RubberTreeVariety = "Burgundy" | "Ruby" | "Tineke";

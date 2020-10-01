@@ -1143,6 +1143,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 	}
 	fmt.Fprintf(w, "\n")
 
+	if enum.Comment != "" {
+		fmt.Fprintf(w, "%s/** %s */\n", indent, enum.Comment)
+	}
 	fmt.Fprintf(w, "%sexport type %s = ", indent, enumName)
 	for i, e := range enum.Elements {
 		if val, ok := e.Value.(string); ok {
