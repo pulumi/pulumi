@@ -180,7 +180,7 @@ describe("LocalWorkspace", () => {
         assert.equal(destroyRes.summary.kind, "destroy");
         assert.equal(destroyRes.summary.result, "succeeded");
 
-        await stack.getWorkspace().removeStack(stackName);
+        await stack.workspace.removeStack(stackName);
     }));
     it(`runs through the stack lifecycle with an inline program`, asyncTest(async () => {
         const program = async () => {
@@ -227,7 +227,7 @@ describe("LocalWorkspace", () => {
         assert.equal(destroyRes.summary.kind, "destroy");
         assert.equal(destroyRes.summary.result, "succeeded");
 
-        await stack.getWorkspace().removeStack(stackName);
+        await stack.workspace.removeStack(stackName);
     }));
 });
 
