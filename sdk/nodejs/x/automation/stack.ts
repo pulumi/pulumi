@@ -265,8 +265,6 @@ export class Stack {
         };
         return result;
     }
-    getName(): string { return this.name; }
-    getWorkspace(): Workspace { return this.workspace; }
     async getConfig(key: string): Promise<ConfigValue> {
         return this.workspace.getConfig(this.name, key);
     }
@@ -317,17 +315,16 @@ export class Stack {
         return history[0];
     }
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
-        const ws = this.getWorkspace();
         let envs: { [key: string]: string } = {};
-        const pulumiHome = ws.pulumiHome;
+        const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
         }
-        envs = { ...envs, ...ws.envVars };
-        const additionalArgs = await ws.serializeArgsForOp(this.name);
+        envs = { ...envs, ...this.workspace.envVars };
+        const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, ...additionalArgs];
-        const result = await runPulumiCmd(args, ws.workDir, envs, onOutput);
-        await ws.postCommandCallback(this.name);
+        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        await this.workspace.postCommandCallback(this.name);
         return result;
     }
 }
