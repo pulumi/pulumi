@@ -1,12 +1,16 @@
 package filestate
 
 import (
-	user "github.com/tweekmonster/luser"
 	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	user "github.com/tweekmonster/luser"
+
+	"github.com/pulumi/pulumi/pkg/v2/operations"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 )
 
 func TestMassageBlobPath(t *testing.T) {
@@ -62,4 +66,17 @@ func TestMassageBlobPath(t *testing.T) {
 
 		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected)
 	})
+}
+
+func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
+	target := &deploy.Target{
+		Name:      "test",
+		Config:    config.Map{},
+		Decrypter: config.NopDecrypter,
+		Snapshot:  nil,
+	}
+	query := operations.LogQuery{}
+	res, err := GetLogsForTarget(target, query)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
 }

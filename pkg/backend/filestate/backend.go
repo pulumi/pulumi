@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"net/url"
 	"os"
 	"path"
@@ -29,6 +28,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -628,7 +628,11 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
 func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
 	contract.Assert(target != nil)
-	contract.Assert(target.Snapshot != nil)
+
+	if target.Snapshot == nil {
+		// If the stack has not been deployed yet, return no logs.
+		return nil, nil
+	}
 
 	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
