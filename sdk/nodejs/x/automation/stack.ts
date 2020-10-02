@@ -21,28 +21,26 @@ import { PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
 
-export type StackInitMode = "create" | "select" | "upsert";
-
 export class Stack {
-    ready: Promise<any>;
-    private name: string;
-    private workspace: Workspace;
-    public static async Create(name: string, workspace: Workspace): Promise<Stack> {
+    readonly name: string;
+    readonly workspace: Workspace;
+    private ready: Promise<any>;
+    public static async create(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "create");
         await stack.ready;
-        return Promise.resolve(stack);
+        return stack;
     }
-    public static async Select(name: string, workspace: Workspace): Promise<Stack> {
+    public static async select(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "select");
         await stack.ready;
-        return Promise.resolve(stack);
+        return stack;
     }
-    public static async Upsert(name: string, workspace: Workspace): Promise<Stack> {
-        const stack = new Stack(name, workspace, "upsert");
+    public static async createOrSelect(name: string, workspace: Workspace): Promise<Stack> {
+        const stack = new Stack(name, workspace, "createOrSelect");
         await stack.ready;
-        return Promise.resolve(stack);
+        return stack;
     }
-    constructor(name: string, workspace: Workspace, mode: StackInitMode) {
+    private constructor(name: string, workspace: Workspace, mode: StackInitMode) {
         this.name = name;
         this.workspace = workspace;
 
@@ -53,7 +51,7 @@ export class Stack {
             case "select":
                 this.ready = workspace.selectStack(name);
                 return this;
-            case "upsert":
+            case "createOrSelect":
                 // TODO update this based on structured errors (check for 409)
                 this.ready = workspace.createStack(name).catch(() => {
                     return workspace.selectStack(name);
@@ -66,7 +64,7 @@ export class Stack {
     async up(opts?: UpOptions): Promise<UpResult> {
         const args = ["up", "--yes", "--skip-preview"];
         let kind = execKind.local;
-        let program: PulumiFn | undefined = this.workspace.getProgram();
+        let program = this.workspace.program;
         await this.workspace.selectStack(this.name);
 
         if (opts) {
@@ -133,13 +131,13 @@ export class Stack {
             summary: status[0]!,
             outputs: status[1]!,
         };
-        return Promise.resolve(result);
+        return result;
     }
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
         // TODO JSON
         const args = ["preview"];
         let kind = execKind.local;
-        let program: PulumiFn | undefined = this.workspace.getProgram();
+        let program = this.workspace.program;
         await this.workspace.selectStack(this.name);
 
         if (opts) {
@@ -205,7 +203,7 @@ export class Stack {
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return Promise.resolve(result);
+        return result;
     }
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
         const args = ["refresh", "--yes", "--skip-preview"];
@@ -235,7 +233,7 @@ export class Stack {
             stderr: refResult.stderr,
             summary: summary!,
         };
-        return Promise.resolve(result);
+        return result;
     }
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
         const args = ["destroy", "--yes", "--skip-preview"];
@@ -265,7 +263,7 @@ export class Stack {
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return Promise.resolve(result);
+        return result;
     }
     getName(): string { return this.name; }
     getWorkspace(): Workspace { return this.workspace; }
@@ -304,34 +302,33 @@ export class Stack {
             outputs[key] = { value, secret };
         }
 
-        return Promise.resolve(outputs);
+        return outputs;
     }
     async history(): Promise<UpdateSummary[]> {
         const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
         const summaries: UpdateSummary[] = JSON.parse(result.stdout);
-        return Promise.resolve(summaries);
+        return summaries;
     }
     async info(): Promise<UpdateSummary | undefined> {
         const history = await this.history();
         if (!history || history.length === 0) {
-            return Promise.resolve(undefined);
+            return undefined;
         }
-        return Promise.resolve(history[0]);
+        return history[0];
     }
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         const ws = this.getWorkspace();
         let envs: { [key: string]: string } = {};
-        const pulumiHome = ws.getPulumiHome();
+        const pulumiHome = ws.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
         }
-        const additionalEnvs = await ws.getEnvVars();
-        envs = { ...envs, ...additionalEnvs };
+        envs = { ...envs, ...ws.envVars };
         const additionalArgs = await ws.serializeArgsForOp(this.name);
         args = [...args, ...additionalArgs];
-        const result = await runPulumiCmd(args, ws.getWorkDir(), envs, onOutput);
+        const result = await runPulumiCmd(args, ws.workDir, envs, onOutput);
         await ws.postCommandCallback(this.name);
-        return Promise.resolve(result);
+        return result;
     }
 }
 
@@ -440,3 +437,5 @@ const execKind = {
     local: "auto.local",
     inline: "auto.inline",
 };
+
+type StackInitMode = "create" | "select" | "createOrSelect";

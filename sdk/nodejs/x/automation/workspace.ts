@@ -17,6 +17,11 @@ import { ProjectSettings } from "./projectSettings";
 import { StackSettings } from "./stackSettings";
 
 export interface Workspace {
+    readonly workDir: string;
+    readonly pulumiHome?: string;
+    readonly secretsProvider?: string;
+    program?: PulumiFn;
+    envVars: { [key: string]: string };
     projectSettings(): Promise<ProjectSettings>;
     saveProjectSettings(settings: ProjectSettings): Promise<void>;
     stackSettings(stackName: string): Promise<StackSettings>;
@@ -30,20 +35,12 @@ export interface Workspace {
     removeConfig(stackName: string, key: string): Promise<void>;
     removeAllConfig(stackName: string, keys: string[]): Promise<void>;
     refreshConfig(stackName: string): Promise<ConfigMap>;
-    getEnvVars(): { [key: string]: string };
-    setEnvVars(envs: { [key: string]: string }): void;
-    setEnvVar(key: string, value: string): void;
-    unsetEnvVar(key: string): void;
-    getWorkDir(): string;
-    getPulumiHome(): string | undefined;
     whoAmI(): Promise<string>;
     stack(): Promise<StackSummary | undefined>;
     createStack(stackName: string): Promise<void>;
     selectStack(stackName: string): Promise<void>;
     removeStack(stackName: string): Promise<void>;
     listStacks(): Promise<StackSummary[]>;
-    getProgram(): PulumiFn | undefined;
-    setProgram(program: PulumiFn): void;
     // TODO import/export
 }
 
@@ -56,4 +53,4 @@ export type StackSummary = {
     url?: string,
 };
 
-export type PulumiFn = () => Promise<any>;
+export type PulumiFn = () => Promise<Record<string, any> | void>;

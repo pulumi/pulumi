@@ -24,77 +24,78 @@ import { StackSettings } from "./stackSettings";
 import { PulumiFn, StackSummary, Workspace } from "./workspace";
 
 export class LocalWorkspace implements Workspace {
-    ready: Promise<any[]>;
-    private workDir: string;
-    private pulumiHome?: string;
-    private program?: PulumiFn;
-    private envVars: { [key: string]: string };
-    private secretsProvider?: string;
-    public static async NewStackLocalSource(
-        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.localSourceStackHelper(stackName, workDir, Stack.Create, opts);
+    readonly workDir: string;
+    readonly pulumiHome?: string;
+    readonly secretsProvider?: string;
+    public program?: PulumiFn;
+    public envVars: { [key: string]: string };
+    private ready: Promise<any[]>;
+    public static async create(opts: LocalWorkspaceOptions): Promise<LocalWorkspace> {
+        const ws = new LocalWorkspace(opts);
+        await ws.ready;
+        return ws;
     }
-    public static async UpsertStackLocalSource(
-        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.localSourceStackHelper(stackName, workDir, Stack.Upsert, opts);
+    public static async createStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async createStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async createStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
+        if (isInlineProgramArgs(args)) {
+            return await this.inlineSourceStackHelper(args, Stack.create, opts);
+        } else if (isLocalProgramArgs(args)) {
+            return await this.localSourceStackHelper(args, Stack.create, opts);
+        }
+        throw new Error(`unexpected args: ${args}`);
     }
-    public static async SelectStackLocalSource(
-        stackName: string, workDir: string, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.localSourceStackHelper(stackName, workDir, Stack.Select, opts);
+    public static async selectStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async selectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async selectStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
+        if (isInlineProgramArgs(args)) {
+            return await this.inlineSourceStackHelper(args, Stack.select, opts);
+        } else if (isLocalProgramArgs(args)) {
+            return await this.localSourceStackHelper(args, Stack.select, opts);
+        }
+        throw new Error(`unexpected args: ${args}`);
+    }
+    public static async createOrSelectStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async createOrSelectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
+    public static async createOrSelectStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
+        if (isInlineProgramArgs(args)) {
+            return await this.inlineSourceStackHelper(args, Stack.createOrSelect, opts);
+        } else if (isLocalProgramArgs(args)) {
+            return await this.localSourceStackHelper(args, Stack.createOrSelect, opts);
+        }
+        throw new Error(`unexpected args: ${args}`);
     }
     private static async localSourceStackHelper(
-        stackName: string, workDir: string, initFn: stackInitFunc, opts?: LocalWorkspaceOpts,
+        args: LocalProgramArgs, initFn: stackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
-        let wsOpts = { workDir };
+        let wsOpts = { workDir: args.workDir };
         if (opts) {
-            wsOpts = { ...opts, workDir };
+            wsOpts = { ...opts, workDir: args.workDir };
         }
 
         const ws = new LocalWorkspace(wsOpts);
         await ws.ready;
 
-        const stack = await initFn(stackName, ws);
-
-        return Promise.resolve(stack);
-    }
-    public static async NewStackInlineSource(
-        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Create, opts);
-    }
-    public static async UpsertStackInlineSource(
-        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Upsert, opts);
-    }
-    public static async SelectStackInlineSource(
-        stackName: string, projectName: string, program: PulumiFn, opts?: LocalWorkspaceOpts,
-    ): Promise<Stack> {
-        return this.inlineSourceStackHelper(stackName, projectName, program, Stack.Select, opts);
+        return await initFn(args.stackName, ws);
     }
     private static async inlineSourceStackHelper(
-        stackName: string, projectName: string, program: PulumiFn, initFn: stackInitFunc, opts?: LocalWorkspaceOpts,
+        args: InlineProgramArgs, initFn: stackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
-        let wsOpts: LocalWorkspaceOpts = { program };
+        let wsOpts: LocalWorkspaceOptions = { program: args.program };
         if (opts) {
-            wsOpts = { ...opts, program };
+            wsOpts = { ...opts, program: args.program };
         }
 
         if (!wsOpts.projectSettings) {
-            wsOpts.projectSettings = defaultProject(projectName);
+            wsOpts.projectSettings = defaultProject(args.projectName);
         }
 
         const ws = new LocalWorkspace(wsOpts);
         await ws.ready;
 
-        const stack = await initFn(stackName, ws);
-
-        return Promise.resolve(stack);
+        return await initFn(args.stackName, ws);
     }
-    constructor(opts?: LocalWorkspaceOpts) {
+    private constructor(opts?: LocalWorkspaceOptions) {
         let dir = "";
         let envs = {};
 
@@ -135,11 +136,11 @@ export class LocalWorkspace implements Workspace {
             if (!fs.existsSync(path)) { continue; }
             const contents = fs.readFileSync(path).toString();
             if (isJSON) {
-                return Promise.resolve(ProjectSettings.fromJSON(JSON.parse(contents)));
+                return ProjectSettings.fromJSON(JSON.parse(contents));
             }
-            return Promise.resolve(ProjectSettings.fromYAML(contents));
+            return ProjectSettings.fromYAML(contents);
         }
-        return Promise.reject(new Error(`failed to find project settings file in workdir: ${this.workDir}`));
+        throw new Error(`failed to find project settings file in workdir: ${this.workDir}`);
     }
     async saveProjectSettings(settings: ProjectSettings): Promise<void> {
         let foundExt = ".yaml";
@@ -158,7 +159,7 @@ export class LocalWorkspace implements Workspace {
         else {
             contents = settings.toYAML();
         }
-        return Promise.resolve(fs.writeFileSync(path, contents));
+        return fs.writeFileSync(path, contents);
     }
     async stackSettings(stackName: string): Promise<StackSettings> {
         const stackSettingsName = getStackSettingsName(stackName);
@@ -168,11 +169,11 @@ export class LocalWorkspace implements Workspace {
             if (!fs.existsSync(path)) { continue; }
             const contents = fs.readFileSync(path).toString();
             if (isJSON) {
-                return Promise.resolve(StackSettings.fromJSON(JSON.parse(contents)));
+                return StackSettings.fromJSON(JSON.parse(contents));
             }
-            return Promise.resolve(StackSettings.fromYAML(contents));
+            return StackSettings.fromYAML(contents);
         }
-        return Promise.reject(new Error(`failed to find stack settings file in workdir: ${this.workDir}`));
+        throw new Error(`failed to find stack settings file in workdir: ${this.workDir}`);
     }
     async saveStackSettings(settings: StackSettings, stackName: string): Promise<void> {
         const stackSettingsName = getStackSettingsName(stackName);
@@ -192,53 +193,37 @@ export class LocalWorkspace implements Workspace {
         else {
             contents = settings.toYAML();
         }
-        return Promise.resolve(fs.writeFileSync(path, contents));
+        return fs.writeFileSync(path, contents);
     }
     async createStack(stackName: string): Promise<void> {
         const args = ["stack", "init", stackName];
         if (this.secretsProvider) {
             args.push("--secrets-provider", this.secretsProvider);
         }
-        try {
-            const result = await this.runPulumiCmd(args);
-            return Promise.resolve();
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        await this.runPulumiCmd(args);
     }
     async selectStack(stackName: string): Promise<void> {
-        try {
-            const result = await this.runPulumiCmd(["stack", "select", stackName]);
-            return Promise.resolve();
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        await this.runPulumiCmd(["stack", "select", stackName]);
     }
     async removeStack(stackName: string): Promise<void> {
-        try {
-            const result = await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
-            return Promise.resolve();
-        } catch (error) {
-            return Promise.reject(error);
-        }
+            await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
     }
     async getConfig(stackName: string, key: string): Promise<ConfigValue> {
         await this.selectStack(stackName);
         const result = await this.runPulumiCmd(["config", "get", key, "--json"]);
         const val = JSON.parse(result.stdout);
-        return Promise.resolve(val);
+        return val;
     }
     async getAllConfig(stackName: string): Promise<ConfigMap> {
         await this.selectStack(stackName);
         const result = await this.runPulumiCmd(["config", "--show-secrets", "--json"]);
         const val = JSON.parse(result.stdout);
-        return Promise.resolve(val);
+        return val;
     }
     async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
         await this.selectStack(stackName);
         const secretArg = value.secret ? "--secret" : "--plaintext";
         await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
-        return Promise.resolve();
     }
     async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
         const promises: Promise<void>[] = [];
@@ -246,74 +231,48 @@ export class LocalWorkspace implements Workspace {
             promises.push(this.setConfig(stackName, key, value));
         }
         await Promise.all(promises);
-        return Promise.resolve();
     }
     async removeConfig(stackName: string, key: string): Promise<void> {
         await this.selectStack(stackName);
         await this.runPulumiCmd(["config", "rm", key]);
-        return Promise.resolve();
     }
     async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
         const promises: Promise<void>[] = [];
         for (const key of keys) {
             promises.push(this.removeConfig(stackName, key));
         }
-        return Promise.resolve(<any>{});
+        await Promise.all(promises);
     }
     async refreshConfig(stackName: string): Promise<ConfigMap> {
         await this.selectStack(stackName);
         await this.runPulumiCmd(["config", "refresh", "--force"]);
         return this.getAllConfig(stackName);
     }
-    getEnvVars(): { [key: string]: string } {
-        return this.envVars;
-    }
-    setEnvVars(envs: { [key: string]: string }): void {
-        this.envVars = { ...this.envVars, ...envs };
-    }
-    setEnvVar(key: string, value: string): void {
-        this.envVars[key] = value;
-    }
-    unsetEnvVar(key: string): void {
-        delete this.envVars[key];
-    }
-    getWorkDir(): string {
-        return this.workDir;
-    }
-    getPulumiHome(): string | undefined {
-        return this.pulumiHome;
-    }
     async whoAmI(): Promise<string> {
         const result = await this.runPulumiCmd(["whoami"]);
-        return Promise.resolve(result.stdout.trim());
+        return result.stdout.trim();
     }
     async stack(): Promise<StackSummary | undefined> {
         const stacks = await this.listStacks();
         for (const stack of stacks) {
             if (stack.current) {
-                return Promise.resolve(stack);
+                return stack;
             }
         }
-        return Promise.resolve(undefined);
+        return undefined;
     }
     async listStacks(): Promise<StackSummary[]> {
         const result = await this.runPulumiCmd(["stack", "ls", "--json"]);
         const stacks: StackSummary[] = JSON.parse(result.stdout);
-        return Promise.resolve(stacks);
+        return stacks;
     }
-    getProgram(): PulumiFn | undefined {
-        return this.program;
-    }
-    setProgram(program: PulumiFn): void {
-        this.program = program;
-    }
-    serializeArgsForOp(_: string): Promise<string[]> {
+    async serializeArgsForOp(_: string): Promise<string[]> {
         // LocalWorkspace does not take advantage of this extensibility point.
-        return Promise.resolve([]);
+            return [];
     }
-    postCommandCallback(_: string): Promise<void> {
+    async postCommandCallback(_: string): Promise<void> {
         // LocalWorkspace does not take advantage of this extensibility point.
-        return Promise.resolve();
+        return;
     }
     private async runPulumiCmd(
         args: string[],
@@ -322,12 +281,23 @@ export class LocalWorkspace implements Workspace {
         if (this.pulumiHome) {
             envs["PULUMI_HOME"] = this.pulumiHome;
         }
-        envs = { ...envs, ...this.getEnvVars() };
+        envs = { ...envs, ...this.envVars };
         return runPulumiCmd(args, this.workDir, envs);
     }
 }
 
-export type LocalWorkspaceOpts = {
+export interface InlineProgramArgs {
+    stackName: string;
+    projectName: string;
+    program: PulumiFn;
+}
+
+export interface LocalProgramArgs {
+    stackName: string;
+    workDir: string;
+}
+
+export type LocalWorkspaceOptions = {
     workDir?: string,
     pulumiHome?: string,
     program?: PulumiFn,
@@ -337,21 +307,30 @@ export type LocalWorkspaceOpts = {
     stackSettings?: { [key: string]: StackSettings },
 };
 
+function isLocalProgramArgs(args: LocalProgramArgs | InlineProgramArgs): args is LocalProgramArgs {
+    return (args as LocalProgramArgs).workDir !== undefined;
+}
+
+function isInlineProgramArgs(args: LocalProgramArgs | InlineProgramArgs): args is InlineProgramArgs {
+    return (args as InlineProgramArgs).projectName !== undefined &&
+        (args as InlineProgramArgs).program !== undefined;
+}
+
 export const settingsExtensions = [".yaml", ".yml", ".json"];
 
-const getStackSettingsName = (name: string): string => {
+function getStackSettingsName(name: string): string {
     const parts = name.split("/");
     if (parts.length < 1) {
         return name;
     }
     return parts[parts.length - 1];
-};
+}
 
-type stackInitFunc = (name: string, workspace: Workspace) => Promise<Stack>;
+type stackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
-const defaultProject = (projectName: string) => {
+function defaultProject(projectName: string) {
     const settings = new ProjectSettings();
     settings.name = projectName;
     settings.runtime.name = "nodejs";
     return settings;
-};
+}

@@ -25,7 +25,7 @@ import { asyncTest } from "../util";
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
         for (const ext of ["yaml", "yml", "json"]) {
-            const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
+            const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.projectSettings();
             assert(settings.name, "testproj");
             assert(settings.runtime.name, "go");
@@ -36,7 +36,7 @@ describe("LocalWorkspace", () => {
 
     it(`stackSettings from yaml/yml/json`, asyncTest(async () => {
         for (const ext of ["yaml", "yml", "json"]) {
-            const ws = new LocalWorkspace({ workDir: upath.joinSafe(__dirname, "data", ext) });
+            const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.stackSettings("dev");
             assert.equal(settings.secretsProvider, "abc");
             assert.equal(settings.config!["plain"].value, "plain");
@@ -48,24 +48,22 @@ describe("LocalWorkspace", () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = "node_test";
         projectSettings.runtime.name = "nodejs";
-        const ws = new LocalWorkspace({ projectSettings });
-        await ws.ready;
+        const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         await ws.createStack(stackName);
         await ws.selectStack(stackName);
         await ws.removeStack(stackName);
     }));
 
-    it(`Create/Select/Upsert Stack`, asyncTest(async () => {
+    it(`create/select/createOrSelect Stack`, asyncTest(async () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = "node_test";
         projectSettings.runtime.name = "nodejs";
-        const ws = new LocalWorkspace({ projectSettings });
-        await ws.ready;
+        const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
-        await Stack.Create(stackName, ws);
-        await Stack.Select(stackName, ws);
-        await Stack.Upsert(stackName, ws);
+        await Stack.create(stackName, ws);
+        await Stack.select(stackName, ws);
+        await Stack.createOrSelect(stackName, ws);
         await ws.removeStack(stackName);
     }));
     it(`Config`, asyncTest(async () => {
@@ -73,10 +71,9 @@ describe("LocalWorkspace", () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = projectName;
         projectSettings.runtime.name = "nodejs";
-        const ws = new LocalWorkspace({ projectSettings });
-        await ws.ready;
+        const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
-        const stack = await Stack.Create(stackName, ws);
+        const stack = await Stack.create(stackName, ws);
 
         const config = {
             plain: { value: "abc" },
@@ -116,14 +113,13 @@ describe("LocalWorkspace", () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = `node_list_test${getTestSuffix()}`;
         projectSettings.runtime.name = "nodejs";
-        const ws = new LocalWorkspace({ projectSettings });
-        await ws.ready;
+        const ws = await LocalWorkspace.create({ projectSettings });
         const stackNamer = () => `int_test${getTestSuffix()}`;
         const stackNames: string[] = [];
         for (let i = 0; i < 2; i++) {
             const stackName = stackNamer();
             stackNames[i] = stackName;
-            await Stack.Create(stackName, ws);
+            await Stack.create(stackName, ws);
             const stackSummary = await ws.stack();
             assert.equal(stackSummary?.current, true);
             const stacks = await ws.listStacks();
@@ -138,10 +134,9 @@ describe("LocalWorkspace", () => {
         const projectSettings = new ProjectSettings();
         projectSettings.name = "node_test";
         projectSettings.runtime.name = "nodejs";
-        const ws = new LocalWorkspace({ projectSettings });
-        await ws.ready;
+        const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
-        const stack = await Stack.Create(stackName, ws);
+        const stack = await Stack.create(stackName, ws);
         const histroy = await stack.history();
         assert.equal(histroy.length, 0);
         const info = await stack.info();
@@ -151,7 +146,7 @@ describe("LocalWorkspace", () => {
     it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
         const stackName = `int_test${getTestSuffix()}`;
         const workDir = upath.joinSafe(__dirname, "data", "testproj");
-        const stack = await LocalWorkspace.NewStackLocalSource(stackName, workDir);
+        const stack = await LocalWorkspace.createStack({ stackName, workDir });
 
         const config: ConfigMap = {
             "bar": { value: "abc" },
@@ -188,16 +183,17 @@ describe("LocalWorkspace", () => {
         await stack.getWorkspace().removeStack(stackName);
     }));
     it(`runs through the stack lifecycle with an inline program`, asyncTest(async () => {
-        const program = () => {
+        const program = async () => {
             const config = new Config();
-            return Promise.resolve({
+            return {
                 exp_static: "foo",
                 exp_cfg: config.get("bar"),
                 exp_secret: config.getSecret("buzz"),
-            });
+            };
         };
         const stackName = `int_test${getTestSuffix()}`;
-        const stack = await LocalWorkspace.NewStackInlineSource(stackName, "inline_node", program);
+        const projectName = "inline_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
             "bar": { value: "abc" },

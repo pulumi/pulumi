@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { Output } from "../output";
 import { CustomResource } from "../index";
+import { Output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 
