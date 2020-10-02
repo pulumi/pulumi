@@ -303,7 +303,10 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
-		readme := mod.pkg.Language["python"].(PackageInfo).Readme
+		var readme string
+		if info, ok := mod.pkg.Language["python"].(PackageInfo); ok {
+			readme = info.Readme
+		}
 		if readme == "" {
 			readme = mod.pkg.Description
 			if readme != "" && readme[len(readme)-1] != '\n' {
