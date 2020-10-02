@@ -21,6 +21,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
 # Uses the workdir, copies from pulumi interim container
 COPY --from=pulumi /pulumi/bin/pulumi /pulumi/bin/pulumi
 COPY --from=pulumi /pulumi/bin/*-nodejs* /pulumi/bin/
+COPY --from=pulumi /pulumi/bin/pulumi-analyzer-policy /pulumi/bin/
 ENV PATH "/pulumi/bin:${PATH}"
 
 CMD ["pulumi"]
