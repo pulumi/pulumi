@@ -634,16 +634,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Open the class.
 	className := name
-	var baseType, optionsType string
+	var baseType string
+	optionsType := "CustomResourceOptions"
 	switch {
 	case mod.isK8sCompatMode():
 		baseType = "KubernetesResource"
 	case r.IsComponent:
-		baseType, optionsType = "Pulumi.ComponentResource", "ComponentResourceOptions"
+		baseType = "Pulumi.ComponentResource"
+		optionsType = "ComponentResourceOptions"
 	case r.IsProvider:
-		baseType, optionsType = "Pulumi.ProviderResource", "CustomResourceOptions"
+		baseType = "Pulumi.ProviderResource"
 	default:
-		baseType, optionsType = "Pulumi.CustomResource", "CustomResourceOptions"
+		baseType = "Pulumi.CustomResource"
 	}
 
 	if r.DeprecationMessage != "" {
@@ -730,7 +732,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
-	if mod.dictionaryConstructors {
+	// Write a dictionary constructor.
+	if mod.dictionaryConstructors && !r.IsComponent {
 		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, %s? options = null)\n",
 			className, optionsType)
 		if r.IsComponent {
