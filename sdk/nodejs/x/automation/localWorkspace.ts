@@ -66,7 +66,7 @@ export class LocalWorkspace implements Workspace {
         throw new Error(`unexpected args: ${args}`);
     }
     private static async localSourceStackHelper(
-        args: LocalProgramArgs, initFn: stackInitializer, opts?: LocalWorkspaceOptions,
+        args: LocalProgramArgs, initFn: StackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
         let wsOpts = { workDir: args.workDir };
         if (opts) {
@@ -79,7 +79,7 @@ export class LocalWorkspace implements Workspace {
         return await initFn(args.stackName, ws);
     }
     private static async inlineSourceStackHelper(
-        args: InlineProgramArgs, initFn: stackInitializer, opts?: LocalWorkspaceOptions,
+        args: InlineProgramArgs, initFn: StackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
         let wsOpts: LocalWorkspaceOptions = { program: args.program };
         if (opts) {
@@ -226,22 +226,20 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
     }
     async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
-        const promises: Promise<void>[] = [];
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
         for (const [key, value] of Object.entries(config)) {
-            promises.push(this.setConfig(stackName, key, value));
+            await this.setConfig(stackName, key, value);
         }
-        await Promise.all(promises);
     }
     async removeConfig(stackName: string, key: string): Promise<void> {
         await this.selectStack(stackName);
         await this.runPulumiCmd(["config", "rm", key]);
     }
     async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
-        const promises: Promise<void>[] = [];
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
         for (const key of keys) {
-            promises.push(this.removeConfig(stackName, key));
+            await this.removeConfig(stackName, key);
         }
-        await Promise.all(promises);
     }
     async refreshConfig(stackName: string): Promise<ConfigMap> {
         await this.selectStack(stackName);
@@ -326,7 +324,7 @@ function getStackSettingsName(name: string): string {
     return parts[parts.length - 1];
 }
 
-type stackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
+type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
 function defaultProject(projectName: string) {
     const settings = new ProjectSettings();
