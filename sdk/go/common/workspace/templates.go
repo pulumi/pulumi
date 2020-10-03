@@ -514,6 +514,10 @@ var (
 // ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
 // for display to an end user.
 func ValidateProjectName(s string) error {
+	if s == "" {
+		return errors.New("A project name may not be empty")
+	}
+
 	if len(s) > 100 {
 		return errors.New("A project name must be 100 characters or less")
 	}

@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Correctly validate project names during 'pulumi new'
+  [#5504](https://github.com/pulumi/pulumi/pull/5504)
 
 ## 2.11.2 (2020-10-01)
 
