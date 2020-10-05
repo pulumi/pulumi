@@ -401,17 +401,25 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	}
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	var args = newArgs{
+	err := runNew(newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
-	}
-
-	err := runNew(args)
+	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project name may only contain")
+
+	err = runNew(newArgs{
+		generateOnly:      true,
+		interactive:       true,
+		prompt:            promptMock("", ""),
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project name may not be empty")
 }
 
 func TestInvalidTemplateName(t *testing.T) {

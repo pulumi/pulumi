@@ -961,59 +961,68 @@ func promptForValue(
 	yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error) {
 
-	if yes {
-		return defaultValue, nil
-	}
-
+	var value string
 	for {
-		var prompt string
-
-		if defaultValue == "" {
-			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+		// If we are auto-accepting the default (--yes), just set it and move on to validating.
+		// Otherwise, prompt the user interactively for a value.
+		if yes {
+			value = defaultValue
 		} else {
-			defaultValuePrompt := defaultValue
+			var prompt string
+			if defaultValue == "" {
+				prompt = opts.Color.Colorize(
+					fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+			} else {
+				defaultValuePrompt := defaultValue
+				if secret {
+					defaultValuePrompt = "[secret]"
+				}
+
+				prompt = opts.Color.Colorize(
+					fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
+			}
+			fmt.Print(prompt)
+
+			// Read the value.
+			var err error
 			if secret {
-				defaultValuePrompt = "[secret]"
+				value, err = cmdutil.ReadConsoleNoEcho("")
+				if err != nil {
+					return "", err
+				}
+			} else {
+				value, err = cmdutil.ReadConsole("")
+				if err != nil {
+					return "", err
+				}
 			}
+			value = strings.TrimSpace(value)
 
-			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
-		}
-		fmt.Print(prompt)
-
-		// Read the value.
-		var err error
-		var value string
-		if secret {
-			value, err = cmdutil.ReadConsoleNoEcho("")
-			if err != nil {
-				return "", err
-			}
-		} else {
-			value, err = cmdutil.ReadConsole("")
-			if err != nil {
-				return "", err
+			// If the user simply hit ENTER, choose the default value.
+			if value == "" {
+				value = defaultValue
 			}
 		}
-		value = strings.TrimSpace(value)
 
-		if value != "" {
-			var validationError error
-			if isValidFn != nil {
-				validationError = isValidFn(value)
+		// Ensure the resulting value is valid; note that we even validate the default, since sometimes
+		// we will have invalid default values, like "" for the project name.
+		if isValidFn != nil {
+			if validationError := isValidFn(value); validationError != nil {
+				// If validation failed, let the user know. If interactive, we will print the error and
+				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
+				msg := fmt.Sprintf("Sorry, '%s' is not a valid %s. %s.", value, valueType, validationError)
+				if yes {
+					return "", errors.New(msg)
+				}
+				fmt.Printf("%s\n", msg)
+				continue
 			}
-
-			if validationError == nil {
-				return value, nil
-			}
-
-			// The value is invalid, let the user know and try again
-			fmt.Printf("Sorry, '%s' is not a valid %s. %s.\n", value, valueType, validationError)
-			continue
 		}
-		return defaultValue, nil
+
+		break
 	}
+
+	return value, nil
 }
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
