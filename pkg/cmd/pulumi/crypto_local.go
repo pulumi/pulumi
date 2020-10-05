@@ -34,26 +34,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-func readPassphrase(prompt string) (string, error) {
+func readPassphrase(prompt string) (phrase string, interactive bool, err error) {
 	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
-		return phrase, nil
+		return phrase, false, nil
 	}
 	if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
 		phraseFilePath, err := filepath.Abs(phraseFile)
 		if err != nil {
-			return "", errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+			return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
 		}
 		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
 		if err != nil {
-			return "", errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
 		}
-		return strings.TrimSpace(string(phraseDetails)), nil
+		return strings.TrimSpace(string(phraseDetails)), false, nil
 	}
 	if !cmdutil.Interactive() {
-		return "", errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
+		return "", false, errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
 			"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 	}
-	return cmdutil.ReadConsoleNoEcho(prompt)
+	phrase, err = cmdutil.ReadConsoleNoEcho(prompt)
+	return phrase, true, err
 }
 
 func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
@@ -75,7 +76,7 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 	// If we have a salt, we can just use it.
 	if info.EncryptionSalt != "" {
 		for {
-			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+			phrase, interactive, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
 				"    (set PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE to remember)")
 			if phraseErr != nil {
 				return nil, phraseErr
@@ -83,7 +84,7 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 
 			sm, smerr := passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
 			switch {
-			case smerr == passphrase.ErrIncorrectPassphrase:
+			case interactive && smerr == passphrase.ErrIncorrectPassphrase:
 				cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
 				continue
 			case smerr != nil:
@@ -99,11 +100,11 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 	// Get a the passphrase from the user, ensuring that they match.
 	for {
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-		first, err := readPassphrase("Enter your passphrase to protect config/secrets")
+		first, _, err := readPassphrase("Enter your passphrase to protect config/secrets")
 		if err != nil {
 			return nil, err
 		}
-		second, err := readPassphrase("Re-enter your passphrase to confirm")
+		second, _, err := readPassphrase("Re-enter your passphrase to confirm")
 		if err != nil {
 			return nil, err
 		}

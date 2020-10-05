@@ -176,7 +176,10 @@ func (e *Formatter) Fgenf(w io.Writer, format string, args ...interface{}) {
 	for i := range args {
 		if node, ok := args[i].(model.Expression); ok {
 			args[i] = Func(func(f fmt.State, c rune) {
-				parentPrecedence, _ := f.Precision()
+				parentPrecedence := 0
+				if pp, ok := f.Precision(); ok {
+					parentPrecedence = pp
+				}
 				rhs := c == 'o'
 				e.gen(f, parentPrecedence, rhs, node)
 			})
