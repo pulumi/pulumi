@@ -35,7 +35,7 @@ namespace Pulumi
         /// <param name="args">The arguments to use to populate the new resource.</param>
         /// <param name="options">A bag of options that control this resource's behavior.</param>
 #pragma warning disable RS0022 // Constructor make noninheritable base class inheritable
-        public CustomResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options)
+        public CustomResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null)
             : this(type, name, args, options, dependency: false)
 #pragma warning restore RS0022 // Constructor make noninheritable base class inheritable
         {
@@ -56,12 +56,10 @@ namespace Pulumi
         /// <param name="args">The arguments to use to populate the new resource.</param>
         /// <param name="options">A bag of options that control this resource's behavior.</param>
         /// <param name="dependency">True if this is a synthetic resource used internally for dependency tracking.</param>
-#pragma warning disable RS0022 // Constructor make noninheritable base class inheritable
-        public CustomResource(
+        private protected CustomResource(
             string type, string name, ResourceArgs? args, CustomResourceOptions? options = null, bool dependency = false)
             : base(type, name, custom: true, args ?? ResourceArgs.Empty, options ?? new CustomResourceOptions(),
                    remote: false, dependency: dependency)
-#pragma warning restore RS0022 // Constructor make noninheritable base class inheritable
         {
         }
     }

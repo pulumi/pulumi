@@ -11,7 +11,7 @@ namespace Pulumi
     /// <see cref="DependencyProviderResource"/> is a <see cref="Resource"/> that is used by the provider SDK as a
     /// stand-in for a provider that is only used for its reference. Its only valid properties are its URN and ID.
     /// </summary>
-    public sealed class DependencyProviderResource : ProviderResource
+    internal sealed class DependencyProviderResource : ProviderResource
     {
         public DependencyProviderResource(string reference)
             : base(package: "", name: "", args: ResourceArgs.Empty, dependency: true)

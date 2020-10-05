@@ -11,7 +11,7 @@ namespace Pulumi
     /// <see cref="Output"/> has a dependency on a particular resource. These resources are only created when dealing
     /// with remote component resources.
     /// </summary>
-    public sealed class DependencyResource : CustomResource
+    internal sealed class DependencyResource : CustomResource
     {
         public DependencyResource(string urn)
             : base(type: "", name: "", args: ResourceArgs.Empty, dependency: true)
