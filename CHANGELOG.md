@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [cli] Remove eternal loop if a configured passphrase is invalid.
+  [#5507](https://github.com/pulumi/pulumi/pull/5507)
 
 ## 2.11.2 (2020-10-01)
 
