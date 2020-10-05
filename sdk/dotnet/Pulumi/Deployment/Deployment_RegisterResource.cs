@@ -10,7 +10,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> deps)> RegisterResourceAsync(
+        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> dependencies)> RegisterResourceAsync(
             Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
             ResourceOptions options)
         {
@@ -33,18 +33,18 @@ namespace Pulumi
             var result = await this.Monitor.RegisterResourceAsync(resource, request);
             Log.Debug($"Registering resource monitor end: t={type}, name={name}, custom={custom}, remote={remote}");
 
-            var deps = ImmutableDictionary.CreateBuilder<string, ImmutableHashSet<Resource>>();
-            foreach (var (key, propertyDeps) in result.PropertyDependencies)
+            var dependencies = ImmutableDictionary.CreateBuilder<string, ImmutableHashSet<Resource>>();
+            foreach (var (key, propertyDependencies) in result.PropertyDependencies)
             {
                 var urns = ImmutableHashSet.CreateBuilder<Resource>();
-                foreach (var urn in propertyDeps.Urns)
+                foreach (var urn in propertyDependencies.Urns)
                 {
                     urns.Add(newDependency(urn));
                 }
-                deps[key] = urns.ToImmutable();
+                dependencies[key] = urns.ToImmutable();
             }
 
-            return (result.Urn, result.Id, result.Object, deps.ToImmutable());
+            return (result.Urn, result.Id, result.Object, dependencies.ToImmutable());
         }
 
         private static void PopulateRequest(RegisterResourceRequest request, PrepareResult prepareResult)

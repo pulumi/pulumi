@@ -35,7 +35,7 @@ namespace Pulumi
                 CompleteResourceAsync(resource, remote, newDependency, args, options, completionSources));
         }
 
-        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> deps)> ReadOrRegisterResourceAsync(
+        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> dependencies)> ReadOrRegisterResourceAsync(
             Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
             ResourceOptions options)
         {
@@ -98,13 +98,13 @@ namespace Pulumi
                     // rest.
                     if (response.data.Fields.TryGetValue(fieldName, out var value))
                     {
-                        if (!response.deps.TryGetValue(fieldName, out var deps))
+                        if (!response.dependencies.TryGetValue(fieldName, out var dependencies))
                         {
-                            deps = ImmutableHashSet<Resource>.Empty;
+                            dependencies = ImmutableHashSet<Resource>.Empty;
                         }
 
-                        var converted = Converter.ConvertValue(
-                            $"{resource.GetType().FullName}.{fieldName}", value, completionSource.TargetType, deps);
+                        var converted = Converter.ConvertValue($"{resource.GetType().FullName}.{fieldName}", value,
+                            completionSource.TargetType, dependencies);
                         completionSource.SetValue(converted);
                     }
                 }

@@ -11,7 +11,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> deps)> ReadResourceAsync(
+        private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> dependencies)> ReadResourceAsync(
             Resource resource, string id, ResourceArgs args, ResourceOptions options)
         {
             var name = resource.GetResourceName();
