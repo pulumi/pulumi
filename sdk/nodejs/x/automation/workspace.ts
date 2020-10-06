@@ -35,7 +35,7 @@ export interface Workspace {
     removeConfig(stackName: string, key: string): Promise<void>;
     removeAllConfig(stackName: string, keys: string[]): Promise<void>;
     refreshConfig(stackName: string): Promise<ConfigMap>;
-    whoAmI(): Promise<string>;
+    whoAmI(): Promise<WhoAmIResult>;
     stack(): Promise<StackSummary | undefined>;
     createStack(stackName: string): Promise<void>;
     selectStack(stackName: string): Promise<void>;
@@ -54,3 +54,7 @@ export type StackSummary = {
 };
 
 export type PulumiFn = () => Promise<Record<string, any> | void>;
+
+export interface WhoAmIResult {
+    user: string;
+}
