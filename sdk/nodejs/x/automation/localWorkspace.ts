@@ -22,7 +22,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { PulumiFn, StackSummary, Workspace } from "./workspace";
+import { PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 export class LocalWorkspace implements Workspace {
     readonly workDir: string;
@@ -247,9 +247,9 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["config", "refresh", "--force"]);
         return this.getAllConfig(stackName);
     }
-    async whoAmI(): Promise<string> {
+    async whoAmI(): Promise<WhoAmIResult> {
         const result = await this.runPulumiCmd(["whoami"]);
-        return result.stdout.trim();
+        return { user: result.stdout.trim() };
     }
     async stack(): Promise<StackSummary | undefined> {
         const stacks = await this.listStacks();

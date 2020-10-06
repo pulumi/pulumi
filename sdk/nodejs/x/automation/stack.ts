@@ -306,7 +306,12 @@ export class Stack {
     }
     async history(): Promise<UpdateSummary[]> {
         const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
-        const summaries: UpdateSummary[] = JSON.parse(result.stdout);
+        const summaries: UpdateSummary[] = JSON.parse(result.stdout, (key, value) => {
+            if (key === "startTime" || key === "endTime") {
+                return new Date(value);
+            }
+            return value;
+        });
         return summaries;
     }
     async info(): Promise<UpdateSummary | undefined> {
@@ -331,7 +336,7 @@ export class Stack {
     }
 }
 
-export function FullyQualifiedStackName(org: string, project: string, stack: string): string {
+export function fullyQualifiedStackName(org: string, project: string, stack: string): string {
     return `${org}/${project}/${stack}`;
 }
 
@@ -345,14 +350,14 @@ export type OutputMap = { [key: string]: OutputValue };
 export type UpdateSummary = {
     // pre-update info
     kind: UpdateKind;
-    startTime: number;
+    startTime: Date;
     message: string;
     environment: { [key: string]: string };
     config: ConfigMap;
 
     // post-update info
     result: UpdateResult;
-    endTime: number;
+    endTime: Date;
     version: number;
     Deployment?: RawJSON;
     resourceChanges?: OpMap;
