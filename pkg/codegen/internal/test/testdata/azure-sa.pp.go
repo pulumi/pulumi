@@ -8,8 +8,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		config := config.New(ctx, "")
-		resourceGroupNameParam := config.Require("resourceGroupNameParam")
+		cfg := config.New(ctx, "")
+		resourceGroupNameParam := cfg.Require("resourceGroupNameParam")
 		resourceGroupVar, err := core.LookupResourceGroup(ctx, &core.LookupResourceGroupArgs{
 			Name: resourceGroupNameParam,
 		}, nil)
@@ -17,7 +17,7 @@ func main() {
 			return err
 		}
 		locationParam := resourceGroupVar.Location
-		if param := config.Get("locationParam"); param != "" {
+		if param := cfg.Get("locationParam"); param != "" {
 			locationParam = param
 		}
 		return nil
