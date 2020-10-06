@@ -45,7 +45,7 @@ namespace Pulumi.Serialization
 
         public void SetValue(OutputData<object?> data)
             => _taskCompletionSource.SetResult(new OutputData<T>(
-                _resources, (T)data.Value!, data.IsKnown, data.IsSecret));
+                _resources.Union(data.Resources), (T)data.Value!, data.IsKnown, data.IsSecret));
 
         public void TrySetDefaultResult(bool isKnown)
             => _taskCompletionSource.TrySetResult(new OutputData<T>(
