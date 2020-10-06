@@ -12,6 +12,8 @@ CHANGELOG
 - Fixing gzip compression for alternative backends.
   [#5484](https://github.com/pulumi/pulumi/pull/5484)
 
+- Add internal scaffolding for using cross-language components from .NET.
+  [#5485](https://github.com/pulumi/pulumi/pull/5485)
 
 ## 2.11.2 (2020-10-01)
 
@@ -26,9 +28,6 @@ CHANGELOG
 
 - Add internal scaffolding for using cross-language components from Python.
   [#5375](https://github.com/pulumi/pulumi/pull/5375)
-
-- Add internal scaffolding for using cross-language components from .NET.
-  [#5485](https://github.com/pulumi/pulumi/pull/5485)
 
 ## 2.11.0 (2020-09-30)
 
