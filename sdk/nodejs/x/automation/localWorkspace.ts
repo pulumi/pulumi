@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as yaml from "js-yaml";
 import * as os from "os";
 import * as upath from "upath";
 
@@ -136,9 +137,9 @@ export class LocalWorkspace implements Workspace {
             if (!fs.existsSync(path)) { continue; }
             const contents = fs.readFileSync(path).toString();
             if (isJSON) {
-                return ProjectSettings.fromJSON(JSON.parse(contents));
+                return JSON.parse(contents);
             }
-            return ProjectSettings.fromYAML(contents);
+            return yaml.safeLoad(contents) as ProjectSettings;
         }
         throw new Error(`failed to find project settings file in workdir: ${this.workDir}`);
     }
@@ -157,7 +158,7 @@ export class LocalWorkspace implements Workspace {
             contents = JSON.stringify(settings, null, 4);
         }
         else {
-            contents = settings.toYAML();
+            contents = yaml.safeDump(settings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -169,9 +170,9 @@ export class LocalWorkspace implements Workspace {
             if (!fs.existsSync(path)) { continue; }
             const contents = fs.readFileSync(path).toString();
             if (isJSON) {
-                return StackSettings.fromJSON(JSON.parse(contents));
+                return JSON.parse(contents);
             }
-            return StackSettings.fromYAML(contents);
+            return yaml.safeLoad(contents) as StackSettings;
         }
         throw new Error(`failed to find stack settings file in workdir: ${this.workDir}`);
     }
@@ -191,7 +192,7 @@ export class LocalWorkspace implements Workspace {
             contents = JSON.stringify(settings, null, 4);
         }
         else {
-            contents = settings.toYAML();
+            contents = yaml.safeDump(settings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -314,7 +315,7 @@ function isInlineProgramArgs(args: LocalProgramArgs | InlineProgramArgs): args i
         (args as InlineProgramArgs).program !== undefined;
 }
 
-export const settingsExtensions = [".yaml", ".yml", ".json"];
+const settingsExtensions = [".yaml", ".yml", ".json"];
 
 function getStackSettingsName(name: string): string {
     const parts = name.split("/");
@@ -327,8 +328,6 @@ function getStackSettingsName(name: string): string {
 type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
 function defaultProject(projectName: string) {
-    const settings = new ProjectSettings();
-    settings.name = projectName;
-    settings.runtime.name = "nodejs";
+    const settings: ProjectSettings = { name: projectName, runtime: "nodejs"};
     return settings;
 }

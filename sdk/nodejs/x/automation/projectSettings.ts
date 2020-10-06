@@ -13,11 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as yaml from "js-yaml";
-
-export class ProjectSettings {
+export interface ProjectSettings {
     name: string;
-    runtime: ProjectRuntimeInfo;
+    runtime: ProjectRuntimeInfo | ProjectRuntime;
     main?: string;
     description?: string;
     author?: string;
@@ -26,94 +24,28 @@ export class ProjectSettings {
     config?: string;
     template?: ProjectTemplate;
     backend?: ProjectBackend;
-
-    public static fromJSON(obj: any) {
-        const proj = new ProjectSettings();
-
-        if (!obj.runtime || !obj.name) {
-            throw new Error("could not deserialize ProjectSettings, missing required properties");
-        }
-
-        proj.name = obj.name;
-        proj.runtime = ProjectRuntimeInfo.fromJSON(obj.runtime);
-        proj.main = obj.main;
-        proj.description = obj.description;
-        proj.author = obj.author;
-        proj.website = obj.website;
-        proj.license = obj.license;
-        proj.config = obj.config;
-        proj.template = obj.template;
-        proj.backend = obj.backend;
-
-        return proj;
-    }
-
-    public static fromYAML(text: string) {
-        const res = yaml.safeLoad(text, { json: true });
-        return ProjectSettings.fromJSON(res);
-    }
-
-    constructor() {
-        this.name = "";
-        this.runtime = new ProjectRuntimeInfo();
-    }
-
-    toYAML(): string {
-        const copy = Object.assign({}, this);
-        copy.runtime = copy.runtime.toJSON();
-        return yaml.safeDump(copy, { skipInvalid: true });
-    }
-
 }
 
-export class ProjectRuntimeInfo {
+export interface ProjectRuntimeInfo {
     name: string;
-    options?: {[key: string]: any};
-
-    public static fromJSON(obj: any) {
-        const info = new ProjectRuntimeInfo();
-
-        if (typeof obj === "string") {
-            info.name = obj;
-        }
-        else {
-            info.name = obj.name;
-            info.options = obj.options;
-        }
-
-        if (!info.name) {
-            throw new Error("could not deserialize invalid ProjectRuntimeInfo object");
-        }
-
-        return info;
-    }
-
-    constructor() {
-        this.name = "";
-    }
-
-    toJSON(): any {
-        if (!this.options) {
-            return this.name;
-        }
-
-        return this;
-    }
+    options?: { [key: string]: any };
 }
 
-export type ProjectTemplate = {
-    description?: string,
-    quickstart?: string,
-    config?: {[key: string]: ProjectTemplateConfigValue},
-    important?: boolean,
-};
+export type ProjectRuntime = "nodejs" | "go" | "python" | "dotnet";
 
-export type ProjectTemplateConfigValue = {
-    description?: string,
-    default?: string,
-    secret?: boolean,
-};
+export interface ProjectTemplate {
+    description?: string;
+    quickstart?: string;
+    config?: { [key: string]: ProjectTemplateConfigValue };
+    important?: boolean;
+}
 
-export type ProjectBackend = {
-    url?: string,
-};
+export interface ProjectTemplateConfigValue {
+    description?: string;
+    default?: string;
+    secret?: boolean;
+}
+
+export interface ProjectBackend {
+    url?: string;
+}
