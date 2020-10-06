@@ -477,11 +477,18 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
+	executable := host.exec
 	args := []string{}
 
-	if host.binary != "" {
+	switch {
+	case host.binary != "" && strings.HasSuffix(host.binary, ".dll"):
+		// Portable pre-compiled dll: run `dotnet <name>.dll`
 		args = append(args, host.binary)
-	} else {
+	case host.binary != "":
+		// Self-contained executable: run it directly.
+		executable = host.binary
+	default:
+		// Run from source.
 		args = append(args, "run")
 
 		if req.GetProgram() != "" {
@@ -496,7 +503,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = host.constructEnv(req, config)
