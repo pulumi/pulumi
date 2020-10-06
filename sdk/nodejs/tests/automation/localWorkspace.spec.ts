@@ -28,7 +28,7 @@ describe("LocalWorkspace", () => {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.projectSettings();
             assert(settings.name, "testproj");
-            assert(settings.runtime.name, "go");
+            assert(settings.runtime, "go");
             assert(settings.description, "A minimal Go Pulumi program");
 
         }
@@ -39,15 +39,16 @@ describe("LocalWorkspace", () => {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.stackSettings("dev");
             assert.equal(settings.secretsProvider, "abc");
-            assert.equal(settings.config!["plain"].value, "plain");
+            assert.equal(settings.config!["plain"], "plain");
             assert.equal(settings.config!["secure"].secure, "secret");
         }
     }));
 
     it(`create/select/remove LocalWorkspace stack`, asyncTest(async () => {
-        const projectSettings = new ProjectSettings();
-        projectSettings.name = "node_test";
-        projectSettings.runtime.name = "nodejs";
+        const projectSettings: ProjectSettings = {
+            name: "node_test",
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         await ws.createStack(stackName);
@@ -56,9 +57,10 @@ describe("LocalWorkspace", () => {
     }));
 
     it(`create/select/createOrSelect Stack`, asyncTest(async () => {
-        const projectSettings = new ProjectSettings();
-        projectSettings.name = "node_test";
-        projectSettings.runtime.name = "nodejs";
+        const projectSettings: ProjectSettings = {
+            name: "node_test",
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         await Stack.create(stackName, ws);
@@ -68,9 +70,10 @@ describe("LocalWorkspace", () => {
     }));
     it(`Config`, asyncTest(async () => {
         const projectName = "node_test";
-        const projectSettings = new ProjectSettings();
-        projectSettings.name = projectName;
-        projectSettings.runtime.name = "nodejs";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         const stack = await Stack.create(stackName, ws);
@@ -110,9 +113,10 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     }));
     it(`can list stacks and currently selected stack`, asyncTest(async () => {
-        const projectSettings = new ProjectSettings();
-        projectSettings.name = `node_list_test${getTestSuffix()}`;
-        projectSettings.runtime.name = "nodejs";
+        const projectSettings: ProjectSettings = {
+            name: `node_list_test${getTestSuffix()}`,
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackNamer = () => `int_test${getTestSuffix()}`;
         const stackNames: string[] = [];
@@ -131,9 +135,10 @@ describe("LocalWorkspace", () => {
         }
     }));
     it(`stack status methods`, asyncTest(async () => {
-        const projectSettings = new ProjectSettings();
-        projectSettings.name = "node_test";
-        projectSettings.runtime.name = "nodejs";
+        const projectSettings: ProjectSettings = {
+            name: "node_test",
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         const stack = await Stack.create(stackName, ws);
