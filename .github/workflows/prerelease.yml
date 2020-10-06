@@ -132,13 +132,13 @@ jobs:
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      - name: Set Release Version
+      - name: Set PreRelease Version
         run: echo "::set-env name=GORELEASER_CURRENT_TAG::v$(pulumictl get version --language generic -o)"
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.yml --rm-dist
+          args: -f .goreleaser.prerelease.yml --rm-dist
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
