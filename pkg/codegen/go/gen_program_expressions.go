@@ -969,7 +969,9 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 			member = strings.Replace(member, "get", "lookup", 1)
 		}
 	}
-	return pkg, strings.Replace(module, "/", ".", -1), Title(member), diagnostics
+	modOrAlias := g.getModOrAlias(pkg, module)
+	mod := strings.Replace(modOrAlias, "/", ".", -1)
+	return pkg, mod, Title(member), diagnostics
 }
 
 var functionPackages = map[string][]string{
