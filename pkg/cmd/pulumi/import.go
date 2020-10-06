@@ -285,6 +285,10 @@ func newImportCmd() *cobra.Command {
 			"should be added to the Pulumi program. The resources are protected from deletion\n" +
 			"by default.\n" +
 			"\n" +
+			"Should you want to import your resource(s) without protection, then you can pass\n" +
+			"`--protect=false` as an argument to the command. This will mark all resources as unprotected" +
+			"\n" +
+			"\n" +
 			"A single resource may be specified in the command line arguments or a set of\n" +
 			"resources may be specified by a JSON file. This file must contain an object\n" +
 			"of the following form:\n" +
@@ -447,6 +451,16 @@ func newImportCmd() *cobra.Command {
 			deployment, err := getCurrentDeploymentForStack(s)
 			if err != nil {
 				return result.FromError(err)
+			}
+
+			if outputFilePath == "" {
+				output.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
+					"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
+				if protectResources {
+					output.Write([]byte("Please note, as your resources are marked as protected, then to destroy them\n" +
+						"you will need to remove the protection attribute and run `pulumi update` *before*\n" +
+						"the destroy will take effect.\n\n"))
+				}
 			}
 
 			if err = generateImportedDefinitions(
