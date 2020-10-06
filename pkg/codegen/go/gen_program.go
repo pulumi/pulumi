@@ -33,6 +33,7 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
+	configCreated       bool
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -160,6 +161,9 @@ func (g *generator) collectImports(
 			}
 
 			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+		}
+		if _, isConfigVar := n.(*hcl2.ConfigVariable); isConfigVar {
+			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config\"")
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -321,9 +325,8 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 		g.genResource(w, n)
 	case *hcl2.OutputVariable:
 		g.genOutputAssignment(w, n)
-	// TODO
-	// case *hcl2.ConfigVariable:
-	// 	g.genConfigVariable(w, n)
+	case *hcl2.ConfigVariable:
+		g.genConfigVariable(w, n)
 	case *hcl2.LocalVariable:
 		g.genLocalVariable(w, n)
 	}
@@ -584,7 +587,64 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)
 
 	}
+}
 
+func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
+	if !g.configCreated {
+		g.Fprintf(w, "%sconfig := config.New(ctx, \"\")\n", g.Indent)
+		g.configCreated = true
+	}
+
+	getType := "Object"
+	switch v.Type() {
+	case model.StringType:
+		getType = ""
+	case model.NumberType:
+		getType = "Float"
+	case model.IntType:
+		getType = "Int"
+	case model.BoolType:
+		getType = "Boolean"
+	}
+
+	getOrRequire := "Get"
+	if v.DefaultValue == nil {
+		getOrRequire = "Require"
+	}
+
+	if v.DefaultValue == nil {
+		g.Fgenf(w, "%[1]s%[2]s := config.%[3]s%[4]s(\"%[2]s\")\n", g.Indent, v.Name(), getOrRequire, getType)
+	} else {
+		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type(), false)
+		g.genTemps(w, temps)
+		switch expr := expr.(type) {
+		case *model.FunctionCallExpression:
+			switch expr.Name {
+			case hcl2.Invoke:
+				g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+				g.isErrAssigned = true
+				g.Fgenf(w, "if err != nil {\n")
+				g.Fgenf(w, "return err\n")
+				g.Fgenf(w, "}\n")
+			}
+		default:
+			g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+		}
+		switch v.Type() {
+		case model.StringType:
+			g.Fgenf(w, "if param := config.Get(\"%s\"); param != \"\"{\n", v.Name())
+		case model.NumberType:
+			g.Fgenf(w, "if param := config.GetFloat(\"%s\"); param != 0 {\n", v.Name())
+		case model.IntType:
+			g.Fgenf(w, "if param := config.GetInt(\"%s\"); param != 0 {\n", v.Name())
+		case model.BoolType:
+			g.Fgenf(w, "if param := config.GetBool(\"%s\"); param {\n", v.Name())
+		default:
+			g.Fgenf(w, "if param := config.GetBool(\"%s\"); param != nil {\n", v.Name())
+		}
+		g.Fgenf(w, "%s%s = param\n", g.Indent, v.Name())
+		g.Fgen(w, "}\n")
+	}
 }
 
 // nolint: lll
@@ -598,19 +658,21 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	pkg, module, member, _ := hcl2.DecomposeToken(token, *new(hcl.Range))
 	modSplit := strings.Split(module, "/")
 	mod := modSplit[0]
-	if mod == "index" {
-		mod = ""
-	}
 	fn := Title(member)
-	if len(modSplit) >= 2 {
+	if mod == "index" && len(modSplit) >= 2 {
+		mod = ""
 		fn = Title(modSplit[1])
+	} else {
+		// e.g. for type ec2/getVpc:getVpcArgs
+		if _, has := g.contexts[pkg][mod]; !has {
+			mod = module
+		}
 	}
 	fnLookup := "Lookup" + fn[3:]
 	pkgContext, has := g.contexts[pkg][mod]
 	if has && pkgContext.names.has(fnLookup) {
 		return true
 	}
-
 	return false
 }
 
