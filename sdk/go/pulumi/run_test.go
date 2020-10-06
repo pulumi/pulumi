@@ -101,22 +101,25 @@ func TestRegisterResource(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		id, known, secret, err := await(res.ID())
+		id, known, secret, deps, err := await(res.ID())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, ID("someID"), id)
 
-		urn, known, secret, err := await(res.URN())
+		urn, known, secret, deps, err := await(res.URN())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.NotEqual(t, "", urn)
 
-		foo, known, secret, err := await(res.Foo)
+		foo, known, secret, deps, err := await(res.Foo)
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, "qux", foo)
 
 		// Test map marshaling.
@@ -129,22 +132,25 @@ func TestRegisterResource(t *testing.T) {
 		}, &res2)
 		assert.NoError(t, err)
 
-		id, known, secret, err = await(res2.ID())
+		id, known, secret, deps, err = await(res2.ID())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res2}, deps)
 		assert.Equal(t, ID("someID"), id)
 
-		urn, known, secret, err = await(res2.URN())
+		urn, known, secret, deps, err = await(res2.URN())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res2}, deps)
 		assert.NotEqual(t, "", urn)
 
-		outputs, known, secret, err := await(res2.Outputs)
+		outputs, known, secret, deps, err := await(res2.Outputs)
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res2}, deps)
 		assert.Equal(t, map[string]interface{}{"foo": "qux"}, outputs)
 
 		return nil
@@ -176,22 +182,25 @@ func TestReadResource(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		id, known, secret, err := await(res.ID())
+		id, known, secret, deps, err := await(res.ID())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, ID("someID"), id)
 
-		urn, known, secret, err := await(res.URN())
+		urn, known, secret, deps, err := await(res.URN())
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.NotEqual(t, "", urn)
 
-		foo, known, secret, err := await(res.Foo)
+		foo, known, secret, deps, err := await(res.Foo)
 		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, "qux", foo)
 
 		return nil

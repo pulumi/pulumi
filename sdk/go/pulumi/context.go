@@ -343,7 +343,7 @@ func (ctx *Context) ReadResource(
 		var state *structpb.Struct
 		var err error
 		defer func() {
-			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state)
+			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state, nil)
 			ctx.endRPC(err)
 		}()
 
@@ -410,6 +410,12 @@ func (ctx *Context) ReadResource(
 //
 func (ctx *Context) RegisterResource(
 	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
+
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
+}
+
+func (ctx *Context) registerResource(
+	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -469,9 +475,10 @@ func (ctx *Context) RegisterResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		deps := make(map[string][]Resource)
 		var err error
 		defer func() {
-			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state)
+			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state, deps)
 			ctx.endRPC(err)
 		}()
 
@@ -500,6 +507,7 @@ func (ctx *Context) RegisterResource(
 			AcceptSecrets:           true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			Version:                 inputs.version,
+			Remote:                  remote,
 		})
 		if err != nil {
 			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -509,6 +517,13 @@ func (ctx *Context) RegisterResource(
 		if resp != nil {
 			urn, resID = resp.Urn, resp.Id
 			state = resp.Object
+			for key, propertyDependencies := range resp.GetPropertyDependencies() {
+				var resources []Resource
+				for _, urn := range propertyDependencies.GetUrns() {
+					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutput()})
+				}
+				deps[key] = resources
+			}
 		}
 	}()
 
@@ -518,7 +533,13 @@ func (ctx *Context) RegisterResource(
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption) error {
 
-	return ctx.RegisterResource(t, name, nil, resource, opts...)
+	return ctx.RegisterResource(t, name, nil /*props*/, resource, opts...)
+}
+
+func (ctx *Context) RegisterRemoteComponentResource(
+	t, name string, props Input, resource ComponentResource, opts ...ResourceOption) error {
+
+	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
 }
 
 // resourceState contains the results of a resource registration operation.
@@ -720,7 +741,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 
 // resolve resolves the resource outputs using the given error and/or values.
 func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInputs, urn, id string,
-	result *structpb.Struct) {
+	result *structpb.Struct, deps map[string][]Resource) {
 
 	var inprops resource.PropertyMap
 	if inputs != nil {
@@ -784,7 +805,7 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 		if err != nil {
 			output.reject(err)
 		} else {
-			output.resolve(dest.Interface(), known, secret)
+			output.resolve(dest.Interface(), known, secret, deps[k])
 		}
 	}
 }

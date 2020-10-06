@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Add internal scaffolding for using cross-language components from Go.
+  [#5558](https://github.com/pulumi/pulumi/pull/5558)
 
 ## 2.12.1 (2020-10-23)
 
