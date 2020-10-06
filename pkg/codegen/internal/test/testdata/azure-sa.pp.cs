@@ -11,7 +11,7 @@ class MyStack : Stack
         {
             Name = resourceGroupNameParam,
         }));
-        var locationParam = config.Get("locationParam") ?? resourceGroupVar.Apply(resourceGroupVar => resourceGroupVar.Location);
+        var locationParam = Output.Create(config.Get("locationParam")) ?? resourceGroupVar.Apply(resourceGroupVar => resourceGroupVar.Location);
     }
 
 }

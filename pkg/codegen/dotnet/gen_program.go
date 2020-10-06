@@ -514,9 +514,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
-	g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
 	if v.DefaultValue != nil {
+		g.Fgenf(w, "%[1]svar %[2]s = Output.Create(config.%[3]s%[4]s(\"%[2]s\"))", g.Indent, v.Name(), getOrRequire, getType)
 		g.Fgenf(w, " ?? %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+	} else {
+		g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+
 	}
 	g.Fgenf(w, ";\n")
 }
