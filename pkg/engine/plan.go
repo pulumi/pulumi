@@ -167,6 +167,17 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		plan, err = deploy.NewPlan(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
+		_, defaultProviderVersions, err := installPlugins(proj, pwd, main, target, plugctx)
+		if err != nil {
+			return nil, err
+		}
+		for i := range opts.imports {
+			imp := &opts.imports[i]
+			if imp.Provider == "" && imp.Version == nil {
+				imp.Version = defaultProviderVersions[imp.Type.Package()]
+			}
+		}
+
 		plan, err = deploy.NewImportPlan(plugctx, target, proj.Name, opts.imports, dryRun)
 	}
 
