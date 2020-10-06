@@ -22,12 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
-      - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
         with:
-          repo: pulumi/pulumictl
-      - name: Dispatch event
-        run: # FIXME: add dispatch event here
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          event-type: docker-build
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
