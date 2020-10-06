@@ -9,6 +9,10 @@ CHANGELOG
 - Correctly validate project names during 'pulumi new'
   [#5504](https://github.com/pulumi/pulumi/pull/5504)
 
+- Fixing gzip compression for alternative backends.
+  [#5484](https://github.com/pulumi/pulumi/pull/5484)
+
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
