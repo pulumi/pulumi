@@ -454,12 +454,18 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if outputFilePath == "" {
-				output.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
+				_, err := output.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
 					"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
+				if err != nil {
+					return result.FromError(err)
+				}
 				if protectResources {
-					output.Write([]byte("Please note, as your resources are marked as protected, then to destroy them\n" +
+					_, err := output.Write([]byte("Please note, as your resources are marked as protected, then to destroy them\n" +
 						"you will need to remove the protection attribute and run `pulumi update` *before*\n" +
 						"the destroy will take effect.\n\n"))
+					if err != nil {
+						return result.FromError(err)
+					}
 				}
 			}
 
