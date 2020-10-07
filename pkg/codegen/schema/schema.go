@@ -147,6 +147,8 @@ type Enum struct {
 	Comment string
 	// Name for the enum.
 	Name string
+	// DeprecationMessage indicates whether or not the value is deprecated.
+	DeprecationMessage string
 }
 
 func (t *EnumType) String() string {
@@ -679,6 +681,8 @@ type EnumValueSpec struct {
 	Description string `json:"description,omitempty"`
 	// Value is the enum value itself.
 	Value interface{} `json:"value"`
+	// DeprecationMessage indicates whether or not the value is deprecated.
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 }
 
 // AliasSpec is the serializable form of an alias description.
@@ -1269,12 +1273,12 @@ func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, erro
 				return enums, errorMessage(spec.Value, typ.String())
 			}
 			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-				return nil, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
+				return enums, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
 			}
 			spec.Value = int32(v)
 		case NumberType:
 			if _, ok := spec.Value.(float64); !ok {
-				return nil, errorMessage(spec.Value, typ.String())
+				return enums, errorMessage(spec.Value, typ.String())
 			}
 		case BoolType:
 			if _, ok := spec.Value.(bool); !ok {
@@ -1284,9 +1288,10 @@ func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, erro
 			return enums, fmt.Errorf("enum values may only be of string, integer, number or boolean types")
 		}
 		enum := &Enum{
-			Value:   spec.Value,
-			Comment: spec.Description,
-			Name:    spec.Name,
+			Value:              spec.Value,
+			Comment:            spec.Description,
+			Name:               spec.Name,
+			DeprecationMessage: spec.DeprecationMessage,
 		}
 		enums = append(enums, enum)
 	}
