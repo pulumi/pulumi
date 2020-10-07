@@ -15,6 +15,9 @@ CHANGELOG
 - Add internal scaffolding for using cross-language components from .NET.
   [#5485](https://github.com/pulumi/pulumi/pull/5485)
 
+- Support self-contained executables as binary option for .NET programs.
+  [#5519](https://github.com/pulumi/pulumi/pull/5519)
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
