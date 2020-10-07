@@ -984,17 +984,25 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
+func (mod *modContext) getRelativePath() string {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	return path.Dir(filepath.ToSlash(rel))
+}
+
 func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	imports := []string{"import * as pulumi from \"@pulumi/pulumi\";"}
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(filepath.ToSlash(rel))
+	relRoot := mod.getRelativePath()
 	if nested {
 		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
 		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
-		imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enums\";", relRoot))
+		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
+		if containsEnums {
+			imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enums\";", relRoot))
+		}
 	}
+
 	if utilities {
 		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
 	}
@@ -1335,8 +1343,14 @@ func (mod *modContext) genIndex(exports []string) string {
 		} else if len(mod.enums) > 0 {
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "// Export enums:\n")
-			// TODO: correct relative filepath
-			fmt.Fprintf(w, "export * from \"../types/enums/%s\";\n", mod.mod)
+			rel := mod.getRelativePath()
+			var filePath string
+			if mod.mod == "" {
+				filePath = ""
+			} else {
+				filePath = fmt.Sprintf("/%s", mod.mod)
+			}
+			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
 		}
 	}
 
