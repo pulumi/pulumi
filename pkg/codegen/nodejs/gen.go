@@ -1063,25 +1063,15 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 	}
 
 	for _, t := range mod.types {
-		modName := mod.getModName(t.Token)
+		modName := mod.pkg.TokenToModule(t.Token)
+		if override, ok := mod.modToPkg[modName]; ok {
+			modName = override
+		}
 		ns := getNamespace(modName)
 		ns.types = append(ns.types, t)
 	}
-	for _, e := range mod.enums {
-		modName := mod.getModName(e.Token)
-		ns := getNamespace(modName)
-		ns.enums = append(ns.enums, e)
-	}
 
 	return namespaces
-}
-
-func (mod *modContext) getModName(token string) string {
-	modName := mod.pkg.TokenToModule(token)
-	if override, ok := mod.modToPkg[modName]; ok {
-		modName = override
-	}
-	return modName
 }
 
 func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) {
@@ -1697,8 +1687,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 	}
 	if len(types.types) > 0 {
 		typeDetails, typeList := types.typeDetails, types.types
-		typesMod := getMod("types")
-		typesMod.typeDetails, typesMod.types = typeDetails, typeList
+		types = getMod("types")
+		types.typeDetails, types.types = typeDetails, typeList
 	}
 
 	// Add Typescript source files to the corresponding modules. Note that we only add the file names; the contents are
