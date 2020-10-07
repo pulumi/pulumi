@@ -1,9 +1,0 @@
-{
-    "name": "typescript",
-    "devDependencies": {
-        "@types/node": "^8.0.0"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

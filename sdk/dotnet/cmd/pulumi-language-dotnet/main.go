@@ -61,7 +61,13 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
 	var dotnetExec string
-	if givenExecutor == "" {
+	switch {
+	case givenExecutor != "":
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		dotnetExec = givenExecutor
+	case binary != "" && !strings.HasSuffix(binary, ".dll"):
+		logging.V(3).Info("language host requires no .NET SDK for a self-contained binary")
+	default:
 		pathExec, err := exec.LookPath("dotnet")
 		if err != nil {
 			err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
@@ -70,9 +76,6 @@ func main() {
 
 		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		dotnetExec = pathExec
-	} else {
-		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		dotnetExec = givenExecutor
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
@@ -477,11 +480,18 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
+	executable := host.exec
 	args := []string{}
 
-	if host.binary != "" {
+	switch {
+	case host.binary != "" && strings.HasSuffix(host.binary, ".dll"):
+		// Portable pre-compiled dll: run `dotnet <name>.dll`
 		args = append(args, host.binary)
-	} else {
+	case host.binary != "":
+		// Self-contained executable: run it directly.
+		executable = host.binary
+	default:
+		// Run from source.
 		args = append(args, "run")
 
 		if req.GetProgram() != "" {
@@ -496,7 +506,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = host.constructEnv(req, config)

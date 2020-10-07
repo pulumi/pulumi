@@ -94,7 +94,8 @@ namespace Pulumi.Tests
             mock.Setup(d => d.ProjectName).Returns("TestProject");
             mock.Setup(d => d.StackName).Returns("TestStack");
             mock.SetupSet(content => content.Stack = It.IsAny<Stack>());
-            mock.Setup(d => d.ReadOrRegisterResource(It.IsAny<Stack>(), It.IsAny<ResourceArgs>(), It.IsAny<ResourceOptions>()));
+            mock.Setup(d => d.ReadOrRegisterResource(It.IsAny<Stack>(), It.IsAny<bool>(),
+                It.IsAny<Func<string, Resource>>(), It.IsAny<ResourceArgs>(), It.IsAny<ResourceOptions>()));
             mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
                 .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
 

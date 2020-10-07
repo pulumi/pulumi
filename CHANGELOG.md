@@ -3,7 +3,29 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-_(none)_
+- [cli] Remove eternal loop if a configured passphrase is invalid.
+  [#5507](https://github.com/pulumi/pulumi/pull/5507)
+
+- Correctly validate project names during 'pulumi new'
+  [#5504](https://github.com/pulumi/pulumi/pull/5504)
+
+- Fixing gzip compression for alternative backends.
+  [#5484](https://github.com/pulumi/pulumi/pull/5484)
+
+- Add internal scaffolding for using cross-language components from .NET.
+  [#5485](https://github.com/pulumi/pulumi/pull/5485)
+
+- Support self-contained executables as binary option for .NET programs.
+  [#5519](https://github.com/pulumi/pulumi/pull/5519)
+
+## 2.11.2 (2020-10-01)
+
+- feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
+  [#5499](https://github.com/pulumi/pulumi/pull/5499)
+
+- [sdk/python] Fix secret regression: ensure unwrapped secrets during deserialization
+  are rewrapped before being returned.
+  [#5496](https://github.com/pulumi/pulumi/pull/5496)
 
 ## 2.11.1 (2020-09-30)
 

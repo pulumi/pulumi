@@ -64,7 +64,7 @@ namespace Pulumi
         /// </summary>
         // Set using reflection, so we silence the NRT warnings with `null!`.
         [Output(Constants.UrnPropertyName)]
-        public Output<string> Urn { get; private set; } = null!;
+        public Output<string> Urn { get; private protected set; } = null!;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -110,10 +110,22 @@ namespace Pulumi
         /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
         /// <param name="args">The arguments to use to populate the new resource.</param>
         /// <param name="options">A bag of options that control this resource's behavior.</param>
+        /// <param name="remote">True if this is a remote component resource.</param>
+        /// <param name="dependency">True if this is a synthetic resource used internally for dependency tracking.</param>
         private protected Resource(
             string type, string name, bool custom,
-            ResourceArgs args, ResourceOptions options)
+            ResourceArgs args, ResourceOptions options,
+            bool remote = false, bool dependency = false)
         {
+            if (dependency)
+            {
+                _type = "";
+                _name = "";
+                _protect = false;
+                _providers = ImmutableDictionary<string, ProviderResource>.Empty;
+                return;
+            }
+
             if (string.IsNullOrEmpty(type))
                 throw new ArgumentException("'type' cannot be null or empty.", nameof(type));
 
@@ -243,7 +255,7 @@ namespace Pulumi
             }
             this._aliases = aliases.ToImmutable();
 
-            Deployment.InternalInstance.ReadOrRegisterResource(this, args, options);
+            Deployment.InternalInstance.ReadOrRegisterResource(this, remote, urn => new DependencyResource(urn), args, options);
         }
 
         /// <summary>

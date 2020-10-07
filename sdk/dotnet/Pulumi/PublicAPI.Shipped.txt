@@ -23,6 +23,7 @@ Pulumi.AssetArchive.AssetArchive(System.Collections.Generic.IDictionary<string, 
 Pulumi.AssetOrArchive
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
+Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
 Pulumi.ComponentResource.RegisterOutputs() -> void
 Pulumi.ComponentResource.RegisterOutputs(Pulumi.Output<System.Collections.Generic.IDictionary<string, object>> outputs) -> void
 Pulumi.ComponentResource.RegisterOutputs(System.Collections.Generic.IDictionary<string, object> outputs) -> void

@@ -389,7 +389,12 @@ func ExampleLocalWorkspace_secretsProvider() {
 	// workspace and the stacks created from it. Supported secrets providers are:
 	// `awskms`, `azurekeyvault`, `gcpkms`, `hashivault` and `passphrase`
 	secretsProvider := SecretsProvider("awskms://alias/mysecretkeyalias")
-	_, _ = NewLocalWorkspace(ctx, wd, ph, proj, secretsProvider)
+	// EnvVars is a map of environment values scoped to the workspace.
+	// These values will be passed to all Workspace and Stack level commands.
+	envvars := EnvVars(map[string]string{
+		"PULUMI_CONFIG_PASSPHRASE": "password",
+	})
+	_, _ = NewLocalWorkspace(ctx, wd, ph, proj, secretsProvider, envvars)
 }
 
 func ExampleLocalWorkspace_ListPlugins() {
