@@ -46,7 +46,8 @@
         },
         {
           "value": 8,
-          "name": "EightInch"
+          "name": "EightInch",
+          "deprecationMessage": "Eight inch pots are no longer supported."
         }
       ]
     },

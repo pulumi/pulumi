@@ -9,12 +9,19 @@ export const RedContainerColor: ContainerColor = "red";
 export const BlueContainerColor: ContainerColor = "blue";
 export const YellowContainerColor: ContainerColor = "yellow";
 
-/** plant container colors */
+/**
+ * plant container colors
+ */
 export type ContainerColor = "red" | "blue" | "yellow";
 
 export const FourInchContainerSize: ContainerSize = 4;
 export const SixInchContainerSize: ContainerSize = 6;
+/**
+ * @deprecated Eight inch pots are no longer supported.
+ */
 export const EightInchContainerSize: ContainerSize = 8;
 
-/** plant container sizes */
+/**
+ * plant container sizes
+ */
 export type ContainerSize = 4 | 6 | 8;

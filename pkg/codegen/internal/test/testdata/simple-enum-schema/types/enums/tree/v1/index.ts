@@ -2,12 +2,20 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
-/** A burgundy rubber tree. */
+/**
+ * A burgundy rubber tree.
+ */
 export const BurgundyRubberTreeVariety: RubberTreeVariety = "Burgundy";
-/** A ruby rubber tree. */
+/**
+ * A ruby rubber tree.
+ */
 export const RubyRubberTreeVariety: RubberTreeVariety = "Ruby";
-/** A tineke rubber tree. */
+/**
+ * A tineke rubber tree.
+ */
 export const TinekeRubberTreeVariety: RubberTreeVariety = "Tineke";
 
-/** types of rubber trees */
+/**
+ * types of rubber trees
+ */
 export type RubberTreeVariety = "Burgundy" | "Ruby" | "Tineke";
