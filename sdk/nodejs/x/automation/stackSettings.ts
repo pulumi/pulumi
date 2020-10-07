@@ -14,6 +14,9 @@
 
 import * as yaml from "js-yaml";
 
+/**
+ * A description of the Stack's configuration and encryption metadata.
+ */
 export interface StackSettings {
     secretsProvider?: string;
     encryptedKey?: string;
@@ -21,8 +24,14 @@ export interface StackSettings {
     config?: {[key: string]: StackSettingsConfigValue};
 }
 
+/**
+ * Stack configuration entry
+ */
 export type StackSettingsConfigValue = string | StackSettingsSecureConfigValue | any;
 
+/**
+ * A secret Stack config entry
+ */
 export interface StackSettingsSecureConfigValue {
     secure: string;
 }

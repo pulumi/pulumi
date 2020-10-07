@@ -22,25 +22,65 @@ import { PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
 
+/**
+ * Stack is an isolated, independently configurable instance of a Pulumi program.
+ * Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
+ * Multiple Stacks are commonly used to denote different phases of development
+ * (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
+ *
+ * @alpha
+ */
 export class Stack {
+    /**
+     * The name identifying the Stack.
+     */
     readonly name: string;
+    /**
+     * The Workspace the Stack was created from.
+     */
     readonly workspace: Workspace;
+    /** @internal */
     private ready: Promise<any>;
+    /**
+     * Creates a new stack using the given workspace, and stack name.
+     * It fails if a stack with that name already exists
+     *
+     * @param name The name identifying the Stack.
+     * @param workspace The Workspace the Stack was created from.
+     */
     public static async create(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "create");
         await stack.ready;
         return stack;
     }
+    /**
+     * Selects stack using the given workspace, and stack name.
+     * It returns an error if the given Stack does not exist. All LocalWorkspace operations will call `select`
+     * before running.
+     *
+     * @param name The name identifying the Stack.
+     * @param workspace The Workspace the Stack was created from.
+     */
     public static async select(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "select");
         await stack.ready;
         return stack;
     }
+    /**
+     * Tries to create a new stack using the given workspace and
+     * stack name if the stack does not already exist,
+     * or falls back to selecting the existing stack. If the stack does not exist,
+     * it will be created and selected.
+     *
+     * @param name The name identifying the Stack.
+     * @param workspace The Workspace the Stack was created from.
+     */
     public static async createOrSelect(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "createOrSelect");
         await stack.ready;
         return stack;
     }
+    /** @internal */
     private constructor(name: string, workspace: Workspace, mode: StackInitMode) {
         this.name = name;
         this.workspace = workspace;
@@ -64,6 +104,12 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
+    /**
+     * Creates or updates the resources in a stack by executing the program in the Workspace.
+     * https://www.pulumi.com/docs/reference/cli/pulumi_up/
+     *
+     * @param opts Options to customize the behavior of the update.
+     */
     async up(opts?: UpOptions): Promise<UpResult> {
         const args = ["up", "--yes", "--skip-preview"];
         let kind = execKind.local;
@@ -138,6 +184,12 @@ export class Stack {
         };
         return result;
     }
+    /**
+     * Preforms a dry-run update to a stack, returning pending changes.
+     * https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+     *
+     * @param opts Options to customize the behavior of the preview.
+     */
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
         // TODO JSON
         const args = ["preview"];
@@ -210,6 +262,12 @@ export class Stack {
         };
         return result;
     }
+    /**
+     * Compares the current stack’s resource state with the state known to exist in the actual
+     * cloud provider. Any such changes are adopted into the current stack.
+     *
+     * @param opts Options to customize the behavior of the refresh.
+     */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
         const args = ["refresh", "--yes", "--skip-preview"];
         await this.workspace.selectStack(this.name);
@@ -240,6 +298,11 @@ export class Stack {
         };
         return result;
     }
+    /**
+     * Destroy deletes all resources in a stack, leaving all history and configuration intact.
+     *
+     * @param opts Options to customize the behavior of the destroy.
+     */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
         const args = ["destroy", "--yes", "--skip-preview"];
         await this.workspace.selectStack(this.name);
@@ -270,27 +333,62 @@ export class Stack {
         };
         return result;
     }
+    /**
+     * Returns the config value associated with the specified key.
+     *
+     * @param key The key to use for the config lookup
+     */
     async getConfig(key: string): Promise<ConfigValue> {
         return this.workspace.getConfig(this.name, key);
     }
+    /**
+     * Returns the full config map associated with the stack in the Workspace.
+     */
     async getAllConfig(): Promise<ConfigMap> {
         return this.workspace.getAllConfig(this.name);
     }
+    /**
+     * Sets a config key-value pair on the Stack in the associated Workspace.
+     *
+     * @param key The key to set.
+     * @param value The config value to set.
+     */
     async setConfig(key: string, value: ConfigValue): Promise<void> {
         return this.workspace.setConfig(this.name, key, value);
     }
+    /**
+     * Sets all specified config values on the stack in the associated Workspace.
+     *
+     * @param config The map of config key-value pairs to set.
+     */
     async setAllConfig(config: ConfigMap): Promise<void> {
         return this.workspace.setAllConfig(this.name, config);
     }
+    /**
+     * Removes the specified config key from the Stack in the associated Workspace.
+     *
+     * @param key The config key to remove.
+     */
     async removeConfig(key: string): Promise<void> {
         return this.workspace.removeConfig(this.name, key);
     }
+    /**
+     * Removes the specified config keys from the Stack in the associated Workspace.
+     *
+     * @param keys The config keys to remove.
+     */
     async removeAllConfig(keys: string[]): Promise<void> {
         return this.workspace.removeAllConfig(this.name, keys);
     }
+    /**
+     * Gets and sets the config map used with the last update.
+     */
     async refreshConfig(): Promise<ConfigMap> {
         return this.workspace.refreshConfig(this.name);
     }
+    /**
+     * Gets the current set of Stack outputs from the last Stack.up().
+     */
     async outputs(): Promise<OutputMap> {
         await this.workspace.selectStack(this.name);
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
@@ -307,6 +405,10 @@ export class Stack {
 
         return outputs;
     }
+    /**
+     * Returns a list summarizing all previous and current results from Stack lifecycle operations
+     * (up/preview/refresh/destroy).
+     */
     async history(): Promise<UpdateSummary[]> {
         const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
         const summaries: UpdateSummary[] = JSON.parse(result.stdout, (key, value) => {
@@ -324,6 +426,7 @@ export class Stack {
         }
         return history[0];
     }
+    /** @internal */
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {};
         const pulumiHome = this.workspace.pulumiHome;
@@ -339,6 +442,18 @@ export class Stack {
     }
 }
 
+/**
+ * Returns a stack name formatted with the greatest possible specificity:
+ * org/project/stack or user/project/stack
+ * Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
+ * Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+ * format, and instead only use the stack name without an org/user or project to qualify it.
+ * See: https://github.com/pulumi/pulumi/issues/2522
+ *
+ * @param org The org (or user) that contains the Stack.
+ * @param project The project that parents the Stack.
+ * @param stack The name of the Stack.
+ */
 export function fullyQualifiedStackName(org: string, project: string, stack: string): string {
     return `${org}/${project}/${stack}`;
 }
@@ -366,18 +481,36 @@ export type UpdateSummary = {
     resourceChanges?: OpMap;
 };
 
+/**
+ * The kind of update that was performed on the stack.
+ */
 export type UpdateKind = "update" | "preview" | "refresh" | "rename" | "destroy" | "import";
 
+/**
+ * Represents the current status of a given update.
+ */
 export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed";
 
+/**
+ * The granular CRUD operation performed on a particular resource during an update.
+ */
 export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced";
 
+/**
+ * A map of operation types and their corresponding counts.
+ */
 export type OpMap = {
     [key in OpType]: number;
 };
 
+/**
+ * An unstructured JSON string used for back-compat with versioned APIs (such as Deployment).
+ */
 export type RawJSON = string;
 
+/**
+ * The deployment output from running a Pulumi program update.
+ */
 export type UpResult = {
     stdout: string;
     stderr: string;
@@ -385,24 +518,36 @@ export type UpResult = {
     summary: UpdateSummary;
 };
 
+/**
+ * Output from running a Pulumi program preview.
+ */
 export type PreviewResult = {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
 };
 
+/**
+ * Output from refreshing the resources in a given Stack.
+ */
 export type RefreshResult = {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
 };
 
+/**
+ * Output from destroying all resources in a Stack.
+ */
 export type DestroyResult = {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
 };
 
+/**
+ * Options controlling the behavior of a Stack.up() operation.
+ */
 export type UpOptions = {
     parallel?: number;
     message?: string;
@@ -414,6 +559,9 @@ export type UpOptions = {
     program?: PulumiFn;
 };
 
+/**
+ * Options controlling the behavior of a Stack.preview() operation.
+ */
 export type PreviewOptions = {
     parallel?: number;
     message?: string;
@@ -424,6 +572,9 @@ export type PreviewOptions = {
     program?: PulumiFn;
 };
 
+/**
+ * Options controlling the behavior of a Stack.refresh() operation.
+ */
 export type RefreshOptions = {
     parallel?: number;
     message?: string;
@@ -432,6 +583,9 @@ export type RefreshOptions = {
     onOutput?: (out: string) => void;
 };
 
+/**
+ * Options controlling the behavior of a Stack.destroy() operation.
+ */
 export type DestroyOptions = {
     parallel?: number;
     message?: string;

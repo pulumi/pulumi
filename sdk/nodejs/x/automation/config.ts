@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * ConfigValue is the input/output of a `pulumi config` command.
+ * It has a plaintext value, and an option boolean indicating secretness.
+ */
 export type ConfigValue = {
     value: string;
     secret?: boolean;
 };
 
+/**
+ * ConfigMap is a map of string to ConfigValue
+ */
 export type ConfigMap = { [key: string]: ConfigValue };
