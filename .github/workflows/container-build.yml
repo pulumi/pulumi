@@ -25,15 +25,15 @@ jobs:
           tag-latest: true
           build-args: PULUMI_VERSION=${{ env.VERSION }}
       - name: Build Pulumi GitHub Actions Image
-          uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
-          with:
-            repository: pulumi/pulumi
-            username: "pulumibot"
-            password: ${{ secrets.DOCKER_HUB_TOKEN }}
-            dockerfile: docker/actions/Dockerfile
-            additional-tags: ${{ env.VERSION }}
-            tag-latest: true
-            build-args: PULUMI_VERSION=${{ env.VERSION }}
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        with:
+          repository: pulumi/pulumi
+          username: "pulumibot"
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          dockerfile: docker/actions/Dockerfile
+          additional-tags: ${{ env.VERSION }}
+          tag-latest: true
+          build-args: PULUMI_VERSION=${{ env.VERSION }}
   base:
     name: base sdk image build
     runs-on: ubuntu-latest
