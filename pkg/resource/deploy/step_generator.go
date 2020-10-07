@@ -1066,11 +1066,16 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	if err != nil {
 		return diff, err
 	}
-	if diff.Changes == plugin.DiffUnknown {
+	switch diff.Changes {
+	case plugin.DiffUnknown:
 		if oldInputs.DeepEquals(newInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome
+		}
+	case plugin.DiffNone:
+		if diff.DetailedDiff == nil {
+			diff.DetailedDiff = map[string]plugin.PropertyDiff{}
 		}
 	}
 	return diff, nil

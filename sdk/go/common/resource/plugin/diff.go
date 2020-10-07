@@ -94,9 +94,6 @@ func (d *differ) flattenArrayDiff(path string, diff *resource.ArrayDiff) {
 	}
 
 	elementPath := func(path string, index int) string {
-		if path != "" {
-			path += "."
-		}
 		return fmt.Sprintf("%v[%v]", path, index)
 	}
 
@@ -123,7 +120,7 @@ func (d *differ) flattenObjectDiff(path string, diff *resource.ObjectDiff) {
 		if strings.ContainsRune(string(key), '.') {
 			return fmt.Sprintf("%v[\"%v\"]", path, key)
 		}
-		return fmt.Sprintf("%v.%v", path, key)
+		return fmt.Sprintf("%v%v", path, key)
 	}
 
 	for key, v := range diff.Adds {
@@ -144,7 +141,14 @@ type DetailedDiffOptions struct {
 }
 
 func DetailedDiff(base, changed resource.PropertyMap, options DetailedDiffOptions) map[string]PropertyDiff {
-	diff := base.Diff(changed, nil)
+	if base == nil {
+		base = resource.PropertyMap{}
+	}
+	if changed == nil {
+		changed = resource.PropertyMap{}
+	}
+
+	diff := base.Diff(changed)
 	if diff == nil {
 		return nil
 	}

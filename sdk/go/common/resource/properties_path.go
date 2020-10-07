@@ -1,10 +1,12 @@
 package resource
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -257,4 +259,27 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 	}
 	return true
 
+}
+
+func (p PropertyPath) String() string {
+	var result strings.Builder
+	for i, element := range p {
+		switch element := element.(type) {
+		case int:
+			_, err := fmt.Fprintf(&result, "[%v]", i)
+			contract.IgnoreError(err)
+		case string:
+			if strings.ContainsAny(element, `."[]`) {
+				_, err := fmt.Fprintf(&result, `["%s"]`, strings.ReplaceAll(element, `"`, `\"`))
+				contract.IgnoreError(err)
+			} else {
+				if i > 0 {
+					result.WriteByte('.')
+				}
+				_, err := result.WriteString(element)
+				contract.IgnoreError(err)
+			}
+		}
+	}
+	return result.String()
 }
