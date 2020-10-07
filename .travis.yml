@@ -1,4 +1,4 @@
-if: branch = master OR branch =~ ^features/ OR branch =~ ^feature- OR branch =~ ^feature/ OR tag =~ ^v\d+.*
+if: tag =~ ^v\d+.*
 matrix:
   include:
   - os: linux
