@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export * from "./cmd";
 export * from "./config";
+export * from "./errors";
 export * from "./stack";
 export * from "./stackSettings";
 export * from "./projectSettings";
