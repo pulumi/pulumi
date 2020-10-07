@@ -16,6 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { CommandError } from "./errors";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { PulumiFn, Workspace } from "./workspace";
 
@@ -52,9 +53,11 @@ export class Stack {
                 this.ready = workspace.selectStack(name);
                 return this;
             case "createOrSelect":
-                // TODO update this based on structured errors (check for 409)
-                this.ready = workspace.createStack(name).catch(() => {
-                    return workspace.selectStack(name);
+                this.ready = workspace.createStack(name).catch((err) => {
+                    if (err instanceof CommandError && err.isCreateStack409Error()) {
+                        return workspace.selectStack(name);
+                    }
+                    throw err;
                 });
                 return this;
             default:
