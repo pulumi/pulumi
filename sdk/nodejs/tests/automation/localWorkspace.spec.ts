@@ -16,7 +16,7 @@ import * as assert from "assert";
 import * as upath from "upath";
 
 import { Config } from "../../index";
-import { ConfigMap, normalizeConfigKey } from "../../x/automation/config";
+import { ConfigMap } from "../../x/automation/config";
 import { LocalWorkspace } from "../../x/automation/localWorkspace";
 import { ProjectSettings } from "../../x/automation/projectSettings";
 import { Stack } from "../../x/automation/stack";
@@ -238,4 +238,12 @@ describe("LocalWorkspace", () => {
 
 const getTestSuffix = () => {
     return Math.floor(100000 + Math.random() * 900000);
+};
+
+const normalizeConfigKey = (key: string, projectName: string) => {
+    const parts = key.split(":");
+    if (parts.length < 2) {
+        return `${projectName}:${key}`;
+    }
+    return "";
 };

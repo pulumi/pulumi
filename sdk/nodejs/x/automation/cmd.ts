@@ -16,6 +16,7 @@ import * as childProcess from "child_process";
 
 import { CommandError } from "./errors";
 
+/** @internal */
 export class CommandResult {
     stdout: string;
     stderr: string;
@@ -38,6 +39,7 @@ export class CommandResult {
 
 const unknownErrCode = -2;
 
+/** @internal */
 export function runPulumiCmd(
     args: string[],
     cwd: string,
