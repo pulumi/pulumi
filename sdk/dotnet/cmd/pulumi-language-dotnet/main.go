@@ -61,7 +61,13 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
 	var dotnetExec string
-	if givenExecutor == "" {
+	switch {
+	case givenExecutor != "":
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		dotnetExec = givenExecutor
+	case binary != "" && !strings.HasSuffix(binary, ".dll"):
+		logging.V(3).Info("language host requires no .NET SDK for a self-contained binary")
+	default:
 		pathExec, err := exec.LookPath("dotnet")
 		if err != nil {
 			err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
@@ -70,9 +76,6 @@ func main() {
 
 		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		dotnetExec = pathExec
-	} else {
-		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		dotnetExec = givenExecutor
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
