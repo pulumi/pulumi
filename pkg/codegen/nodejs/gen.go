@@ -1745,7 +1745,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, info, err := generateModuleContextMap("", pkg, info, nil)
+	modules, _, err := generateModuleContextMap("", pkg, info, nil)
 	if err != nil {
 		return nil, err
 	}
