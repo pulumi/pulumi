@@ -2,10 +2,10 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import * as inputs from "./types/input";
-import * as outputs from "./types/output";
-import * as enums from "./types/enums";
-import * as utilities from "./utilities";
+import * as inputs from "../../types/input";
+import * as outputs from "../../types/output";
+import * as enums from "../../types/enums";
+import * as utilities from "../../utilities";
 
 export class RubberTree extends pulumi.CustomResource {
     /**
@@ -21,7 +21,7 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'plant-provider::RubberTree';
+    public static readonly __pulumiType = 'plant-provider:tree/v1:RubberTree';
 
     /**
      * Returns true if the given object is an instance of RubberTree.  This is designed to work even
@@ -65,5 +65,5 @@ export class RubberTree extends pulumi.CustomResource {
  */
 export interface RubberTreeArgs {
     readonly container?: pulumi.Input<inputs.Container>;
-    readonly type?: pulumi.Input<enums.RubberTreeVariety>;
+    readonly type?: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

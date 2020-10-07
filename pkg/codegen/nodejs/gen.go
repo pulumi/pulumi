@@ -1002,25 +1002,23 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	return imports
 }
 
-func (mod *modContext) genTypes() (string, string, string) {
+func (mod *modContext) genTypes() (string, string) {
 	imports := map[string]codegen.StringSet{}
 	for _, t := range mod.types {
 		mod.getImports(t, imports)
 	}
 
-	inputs, outputs, enums := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
+	inputs, outputs := &bytes.Buffer{}, &bytes.Buffer{}
 
 	mod.genHeader(inputs, mod.sdkImports(true, false), imports)
 	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
-	mod.genHeader(enums, mod.sdkImports(false, false), imports)
 
 	// Build a namespace tree out of the types, then emit them.
 	namespaces := mod.getNamespaces()
-	mod.genNamespace(inputs, namespaces[""], true, false, 0)
-	mod.genNamespace(outputs, namespaces[""], false, false, 0)
-	mod.genNamespace(enums, namespaces[""], false, true, 0)
+	mod.genNamespace(inputs, namespaces[""], true, 0)
+	mod.genNamespace(outputs, namespaces[""], false, 0)
 
-	return inputs.String(), outputs.String(), enums.String()
+	return inputs.String(), outputs.String()
 }
 
 type namespace struct {
@@ -1078,7 +1076,7 @@ func (mod *modContext) getModName(token string) string {
 	return modName
 }
 
-func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool, level int) {
+func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	sort.Slice(ns.types, func(i, j int) bool {
@@ -1087,20 +1085,11 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool
 	sort.Slice(ns.enums, func(i, j int) bool {
 		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
 	})
-	if enum {
-		for i, e := range ns.enums {
-			mod.genEnum(w, e, level)
-			if i != len(ns.enums)-1 {
+	for i, t := range ns.types {
+		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+			mod.genType(w, t, input, level)
+			if i != len(ns.types)-1 {
 				fmt.Fprintf(w, "\n")
-			}
-		}
-	} else {
-		for i, t := range ns.types {
-			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
-				mod.genType(w, t, input, level)
-				if i != len(ns.types)-1 {
-					fmt.Fprintf(w, "\n")
-				}
 			}
 		}
 	}
@@ -1110,7 +1099,7 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input, enum bool
 	})
 	for i, child := range ns.children {
 		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, child.name)
-		mod.genNamespace(w, child, input, enum, level+1)
+		mod.genNamespace(w, child, input, level+1)
 		fmt.Fprintf(w, "%s}\n", indent)
 		if i != len(ns.children)-1 {
 			fmt.Fprintf(w, "\n")
@@ -1122,9 +1111,7 @@ func makeSafeEnumName(name string) string {
 	return makeValidIdentifier(title(name))
 }
 
-func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
-	indent := strings.Repeat("    ", level)
-
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
 	enumName := tokenToName(enum.Token)
 	for _, e := range enum.Elements {
 		if e.Name == "" {
@@ -1132,9 +1119,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 		}
 		e.Name = makeSafeEnumName(e.Name)
 		if e.Comment != "" {
-			fmt.Fprintf(w, "%s/** %s */\n", indent, e.Comment)
+			fmt.Fprintf(w, "/** %s */\n", e.Comment)
 		}
-		fmt.Fprintf(w, "%[1]sexport const %[2]s%[3]s: %[3]s = ", indent, e.Name, enumName)
+		fmt.Fprintf(w, "export const %[1]s%[2]s: %[2]s = ", e.Name, enumName)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q;\n", val)
 		} else {
@@ -1144,9 +1131,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType, level int) {
 	fmt.Fprintf(w, "\n")
 
 	if enum.Comment != "" {
-		fmt.Fprintf(w, "%s/** %s */\n", indent, enum.Comment)
+		fmt.Fprintf(w, "/** %s */\n", enum.Comment)
 	}
-	fmt.Fprintf(w, "%sexport type %s = ", indent, enumName)
+	fmt.Fprintf(w, "export type %s = ", enumName)
 	for i, e := range enum.Elements {
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "\"%v\"", val)
@@ -1268,17 +1255,45 @@ func (mod *modContext) gen(fs fs) error {
 		addFile(fileName, buffer.String())
 	}
 
+	if mod.hasEnums() {
+		imports := map[string]codegen.StringSet{}
+
+		buffer := &bytes.Buffer{}
+		mod.genHeader(buffer, []string{}, imports)
+
+		mod.genEnums(buffer, mod.enums)
+
+		var fileName string
+		if modDir == "" {
+			fileName = "index.ts"
+		} else {
+			fileName = path.Join(modDir, "index.ts")
+		}
+		fileName = path.Join("types", "enums", fileName)
+		fs.add(fileName, buffer.Bytes())
+	}
+
 	// Nested types
 	if len(mod.types) > 0 {
-		input, output, enum := mod.genTypes()
+		input, output := mod.genTypes()
 		fs.add(path.Join(modDir, "input.ts"), []byte(input))
 		fs.add(path.Join(modDir, "output.ts"), []byte(output))
-		fs.add(path.Join(modDir, "enums.ts"), []byte(enum))
 	}
 
 	// Index
 	fs.add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
 	return nil
+}
+
+func getChildMod(modName string) string {
+	child := strings.ToLower(modName)
+	// Extract version suffix from child modules. Nested versions will have their own index.ts file.
+	// Example: apps/v1beta1 -> v1beta1
+	parts := strings.SplitN(child, "/", 2)
+	if len(parts) == 2 {
+		child = parts[1]
+	}
+	return child
 }
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
@@ -1304,20 +1319,25 @@ func (mod *modContext) genIndex(exports []string) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
-		child := strings.ToLower(mod.mod)
-		// Extract version suffix from child modules. Nested versions will have their own index.ts file.
-		// Example: apps/v1beta1 -> v1beta1
-		parts := strings.SplitN(child, "/", 2)
-		if len(parts) == 2 {
-			child = parts[1]
-		}
+		child := getChildMod(mod.mod)
 		children.Add(child)
 	}
 
 	if len(mod.types) > 0 {
 		children.Add("input")
 		children.Add("output")
-		children.Add("enums")
+	}
+
+	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
+	if info.ContainsEnums {
+		if mod.mod == "types" {
+			children.Add("enums")
+		} else if len(mod.enums) > 0 {
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "// Export enums:\n")
+			// TODO: correct relative filepath
+			fmt.Fprintf(w, "export * from \"../types/enums/%s\";\n", mod.mod)
+		}
 	}
 
 	// Finally, if there are submodules, export them.
@@ -1343,6 +1363,60 @@ func (mod *modContext) genIndex(exports []string) string {
 	}
 
 	return w.String()
+}
+
+func (mod *modContext) hasEnums() bool {
+	if mod.mod == "types" {
+		return false
+	}
+	if len(mod.enums) > 0 {
+		return true
+	}
+	if len(mod.children) > 0 {
+		for _, mod := range mod.children {
+			return mod.hasEnums()
+		}
+	}
+	return false
+}
+
+func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) {
+	if len(mod.children) > 0 {
+		children := codegen.NewStringSet()
+
+		for _, mod := range mod.children {
+			child := getChildMod(mod.mod)
+			if mod.hasEnums() {
+				children.Add(child)
+			}
+		}
+
+		if len(children) > 0 {
+			fmt.Fprintf(buffer, "// Export sub-modules:\n")
+
+			sorted := children.SortedValues()
+			for _, mod := range sorted {
+				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			}
+			fmt.Fprintf(buffer, "export {")
+			for i, mod := range sorted {
+				if i > 0 {
+					fmt.Fprint(buffer, ", ")
+				}
+				fmt.Fprint(buffer, mod)
+			}
+			fmt.Fprintf(buffer, "};\n")
+		}
+	}
+	if len(enums) > 0 {
+		fmt.Fprintf(buffer, "\n")
+		for i, enum := range enums {
+			mod.genEnum(buffer, enum)
+			if i != len(enums)-1 {
+				fmt.Fprintf(buffer, "\n")
+			}
+		}
+	}
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
@@ -1495,7 +1569,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 
 // generateModuleContextMap groups resources, types, and functions into NodeJS packages.
 func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo,
-	extraFiles map[string][]byte) (map[string]*modContext, error) {
+	extraFiles map[string][]byte) (map[string]*modContext, NodePackageInfo, error) {
 
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
@@ -1591,7 +1665,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 	}
 
 	if _, ok := modules["types"]; ok {
-		return nil, errors.New("this provider has a `types` module which is reserved for input/output types")
+		return nil, info, errors.New("this provider has a `types` module which is reserved for input/output types")
 	}
 
 	// Create the types module.
@@ -1600,15 +1674,17 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		case *schema.ObjectType:
 			types.types = append(types.types, typ)
 		case *schema.EnumType:
-			types.enums = append(types.enums, typ)
+			info.ContainsEnums = true
+			mod := getModFromToken(typ.Token)
+			mod.enums = append(mod.enums, typ)
 		default:
 			continue
 		}
 	}
-	if len(types.types) > 0 || len(types.enums) > 0 {
-		typeDetails, typeList, enumList := types.typeDetails, types.types, types.enums
-		types = getMod("types")
-		types.typeDetails, types.types, types.enums = typeDetails, typeList, enumList
+	if len(types.types) > 0 {
+		typeDetails, typeList := types.typeDetails, types.types
+		typesMod := getMod("types")
+		typesMod.typeDetails, typesMod.types = typeDetails, typeList
 	}
 
 	// Add Typescript source files to the corresponding modules. Note that we only add the file names; the contents are
@@ -1626,7 +1702,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
 	}
 
-	return modules, nil
+	return modules, info, nil
 }
 
 // LanguageResource holds information about a resource to be used by downstream codegen.
@@ -1655,7 +1731,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap("", pkg, info, nil)
+	modules, info, err := generateModuleContextMap("", pkg, info, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1693,10 +1769,11 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap(tool, pkg, info, extraFiles)
+	modules, info, err := generateModuleContextMap(tool, pkg, info, extraFiles)
 	if err != nil {
 		return nil, err
 	}
+	pkg.Language["nodejs"] = info
 
 	files := fs{}
 	for p, f := range extraFiles {

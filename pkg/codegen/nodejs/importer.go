@@ -47,6 +47,8 @@ type NodePackageInfo struct {
 	Compatibility string `json:"compatibility,omitempty"`
 	// Disable support for unions in output types.
 	DisableUnionOutputTypes bool `json:"disableUnionOutputTypes,omitempty"`
+	// An indicator for whether the package contains enums.
+	ContainsEnums bool `json:"containsEnums,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.

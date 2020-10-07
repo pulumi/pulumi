@@ -2,13 +2,13 @@
   "version": "0.0.1",
   "name": "plant-provider",
   "resources": {
-    "plant-provider::RubberTree": {
+    "plant-provider:tree/v1:RubberTree": {
       "inputProperties": {
         "container": {
           "$ref": "#/types/plant-provider::Container"
         },
         "type": {
-          "$ref": "#/types/plant-provider::RubberTreeVariety"
+          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
         }
       }
     }
@@ -65,7 +65,7 @@
         }
       ]
     },
-    "plant-provider::RubberTreeVariety": {
+    "plant-provider:tree/v1:RubberTreeVariety": {
       "type": "string",
       "description": "types of rubber trees",
       "enum": [
