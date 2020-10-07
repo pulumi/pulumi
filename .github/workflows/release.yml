@@ -45,11 +45,11 @@ jobs:
     needs: publish-sdks
     steps:
       - name: Repository Dispatch
-          uses: peter-evans/repository-dispatch@v1
-          with:
-            token: ${{ secrets.PULUMI_BOT_TOKEN }}
-            event-type: homebrew-bump
-            client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          event-type: homebrew-bump
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
 
   publish-sdks:
     name: Publish SDKs
