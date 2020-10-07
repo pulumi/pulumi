@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project.
+ */
 export interface ProjectSettings {
     name: string;
     runtime: ProjectRuntimeInfo | ProjectRuntime;
@@ -26,13 +29,22 @@ export interface ProjectSettings {
     backend?: ProjectBackend;
 }
 
+/**
+ * A description of the Project's program runtime and associated metadata.
+ */
 export interface ProjectRuntimeInfo {
     name: string;
     options?: { [key: string]: any };
 }
 
+/**
+ * Supported Pulumi program language runtimes.
+ */
 export type ProjectRuntime = "nodejs" | "go" | "python" | "dotnet";
 
+/**
+ * A template used to seed new stacks created from this project.
+ */
 export interface ProjectTemplate {
     description?: string;
     quickstart?: string;
@@ -40,12 +52,18 @@ export interface ProjectTemplate {
     important?: boolean;
 }
 
+/**
+ * A placeholder config value for a project template.
+ */
 export interface ProjectTemplateConfigValue {
     description?: string;
     default?: string;
     secret?: boolean;
 }
 
+/**
+ * Configuration for the project's Pulumi state storage backend.
+ */
 export interface ProjectBackend {
     url?: string;
 }
