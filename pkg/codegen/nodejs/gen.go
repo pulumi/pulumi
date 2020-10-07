@@ -1116,9 +1116,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
 		e.Name = makeSafeEnumName(e.Name)
-		if e.Comment != "" || e.DeprecationMessage != "" {
-			printComment(w, e.Comment, e.DeprecationMessage, "")
-		}
+		printComment(w, e.Comment, e.DeprecationMessage, "")
 		fmt.Fprintf(w, "export const %[1]s%[2]s: %[2]s = ", e.Name, enumName)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q;\n", val)
@@ -1128,13 +1126,11 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
 	}
 	fmt.Fprintf(w, "\n")
 
-	if enum.Comment != "" {
-		printComment(w, enum.Comment, "", "")
-	}
+	printComment(w, enum.Comment, "", "")
 	fmt.Fprintf(w, "export type %s = ", enumName)
 	for i, e := range enum.Elements {
 		if val, ok := e.Value.(string); ok {
-			fmt.Fprintf(w, "\"%v\"", val)
+			fmt.Fprintf(w, "%q", val)
 		} else {
 			fmt.Fprintf(w, "%v", e.Value)
 		}
