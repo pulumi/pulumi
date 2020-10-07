@@ -69,9 +69,9 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
-		tempdir, e := ioutil.TempDir("", "test-env")
-		t.Log(e)
+		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
+		assert.DirExists(t, tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
 		var args = newPolicyArgs{
