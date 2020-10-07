@@ -1265,27 +1265,27 @@ func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, erro
 		switch typ {
 		case StringType:
 			if _, ok := spec.Value.(string); !ok {
-				return enums, errorMessage(spec.Value, typ.String())
+				return nil, errorMessage(spec.Value, typ.String())
 			}
 		case IntType:
 			v, ok := spec.Value.(float64)
 			if !ok {
-				return enums, errorMessage(spec.Value, typ.String())
+				return nil, errorMessage(spec.Value, typ.String())
 			}
 			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-				return enums, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
+				return nil, errors.Errorf("cannot assign enum value of type 'number' to enum of type 'integer'")
 			}
 			spec.Value = int32(v)
 		case NumberType:
 			if _, ok := spec.Value.(float64); !ok {
-				return enums, errorMessage(spec.Value, typ.String())
+				return nil, errorMessage(spec.Value, typ.String())
 			}
 		case BoolType:
 			if _, ok := spec.Value.(bool); !ok {
-				return enums, errorMessage(spec.Value, typ.String())
+				return nil, errorMessage(spec.Value, typ.String())
 			}
 		default:
-			return enums, fmt.Errorf("enum values may only be of string, integer, number or boolean types")
+			return nil, fmt.Errorf("enum values may only be of string, integer, number or boolean types")
 		}
 		enum := &Enum{
 			Value:              spec.Value,
