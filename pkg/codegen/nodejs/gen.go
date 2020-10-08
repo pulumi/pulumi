@@ -1110,37 +1110,27 @@ func makeSafeEnumName(name string) string {
 }
 
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
+	indent := "    "
 	enumName := tokenToName(enum.Token)
+	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
 		e.Name = makeSafeEnumName(e.Name)
-		printComment(w, e.Comment, e.DeprecationMessage, "")
-		fmt.Fprintf(w, "export const %[1]s%[2]s: %[2]s = ", e.Name, enumName)
+		printComment(w, e.Comment, e.DeprecationMessage, indent)
+		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
-			fmt.Fprintf(w, "%q;\n", val)
+			fmt.Fprintf(w, "%q,\n", val)
 		} else {
-			fmt.Fprintf(w, "%v;\n", e.Value)
+			fmt.Fprintf(w, "%v,\n", e.Value)
 		}
 	}
+	fmt.Fprintf(w, "} as const;\n")
 	fmt.Fprintf(w, "\n")
 
 	printComment(w, enum.Comment, "", "")
-	fmt.Fprintf(w, "export type %s = ", enumName)
-	for i, e := range enum.Elements {
-		if val, ok := e.Value.(string); ok {
-			fmt.Fprintf(w, "%q", val)
-		} else {
-			fmt.Fprintf(w, "%v", e.Value)
-		}
-
-		if i == len(enum.Elements)-1 {
-			fmt.Fprintf(w, ";\n")
-		} else {
-			fmt.Fprintf(w, " | ")
-		}
-	}
+	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
 }
 
 type fs map[string][]byte

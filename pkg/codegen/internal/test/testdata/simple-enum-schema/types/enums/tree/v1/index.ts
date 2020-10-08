@@ -2,20 +2,22 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
-/**
- * A burgundy rubber tree.
- */
-export const BurgundyRubberTreeVariety: RubberTreeVariety = "Burgundy";
-/**
- * A ruby rubber tree.
- */
-export const RubyRubberTreeVariety: RubberTreeVariety = "Ruby";
-/**
- * A tineke rubber tree.
- */
-export const TinekeRubberTreeVariety: RubberTreeVariety = "Tineke";
+export const RubberTreeVariety = {
+    /**
+     * A burgundy rubber tree.
+     */
+    Burgundy: "Burgundy",
+    /**
+     * A ruby rubber tree.
+     */
+    Ruby: "Ruby",
+    /**
+     * A tineke rubber tree.
+     */
+    Tineke: "Tineke",
+} as const;
 
 /**
  * types of rubber trees
  */
-export type RubberTreeVariety = "Burgundy" | "Ruby" | "Tineke";
+export type RubberTreeVariety = (typeof RubberTreeVariety)[keyof typeof RubberTreeVariety];
