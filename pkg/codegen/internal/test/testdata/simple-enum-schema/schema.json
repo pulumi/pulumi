@@ -1,0 +1,94 @@
+{
+  "version": "0.0.1",
+  "name": "plant-provider",
+  "resources": {
+    "plant-provider:tree/v1:RubberTree": {
+      "inputProperties": {
+        "container": {
+          "$ref": "#/types/plant-provider::Container"
+        },
+        "type": {
+          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        }
+      }
+    }
+  },
+  "types": {
+    "plant-provider::Container": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/types/plant-provider::ContainerSize"
+        },
+        "material": {
+          "type": "string"
+        },
+        "color": {
+          "oneOf": [
+            {"$ref": "#/types/plant-provider::ContainerColor"},
+            {"type": "string"}
+          ]
+        }
+      },
+      "required": ["size"]
+    },
+    "plant-provider::ContainerSize": {
+      "type": "integer",
+      "description": "plant container sizes",
+      "enum": [
+        {
+          "value": 4,
+          "name": "FourInch"
+        },
+        {
+          "value": 6,
+          "name": "SixInch"
+        },
+        {
+          "value": 8,
+          "name": "EightInch",
+          "deprecationMessage": "Eight inch pots are no longer supported."
+        }
+      ]
+    },
+    "plant-provider::ContainerColor": {
+      "type": "string",
+      "description": "plant container colors",
+      "enum": [
+        {
+          "value": "red"
+        },
+        {
+          "value": "blue"
+        },
+        {
+          "value": "yellow"
+        }
+      ]
+    },
+    "plant-provider:tree/v1:RubberTreeVariety": {
+      "type": "string",
+      "description": "types of rubber trees",
+      "enum": [
+        {
+          "value": "Burgundy",
+          "description": "A burgundy rubber tree."
+        },
+        {
+          "value": "Ruby",
+          "description": "A ruby rubber tree."
+        },
+        {
+          "value": "Tineke",
+          "description": "A tineke rubber tree."
+        }
+      ]
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}

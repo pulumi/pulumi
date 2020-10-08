@@ -1,3 +1,4 @@
+// nolint: lll
 package nodejs
 
 import (
@@ -23,6 +24,20 @@ func TestGeneratePackage(t *testing.T) {
 				"argFunction.ts",
 			},
 		},
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{
+				"tree/v1/rubberTree.ts",
+				"tree/v1/index.ts",
+				"tree/index.ts",
+				"types/input.ts",
+				"types/index.ts",
+				"types/enums/index.ts",
+				"types/enums/tree/index.ts",
+				"types/enums/tree/v1/index.ts",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
@@ -36,5 +51,26 @@ func TestGeneratePackage(t *testing.T) {
 
 			test.ValidateFileEquality(t, files, expectedFiles)
 		})
+	}
+}
+
+func TestMakeSafeEnumName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"red", "Red"},
+		{"snake_cased_name", "Snake_cased_name"},
+		{"8", "_8"},
+		{"Microsoft-Windows-Shell-Startup", "Microsoft_Windows_Shell_Startup"},
+		{"Microsoft.Batch", "Microsoft_Batch"},
+		{"readonly", "Readonly"},
+		{"SystemAssigned, UserAssigned", "SystemAssigned__UserAssigned"},
+		{"Dev(NoSLA)_Standard_D11_v2", "Dev_NoSLA__Standard_D11_v2"},
+		{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS"},
+	}
+	for _, tt := range tests {
+		result := makeSafeEnumName(tt.input)
+		assert.Equal(t, tt.expected, result)
 	}
 }
