@@ -52,7 +52,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             `${preview ? "preview" : "update"} failed with code ${this.pulumiExitCode}`);
     }
 
-    public onPulumiExit(code: number, preview: boolean) {
+    onPulumiExit(code: number, preview: boolean) {
         this.pulumiExitCode = code;
         // these are globals and we need to clean up after ourselves
         runtime.resetOptions("", "", -1, "", "", false);
@@ -61,13 +61,13 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         }
     }
 
-    public getRequiredPlugins(call: any, callback: any): void {
+    getRequiredPlugins(call: any, callback: any): void {
         const resp: any = new langproto.GetRequiredPluginsResponse();
         resp.setPluginsList([]);
         callback(undefined, resp);
     }
 
-    public async run(call: any, callback: any): Promise<void> {
+    async run(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp: any = new langproto.RunResponse();
 
@@ -134,7 +134,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         callback(undefined, resp);
     }
 
-    public getPluginInfo(call: any, callback: any): void {
+    getPluginInfo(call: any, callback: any): void {
         const resp: any = new plugproto.PluginInfo();
         resp.setVersion("1.0.0");
         callback(undefined, resp);
