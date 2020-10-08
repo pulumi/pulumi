@@ -53,21 +53,22 @@ const kubernetesProviderType = "pulumi:providers:kubernetes"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx             *Context                         // a plugin context for caching, etc.
-	pkg             tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug            *plugin                          // the actual plugin process wrapper.
-	clientRaw       pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr          error                            // non-nil if a configure call fails.
-	cfgknown        bool                             // true if all configuration values are known.
-	cfgdone         chan bool                        // closed when configuration has completed.
-	acceptSecrets   bool                             // true if this plugin can consume strongly-typed secrets.
-	supportsPreview bool                             // true if this plugin supports previews for Create and Update.
+	ctx                    *Context                         // a plugin context for caching, etc.
+	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug                   *plugin                          // the actual plugin process wrapper.
+	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr                 error                            // non-nil if a configure call fails.
+	cfgknown               bool                             // true if all configuration values are known.
+	cfgdone                chan bool                        // closed when configuration has completed.
+	acceptSecrets          bool                             // true if this plugin can consume strongly-typed secrets.
+	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
+	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}) (Provider, error) {
+	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
@@ -667,7 +668,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	//
 	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
 	// but expect differently-shaped values.
-	if preview && (!p.supportsPreview || !p.cfgknown) {
+	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
 		return "", props, resource.StatusOK, nil
 	}
 
@@ -874,7 +875,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	//
 	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
 	// but expect differently-shaped values.
-	if preview && (!p.supportsPreview || !p.cfgknown) {
+	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
 		return nil, resource.StatusOK, nil
 	}
 

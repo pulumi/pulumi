@@ -114,11 +114,12 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-				Parallel:         parallel,
-				Debug:            debug,
-				Refresh:          refresh,
-				UseLegacyDiff:    useLegacyDiff(),
+				LocalPolicyPacks:       engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+				Parallel:               parallel,
+				Debug:                  debug,
+				Refresh:                refresh,
+				UseLegacyDiff:          useLegacyDiff(),
+				DisableProviderPreview: disableProviderPreview(),
 			}
 
 			res := s.Watch(commandContext(), backend.UpdateOperation{

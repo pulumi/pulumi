@@ -122,15 +122,16 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refresh,
-			RefreshTargets:   targetURNs,
-			ReplaceTargets:   replaceURNs,
-			UseLegacyDiff:    useLegacyDiff(),
-			UpdateTargets:    targetURNs,
-			TargetDependents: targetDependents,
+			LocalPolicyPacks:       engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:               parallel,
+			Debug:                  debug,
+			Refresh:                refresh,
+			RefreshTargets:         targetURNs,
+			ReplaceTargets:         replaceURNs,
+			UseLegacyDiff:          useLegacyDiff(),
+			DisableProviderPreview: disableProviderPreview(),
+			UpdateTargets:          targetURNs,
+			TargetDependents:       targetDependents,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{

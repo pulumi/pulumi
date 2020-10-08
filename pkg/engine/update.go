@@ -132,6 +132,9 @@ type UpdateOptions struct {
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 
+	// true if the engine should disable provider previews.
+	DisableProviderPreview bool
+
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 

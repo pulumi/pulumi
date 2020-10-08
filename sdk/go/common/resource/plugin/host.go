@@ -86,7 +86,9 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{}) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
+	disableProviderPreview bool) (Host, error) {
+
 	host := &defaultHost{
 		ctx:                     ctx,
 		config:                  config,
@@ -96,6 +98,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		resourcePlugins:         make(map[Provider]*resourcePlugin),
 		reportedResourcePlugins: make(map[string]struct{}),
 		loadRequests:            make(chan pluginLoadRequest),
+		disableProviderPreview:  disableProviderPreview,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -140,6 +143,7 @@ type defaultHost struct {
 	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
 	server                  *hostServer                      // the server's RPC machinery.
+	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -256,7 +260,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// Try to load and bind to a plugin.
-		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions)
+		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions, host.disableProviderPreview)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {

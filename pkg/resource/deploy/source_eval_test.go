@@ -79,7 +79,7 @@ func newTestPluginContext(program deploytest.ProgramFunc) (*plugin.Context, erro
 	statusSink := cmdutil.Diag()
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
-	return plugin.NewContext(sink, statusSink, host, nil, "", nil, nil)
+	return plugin.NewContext(sink, statusSink, host, nil, "", nil, false, nil)
 }
 
 type testProviderSource struct {

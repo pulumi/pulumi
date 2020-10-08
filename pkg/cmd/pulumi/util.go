@@ -67,6 +67,10 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
+func disableProviderPreview() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_PROVIDER_PREVIEW"))
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.
