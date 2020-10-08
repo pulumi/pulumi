@@ -23,6 +23,10 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     # If the package doesn't have an alpha tag, use the tag of latest instead of
     # dev. NPM uses this tag as the default version to add, so we want it to mean
     # the newest released version.
+    if [[ "${PKG_VERSION}" != *-beta* ]]; then
+        NPM_TAG="beta"
+    fi
+
     if [[ "${PKG_VERSION}" != *-alpha* ]]; then
         NPM_TAG="latest"
     fi

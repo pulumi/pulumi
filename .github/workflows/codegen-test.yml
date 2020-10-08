@@ -4,6 +4,7 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '.github/workflows/codegen-test.yml'
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -25,16 +26,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -62,16 +63,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -99,16 +100,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -136,16 +137,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -173,16 +174,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -210,16 +211,16 @@ jobs:
         with:
           python-version: 3.6.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v4
+        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
