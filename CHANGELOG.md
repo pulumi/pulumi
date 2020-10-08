@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- NodeJS Automation API.
+  [#5347](https://github.com/pulumi/pulumi/pull/5347)
+
 - [cli] Remove eternal loop if a configured passphrase is invalid.
   [#5507](https://github.com/pulumi/pulumi/pull/5507)
 
