@@ -47,7 +47,7 @@ export class Stack {
      * @param name The name identifying the Stack.
      * @param workspace The Workspace the Stack was created from.
      */
-    public static async create(name: string, workspace: Workspace): Promise<Stack> {
+    static async create(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "create");
         await stack.ready;
         return stack;
@@ -60,7 +60,7 @@ export class Stack {
      * @param name The name identifying the Stack.
      * @param workspace The Workspace the Stack was created from.
      */
-    public static async select(name: string, workspace: Workspace): Promise<Stack> {
+    static async select(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "select");
         await stack.ready;
         return stack;
@@ -74,7 +74,7 @@ export class Stack {
      * @param name The name identifying the Stack.
      * @param workspace The Workspace the Stack was created from.
      */
-    public static async createOrSelect(name: string, workspace: Workspace): Promise<Stack> {
+    static async createOrSelect(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "createOrSelect");
         await stack.ready;
         return stack;
