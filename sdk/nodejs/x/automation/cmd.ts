@@ -14,7 +14,7 @@
 
 import * as childProcess from "child_process";
 
-import { CommandError } from "./errors";
+import { createCommandError } from "./errors";
 
 /** @internal */
 export class CommandResult {
@@ -73,13 +73,13 @@ export function runPulumiCmd(
             const resCode = code !== null ? code : unknownErrCode;
             const result = new CommandResult(stdout, stderr, resCode);
             if (code !== 0) {
-                return reject(new CommandError(result));
+                return reject(createCommandError(result));
             }
             return resolve(result);
         });
         proc.on("error", (err) => {
             const result = new CommandResult(stdout, stderr, unknownErrCode, err);
-            return reject(new CommandError(result));
+            return reject(createCommandError(result));
         });
     });
 }
