@@ -30,7 +30,7 @@ export interface Workspace {
     readonly workDir: string;
     /**
      * The directory override for CLI metadata if set.
-	 * This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+     * This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
      */
     readonly pulumiHome?: string;
     /**
@@ -39,8 +39,8 @@ export interface Workspace {
      */
     readonly secretsProvider?: string;
     /**
-     * 	The inline program `PulumiFn` to be used for Preview/Update operations if any.
-	 *  If none is specified, the stack will refer to ProjectSettings for this information.
+     *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
+     *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
     program?: PulumiFn;
     /**

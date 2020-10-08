@@ -39,7 +39,6 @@ export class Stack {
      * The Workspace the Stack was created from.
      */
     readonly workspace: Workspace;
-    /** @internal */
     private ready: Promise<any>;
     /**
      * Creates a new stack using the given workspace, and stack name.
@@ -80,7 +79,6 @@ export class Stack {
         await stack.ready;
         return stack;
     }
-    /** @internal */
     private constructor(name: string, workspace: Workspace, mode: StackInitMode) {
         this.name = name;
         this.workspace = workspace;
@@ -426,7 +424,6 @@ export class Stack {
         }
         return history[0];
     }
-    /** @internal */
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {};
         const pulumiHome = this.workspace.pulumiHome;

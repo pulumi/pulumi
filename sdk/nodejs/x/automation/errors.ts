@@ -25,7 +25,7 @@ export class CommandError extends Error {
     /** @internal */
     constructor(private commandResult: CommandResult) {
         super(commandResult.toString());
-        this.name = "PulumiCommandError";
+        this.name = "CommandError";
     }
     /**
      * Returns true if the error was a result of a conflicting update locking the stack.
