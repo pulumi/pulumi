@@ -5175,14 +5175,30 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Run(t, old)
 }
 
-func TestPreviewInputPropagation(t *testing.T) {
+func TestProviderPreview(t *testing.T) {
+	sawPreview := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
 					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
+					return news, resource.StatusOK, nil
 				},
 			}, nil
 		}),
@@ -5225,20 +5241,23 @@ func TestPreviewInputPropagation(t *testing.T) {
 
 	project := p.GetProject()
 
-	// Run a preview. The inputs should be propagated to the outputs during the create.
-	preview = true
+	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
+	preview, sawPreview = true, false
 	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.True(t, sawPreview)
 
 	// Run an update.
-	preview = false
+	preview, sawPreview = false, false
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
-	preview = true
+	preview, sawPreview = true, false
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.True(t, sawPreview)
 }
 
 type testResource struct {
