@@ -522,38 +522,38 @@ export interface LocalProgramArgs {
  * Extensibility options to configure a LocalWorkspace; e.g: settings to seed
  * and environment variables to pass through to every command.
  */
-export type LocalWorkspaceOptions = {
+export interface LocalWorkspaceOptions {
     /**
      * The directory to run Pulumi commands and read settings (Pulumi.yaml and Pulumi.<stack>.yaml)l.
      */
-    workDir?: string,
+    workDir?: string;
     /**
      * The directory to override for CLI metadata
      */
-    pulumiHome?: string,
+    pulumiHome?: string;
     /**
      * 	The inline program `PulumiFn` to be used for Preview/Update operations if any.
 	 *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
-    program?: PulumiFn,
+    program?: PulumiFn;
     /**
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
      */
-    envVars?: { [key: string]: string },
+    envVars?: { [key: string]: string };
     /**
      * The secrets provider to use for encryption and decryption of stack secrets.
      * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
      */
-    secretsProvider?: string,
+    secretsProvider?: string;
     /**
      * The settings object for the current project.
      */
-    projectSettings?: ProjectSettings,
+    projectSettings?: ProjectSettings;
     /**
      * A map of Stack names and corresponding settings objects.
      */
-    stackSettings?: { [key: string]: StackSettings },
-};
+    stackSettings?: { [key: string]: StackSettings };
+}
 
 /**
  * Returns true if the provided `args` object satisfies the `LocalProgramArgs` interface.
