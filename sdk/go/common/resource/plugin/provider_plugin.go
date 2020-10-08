@@ -876,7 +876,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
 	// but expect differently-shaped values.
 	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
-		return nil, resource.StatusOK, nil
+		return news, resource.StatusOK, nil
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
