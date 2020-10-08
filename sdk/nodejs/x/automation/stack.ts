@@ -16,7 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { CommandError } from "./errors";
+import { StackAlreadyExistsError } from "./errors";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { PulumiFn, Workspace } from "./workspace";
 
@@ -92,7 +92,7 @@ export class Stack {
                 return this;
             case "createOrSelect":
                 this.ready = workspace.createStack(name).catch((err) => {
-                    if (err instanceof CommandError && err.isCreateStack409Error()) {
+                    if (err instanceof StackAlreadyExistsError) {
                         return workspace.selectStack(name);
                     }
                     throw err;

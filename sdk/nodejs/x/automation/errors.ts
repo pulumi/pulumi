@@ -16,9 +16,6 @@ import { CommandResult } from "./cmd";
 
 /**
  * CommandError is an error resulting from invocation of a Pulumi Command.
- * This is an opaque error that provides utility functions to detect specific error cases
- * such as concurrent stack updates (`isConcurrentUpdateError`). If you'd like to detect an additional
- * error case that isn't currently covered, please file an issue: https://github.com/pulumi/pulumi/issues/new
  * @alpha
  */
 export class CommandError extends Error {
@@ -27,30 +24,52 @@ export class CommandError extends Error {
         super(commandResult.toString());
         this.name = "CommandError";
     }
-    /**
-     * Returns true if the error was a result of a conflicting update locking the stack.
-     *
-     * @returns a boolean indicating if this failure was due to a conflicting concurrent update on the stack.
-     */
-    isConcurrentUpdateError() {
-        return this.commandResult.stderr.indexOf("[409] Conflict: Another update is currently in progress.") >= 0;
+}
+
+/**
+ * ConcurrentUpdateError is thrown when attempting to update a stack that already has an update in progress.
+ */
+export class ConcurrentUpdateError extends CommandError {
+    /** @internal */
+    constructor(commandResult: CommandResult) {
+        super(commandResult);
+        this.name = "ConcurrentUpdateError";
     }
-    /**
-     * Returns true if the error was the result of selecting a stack that does not exist.
-     *
-     * @returns a boolean indicating if this failure was the result of selecting a stack that does not exist.
-     */
-    isSelectStack404Error() {
-        const exp = new RegExp("no stack named.*found");
-        return exp.test(this.commandResult.stderr);
+}
+
+/**
+ * StackNotFoundError is thrown when attempting to select a stack that does not exist.
+ */
+export class StackNotFoundError extends CommandError {
+    /** @internal */
+    constructor(commandResult: CommandResult) {
+        super(commandResult);
+        this.name = "StackNotFoundError";
     }
-    /**
-     * Returns true if the error was a result of creating a stack that already exists.
-     *
-     * @returns a boolean indicating if the error was a result of creating a stack that already exists.
-     */
-    isCreateStack409Error() {
-        const exp = new RegExp("stack.*already exists");
-        return exp.test(this.commandResult.stderr);
+}
+
+/**
+ * StackAlreadyExistsError is thrown when attempting to create a stack that already exists.
+ */
+export class StackAlreadyExistsError extends CommandError {
+    /** @internal */
+    constructor(commandResult: CommandResult) {
+        super(commandResult);
+        this.name = "StackAlreadyExistsError";
     }
+}
+
+const notFoundRegex = new RegExp("no stack named.*found");
+const alreadyExistsRegex = new RegExp("stack.*already exists");
+const conflictText = "[409] Conflict: Another update is currently in progress.";
+
+/** @internal */
+export function createCommandError(result: CommandResult): CommandError {
+    const stderr = result.stderr;
+    return (
+        notFoundRegex.test(stderr) ? new StackNotFoundError(result) :
+        alreadyExistsRegex.test(stderr) ? new StackAlreadyExistsError(result) :
+        stderr.indexOf(conflictText) >= 0 ? new ConcurrentUpdateError(result) :
+        new CommandError(result)
+    );
 }
