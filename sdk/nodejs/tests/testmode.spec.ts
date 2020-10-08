@@ -38,7 +38,7 @@ describe("testMode", () => {
         // Fetching the stack name while not in test mode errors out.
         assert.throws(() => { const _ = runtime.getStack(); }, testModeDisabledError);
     });
-    it("accpets test mode", asyncTest(async () => {
+    it("accepts test mode", asyncTest(async () => {
         // Set up all the test mode envvars, so that the test will pass.
         runtime._setTestModeEnabled(true);
         const testProject = "TestProject";

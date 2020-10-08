@@ -44,7 +44,7 @@ export class LocalWorkspace implements Workspace {
     readonly workDir: string;
     /**
      * The directory override for CLI metadata if set.
-	 * This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+     * This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
      */
     readonly pulumiHome?: string;
     /**
@@ -53,15 +53,14 @@ export class LocalWorkspace implements Workspace {
      */
     readonly secretsProvider?: string;
     /**
-     * 	The inline program `PulumiFn` to be used for Preview/Update operations if any.
-	 *  If none is specified, the stack will refer to ProjectSettings for this information.
+     *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
+     *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
     public program?: PulumiFn;
     /**
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
      */
     public envVars: { [key: string]: string };
-    /** @internal */
     private ready: Promise<any[]>;
     /**
      * Creates a workspace using the specified options. Used for maximal control and customization
@@ -93,7 +92,6 @@ export class LocalWorkspace implements Workspace {
      * @param opts Additional customizations to be applied to the Workspace.
      */
     public static async createStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
-    /** @internal */
     public static async createStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
         if (isInlineProgramArgs(args)) {
             return await this.inlineSourceStackHelper(args, Stack.create, opts);
@@ -121,7 +119,6 @@ export class LocalWorkspace implements Workspace {
      * @param opts Additional customizations to be applied to the Workspace.
      */
     public static async selectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
-    /** @internal */
     public static async selectStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
         if (isInlineProgramArgs(args)) {
             return await this.inlineSourceStackHelper(args, Stack.select, opts);
@@ -150,7 +147,6 @@ export class LocalWorkspace implements Workspace {
      * @param opts Additional customizations to be applied to the Workspace.
      */
     public static async createOrSelectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
-    /** @internal */
     public static async createOrSelectStack(args: InlineProgramArgs | LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack> {
         if (isInlineProgramArgs(args)) {
             return await this.inlineSourceStackHelper(args, Stack.createOrSelect, opts);
@@ -159,7 +155,6 @@ export class LocalWorkspace implements Workspace {
         }
         throw new Error(`unexpected args: ${args}`);
     }
-    /** @internal */
     private static async localSourceStackHelper(
         args: LocalProgramArgs, initFn: StackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
@@ -173,7 +168,6 @@ export class LocalWorkspace implements Workspace {
 
         return await initFn(args.stackName, ws);
     }
-    /** @internal */
     private static async inlineSourceStackHelper(
         args: InlineProgramArgs, initFn: StackInitializer, opts?: LocalWorkspaceOptions,
     ): Promise<Stack> {
@@ -191,7 +185,6 @@ export class LocalWorkspace implements Workspace {
 
         return await initFn(args.stackName, ws);
     }
-    /** @internal */
     private constructor(opts?: LocalWorkspaceOptions) {
         let dir = "";
         let envs = {};
@@ -468,7 +461,7 @@ export class LocalWorkspace implements Workspace {
      */
     async serializeArgsForOp(_: string): Promise<string[]> {
         // LocalWorkspace does not utilize this extensibility point.
-            return [];
+        return [];
     }
     /**
      * postCommandCallback is a hook executed after every command. Called with the stack name.
@@ -479,7 +472,6 @@ export class LocalWorkspace implements Workspace {
         // LocalWorkspace does not utilize this extensibility point.
         return;
     }
-    /** @internal */
     private async runPulumiCmd(
         args: string[],
     ): Promise<CommandResult> {
@@ -505,7 +497,7 @@ export interface InlineProgramArgs {
      */
     projectName: string;
     /**
-     * The inline (in process) Pulumi program to use with Update and Preivew operations.
+     * The inline (in process) Pulumi program to use with Update and Preview operations.
      */
     program: PulumiFn;
 }
@@ -532,8 +524,8 @@ export interface LocalWorkspaceOptions {
      */
     pulumiHome?: string;
     /**
-     * 	The inline program `PulumiFn` to be used for Preview/Update operations if any.
-	 *  If none is specified, the stack will refer to ProjectSettings for this information.
+     *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
+     *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
     program?: PulumiFn;
     /**
