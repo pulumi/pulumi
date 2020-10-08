@@ -172,14 +172,14 @@ export interface Workspace {
 /**
  * A summary of the status of a given stack.
  */
-export type StackSummary = {
-    name: string,
-    current: boolean,
-    lastUpdate?: string,
-    updateInProgress: boolean,
-    resourceCount?: number,
-    url?: string,
-};
+export interface StackSummary {
+    name: string;
+    current: boolean;
+    lastUpdate?: string;
+    updateInProgress: boolean;
+    resourceCount?: number;
+    url?: string;
+}
 
 /**
  * A Pulumi program as an inline function (in process).

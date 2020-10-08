@@ -458,14 +458,14 @@ export function fullyQualifiedStackName(org: string, project: string, stack: str
     return `${org}/${project}/${stack}`;
 }
 
-export type OutputValue = {
+export interface OutputValue {
     value: any;
     secret: boolean;
-};
+}
 
 export type OutputMap = { [key: string]: OutputValue };
 
-export type UpdateSummary = {
+export interface UpdateSummary {
     // pre-update info
     kind: UpdateKind;
     startTime: Date;
@@ -479,7 +479,7 @@ export type UpdateSummary = {
     version: number;
     Deployment?: RawJSON;
     resourceChanges?: OpMap;
-};
+}
 
 /**
  * The kind of update that was performed on the stack.
@@ -511,44 +511,44 @@ export type RawJSON = string;
 /**
  * The deployment output from running a Pulumi program update.
  */
-export type UpResult = {
+export interface UpResult {
     stdout: string;
     stderr: string;
     outputs: OutputMap;
     summary: UpdateSummary;
-};
+}
 
 /**
  * Output from running a Pulumi program preview.
  */
-export type PreviewResult = {
+export interface PreviewResult {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
-};
+}
 
 /**
  * Output from refreshing the resources in a given Stack.
  */
-export type RefreshResult = {
+export interface RefreshResult {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
-};
+}
 
 /**
  * Output from destroying all resources in a Stack.
  */
-export type DestroyResult = {
+export interface DestroyResult {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
-};
+}
 
 /**
  * Options controlling the behavior of a Stack.up() operation.
  */
-export type UpOptions = {
+export interface UpOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -557,12 +557,12 @@ export type UpOptions = {
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
     program?: PulumiFn;
-};
+}
 
 /**
  * Options controlling the behavior of a Stack.preview() operation.
  */
-export type PreviewOptions = {
+export interface PreviewOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -570,29 +570,29 @@ export type PreviewOptions = {
     target?: string[];
     targetDependents?: boolean;
     program?: PulumiFn;
-};
+}
 
 /**
  * Options controlling the behavior of a Stack.refresh() operation.
  */
-export type RefreshOptions = {
+export interface RefreshOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
     target?: string[];
     onOutput?: (out: string) => void;
-};
+}
 
 /**
  * Options controlling the behavior of a Stack.destroy() operation.
  */
-export type DestroyOptions = {
+export interface DestroyOptions {
     parallel?: number;
     message?: string;
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
-};
+}
 
 const execKind = {
     local: "auto.local",
