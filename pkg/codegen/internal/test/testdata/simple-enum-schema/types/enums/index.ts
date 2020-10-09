@@ -5,23 +5,27 @@
 import * as tree from "./tree";
 export {tree};
 
-export const RedContainerColor: ContainerColor = "red";
-export const BlueContainerColor: ContainerColor = "blue";
-export const YellowContainerColor: ContainerColor = "yellow";
+export const ContainerColor = {
+    Red: "red",
+    Blue: "blue",
+    Yellow: "yellow",
+} as const;
 
 /**
  * plant container colors
  */
-export type ContainerColor = "red" | "blue" | "yellow";
+export type ContainerColor = (typeof ContainerColor)[keyof typeof ContainerColor];
 
-export const FourInchContainerSize: ContainerSize = 4;
-export const SixInchContainerSize: ContainerSize = 6;
-/**
- * @deprecated Eight inch pots are no longer supported.
- */
-export const EightInchContainerSize: ContainerSize = 8;
+export const ContainerSize = {
+    FourInch: 4,
+    SixInch: 6,
+    /**
+     * @deprecated Eight inch pots are no longer supported.
+     */
+    EightInch: 8,
+} as const;
 
 /**
  * plant container sizes
  */
-export type ContainerSize = 4 | 6 | 8;
+export type ContainerSize = (typeof ContainerSize)[keyof typeof ContainerSize];
