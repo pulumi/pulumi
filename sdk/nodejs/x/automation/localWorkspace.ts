@@ -336,7 +336,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to remove
      */
     async removeStack(stackName: string): Promise<void> {
-            await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
+        await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
     }
     /**
      * Returns the value associated with the specified stack name and key,
@@ -458,19 +458,29 @@ export class LocalWorkspace implements Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
+     * @param kind the kind of plugin, defaults to "resource"
      */
-    async installPlugin(name: string, version: string): Promise<void> {
-        await this.runPulumiCmd(["plugin", "install", "resource", name, version]);
+    async installPlugin(name: string, version: string, kind = "resource"): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", kind, name, version]);
     }
     /**
      * Removes a plugin from the Workspace matching the specified name and version.
      *
-     * @param name the name of the plugin.
-     * @param versionRange the semver range to check when removing plugins matching the given name
+     * @param name the optional name of the plugin.
+     * @param versionRange optional semver range to check when removing plugins matching the given name
      *  e.g. "1.0.0", ">1.0.0".
+     * @param kind he kind of plugin, defaults to "resource".
      */
-    async removePlugin(name: string, versionRange: string): Promise<void> {
-        await this.runPulumiCmd(["plugin", "rm", "resource", name, versionRange, "--yes"]);
+    async removePlugin(name?: string, versionRange?: string, kind = "resource"): Promise<void> {
+        const args = ["plugin", "rm", kind];
+        if (name) {
+            args.push(name);
+        }
+        if (versionRange) {
+            args.push(versionRange);
+        }
+        args.push("--yes");
+        await this.runPulumiCmd(args);
     }
     /**
      * Returns a list of all plugins installed in the Workspace.
@@ -612,6 +622,6 @@ function getStackSettingsName(name: string): string {
 type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
 function defaultProject(projectName: string) {
-    const settings: ProjectSettings = { name: projectName, runtime: "nodejs"};
+    const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
     return settings;
 }

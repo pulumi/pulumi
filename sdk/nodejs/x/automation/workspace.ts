@@ -171,16 +171,18 @@ export interface Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
+     * @param kind the kind of plugin e.g. "resource"
      */
-    installPlugin(name: string, version: string): Promise<void>;
+    installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**
      * Removes a plugin from the Workspace matching the specified name and version.
      *
-     * @param name the name of the plugin.
-     * @param versionRange the semver range to check when removing plugins matching the given name
+     * @param name the optional name of the plugin.
+     * @param versionRange optional semver range to check when removing plugins matching the given name
      *  e.g. "1.0.0", ">1.0.0".
+     * @param kind he kind of plugin e.g. "resource"
      */
-    removePlugin(name: string, versionRange: string): Promise<void>;
+    removePlugin(name?: string, versionRange?: string, kind?: string): Promise<void>;
     /**
      * Returns a list of all plugins installed in the Workspace.
      */
