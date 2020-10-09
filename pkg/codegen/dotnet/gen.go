@@ -1043,8 +1043,20 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 	}
 	seen.Add(t)
 
-	resourceOrTokenImport := func(tok string) {
-		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), ""
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.MapType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
+		return
+	case *schema.ResourceType:
+		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), ""
 		if modName != mod.mod {
 			mp, err := filepath.Rel(mod.mod, modName)
 			contract.Assert(err == nil)
@@ -1061,25 +1073,7 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		imports[modPath].Add(name)
 		return
-	}
-
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		mod.getTypeImports(t.ElementType, recurse, imports, seen)
-		return
-	case *schema.MapType:
-		mod.getTypeImports(t.ElementType, recurse, imports, seen)
-		return
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			mod.getTypeImports(p.Type, recurse, imports, seen)
-		}
-		return
-	case *schema.ResourceType:
-		resourceOrTokenImport(t.Token)
-		return
 	case *schema.TokenType:
-		resourceOrTokenImport(t.Token)
 		return
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
