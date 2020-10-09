@@ -50,10 +50,10 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 }
 
 // LoadFiles loads the provided list of files from a directory.
-func LoadFiles(dir string, files []string) (map[string][]byte, error) {
+func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	result := map[string][]byte{}
 	for _, file := range files {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(dir, file))
+		fileBytes, err := ioutil.ReadFile(filepath.Join(dir, lang, file))
 		if err != nil {
 			return nil, err
 		}
