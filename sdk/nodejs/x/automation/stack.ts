@@ -287,7 +287,7 @@ export class Stack {
             }
         }
 
-        const refResult = await this.runPulumiCmd(args);
+        const refResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
         const result: RefreshResult = {
             stdout: refResult.stdout,
@@ -322,7 +322,7 @@ export class Stack {
             }
         }
 
-        const preResult = await this.runPulumiCmd(args);
+        const preResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
         const result: DestroyResult = {
             stdout: preResult.stdout,

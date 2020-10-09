@@ -383,7 +383,7 @@ func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version
 
 // RemovePlugin deletes the plugin matching the specified name and verision.
 func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version, "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to remove plugin"), stdout, stderr, errCode)
 	}
