@@ -1,0 +1,191 @@
+package {{.Package}}
+
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pgavlin/go-provider/runtime"
+
+	{{range .ResourceImports}}
+	{{.Name}} "{{.Path}}"
+	{{end}}
+)
+
+func (p *provider) Check(urn resource.URN, state, inputs resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		schema := reflect.TypeOf((*{{.ArgsType}})(nil)).Elem()
+		return runtime.Check(inputs, schema)
+	{{end}}
+	default:
+		return nil, nil, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		var res {{.ResourceType}}
+		if err := runtime.Unmarshal(state, &res); err != nil {
+			return plugin.DiffResult{}, err
+		}
+
+		var newArgs {{.ArgsType}}
+		if err := runtime.Unmarshal(inputs, &newArgs); err != nil {
+			return plugin.DiffResult{}, err
+		}
+
+		return runtime.Diff(res.Args(), &newArgs, ignoreChanges)
+	{{end}}
+	default:
+		return plugin.DiffResult{}, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		var args {{.ArgsType}}
+		if err := runtime.Unmarshal(inputs, &args); err != nil {
+			return "", nil, resource.StatusUnknown, err
+		}
+
+		var res {{.ResourceType}}
+		id, err := res.Create(p.provider, &args, timeout)
+		if err != nil {
+			return "", nil, resource.StatusUnknown, err
+		}
+
+		rpcState, err := runtime.Marshal(res)
+		if err != nil {
+			return id, nil, resource.StatusOK, err
+		}
+		return id, rpcState, resource.StatusOK, nil
+	{{end}}
+	default:
+		return "", nil, resource.StatusUnknown, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Read(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		var res {{.ResourceType}}
+		if err := runtime.Unmarshal(state, &res); err != nil {
+			return plugin.ReadResult{}, resource.StatusUnknown, err
+		}
+
+		err := res.Read(p.provider, id, nil)
+		if err != nil {
+			return plugin.ReadResult{}, resource.StatusUnknown, err
+		}
+
+		rpcInputs, err := runtime.Marshal(res.Args())
+		if err != nil {
+			return plugin.ReadResult{}, resource.StatusUnknown, err
+		}
+
+		rpcState, err := runtime.Marshal(res)
+		if err != nil {
+			return plugin.ReadResult{}, resource.StatusUnknown, err
+		}
+
+		return plugin.ReadResult{
+			ID: id,
+			Inputs: rpcInputs,
+			Outputs: rpcState,
+		}, resource.StatusOK, nil
+	{{end}}
+	default:
+		return plugin.ReadResult{}, resource.StatusUnknown, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		var args {{.ArgsType}}
+		if err := runtime.Unmarshal(inputs, &args); err != nil {
+			return nil, resource.StatusOK, err
+		}
+
+		var res {{.ResourceType}}
+		if err := runtime.Unmarshal(state, &res); err != nil {
+			return nil, resource.StatusOK, err
+		}
+
+		if err := runtime.IgnoreChanges(res.Args(), &args, ignoreChanges); err != nil {
+			return nil, resource.StatusOK, err
+		}
+
+		if err := res.Update(p.provider, id, &args, timeout); err != nil {
+			return nil, resource.StatusUnknown, err
+		}
+
+		rpcState, err := runtime.Marshal(res)
+		if err != nil {
+			return nil, resource.StatusOK, err
+		}
+
+		return rpcState, resource.StatusOK, nil
+	{{end}}
+	default:
+		return nil, resource.StatusUnknown, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Delete(urn resource.URN, id resource.ID, state resource.PropertyMap, timeout float64) (resource.Status, error) {
+	switch urn.Type() {
+	{{range .CustomResources}}
+	case "{{.Token}}":
+		var res {{.ResourceType}}
+		if err := runtime.Unmarshal(state, &res); err != nil {
+			return resource.StatusOK, err
+		}
+
+		if err := res.Delete(p.provider, id, timeout); err != nil {
+			return resource.StatusUnknown, err
+		}
+
+		return resource.StatusOK, nil
+	{{end}}
+	default:
+		return resource.StatusUnknown, fmt.Errorf("unknown resource type %v", urn.Type())
+	}
+}
+
+func (p *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	switch typ {
+/*
+	{{range .ComponentResources}}
+	case "{{.Token}}":
+		var args {{.ArgsType}}
+		if err := runtime.Unmarshal(inputs, &args); err != nil {
+			return plugin.ConstructResult{}, err
+		}
+
+		ctx, options, err := runtime.NewConstructContext(info, options)
+		if err != nil {
+			return plugin.ConstructResult{}, err
+		}
+
+		res, err := {{.Constructor}}(ctx, name, args, options...)
+		if err != nil {
+			return plugin.ConstructResult{}, err
+		}
+
+		return runtime.MarshalConstructResult(res)
+	{{end}}
+*/
+	default:
+		return plugin.ConstructResult{}, fmt.Errorf("unknown resource type %v", typ)
+	}
+}

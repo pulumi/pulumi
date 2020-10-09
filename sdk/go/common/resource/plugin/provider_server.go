@@ -37,6 +37,49 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	}
 }
 
+func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
+	if len(diff.DetailedDiff) == 0 {
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
+	}
+
+	// Infer the result from the detailed diff.
+	var diffs, replaces []string
+	detailedDiff := make(map[string]*pulumirpc.PropertyDiff)
+	for path, diff := range diff.DetailedDiff {
+		diffs = append(diffs, path)
+
+		var kind pulumirpc.PropertyDiff_Kind
+		switch diff.Kind {
+		case DiffAdd:
+			kind = pulumirpc.PropertyDiff_ADD
+		case DiffAddReplace:
+			kind, replaces = pulumirpc.PropertyDiff_ADD_REPLACE, append(replaces, path)
+		case DiffDelete:
+			kind = pulumirpc.PropertyDiff_DELETE
+		case DiffDeleteReplace:
+			kind, replaces = pulumirpc.PropertyDiff_DELETE, append(replaces, path)
+		case DiffUpdate:
+			kind = pulumirpc.PropertyDiff_UPDATE
+		case DiffUpdateReplace:
+			kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
+		}
+
+		detailedDiff[string(path)] = &pulumirpc.PropertyDiff{
+			Kind:      kind,
+			InputDiff: diff.InputDiff,
+		}
+	}
+
+	return &pulumirpc.DiffResponse{
+		Replaces:            replaces,
+		DeleteBeforeReplace: diff.DeleteBeforeReplace,
+		Changes:             pulumirpc.DiffResponse_DIFF_SOME,
+		Diffs:               diffs,
+		DetailedDiff:        detailedDiff,
+	}, nil
+
+}
+
 func (p *providerServer) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	schema, err := p.provider.GetSchema(int(req.GetVersion()))
 	if err != nil {
@@ -108,46 +151,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	if err != nil {
 		return nil, err
 	}
-
-	if len(diff.DetailedDiff) == 0 {
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
-	}
-
-	// Infer the result from the detailed diff.
-	var diffs, replaces []string
-	detailedDiff := make(map[string]*pulumirpc.PropertyDiff)
-	for path, diff := range diff.DetailedDiff {
-		diffs = append(diffs, path)
-
-		var kind pulumirpc.PropertyDiff_Kind
-		switch diff.Kind {
-		case DiffAdd:
-			kind = pulumirpc.PropertyDiff_ADD
-		case DiffAddReplace:
-			kind, replaces = pulumirpc.PropertyDiff_ADD_REPLACE, append(replaces, path)
-		case DiffDelete:
-			kind = pulumirpc.PropertyDiff_DELETE
-		case DiffDeleteReplace:
-			kind, replaces = pulumirpc.PropertyDiff_DELETE, append(replaces, path)
-		case DiffUpdate:
-			kind = pulumirpc.PropertyDiff_UPDATE
-		case DiffUpdateReplace:
-			kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
-		}
-
-		detailedDiff[string(path)] = &pulumirpc.PropertyDiff{
-			Kind:      kind,
-			InputDiff: diff.InputDiff,
-		}
-	}
-
-	return &pulumirpc.DiffResponse{
-		Replaces:            replaces,
-		DeleteBeforeReplace: diff.DeleteBeforeReplace,
-		Changes:             pulumirpc.DiffResponse_DIFF_SOME,
-		Diffs:               diffs,
-		DetailedDiff:        detailedDiff,
-	}, nil
+	return p.marshalDiff(diff)
 }
 
 func (p *providerServer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
@@ -231,46 +235,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	if err != nil {
 		return nil, err
 	}
-
-	if len(diff.DetailedDiff) == 0 {
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
-	}
-
-	// Infer the result from the detailed diff.
-	var diffs, replaces []string
-	detailedDiff := make(map[string]*pulumirpc.PropertyDiff)
-	for path, diff := range diff.DetailedDiff {
-		diffs = append(diffs, path)
-
-		var kind pulumirpc.PropertyDiff_Kind
-		switch diff.Kind {
-		case DiffAdd:
-			kind = pulumirpc.PropertyDiff_ADD
-		case DiffAddReplace:
-			kind, replaces = pulumirpc.PropertyDiff_ADD_REPLACE, append(replaces, path)
-		case DiffDelete:
-			kind = pulumirpc.PropertyDiff_DELETE
-		case DiffDeleteReplace:
-			kind, replaces = pulumirpc.PropertyDiff_DELETE, append(replaces, path)
-		case DiffUpdate:
-			kind = pulumirpc.PropertyDiff_UPDATE
-		case DiffUpdateReplace:
-			kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
-		}
-
-		detailedDiff[string(path)] = &pulumirpc.PropertyDiff{
-			Kind:      kind,
-			InputDiff: diff.InputDiff,
-		}
-	}
-
-	return &pulumirpc.DiffResponse{
-		Replaces:            replaces,
-		DeleteBeforeReplace: diff.DeleteBeforeReplace,
-		Changes:             pulumirpc.DiffResponse_DIFF_SOME,
-		Diffs:               diffs,
-		DetailedDiff:        detailedDiff,
-	}, nil
+	return p.marshalDiff(diff)
 }
 
 func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {

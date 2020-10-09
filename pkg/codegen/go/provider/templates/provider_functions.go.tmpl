@@ -1,0 +1,49 @@
+package {{.Package}}
+
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pgavlin/go-provider/runtime"
+
+	{{range .FunctionImports}}
+	{{.Name}} "{{.Path}}"
+	{{end}}
+)
+
+func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	switch tok {
+	{{range .Functions}}
+	case "{{.Token}}":
+		args, failures, err := runtime.Check(args, reflect.TypeOf((*{{.ArgsType}})(nil)).Elem())
+		if err != nil || len(failures) != 0 {
+			return nil, failures, err
+		}
+
+		var functionArgs {{.ArgsType}}
+		if err := runtime.Unmarshal(args, &functionArgs); err != nil {
+			return nil, nil, err
+		}
+
+		result, err := {{.Function}}(p.provider, &functionArgs, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		resultObject, err := runtime.Marshal(result)
+		if err != nil {
+			return nil, nil, err
+		}
+		return resultObject, nil, nil
+	{{end}}
+	default:
+		return nil, nil, fmt.Errorf("unknown function %v", tok)
+	}
+}
+
+func (p *provider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+	return nil, fmt.Errorf("unknown function %v", tok)
+}
