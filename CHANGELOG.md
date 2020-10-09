@@ -6,6 +6,20 @@ CHANGELOG
 - NodeJS Automation API.
   [#5347](https://github.com/pulumi/pulumi/pull/5347)
 
+- Improve the accuracy of previews by allowing providers to participate in determining what
+  the impact of a change will be on output properties. Previously, Pulumi previews
+  conservatively assumed that any output-only properties changed their values when an update
+  occurred. For many properties, this was guaranteed to not be the case (because those
+  properties are immutable, for example), and by suggesting the value might change, this could
+  lead to the preview suggesting additional transitive updates of even replaces that would not
+  actually happen during an update. Pulumi now allows the provider to specify the details of
+  what properties will change during a preview, allowing them to expose more accurate
+  provider-specific knowledge. This change is less conservative than the previous behavior,
+  and so in case it causes preview results which are not deemed correct in some case - the
+  `PULUMI_DISABLE_PROVIDER_PREVIEW` flag can be set to a truthy value (e.g. `1`) to enable the
+  previous and more conservative behavior for previews.
+  [#5443](https://github.com/pulumi/pulumi/pull/5443).
+
 - [cli] Remove eternal loop if a configured passphrase is invalid.
   [#5507](https://github.com/pulumi/pulumi/pull/5507)
 

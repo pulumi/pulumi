@@ -47,10 +47,10 @@ type Provider struct {
 		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	DiffF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
-	CreateF func(urn resource.URN,
-		inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error)
-	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-		timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
+	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
+	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
 	ReadF   func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
@@ -125,12 +125,13 @@ func (prov *Provider) Check(urn resource.URN,
 	}
 	return prov.CheckF(urn, olds, news)
 }
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
 	if prov.CreateF == nil {
 		return resource.ID(uuid.NewV4().String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
-	return prov.CreateF(urn, props, timeout)
+	return prov.CreateF(urn, props, timeout, preview)
 }
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool, ignoreChanges []string) (plugin.DiffResult, error) {
@@ -140,11 +141,11 @@ func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	return prov.DiffF(urn, id, olds, news, ignoreChanges)
 }
 func (prov *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	if prov.UpdateF == nil {
 		return news, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges)
+	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges, preview)
 }
 func (prov *Provider) Delete(urn resource.URN,
 	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {

@@ -248,16 +248,6 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 		return nil, failures, err
 	}
 
-	// If we are running a preview, configure the provider now. If we are not running a preview, we will configure the
-	// provider when it is created or updated.
-	if r.isPreview {
-		if err := provider.Configure(inputs); err != nil {
-			closeErr := r.host.CloseProvider(provider)
-			contract.IgnoreError(closeErr)
-			return nil, nil, err
-		}
-	}
-
 	// Create a provider reference using the URN and the unknown ID and register the provider.
 	r.setProvider(mustNewReference(urn, UnknownID), provider)
 
@@ -304,14 +294,9 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
-	//
-	// If the diff does not require replacement but does have changes, and we are running a preview, register it under
-	// its current ID so that references to the provider from other resources will resolve properly.
 	if diff.Replace() {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-	} else if r.isPreview && diff.Changes == plugin.DiffSome {
-		r.setProvider(mustNewReference(urn, id), provider)
 	}
 
 	return diff, nil
@@ -321,10 +306,8 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 // registers it under the assigned (URN, ID).
 //
 // The provider must have been loaded by a prior call to Check.
-func (r *Registry) Create(urn resource.URN,
-	news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
-	contract.Assert(!r.isPreview)
+func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), urn)
 	logging.V(7).Infof("%s executing (#news=%v)", label, len(news))
@@ -337,8 +320,11 @@ func (r *Registry) Create(urn resource.URN,
 		return "", nil, resource.StatusOK, err
 	}
 
-	id := resource.ID(uuid.NewV4().String())
-	contract.Assert(id != UnknownID)
+	var id resource.ID
+	if !preview {
+		id = resource.ID(uuid.NewV4().String())
+		contract.Assert(id != UnknownID)
+	}
 
 	r.setProvider(mustNewReference(urn, id), provider)
 	return id, news, resource.StatusOK, nil
@@ -348,10 +334,8 @@ func (r *Registry) Create(urn resource.URN,
 // reference indicated by the (URN, ID) pair.
 //
 // THe provider must have been loaded by a prior call to Check.
-func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
-
-	contract.Assert(!r.isPreview)
+func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))

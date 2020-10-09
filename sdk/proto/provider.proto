@@ -84,6 +84,7 @@ message ConfigureRequest {
 
 message ConfigureResponse {
     bool acceptSecrets = 1;   // when true, the engine should pass secrets as strongly typed values to the provider.
+    bool supportsPreview = 2; // when true, the engine should invoke create and update with preview=true during previews.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
@@ -197,6 +198,7 @@ message CreateRequest {
     string urn = 1;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
     double timeout = 3;                    // the create request timeout represented in seconds.
+    bool preview = 4;                      // true if this is a preview and the provider should not actually create the resource.
 }
 
 message CreateResponse {
@@ -228,6 +230,7 @@ message UpdateRequest {
     google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
     double timeout = 5;                // the update request timeout represented in seconds.
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
+    bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
 }
 
 message UpdateResponse {

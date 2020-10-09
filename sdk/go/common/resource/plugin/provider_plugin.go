@@ -53,20 +53,22 @@ const kubernetesProviderType = "pulumi:providers:kubernetes"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx           *Context                         // a plugin context for caching, etc.
-	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug          *plugin                          // the actual plugin process wrapper.
-	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr        error                            // non-nil if a configure call fails.
-	cfgknown      bool                             // true if all configuration values are known.
-	cfgdone       chan bool                        // closed when configuration has completed.
-	acceptSecrets bool                             // true if this plugin can consume strongly-typed secrets.
+	ctx                    *Context                         // a plugin context for caching, etc.
+	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug                   *plugin                          // the actual plugin process wrapper.
+	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr                 error                            // non-nil if a configure call fails.
+	cfgknown               bool                             // true if all configuration values are known.
+	cfgdone                chan bool                        // closed when configuration has completed.
+	acceptSecrets          bool                             // true if this plugin can consume strongly-typed secrets.
+	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
+	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}) (Provider, error) {
+	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
@@ -473,7 +475,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.acceptSecrets = resp.GetAcceptSecrets()
+		p.acceptSecrets, p.supportsPreview = resp.GetAcceptSecrets(), resp.GetSupportsPreview()
 		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
@@ -647,7 +649,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
+func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
@@ -655,22 +657,32 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{
-		Label:       fmt.Sprintf("%s.inputs", label),
-		KeepSecrets: p.acceptSecrets,
-	})
-	if err != nil {
-		return "", nil, resource.StatusOK, err
-	}
-
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
 
+	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
+	// is not fully known, hand back the inputs as the state.
+	//
+	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
+	// but expect differently-shaped values.
+	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
+		return "", props, resource.StatusOK, nil
+	}
+
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
+
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:        fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns: preview,
+		KeepSecrets:  p.acceptSecrets,
+	})
+	if err != nil {
+		return "", nil, resource.StatusOK, err
+	}
 
 	var id resource.ID
 	var liveObject *_struct.Struct
@@ -680,6 +692,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		Urn:        string(urn),
 		Properties: mprops,
 		Timeout:    timeout,
+		Preview:    preview,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, resourceError = parseError(err)
@@ -694,7 +707,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		liveObject = resp.GetProperties()
 	}
 
-	if id == "" {
+	if id == "" && !preview {
 		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
@@ -841,7 +854,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -850,6 +863,24 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return news, resource.StatusOK, err
+	}
+
+	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
+	// is not fully known, hand back the inputs as the state.
+	//
+	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
+	// but expect differently-shaped values.
+	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
+		return news, resource.StatusOK, nil
+	}
+
+	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
+	contract.Assert(p.cfgknown)
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:              fmt.Sprintf("%s.olds", label),
@@ -860,21 +891,13 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:       fmt.Sprintf("%s.news", label),
-		KeepSecrets: p.acceptSecrets,
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: preview,
+		KeepSecrets:  p.acceptSecrets,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
-	if err != nil {
-		return nil, resource.StatusOK, err
-	}
-
-	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(p.cfgknown)
 
 	var liveObject *_struct.Struct
 	var resourceError error

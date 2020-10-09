@@ -81,7 +81,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			}
 
 			plugctx, err := plugin.NewContext(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd,
-				projinfo.Proj.Runtime.Options(), nil)
+				projinfo.Proj.Runtime.Options(), false, nil)
 			if err != nil {
 				return err
 			}

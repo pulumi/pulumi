@@ -210,36 +210,34 @@ func (s *CreateStep) Logical() bool                                { return !s.r
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	if !preview {
-		if s.new.Custom {
-			// Invoke the Create RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
-
-			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create)
-			if err != nil {
-				if rst != resource.StatusPartialFailure {
-					return rst, nil, err
-				}
-
-				resourceError = err
-				resourceStatus = rst
-
-				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
-					s.new.InitErrors = initErr.Reasons
-				}
-			}
-
-			contract.Assert(id != "")
-
-			// Copy any of the default and output properties on the live object state.
-			s.new.ID = id
-			s.new.Outputs = outs
+	if s.new.Custom {
+		// Invoke the Create RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
 		}
-	} else {
-		s.new.Outputs = s.new.Inputs
+
+		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.plan.preview)
+		if err != nil {
+			if rst != resource.StatusPartialFailure {
+				return rst, nil, err
+			}
+
+			resourceError = err
+			resourceStatus = rst
+
+			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+				s.new.InitErrors = initErr.Reasons
+			}
+		}
+
+		if !preview && id == "" {
+			return resourceStatus, nil, fmt.Errorf("provider did not return an ID from Create")
+		}
+
+		// Copy any of the default and output properties on the live object state.
+		s.new.ID = id
+		s.new.Outputs = outs
 	}
 
 	// Mark the old resource as pending deletion if necessary.
@@ -438,35 +436,31 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	if !preview {
-		if s.new.Custom {
-			// Invoke the Update RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
-
-			// Update to the combination of the old "all" state, but overwritten with new inputs.
-			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
-				s.new.CustomTimeouts.Update, s.ignoreChanges)
-			if upderr != nil {
-				if rst != resource.StatusPartialFailure {
-					return rst, nil, upderr
-				}
-
-				resourceError = upderr
-				resourceStatus = rst
-
-				if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
-					s.new.InitErrors = initErr.Reasons
-				}
-			}
-
-			// Now copy any output state back in case the update triggered cascading updates to other properties.
-			s.new.Outputs = outs
+	if s.new.Custom {
+		// Invoke the Update RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
 		}
-	} else {
-		s.new.Outputs = s.new.Inputs
+
+		// Update to the combination of the old "all" state, but overwritten with new inputs.
+		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
+			s.new.CustomTimeouts.Update, s.ignoreChanges, s.plan.preview)
+		if upderr != nil {
+			if rst != resource.StatusPartialFailure {
+				return rst, nil, upderr
+			}
+
+			resourceError = upderr
+			resourceStatus = rst
+
+			if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
+				s.new.InitErrors = initErr.Reasons
+			}
+		}
+
+		// Now copy any output state back in case the update triggered cascading updates to other properties.
+		s.new.Outputs = outs
 	}
 
 	// Finally, mark this operation as complete.

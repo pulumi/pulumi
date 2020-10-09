@@ -2224,9 +2224,8 @@ func TestProviderCancellation(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap,
-					resource.Status, error) {
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
 					ops.Done()
@@ -2345,8 +2344,9 @@ func TestUpdatePartialFailure(t *testing.T) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -3132,8 +3132,8 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return plugin.DiffResult{}, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return resource.PropertyMap{}, resource.StatusOK, nil
@@ -3923,8 +3923,8 @@ func TestImport(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -4168,8 +4168,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -4662,8 +4662,9 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
 					outputs := olds.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
@@ -4736,8 +4737,9 @@ func updateInvalidTarget(t *testing.T) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
 					outputs := olds.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
@@ -5012,8 +5014,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5118,8 +5120,8 @@ func TestReplaceSpecificTargets(t *testing.T) {
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 				},
 
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5173,14 +5175,30 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Run(t, old)
 }
 
-func TestPreviewInputPropagation(t *testing.T) {
+func TestProviderPreview(t *testing.T) {
+	sawPreview := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
 					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
+					return news, resource.StatusOK, nil
 				},
 			}, nil
 		}),
@@ -5223,20 +5241,23 @@ func TestPreviewInputPropagation(t *testing.T) {
 
 	project := p.GetProject()
 
-	// Run a preview. The inputs should be propagated to the outputs during the create.
-	preview = true
+	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
+	preview, sawPreview = true, false
 	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.True(t, sawPreview)
 
 	// Run an update.
-	preview = false
+	preview, sawPreview = false, false
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
-	preview = true
+	preview, sawPreview = true, false
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
+	assert.True(t, sawPreview)
 }
 
 type testResource struct {
@@ -5267,8 +5288,8 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5322,8 +5343,8 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5521,8 +5542,8 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5783,8 +5804,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
@@ -5802,8 +5823,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 		}),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
