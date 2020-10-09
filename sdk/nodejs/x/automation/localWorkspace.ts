@@ -22,7 +22,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+import { PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -452,6 +452,39 @@ export class LocalWorkspace implements Workspace {
         const result = await this.runPulumiCmd(["stack", "ls", "--json"]);
         const stacks: StackSummary[] = JSON.parse(result.stdout);
         return stacks;
+    }
+    /**
+     * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     */
+    async installPlugin(name: string, version: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", "resource", name, version]);
+    }
+    /**
+     * Removes a plugin from the Workspace matching the specified name and version.
+     *
+     * @param name the name of the plugin.
+     * @param versionRange the semver range to check when removing plugins matching the given name
+     *  e.g. "1.0.0", ">1.0.0".
+     */
+    async removePlugin(name: string, versionRange: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "rm", "resource", name, versionRange, "--yes"]);
+    }
+    /**
+     * Returns a list of all plugins installed in the Workspace.
+     */
+    async listPlugins(): Promise<PluginInfo[]> {
+        const result = await this.runPulumiCmd(["plugin", "ls", "--json"]);
+        const info: PluginInfo[] = JSON.parse(result.stdout, (key, value) => {
+            if (key === "installTime" || key === "lastUsedTime") {
+                return new Date(value);
+            }
+            return value;
+        });
+
+        return info;
     }
     /**
      * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.

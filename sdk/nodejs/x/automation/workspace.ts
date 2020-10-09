@@ -166,6 +166,25 @@ export interface Workspace {
      * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
      */
     listStacks(): Promise<StackSummary[]>;
+    /**
+     * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     */
+    installPlugin(name: string, version: string): Promise<void>;
+    /**
+     * Removes a plugin from the Workspace matching the specified name and version.
+     *
+     * @param name the name of the plugin.
+     * @param versionRange the semver range to check when removing plugins matching the given name
+     *  e.g. "1.0.0", ">1.0.0".
+     */
+    removePlugin(name: string, versionRange: string): Promise<void>;
+    /**
+     * Returns a list of all plugins installed in the Workspace.
+     */
+    listPlugins(): Promise<PluginInfo[]>;
     // TODO import/export
 }
 
@@ -192,3 +211,16 @@ export type PulumiFn = () => Promise<Record<string, any> | void>;
 export interface WhoAmIResult {
     user: string;
 }
+
+export interface PluginInfo {
+    name: string;
+    path: string;
+    kind: PluginKind;
+    version?: string;
+    size: number;
+    installTime: Date;
+    lastUsedTime: Date;
+    serverURL: string;
+}
+
+export type PluginKind = "analyzer" | "language" | "resource";
