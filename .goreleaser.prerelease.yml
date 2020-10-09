@@ -27,7 +27,7 @@ builds:
   goos:
     - linux
     - darwin
- ldflags:
+  ldflags:
     - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
   main: ./cmd/pulumi
 - id: pulumi-language-nodejs-unix
