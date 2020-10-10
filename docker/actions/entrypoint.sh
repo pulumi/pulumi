@@ -50,11 +50,13 @@ if [ ! -z "$PULUMI_CI" ]; then
     # Respect the branch mappings file for stack selection. Note that this is *not* required, but if the file
     # is missing, the caller of this script will need to pass `-s <stack-name>` to specify the stack explicitly.
     if [ ! -z "$BRANCH" ]; then
-        if [ -e $ROOT/.pulumi/ci.json ]; then
-            PULUMI_STACK_NAME=$(cat $ROOT/.pulumi/ci.json | jq -r ".\"$BRANCH\"")
-        else
-            # If there's no stack mapping file, we are on master, and there's a single stack, use it.
-            PULUMI_STACK_NAME=$(pulumi stack ls | awk 'FNR == 2 {print $1}' | sed 's/\*//g')
+        if [ -z "$PULUMI_STACK_NAME" ]; then
+            if [ -e $ROOT/.pulumi/ci.json ]; then
+                PULUMI_STACK_NAME=$(cat $ROOT/.pulumi/ci.json | jq -r ".\"$BRANCH\"")
+            else
+                # If there's no stack mapping file, we are on master, and there's a single stack, use it.
+                PULUMI_STACK_NAME=$(pulumi stack ls | awk 'FNR == 2 {print $1}' | sed 's/\*//g')
+            fi
         fi
 
         if [ ! -z "$PULUMI_STACK_NAME" ] && [ "$PULUMI_STACK_NAME" != "null" ]; then
