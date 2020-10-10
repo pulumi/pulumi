@@ -38,6 +38,10 @@ CHANGELOG
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
 
+- [cli] Improve user experience when pulumi plugin rm --all finds no plugins
+  to remove. The previous behaviour was an error and should not be so.
+  [#5547](https://github.com/pulumi/pulumi/pull/5547)
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor

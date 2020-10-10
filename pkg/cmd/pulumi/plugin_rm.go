@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -89,7 +90,9 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			if len(deletes) == 0 {
-				return errors.New("no plugins found")
+				cmdutil.Diag().Infof(
+					diag.Message("", "no plugins found to uninstall"))
+				return nil
 			}
 
 			// Confirm that the user wants to do this (unless --yes was passed), and do the deletes.
