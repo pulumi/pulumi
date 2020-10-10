@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
-
 func TestDotNetTransformations(t *testing.T) {
 	for _, dir := range Dirs {
 		d := filepath.Join("dotnet", dir)

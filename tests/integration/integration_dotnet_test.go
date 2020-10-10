@@ -188,7 +188,7 @@ func TestConstructDotnet(t *testing.T) {
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
 		Dir:          filepath.Join("construct_component", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
