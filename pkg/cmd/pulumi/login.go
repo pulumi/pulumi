@@ -116,6 +116,11 @@ func newLoginCmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "could not determine current cloud")
 				}
+			} else {
+				// Ensure we have the correct cloudurl type before logging in
+				if err := validateCloudBackendType(cloudURL); err != nil {
+					return err
+				}
 			}
 
 			var be backend.Backend
@@ -143,4 +148,19 @@ func newLoginCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
+}
+
+func validateCloudBackendType(typ string) error {
+	kind := strings.SplitN(typ, ":", 2)[0]
+	supportedKinds := []string{"azblob", "gs", "s3", "file", "https"}
+	for _, supportedKind := range supportedKinds {
+		if kind == supportedKind {
+			return nil
+		}
+	}
+	return errors.Errorf(
+		"unknown backend cloudUrl format '%s' (supported Url formats are: "+
+			"azblob://, gs://, s3://, file:// and https://)",
+		kind,
+	)
 }
