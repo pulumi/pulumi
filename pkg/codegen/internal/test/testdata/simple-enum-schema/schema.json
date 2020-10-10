@@ -119,7 +119,12 @@
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "namespaces": {
+        "plant-provider": "PlantProvider",
+        "tree/v1": "Tree.V1"
+      }
+    },
     "go": {},
     "nodejs": {},
     "python": {}
