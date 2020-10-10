@@ -1,9 +1,7 @@
 on:
   push:
-    branches:
-      - master
-      - feature-*
-      - features/*
+    tags:
+      - v*.*.*
     paths-ignore:
       - 'CHANGELOG.md'
       - 'README.md'
@@ -28,6 +26,8 @@ jobs:
         python-version: [3.7]
         dotnet: ['3.1.301']
     runs-on: ${{ matrix.platform }}
+    env:
+      GOPATH: ${{ github.workspace }}
     steps:
     - name: Install DotNet ${{ matrix.dotnet }}
       uses: actions/setup-dotnet@v1
@@ -85,15 +85,7 @@ jobs:
         go mod tidy
         go mod download
         popd
-    - name: Build Pulumi
-      run: |
-        cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-    - name: Run Pulumi Tests
-      run: |
-        cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
     - name: Publish Binary
       run: |
         cd src\github.com\${{ github.repository }}
-        dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+        dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
