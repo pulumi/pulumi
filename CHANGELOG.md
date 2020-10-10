@@ -34,6 +34,9 @@ CHANGELOG
 
 - Support self-contained executables as binary option for .NET programs.
   [#5519](https://github.com/pulumi/pulumi/pull/5519)
+  
+- [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
+  [#5545](https://github.com/pulumi/pulumi/pull/5545)
 
 ## 2.11.2 (2020-10-01)
 

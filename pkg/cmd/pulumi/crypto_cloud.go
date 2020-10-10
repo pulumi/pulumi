@@ -40,6 +40,13 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 		return nil, err
 	}
 
+	// Only a passphrase provider has an encryption salt. So changing a secrets provider
+	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
+	// as it's a legacy artifact and needs to be removed
+	if info.EncryptionSalt != "" {
+		info.EncryptionSalt = ""
+	}
+
 	var secretsManager *cloud.Manager
 	if info.EncryptedKey == "" {
 		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
