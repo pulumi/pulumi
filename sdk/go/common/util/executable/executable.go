@@ -35,7 +35,13 @@ func FindExecutable(program string) (string, error) {
 	// look in $GOPATH/bin
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
 		goPathProgram := filepath.Join(goPath, "bin", program)
-		if fileInfo, err := os.Stat(goPathProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
+		fileInfo, err := os.Stat(goPathProgram)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return "", errors.Wrapf(err, "unable to find program in %q", goPathProgram)
+			}
+		}
+		if fileInfo != nil && !fileInfo.Mode().IsDir() {
 			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
 			return goPathProgram, nil
 		}
