@@ -37,6 +37,9 @@ CHANGELOG
   
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
+  
+- [cli] Accept `-f` as a shorthand for `--skip-preview` on `pulumi up`, `pulumi refresh` and `pulumi destroy` operations
+  [#5556](https://github.com/pulumi/pulumi/pull/5556)
 
 ## 2.11.2 (2020-10-01)
 
