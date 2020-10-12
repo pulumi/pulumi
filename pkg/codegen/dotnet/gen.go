@@ -637,13 +637,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	var baseType string
 	optionsType := "CustomResourceOptions"
 	switch {
+	case r.IsProvider:
+		baseType = "Pulumi.ProviderResource"
 	case mod.isK8sCompatMode():
 		baseType = "KubernetesResource"
 	case r.IsComponent:
 		baseType = "Pulumi.ComponentResource"
 		optionsType = "ComponentResourceOptions"
-	case r.IsProvider:
-		baseType = "Pulumi.ProviderResource"
 	default:
 		baseType = "Pulumi.CustomResource"
 	}
