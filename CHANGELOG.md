@@ -37,6 +37,9 @@ CHANGELOG
   
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
+  
+- [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
+  [#5550](https://github.com/pulumi/pulumi/pull/5545)
 
 ## 2.11.2 (2020-10-01)
 
