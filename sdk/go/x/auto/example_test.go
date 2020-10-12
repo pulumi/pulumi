@@ -244,6 +244,24 @@ func ExampleGitRepo_privateKeyPath() {
 	NewStackRemoteSource(ctx, stackName, repo)
 }
 
+func ExampleGitRepo_privateKey() {
+	ctx := context.Background()
+	pName := "go_remote_proj"
+	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
+
+	repo := GitRepo{
+		URL:         "git@github.com:pulumi/test-repo.git",
+		ProjectPath: "goproj",
+		Auth: &GitAuth{
+			SSHPrivateKey: "<PRIVATE KEY FILE CONTENTS HERE>",
+			Password:      "PrivateKeyPassword",
+		},
+	}
+
+	// initialize a stack from the git repo, specifying our project override
+	NewStackRemoteSource(ctx, stackName, repo)
+}
+
 func ExampleGitRepo_usernameAndPassword() {
 	ctx := context.Background()
 	pName := "go_remote_proj"

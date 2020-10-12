@@ -633,6 +633,11 @@ type GitAuth struct {
 	// git@github.com:org/repository.git - if the url is not in this format, then an error
 	// `unable to clone repo: invalid auth method` will be returned
 	SSHPrivateKeyPath string
+	// The (contents) private key for access to the git repo.
+	// When using `SSHPrivateKey`, the URL of the repository must be in the format
+	// git@github.com:org/repository.git - if the url is not in this format, then an error
+	// `unable to clone repo: invalid auth method` will be returned
+	SSHPrivateKey string
 	// The password that pairs with a username or as part of an SSH Private Key
 	Password string
 	// PersonalAccessToken is a Git personal access token in replacement of your password
