@@ -48,6 +48,9 @@ CHANGELOG
   to remove. The previous behaviour was an error and should not be so.
   [#5547](https://github.com/pulumi/pulumi/pull/5547)
 
+- [sdk/python] Fix ResourceOptions annotations and doc strings.
+  [#5559](https://github.com/pulumi/pulumi/pull/5559)
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
