@@ -37,9 +37,19 @@ CHANGELOG
   
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
-  
+
 - [cli] Accept `-f` as a shorthand for `--skip-preview` on `pulumi up`, `pulumi refresh` and `pulumi destroy` operations
   [#5556](https://github.com/pulumi/pulumi/pull/5556)
+
+- [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
+  [#5550](https://github.com/pulumi/pulumi/pull/5545)
+  
+- [automation api] Add support for passing a private ssh key for git authentication that doesn't rely on a file path
+  [#5557](https://github.com/pulumi/pulumi/pull/5557)
+
+- [cli] Improve user experience when pulumi plugin rm --all finds no plugins
+  to remove. The previous behaviour was an error and should not be so.
+  [#5547](https://github.com/pulumi/pulumi/pull/5547)
 
 ## 2.11.2 (2020-10-01)
 
