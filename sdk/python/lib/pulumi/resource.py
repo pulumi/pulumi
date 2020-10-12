@@ -324,7 +324,9 @@ class ResourceOptions:
 
     providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]
     """
-    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
+    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws"), or just
+    provided as a list. In the latter case, the package name will be retrieved from the provider itself.
+    Note: do not provide both provider and providers.
     """
 
     ignore_changes: Optional[List[str]]
@@ -382,7 +384,7 @@ class ResourceOptions:
                  depends_on: Optional[List['Resource']] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
-                 providers: Optional[Mapping[str, 'ProviderResource']] = None,
+                 providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
                  delete_before_replace: Optional[bool] = None,
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
@@ -401,21 +403,28 @@ class ResourceOptions:
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
                If no provider is supplied, the default provider for the resource's package will be used. The default
                provider is pulled from the parent's provider bag.
-        :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
-               by package name (e.g. "aws")
+        :param Optional[Union[Mapping[str, ProviderResource], List[ProviderResource]]] providers: An optional set of
+               providers to use for child resources. Keyed by package name (e.g. "aws"), or just provided as a list.
+               In the latter case, the package name will be retrieved from the provider itself. Note: do not provide
+               both provider and providers.
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
-        :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
+        :param Optional[List[str]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
                or replacements.
-        :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
+        :param Optional[str] version: An optional version. If provided, the engine loads a provider with exactly the
+               requested version to operate on this resource. This version overrides the version information inferred
+               from the current package and should rarely be used.
+        :param Optional[List[Input[Union[str, Alias]]]] aliases: An optional list of aliases to treat this resource as
+               matching.
+        :param Optional[List[str]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
-        :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
+        :param Optional[Input[str]] id: If provided, an existing resource ID to read, rather than create.
         :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
-        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
-        :param Optional[transformations] transformations: If provided, a list of transformations to apply to this resource
-               during construction.
+        :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
+        :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
+               to this resource during construction.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
