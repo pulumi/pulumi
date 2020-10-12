@@ -40,6 +40,9 @@ CHANGELOG
   
 - [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
   [#5550](https://github.com/pulumi/pulumi/pull/5545)
+  
+- [automation api] Add support for passing a private ssh key for git authentication that doesn't rely on a file path
+  [#5557](https://github.com/pulumi/pulumi/pull/5557)
 
 ## 2.11.2 (2020-10-01)
 

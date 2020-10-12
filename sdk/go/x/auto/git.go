@@ -34,16 +34,27 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 
 		authDetails := repoArgs.Auth
 		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
-		if (authDetails.SSHPrivateKeyPath != "" && authDetails.PersonalAccessToken != "") ||
-			(authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "") ||
-			(authDetails.PersonalAccessToken != "" && authDetails.Username != "") {
+		if authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "" ||
+			authDetails.PersonalAccessToken != "" && authDetails.Username != "" ||
+			authDetails.PersonalAccessToken != "" && authDetails.SSHPrivateKeyPath != "" ||
+			authDetails.Username != "" && authDetails.SSHPrivateKey != "" {
 			return "", errors.New("please specify one authentication option of `Personal Access Token`, " +
-				"`Username\\Password` or `SSH Private Key Path`")
+				"`Username\\Password`, `SSH Private Key Path` or `SSH Private Key`")
 		}
 
 		// Firstly we will try to check that an SSH Private Key Path has been specified
 		if authDetails.SSHPrivateKeyPath != "" {
 			publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.Auth.SSHPrivateKeyPath, repoArgs.Auth.Password)
+			if err != nil {
+				return "", errors.Wrap(err, "unable to use SSH Private Key Path")
+			}
+
+			cloneOptions.Auth = publicKeys
+		}
+
+		// Then we check if the details of a SSH Private Key as passed
+		if authDetails.SSHPrivateKey != "" {
+			publicKeys, err := ssh.NewPublicKeys("git", []byte(repoArgs.Auth.SSHPrivateKey), repoArgs.Auth.Password)
 			if err != nil {
 				return "", errors.Wrap(err, "unable to use SSH Private Key")
 			}
