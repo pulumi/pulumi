@@ -7,11 +7,11 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.PlantProvider.Enums
+namespace Pulumi.PlantProvider
 {
     /// <summary>
     /// plant container colors
-    /// </summary> 
+    /// </summary>
     public enum ContainerColor
     {
         [EnumMember(Value = "red")]
@@ -24,15 +24,12 @@ namespace Pulumi.PlantProvider.Enums
 
     /// <summary>
     /// plant container sizes
-    /// </summary>    
+    /// </summary>
     public enum ContainerSize
     {
-        [EnumMember(Value = 4)]
-        FourInch,
-        [EnumMember(Value = 6)]
-        SixInch,
+        FourInch = 4,
+        SixInch = 6,
         [Obsolete(@"Eight inch pots are no longer supported.")]
-        [EnumMember(Value = 8)]
-        EightInch
+        EightInch = 8
     }
 }

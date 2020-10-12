@@ -59,7 +59,7 @@ namespace Pulumi.PlantProvider.Tree.V1
         public Input<Pulumi.PlantProvider.Inputs.ContainerArgs>? Container { get; set; }
 
         [Input("type")]
-        public Input<Pulumi.PlantProvider.Tree.V1.Enums.RubberTreeVariety>? Type { get; set; }
+        public Input<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety>? Type { get; set; }
 
         public RubberTreeArgs()
         {

@@ -13,13 +13,13 @@ namespace Pulumi.PlantProvider.Inputs
     public sealed class ContainerArgs : Pulumi.ResourceArgs
     {
         [Input("color")]
-        public InputUnion<Pulumi.PlantProvider.Enums.ContainerColor, string>? Color { get; set; }
+        public InputUnion<Pulumi.PlantProvider.ContainerColor, string>? Color { get; set; }
 
         [Input("material")]
         public Input<string>? Material { get; set; }
 
         [Input("size", required: true)]
-        public Input<Pulumi.PlantProvider.Enums.ContainerSize> Size { get; set; } = null!;
+        public Input<Pulumi.PlantProvider.ContainerSize> Size { get; set; } = null!;
 
         public ContainerArgs()
         {

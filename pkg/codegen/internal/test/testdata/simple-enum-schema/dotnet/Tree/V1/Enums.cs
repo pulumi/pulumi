@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.PlantProvider.Tree.V1.Enums
+namespace Pulumi.PlantProvider.Tree.V1
 {
     /// <summary>
     /// types of rubber trees
