@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"io"
 	"os"
 
@@ -34,7 +35,6 @@ func newPluginInstallCmd() *cobra.Command {
 	var exact bool
 	var file string
 	var reinstall bool
-	var verbose bool
 
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
@@ -104,18 +104,12 @@ func newPluginInstallCmd() *cobra.Command {
 				if !reinstall {
 					if exact {
 						if workspace.HasPlugin(install) {
-							if verbose {
-								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing == match)"), label)
-							}
+							logging.V(1).Infof("%s skipping install (existing == match)", label)
 							continue
 						}
 					} else {
 						if has, _ := workspace.HasPluginGTE(install); has {
-							if verbose {
-								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing >= match)"), label)
-							}
+							logging.V(1).Infof("%s skipping install (existing >= match)", label)
 							continue
 						}
 					}
@@ -126,10 +120,6 @@ func newPluginInstallCmd() *cobra.Command {
 				var tarball io.ReadCloser
 				var err error
 				if file == "" {
-					if verbose {
-						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s downloading from %s"), label, install.ServerURL)
-					}
 					var size int64
 					if tarball, size, err = install.Download(); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
@@ -137,18 +127,12 @@ func newPluginInstallCmd() *cobra.Command {
 					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
 					source = file
-					if verbose {
-						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s opening tarball from %s"), label, file)
-					}
+					logging.V(1).Infof("%s opening tarball from %s", label, file)
 					if tarball, err = os.Open(file); err != nil {
 						return errors.Wrapf(err, "opening file %s", source)
 					}
 				}
-				if verbose {
-					cmdutil.Diag().Infoerrf(
-						diag.Message("", "%s installing tarball ..."), label)
-				}
+				logging.V(1).Infof("%s installing tarball ...", label)
 				if err = install.Install(tarball); err != nil {
 					return errors.Wrapf(err, "installing %s from %s", label, source)
 				}
@@ -166,8 +150,6 @@ func newPluginInstallCmd() *cobra.Command {
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
-	cmd.PersistentFlags().BoolVar(&verbose,
-		"verbose", false, "Print detailed information about the installation steps")
 
 	return cmd
 }

@@ -198,10 +198,14 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	}
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
+	logging.V(1).Infof("%s downloading from %s", info.Name, serverURL)
+
 	// URL escape the path value to ensure we have the correct path for S3/CloudFront.
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", info.Kind, info.Name, info.Version, os, arch)))
+
+	logging.V(9).Infof("full plugin download url: %s", endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -211,10 +215,14 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 
+	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+
 	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
 	if err != nil {
 		return nil, -1, err
 	}
+
+	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
@@ -293,6 +301,7 @@ func installPlugin(finalDir string, tarball io.ReadCloser) error {
 	// the directory. That's OK, just ignore the error. The temp directory created as part of the install will be
 	// cleaned up when we exit by the defer above.
 	fmt.Print("Moving plugin...")
+	logging.V(1).Infof("moving plugin from %q to %q", tempDir, finalDir)
 	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
 		switch err.(type) {
 		case *os.LinkError:
