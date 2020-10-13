@@ -188,7 +188,10 @@ namespace Pulumi
             if (options.Parent != null)
             {
                 this._parentResource = options.Parent;
-                this._parentResource.ChildResources.Add(this);
+                lock (this._parentResource.ChildResources)
+                {
+                    this._parentResource.ChildResources.Add(this);
+                }
 
                 if (options.Protect == null)
                     options.Protect = options.Parent._protect;
