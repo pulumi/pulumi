@@ -57,6 +57,9 @@ CHANGELOG
 - [sdk/python] Fix ResourceOptions annotations and doc strings.
   [#5559](https://github.com/pulumi/pulumi/pull/5559)
 
+- [sdk/dotnet] Fix HashSet concurrency issue.
+  [#5563](https://github.com/pulumi/pulumi/pull/5563)
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
