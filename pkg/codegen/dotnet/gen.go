@@ -242,6 +242,12 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		case mod.details(t).functionType:
 			typ += "Result"
 		}
+	case *schema.ResourceType:
+		typ = mod.tokenToNamespace(t.Token, "")
+		if typ != "" {
+			typ += "."
+		}
+		typ += tokenToName(t.Token)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -628,13 +634,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Open the class.
 	className := name
-	baseType := "Pulumi.CustomResource"
-	if mod.isK8sCompatMode() {
-		baseType = "KubernetesResource"
-	}
-	if r.IsProvider {
+	var baseType string
+	optionsType := "CustomResourceOptions"
+	switch {
+	case r.IsProvider:
 		baseType = "Pulumi.ProviderResource"
+	case mod.isK8sCompatMode():
+		baseType = "KubernetesResource"
+	case r.IsComponent:
+		baseType = "Pulumi.ComponentResource"
+		optionsType = "ComponentResourceOptions"
+	default:
+		baseType = "Pulumi.CustomResource"
 	}
+
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
@@ -691,8 +704,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsType += "?"
 	}
 
-	optionsType := "CustomResourceOptions"
-
 	tok := r.Token
 	if r.IsProvider {
 		tok = mod.pkg.Name
@@ -713,19 +724,29 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
-	fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+	if r.IsComponent {
+		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+	} else {
+		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+	}
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
-	if mod.dictionaryConstructors {
-		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, CustomResourceOptions? options = null)\n", className)
-		fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
+	// Write a dictionary constructor.
+	if mod.dictionaryConstructors && !r.IsComponent {
+		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, %s? options = null)\n",
+			className, optionsType)
+		if r.IsComponent {
+			fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"), remote: true)\n", tok)
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
+		}
 		fmt.Fprintf(w, "        {\n")
 		fmt.Fprintf(w, "        }\n")
 	}
 
 	// Write a private constructor for the use of `Get`.
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		stateParam, stateRef := "", "null"
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state"
@@ -793,8 +814,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            return merged;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	// Write the `Get` method for reading instances of this resource unless this is a provider resource.
-	if !r.IsProvider {
+	// Write the `Get` method for reading instances of this resource unless this is a provider resource or ComponentResource.
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "        /// <summary>\n")
 		fmt.Fprintf(w, "        /// Get an existing %s resource's state with the given name, ID, and optional extra\n", className)
 		fmt.Fprintf(w, "        /// properties used to qualify the lookup.\n")
@@ -1007,14 +1028,98 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 	return nil
 }
 
-func (mod *modContext) genPulumiHeader(w io.Writer) {
-	mod.genHeader(w, []string{
-		"System",
-		"System.Collections.Generic",
-		"System.Collections.Immutable",
-		"System.Threading.Tasks",
-		"Pulumi.Serialization",
-	})
+// pulumiImports is a slice of common imports that are used with the genHeader method.
+var pulumiImports = []string{
+	"System",
+	"System.Collections.Generic",
+	"System.Collections.Immutable",
+	"System.Threading.Tasks",
+	"Pulumi.Serialization",
+}
+
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) {
+	if seen.Has(t) {
+		return
+	}
+	seen.Add(t)
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.MapType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
+		return
+	case *schema.ResourceType:
+		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), ""
+		if modName != mod.mod {
+			mp, err := filepath.Rel(mod.mod, modName)
+			contract.Assert(err == nil)
+			if path.Base(mp) == "." {
+				mp = path.Dir(mp)
+			}
+			modPath = filepath.ToSlash(mp)
+		}
+		if len(modPath) == 0 {
+			return
+		}
+		if imports[modPath] == nil {
+			imports[modPath] = codegen.NewStringSet()
+		}
+		imports[modPath].Add(name)
+		return
+	case *schema.TokenType:
+		return
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			mod.getTypeImports(e, recurse, imports, seen)
+		}
+		return
+	default:
+		return
+	}
+}
+
+func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) {
+	seen := codegen.Set{}
+	switch member := member.(type) {
+	case *schema.ObjectType:
+		for _, p := range member.Properties {
+			mod.getTypeImports(p.Type, true, imports, seen)
+		}
+		return
+	case *schema.ResourceType:
+		mod.getTypeImports(member, true, imports, seen)
+		return
+	case *schema.Resource:
+		for _, p := range member.Properties {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		for _, p := range member.InputProperties {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		return
+	case *schema.Function:
+		if member.Inputs != nil {
+			mod.getTypeImports(member.Inputs, false, imports, seen)
+		}
+		if member.Outputs != nil {
+			mod.getTypeImports(member.Outputs, false, imports, seen)
+		}
+		return
+	case []*schema.Property:
+		for _, p := range member {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		return
+	default:
+		return
+	}
 }
 
 func (mod *modContext) genHeader(w io.Writer, using []string) {
@@ -1220,8 +1325,15 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Resources
 	for _, r := range mod.resources {
+		imports := map[string]codegen.StringSet{}
+		mod.getImports(r, imports)
+
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		importStrings := pulumiImports
+		for _, i := range imports {
+			importStrings = append(importStrings, i.SortedValues()...)
+		}
+		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genResource(buffer, r); err != nil {
 			return err
@@ -1232,8 +1344,15 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
+		imports := map[string]codegen.StringSet{}
+		mod.getImports(f, imports)
+
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		importStrings := pulumiImports
+		for _, i := range imports {
+			importStrings = append(importStrings, i.SortedValues()...)
+		}
+		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genFunction(buffer, f); err != nil {
 			return err
@@ -1246,7 +1365,7 @@ func (mod *modContext) gen(fs fs) error {
 	for _, t := range mod.types {
 		if mod.details(t).inputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
@@ -1259,7 +1378,7 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).stateType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
@@ -1272,7 +1391,7 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).outputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Outputs"))
 			fmt.Fprintf(buffer, "{\n")
