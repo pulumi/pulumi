@@ -5,10 +5,11 @@
 import warnings
 import pulumi
 import pulumi.runtime
+from enum import Enum
 from typing import Any, Mapping, Optional, Sequence, Union
 from .. import _utilities, _tables
 from .. import _inputs as _root_inputs
-from . import _enums as enums
+from . import _enums
 
 __all__ = ['RubberTree']
 
@@ -18,7 +19,7 @@ class RubberTree(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
-                 type: Optional[pulumi.Input[enums.RubberTreeVariety]] = None,
+                 type: Optional[pulumi.Input[_enums._RubberTreeVariety]] = None,
                  __props__=None,
                  __name__=None,
                  __opts__=None):
@@ -45,7 +46,7 @@ class RubberTree(pulumi.CustomResource):
             __props__ = dict()
 
             __props__['container'] = container
-            __props__['type'] = type
+            __props__['type'] = type.value if isinstance(type, Enum) else type
         super(RubberTree, __self__).__init__(
             'plant-provider:tree/v1:RubberTree',
             resource_name,
