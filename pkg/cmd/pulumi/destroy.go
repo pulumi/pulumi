@@ -193,8 +193,8 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(
-		&skipPreview, "skip-preview", false,
+	cmd.PersistentFlags().BoolVarP(
+		&skipPreview, "skip-preview", "f", false,
 		"Do not perform a preview before performing the destroy")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
