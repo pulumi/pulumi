@@ -28,6 +28,6 @@ namespace Pulumi.PlantProvider.Tree.V1
         /// A tineke rubber tree.
         /// </summary>
         [EnumMember(Value = "Tineke")]
-        Tineke
+        Tineke,
     }
 }

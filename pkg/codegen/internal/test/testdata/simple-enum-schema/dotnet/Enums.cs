@@ -19,7 +19,7 @@ namespace Pulumi.PlantProvider
         [EnumMember(Value = "blue")]
         Blue,
         [EnumMember(Value = "yellow")]
-        Yellow
+        Yellow,
     }
 
     /// <summary>
@@ -30,6 +30,6 @@ namespace Pulumi.PlantProvider
         FourInch = 4,
         SixInch = 6,
         [Obsolete(@"Eight inch pots are no longer supported.")]
-        EightInch = 8
+        EightInch = 8,
     }
 }

@@ -125,6 +125,7 @@ type modContext struct {
 	mod                    string
 	propertyNames          map[*schema.Property]string
 	types                  []*schema.ObjectType
+	enums                  []*schema.EnumType
 	resources              []*schema.Resource
 	functions              []*schema.Function
 	typeDetails            map[*schema.ObjectType]*typeDetails
@@ -199,6 +200,10 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.tokenToNamespace(t.Token, "")
+		typ += "."
+		typ += tokenToName(t.Token)
 	case *schema.ArrayType:
 		var listFmt string
 		switch {
@@ -629,7 +634,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
 
-	// Write the TypeDoc/JSDoc for the resource class
+	// Write the docstring	 for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
@@ -965,6 +970,60 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// Close the namespace.
 	fmt.Fprintf(w, "}\n")
 	return nil
+}
+
+func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
+	// Open the namespace.
+	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
+	fmt.Fprintf(w, "{\n")
+
+	for i, enum := range enums {
+		mod.genEnum(w, enum)
+		if i != len(enums)-1 {
+			fmt.Fprintf(w, "\n")
+		}
+	}
+
+	// Close the namespace.
+	fmt.Fprintf(w, "}\n")
+
+	return nil
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
+	indent := "    "
+	// Print docstring.
+	printComment(w, enum.Comment, indent)
+
+	// Open the enum declaration.
+	enumName := tokenToName(enum.Token)
+	fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
+	fmt.Fprintf(w, "%s{\n", indent)
+	for _, e := range enum.Elements {
+		indent := strings.Repeat(indent, 2)
+		printComment(w, e.Comment, indent)
+		if e.DeprecationMessage != "" {
+			fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(e.DeprecationMessage, `"`, `""`, -1))
+		}
+		if e.Name == "" {
+			e.Name = strings.Title(makeValidIdentifier(e.Value.(string)))
+		}
+		switch enum.ElementType {
+		case schema.StringType:
+			fmt.Fprintf(w, "%s[EnumMember(Value = %q)]\n", indent, e.Value)
+			fmt.Fprintf(w, "%s%s,\n", indent, e.Name)
+		case schema.BoolType, schema.NumberType:
+			fmt.Fprintf(w, "%s[EnumMember(Value = %v)]\n", indent, e.Value)
+			fmt.Fprintf(w, "%s%s,\n", indent, e.Name)
+		case schema.IntType:
+			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
+		default:
+			continue
+		}
+	}
+
+	// Close enum declaration.
+	fmt.Fprintf(w, "%s}\n", indent)
 }
 
 func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited codegen.Set) {
@@ -1409,6 +1468,17 @@ func (mod *modContext) gen(fs fs) error {
 		}
 	}
 
+	// Enums
+	if len(mod.enums) > 0 {
+		buffer := &bytes.Buffer{}
+		mod.genPulumiHeader(buffer)
+
+		if err := mod.genEnums(buffer, mod.enums); err != nil {
+			return err
+		}
+
+		addFile("Enums.cs", buffer.String())
+	}
 	return nil
 }
 
@@ -1612,9 +1682,15 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 
 	// Find nested types.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			mod := getModFromToken(obj.Token)
-			mod.types = append(mod.types, obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			mod := getModFromToken(typ.Token)
+			mod.types = append(mod.types, typ)
+		case *schema.EnumType:
+			mod := getModFromToken(typ.Token)
+			mod.enums = append(mod.enums, typ)
+		default:
+			continue
 		}
 	}
 
