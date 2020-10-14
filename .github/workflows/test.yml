@@ -1,0 +1,17 @@
+on:
+  pull_request
+
+
+jobs:
+  docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Test ref
+        run: |
+          echo "PULUMI_TAG=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+      - name: Echo
+        run: |
+          echo $PULUMI_TAG
+
