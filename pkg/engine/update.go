@@ -139,7 +139,7 @@ type UpdateOptions struct {
 	reportDefaultProviderSteps bool
 
 	// the plugin host to use for this update
-	host plugin.Host
+	Host plugin.Host
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.

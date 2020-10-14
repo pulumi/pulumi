@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // nolint: goconst
-package engine
+package lifecycletest
 
 import (
 	"context"
@@ -26,18 +26,16 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/mitchellh/copystructure"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	. "github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -45,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
@@ -54,166 +51,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
-type JournalEntryKind int
-
-const (
-	JournalEntryBegin   JournalEntryKind = 0
-	JournalEntrySuccess JournalEntryKind = 1
-	JournalEntryFailure JournalEntryKind = 2
-	JournalEntryOutputs JournalEntryKind = 4
-)
-
-type JournalEntry struct {
-	Kind JournalEntryKind
-	Step deploy.Step
-}
-
-type Journal struct {
-	Entries []JournalEntry
-	events  chan JournalEntry
-	cancel  chan bool
-	done    chan bool
-}
-
-func (j *Journal) Close() error {
-	close(j.cancel)
-	<-j.done
-
-	return nil
-}
-
-func (j *Journal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
-	select {
-	case j.events <- JournalEntry{Kind: JournalEntryBegin, Step: step}:
-		return j, nil
-	case <-j.cancel:
-		return nil, errors.New("journal closed")
-	}
-}
-
-func (j *Journal) End(step deploy.Step, success bool) error {
-	kind := JournalEntryFailure
-	if success {
-		kind = JournalEntrySuccess
-	}
-	select {
-	case j.events <- JournalEntry{Kind: kind, Step: step}:
-		return nil
-	case <-j.cancel:
-		return errors.New("journal closed")
-	}
-}
-
-func (j *Journal) RegisterResourceOutputs(step deploy.Step) error {
-	select {
-	case j.events <- JournalEntry{Kind: JournalEntryOutputs, Step: step}:
-		return nil
-	case <-j.cancel:
-		return errors.New("journal closed")
-	}
-}
-
-func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
-	return nil
-}
-
-func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
-	// Build up a list of current resources by replaying the journal.
-	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
-	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
-	for _, e := range j.Entries {
-		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
-
-		// Begin journal entries add pending operations to the snapshot. As we see success or failure
-		// entries, we'll record them in doneOps.
-		switch e.Kind {
-		case JournalEntryBegin:
-			switch e.Step.Op() {
-			case deploy.OpCreate, deploy.OpCreateReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
-			case deploy.OpRead, deploy.OpReadReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
-			case deploy.OpUpdate:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
-			case deploy.OpImport, deploy.OpImportReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeImporting))
-			}
-		case JournalEntryFailure, JournalEntrySuccess:
-			switch e.Step.Op() {
-			// nolint: lll
-			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate,
-				deploy.OpImport, deploy.OpImportReplacement:
-				doneOps[e.Step.New()] = true
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				doneOps[e.Step.Old()] = true
-			}
-		}
-
-		// Now mark resources done as necessary.
-		if e.Kind == JournalEntrySuccess {
-			switch e.Step.Op() {
-			case deploy.OpSame, deploy.OpUpdate:
-				resources = append(resources, e.Step.New())
-				dones[e.Step.Old()] = true
-			case deploy.OpCreate, deploy.OpCreateReplacement:
-				resources = append(resources, e.Step.New())
-				if old := e.Step.Old(); old != nil && old.PendingReplacement {
-					dones[old] = true
-				}
-			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				if old := e.Step.Old(); !old.PendingReplacement {
-					dones[old] = true
-				}
-			case deploy.OpReplace:
-				// do nothing.
-			case deploy.OpRead, deploy.OpReadReplacement:
-				resources = append(resources, e.Step.New())
-				if e.Step.Old() != nil {
-					dones[e.Step.Old()] = true
-				}
-			case deploy.OpRemovePendingReplace:
-				dones[e.Step.Old()] = true
-			case deploy.OpImport, deploy.OpImportReplacement:
-				resources = append(resources, e.Step.New())
-				dones[e.Step.New()] = true
-			}
-		}
-	}
-
-	// Append any resources from the base snapshot that were not produced by the current snapshot.
-	// See backend.SnapshotManager.snap for why this works.
-	if base != nil {
-		for _, res := range base.Resources {
-			if !dones[res] {
-				resources = append(resources, res)
-			}
-		}
-	}
-
-	// Append any pending operations.
-	var operations []resource.Operation
-	for _, op := range ops {
-		if !doneOps[op.Resource] {
-			operations = append(operations, op)
-		}
-	}
-
-	// If we have a base snapshot, copy over its secrets manager.
-	var secretsManager secrets.Manager
-	if base != nil {
-		secretsManager = base.SecretsManager
-	}
-
-	manifest := deploy.Manifest{}
-	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
-}
-
-func (j *Journal) SuccessfulSteps() []deploy.Step {
+func SuccessfulSteps(entries JournalEntries) []deploy.Step {
 	var steps []deploy.Step
-	for _, entry := range j.Entries {
+	for _, entry := range entries {
 		if entry.Kind == JournalEntrySuccess {
 			steps = append(steps, entry.Step)
 		}
@@ -239,335 +79,6 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 	return true
 }
 
-func newJournal() *Journal {
-	j := &Journal{
-		events: make(chan JournalEntry),
-		cancel: make(chan bool),
-		done:   make(chan bool),
-	}
-	go func() {
-		for {
-			select {
-			case <-j.cancel:
-				close(j.done)
-				return
-			case e := <-j.events:
-				j.Entries = append(j.Entries, e)
-			}
-		}
-	}()
-	return j
-}
-
-type updateInfo struct {
-	project workspace.Project
-	target  deploy.Target
-}
-
-func (u *updateInfo) GetRoot() string {
-	return ""
-}
-
-func (u *updateInfo) GetProject() *workspace.Project {
-	return &u.project
-}
-
-func (u *updateInfo) GetTarget() *deploy.Target {
-	return &u.target
-}
-
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, result.Result)
-type ValidateFunc func(project workspace.Project, target deploy.Target, j *Journal,
-	events []Event, res result.Result) result.Result
-
-func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
-
-	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
-}
-
-func (op TestOp) RunWithContext(
-	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
-
-	// Create an appropriate update info and context.
-	info := &updateInfo{project: project, target: target}
-
-	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
-	done := make(chan bool)
-	defer close(done)
-	go func() {
-		select {
-		case <-callerCtx.Done():
-			cancelSrc.Cancel()
-		case <-done:
-		}
-	}()
-
-	events := make(chan Event)
-	journal := newJournal()
-
-	ctx := &Context{
-		Cancel:          cancelCtx,
-		Events:          events,
-		SnapshotManager: journal,
-		BackendClient:   backendClient,
-	}
-
-	// Begin draining events.
-	var firedEvents []Event
-	go func() {
-		for e := range events {
-			firedEvents = append(firedEvents, e)
-		}
-	}()
-
-	// Run the step and its validator.
-	_, res := op(info, ctx, opts, dryRun)
-	contract.IgnoreClose(journal)
-
-	if dryRun {
-		return nil, res
-	}
-	if validate != nil {
-		res = validate(project, target, journal, firedEvents, res)
-	}
-
-	snap := journal.Snap(target.Snapshot)
-	if res == nil && snap != nil {
-		res = result.WrapIfNonNil(snap.VerifyIntegrity())
-	}
-	return snap, res
-
-}
-
-type TestStep struct {
-	Op            TestOp
-	ExpectFailure bool
-	SkipPreview   bool
-	Validate      ValidateFunc
-}
-
-type TestPlan struct {
-	Project        string
-	Stack          string
-	Runtime        string
-	RuntimeOptions map[string]interface{}
-	Config         config.Map
-	Decrypter      config.Decrypter
-	BackendClient  deploy.BackendClient
-	Options        UpdateOptions
-	Steps          []TestStep
-}
-
-//nolint: goconst
-func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, runtime string) {
-	project = tokens.PackageName(p.Project)
-	if project == "" {
-		project = "test"
-	}
-	runtime = p.Runtime
-	if runtime == "" {
-		runtime = "test"
-	}
-	stack = tokens.QName(p.Stack)
-	if stack == "" {
-		stack = "test"
-	}
-	return stack, project, runtime
-}
-
-func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) resource.URN {
-	stack, project, _ := p.getNames()
-	var pt tokens.Type
-	if parent != "" {
-		pt = parent.Type()
-	}
-	return resource.NewURN(stack, project, pt, typ, tokens.QName(name))
-}
-
-func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {
-	return p.NewURN(providers.MakeProviderType(pkg), name, parent)
-}
-
-func (p *TestPlan) GetProject() workspace.Project {
-	_, projectName, runtime := p.getNames()
-
-	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
-	}
-}
-
-func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
-	stack, _, _ := p.getNames()
-
-	cfg := p.Config
-	if cfg == nil {
-		cfg = config.Map{}
-	}
-
-	return deploy.Target{
-		Name:      stack,
-		Config:    cfg,
-		Decrypter: p.Decrypter,
-		Snapshot:  snapshot,
-	}
-}
-
-func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
-	assert.NotNil(t, res)
-}
-
-func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
-	project := p.GetProject()
-	snap := snapshot
-	for _, step := range p.Steps {
-		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
-		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
-		// cause state changes from the preview to persist even when doing an update.
-		if !step.SkipPreview {
-			previewSnap := CloneSnapshot(t, snap)
-			previewTarget := p.GetTarget(previewSnap)
-			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
-			if step.ExpectFailure {
-				assertIsErrorOrBailResult(t, res)
-				continue
-			}
-
-			assert.Nil(t, res)
-		}
-
-		var res result.Result
-		target := p.GetTarget(snap)
-		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
-		if step.ExpectFailure {
-			assertIsErrorOrBailResult(t, res)
-			continue
-		}
-
-		if res != nil {
-			if res.IsBail() {
-				t.Logf("Got unexpected bail result")
-				t.FailNow()
-			} else {
-				t.Logf("Got unexpected error result: %v", res.Error())
-				t.FailNow()
-			}
-		}
-
-		assert.Nil(t, res)
-	}
-
-	return snap
-}
-
-// CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
-func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
-	t.Helper()
-	if snap != nil {
-		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
-		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
-		return &copiedSnap
-	}
-
-	return snap
-}
-
-func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
-	return []TestStep{
-		// Initial update
-		{
-			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				// Should see only creates.
-				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
-				}
-				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return res
-			},
-		},
-		// No-op refresh
-		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				// Should see only refresh-sames.
-				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
-					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
-				}
-				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return res
-			},
-		},
-		// No-op update
-		{
-			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				// Should see only sames.
-				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpSame, entry.Step.Op())
-				}
-				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return res
-			},
-		},
-		// No-op refresh
-		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				// Should see only referesh-sames.
-				for _, entry := range j.Entries {
-					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
-					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
-				}
-				assert.Len(t, j.Snap(target.Snapshot).Resources, resCount)
-				return res
-			},
-		},
-		// Destroy
-		{
-			Op: Destroy,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				// Should see only deletes.
-				for _, entry := range j.Entries {
-					switch entry.Step.Op() {
-					case deploy.OpDelete, deploy.OpReadDiscard:
-						// ok
-					default:
-						assert.Fail(t, "expected OpDelete or OpReadDiscard")
-					}
-				}
-				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
-				return res
-			},
-		},
-		// No-op refresh
-		{
-			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
-				_ []Event, res result.Result) result.Result {
-
-				assert.Len(t, j.Entries, 0)
-				assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
-				return res
-			},
-		},
-	}
-}
-
 func TestEmptyProgramLifecycle(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
@@ -575,7 +86,7 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 0),
 	}
 	p.Run(t, nil)
@@ -596,7 +107,7 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -630,7 +141,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -651,7 +162,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -670,12 +181,12 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	}
 
 	isRefresh := false
-	validate := func(project workspace.Project, target deploy.Target, j *Journal,
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
 		_ []Event, res result.Result) result.Result {
 
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
-		for _, entry := range j.Entries {
+		for _, entry := range entries {
 			switch urn := entry.Step.URN(); urn {
 			case provURN, resURN:
 				expect := deploy.OpSame
@@ -687,7 +198,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 				t.Fatalf("unexpected resource %v", urn)
 			}
 		}
-		assert.Len(t, j.Snap(target.Snapshot).Resources, 2)
+		assert.Len(t, entries.Snap(target.Snapshot).Resources, 2)
 		return res
 	}
 
@@ -704,13 +215,13 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	isRefresh = false
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
 			deleted := make(map[resource.URN]bool)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					deleted[urn] = true
@@ -720,7 +231,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 				}
 			}
 			assert.Len(t, deleted, 2)
-			assert.Len(t, j.Snap(target.Snapshot).Resources, 0)
+			assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
 			return res
 		},
 	}}
@@ -757,7 +268,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "foo"): config.NewValue("bar"),
 		},
@@ -774,7 +285,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Config[config.MustMakeKey("pkgA", "foo")] = config.NewValue("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "default", "")
@@ -782,7 +293,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
@@ -852,7 +363,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	// Build a basic lifecycle.
@@ -866,7 +377,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "provA", "")
@@ -874,7 +385,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
@@ -943,7 +454,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	// Build a basic lifecycle.
@@ -957,7 +468,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			provURN := p.NewProviderURN("pkgA", "provA", "")
@@ -966,7 +477,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			createdProvider, createdResource := false, false
 			deletedProvider, deletedResource := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Kind != JournalEntrySuccess {
 					continue
 				}
@@ -1036,7 +547,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -1048,7 +559,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	// Now change the inputs to our resource and run a preview.
 	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
 			found := false
@@ -1079,7 +590,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -1110,13 +621,13 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
+		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
 				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
@@ -1153,7 +664,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -1184,13 +695,13 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 
 	p.Steps = []TestStep{{
 		Op: Destroy,
-		Validate: func(_ workspace.Project, _ deploy.Target, j *Journal,
+		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
 				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
@@ -1250,7 +761,7 @@ func TestParallelRefresh(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Parallel: 4, host: host},
+		Options: UpdateOptions{Parallel: 4, Host: host},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -1292,7 +803,7 @@ func TestExternalRefresh(t *testing.T) {
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   []TestStep{{Op: Update}},
 	}
 
@@ -1304,7 +815,7 @@ func TestExternalRefresh(t *testing.T) {
 	assert.True(t, snap.Resources[1].External)
 
 	p = &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   []TestStep{{Op: Refresh}},
 	}
 
@@ -1361,7 +872,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-	p.Options.host = host
+	p.Options.Host = host
 
 	//
 	// Create an old snapshot with a single initialization failure.
@@ -1450,12 +961,12 @@ func TestCheckFailureRecord(t *testing.T) {
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, res result.Result) result.Result {
 
 				sawFailure := false
@@ -1500,12 +1011,12 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, res result.Result) result.Result {
 
 				sawFailure := false
@@ -1556,7 +1067,7 @@ func TestRefreshWithDelete(t *testing.T) {
 			})
 
 			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-			p := &TestPlan{Options: UpdateOptions{host: host, Parallel: parallelFactor}}
+			p := &TestPlan{Options: UpdateOptions{Host: host, Parallel: parallelFactor}}
 
 			p.Steps = []TestStep{{Op: Update}}
 			snap := p.Run(t, nil)
@@ -1666,16 +1177,16 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{
 		{
 			Op: Refresh,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				_ []Event, res result.Result) result.Result {
 
 				// Should see only refreshes.
-				for _, entry := range j.Entries {
+				for _, entry := range entries {
 					if len(refreshTargets) > 0 {
 						// should only see changes to urns we explicitly asked to change
 						assert.Containsf(t, refreshTargets, entry.Step.URN(),
@@ -1836,15 +1347,15 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			// Should see only refreshes.
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if len(refreshTargets) > 0 {
 					// should only see changes to urns we explicitly asked to change
 					assert.Containsf(t, refreshTargets, entry.Step.URN(),
@@ -1988,13 +1499,13 @@ func TestCanceledRefresh(t *testing.T) {
 	op := TestOp(Refresh)
 	options := UpdateOptions{
 		Parallel: 1,
-		host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
+		Host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
 	}
 	project, target := p.GetProject(), p.GetTarget(old)
-	validate := func(project workspace.Project, target deploy.Target, j *Journal,
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
 		_ []Event, res result.Result) result.Result {
 
-		for _, entry := range j.Entries {
+		for _, entry := range entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 			resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
 
@@ -2082,12 +1593,12 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, res result.Result) result.Result {
 
 				assertIsErrorOrBailResult(t, res)
@@ -2137,14 +1648,14 @@ func TestBrokenDecrypter(t *testing.T) {
 	configMap := make(config.Map)
 	configMap[key] = config.NewSecureValue("hunter2")
 	p := &TestPlan{
-		Options:   UpdateOptions{host: host},
+		Options:   UpdateOptions{Host: host},
 		Decrypter: brokenDecrypter{ErrorMessage: msg},
 		Config:    configMap,
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
 			SkipPreview:   true,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, res result.Result) result.Result {
 
 				assertIsErrorOrBailResult(t, res)
@@ -2193,7 +1704,7 @@ func TestBadResourceType(t *testing.T) {
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -2264,7 +1775,7 @@ func TestProviderCancellation(t *testing.T) {
 	op := TestOp(Update)
 	options := UpdateOptions{
 		Parallel: resourceCount,
-		host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
+		Host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
 	}
 	project, target := p.GetProject(), p.GetTarget(nil)
 
@@ -2318,7 +1829,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	})
 
 	op := TestOp(Update)
-	options := UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(old)
 
 	// A preview should succeed despite the pending operations.
@@ -2367,18 +1878,18 @@ func TestUpdatePartialFailure(t *testing.T) {
 	})
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p := &TestPlan{Options: UpdateOptions{host: host}}
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
 		SkipPreview:   true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assertIsErrorOrBailResult(t, res)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
@@ -2454,7 +1965,7 @@ func TestStackReference(t *testing.T) {
 				}
 			},
 		},
-		Options: UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		Options: UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -2481,11 +1992,11 @@ func TestStackReference(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op:          Update,
 		SkipPreview: true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					switch entry.Step.Op() {
@@ -2512,7 +2023,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Options = UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -2531,7 +2042,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = UpdateOptions{host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Options = UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -2628,7 +2139,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
-	options := UpdateOptions{host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
+	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(old)
 
 	_, res := op.Run(project, target, options, true, nil, nil)
@@ -2801,19 +2312,19 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
 		SkipPreview:   true,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
 
 			replaced := make(map[resource.URN]bool)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Step.Op() == deploy.OpReplace {
 					replaced[entry.Step.URN()] = true
 				}
@@ -2883,7 +2394,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
@@ -2969,7 +2480,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -2978,7 +2489,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -2989,7 +2500,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpReplace, URN: urnA},
 				{Op: deploy.OpSame, URN: urnB},
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3002,7 +2513,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -3015,7 +2526,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnB},
 				{Op: deploy.OpCreateReplacement, URN: urnB},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3027,7 +2538,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -3038,7 +2549,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnB},
 				{Op: deploy.OpReplace, URN: urnB},
 				{Op: deploy.OpDeleteReplaced, URN: urnB},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3051,7 +2562,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -3062,7 +2573,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpReplace, URN: urnA},
 				{Op: deploy.OpSame, URN: urnB},
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3075,7 +2586,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -3088,7 +2599,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnB},
 				{Op: deploy.OpCreateReplacement, URN: urnB},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3101,7 +2612,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -3112,7 +2623,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpReplace, URN: urnA},
 				{Op: deploy.OpSame, URN: urnB},
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -3155,11 +2666,11 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		})
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -3248,13 +2759,13 @@ func TestDefaultProviderDiff(t *testing.T) {
 		})
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
-						for _, entry := range j.Entries {
+						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
 							}
@@ -3369,13 +2880,13 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		})
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
-						for _, entry := range j.Entries {
+						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
 							}
@@ -3490,11 +3001,11 @@ func TestAliases(t *testing.T) {
 		})
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -3503,7 +3014,7 @@ func TestAliases(t *testing.T) {
 							}
 						}
 
-						for _, entry := range j.Entries {
+						for _, entry := range entries {
 							if entry.Step.Type() == "pulumi:providers:pkgA" {
 								continue
 							}
@@ -3789,7 +3300,7 @@ func TestPersistentDiff(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -3801,7 +3312,7 @@ func TestPersistentDiff(t *testing.T) {
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
 			found := false
@@ -3822,7 +3333,7 @@ func TestPersistentDiff(t *testing.T) {
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
 			found := false
@@ -3870,7 +3381,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -3882,7 +3393,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ *Journal,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
 			found := false
@@ -3961,7 +3472,7 @@ func TestImport(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -3975,8 +3486,8 @@ func TestImport(t *testing.T) {
 	// Run a second update after fixing the inputs. The import should succeed.
 	inputs["foo"] = resource.NewStringProperty("bar")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
@@ -3993,8 +3504,8 @@ func TestImport(t *testing.T) {
 
 	// Now, run another update. The update should succeed and there should be no diffs.
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4009,8 +3520,8 @@ func TestImport(t *testing.T) {
 	// Change a property value and run a third update. The update should succeed.
 	inputs["foo"] = resource.NewStringProperty("rab")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4031,8 +3542,8 @@ func TestImport(t *testing.T) {
 
 	// Finally, destroy the stack. The `Delete` function should be called.
 	_, res = TestOp(Destroy).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpDelete, entry.Step.Op())
@@ -4047,8 +3558,8 @@ func TestImport(t *testing.T) {
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
 	importID, inputs["foo"] = "", resource.NewStringProperty("bar")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
@@ -4068,8 +3579,8 @@ func TestImport(t *testing.T) {
 		}
 	}
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4085,8 +3596,8 @@ func TestImport(t *testing.T) {
 	// a delete-replaced.
 	importID = "id"
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4108,8 +3619,8 @@ func TestImport(t *testing.T) {
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
 	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
@@ -4127,8 +3638,8 @@ func TestImport(t *testing.T) {
 	// Now have the program import the resource. We should see an import-replace and a read-discard.
 	readID, importID = "", readID
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4205,7 +3716,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -4213,8 +3724,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	// Run the initial update. The import should succeed.
 	project := p.GetProject()
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
 					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
@@ -4231,8 +3742,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 
 	// Now, run another update. The update should succeed and there should be no diffs.
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, j *Journal, _ []Event, res result.Result) result.Result {
-			for _, entry := range j.Entries {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -4264,7 +3775,7 @@ func TestCustomTimeouts(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -4307,7 +3818,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "foo"): config.NewValue("bar"),
 		},
@@ -4341,14 +3852,14 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	}
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
@@ -4399,7 +3910,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-	p.Options.host = host
+	p.Options.Host = host
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
@@ -4450,7 +3961,7 @@ func TestMissingRead(t *testing.T) {
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   []TestStep{{Op: Update, ExpectFailure: true}},
 	}
 	p.Run(t, nil)
@@ -4488,7 +3999,7 @@ func TestImportUpdatedID(t *testing.T) {
 		assert.Equal(t, actualID, id)
 		return nil
 	})
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
 	snap := p.Run(t, nil)
@@ -4579,7 +4090,7 @@ func destroySpecificTargets(
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Options.TargetDependents = targetDependents
 
 	destroyTargets := []resource.URN{}
@@ -4595,14 +4106,14 @@ func destroySpecificTargets(
 	p.Steps = []TestStep{{
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
 			deleted := make(map[resource.URN]bool)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
 				deleted[entry.Step.URN()] = true
 			}
@@ -4674,7 +4185,7 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	updateTargets := []resource.URN{}
 	for _, target := range targets {
@@ -4688,15 +4199,15 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
 			updated := make(map[resource.URN]bool)
 			sames := make(map[resource.URN]bool)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Step.Op() == deploy.OpUpdate {
 					updated[entry.Step.URN()] = true
 				} else if entry.Step.Op() == deploy.OpSame {
@@ -4749,7 +4260,7 @@ func updateInvalidTarget(t *testing.T) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p.Options.UpdateTargets = []resource.URN{"foo"}
 	t.Logf("Updating invalid targets: %v", p.Options.UpdateTargets)
@@ -4777,7 +4288,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	host1 := deploytest.NewPluginHost(nil, nil, program1, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host1},
+		Options: UpdateOptions{Host: host1},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -4797,18 +4308,18 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 	resB := p.NewURN("pkgA:m:typA", "resB", "")
-	p.Options.host = host2
+	p.Options.Host = host2
 	p.Options.UpdateTargets = []resource.URN{resA, resB}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Step.URN() == resA {
 					assert.Equal(t, deploy.OpSame, entry.Step.Op())
 				} else if entry.Step.URN() == resB {
@@ -4837,7 +4348,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	host1 := deploytest.NewPluginHost(nil, nil, program1, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host1},
+		Options: UpdateOptions{Host: host1},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -4857,18 +4368,18 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 
-	p.Options.host = host2
+	p.Options.Host = host2
 	p.Options.UpdateTargets = []resource.URN{resA}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				// everything should be a same op here.
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())
 			}
@@ -4894,7 +4405,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	host1 := deploytest.NewPluginHost(nil, nil, program1, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host1},
+		Options: UpdateOptions{Host: host1},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -4919,7 +4430,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	})
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
-	p.Options.host = host2
+	p.Options.Host = host2
 	p.Options.UpdateTargets = []resource.URN{resA}
 	p.Steps = []TestStep{{
 		Op:            Update,
@@ -4943,7 +4454,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	host1 := deploytest.NewPluginHost(nil, nil, program1, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host1},
+		Options: UpdateOptions{Host: host1},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -4971,18 +4482,18 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	})
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
-	p.Options.host = host2
+	p.Options.Host = host2
 	p.Options.UpdateTargets = []resource.URN{resA}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())
 			}
 
@@ -5047,7 +4558,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -5066,18 +4577,18 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Steps = []TestStep{
 		{
 			Op: Update,
-			Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, res result.Result) result.Result {
 
 				assert.Nil(t, res)
-				assert.True(t, len(j.Entries) > 0)
+				assert.True(t, len(entries) > 0)
 
 				resBDeleted, resBSame := false, false
-				for _, entry := range j.Entries {
+				for _, entry := range entries {
 					if entry.Step.URN() == urnB {
 						switch entry.Step.Op() {
 						case deploy.OpDelete, deploy.OpDeleteReplaced:
@@ -5129,7 +4640,7 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		}),
 	}
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	getURN := func(name string) resource.URN {
 		return pickURN(t, urns, complexTestDependencyGraphNames, name)
@@ -5144,15 +4655,15 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
-			assert.True(t, len(j.Entries) > 0)
+			assert.True(t, len(entries) > 0)
 
 			replaced := make(map[resource.URN]bool)
 			sames := make(map[resource.URN]bool)
-			for _, entry := range j.Entries {
+			for _, entry := range entries {
 				if entry.Step.Op() == deploy.OpReplace {
 					replaced[entry.Step.URN()] = true
 				} else if entry.Step.Op() == deploy.OpSame {
@@ -5236,7 +4747,7 @@ func TestProviderPreview(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 
 	project := p.GetProject()
@@ -5332,7 +4843,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -5471,11 +4982,11 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 	}
 	p.Steps = []TestStep{{
 		Op: Update,
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, res result.Result) result.Result {
 
 			foundRes1 := false
@@ -5484,7 +4995,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			foundRes3 := false
 			foundRes4Child := false
 			// foundRes5Child1 := false
-			for _, res := range j.Snap(target.Snapshot).Resources {
+			for _, res := range entries.Snap(target.Snapshot).Resources {
 				// "res1" has a transformation which adds additionalSecretOutputs
 				if res.URN.Name() == "res1" {
 					foundRes1 = true
@@ -5583,11 +5094,11 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -5677,7 +5188,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 	})
 
-	p.Options.host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -5686,7 +5197,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -5697,7 +5208,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnA},
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -5710,7 +5221,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 
-		Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, res result.Result) result.Result {
 
 			assert.Nil(t, res)
@@ -5720,7 +5231,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 				{Op: deploy.OpReplace, URN: urnA},
 				{Op: deploy.OpCreateReplacement, URN: urnA},
-			}, j.SuccessfulSteps())
+			}, SuccessfulSteps(entries))
 
 			return res
 		},
@@ -5766,11 +5277,11 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 
 		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{host: host},
+			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
 					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, j *Journal,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						evts []Event, res result.Result) result.Result {
 
 						assert.Nil(t, res)
@@ -5779,7 +5290,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 							{Op: deploy.OpCreate, URN: stackURN},
 							{Op: deploy.OpCreate, URN: defaultProviderURN},
 							{Op: deploy.OpRead, URN: urnA},
-						}, j.SuccessfulSteps())
+						}, SuccessfulSteps(entries))
 
 						return res
 					},
@@ -5956,7 +5467,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
@@ -6010,7 +5521,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
@@ -6045,7 +5556,7 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 	}
 
 	p := &TestPlan{
-		Options: UpdateOptions{host: host},
+		Options: UpdateOptions{Host: host},
 		Runtime: "client",
 		RuntimeOptions: map[string]interface{}{
 			"address": fmt.Sprintf("127.0.0.1:%d", port),

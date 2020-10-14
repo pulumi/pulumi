@@ -144,7 +144,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.host, target,
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host, target,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)
 	if err != nil {
 		return nil, err
