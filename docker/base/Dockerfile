@@ -12,7 +12,7 @@ RUN apt-get update -y && \
 RUN if [ "$PULUMI_VERSION" = "latest" ]; then \
     curl -fsSL https://get.pulumi.com/ | bash; \
   else \
-    curl -fsSL https://get.pulumi.com/ | bash -s -- --version $PULUMI_VERSION ; \
+    curl -fsSL https://get.pulumi.com/ | bash -s -- --version "${PULUMI_VERSION##v}" ; \
   fi
 
 # The runtime container
