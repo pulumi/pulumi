@@ -1,8 +1,11 @@
 package {{.Package}}
 
 import (
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	providersdk "github.com/pulumi/pulumi/sdk/v2/go/x/provider"
 
 	{{range .ProviderImports}}
 	{{.Name}} "{{.Path}}"
@@ -11,27 +14,27 @@ import (
 
 func (p *provider) CheckConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	schema := reflect.TypeOf((*{{.ProviderArgsType}})(nil)).Elem()
-	return runtime.Check(news, schema)
+	return providersdk.Check(news, schema)
 }
 
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	var currentArgs {{.ProviderArgsType}}
-	if err := runtime.Unmarshal(olds, &currentArgs); err != nil {
+	if err := providersdk.Unmarshal(olds, &currentArgs); err != nil {
 		return plugin.DiffResult{}, err
 	}
 
 	var newArgs {{.ProviderArgsType}}
-	if err := runtime.Unmarshal(news, &newArgs); err != nil {
+	if err := providersdk.Unmarshal(news, &newArgs); err != nil {
 		return plugin.DiffResult{}, err
 	}
 
-	return runtime.Diff(&currentArgs, &newArgs, ignoreChanges)
+	return providersdk.Diff(&currentArgs, &newArgs, ignoreChanges)
 }
 
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	var args {{.ProviderArgsType}}
-	if err := runtime.Unmarshal(inputs, &args); err != nil {
-		return plugin.DiffResult{}, err
+	if err := providersdk.Unmarshal(inputs, &args); err != nil {
+		return err
 	}
-	return p.provider.Configure(&args, nil)
+	return p.provider.Configure(p.newContext(""), &args, nil)
 }

@@ -523,26 +523,28 @@ func genSDKs(files map[string][]byte, packageSpec schema.PackageSpec) error {
 	return nil
 }
 
-func Generate(name, rootImport string, packages ...*packages.Package) (map[string][]byte, hcl.Diagnostics) {
+func gatherPulumiPackage(name string, goPackages []*packages.Package) (*pulumiPackage, hcl.Diagnostics) {
 	pp := &pulumiPackage{
 		name:        name,
 		typeClosure: typeSet{},
 		outputTypes: typeSet{},
-		roots:       newPackageSet(packages...),
+		roots:       newPackageSet(goPackages...),
 	}
 
 	// Gather the provider type, resource types, and functions.
 	var diags hcl.Diagnostics
-	for _, p := range packages {
+	for _, p := range goPackages {
 		moduleDiags := pp.gatherModule(p)
 		diags = append(diags, moduleDiags...)
 	}
-	if diags.HasErrors() {
-		return nil, diags
-	}
 
+	return pp, diags
+}
+
+func (pp *pulumiPackage) importRoots() hcl.Diagnostics {
+	var diags hcl.Diagnostics
 	if pp.provider == nil {
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+		return hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "no provider type found",
 		}}
@@ -556,23 +558,51 @@ func Generate(name, rootImport string, packages ...*packages.Package) (map[strin
 		diags = append(diags, moduleDiags...)
 	}
 
+	return diags
+}
+
+func (pp *pulumiPackage) gatherTypeClosure() hcl.Diagnostics {
+	// Gather the definitions of the referenced types.
+	var diags hcl.Diagnostics
+	for _, m := range pp.modules {
+		typesDiags := m.gatherMarkedTypes()
+		diags = append(diags, typesDiags...)
+	}
+	return diags
+}
+
+func (pp *pulumiPackage) checkComponentResources() hcl.Diagnostics {
+	// Check component resource types.
+	var diags hcl.Diagnostics
+	for _, m := range pp.modules {
+		componentDiags := m.checkComponentResources()
+		diags = append(diags, componentDiags...)
+	}
+	return diags
+}
+
+func Generate(name string, packages ...*packages.Package) (map[string][]byte, hcl.Diagnostics) {
+	pp, diags := gatherPulumiPackage(name, packages)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	importDiags := pp.importRoots()
+	if importDiags.HasErrors() {
+		return nil, importDiags
+	}
+
 	// Resolve output element types.
 	err := pp.resolveOutputTypes()
 	if err != nil {
 		return nil, hcl.Diagnostics{newError(nil, nil, fmt.Sprintf("internal error: %v", err))}
 	}
 
-	// Gather the definitions of the referenced types.
-	for _, m := range pp.modules {
-		typesDiags := m.gatherMarkedTypes()
-		diags = append(diags, typesDiags...)
-	}
+	closureDiags := pp.gatherTypeClosure()
+	diags = append(diags, closureDiags...)
 
-	// Check component resource types.
-	for _, m := range pp.modules {
-		componentDiags := m.checkComponentResources()
-		diags = append(diags, componentDiags...)
-	}
+	componentDiags := pp.checkComponentResources()
+	diags = append(diags, componentDiags...)
 
 	if diags.HasErrors() {
 		return nil, diags

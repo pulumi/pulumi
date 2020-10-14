@@ -99,10 +99,14 @@ func (m *pulumiModule) importProviderSDK() (*providerSDK, hcl.Diagnostics) {
 	}
 
 	m.providerSDK = &providerSDK{
-		types:   sdk,
-		id:      getType("ID"),
-		context: getType("Context"),
-		options: types.NewInterface(nil, nil),
+		types:         sdk,
+		id:            getType("ID"),
+		context:       getType("Context"),
+		createOptions: getType("CreateOptions"),
+		readOptions:   getType("ReadOptions"),
+		updateOptions: getType("UpdateOptions"),
+		deleteOptions: getType("DeleteOptions"),
+		callOptions:   getType("CallOptions"),
 	}
 	if diags.HasErrors() {
 		m.providerSDK.types = nil
@@ -302,7 +306,7 @@ func (m *pulumiModule) extractParamsType(memberName *ast.Ident, params *types.Tu
 // implements the following interface:
 //
 //     interface {
-//         Configure(args ArgsType, options OptionsType) error
+//         Configure(ctx *provider.Context, args ArgsType, options OptionsType) error
 //     }
 //
 // OptionsType is a type from the Pulumi provider SDK (NYI).
@@ -312,6 +316,11 @@ func (m *pulumiModule) importProvider(provider *pulumiResource) hcl.Diagnostics 
 	typeDef, ok := m.goPackage.TypesInfo.Defs[providerName]
 	if !ok {
 		return hcl.Diagnostics{m.errorf(providerName, "internal error: no type information for %v", providerName.Name)}
+	}
+
+	sdk, sdkDiags := m.importProviderSDK()
+	if sdkDiags.HasErrors() {
+		return sdkDiags
 	}
 
 	namedType := typeDef.Type().(*types.Named)
@@ -331,7 +340,7 @@ func (m *pulumiModule) importProvider(provider *pulumiResource) hcl.Diagnostics 
 	errorType := types.Universe.Lookup("error").Type()
 
 	// Pull the args type from the configure signature.
-	argsType, argsDiags := m.extractParamsType(providerName, configure.Type().(*types.Signature).Params(), 0, "args")
+	argsType, argsDiags := m.extractParamsType(providerName, configure.Type().(*types.Signature).Params(), 1, "args")
 	diags := append(hcl.Diagnostics{}, argsDiags...)
 	provider.args = argsType
 
@@ -339,6 +348,7 @@ func (m *pulumiModule) importProvider(provider *pulumiResource) hcl.Diagnostics 
 	providerInterface := types.NewInterface([]*types.Func{
 		m.newFunc("Configure",
 			types.NewTuple(
+				m.newParam("context", types.NewPointer(sdk.context)),
 				m.newParam("args", argsType),
 				m.newParam("options", optionsType)),
 			types.NewTuple(
@@ -365,10 +375,10 @@ func (m *pulumiModule) importProvider(provider *pulumiResource) hcl.Diagnostics 
 //
 //     interface {
 //         Args() *ArgsType
-//         Create(ctx *provider.Context, provider *ProviderType, args *ArgsType, options OptionsType) (id provider.ID, err error)
-//         Read(ctx *provider.Context, provider *ProviderType, id provider.ID, options OptionsType) error
-//         Update(ctx *provider.Context, provider *ProviderType, id provider.ID, args *ArgsType, options OptionsType) error
-//         Delete(ctx *provider.Context, provider *ProviderType, id provider.ID, options OptionsType) error
+//         Create(ctx *provider.Context, provider *ProviderType, args *ArgsType, options provider.CreateOptions) (id provider.ID, err error)
+//         Read(ctx *provider.Context, provider *ProviderType, id provider.ID, options provider.ReadOptions) error
+//         Update(ctx *provider.Context, provider *ProviderType, id provider.ID, args *ArgsType, options provider.UpdateOptions) error
+//         Delete(ctx *provider.Context, provider *ProviderType, id provider.ID, options provider.DeleteOptions) error
 //     }
 //
 // ProviderType is the provider type for the package. ArgsType is determined by the type of the second parameters
@@ -416,34 +426,34 @@ func (m *pulumiModule) importResource(resource *pulumiResource) hcl.Diagnostics 
 			types.NewTuple(m.newParam("args", argsType))),
 		m.newFunc("Create",
 			types.NewTuple(
-				m.newParam("context", sdk.context),
+				m.newParam("context", types.NewPointer(sdk.context)),
 				m.newParam("provider", providerType),
 				m.newParam("args", argsType),
-				m.newParam("options", sdk.options)),
+				m.newParam("options", sdk.createOptions)),
 			types.NewTuple(
 				m.newParam("id", sdk.id),
 				m.newParam("err", errorType))),
 		m.newFunc("Read",
 			types.NewTuple(
-				m.newParam("context", sdk.context),
+				m.newParam("context", types.NewPointer(sdk.context)),
 				m.newParam("provider", providerType),
 				m.newParam("id", sdk.id),
-				m.newParam("options", sdk.options)),
+				m.newParam("options", sdk.readOptions)),
 			types.NewTuple(m.newParam("err", errorType))),
 		m.newFunc("Update",
 			types.NewTuple(
-				m.newParam("context", sdk.context),
+				m.newParam("context", types.NewPointer(sdk.context)),
 				m.newParam("provider", providerType),
 				m.newParam("id", sdk.id),
 				m.newParam("args", argsType),
-				m.newParam("options", sdk.options)),
+				m.newParam("options", sdk.updateOptions)),
 			types.NewTuple(m.newParam("err", errorType))),
 		m.newFunc("Delete",
 			types.NewTuple(
-				m.newParam("context", sdk.context),
+				m.newParam("context", types.NewPointer(sdk.context)),
 				m.newParam("provider", providerType),
 				m.newParam("id", sdk.id),
-				m.newParam("options", sdk.options)),
+				m.newParam("options", sdk.deleteOptions)),
 			types.NewTuple(m.newParam("err", errorType))),
 	}, nil).Complete()
 
@@ -544,7 +554,7 @@ func (m *pulumiModule) importConstructor(constructor *pulumiFunction) hcl.Diagno
 
 // A function must have the signature
 //
-//     func (provider ProviderType, args *ArgsType, options OptionsType) (*ResultType, error)
+//     func (ctx *provider.Context, provider ProviderType, args *ArgsType, options provider.CallOptions) (*ResultType, error)
 //
 func (m *pulumiModule) importFunction(function *pulumiFunction) hcl.Diagnostics {
 	functionName := function.syntax.Name
@@ -554,15 +564,19 @@ func (m *pulumiModule) importFunction(function *pulumiFunction) hcl.Diagnostics 
 		return hcl.Diagnostics{m.errorf(functionName, "internal error: no type information for %v", functionName.Name)}
 	}
 
+	sdk, sdkDiags := m.importProviderSDK()
+	if sdkDiags.HasErrors() {
+		return sdkDiags
+	}
+
 	signature := typ.(*types.Func).Type().(*types.Signature)
 
-	optionsType := types.NewInterface(nil, nil)
 	errorType := types.Universe.Lookup("error").Type()
 	providerType := m.pulumiPackage.provider.typ
 
 	// Pull the args and result types from the create signature.
 	var diags hcl.Diagnostics
-	argsType, argsDiags := m.extractParamsType(functionName, signature.Params(), 1, "args")
+	argsType, argsDiags := m.extractParamsType(functionName, signature.Params(), 2, "args")
 	diags = append(diags, argsDiags...)
 
 	resultType, resultDiags := m.extractParamsType(functionName, signature.Results(), 0, "result")
@@ -573,9 +587,10 @@ func (m *pulumiModule) importFunction(function *pulumiFunction) hcl.Diagnostics 
 	// Check the function signature.
 	expected := m.newFunc(functionName.Name+"Func",
 		types.NewTuple(
+			m.newParam("context", types.NewPointer(sdk.context)),
 			m.newParam("provider", providerType),
 			m.newParam("args", argsType),
-			m.newParam("options", optionsType)),
+			m.newParam("options", sdk.callOptions)),
 		types.NewTuple(
 			m.newParam("result", resultType),
 			m.newParam("err", errorType)))

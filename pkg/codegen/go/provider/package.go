@@ -72,9 +72,13 @@ func (sdk *pulumiSDK) hasOutputType(typ *types.Named) (*types.Named, bool) {
 type providerSDK struct {
 	types *types.Package
 
-	id      types.Type
-	context types.Type
-	options types.Type
+	id            types.Type
+	context       types.Type
+	createOptions types.Type
+	updateOptions types.Type
+	readOptions   types.Type
+	deleteOptions types.Type
+	callOptions   types.Type
 }
 
 type pulumiType struct {

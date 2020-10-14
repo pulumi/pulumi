@@ -7,7 +7,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pgavlin/go-provider/runtime"
+	providersdk "github.com/pulumi/pulumi/sdk/v2/go/x/provider"
 
 	{{range .ResourceImports}}
 	{{.Name}} "{{.Path}}"
@@ -19,7 +19,7 @@ func (p *provider) Check(urn resource.URN, state, inputs resource.PropertyMap, a
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		schema := reflect.TypeOf((*{{.ArgsType}})(nil)).Elem()
-		return runtime.Check(inputs, schema)
+		return providersdk.Check(inputs, schema)
 	{{end}}
 	default:
 		return nil, nil, fmt.Errorf("unknown resource type %v", urn.Type())
@@ -31,16 +31,16 @@ func (p *provider) Diff(urn resource.URN, id resource.ID, state, inputs resource
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		var res {{.ResourceType}}
-		if err := runtime.Unmarshal(state, &res); err != nil {
+		if err := providersdk.Unmarshal(state, &res); err != nil {
 			return plugin.DiffResult{}, err
 		}
 
 		var newArgs {{.ArgsType}}
-		if err := runtime.Unmarshal(inputs, &newArgs); err != nil {
+		if err := providersdk.Unmarshal(inputs, &newArgs); err != nil {
 			return plugin.DiffResult{}, err
 		}
 
-		return runtime.Diff(res.Args(), &newArgs, ignoreChanges)
+		return providersdk.Diff(res.Args(), &newArgs, ignoreChanges)
 	{{end}}
 	default:
 		return plugin.DiffResult{}, fmt.Errorf("unknown resource type %v", urn.Type())
@@ -52,21 +52,21 @@ func (p *provider) Create(urn resource.URN, inputs resource.PropertyMap, timeout
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		var args {{.ArgsType}}
-		if err := runtime.Unmarshal(inputs, &args); err != nil {
+		if err := providersdk.Unmarshal(inputs, &args); err != nil {
 			return "", nil, resource.StatusUnknown, err
 		}
 
 		var res {{.ResourceType}}
-		id, err := res.Create(p.provider, &args, timeout)
+		id, err := res.Create(p.newContext(urn), p.provider, &args, timeout)
 		if err != nil {
 			return "", nil, resource.StatusUnknown, err
 		}
 
-		rpcState, err := runtime.Marshal(res)
+		rpcState, err := providersdk.Marshal(res)
 		if err != nil {
-			return id, nil, resource.StatusOK, err
+			return resource.ID(id), nil, resource.StatusOK, err
 		}
-		return id, rpcState, resource.StatusOK, nil
+		return resource.ID(id), rpcState, resource.StatusOK, nil
 	{{end}}
 	default:
 		return "", nil, resource.StatusUnknown, fmt.Errorf("unknown resource type %v", urn.Type())
@@ -78,27 +78,27 @@ func (p *provider) Read(urn resource.URN, id resource.ID, inputs, state resource
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		var res {{.ResourceType}}
-		if err := runtime.Unmarshal(state, &res); err != nil {
+		if err := providersdk.Unmarshal(state, &res); err != nil {
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
 
-		err := res.Read(p.provider, id, nil)
+		err := res.Read(p.newContext(urn), p.provider, providersdk.ID(id), nil)
 		if err != nil {
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
 
-		rpcInputs, err := runtime.Marshal(res.Args())
+		rpcInputs, err := providersdk.Marshal(res.Args())
 		if err != nil {
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
 
-		rpcState, err := runtime.Marshal(res)
+		rpcState, err := providersdk.Marshal(res)
 		if err != nil {
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
 
 		return plugin.ReadResult{
-			ID: id,
+			ID: resource.ID(id),
 			Inputs: rpcInputs,
 			Outputs: rpcState,
 		}, resource.StatusOK, nil
@@ -113,24 +113,24 @@ func (p *provider) Update(urn resource.URN, id resource.ID, state, inputs resour
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		var args {{.ArgsType}}
-		if err := runtime.Unmarshal(inputs, &args); err != nil {
+		if err := providersdk.Unmarshal(inputs, &args); err != nil {
 			return nil, resource.StatusOK, err
 		}
 
 		var res {{.ResourceType}}
-		if err := runtime.Unmarshal(state, &res); err != nil {
+		if err := providersdk.Unmarshal(state, &res); err != nil {
 			return nil, resource.StatusOK, err
 		}
 
-		if err := runtime.IgnoreChanges(res.Args(), &args, ignoreChanges); err != nil {
+		if err := providersdk.IgnoreChanges(res.Args(), &args, ignoreChanges); err != nil {
 			return nil, resource.StatusOK, err
 		}
 
-		if err := res.Update(p.provider, id, &args, timeout); err != nil {
+		if err := res.Update(p.newContext(urn), p.provider, providersdk.ID(id), &args, timeout); err != nil {
 			return nil, resource.StatusUnknown, err
 		}
 
-		rpcState, err := runtime.Marshal(res)
+		rpcState, err := providersdk.Marshal(res)
 		if err != nil {
 			return nil, resource.StatusOK, err
 		}
@@ -147,11 +147,11 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, state resource.Prope
 	{{range .CustomResources}}
 	case "{{.Token}}":
 		var res {{.ResourceType}}
-		if err := runtime.Unmarshal(state, &res); err != nil {
+		if err := providersdk.Unmarshal(state, &res); err != nil {
 			return resource.StatusOK, err
 		}
 
-		if err := res.Delete(p.provider, id, timeout); err != nil {
+		if err := res.Delete(p.newContext(urn), p.provider, providersdk.ID(id), timeout); err != nil {
 			return resource.StatusUnknown, err
 		}
 
@@ -168,11 +168,11 @@ func (p *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name to
 	{{range .ComponentResources}}
 	case "{{.Token}}":
 		var args {{.ArgsType}}
-		if err := runtime.Unmarshal(inputs, &args); err != nil {
+		if err := providersdk.Unmarshal(inputs, &args); err != nil {
 			return plugin.ConstructResult{}, err
 		}
 
-		ctx, options, err := runtime.NewConstructContext(info, options)
+		ctx, options, err := providersdk.NewConstructContext(info, options)
 		if err != nil {
 			return plugin.ConstructResult{}, err
 		}
@@ -182,7 +182,7 @@ func (p *provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name to
 			return plugin.ConstructResult{}, err
 		}
 
-		return runtime.MarshalConstructResult(res)
+		return providersdk.MarshalConstructResult(res)
 	{{end}}
 */
 	default:

@@ -7,7 +7,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pgavlin/go-provider/runtime"
+	providersdk "github.com/pulumi/pulumi/sdk/v2/go/x/provider"
 
 	{{range .FunctionImports}}
 	{{.Name}} "{{.Path}}"
@@ -18,22 +18,22 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	switch tok {
 	{{range .Functions}}
 	case "{{.Token}}":
-		args, failures, err := runtime.Check(args, reflect.TypeOf((*{{.ArgsType}})(nil)).Elem())
+		args, failures, err := providersdk.Check(args, reflect.TypeOf((*{{.ArgsType}})(nil)).Elem())
 		if err != nil || len(failures) != 0 {
 			return nil, failures, err
 		}
 
 		var functionArgs {{.ArgsType}}
-		if err := runtime.Unmarshal(args, &functionArgs); err != nil {
+		if err := providersdk.Unmarshal(args, &functionArgs); err != nil {
 			return nil, nil, err
 		}
 
-		result, err := {{.Function}}(p.provider, &functionArgs, nil)
+		result, err := {{.Function}}(p.newContext(""), p.provider, &functionArgs, nil)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		resultObject, err := runtime.Marshal(result)
+		resultObject, err := providersdk.Marshal(result)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	providersdk "github.com/pulumi/pulumi/sdk/v2/go/x/provider"
 
 	{{range .ProviderImports}}
 	{{.Name}} "{{.Path}}"
@@ -40,6 +42,10 @@ func NewProvider(host plugin.Host, p *{{.ProviderType}}) plugin.Provider {
 		host: host,
 		provider: p,
 	}
+}
+
+func (p *provider) newContext(urn resource.URN) *providersdk.Context {
+	return providersdk.NewContext(context.Background(), p.host, urn)
 }
 
 func (p *provider) Close() error {
