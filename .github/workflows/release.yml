@@ -37,7 +37,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: homebrew-bump
+          event-type: docs
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
   homebrew:
     name: Update Homebrew
