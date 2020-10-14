@@ -545,7 +545,7 @@ func (pe *planExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step
 	for _, s := range pe.plan.prev.Resources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
-			// We producesd a refresh step for this specific resource.  Use the new information about
+			// We produced a refresh step for this specific resource.  Use the new information about
 			// its dependencies during the update.
 			old = step.Old()
 			new = step.New()

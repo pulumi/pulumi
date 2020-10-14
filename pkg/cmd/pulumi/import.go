@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -228,7 +228,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		return err
 	}
 	sink := cmdutil.Diag()
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, nil)
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	if err != nil {
 		return err
 	}
@@ -285,8 +285,8 @@ func newImportCmd() *cobra.Command {
 			"should be added to the Pulumi program. The resources are protected from deletion\n" +
 			"by default.\n" +
 			"\n" +
-			"Should you want to import your resource(s) without protection, then you can pass\n" +
-			"`--protect=false` as an argument to the command. This will mark all resources as unprotected" +
+			"Should you want to import your resource(s) without protection, you can pass\n" +
+			"`--protect=false` as an argument to the command. This will leave all resources unprotected." +
 			"\n" +
 			"\n" +
 			"A single resource may be specified in the command line arguments or a set of\n" +
@@ -324,8 +324,8 @@ func newImportCmd() *cobra.Command {
 			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
 			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
 			"these names must correspond to entries in the name table. If a resource does not\n" +
-			"specify a provider, it will be imported using the default provider its type. A\n" +
-			"resource that does not specify a provider may specify the version of the provider\n" +
+			"specify a provider, it will be imported using the default provider for its type. A\n" +
+			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			var importFile importFile
@@ -460,8 +460,9 @@ func newImportCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 				if protectResources {
-					_, err := output.Write([]byte("Please note, as your resources are marked as protected, then to destroy them\n" +
-						"you will need to remove the protection attribute and run `pulumi update` *before*\n" +
+					_, err := output.Write([]byte("Please note, that the imported resources are marked as protected. " +
+						"To destroy them\n" +
+						"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
 						"the destroy will take effect.\n\n"))
 					if err != nil {
 						return result.FromError(err)
