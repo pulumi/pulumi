@@ -6,7 +6,6 @@ jobs:
   docker:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: publish-sdks
     steps:
       - name: Test ref
         run: |
