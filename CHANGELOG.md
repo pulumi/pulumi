@@ -64,6 +64,9 @@ CHANGELOG
 - [sdk/dotnet] Fix HashSet concurrency issue.
   [#5563](https://github.com/pulumi/pulumi/pull/5563)
 
+- [cli] Remove author name and committer name
+  [#5567](https://github.com/pulumi/pulumi/pull/5567)
+
 ## 2.11.2 (2020-10-01)
 
 - feat(autoapi): expose EnvVars LocalWorkspaceOption to set in ctor
