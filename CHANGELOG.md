@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+- [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
+  [#5569](https://github.com/pulumi/pulumi/pull/5569)
+
 
 ## 2.12.0 (2020-10-14)
 
