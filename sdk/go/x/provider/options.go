@@ -1,5 +1,7 @@
 package provider
 
+type ConfigureOptions struct{}
+
 type CreateOptions struct{}
 
 type ReadOptions struct{}

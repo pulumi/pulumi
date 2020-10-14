@@ -246,7 +246,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, err := p.provider.Create(urn, inputs, req.GetTimeout())
+	id, state, _, err := p.provider.Create(urn, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +310,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges())
+	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}

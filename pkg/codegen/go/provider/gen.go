@@ -523,12 +523,13 @@ func genSDKs(files map[string][]byte, packageSpec schema.PackageSpec) error {
 	return nil
 }
 
-func gatherPulumiPackage(name string, goPackages []*packages.Package) (*pulumiPackage, hcl.Diagnostics) {
+func gatherPulumiPackage(name, rootPackagePath string, goPackages []*packages.Package) (*pulumiPackage, hcl.Diagnostics) {
 	pp := &pulumiPackage{
-		name:        name,
-		typeClosure: typeSet{},
-		outputTypes: typeSet{},
-		roots:       newPackageSet(goPackages...),
+		name:            name,
+		rootPackagePath: rootPackagePath,
+		typeClosure:     typeSet{},
+		outputTypes:     typeSet{},
+		roots:           newPackageSet(goPackages...),
 	}
 
 	// Gather the provider type, resource types, and functions.
@@ -581,8 +582,8 @@ func (pp *pulumiPackage) checkComponentResources() hcl.Diagnostics {
 	return diags
 }
 
-func Generate(name string, packages ...*packages.Package) (map[string][]byte, hcl.Diagnostics) {
-	pp, diags := gatherPulumiPackage(name, packages)
+func Generate(name, rootPackagePath string, packages ...*packages.Package) (map[string][]byte, hcl.Diagnostics) {
+	pp, diags := gatherPulumiPackage(name, rootPackagePath, packages)
 	if diags.HasErrors() {
 		return nil, diags
 	}

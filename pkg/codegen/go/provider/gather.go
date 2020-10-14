@@ -109,17 +109,21 @@ func (m *pulumiModule) gatherFile(file *ast.File) hcl.Diagnostics {
 }
 
 func (p *pulumiPackage) gatherModule(goPackage *packages.Package) hcl.Diagnostics {
-	if !strings.HasPrefix(goPackage.PkgPath, p.rootPackagePath) {
-		return hcl.Diagnostics{newError(nil, nil, fmt.Sprintf("package %v is not a child of %v", goPackage.PkgPath, p.rootPackagePath))}
+	pkgPath := goPackage.Types.Path()
+	if pkgPath != p.rootPackagePath && !strings.HasPrefix(pkgPath, p.rootPackagePath+"/") {
+		return hcl.Diagnostics{newError(nil, nil, fmt.Sprintf("package %v is not a child of %v", pkgPath, p.rootPackagePath))}
 	}
 
-	moduleName := goPackage.PkgPath[len(p.rootPackagePath):]
+	moduleName := pkgPath[len(p.rootPackagePath):]
 	switch moduleName {
 	case "":
 		moduleName = "index"
-	case "index":
+	case "/index":
 		// TODO(pdg): this should really be deduped against the other module names.
 		moduleName = "index_"
+	default:
+		// Trim the leading "/"
+		moduleName = moduleName[1:]
 	}
 
 	m := &pulumiModule{
