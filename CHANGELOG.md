@@ -19,6 +19,10 @@ CHANGELOG
   `PULUMI_DISABLE_PROVIDER_PREVIEW` flag can be set to a truthy value (e.g. `1`) to enable the
   previous and more conservative behavior for previews.
   [#5443](https://github.com/pulumi/pulumi/pull/5443).
+  
+- Add an import command to the Pulumi CLI. This command can be used to import existing resources
+  into a Pulumi stack.
+  [#4765](https://github.com/pulumi/pulumi/pull/4765)
 
 - [cli] Remove eternal loop if a configured passphrase is invalid.
   [#5507](https://github.com/pulumi/pulumi/pull/5507)

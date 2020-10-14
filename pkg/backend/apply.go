@@ -63,11 +63,12 @@ var updateTextMap = map[apitype.UpdateKind]struct {
 	previewText string
 	text        string
 }{
-	apitype.PreviewUpdate: {"update", "Previewing"},
-	apitype.UpdateUpdate:  {"update", "Updating"},
-	apitype.RefreshUpdate: {"refresh", "Refreshing"},
-	apitype.DestroyUpdate: {"destroy", "Destroying"},
-	apitype.ImportUpdate:  {"import", "Importing"},
+	apitype.PreviewUpdate:        {"update", "Previewing"},
+	apitype.UpdateUpdate:         {"update", "Updating"},
+	apitype.RefreshUpdate:        {"refresh", "Refreshing"},
+	apitype.DestroyUpdate:        {"destroy", "Destroying"},
+	apitype.StackImportUpdate:    {"stack import", "Importing"},
+	apitype.ResourceImportUpdate: {"import", "Importing"},
 }
 
 type response string
@@ -154,7 +155,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
 		prompt := "\b" + opts.Display.Color.Colorize(
 			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
-				kind, previewWarning)+colors.Reset)
+				updateTextMap[kind].previewText, previewWarning)+colors.Reset)
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +
 				opts.Display.Color.Colorize(colors.SpecImportant+

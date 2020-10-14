@@ -33,8 +33,10 @@ const (
 	RenameUpdate UpdateKind = "rename"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
-	// ImportUpdate is an update that entails importing a raw checkpoint file.
-	ImportUpdate UpdateKind = "import"
+	// StackImportUpdate is an update that entails importing a raw checkpoint file.
+	StackImportUpdate UpdateKind = "import"
+	// ResourceImportUpdate is an update that entails importing one or more resources.
+	ResourceImportUpdate = "resource-import"
 )
 
 // UpdateResult is an enum for the result of the update.

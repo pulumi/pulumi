@@ -414,8 +414,8 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 	policies := map[string]string{}
 
-	// Refresh does not execute Policy Packs.
-	if !opts.isRefresh {
+	// Refresh and Import do not execute Policy Packs.
+	if !opts.isRefresh && !opts.isImport {
 		for _, p := range opts.RequiredPolicies {
 			policies[p.Name()] = p.Version()
 		}
