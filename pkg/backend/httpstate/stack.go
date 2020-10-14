@@ -148,6 +148,11 @@ func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (en
 	return backend.UpdateStack(ctx, s, op)
 }
 
+func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
+	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	return backend.ImportStack(ctx, s, op, imports)
+}
+
 func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }

@@ -454,8 +454,8 @@ func newUpCmd() *cobra.Command {
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
 
-	cmd.PersistentFlags().BoolVar(
-		&skipPreview, "skip-preview", false,
+	cmd.PersistentFlags().BoolVarP(
+		&skipPreview, "skip-preview", "f", false,
 		"Do not perform a preview before performing the update")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,

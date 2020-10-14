@@ -116,6 +116,9 @@ type planOptions struct {
 	Diag       diag.Sink    // the sink to use for diag'ing.
 	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
 
+	isImport bool            // True if this is an import.
+	imports  []deploy.Import // Resources to import, if this is an import.
+
 	// true if we're planning a refresh.
 	isRefresh bool
 
@@ -158,8 +161,26 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
-	plan, err := deploy.NewPlan(
-		plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+
+	var plan *deploy.Plan
+	if !opts.isImport {
+		plan, err = deploy.NewPlan(
+			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+	} else {
+		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx)
+		if pluginErr != nil {
+			return nil, pluginErr
+		}
+		for i := range opts.imports {
+			imp := &opts.imports[i]
+			if imp.Provider == "" && imp.Version == nil {
+				imp.Version = defaultProviderVersions[imp.Type.Package()]
+			}
+		}
+
+		plan, err = deploy.NewImportPlan(plugctx, target, proj.Name, opts.imports, dryRun)
+	}
+
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err

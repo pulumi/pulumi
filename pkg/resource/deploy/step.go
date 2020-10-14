@@ -770,6 +770,7 @@ type ImportStep struct {
 	old           *resource.State                // the state of the resource fetched from the provider.
 	new           *resource.State                // the newly computed state of the resource after importing.
 	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
+	planned       bool                           // true if this import is from an import plan.
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
@@ -812,6 +813,22 @@ func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, n
 	}
 }
 
+func newImportPlanStep(plan *Plan, new *resource.State) Step {
+	contract.Assert(new != nil)
+	contract.Assert(new.URN != "")
+	contract.Assert(new.ID != "")
+	contract.Assert(new.Custom)
+	contract.Assert(!new.Delete)
+	contract.Assert(!new.External)
+
+	return &ImportStep{
+		plan:    plan,
+		reg:     noopEvent(0),
+		new:     new,
+		planned: true,
+	}
+}
+
 func (s *ImportStep) Op() StepOp {
 	if s.replacing {
 		return OpImportReplacement
@@ -832,6 +849,19 @@ func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+
+	// If this is a planned import, ensure that the resource does not exist in the old state file.
+	if s.planned {
+		if _, ok := s.plan.olds[s.new.URN]; ok {
+			return resource.StatusOK, nil, errors.Errorf("resource '%v' already exists", s.new.URN)
+		}
+		if s.new.Parent.Type() != resource.RootStackType {
+			if _, ok := s.plan.olds[s.new.Parent]; !ok {
+				return resource.StatusOK, nil, errors.Errorf("unknown parent '%v' for resource '%v'",
+					s.new.Parent, s.new.URN)
+			}
+		}
+	}
 
 	// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 	// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
@@ -867,7 +897,28 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID)
 
-	// Check the user inputs using the provider inputs for defaults.
+	// If this step came from an import plan, we need to fetch any required inputs from the state.
+	if s.planned {
+		contract.Assert(len(s.new.Inputs) == 0)
+
+		pkg, err := s.plan.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
+		if err != nil {
+			return resource.StatusOK, nil, errors.Wrapf(err, "failed to fetch provider schema")
+		}
+
+		r, ok := pkg.GetResource(string(s.new.Type))
+		if !ok {
+			return resource.StatusOK, nil, errors.Errorf("unknown resource type '%v'", s.new.Type)
+		}
+		for _, p := range r.InputProperties {
+			if p.IsRequired {
+				k := resource.PropertyKey(p.Name)
+				s.new.Inputs[k] = s.old.Inputs[k]
+			}
+		}
+	}
+
+	// Check the inputs using the provider inputs for defaults.
 	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)
 	if err != nil {
 		return rst, nil, err
@@ -877,27 +928,59 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 	s.new.Inputs = inputs
 
-	// Diff the user inputs against the provider inputs. If there are any differences, fail the import.
+	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
+	// is from an import plan.
 	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
 		s.ignoreChanges)
 	if err != nil {
 		return rst, nil, err
 	}
-	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
-	if diff.Changes != plugin.DiffNone {
-		const message = "inputs to import do not match the existing resource"
+	if !s.planned {
+		s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
-		if preview {
-			s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
-		} else {
-			err = errors.New(message)
+		if diff.Changes != plugin.DiffNone {
+			const message = "inputs to import do not match the existing resource"
+
+			if preview {
+				s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
+			} else {
+				err = errors.New(message)
+			}
 		}
-	}
 
-	// If we were asked to replace an existing, non-External resource, pend the deletion here.
-	if err == nil && s.replacing {
-		s.original.Delete = true
+		// If we were asked to replace an existing, non-External resource, pend the deletion here.
+		if err == nil && s.replacing {
+			s.original.Delete = true
+		}
+	} else {
+		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
+
+		// If there were diffs between the inputs supplied by the import and the actual state of the resource, copy
+		// the differing properties from the actual inputs/state. This is only possible if the provider returned a
+		// detailed diff. If no detailed diff was returned, take the actual inputs wholesale.
+		if diff.Changes != plugin.DiffNone {
+			if diff.DetailedDiff == nil {
+				s.new.Inputs = s.old.Inputs
+			} else {
+				for path, pdiff := range diff.DetailedDiff {
+					elements, err := resource.ParsePropertyPath(path)
+					if err != nil {
+						continue
+					}
+
+					source := s.old.Outputs
+					if pdiff.InputDiff {
+						source = s.old.Inputs
+					}
+
+					if old, ok := elements.Get(resource.NewObjectProperty(source)); ok {
+						// Ignore failure here.
+						elements.Add(resource.NewObjectProperty(s.new.Inputs), old)
+					}
+				}
+			}
+		}
 	}
 
 	return rst, complete, err

@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v2/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
@@ -112,6 +113,9 @@ type Plan struct {
 	target               *Target                          // the deployment target.
 	prev                 *Snapshot                        // the old resource snapshot for comparison.
 	olds                 map[resource.URN]*resource.State // a map of all old resources.
+	imports              []Import                         // resources to import, if this is an import plan.
+	isImport             bool                             // true if this is an import plan.
+	schemaLoader         schema.Loader                    // the schema cache for this plan, if any.
 	source               Source                           // the source of new resources.
 	localPolicyPackPaths []string                         // the policy packs to run during this plan's generation.
 	preview              bool                             // true if this plan is to be previewed rather than applied.
@@ -190,28 +194,15 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	return nil
 }
 
-// NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
-//
-// From the old and new states, it understands how to orchestrate an evaluation and analyze the resulting resources.
-// The plan may be used to simply inspect a series of operations, or actually perform them; these operations are
-// generated based on analysis of the old and new states.  If a resource exists in new, but not old, for example, it
-// results in a create; if it exists in both, but is different, it results in an update; and so on and so forth.
-//
-// Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
-// a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
-func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
-	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Plan, error) {
-
-	contract.Assert(ctx != nil)
-	contract.Assert(target != nil)
-	contract.Assert(source != nil)
-
+// migrateProviders is responsible for adding default providers to old snapshots and filling in output properties for
+// providers that do not have them.
+func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 	// Add any necessary default provider references to the previous snapshot in order to accommodate stacks that were
 	// created prior to the changes that added first-class providers. We do this here rather than in the migration
 	// package s.t. the inputs to any default providers (which we fetch from the stacks's configuration) are as
 	// accurate as possible.
 	if err := addDefaultProviders(target, source, prev); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Migrate provider resources from the old, output-less format to the new format where all inputs are reflected as
@@ -228,35 +219,66 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		}
 	}
 
-	var depGraph *graph.DependencyGraph
-	var oldResources []*resource.State
+	return nil
+}
 
-	// Produce a map of all old resources for fast resources.
+func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[resource.URN]*resource.State, error) {
+	olds := make(map[resource.URN]*resource.State)
+	if prev == nil {
+		return nil, olds, nil
+	}
+
+	if prev.PendingOperations != nil && !preview {
+		return nil, nil, PlanPendingOperationsError{prev.PendingOperations}
+	}
+
+	for _, oldres := range prev.Resources {
+		// Ignore resources that are pending deletion; these should not be recorded in the LUT.
+		if oldres.Delete {
+			continue
+		}
+
+		urn := oldres.URN
+		if olds[urn] != nil {
+			return nil, nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
+		}
+		olds[urn] = oldres
+	}
+
+	return prev.Resources, olds, nil
+}
+
+// NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
+//
+// From the old and new states, it understands how to orchestrate an evaluation and analyze the resulting resources.
+// The plan may be used to simply inspect a series of operations, or actually perform them; these operations are
+// generated based on analysis of the old and new states.  If a resource exists in new, but not old, for example, it
+// results in a create; if it exists in both, but is different, it results in an update; and so on and so forth.
+//
+// Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
+// a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
+func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
+	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Plan, error) {
+
+	contract.Assert(ctx != nil)
+	contract.Assert(target != nil)
+	contract.Assert(source != nil)
+
+	if err := migrateProviders(target, prev, source); err != nil {
+		return nil, err
+	}
+
+	// Produce a map of all old resources for fast access.
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// planExecutor.refresh for details.
-	olds := make(map[resource.URN]*resource.State)
-	if prev != nil {
-		if prev.PendingOperations != nil && !preview {
-			return nil, PlanPendingOperationsError{prev.PendingOperations}
-		}
-		oldResources = prev.Resources
-
-		for _, oldres := range oldResources {
-			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
-			if oldres.Delete {
-				continue
-			}
-
-			urn := oldres.URN
-			if olds[urn] != nil {
-				return nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
-			}
-			olds[urn] = oldres
-		}
-
-		depGraph = graph.NewDependencyGraph(oldResources)
+	oldResources, olds, err := buildResourceMap(prev, preview)
+	if err != nil {
+		return nil, err
 	}
+
+	// Build the dependency graph for the old resources.
+	depGraph := graph.NewDependencyGraph(oldResources)
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient)

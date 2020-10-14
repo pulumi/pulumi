@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.12.0 (2020-10-14)
 
 - NodeJS Automation API.
   [#5347](https://github.com/pulumi/pulumi/pull/5347)
@@ -20,6 +23,10 @@ CHANGELOG
   previous and more conservative behavior for previews.
   [#5443](https://github.com/pulumi/pulumi/pull/5443).
 
+- Add an import command to the Pulumi CLI. This command can be used to import existing resources
+  into a Pulumi stack.
+  [#4765](https://github.com/pulumi/pulumi/pull/4765)
+
 - [cli] Remove eternal loop if a configured passphrase is invalid.
   [#5507](https://github.com/pulumi/pulumi/pull/5507)
 
@@ -34,12 +41,31 @@ CHANGELOG
 
 - Support self-contained executables as binary option for .NET programs.
   [#5519](https://github.com/pulumi/pulumi/pull/5519)
-  
+
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
-  
+
+- [cli] Respect logging verbosity as part of pulumi plugin install commands
+  [#5549](https://github.com/pulumi/pulumi/pull/5549)
+
+- [cli] Accept `-f` as a shorthand for `--skip-preview` on `pulumi up`, `pulumi refresh` and `pulumi destroy` operations
+  [#5556](https://github.com/pulumi/pulumi/pull/5556)
+
 - [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
   [#5550](https://github.com/pulumi/pulumi/pull/5545)
+
+- [automation api] Add support for passing a private ssh key for git authentication that doesn't rely on a file path
+  [#5557](https://github.com/pulumi/pulumi/pull/5557)
+
+- [cli] Improve user experience when pulumi plugin rm --all finds no plugins
+  to remove. The previous behaviour was an error and should not be so.
+  [#5547](https://github.com/pulumi/pulumi/pull/5547)
+
+- [sdk/python] Fix ResourceOptions annotations and doc strings.
+  [#5559](https://github.com/pulumi/pulumi/pull/5559)
+
+- [sdk/dotnet] Fix HashSet concurrency issue.
+  [#5563](https://github.com/pulumi/pulumi/pull/5563)
 
 ## 2.11.2 (2020-10-01)
 

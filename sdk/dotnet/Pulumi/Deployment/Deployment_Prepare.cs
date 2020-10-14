@@ -151,7 +151,12 @@ namespace Pulumi
                 {
                     if (resource is ComponentResource)
                     {
-                        AddTransitivelyReferencedChildResourcesOfComponentResources(resource.ChildResources, result);
+                        HashSet<Resource> childResources;
+                        lock (resource.ChildResources)
+                        {
+                            childResources = new HashSet<Resource>(resource.ChildResources);
+                        }
+                        AddTransitivelyReferencedChildResourcesOfComponentResources(childResources, result);
                     }
                 }
             }

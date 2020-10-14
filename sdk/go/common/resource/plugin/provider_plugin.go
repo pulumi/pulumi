@@ -909,6 +909,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News:          mnews,
 		Timeout:       timeout,
 		IgnoreChanges: ignoreChanges,
+		Preview:       preview,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
