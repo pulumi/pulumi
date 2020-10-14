@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.12.0 (2020-10-14)
 
 - NodeJS Automation API.
   [#5347](https://github.com/pulumi/pulumi/pull/5347)
@@ -19,7 +22,7 @@ CHANGELOG
   `PULUMI_DISABLE_PROVIDER_PREVIEW` flag can be set to a truthy value (e.g. `1`) to enable the
   previous and more conservative behavior for previews.
   [#5443](https://github.com/pulumi/pulumi/pull/5443).
-  
+
 - Add an import command to the Pulumi CLI. This command can be used to import existing resources
   into a Pulumi stack.
   [#4765](https://github.com/pulumi/pulumi/pull/4765)
@@ -38,10 +41,10 @@ CHANGELOG
 
 - Support self-contained executables as binary option for .NET programs.
   [#5519](https://github.com/pulumi/pulumi/pull/5519)
-  
+
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
-  
+
 - [cli] Respect logging verbosity as part of pulumi plugin install commands
   [#5549](https://github.com/pulumi/pulumi/pull/5549)
 
@@ -50,7 +53,7 @@ CHANGELOG
 
 - [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
   [#5550](https://github.com/pulumi/pulumi/pull/5545)
-  
+
 - [automation api] Add support for passing a private ssh key for git authentication that doesn't rely on a file path
   [#5557](https://github.com/pulumi/pulumi/pull/5557)
 
