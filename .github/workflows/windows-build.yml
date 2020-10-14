@@ -28,6 +28,8 @@ jobs:
         python-version: [3.7]
         dotnet: ['3.1.301']
     runs-on: ${{ matrix.platform }}
+    env:
+      GOPATH: ${{ github.workspace }}
     steps:
     - name: Install DotNet ${{ matrix.dotnet }}
       uses: actions/setup-dotnet@v1
