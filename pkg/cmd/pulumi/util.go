@@ -624,9 +624,7 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	}
 
 	// Store committer and author information.
-	m.Environment[backend.GitCommitter] = commit.Committer.Name
 	m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
-	m.Environment[backend.GitAuthor] = commit.Author.Name
 	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
 
 	// If the worktree is dirty, set a bit, as this could be a mistake.
