@@ -115,6 +115,11 @@ func (a *Asset) GetURI() (string, bool) {
 	return "", false
 }
 
+// MarshalPropertyValue marshals the asset as a PropertyValue.
+func (a *Asset) MarshalPropertyValue() (PropertyValue, error) {
+	return NewAssetProperty(a), nil
+}
+
 var (
 	functionRegexp    = regexp.MustCompile(`function __.*`)
 	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
@@ -552,6 +557,11 @@ func (a *Archive) Equals(other *Archive) bool {
 		return false
 	}
 	return a.Hash == other.Hash
+}
+
+// MarshalPropertyValue marshals the archive as a PropertyValue.
+func (a *Archive) MarshalPropertyValue() (PropertyValue, error) {
+	return NewArchiveProperty(a), nil
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.

@@ -74,10 +74,23 @@ type PropertyValue struct {
 	V interface{}
 }
 
+func (v *PropertyValue) UnmarshalPropertyValue(other PropertyValue) error {
+	*v = other
+	return nil
+}
+
+func (v PropertyValue) MarshalPropertyValue() (PropertyValue, error) {
+	return v, nil
+}
+
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
 	Element PropertyValue // the eventual value (type) of the computed property.
+}
+
+func (v Computed) MarshalPropertyValue() (PropertyValue, error) {
+	return NewComputedProperty(v), nil
 }
 
 // Output is a property value that will eventually be computed by the resource provider.  If an output property is
@@ -87,6 +100,10 @@ type Output struct {
 	Element PropertyValue // the eventual value (type) of the output property.
 }
 
+func (v Output) MarshalPropertyValue() (PropertyValue, error) {
+	return NewOutputProperty(v), nil
+}
+
 // Secret indicates that the underlying value should be persisted securely.
 //
 // In order to facilitate the ability to distinguish secrets with identical plaintext in downstream code that may
@@ -94,6 +111,10 @@ type Output struct {
 // copied, its value--not its address--should be copied.
 type Secret struct {
 	Element PropertyValue
+}
+
+func (v *Secret) MarshalPropertyValue() (PropertyValue, error) {
+	return NewSecretProperty(v), nil
 }
 
 type ReqError struct {
@@ -107,6 +128,10 @@ func IsReqError(err error) bool {
 
 func (err *ReqError) Error() string {
 	return fmt.Sprintf("required property '%v' is missing", err.K)
+}
+
+func (m PropertyMap) MarshalPropertyValue() (PropertyValue, error) {
+	return NewObjectProperty(m), nil
 }
 
 // HasValue returns true if the slot associated with the given property key contains a real value.  It returns false

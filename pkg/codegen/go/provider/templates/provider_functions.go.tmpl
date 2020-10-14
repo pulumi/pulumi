@@ -28,7 +28,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 			return nil, nil, err
 		}
 
-		result, err := {{.Function}}(p.newContext(""), p.provider, &functionArgs, nil)
+		result, err := {{.Function}}(p.newContext(""), p.provider, &functionArgs, provider.CallOptions{})
 		if err != nil {
 			return nil, nil, err
 		}

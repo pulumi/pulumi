@@ -47,7 +47,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID, state, inputs resource
 	}
 }
 
-func (p *provider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error) {
+func (p *provider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	switch urn.Type() {
 	{{range .CustomResources}}
 	case "{{.Token}}":
@@ -57,7 +57,7 @@ func (p *provider) Create(urn resource.URN, inputs resource.PropertyMap, timeout
 		}
 
 		var res {{.ResourceType}}
-		id, err := res.Create(p.newContext(urn), p.provider, &args, timeout)
+		id, err := res.Create(p.newContext(urn), p.provider, &args, timeout, provider.CreateOptions{Preview: preview})
 		if err != nil {
 			return "", nil, resource.StatusUnknown, err
 		}
@@ -82,7 +82,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID, inputs, state resource
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
 
-		err := res.Read(p.newContext(urn), p.provider, providersdk.ID(id), nil)
+		err := res.Read(p.newContext(urn), p.provider, providersdk.ID(id), provider.ReadOptions{})
 		if err != nil {
 			return plugin.ReadResult{}, resource.StatusUnknown, err
 		}
@@ -108,7 +108,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID, inputs, state resource
 	}
 }
 
-func (p *provider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+func (p *provider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	switch urn.Type() {
 	{{range .CustomResources}}
 	case "{{.Token}}":
@@ -126,7 +126,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID, state, inputs resour
 			return nil, resource.StatusOK, err
 		}
 
-		if err := res.Update(p.newContext(urn), p.provider, providersdk.ID(id), &args, timeout); err != nil {
+		if err := res.Update(p.newContext(urn), p.provider, providersdk.ID(id), &args, timeout, provider.UpdateOptions{Preview: preview}); err != nil {
 			return nil, resource.StatusUnknown, err
 		}
 
@@ -151,7 +151,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, state resource.Prope
 			return resource.StatusOK, err
 		}
 
-		if err := res.Delete(p.newContext(urn), p.provider, providersdk.ID(id), timeout); err != nil {
+		if err := res.Delete(p.newContext(urn), p.provider, providersdk.ID(id), timeout, provider.DeleteOptions{}); err != nil {
 			return resource.StatusUnknown, err
 		}
 

@@ -7,12 +7,32 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 )
 
-var propertyValueType = reflect.TypeOf(resource.PropertyValue{})
+type Unmarshaler interface {
+	UnmarshalPropertyValue(v resource.PropertyValue) error
+}
+
+type Marshaler interface {
+	MarshalPropertyValue() (resource.PropertyValue, error)
+}
+
+var unmarshalerType = reflect.TypeOf(Unmarshaler(nil))
+
+func isUnmarshaler(dest reflect.Value) (Unmarshaler, bool) {
+	if dest.Kind() != reflect.Ptr {
+		if !dest.CanAddr() {
+			return nil, false
+		}
+		dest = dest.Addr()
+	}
+	if dest.Type().Implements(unmarshalerType) {
+		return dest.Interface().(Unmarshaler), true
+	}
+	return nil, false
+}
 
 func unmarshalProperty(path string, v resource.PropertyValue, dest reflect.Value) error {
-	if dest.Type() == propertyValueType {
-		dest.Set(reflect.ValueOf(v))
-		return nil
+	if unmarshaler, ok := isUnmarshaler(dest); ok {
+		return unmarshaler.UnmarshalPropertyValue(v)
 	}
 
 	for v.IsSecret() {
@@ -138,22 +158,11 @@ func Unmarshal(m resource.PropertyMap, dest interface{}) error {
 	return unmarshalProperty("", resource.NewObjectProperty(m), v)
 }
 
+var marshalerType = reflect.TypeOf(Marshaler(nil))
+
 func marshalProperty(v reflect.Value) (resource.PropertyValue, error) {
-	if v.CanInterface() {
-		switch v := v.Interface().(type) {
-		case resource.PropertyValue:
-			return v, nil
-		case *resource.Archive:
-			return resource.NewArchiveProperty(v), nil
-		case *resource.Asset:
-			return resource.NewAssetProperty(v), nil
-		case *resource.Secret:
-			return resource.NewSecretProperty(v), nil
-		case resource.Computed:
-			return resource.NewComputedProperty(v), nil
-		case resource.Output:
-			return resource.NewOutputProperty(v), nil
-		}
+	if v.Type().Implements(marshalerType) {
+		return v.Interface().(Marshaler).MarshalPropertyValue()
 	}
 
 	switch v.Kind() {
