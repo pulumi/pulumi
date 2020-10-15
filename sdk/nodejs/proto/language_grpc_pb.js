@@ -87,6 +87,28 @@ function deserialize_pulumirpc_RunResponse(buffer_arg) {
   return language_pb.RunResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_StartProviderRequest(arg) {
+  if (!(arg instanceof language_pb.StartProviderRequest)) {
+    throw new Error('Expected argument of type pulumirpc.StartProviderRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_StartProviderRequest(buffer_arg) {
+  return language_pb.StartProviderRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_StartProviderResponse(arg) {
+  if (!(arg instanceof language_pb.StartProviderResponse)) {
+    throw new Error('Expected argument of type pulumirpc.StartProviderResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_StartProviderResponse(buffer_arg) {
+  return language_pb.StartProviderResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
@@ -114,6 +136,18 @@ run: {
     requestDeserialize: deserialize_pulumirpc_RunRequest,
     responseSerialize: serialize_pulumirpc_RunResponse,
     responseDeserialize: deserialize_pulumirpc_RunResponse,
+  },
+  // StartProvider starts a resource provider implemented by the program.
+startProvider: {
+    path: '/pulumirpc.LanguageRuntime/StartProvider',
+    requestStream: false,
+    responseStream: false,
+    requestType: language_pb.StartProviderRequest,
+    responseType: language_pb.StartProviderResponse,
+    requestSerialize: serialize_pulumirpc_StartProviderRequest,
+    requestDeserialize: deserialize_pulumirpc_StartProviderRequest,
+    responseSerialize: serialize_pulumirpc_StartProviderResponse,
+    responseDeserialize: deserialize_pulumirpc_StartProviderResponse,
   },
   // GetPluginInfo returns generic information about this plugin, like its version.
 getPluginInfo: {

@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
@@ -39,24 +40,59 @@ import (
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
-	ctx         context.Context
-	info        RunInfo
-	stack       Resource
-	exports     map[string]Input
+	ctx     context.Context
+	info    RunInfo
+	stack   Resource
+	exports map[string]Input
+
 	monitor     pulumirpc.ResourceMonitorClient
 	monitorConn *grpc.ClientConn
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
-	rpcs        int         // the number of outstanding RPC requests.
-	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
-	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
-	rpcError    error       // the first error (if any) encountered during an RPC.
+
+	runProgram bool // true if the program should run, false if we're only serving resource providers.
+
+	rpcs     int         // the number of outstanding RPC requests.
+	rpcsDone *sync.Cond  // an event signaling completion of RPCs.
+	rpcsLock *sync.Mutex // a lock protecting the RPC count and event.
+	rpcError error       // the first error (if any) encountered during an RPC.
 
 	Log Log // the logging interface for the Pulumi log stream.
 }
 
 // NewContext creates a fresh run context out of the given metadata.
 func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
+	// Validate some properties.
+	if !info.serve {
+		if info.Project == "" {
+			return nil, errors.New("missing project name")
+		} else if info.Stack == "" {
+			return nil, errors.New("missing stack name")
+		} else if info.MonitorAddr == "" && info.Mocks == nil {
+			return nil, errors.New("missing resource monitor RPC address")
+		} else if info.EngineAddr == "" && info.Mocks == nil {
+			return nil, errors.New("missing engine RPC address")
+		}
+	}
+
+	// Connect to the engine's gRPC service if we have an address.
+	var engineConn *grpc.ClientConn
+	var engine pulumirpc.EngineClient
+	if addr := info.EngineAddr; addr != "" {
+		conn, err := grpc.Dial(
+			info.EngineAddr,
+			grpc.WithInsecure(),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
+		}
+		engineConn = conn
+		engine = pulumirpc.NewEngineClient(engineConn)
+	}
+
+	// Start a language server for the purpose of launching plugins.
+
 	// Connect to the gRPC endpoints if we have addresses for them.
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
@@ -71,21 +107,6 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		}
 		monitorConn = conn
 		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
-	}
-
-	var engineConn *grpc.ClientConn
-	var engine pulumirpc.EngineClient
-	if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.Dial(
-			info.EngineAddr,
-			grpc.WithInsecure(),
-			rpcutil.GrpcChannelOptions(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
-		}
-		engineConn = conn
-		engine = pulumirpc.NewEngineClient(engineConn)
 	}
 
 	if info.Mocks != nil {
@@ -1064,4 +1085,99 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 	ctx.stack.addTransformation(t)
 
 	return nil
+}
+
+type languageRuntimeServer struct {
+	m sync.Mutex
+
+	run       chan<- RunInfo
+	address   string
+	providers map[PackageInfo]ProviderLoader
+
+	closed bool
+	cancel chan bool
+	done   chan error
+}
+
+func startLanguageRuntimeServer(engine pulumirpc.EngineClient) (*languageRuntimeServer, error) {
+	s := &languageRuntimeServer{
+		cancel: make(chan bool),
+	}
+	s.c = sync.NewCond(&s.m)
+
+	port, done, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
+			return nil
+		},
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.address, s.done = fmt.Sprintf("127.0.0.1:%d", port), done
+	return s, nil
+}
+
+func (s *languageRuntimeServer) isClosed() bool {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	return s.closed
+}
+
+func (s *languageRuntimeServer) Close() error {
+	s.m.Lock()
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+	s.m.Unlock()
+
+	s.cancel <- true
+	close(s.cancel)
+	return <-s.done
+}
+
+func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return &pulumirpc.GetRequiredPluginsResponse{}, nil
+}
+
+func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if s.isClosed() {
+		return nil, fmt.Errorf("service closed")
+	}
+
+	runInfo := RunInfo{
+		MonitorAddr: req.GetMonitorAddress(),
+		Config:      req.GetConfig(),
+		Project:     req.GetProject(),
+		Stack:       req.GetStack(),
+		Parallel:    int(req.GetParallel()),
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("request canceled")
+	case s.run <- runInfo:
+		return &pulumirpc.RunResponse{}, nil
+	}
+}
+
+func (s *languageRuntimeServer) StartProvider(ctx context.Context, req *pulumirpc.StartProviderRequiest) (*pulumirpc.StartProviderResponse, error) {
+	info := PackageInfo{
+		Name:    req.GetName(),
+		Version: req.GetVersion(),
+	}
+	loader, ok := s.providers[info]
+	if !ok {
+		return nil, fmt.Errorf("unknown provider %v@%v", info.Name, info.Version)
+	}
+	provider, err := loader()
+}
+
+func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{
+		Version: "1.0.0",
+	}, nil
 }

@@ -46,12 +46,12 @@ func (l *logger) Warningf(f string, args ...interface{}) {
 type Context struct {
 	context.Context
 
-	host plugin.Host
-	urn  resource.URN
+	logger plugin.Logger
+	urn    resource.URN
 }
 
-func NewContext(ctx context.Context, host plugin.Host, urn resource.URN) *Context {
-	return &Context{Context: ctx, host: host, urn: urn}
+func NewContext(ctx context.Context, logger plugin.Logger, urn resource.URN) *Context {
+	return &Context{Context: ctx, logger: logger, urn: urn}
 }
 
 func (ctx *Context) Log() Logger {
@@ -59,7 +59,7 @@ func (ctx *Context) Log() Logger {
 }
 
 func (ctx *Context) LogStream(streamID int) Logger {
-	return &logger{logFunc: ctx.host.Log, urn: ctx.urn, streamID: int32(streamID)}
+	return &logger{logFunc: ctx.logger.Log, urn: ctx.urn, streamID: int32(streamID)}
 }
 
 func (ctx *Context) Status() Logger {
@@ -67,5 +67,5 @@ func (ctx *Context) Status() Logger {
 }
 
 func (ctx *Context) StatusStream(streamID int) Logger {
-	return &logger{logFunc: ctx.host.LogStatus, urn: ctx.urn, streamID: int32(streamID)}
+	return &logger{logFunc: ctx.logger.LogStatus, urn: ctx.urn, streamID: int32(streamID)}
 }

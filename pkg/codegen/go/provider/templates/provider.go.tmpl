@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	providersdk "github.com/pulumi/pulumi/sdk/v2/go/x/provider"
+	providersdk "github.com/pulumi/pulumi/sdk/v2/go/pulumi/provider"
 
 	{{range .ProviderImports}}
 	{{.Name}} "{{.Path}}"

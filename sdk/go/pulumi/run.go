@@ -24,6 +24,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -61,17 +62,6 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 		o(&info)
 	}
 
-	// Validate some properties.
-	if info.Project == "" {
-		return errors.New("missing project name")
-	} else if info.Stack == "" {
-		return errors.New("missing stack name")
-	} else if info.MonitorAddr == "" && info.Mocks == nil {
-		return errors.New("missing resource monitor RPC address")
-	} else if info.EngineAddr == "" && info.Mocks == nil {
-		return errors.New("missing engine RPC address")
-	}
-
 	// Create a fresh context.
 	ctx, err := NewContext(context.TODO(), info)
 	if err != nil {
@@ -79,13 +69,17 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return RunWithContext(ctx, body)
+	return runWithContext(ctx, body)
 }
 
-// RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
+// runWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
 // configuration, and engine connection.
-func RunWithContext(ctx *Context, body RunFunc) error {
+func runWithContext(ctx *Context, body RunFunc) error {
 	info := ctx.info
+
+	if !ctx.runProgram {
+		return nil
+	}
 
 	// Create a root stack resource that we'll parent everything to.
 	var stack ResourceState
@@ -131,7 +125,10 @@ type RunInfo struct {
 	MonitorAddr string
 	EngineAddr  string
 	Mocks       MockResourceMonitor
-	getPlugins  bool
+
+	serve      bool
+	getPlugins bool
+	providers  map[PackageInfo]ProviderLoader
 }
 
 // getEnvInfo reads various program information from the process environment.
@@ -140,6 +137,7 @@ func getEnvInfo() RunInfo {
 	parallel, _ := strconv.Atoi(os.Getenv(EnvParallel))
 	dryRun, _ := strconv.ParseBool(os.Getenv(EnvDryRun))
 	getPlugins, _ := strconv.ParseBool(os.Getenv(envPlugins))
+	serve, _ := strconv.ParseBool(os.Getenv(envServe))
 
 	var config map[string]string
 	if cfg := os.Getenv(EnvConfig); cfg != "" {
@@ -154,6 +152,7 @@ func getEnvInfo() RunInfo {
 		DryRun:      dryRun,
 		MonitorAddr: os.Getenv(EnvMonitor),
 		EngineAddr:  os.Getenv(EnvEngine),
+		serve:       serve,
 		getPlugins:  getPlugins,
 	}
 }
@@ -175,6 +174,8 @@ const (
 	EnvEngine = "PULUMI_ENGINE"
 	// envPlugins is the envvar used to request that the Pulumi program print its set of required plugins and exit.
 	envPlugins = "PULUMI_PLUGINS"
+	// envServe is the envvar used to request that the Pulumi program run a languge service itself.
+	envServe = "PULUMI_SERVE"
 )
 
 type PackageInfo struct {
@@ -189,12 +190,20 @@ func RegisterPackage(info PackageInfo) {
 	packageRegistry[info] = struct{}{}
 }
 
-func printRequiredPlugins() {
+func printRequiredPlugins(runInfo RunInfo) {
 	plugins := []PackageInfo{}
 	for info := range packageRegistry {
 		plugins = append(plugins, info)
 	}
 
-	err := json.NewEncoder(os.Stdout).Encode(map[string]interface{}{"plugins": plugins})
+	providers := []PackageInfo{}
+	for info := range runInfo.providers {
+		providers = append(providers, info)
+	}
+
+	err := json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		"plugins":   plugins,
+		"providers": providers,
+	})
 	contract.IgnoreError(err)
 }

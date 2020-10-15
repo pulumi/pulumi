@@ -82,7 +82,7 @@ func (m *pulumiModule) importProviderSDK() (*providerSDK, hcl.Diagnostics) {
 
 	packageName := m.goPackage.Syntax[0].Name
 
-	sdk, ok := findPackage("github.com/pulumi/pulumi/sdk/v2/go/x/provider", m.goPackage.Types.Imports())
+	sdk, ok := findPackage("github.com/pulumi/pulumi/sdk/v2/go/pulumi/provider", m.goPackage.Types.Imports())
 	if !ok {
 		m.providerSDK = &providerSDK{}
 		return nil, hcl.Diagnostics{m.errorf(packageName, "package %v does not import the Pulumi resource SDK", packageName.Name)}

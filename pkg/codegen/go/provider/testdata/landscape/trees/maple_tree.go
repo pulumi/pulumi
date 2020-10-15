@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/x/provider"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/provider"
 )
 
 type MapleTreeArgs struct {

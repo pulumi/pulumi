@@ -27,6 +27,11 @@ class LanguageRuntimeStub(object):
         request_serializer=language__pb2.RunRequest.SerializeToString,
         response_deserializer=language__pb2.RunResponse.FromString,
         )
+    self.StartProvider = channel.unary_unary(
+        '/pulumirpc.LanguageRuntime/StartProvider',
+        request_serializer=language__pb2.StartProviderRequest.SerializeToString,
+        response_deserializer=language__pb2.StartProviderResponse.FromString,
+        )
     self.GetPluginInfo = channel.unary_unary(
         '/pulumirpc.LanguageRuntime/GetPluginInfo',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -53,6 +58,13 @@ class LanguageRuntimeServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def StartProvider(self, request, context):
+    """StartProvider starts a resource provider implemented by the program.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def GetPluginInfo(self, request, context):
     """GetPluginInfo returns generic information about this plugin, like its version.
     """
@@ -72,6 +84,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
           servicer.Run,
           request_deserializer=language__pb2.RunRequest.FromString,
           response_serializer=language__pb2.RunResponse.SerializeToString,
+      ),
+      'StartProvider': grpc.unary_unary_rpc_method_handler(
+          servicer.StartProvider,
+          request_deserializer=language__pb2.StartProviderRequest.FromString,
+          response_serializer=language__pb2.StartProviderResponse.SerializeToString,
       ),
       'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
           servicer.GetPluginInfo,

@@ -1,7 +1,7 @@
 package landscape
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/x/provider"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/provider"
 )
 
 type ProviderArgs struct {

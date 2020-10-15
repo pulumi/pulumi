@@ -31,11 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-// A Host hosts provider plugins and makes them easily accessible by package name.
-type Host interface {
-	// ServerAddr returns the address at which the host's RPC interface may be found.
-	ServerAddr() string
-
+// A Logger provides logging capabilities to consumers.
+type Logger interface {
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
 	Log(sev diag.Severity, urn resource.URN, msg string, streamID int32)
@@ -44,6 +41,14 @@ type Host interface {
 	// up in the `Info` column of the progress display, but not in the final output. Messages can
 	// have a resource URN associated with them.  If no urn is provided, the message is global.
 	LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+}
+
+// A Host hosts provider plugins and makes them easily accessible by package name.
+type Host interface {
+	Logger
+
+	// ServerAddr returns the address at which the host's RPC interface may be found.
+	ServerAddr() string
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
 	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
