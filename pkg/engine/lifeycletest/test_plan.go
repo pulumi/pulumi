@@ -286,7 +286,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				_ []Event, res result.Result) result.Result {
 
-				// Should see only referesh-sames.
+				// Should see only refresh-sames.
 				for _, entry := range entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
