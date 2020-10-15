@@ -148,6 +148,14 @@ func (host *pluginHost) isClosed() bool {
 	return host.closed
 }
 
+func (host *pluginHost) RegisterProvider(pkg tokens.Package, version semver.Version, loader plugin.ProviderFunc) error {
+	providerLoader := NewProviderLoaderWithHost(pkg, version, func(host plugin.Host) (plugin.Provider, error) {
+		return loader(host)
+	})
+	host.providerLoaders = append(host.providerLoaders, providerLoader)
+	return nil
+}
+
 func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	var best *ProviderLoader
 	for _, l := range host.providerLoaders {

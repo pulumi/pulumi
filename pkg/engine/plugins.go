@@ -75,7 +75,7 @@ func newPluginSet() pluginSet {
 func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := newPluginSet()
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
+	langhostPlugins, langhostProviders, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
@@ -89,6 +89,17 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
 			plug.Name, plug.Version, plug.ServerURL)
 		set.Add(plug)
+	}
+	for _, provider := range langhostProviders {
+		var version semver.Version
+		if provider.Version != nil {
+			version = *provider.Version
+		}
+
+		plugctx.Host.RegisterProvider(tokens.Package(provider.Name), version, func(logger plugin.Logger) (plugin.Provider, error) {
+
+			return nil, nil
+		})
 	}
 	return set, nil
 }

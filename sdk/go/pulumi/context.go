@@ -17,9 +17,11 @@
 package pulumi
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"sort"
 	"strings"
@@ -30,6 +32,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -63,7 +66,7 @@ type Context struct {
 // NewContext creates a fresh run context out of the given metadata.
 func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	// Validate some properties.
-	if !info.serve {
+	if info.springboard == "" {
 		if info.Project == "" {
 			return nil, errors.New("missing project name")
 		} else if info.Stack == "" {
@@ -91,7 +94,35 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engine = pulumirpc.NewEngineClient(engineConn)
 	}
 
-	// Start a language server for the purpose of launching plugins.
+	// Start a language server for the purpose of launching plugins if requested.
+	if info.springboard != "" {
+		run := make(chan RunInfo)
+
+		runtime, err := startLanguageRuntimeServer(engine, info.providers, run)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start language runtime service: %w", err)
+		}
+
+		body := bytes.NewBuffer([]byte(runtime.address))
+		resp, err := http.Post(info.springboard, "text/plain", body)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to register language runtime service: %w", err)
+		}
+		resp.Body.Close()
+
+		select {
+		case runInfo := <-run:
+			info.MonitorAddr = runInfo.MonitorAddr
+			info.Config = runInfo.Config
+			info.Project = runInfo.Project
+			info.Stack = runInfo.Stack
+			info.Parallel = runInfo.Parallel
+			info.DryRun = runInfo.DryRun
+		case <-runtime.cancel:
+			return nil, fmt.Errorf("no run request received")
+		}
+	}
 
 	// Connect to the gRPC endpoints if we have addresses for them.
 	var monitorConn *grpc.ClientConn
@@ -1090,20 +1121,26 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 type languageRuntimeServer struct {
 	m sync.Mutex
 
+	engine    pulumirpc.EngineClient
 	run       chan<- RunInfo
-	address   string
-	providers map[PackageInfo]ProviderLoader
+	providers map[PackageInfo]ProviderFunc
+
+	address string
 
 	closed bool
 	cancel chan bool
 	done   chan error
 }
 
-func startLanguageRuntimeServer(engine pulumirpc.EngineClient) (*languageRuntimeServer, error) {
+func startLanguageRuntimeServer(engine pulumirpc.EngineClient, providers map[PackageInfo]ProviderFunc,
+	run chan<- RunInfo) (*languageRuntimeServer, error) {
+
 	s := &languageRuntimeServer{
-		cancel: make(chan bool),
+		engine:    engine,
+		run:       run,
+		providers: providers,
+		cancel:    make(chan bool),
 	}
-	s.c = sync.NewCond(&s.m)
 
 	port, done, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
@@ -1138,6 +1175,37 @@ func (s *languageRuntimeServer) Close() error {
 	return <-s.done
 }
 
+func (s *languageRuntimeServer) log(sev diag.Severity, urn resource.URN, msg string, streamID int32, ephemeral bool) {
+	var rpcSeverity pulumirpc.LogSeverity
+	switch sev {
+	case diag.Debug:
+		rpcSeverity = pulumirpc.LogSeverity_DEBUG
+	case diag.Info, diag.Infoerr:
+		rpcSeverity = pulumirpc.LogSeverity_INFO
+	case diag.Warning:
+		rpcSeverity = pulumirpc.LogSeverity_WARNING
+	case diag.Error:
+		rpcSeverity = pulumirpc.LogSeverity_ERROR
+	}
+
+	_, err := s.engine.Log(context.Background(), &pulumirpc.LogRequest{
+		Severity:  rpcSeverity,
+		Message:   strings.ToValidUTF8(msg, "�"),
+		Urn:       string(urn),
+		StreamId:  streamID,
+		Ephemeral: ephemeral,
+	})
+	contract.IgnoreError(err)
+}
+
+func (s *languageRuntimeServer) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	s.log(sev, urn, msg, streamID, false)
+}
+
+func (s *languageRuntimeServer) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	s.log(sev, urn, msg, streamID, true)
+}
+
 func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	return &pulumirpc.GetRequiredPluginsResponse{}, nil
@@ -1164,7 +1232,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 }
 
-func (s *languageRuntimeServer) StartProvider(ctx context.Context, req *pulumirpc.StartProviderRequiest) (*pulumirpc.StartProviderResponse, error) {
+func (s *languageRuntimeServer) StartProvider(ctx context.Context, req *pulumirpc.StartProviderRequest) (*pulumirpc.StartProviderResponse, error) {
 	info := PackageInfo{
 		Name:    req.GetName(),
 		Version: req.GetVersion(),
@@ -1173,7 +1241,22 @@ func (s *languageRuntimeServer) StartProvider(ctx context.Context, req *pulumirp
 	if !ok {
 		return nil, fmt.Errorf("unknown provider %v@%v", info.Name, info.Version)
 	}
-	provider, err := loader()
+	port, _, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			provider, err := loader(s)
+			if err != nil {
+				return err
+			}
+			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			return nil
+		},
+	}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error loading provider: %w", err)
+	}
+	return &pulumirpc.StartProviderResponse{
+		Address: fmt.Sprintf("127.0.0.1:%v", port),
+	}, nil
 }
 
 func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

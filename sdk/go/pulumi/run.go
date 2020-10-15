@@ -43,7 +43,7 @@ func Run(body RunFunc, opts ...RunOption) {
 			os.Exit(1)
 		}
 
-		printRequiredPlugins()
+		printRequiredPlugins(RunInfo{})
 		os.Exit(0)
 	}
 }
@@ -111,9 +111,19 @@ func runWithContext(ctx *Context, body RunFunc) error {
 	return result
 }
 
-// RunFunc executes the body of a Pulumi program.  It may register resources using the deployment context
+// RunFunc executes the body of a Pulumi program. It may register resources using the deployment context
 // supplied as an arguent and any non-nil return value is interpreted as a program error by the Pulumi runtime.
 type RunFunc func(ctx *Context) error
+
+// ProviderFunc creates a new instance of a Pulumi resource provider.
+type ProviderFunc func(logger plugin.Logger) (plugin.Provider, error)
+
+// WithProviders is a RunOption that allows a program to implement its own resource providers.
+func WithProviders(p map[PackageInfo]ProviderFunc) RunOption {
+	return func(info *RunInfo) {
+		info.providers = p
+	}
+}
 
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
@@ -126,9 +136,9 @@ type RunInfo struct {
 	EngineAddr  string
 	Mocks       MockResourceMonitor
 
-	serve      bool
-	getPlugins bool
-	providers  map[PackageInfo]ProviderLoader
+	springboard string
+	getPlugins  bool
+	providers   map[PackageInfo]ProviderFunc
 }
 
 // getEnvInfo reads various program information from the process environment.
@@ -137,7 +147,7 @@ func getEnvInfo() RunInfo {
 	parallel, _ := strconv.Atoi(os.Getenv(EnvParallel))
 	dryRun, _ := strconv.ParseBool(os.Getenv(EnvDryRun))
 	getPlugins, _ := strconv.ParseBool(os.Getenv(envPlugins))
-	serve, _ := strconv.ParseBool(os.Getenv(envServe))
+	springboard, _ := strconv.ParseBool(os.Getenv(envSpringboard))
 
 	var config map[string]string
 	if cfg := os.Getenv(EnvConfig); cfg != "" {
@@ -152,7 +162,7 @@ func getEnvInfo() RunInfo {
 		DryRun:      dryRun,
 		MonitorAddr: os.Getenv(EnvMonitor),
 		EngineAddr:  os.Getenv(EnvEngine),
-		serve:       serve,
+		springboard: springboard,
 		getPlugins:  getPlugins,
 	}
 }
@@ -174,8 +184,8 @@ const (
 	EnvEngine = "PULUMI_ENGINE"
 	// envPlugins is the envvar used to request that the Pulumi program print its set of required plugins and exit.
 	envPlugins = "PULUMI_PLUGINS"
-	// envServe is the envvar used to request that the Pulumi program run a languge service itself.
-	envServe = "PULUMI_SERVE"
+	// envSpringboard is the envvar used to request that the Pulumi program run a languge service itself.
+	envSpringboard = "PULUMI_SPRINGBOARD"
 )
 
 type PackageInfo struct {

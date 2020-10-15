@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/blang/semver"
@@ -31,8 +32,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
+// A ProviderFunc is a function used to load providers.
+type ProviderFunc func(logger Logger) (Provider, error)
+
 // A Logger provides logging capabilities to consumers.
 type Logger interface {
+	// ServerAddr returns the address at which the logger's RPC interface may be found, if any.
+	ServerAddr() string
+
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
 	Log(sev diag.Severity, urn resource.URN, msg string, streamID int32)
@@ -46,9 +53,6 @@ type Logger interface {
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
 	Logger
-
-	// ServerAddr returns the address at which the host's RPC interface may be found.
-	ServerAddr() string
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
 	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
@@ -64,6 +68,8 @@ type Host interface {
 	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
 	ListAnalyzers() []Analyzer
 
+	// RegisterProvider registers a provider loader with the host.
+	RegisterProvider(pkg tokens.Package, version semver.Version, loader ProviderFunc) error
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
@@ -138,17 +144,18 @@ type pluginLoadRequest struct {
 }
 
 type defaultHost struct {
-	ctx                     *Context                         // the shared context for this host.
-	config                  ConfigSource                     // the source for provider configuration parameters.
-	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
-	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
-	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
-	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
-	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
-	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
-	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
-	server                  *hostServer                      // the server's RPC machinery.
-	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
+	ctx                     *Context                           // the shared context for this host.
+	config                  ConfigSource                       // the source for provider configuration parameters.
+	runtimeOptions          map[string]interface{}             // options to pass to the language plugins.
+	analyzerPlugins         map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
+	languagePlugins         map[string]*languagePlugin         // a cache of language plugins and their processes.
+	resourcePlugins         map[Provider]*resourcePlugin       // the set of loaded resource plugins.
+	reportedResourcePlugins map[string]struct{}                // the set of unique resource plugins we'll report.
+	registeredProviders     map[string]map[string]ProviderFunc // the set of registered provider factories
+	plugins                 []workspace.PluginInfo             // a list of plugins allocated by this host.
+	loadRequests            chan pluginLoadRequest             // a channel used to satisfy plugin load requests.
+	server                  *hostServer                        // the server's RPC machinery.
+	disableProviderPreview  bool                               // true if provider plugins should disable provider preview
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -262,6 +269,25 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
+func (host *defaultHost) RegisterProvider(pkg tokens.Package, version semver.Version, loader ProviderFunc) error {
+	_, err := host.loadPlugin(func() (interface{}, error) {
+		versions, ok := host.registeredProviders[string(pkg)]
+		if !ok {
+			versions = map[string]ProviderFunc{}
+			host.registeredProviders[string(pkg)] = versions
+		}
+
+		versionString := version.String()
+		if _, ok := versions[versionString]; ok {
+			return nil, fmt.Errorf("provider %v@%v is already registered", pkg, version)
+		}
+
+		versions[versionString] = loader
+		return nil, nil
+	})
+	return err
+}
+
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// Try to load and bind to a plugin.
@@ -289,10 +315,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 
 			// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
 			// kind.
-			key := info.Name
-			if info.Version != nil {
-				key += info.Version.String()
-			}
+			key := fmt.Sprintf("%v@%v", info.Name, info.Version)
 			_, alreadyReported := host.reportedResourcePlugins[key]
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}
@@ -451,15 +474,16 @@ const (
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error) {
+func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginInfo, []workspace.PluginInfo, error) {
 	var plugins []workspace.PluginInfo
+	var providers []workspace.PluginInfo
 
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
+			return nil, nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}
 		plugins = append(plugins, workspace.PluginInfo{
 			Name: info.Proj.Runtime.Name(),
@@ -471,11 +495,11 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 			//     later than we do (right now, we do it up front, but at that point we don't know the version).
-			deps, err := lang.GetRequiredPlugins(info)
+			deps, hostedProviders, err := lang.GetRequiredPlugins(info)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
+				return nil, nil, errors.Wrapf(err, "failed to discover plugin requirements")
 			}
-			plugins = append(plugins, deps...)
+			plugins, providers = append(plugins, deps...), append(providers, hostedProviders...)
 		}
 	} else {
 		// If we can't load the language plugin, we can't discover the resource plugins.
