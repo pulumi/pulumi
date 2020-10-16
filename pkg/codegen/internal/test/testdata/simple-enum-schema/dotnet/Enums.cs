@@ -8,14 +8,30 @@ namespace Pulumi.PlantProvider
     /// <summary>
     /// plant container colors
     /// </summary>
-    public enum ContainerColor
+    public readonly struct ContainerColor : IEquatable<ContainerColor>
     {
-        [EnumMember(Value = "red")]
-        Red,
-        [EnumMember(Value = "blue")]
-        Blue,
-        [EnumMember(Value = "yellow")]
-        Yellow,
+        private readonly string _value;
+
+        private ContainerColor(string value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        public static ContainerColor Red { get; } = new ContainerColor("red");
+        public static ContainerColor Blue { get; } = new ContainerColor("blue");
+        public static ContainerColor Yellow { get; } = new ContainerColor("yellow");
+
+        public static bool operator ==(ContainerColor left, ContainerColor right) => left.Equals(right);
+        public static bool operator !=(ContainerColor left, ContainerColor right) => !left.Equals(right);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override bool Equals(object obj) => obj is ContainerColor other && Equals(other);
+        public bool Equals(ContainerColor other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+
+        public override string ToString() => _value;
     }
 
     /// <summary>

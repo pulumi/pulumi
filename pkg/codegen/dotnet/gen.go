@@ -396,9 +396,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			fmt.Fprintf(w, "\n")
 			printComment(w, prop.Comment, indent+"    ")
 		}
-		if prop.DeprecationMessage != "" {
-			fmt.Fprintf(w, "%s    [Obsolete(@\"%s\")]\n", indent, strings.Replace(prop.DeprecationMessage, `"`, `""`, -1))
-		}
+		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
 		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
 		// ensure that the user does not see warnings when initializing these properties using object or collection
@@ -990,40 +988,82 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	return nil
 }
 
-func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
+func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
+	if deprecationMessage != "" {
+		fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(deprecationMessage, `"`, `""`, -1))
+	}
+}
+
+func makeSafeEnumName(enum *schema.Enum) string {
+	if enum.Name != "" {
+		return enum.Name
+	}
+	return strings.Title(makeValidIdentifier(enum.Value.(string)))
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
-	// Print docstring.
+	enumName := tokenToName(enum.Token)
+
+	// Print docstring
 	printComment(w, enum.Comment, indent)
 
-	// Open the enum declaration.
-	enumName := tokenToName(enum.Token)
-	fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
-	fmt.Fprintf(w, "%s{\n", indent)
-	for _, e := range enum.Elements {
+	switch enum.ElementType {
+	case schema.StringType, schema.NumberType, schema.BoolType:
+		// Open struct declaration
+		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
 		indent := strings.Repeat(indent, 2)
-		printComment(w, e.Comment, indent)
-		if e.DeprecationMessage != "" {
-			fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(e.DeprecationMessage, `"`, `""`, -1))
+		fmt.Fprintf(w, "%sprivate readonly %s _value;\n", indent, mod.typeString(enum.ElementType, "", false, false, false, false, false))
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, enum.ElementType.String())
+		fmt.Fprintf(w, "%s{\n", indent)
+		fmt.Fprintf(w, "%s    _value = value ?? throw new ArgumentNullException(nameof(value));\n", indent)
+		fmt.Fprintf(w, "%s}\n", indent)
+		fmt.Fprintf(w, "\n")
+		for _, e := range enum.Elements {
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			e.Name = makeSafeEnumName(e)
+			fmt.Fprintf(w, "%[1]spublic static %[2]s %[3]s { get; } = new %[2]s(", indent, enumName, e.Name)
+			if enum.ElementType == schema.StringType {
+				fmt.Fprintf(w, "%q", e.Value)
+			} else {
+				fmt.Fprintf(w, "%v", e.Value)
+			}
+			fmt.Fprintf(w, ");\n")
 		}
-		if e.Name == "" {
-			e.Name = strings.Title(makeValidIdentifier(e.Value.(string)))
-		}
-		switch enum.ElementType {
-		case schema.StringType:
-			fmt.Fprintf(w, "%s[EnumMember(Value = %q)]\n", indent, e.Value)
-			fmt.Fprintf(w, "%s%s,\n", indent, e.Name)
-		case schema.BoolType, schema.NumberType:
-			fmt.Fprintf(w, "%s[EnumMember(Value = %v)]\n", indent, e.Value)
-			fmt.Fprintf(w, "%s%s,\n", indent, e.Name)
-		case schema.IntType:
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "%[1]spublic static bool operator ==(%[2]s left, %[2]s right) => left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "%[1]spublic static bool operator !=(%[2]s left, %[2]s right) => !left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override bool Equals(object obj) => obj is %s other && Equals(other);\n", indent, enumName)
+		fmt.Fprintf(w, "%spublic bool Equals(%s other) => string.Equals(_value, other._value, StringComparison.Ordinal);\n", indent, enumName)
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value?.GetHashCode() ?? 0;\n", indent)
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "%spublic override string ToString() => _value;\n", indent)
+	case schema.IntType:
+		// Open enum declaration
+		fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		for _, e := range enum.Elements {
+			indent := strings.Repeat(indent, 2)
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			e.Name = makeSafeEnumName(e)
 			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
-		default:
-			continue
 		}
+	default:
+		return fmt.Errorf("enums may only be of string, int, number or bool type")
 	}
 
-	// Close enum declaration.
+	// Close the declaration
 	fmt.Fprintf(w, "%s}\n", indent)
+
+	return nil
 }
 
 func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited codegen.Set) {
