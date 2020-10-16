@@ -1,6 +1,9 @@
 package gen
 
 import (
+	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,4 +43,34 @@ func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "aws", goPackage("aws"))
 	assert.Equal(t, "azure", goPackage("azure-nextgen"))
 	assert.Equal(t, "", goPackage(""))
+}
+
+func TestGeneratePackage(t *testing.T) {
+	tests := []struct {
+		name          string
+		schemaDir     string
+		expectedFiles []string
+	}{
+
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{},
+		},
+	}
+	testDir := filepath.Join("..", "internal", "test", "testdata")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := test.GeneratePackageFilesFromSchema(
+				filepath.Join(testDir, tt.schemaDir, "schema.json"), func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+					return GeneratePackage(tool, pkg)
+				})
+			assert.NoError(t, err)
+
+			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "nodejs", tt.expectedFiles)
+			assert.NoError(t, err)
+
+			test.ValidateFileEquality(t, files, expectedFiles)
+		})
+	}
 }

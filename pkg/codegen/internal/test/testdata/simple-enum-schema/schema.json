@@ -1,38 +1,38 @@
 {
   "version": "0.0.1",
-  "name": "plant-provider",
+  "name": "plant",
   "resources": {
-    "plant-provider:tree/v1:RubberTree": {
+    "plant:tree/v1:RubberTree": {
       "inputProperties": {
         "container": {
-          "$ref": "#/types/plant-provider::Container"
+          "$ref": "#/types/plant::Container"
         },
         "type": {
-          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+          "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
         }
       }
     }
   },
   "types": {
-    "plant-provider::Container": {
+    "plant::Container": {
       "type": "object",
       "properties": {
         "size": {
-          "$ref": "#/types/plant-provider::ContainerSize"
+          "$ref": "#/types/plant::ContainerSize"
         },
         "material": {
           "type": "string"
         },
         "color": {
           "oneOf": [
-            {"$ref": "#/types/plant-provider::ContainerColor"},
+            {"$ref": "#/types/plant::ContainerColor"},
             {"type": "string"}
           ]
         }
       },
       "required": ["size"]
     },
-    "plant-provider::ContainerSize": {
+    "plant::ContainerSize": {
       "type": "integer",
       "description": "plant container sizes",
       "enum": [
@@ -51,7 +51,7 @@
         }
       ]
     },
-    "plant-provider::ContainerColor": {
+    "plant::ContainerColor": {
       "type": "string",
       "description": "plant container colors",
       "enum": [
@@ -66,7 +66,7 @@
         }
       ]
     },
-    "plant-provider:tree/v1:RubberTreeVariety": {
+    "plant:tree/v1:RubberTreeVariety": {
       "type": "string",
       "description": "types of rubber trees",
       "enum": [
@@ -87,7 +87,12 @@
   },
   "language": {
     "csharp": {},
-    "go": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-plant/sdk/go/plant",
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi-kubernetes/sdk/go/plant": "plant"
+      }
+    },
     "nodejs": {},
     "python": {}
   }

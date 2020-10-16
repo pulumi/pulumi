@@ -182,6 +182,9 @@ func resourceName(r *schema.Resource) string {
 func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		// TODO(ka): implement enum types
+		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		return "[]" + pkg.plainType(t.ElementType, false)
 	case *schema.MapType:
@@ -227,6 +230,9 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		// TODO(ka): implement enum types
+		return pkg.inputType(t.ElementType, optional)
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType, false)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
@@ -274,6 +280,9 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		// TODO(ka): implement enum types
+		return pkg.outputType(t.ElementType, optional)
 	case *schema.ArrayType:
 		en := strings.TrimSuffix(pkg.outputType(t.ElementType, false), "Output")
 		if en == "pulumi.Any" {
@@ -1282,7 +1291,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
 		if err != nil {
-			panic(errors.Errorf("invalid Go source code:\n\n%s", contents))
+			panic(errors.Errorf("invalid Go source code:\n\n%s: %s", relPath, contents))
 		}
 
 		files[relPath] = formattedSource
