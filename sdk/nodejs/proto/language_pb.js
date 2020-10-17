@@ -380,7 +380,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.toObject = function(includeInstance, 
     pluginsList: jspb.Message.toObjectList(msg.getPluginsList(),
     plugin_pb.PluginDependency.toObject, includeInstance),
     providersList: jspb.Message.toObjectList(msg.getProvidersList(),
-    plugin_pb.PluginInfo.toObject, includeInstance)
+    plugin_pb.PluginDependency.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -423,8 +423,8 @@ proto.pulumirpc.GetRequiredPluginsResponse.deserializeBinaryFromReader = functio
       msg.addPlugins(value);
       break;
     case 2:
-      var value = new plugin_pb.PluginInfo;
-      reader.readMessage(value,plugin_pb.PluginInfo.deserializeBinaryFromReader);
+      var value = new plugin_pb.PluginDependency;
+      reader.readMessage(value,plugin_pb.PluginDependency.deserializeBinaryFromReader);
       msg.addProviders(value);
       break;
     default:
@@ -469,7 +469,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.serializeBinaryToWriter = function(me
     writer.writeRepeatedMessage(
       2,
       f,
-      plugin_pb.PluginInfo.serializeBinaryToWriter
+      plugin_pb.PluginDependency.serializeBinaryToWriter
     );
   }
 };
@@ -514,17 +514,17 @@ proto.pulumirpc.GetRequiredPluginsResponse.prototype.clearPluginsList = function
 
 
 /**
- * repeated PluginInfo providers = 2;
- * @return {!Array<!proto.pulumirpc.PluginInfo>}
+ * repeated PluginDependency providers = 2;
+ * @return {!Array<!proto.pulumirpc.PluginDependency>}
  */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.getProvidersList = function() {
-  return /** @type{!Array<!proto.pulumirpc.PluginInfo>} */ (
-    jspb.Message.getRepeatedWrapperField(this, plugin_pb.PluginInfo, 2));
+  return /** @type{!Array<!proto.pulumirpc.PluginDependency>} */ (
+    jspb.Message.getRepeatedWrapperField(this, plugin_pb.PluginDependency, 2));
 };
 
 
 /**
- * @param {!Array<!proto.pulumirpc.PluginInfo>} value
+ * @param {!Array<!proto.pulumirpc.PluginDependency>} value
  * @return {!proto.pulumirpc.GetRequiredPluginsResponse} returns this
 */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.setProvidersList = function(value) {
@@ -533,12 +533,12 @@ proto.pulumirpc.GetRequiredPluginsResponse.prototype.setProvidersList = function
 
 
 /**
- * @param {!proto.pulumirpc.PluginInfo=} opt_value
+ * @param {!proto.pulumirpc.PluginDependency=} opt_value
  * @param {number=} opt_index
- * @return {!proto.pulumirpc.PluginInfo}
+ * @return {!proto.pulumirpc.PluginDependency}
  */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.addProviders = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.PluginInfo, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.PluginDependency, opt_index);
 };
 
 

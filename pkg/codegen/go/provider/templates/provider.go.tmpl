@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	providersdk "github.com/pulumi/pulumi/sdk/v2/go/pulumi/provider"
 
 	{{range .ProviderImports}}
@@ -24,11 +25,11 @@ type provider struct {
 	version semver.Version
 	schema  []byte
 
-	host plugin.Host
+	logger plugin.Logger
 	provider *{{.ProviderType}}
 }
 
-func NewProvider(host plugin.Host, p *{{.ProviderType}}) plugin.Provider {
+func NewProvider(logger plugin.Logger, p *{{.ProviderType}}) plugin.Provider {
 	cancelContext, cancel := context.WithCancel(context.Background())
 
 	return &provider{
@@ -39,13 +40,13 @@ func NewProvider(host plugin.Host, p *{{.ProviderType}}) plugin.Provider {
 		version: semver.MustParse("{{.Version}}"),
 		schema: pulumiSchema,
 
-		host: host,
+		logger: logger,
 		provider: p,
 	}
 }
 
 func (p *provider) newContext(urn resource.URN) *providersdk.Context {
-	return providersdk.NewContext(context.Background(), p.host, urn)
+	return providersdk.NewContext(context.Background(), p.logger, urn)
 }
 
 func (p *provider) Close() error {
@@ -75,4 +76,11 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 func (p *provider) SignalCancellation() error {
 	p.cancel()
 	return nil
+}
+
+func init() {
+	pulumi.RegisterProvider("{{.Package}}", "{{.Version}}", func(logger plugin.Logger) (plugin.Provider, error) {
+		var p {{.ProviderType}}
+		return NewProvider(logger, &p), nil
+	})
 }

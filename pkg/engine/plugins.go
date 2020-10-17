@@ -74,15 +74,27 @@ func newPluginSet() pluginSet {
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
+
 	set := newPluginSet()
+
 	langhostPlugins, langhostProviders, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
+	plugctx.Host.(*pluginHost).providers = langhostProviders
+
 	for _, plug := range langhostPlugins {
 		// Ignore language plugins named "client".
 		if plug.Name == clientRuntimeName && plug.Kind == workspace.LanguagePlugin {
 			continue
+		}
+
+		if plug.Kind == workspace.ResourcePlugin {
+			bestInHost, err := workspace.GetPluginInfoFromList(langhostProviders, workspace.ResourcePlugin, plug.Name, plug.Version)
+			if err == nil && bestInHost != nil {
+				// This dependency is satisfied by the plugin itself.
+				continue
+			}
 		}
 
 		logging.V(preparePluginLog).Infof(
@@ -90,17 +102,7 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 			plug.Name, plug.Version, plug.ServerURL)
 		set.Add(plug)
 	}
-	for _, provider := range langhostProviders {
-		var version semver.Version
-		if provider.Version != nil {
-			version = *provider.Version
-		}
 
-		plugctx.Host.RegisterProvider(tokens.Package(provider.Name), version, func(logger plugin.Logger) (plugin.Provider, error) {
-
-			return nil, nil
-		})
-	}
 	return set, nil
 }
 

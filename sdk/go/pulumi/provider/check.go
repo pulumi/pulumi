@@ -30,6 +30,8 @@ type checker struct {
 	failures []plugin.CheckFailure
 }
 
+var propertyValueType = reflect.TypeOf((*resource.PropertyValue)(nil)).Elem()
+
 func (c *checker) checkProperty(path string, v resource.PropertyValue, schema reflect.Type) error {
 	if schema == propertyValueType {
 		return nil

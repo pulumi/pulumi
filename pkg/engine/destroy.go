@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -54,17 +53,9 @@ func newDestroySource(
 	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.
-	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
-	// in the snapshot.
-	plugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	plugins, _, err := installPlugins(proj, pwd, main, target, plugctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugins); err != nil {
-		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 
 	// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.

@@ -3,8 +3,11 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
@@ -35,6 +38,13 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns: true,
 		KeepSecrets:  p.keepSecrets,
 	}
+}
+
+func (p *providerServer) checkNYI(method string, err error) error {
+	if err == NotYetImplemented {
+		return status.Error(codes.Unimplemented, fmt.Sprintf("%v is not yet implemented", method))
+	}
+	return err
 }
 
 func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
@@ -118,7 +128,7 @@ func (p *providerServer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRe
 
 	newInputs, failures, err := p.provider.CheckConfig(urn, state, inputs, true)
 	if err != nil {
-		return nil, err
+		return nil, p.checkNYI("CheckConfig", err)
 	}
 
 	rpcInputs, err := MarshalProperties(newInputs, p.marshalOptions("inputs"))
@@ -149,7 +159,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 
 	diff, err := p.provider.DiffConfig(urn, state, inputs, true, req.GetIgnoreChanges())
 	if err != nil {
-		return nil, err
+		return nil, p.checkNYI("DiffConfig", err)
 	}
 	return p.marshalDiff(diff)
 }

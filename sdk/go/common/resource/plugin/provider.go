@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"errors"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -102,6 +103,8 @@ type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
 }
+
+var NotYetImplemented = errors.New("NYI")
 
 // DiffChanges represents the kind of changes detected by a diff operation.
 type DiffChanges int

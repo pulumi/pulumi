@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
@@ -52,8 +53,6 @@ type Context struct {
 	monitorConn *grpc.ClientConn
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
-
-	runProgram bool // true if the program should run, false if we're only serving resource providers.
 
 	rpcs     int         // the number of outstanding RPC requests.
 	rpcsDone *sync.Cond  // an event signaling completion of RPCs.
@@ -98,7 +97,15 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if info.springboard != "" {
 		run := make(chan RunInfo)
 
-		runtime, err := startLanguageRuntimeServer(engine, info.providers, run)
+		providers := map[PackageInfo]ProviderFunc{}
+		for info, loader := range providerRegistry {
+			providers[info] = loader
+		}
+		for info, loader := range info.providers {
+			providers[info] = loader
+		}
+
+		runtime, err := startLanguageRuntimeServer(engine, providers, run)
 		if err != nil {
 			return nil, fmt.Errorf("failed to start language runtime service: %w", err)
 		}
@@ -1208,7 +1215,19 @@ func (s *languageRuntimeServer) LogStatus(sev diag.Severity, urn resource.URN, m
 
 func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	return &pulumirpc.GetRequiredPluginsResponse{}, nil
+
+	providers := make([]*pulumirpc.PluginDependency, 0, len(s.providers))
+	for info := range s.providers {
+		providers = append(providers, &pulumirpc.PluginDependency{
+			Name:    info.Name,
+			Version: info.Version,
+			Kind:    string(workspace.ResourcePlugin),
+		})
+	}
+
+	return &pulumirpc.GetRequiredPluginsResponse{
+		Providers: providers,
+	}, nil
 }
 
 func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
@@ -1237,8 +1256,8 @@ func (s *languageRuntimeServer) StartProvider(ctx context.Context, req *pulumirp
 		Name:    req.GetName(),
 		Version: req.GetVersion(),
 	}
-	loader, ok := s.providers[info]
-	if !ok {
+	loader := s.providers[info]
+	if loader == nil {
 		return nil, fmt.Errorf("unknown provider %v@%v", info.Name, info.Version)
 	}
 	port, _, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{

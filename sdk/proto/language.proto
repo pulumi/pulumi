@@ -39,8 +39,8 @@ message GetRequiredPluginsRequest {
 }
 
 message GetRequiredPluginsResponse {
-    repeated PluginDependency plugins = 1; // a list of plugins required by this program.
-    repeated PluginInfo providers = 2;     // a list of providers implemented by this program.
+    repeated PluginDependency plugins = 1;   // a list of plugins required by this program.
+    repeated PluginDependency providers = 2; // a list of providers implemented by this program.
 }
 
 // RunRequest asks the interpreter to execute a program.

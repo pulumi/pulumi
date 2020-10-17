@@ -17,6 +17,7 @@ package plugin
 import (
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -36,6 +37,8 @@ type LanguageRuntime interface {
 	// Returns a triple of "error message", "bail", or real "error".  If "bail", the caller should
 	// return result.Bail immediately and not print any further messages to the user.
 	Run(info RunInfo) (string, bool, error)
+	// StartProvider starts the indicated provider.
+	StartProvider(name string, version semver.Version) (Provider, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }

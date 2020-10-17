@@ -21,11 +21,13 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
@@ -85,8 +87,32 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 
 func (h *langhost) Runtime() string { return h.runtime }
 
+func (h *langhost) unmarshalPluginDeps(deps []*pulumirpc.PluginDependency) ([]workspace.PluginInfo, error) {
+	var infos []workspace.PluginInfo
+	for _, info := range deps {
+		var version *semver.Version
+		if v := info.GetVersion(); v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
+			}
+			version = &sv
+		}
+		if !workspace.IsPluginKind(info.GetKind()) {
+			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+		}
+		infos = append(infos, workspace.PluginInfo{
+			Name:      info.GetName(),
+			Kind:      workspace.PluginKind(info.GetKind()),
+			Version:   version,
+			ServerURL: info.GetServer(),
+		})
+	}
+	return infos, nil
+}
+
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
+func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, []workspace.PluginInfo, error) {
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
@@ -103,36 +129,24 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
 		// method.  In such cases, we will silently error (with the above log left behind).
 		if rpcError.Code() == codes.Unimplemented {
-			return nil, nil
+			return nil, nil, nil
 		}
 
-		return nil, rpcError
+		return nil, nil, rpcError
 	}
 
-	var results []workspace.PluginInfo
-	for _, info := range resp.GetPlugins() {
-		var version *semver.Version
-		if v := info.GetVersion(); v != "" {
-			sv, err := semver.ParseTolerant(v)
-			if err != nil {
-				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
-			}
-			version = &sv
-		}
-		if !workspace.IsPluginKind(info.GetKind()) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
-		}
-		results = append(results, workspace.PluginInfo{
-			Name:      info.GetName(),
-			Kind:      workspace.PluginKind(info.GetKind()),
-			Version:   version,
-			ServerURL: info.GetServer(),
-		})
+	required, err := h.unmarshalPluginDeps(resp.GetPlugins())
+	if err != nil {
+		return nil, nil, err
+	}
+	implemented, err := h.unmarshalPluginDeps(resp.GetProviders())
+	if err != nil {
+		return nil, nil, err
 	}
 
-	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
-		h.runtime, proj, info.Pwd, info.Program, len(results))
-	return results, nil
+	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d, #implemented=%d",
+		h.runtime, proj, info.Pwd, info.Program, len(required), len(implemented))
+	return required, implemented, nil
 
 }
 
@@ -171,6 +185,33 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
 	return progerr, bail, nil
+}
+
+func (h *langhost) StartProvider(name string, version semver.Version) (Provider, error) {
+	logging.V(7).Infof("langhost[%v].StartProvider(%v, %v) executing", h.runtime, name, version)
+
+	versionString := ""
+	if !version.EQ(semver.Version{}) {
+		versionString = version.String()
+	}
+
+	resp, err := h.client.StartProvider(h.ctx.Request(), &pulumirpc.StartProviderRequest{
+		Name:    name,
+		Version: versionString,
+	})
+	if err != nil {
+		logging.V(7).Infof("langhost[%v].StartProvider(%v, %v) faileds: err=%v", h.runtime, name, version, err)
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(resp.GetAddress(), grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+	if err != nil {
+		return nil, err
+	}
+	client := pulumirpc.NewResourceProviderClient(conn)
+
+	// TODO(pdg-hack): disable provider preview
+	return NewProviderWithClient(h.ctx, tokens.Package(name), client, false), nil
 }
 
 // GetPluginInfo returns this plugin's information.

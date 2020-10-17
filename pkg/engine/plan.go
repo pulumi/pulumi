@@ -53,6 +53,9 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 		return "", "", nil, err
 	}
 
+	engineHost := &pluginHost{Host: ctx.Host}
+	ctx.Host = engineHost
+
 	// If the project wants to connect to an existing language runtime, do so now.
 	if projinfo.Proj.Runtime.Name() == clientRuntimeName {
 		addressValue, ok := projinfo.Proj.Runtime.Options()["address"]
@@ -63,11 +66,9 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 		if !ok {
 			return "", "", nil, errors.New("address of language runtime service must be a string")
 		}
-		host, err := connectToLanguageRuntime(ctx, address)
-		if err != nil {
+		if err = engineHost.connectToLanguageRuntime(ctx, address); err != nil {
 			return "", "", nil, err
 		}
-		ctx.Host = host
 	}
 
 	return pwd, main, ctx, nil

@@ -460,6 +460,49 @@ func GetPlugins() ([]PluginInfo, error) {
 	return plugins, nil
 }
 
+func GetPluginInfoFromList(plugins []PluginInfo, kind PluginKind, name string, version *semver.Version) (*PluginInfo, error) {
+	var match *PluginInfo
+	if !enableLegacyPluginBehavior && version != nil {
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
+		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
+		if err != nil {
+			return nil, NewMissingError(PluginInfo{
+				Name:    name,
+				Kind:    kind,
+				Version: version,
+			})
+		}
+		match = &candidate
+	} else {
+		for _, cur := range plugins {
+			// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
+			// we can take a pointer to if this plugin is the best match yet.
+			plugin := cur
+			if plugin.Kind == kind && plugin.Name == name {
+				// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
+				// keep on searching just in case there's a newer version available.
+				var m *PluginInfo
+				if match == nil && version == nil {
+					m = &plugin // no existing match, no version spec, take it.
+				} else if match != nil &&
+					(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
+					m = &plugin // existing match, but this plugin is newer, prefer it.
+				} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
+					m = &plugin // this plugin is >= the version being requested, use it.
+				}
+
+				if m != nil {
+					match = m
+					logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
+						kind, name, version, match.Version)
+				}
+			}
+		}
+	}
+
+	return match, nil
+}
+
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH.
@@ -504,43 +547,9 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return "", "", errors.Wrapf(err, "loading plugin list")
 	}
 
-	var match *PluginInfo
-	if !enableLegacyPluginBehavior && version != nil {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
-		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
-		if err != nil {
-			return "", "", NewMissingError(PluginInfo{
-				Name:    name,
-				Kind:    kind,
-				Version: version,
-			})
-		}
-		match = &candidate
-	} else {
-		for _, cur := range plugins {
-			// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
-			// we can take a pointer to if this plugin is the best match yet.
-			plugin := cur
-			if plugin.Kind == kind && plugin.Name == name {
-				// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
-				// keep on searching just in case there's a newer version available.
-				var m *PluginInfo
-				if match == nil && version == nil {
-					m = &plugin // no existing match, no version spec, take it.
-				} else if match != nil &&
-					(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
-					m = &plugin // existing match, but this plugin is newer, prefer it.
-				} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
-					m = &plugin // this plugin is >= the version being requested, use it.
-				}
-
-				if m != nil {
-					match = m
-					logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
-						kind, name, version, match.Version)
-				}
-			}
-		}
+	match, err := GetPluginInfoFromList(plugins, kind, name, version)
+	if err != nil {
+		return "", "", err
 	}
 
 	if match != nil {

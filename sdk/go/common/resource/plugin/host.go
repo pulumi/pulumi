@@ -37,9 +37,6 @@ type ProviderFunc func(logger Logger) (Provider, error)
 
 // A Logger provides logging capabilities to consumers.
 type Logger interface {
-	// ServerAddr returns the address at which the logger's RPC interface may be found, if any.
-	ServerAddr() string
-
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
 	Log(sev diag.Severity, urn resource.URN, msg string, streamID int32)
@@ -54,6 +51,9 @@ type Logger interface {
 type Host interface {
 	Logger
 
+	// ServerAddr returns the address at which the logger's RPC interface may be found, if any.
+	ServerAddr() string
+
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
 	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
 	// error is returned.
@@ -67,9 +67,6 @@ type Host interface {
 
 	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
 	ListAnalyzers() []Analyzer
-
-	// RegisterProvider registers a provider loader with the host.
-	RegisterProvider(pkg tokens.Package, version semver.Version, loader ProviderFunc) error
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
@@ -144,18 +141,17 @@ type pluginLoadRequest struct {
 }
 
 type defaultHost struct {
-	ctx                     *Context                           // the shared context for this host.
-	config                  ConfigSource                       // the source for provider configuration parameters.
-	runtimeOptions          map[string]interface{}             // options to pass to the language plugins.
-	analyzerPlugins         map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
-	languagePlugins         map[string]*languagePlugin         // a cache of language plugins and their processes.
-	resourcePlugins         map[Provider]*resourcePlugin       // the set of loaded resource plugins.
-	reportedResourcePlugins map[string]struct{}                // the set of unique resource plugins we'll report.
-	registeredProviders     map[string]map[string]ProviderFunc // the set of registered provider factories
-	plugins                 []workspace.PluginInfo             // a list of plugins allocated by this host.
-	loadRequests            chan pluginLoadRequest             // a channel used to satisfy plugin load requests.
-	server                  *hostServer                        // the server's RPC machinery.
-	disableProviderPreview  bool                               // true if provider plugins should disable provider preview
+	ctx                     *Context                         // the shared context for this host.
+	config                  ConfigSource                     // the source for provider configuration parameters.
+	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
+	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
+	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
+	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
+	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
+	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
+	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
+	server                  *hostServer                      // the server's RPC machinery.
+	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -267,25 +263,6 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 		analyzers = append(analyzers, analyzer.Plugin)
 	}
 	return analyzers
-}
-
-func (host *defaultHost) RegisterProvider(pkg tokens.Package, version semver.Version, loader ProviderFunc) error {
-	_, err := host.loadPlugin(func() (interface{}, error) {
-		versions, ok := host.registeredProviders[string(pkg)]
-		if !ok {
-			versions = map[string]ProviderFunc{}
-			host.registeredProviders[string(pkg)] = versions
-		}
-
-		versionString := version.String()
-		if _, ok := versions[versionString]; ok {
-			return nil, fmt.Errorf("provider %v@%v is already registered", pkg, version)
-		}
-
-		versions[versionString] = loader
-		return nil, nil
-	})
-	return err
 }
 
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
@@ -507,5 +484,5 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 			"cannot load resource plugins without also loading the language plugin")
 	}
 
-	return plugins, nil
+	return plugins, providers, nil
 }

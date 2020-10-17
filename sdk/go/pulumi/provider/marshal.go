@@ -15,7 +15,7 @@ type Marshaler interface {
 	MarshalPropertyValue() (resource.PropertyValue, error)
 }
 
-var unmarshalerType = reflect.TypeOf(Unmarshaler(nil))
+var unmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 
 func isUnmarshaler(dest reflect.Value) (Unmarshaler, bool) {
 	if dest.Kind() != reflect.Ptr {
@@ -158,7 +158,7 @@ func Unmarshal(m resource.PropertyMap, dest interface{}) error {
 	return unmarshalProperty("", resource.NewObjectProperty(m), v)
 }
 
-var marshalerType = reflect.TypeOf(Marshaler(nil))
+var marshalerType = reflect.TypeOf((*Marshaler)(nil)).Elem()
 
 func marshalProperty(v reflect.Value) (resource.PropertyValue, error) {
 	if v.Type().Implements(marshalerType) {

@@ -21,6 +21,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -95,7 +98,10 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, binary)
+			host, err := newLanguageHost(engineAddress, tracing, binary)
+			if err != nil {
+				return err
+			}
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -118,14 +124,57 @@ type goLanguageHost struct {
 	engineAddress string
 	tracing       string
 	binary        string
+
+	client       pulumirpc.LanguageRuntimeClient
+	programError <-chan error
 }
 
-func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRuntimeServer {
-	return &goLanguageHost{
+func newLanguageHost(engineAddress, tracing, binary string) (pulumirpc.LanguageRuntimeServer, error) {
+	programError := make(chan error)
+
+	host := &goLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		binary:        binary,
+		programError:  programError,
 	}
+
+	address := make(chan string)
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		content, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		address <- string(content)
+	})
+	listener, err := net.Listen("tcp", "127.0.0.1:")
+	if err != nil {
+		return nil, err
+	}
+	go http.Serve(listener, nil)
+
+	go func() {
+		env := os.Environ()
+		env = append(env, "PULUMI_SPRINGBOARD=http://"+listener.Addr().String())
+		programError <- host.runProgram(env)
+	}()
+
+	select {
+	case serverAddress := <-address:
+		conn, err := grpc.Dial(serverAddress, grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+		if err != nil {
+			return nil, err
+		}
+		host.client = pulumirpc.NewLanguageRuntimeClient(conn)
+	case err := <-programError:
+		return nil, err
+	}
+
+	return host, nil
 }
 
 // modInfo is the useful portion of the output from `go list -m -json all`
@@ -228,28 +277,31 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		}
 	}
 
+	// fetch implemented providers from the program
+	resp, err := host.client.GetRequiredPlugins(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.GetRequiredPluginsResponse{
-		Plugins: plugins,
+		Plugins:   plugins,
+		Providers: resp.GetProviders(),
 	}, nil
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
-func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
-	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
-	env, err := host.constructEnv(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to prepare environment")
-	}
+func (host *goLanguageHost) StartProvider(ctx context.Context, req *pulumirpc.StartProviderRequest) (*pulumirpc.StartProviderResponse, error) {
+	return host.client.StartProvider(ctx, req)
+	//return nil, status.Error(codes.Unimplemented, "StartProvider is not implemented")
+}
 
+func (host *goLanguageHost) runProgram(env []string) error {
 	cmd, err := findProgram(host.binary)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
-	var errResult string
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -265,10 +317,36 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			err = errors.Wrapf(err, "problem executing program (could not run language executor)")
 		}
 
-		errResult = err.Error()
+		return err
 	}
 
-	return &pulumirpc.RunResponse{Error: errResult}, nil
+	return nil
+}
+
+// RPC endpoint for LanguageRuntimeServer::Run
+func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	_, err := host.client.Run(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = <-host.programError; err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	}
+	return &pulumirpc.RunResponse{}, nil
+
+	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
+	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
+	//	env, err := host.constructEnv(req)
+	//	if err != nil {
+	//		return nil, errors.Wrap(err, "failed to prepare environment")
+	//	}
+	//
+	//	err = host.runProgram(env)
+	//	if err != nil {
+	//		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	//	}
+	//	return &pulumirpc.RunResponse{}, nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional

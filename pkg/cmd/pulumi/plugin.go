@@ -66,7 +66,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
-	plugins, err := plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
+	plugins, _, err := plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,

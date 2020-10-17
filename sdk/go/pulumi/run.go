@@ -43,7 +43,7 @@ func Run(body RunFunc, opts ...RunOption) {
 			os.Exit(1)
 		}
 
-		printRequiredPlugins(RunInfo{})
+		printRequiredPlugins()
 		os.Exit(0)
 	}
 }
@@ -69,17 +69,13 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return runWithContext(ctx, body)
+	return RunWithContext(ctx, body)
 }
 
-// runWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
+// RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
 // configuration, and engine connection.
-func runWithContext(ctx *Context, body RunFunc) error {
+func RunWithContext(ctx *Context, body RunFunc) error {
 	info := ctx.info
-
-	if !ctx.runProgram {
-		return nil
-	}
 
 	// Create a root stack resource that we'll parent everything to.
 	var stack ResourceState
@@ -147,7 +143,6 @@ func getEnvInfo() RunInfo {
 	parallel, _ := strconv.Atoi(os.Getenv(EnvParallel))
 	dryRun, _ := strconv.ParseBool(os.Getenv(EnvDryRun))
 	getPlugins, _ := strconv.ParseBool(os.Getenv(envPlugins))
-	springboard, _ := strconv.ParseBool(os.Getenv(envSpringboard))
 
 	var config map[string]string
 	if cfg := os.Getenv(EnvConfig); cfg != "" {
@@ -162,7 +157,7 @@ func getEnvInfo() RunInfo {
 		DryRun:      dryRun,
 		MonitorAddr: os.Getenv(EnvMonitor),
 		EngineAddr:  os.Getenv(EnvEngine),
-		springboard: springboard,
+		springboard: os.Getenv(envSpringboard),
 		getPlugins:  getPlugins,
 	}
 }
@@ -195,19 +190,27 @@ type PackageInfo struct {
 }
 
 var packageRegistry = map[PackageInfo]struct{}{}
+var providerRegistry = map[PackageInfo]ProviderFunc{}
 
 func RegisterPackage(info PackageInfo) {
 	packageRegistry[info] = struct{}{}
 }
 
-func printRequiredPlugins(runInfo RunInfo) {
+func RegisterProvider(name, version string, loader ProviderFunc) {
+	info := PackageInfo{
+		Name:    name,
+		Version: version,
+	}
+	providerRegistry[info] = loader
+}
+
+func printRequiredPlugins() {
 	plugins := []PackageInfo{}
 	for info := range packageRegistry {
 		plugins = append(plugins, info)
 	}
-
 	providers := []PackageInfo{}
-	for info := range runInfo.providers {
+	for info := range providerRegistry {
 		providers = append(providers, info)
 	}
 

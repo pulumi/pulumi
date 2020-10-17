@@ -15,35 +15,82 @@
 package engine
 
 import (
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
-type clientLanguageRuntimeHost struct {
+type pluginHost struct {
 	plugin.Host
 
 	languageRuntime plugin.LanguageRuntime
+	providers       []workspace.PluginInfo
 }
 
-func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host, error) {
+func (host *pluginHost) connectToLanguageRuntime(ctx *plugin.Context, address string) error {
 	// Dial the language runtime.
 	conn, err := grpc.Dial(address, grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()), rpcutil.GrpcChannelOptions())
 	if err != nil {
-		return nil, errors.Wrap(err, "could not connect to language host")
+		return errors.Wrap(err, "could not connect to language host")
 	}
 
 	client := pulumirpc.NewLanguageRuntimeClient(conn)
-	return &clientLanguageRuntimeHost{
-		Host:            ctx.Host,
-		languageRuntime: plugin.NewLanguageRuntimeClient(ctx, clientRuntimeName, client),
-	}, nil
+	host.languageRuntime = plugin.NewLanguageRuntimeClient(ctx, clientRuntimeName, client)
+	return nil
 }
 
-func (host *clientLanguageRuntimeHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
-	return host.languageRuntime, nil
+func (host *pluginHost) loadProvider(name tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	if host.languageRuntime == nil {
+		return nil, nil
+	}
+
+	bestInHost, err := workspace.GetPluginInfoFromList(host.providers, workspace.ResourcePlugin, string(name), version)
+	if err != nil || bestInHost == nil {
+		return nil, nil
+	}
+
+	workspacePlugins, err := workspace.GetPlugins()
+	if err != nil {
+		return nil, err
+	}
+
+	allPlugins := append(workspacePlugins, host.providers...)
+	bestOverall, err := workspace.GetPluginInfoFromList(allPlugins, workspace.ResourcePlugin, string(name), version)
+	if err != nil || *bestInHost != *bestOverall {
+		return nil, err
+	}
+
+	var bestVersion semver.Version
+	if bestOverall.Version != nil {
+		bestVersion = *bestOverall.Version
+	}
+
+	return host.languageRuntime.StartProvider(bestOverall.Name, bestVersion)
+}
+
+func (host *pluginHost) Provider(name tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	provider, err := host.loadProvider(name, version)
+	if err != nil || provider == nil {
+		return host.Host.Provider(name, version)
+	}
+	return provider, nil
+}
+
+func (host *pluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+	if host.languageRuntime != nil {
+		return host.languageRuntime, nil
+	}
+	lang, err := host.Host.LanguageRuntime(runtime)
+	if err != nil {
+		return nil, err
+	}
+	host.languageRuntime = lang
+	return lang, nil
 }

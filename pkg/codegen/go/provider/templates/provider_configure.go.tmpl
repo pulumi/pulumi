@@ -36,5 +36,5 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	if err := providersdk.Unmarshal(inputs, &args); err != nil {
 		return err
 	}
-	return p.provider.Configure(p.newContext(""), &args, provider.ConfigureOptions{})
+	return p.provider.Configure(p.newContext(""), &args, providersdk.ConfigureOptions{})
 }
