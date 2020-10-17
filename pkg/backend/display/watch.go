@@ -50,6 +50,9 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
 			// Ignore it
 			continue
+		case engine.PolicyViolationEvent:
+			// At this point in time, we don't handle policy events as part of pulumi watch
+			continue
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
 			p := e.Payload().(engine.DiagEventPayload)
