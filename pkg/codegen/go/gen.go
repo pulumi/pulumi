@@ -31,7 +31,6 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -811,7 +810,11 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
-	fmt.Fprintf(w, "\terr := ctx.RegisterResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
+	if r.IsComponent {
+		fmt.Fprintf(w, "\terr := ctx.RegisterRemoteComponentResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
+	} else {
+		fmt.Fprintf(w, "\terr := ctx.RegisterResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
+	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
 	fmt.Fprintf(w, "\t\treturn nil, err\n")
 	fmt.Fprintf(w, "\t}\n")

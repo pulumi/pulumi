@@ -23,7 +23,7 @@ func NewOtherResource(ctx *pulumi.Context,
 		args = &OtherResourceArgs{}
 	}
 	var resource OtherResource
-	err := ctx.RegisterResource("example::OtherResource", name, args, &resource, opts...)
+	err := ctx.RegisterRemoteComponentResource("example::OtherResource", name, args, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}

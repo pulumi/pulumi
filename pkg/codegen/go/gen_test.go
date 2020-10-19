@@ -1,11 +1,11 @@
 package gen
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
