@@ -37,14 +37,17 @@ type RunOption func(*RunInfo)
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
+	status := 0
 	if err := RunErr(body, opts...); err != nil {
 		if err != ErrPlugins {
 			fmt.Fprintf(os.Stderr, "error: program failed: %v\n", err)
-			os.Exit(1)
+			status = 1
+		} else {
+			printRequiredPlugins()
 		}
-
-		printRequiredPlugins()
-		os.Exit(0)
+	}
+	if host == nil {
+		os.Exit(status)
 	}
 }
 
@@ -64,12 +67,17 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 
 	// Create a fresh context.
 	ctx, err := NewContext(context.TODO(), info)
-	if err != nil {
+	if err != nil || ctx == nil {
 		return err
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return RunWithContext(ctx, body)
+	err = RunWithContext(ctx, body)
+	if ctx.info.done != nil {
+		ctx.info.done <- err
+		err = <-host.exit
+	}
+	return err
 }
 
 // RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
@@ -135,6 +143,8 @@ type RunInfo struct {
 	springboard string
 	getPlugins  bool
 	providers   map[PackageInfo]ProviderFunc
+
+	done chan<- error
 }
 
 // getEnvInfo reads various program information from the process environment.

@@ -65,14 +65,14 @@ type Context struct {
 // NewContext creates a fresh run context out of the given metadata.
 func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	// Validate some properties.
-	if info.springboard == "" {
+	if info.springboard == "" && host == nil {
 		if info.Project == "" {
 			return nil, errors.New("missing project name")
 		} else if info.Stack == "" {
 			return nil, errors.New("missing stack name")
 		} else if info.MonitorAddr == "" && info.Mocks == nil {
 			return nil, errors.New("missing resource monitor RPC address")
-		} else if info.EngineAddr == "" && info.Mocks == nil {
+		} else if info.EngineAddr == "" && info.Mocks == nil && host == nil {
 			return nil, errors.New("missing engine RPC address")
 		}
 	}
@@ -91,6 +91,20 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		}
 		engineConn = conn
 		engine = pulumirpc.NewEngineClient(engineConn)
+	}
+
+	if engine == nil && info.Mocks == nil && host != nil {
+		go func() {
+			host.exit <- host.main(host)
+		}()
+
+		select {
+		case err := <-host.exit:
+			return nil, err
+		case info = <-host.runRequests:
+
+			// OK
+		}
 	}
 
 	// Start a language server for the purpose of launching plugins if requested.

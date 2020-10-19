@@ -160,6 +160,7 @@ func newLanguageHost(engineAddress, tracing, binary string) (pulumirpc.LanguageR
 	go func() {
 		env := os.Environ()
 		env = append(env, "PULUMI_SPRINGBOARD=http://"+listener.Addr().String())
+		env = append(env, pulumi.EnvEngine+"="+host.engineAddress)
 		programError <- host.runProgram(env)
 	}()
 
