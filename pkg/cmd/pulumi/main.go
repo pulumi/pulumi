@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
+	"github.com/pulumi/pulumi/pkg/v2/cli"
 	"github.com/pulumi/pulumi/pkg/v2/version"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -45,7 +46,7 @@ func panicHandler() {
 
 func main() {
 	defer panicHandler()
-	if err := NewPulumiCmd().Execute(); err != nil {
+	if err := cli.NewPulumiCmd().Execute(); err != nil {
 		_, err = fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		contract.IgnoreError(err)
 		os.Exit(1)
