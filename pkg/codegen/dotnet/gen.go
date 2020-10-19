@@ -976,7 +976,10 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	fmt.Fprintf(w, "{\n")
 
 	for i, enum := range enums {
-		mod.genEnum(w, enum)
+		err := mod.genEnum(w, enum)
+		if err != nil {
+			return err
+		}
 		if i != len(enums)-1 {
 			fmt.Fprintf(w, "\n")
 		}
@@ -1009,7 +1012,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	printComment(w, enum.Comment, indent)
 
 	switch enum.ElementType {
-	case schema.StringType, schema.NumberType, schema.BoolType:
+	case schema.StringType:
 		// Open struct declaration
 		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
 		fmt.Fprintf(w, "%s{\n", indent)
@@ -1057,7 +1060,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
 		}
 	default:
-		return fmt.Errorf("enums may only be of string, int, number or bool type")
+		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
 	}
 
 	// Close the declaration
