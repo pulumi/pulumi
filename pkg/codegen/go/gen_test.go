@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"path/filepath"
 	"testing"
 
@@ -44,6 +45,11 @@ func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "", goPackage(""))
 }
 
+// genPkgWrapper adapts the go.GeneratePackage signature to match the expected signature. The signature should be
+// standardized to match the other SDKs, but this hack fixes it for the purposes of this test.
+func genPkgWrapper(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	return GeneratePackage(tool, pkg)
+}
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -64,7 +70,7 @@ func TestGeneratePackage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
+				filepath.Join(testDir, tt.schemaDir, "schema.json"), genPkgWrapper)
 			assert.NoError(t, err)
 
 			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)

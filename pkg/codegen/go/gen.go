@@ -1317,7 +1317,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
