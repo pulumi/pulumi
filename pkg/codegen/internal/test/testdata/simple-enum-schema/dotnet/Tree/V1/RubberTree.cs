@@ -11,6 +11,12 @@ namespace Pulumi.PlantProvider.Tree.V1
 {
     public partial class RubberTree : Pulumi.CustomResource
     {
+        [Output("container")]
+        public Output<Pulumi.PlantProvider.Outputs.Container?> Container { get; private set; } = null!;
+
+        [Output("type")]
+        public Output<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety?> Type { get; private set; } = null!;
+
         /// <summary>
         /// Create a RubberTree resource with the given unique name, arguments, and options.
         /// </summary>
