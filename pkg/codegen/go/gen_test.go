@@ -51,11 +51,13 @@ func TestGeneratePackage(t *testing.T) {
 		schemaDir     string
 		expectedFiles []string
 	}{
-
 		{
 			"Simple schema with enum types",
 			"simple-enum-schema",
-			[]string{},
+			[]string{
+				filepath.Join("plant", "pulumiTypes.go"),
+				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
+			},
 		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
@@ -67,7 +69,7 @@ func TestGeneratePackage(t *testing.T) {
 				})
 			assert.NoError(t, err)
 
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "nodejs", tt.expectedFiles)
+			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
 			assert.NoError(t, err)
 
 			test.ValidateFileEquality(t, files, expectedFiles)
