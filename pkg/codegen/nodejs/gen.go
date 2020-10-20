@@ -166,23 +166,20 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
-		if !input {
-			if mod.disableUnionOutputTypes {
-				if t.DefaultType != nil {
-					return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
-				}
-				typ = "any"
+		if !input && mod.disableUnionOutputTypes {
+			if t.DefaultType != nil {
+				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
 			}
-			// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
-			// Eg. pulumi.Output<string> rather than pulumi.Output<EnumType | string>
-			for _, e := range t.ElementTypes {
-				if typ, ok := e.(*schema.EnumType); ok {
-					return mod.typeString(typ.ElementType, input, wrapInput, optional, constValue)
-				}
-			}
+			typ = "any"
 		} else {
 			var elements []string
 			for _, e := range t.ElementTypes {
+				// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
+				// Eg. pulumi.Output<string> rather than pulumi.Output<EnumType | string>
+				if typ, ok := e.(*schema.EnumType); ok && !input {
+					return mod.typeString(typ.ElementType, input, wrapInput, optional, constValue)
+				}
+
 				t := mod.typeString(e, input, wrapInput, false, constValue)
 				if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
 					contract.Assert(t[len(t)-1] == '>')
