@@ -143,6 +143,22 @@ func TestImportResourceRef(t *testing.T) {
 				}
 			},
 		},
+		{
+			"external-ref",
+			"external-resource-schema/schema.json",
+			false,
+			func(pkg *Package) {
+				for _, r := range pkg.Resources {
+					if r.Token == "example::Cat" {
+						for _, p := range r.Properties {
+							if p.Name == "name" {
+								assert.IsType(t, &ResourceType{}, p.Type)
+							}
+						}
+					}
+				}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

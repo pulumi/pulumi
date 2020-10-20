@@ -1,0 +1,56 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::Pet": {
+      "properties": {
+        "name": {
+          "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+        },
+        "age": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Cat": {
+      "properties": {
+        "name": {
+          "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+        }
+      },
+      "inputProperties": {
+        "age": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "functions": {
+    "example::argFunction": {
+      "inputs": {
+        "properties": {
+          "name": {
+            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "age": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}

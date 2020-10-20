@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 // TODO:
@@ -610,7 +611,9 @@ type TypeSpec struct {
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
 	// types are referenced as "pulumi.json#/Archive", "pulumi.json#/Asset", and "pulumi.json#/Any", respectively.
 	// A type from this document is referenced as "#/types/pulumi:type:token".
+	// A type from another document is referenced as "/provider/vX.Y.Z/schema.json#/types/pulumi:type:token".
 	// A resource from this document is referenced as "#/resources/pulumi:type:token".
+	// A resource from another document is referenced as "/provider/vX.Y.Z/schema.json#/resources/pulumi:type:token".
 	Ref string `json:"$ref,omitempty"`
 	// AdditionalProperties, if set, describes the element type of an "object" (i.e. a string -> value map).
 	AdditionalProperties *TypeSpec `json:"additionalProperties,omitempty"`
@@ -925,61 +928,78 @@ func (t *types) bindPrimitiveType(name string) (Type, error) {
 	}
 }
 
+func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
+	switch spec.Ref {
+	case "pulumi.json#/Archive":
+		return ArchiveType, nil
+	case "pulumi.json#/Asset":
+		return AssetType, nil
+	case "pulumi.json#/Json":
+		return JSONType, nil
+	case "pulumi.json#/Any":
+		return AnyType, nil
+	}
+
+	// scheme is used to reference external schemas, and is of the form `/provider/vX.Y.Z/schema.json`
+	schemeRegex := `(?P<scheme>/(?P<schemeProvider>\w+)/(?P<schemeVersion>v\d+\.\d+\.\d+)/schema\.json)?`
+	// fragment specifies a reference to another schema definition (a resource or type), and is of one of these forms:
+	// `#/resources/provider:version:type`
+	// `#/types/provider:version:type`
+	fragmentRegex := `#/(?P<refKind>resources|types)/(?P<token>(?P<provider>.*):(?P<version>.*):(?P<type>.*).*)`
+	// refRegex matches all valid schema references with named capture groups for further processing
+	refRegex := regexp.MustCompile(fmt.Sprintf(`^%s%s$`, schemeRegex, fragmentRegex))
+
+	match := refRegex.FindStringSubmatch(spec.Ref)
+	contract.Assertf(len(match) == 9, "failed to parse ref: %s", spec.Ref)
+
+	// TODO: remove named fields if not needed to improve readability
+
+	if scheme := match[1]; len(scheme) > 0 {
+		// TODO: handle external refs
+	}
+
+	token, err := url.PathUnescape(match[5])
+	if err != nil {
+		return nil, err
+	}
+
+	refKind := match[4]
+	switch refKind {
+	case "types":
+		if typ, ok := t.objects[token]; ok {
+			return typ, nil
+		}
+		if typ, ok := t.enums[token]; ok {
+			return typ, nil
+		}
+		typ, ok := t.tokens[token]
+		if !ok {
+			typ = &TokenType{Token: token}
+			if spec.Type != "" {
+				ut, err := t.bindType(TypeSpec{Type: spec.Type})
+				if err != nil {
+					return nil, err
+				}
+				typ.UnderlyingType = ut
+			}
+			t.tokens[token] = typ
+		}
+		return typ, nil
+	case "resources":
+		typ, ok := t.resources[token]
+		if !ok {
+			typ = &ResourceType{Token: token}
+			t.resources[token] = typ
+		}
+		return typ, nil
+	default:
+		return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
+	}
+}
+
 func (t *types) bindType(spec TypeSpec) (Type, error) {
 	if spec.Ref != "" {
-		switch spec.Ref {
-		case "pulumi.json#/Archive":
-			return ArchiveType, nil
-		case "pulumi.json#/Asset":
-			return AssetType, nil
-		case "pulumi.json#/Json":
-			return JSONType, nil
-		case "pulumi.json#/Any":
-			return AnyType, nil
-		}
-
-		// Parse the ref and look up the type in the type map.
-		switch {
-		case strings.HasPrefix(spec.Ref, "#/types/"):
-			token, err := url.PathUnescape(spec.Ref[len("#/types/"):])
-			if err != nil {
-				return nil, err
-			}
-
-			if typ, ok := t.objects[token]; ok {
-				return typ, nil
-			}
-			if typ, ok := t.enums[token]; ok {
-				return typ, nil
-			}
-			typ, ok := t.tokens[token]
-			if !ok {
-				typ = &TokenType{Token: token}
-				if spec.Type != "" {
-					ut, err := t.bindType(TypeSpec{Type: spec.Type})
-					if err != nil {
-						return nil, err
-					}
-					typ.UnderlyingType = ut
-				}
-				t.tokens[token] = typ
-			}
-			return typ, nil
-		case strings.HasPrefix(spec.Ref, "#/resources/"):
-			token, err := url.PathUnescape(spec.Ref[len("#/resources/"):])
-			if err != nil {
-				return nil, err
-			}
-
-			typ, ok := t.resources[token]
-			if !ok {
-				typ = &ResourceType{Token: token}
-				t.resources[token] = typ
-			}
-			return typ, nil
-		default:
-			return nil, errors.Errorf("failed to parse ref %s", spec.Ref)
-		}
+		return t.bindTypeSpecRef(spec)
 	}
 
 	if spec.OneOf != nil {
