@@ -5534,8 +5534,8 @@ func TestResourceReferences(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN,
-					news resource.PropertyMap, timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(urn resource.URN, news resource.PropertyMap,
+					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 					if urn.Name() == "resB" {
 						propA, ok := news["resA"]

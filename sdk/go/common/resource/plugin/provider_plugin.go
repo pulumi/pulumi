@@ -60,8 +60,8 @@ type provider struct {
 	cfgerr                 error                            // non-nil if a configure call fails.
 	cfgknown               bool                             // true if all configuration values are known.
 	cfgdone                chan bool                        // closed when configuration has completed.
-	acceptSecrets          bool                             // true if this plugin can consume strongly-typed secrets.
-	acceptResources        bool                             // true if this plugin can consume strongly-typed resource refs.
+	acceptSecrets          bool                             // true if this plugin accepts strongly-typed secrets.
+	acceptResources        bool                             // true if this plugin accepts strongly-typed resource refs.
 	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 }
@@ -484,7 +484,10 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.acceptSecrets, p.supportsPreview, p.acceptResources = resp.GetAcceptSecrets(), resp.GetSupportsPreview(), resp.GetAcceptResources()
+		p.acceptSecrets = resp.GetAcceptSecrets()
+		p.acceptResources = resp.GetAcceptResources()
+		p.supportsPreview = resp.GetSupportsPreview()
+
 		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
