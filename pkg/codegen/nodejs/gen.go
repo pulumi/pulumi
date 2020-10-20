@@ -173,14 +173,11 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 				}
 				typ = "any"
 			}
-			// If this is an output and a "relaxed" enum, emit the type as the primitive type rather than the union.
+			// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
 			// Eg. pulumi.Output<string> rather than pulumi.Output<EnumType | string>
 			for _, e := range t.ElementTypes {
-				switch e {
-				case schema.StringType, schema.IntType, schema.BoolType, schema.NumberType:
-					return mod.typeString(e, input, wrapInput, optional, constValue)
-				default:
-					continue
+				if typ, ok := e.(*schema.EnumType); ok {
+					return mod.typeString(typ.ElementType, input, wrapInput, optional, constValue)
 				}
 			}
 		} else {

@@ -10,7 +10,17 @@
         "type": {
           "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
         }
-      }
+      },
+      "properties": {
+        "container": {
+          "$ref": "#/types/plant-provider::Container"
+        },
+        "type": {
+          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        }
+      },
+      "required": ["type"],
+      "requiredInputs": ["type"]
     }
   },
   "types": {
