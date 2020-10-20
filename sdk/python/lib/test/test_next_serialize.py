@@ -32,12 +32,12 @@ import pulumi
 
 class TestCustomResource(CustomResource):
     def __init__(self, urn):
-        self.urn = Output.from_input(urn)
-        self.id = Output.from_input("id")
+        self.__dict__["urn"] = Output.from_input(urn)
+        self.__dict__["id"] = Output.from_input("id")
 
 class TestComponentResource(ComponentResource):
     def __init__(self, urn):
-        self.urn = Output.from_input(urn)
+        self.__dict__["urn"] = Output.from_input(urn)
 
 def async_test(coro):
     def wrapper(*args, **kwargs):

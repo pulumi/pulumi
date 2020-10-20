@@ -273,9 +273,9 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             typ = qualified_type.split("$")[-1]
             typ_parts = typ.split(":")
             pkg_name = typ_parts[0]
-            mod_name = typ_parts[1] if len(typ_parts) > 1 else "";
-            typ_name = typ_parts[2] if len(typ_parts) > 2 else "";
-            is_provider = pkg_name == "pulumi" && mod_name == "providers"
+            mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+            typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+            is_provider = pkg_name == "pulumi" and mod_name == "providers"
             if is_provider:
                 pkg_name = typ_name
 
@@ -284,7 +284,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
                 raise Exception(f"Unable to deserialize resource URN {urn}, no resource package is registered for type {typ}.")
             urn_name = urn_parts[3]
             resource = resource_package.construct(urn_name, typ, {}, {"urn": urn}) if not is_provider \
-                else resource_package.construct_provider (urn_name, typ, {}, {"urn": urn})
+                else resource_package.construct_provider(urn_name, typ, {}, {"urn": urn})
             return cast('Resource', resource)
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
@@ -578,9 +578,9 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
-    await resolve_properties(resolvers, all_properties)
+    await resolve_properties(resolvers, all_properties, deps)
 
-async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any]):
+async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
 
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
