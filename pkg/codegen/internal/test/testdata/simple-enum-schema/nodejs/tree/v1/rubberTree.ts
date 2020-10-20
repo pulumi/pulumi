@@ -35,6 +35,7 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     public readonly container!: pulumi.Output<outputs.Container | undefined>;
+    public readonly farm!: pulumi.Output<string | undefined>;
     public readonly type!: pulumi.Output<enums.tree.v1.RubberTreeVariety>;
 
     /**
@@ -51,9 +52,11 @@ export class RubberTree extends pulumi.CustomResource {
                 throw new Error("Missing required property 'type'");
             }
             inputs["container"] = args ? args.container : undefined;
+            inputs["farm"] = args ? args.farm : undefined;
             inputs["type"] = args ? args.type : undefined;
         } else {
             inputs["container"] = undefined /*out*/;
+            inputs["farm"] = undefined /*out*/;
             inputs["type"] = undefined /*out*/;
         }
         if (!opts) {
@@ -72,5 +75,6 @@ export class RubberTree extends pulumi.CustomResource {
  */
 export interface RubberTreeArgs {
     readonly container?: pulumi.Input<inputs.Container>;
+    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
     readonly type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }
