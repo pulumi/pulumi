@@ -175,6 +175,7 @@ Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
 Pulumi.IResourcePackage
 Pulumi.IResourcePackage.Construct(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.Resource
+Pulumi.IResourcePackage.ConstructProvider(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.ProviderResource
 Pulumi.Stack
 Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
 Pulumi.StackOptions

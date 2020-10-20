@@ -273,11 +273,18 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             typ = qualified_type.split("$")[-1]
             typ_parts = typ.split(":")
             pkg_name = typ_parts[0]
+            mod_name = typ_parts[1] if len(typ_parts) > 1 else "";
+            typ_name = typ_parts[2] if len(typ_parts) > 2 else "";
+            is_provider = pkg_name == "pulumi" && mod_name == "providers"
+            if is_provider:
+                pkg_name = typ_name
+
             resource_package = RESOURCE_PACKAGES.get(package_key(pkg_name, version))
             if resource_package is None:
                 raise Exception(f"Unable to deserialize resource URN {urn}, no resource package is registered for type {typ}.")
             urn_name = urn_parts[3]
-            resource = resource_package.construct(urn_name, typ, {}, {"urn": urn})
+            resource = resource_package.construct(urn_name, typ, {}, {"urn": urn}) if not is_provider \
+                else resource_package.construct_provider (urn_name, typ, {}, {"urn": urn})
             return cast('Resource', resource)
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")

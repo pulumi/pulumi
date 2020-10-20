@@ -24,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -453,7 +454,6 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 			return NewFileArchive(archive.Path), secret, nil
 		case archive.IsURI():
 			return NewRemoteArchive(archive.URI), secret, nil
-		default:
 		}
 		return nil, false, errors.New("expected asset to be one of File, String, or Remote; got none")
 	case v.IsResourceReference():
@@ -462,13 +462,27 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		resName := ref.URN.Name()
 		resType := ref.URN.Type()
 		pkgName := resType.Package()
-		resourcePackage, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
+
+		isProvider := false
+		if tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers" {
+			pkgName, isProvider = tokens.Package(resType.Name()), true
+		}
+
+		resourcePackageV, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
 		if !ok {
 			err := fmt.Errorf("unable to deserialize resource URN %v, no resource package is registered for type %v",
 				ref.URN, pkgName)
 			return nil, false, err
 		}
-		resource, err := resourcePackage.(ResourcePackage).Construct(string(resName), string(resType), nil, string(ref.URN))
+		resourcePackage := resourcePackageV.(ResourcePackage)
+
+		var resource Resource
+		var err error
+		if !isProvider {
+			resource, err = resourcePackage.Construct(string(resName), string(resType), nil, string(ref.URN))
+		} else {
+			resource, err = resourcePackage.ConstructProvider(string(resName), string(resType), nil, string(ref.URN))
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -666,6 +680,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 
 type ResourcePackage interface {
 	Construct(name, typ string, args map[string]interface{}, urn string) (Resource, error)
+	ConstructProvider(name, typ string, args map[string]interface{}, urn string) (ProviderResource, error)
 }
 
 var resourcePackages sync.Map // map[string]ResourcePackage

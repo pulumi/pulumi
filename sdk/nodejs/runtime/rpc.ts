@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, Resource, URN } from "../resource";
+import { ComponentResource, CustomResource, ProviderResource, Resource, URN } from "../resource";
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsResourceReferences, monitorSupportsSecrets } from "./settings";
 
@@ -516,15 +516,25 @@ export function deserializeProperty(prop: any): any {
 
                     const urnParts = urn.split("::");
                     const qualifiedType = urnParts[2];
+
                     const type = qualifiedType.split("$").pop()!;
                     const typeParts = type.split(":");
-                    const pkgName = typeParts[0];
+                    let pkgName = typeParts[0];
+                    const modName = typeParts.length > 1 ? typeParts[1] : "";
+                    const typName = typeParts.length > 2 ? typeParts[2] : "";
+                    const isProvider = pkgName === "pulumi" && modName === "providers";
+                    if (isProvider) {
+                        pkgName = typName;
+                    }
+
                     const resourcePackage = resourcePackages.get(packageKey(pkgName, version || ""));
                     if (!resourcePackage) {
                         throw new Error(`Unable to deserialize resource URN ${urn}, no resource package is registered for type ${type}.`);
                     }
                     const urnName = urnParts[3];
-                    return resourcePackage.construct(urnName, type, {}, { urn });
+                    return !isProvider ?
+                        resourcePackage.construct(urnName, type, {}, { urn }) :
+                        resourcePackage.constructProvider(urnName, type, {}, { urn });
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -570,6 +580,7 @@ export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
  */
 export type ResourcePackage = {
     construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
+    constructProvider(name: string, type: string, args: any, opts: { urn: string }): ProviderResource;
 };
 
 const resourcePackages = new Map<string, ResourcePackage>();
