@@ -166,11 +166,23 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
-		if !input && mod.disableUnionOutputTypes {
-			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
+		if !input {
+			if mod.disableUnionOutputTypes {
+				if t.DefaultType != nil {
+					return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
+				}
+				typ = "any"
 			}
-			typ = "any"
+			// If this is an output and a "relaxed" enum, emit the type as the primitive type rather than the union.
+			// Eg. pulumi.Output<string> rather than pulumi.Output<EnumType | string>
+			for _, e := range t.ElementTypes {
+				switch e {
+				case schema.StringType, schema.IntType, schema.BoolType, schema.NumberType:
+					return mod.typeString(e, input, wrapInput, optional, constValue)
+				default:
+					continue
+				}
+			}
 		} else {
 			var elements []string
 			for _, e := range t.ElementTypes {
