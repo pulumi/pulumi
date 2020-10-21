@@ -20,8 +20,8 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	uuid "github.com/gofrs/uuid"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
@@ -191,7 +191,12 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 				inputs["version"] = resource.NewStringProperty(version.String())
 			}
 
-			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.NewV4().String())
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return err
+			}
+
+			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.String())
 			ref, err = providers.NewReference(urn, id)
 			contract.Assert(err == nil)
 

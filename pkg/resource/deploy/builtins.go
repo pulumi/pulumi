@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	uuid "github.com/gofrs/uuid"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -117,7 +117,12 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 
 	var id resource.ID
 	if !preview {
-		id = resource.ID(uuid.NewV4().String())
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return "", nil, resource.StatusPartialFailure, err
+		}
+		id = resource.ID(uuid.String())
 	}
 
 	return id, state, resource.StatusOK, nil
