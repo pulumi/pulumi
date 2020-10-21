@@ -629,7 +629,7 @@ func TestCloudSecretProvider(t *testing.T) {
 
 }
 
-//Tests a resource with a large (>4mb) string prop in Node.js
+// Tests a resource with a large (>4mb) string prop in Node.js
 func TestLargeResourceNode(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
@@ -637,6 +637,20 @@ func TestLargeResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("large_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+	})
+}
+
+// Tests enum outputs
+func TestEnumOutputNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("enums", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
+			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
+			assert.Equal(t, "My Burgundy Rubber tree is from Pulumi Planters Inc.", stack.Outputs["mySentence"])
+		},
 	})
 }
 
