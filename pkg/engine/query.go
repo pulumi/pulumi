@@ -92,7 +92,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
 	opts QueryOptions) (deploy.QuerySource, error) {
 
-	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
+	allPlugins, defaultProviderVersions, err := installPlugins(cancel, q.GetProject(), opts.pwd, opts.main,
 		nil, opts.plugctx)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
 	const kinds = plugin.LanguagePlugins
-	if err := ensurePluginsAreLoaded(opts.plugctx, allPlugins, kinds); err != nil {
+	if err := ensurePluginsAreLoaded(cancel, opts.plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) result.Result 
 
 		logging.V(4).Infof("engine.runQuery(...): signalling cancellation to providers...")
 		cancelFunc()
-		cancelErr := opts.plugctx.Host.SignalCancellation()
+		cancelErr := opts.plugctx.Host.SignalCancellation(context.Background())
 		if cancelErr != nil {
 			logging.V(4).Infof("engine.runQuery(...): failed to signal cancellation to providers: %v", cancelErr)
 		}

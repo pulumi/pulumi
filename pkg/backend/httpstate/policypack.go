@@ -159,12 +159,12 @@ func (pack *cloudPolicyPack) Publish(
 		return result.FromError(err)
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(ctx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return result.FromError(err)
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo()
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
 		return result.FromError(err)
 	}

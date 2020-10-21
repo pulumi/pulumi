@@ -629,7 +629,7 @@ func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) err
 	// Call RunInstallPlugins, which will run `dotnet build`. This will automatically
 	// restore dependencies, install any plugins, and build the project so it will be
 	// prepped and ready to go for a faster initial `pulumi up`.
-	if err = engine.RunInstallPlugins(proj, pwd, main, nil, plugctx); err != nil {
+	if err = engine.InstallPlugins(commandContext(), proj, pwd, main, nil, plugctx); err != nil {
 		return err
 	}
 

@@ -129,7 +129,7 @@ type planOptions struct {
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type planSourceFunc func(
-	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+	ctx context.Context, client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -153,7 +153,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
-	source, err := opts.SourceFunc(ctx.BackendClient, opts, proj, pwd, main, target, plugctx, dryRun)
+	source, err := opts.SourceFunc(ctx.Cancel.CancellationContext(),
+		ctx.BackendClient, opts, proj, pwd, main, target, plugctx, dryRun)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -167,7 +168,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		plan, err = deploy.NewPlan(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
-		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx)
+		_, defaultProviderVersions, pluginErr := installPlugins(ctx.Cancel.CancellationContext(),
+			proj, pwd, main, target, plugctx)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}

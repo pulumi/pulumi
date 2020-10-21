@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -42,7 +43,7 @@ type Step interface {
 	//
 	// The returned StepCompleteFunc, if not nil, must be called after committing the results of this step into
 	// the state of the deployment.
-	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
+	Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error)
 
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
@@ -120,7 +121,7 @@ func (s *SameStep) New() *resource.State { return s.new }
 func (s *SameStep) Res() *resource.State { return s.new }
 func (s *SameStep) Logical() bool        { return true }
 
-func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *SameStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Retain the ID, and outputs:
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
@@ -207,7 +208,7 @@ func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
-func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *CreateStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if s.new.Custom {
@@ -217,7 +218,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.plan.preview)
+		id, outs, rst, err := prov.Create(ctx, s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.plan.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -322,7 +323,7 @@ func (s *DeleteStep) New() *resource.State { return nil }
 func (s *DeleteStep) Res() *resource.State { return s.old }
 func (s *DeleteStep) Logical() bool        { return !s.replacing }
 
-func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *DeleteStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
 	if s.old.Protect {
 		return resource.StatusOK, nil,
@@ -338,7 +339,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				return resource.StatusOK, nil, err
 			}
 
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+			if rst, err := prov.Delete(ctx, s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 				return rst, nil, err
 			}
 		}
@@ -373,7 +374,7 @@ func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool        { return false }
 
-func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RemovePendingReplaceStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
 }
 
@@ -430,7 +431,7 @@ func (s *UpdateStep) Logical() bool                                { return true
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *UpdateStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID, even in previews and refreshes.
 	s.new.ID = s.old.ID
 
@@ -444,7 +445,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
+		outs, rst, upderr := prov.Update(ctx, s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
 			s.new.CustomTimeouts.Update, s.ignoreChanges, s.plan.preview)
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
@@ -520,7 +521,7 @@ func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.d
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
 
-func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReplaceStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assert(!s.pendingDelete || s.old.Delete)
 	return resource.StatusOK, func() {}, nil
@@ -598,7 +599,7 @@ func (s *ReadStep) New() *resource.State { return s.new }
 func (s *ReadStep) Res() *resource.State { return s.new }
 func (s *ReadStep) Logical() bool        { return !s.replacing }
 
-func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReadStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
 	id := s.new.ID
 
@@ -614,7 +615,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, err
 		}
 
-		result, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
+		result, rst, err := prov.Read(ctx, urn, id, nil, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -697,7 +698,7 @@ func (s *RefreshStep) ResultOp() StepOp {
 	return OpUpdate
 }
 
-func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RefreshStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	var complete func()
 	if s.done != nil {
 		complete = func() { close(s.done) }
@@ -717,7 +718,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
+	refreshed, rst, err := prov.Read(ctx, s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
 	if err != nil {
 		if rst != resource.StatusPartialFailure {
 			return rst, nil, err
@@ -847,7 +848,7 @@ func (s *ImportStep) Logical() bool                                { return !s.r
 func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ImportStep) Apply(ctx context.Context, preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
 	// If this is a planned import, ensure that the resource does not exist in the old state file.
@@ -869,7 +870,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
-	read, rst, err := prov.Read(s.new.URN, s.new.ID, nil, nil)
+	read, rst, err := prov.Read(ctx, s.new.URN, s.new.ID, nil, nil)
 	if err != nil {
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 			s.new.InitErrors = initErr.Reasons
@@ -901,7 +902,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if s.planned {
 		contract.Assert(len(s.new.Inputs) == 0)
 
-		pkg, err := s.plan.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
+		pkg, err := s.plan.schemaLoader.LoadPackage(ctx, string(s.new.Type.Package()), nil)
 		if err != nil {
 			return resource.StatusOK, nil, errors.Wrapf(err, "failed to fetch provider schema")
 		}
@@ -919,7 +920,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)
+	inputs, failures, err := prov.Check(ctx, s.new.URN, s.old.Inputs, s.new.Inputs, preview)
 	if err != nil {
 		return rst, nil, err
 	}
@@ -930,7 +931,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import plan.
-	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
+	diff, err := diffResource(ctx, s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
 		s.ignoreChanges)
 	if err != nil {
 		return rst, nil, err

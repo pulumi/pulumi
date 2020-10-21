@@ -233,22 +233,24 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		return err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
-		files, _, err := programGenerator(p)
-		if err != nil {
-			return err
-		}
 
-		var contents []byte
-		for _, v := range files {
-			contents = v
-		}
+	return importer.GenerateLanguageDefinitions(commandContext(), out, loader,
+		func(w io.Writer, p *hcl2.Program) error {
+			files, _, err := programGenerator(p)
+			if err != nil {
+				return err
+			}
 
-		if _, err := w.Write(contents); err != nil {
-			return err
-		}
-		return nil
-	}, resources, names)
+			var contents []byte
+			for _, v := range files {
+				contents = v
+			}
+
+			if _, err := w.Write(contents); err != nil {
+				return err
+			}
+			return nil
+		}, resources, names)
 }
 
 func newImportCmd() *cobra.Command {

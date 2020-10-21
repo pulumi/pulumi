@@ -58,9 +58,9 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 }
 
 // Request allocates a request sub-context.
-func (ctx *Context) Request() context.Context {
+func (ctx *Context) Request(parent context.Context) context.Context {
 	// TODO[pulumi/pulumi#143]: support cancellation.
-	return opentracing.ContextWithSpan(context.Background(), ctx.tracingSpan)
+	return opentracing.ContextWithSpan(parent, ctx.tracingSpan)
 }
 
 // Close reclaims all resources associated with this context.

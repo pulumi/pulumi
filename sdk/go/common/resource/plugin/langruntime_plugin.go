@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -83,14 +84,18 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 	}
 }
 
+func (h *langhost) requestContext(ctx context.Context) context.Context {
+	return h.ctx.Request(ctx)
+}
+
 func (h *langhost) Runtime() string { return h.runtime }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
+func (h *langhost) GetRequiredPlugins(ctx context.Context, info ProgInfo) ([]workspace.PluginInfo, error) {
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
-	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
+	resp, err := h.client.GetRequiredPlugins(h.requestContext(ctx), &pulumirpc.GetRequiredPluginsRequest{
 		Project: proj,
 		Pwd:     info.Pwd,
 		Program: info.Program,
@@ -140,14 +145,14 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 // info.DryRun is true, the code must not assume that side-effects or final values resulting from
 // resource deployments are actually available.  If it is false, on the other hand, a real
 // deployment is occurring and it may safely depend on these.
-func (h *langhost) Run(info RunInfo) (string, bool, error) {
+func (h *langhost) Run(ctx context.Context, info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
 	for k, v := range info.Config {
 		config[k.String()] = v
 	}
-	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
+	resp, err := h.client.Run(h.requestContext(ctx), &pulumirpc.RunRequest{
 		MonitorAddress: info.MonitorAddress,
 		Pwd:            info.Pwd,
 		Program:        info.Program,
@@ -174,7 +179,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
+func (h *langhost) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 
 	plugInfo := workspace.PluginInfo{
@@ -184,7 +189,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	plugInfo.Path = h.plug.Bin
 
-	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
+	resp, err := h.client.GetPluginInfo(h.requestContext(ctx), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)

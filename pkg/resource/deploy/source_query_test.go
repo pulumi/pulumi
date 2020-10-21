@@ -29,11 +29,11 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	// Success case.
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(context.Context, *querySource) result.Result {
 		return nil
 	})
 
-	qs1.forkRun()
+	qs1.forkRun(context.Background())
 
 	res := qs1.Wait()
 	assert.Nil(t, res)
@@ -45,11 +45,11 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	// Failure case.
 	resmon2 := mockQueryResmon{}
-	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) result.Result {
+	qs2, _ := newTestQuerySource(&resmon2, func(context.Context, *querySource) result.Result {
 		return result.Error("failed")
 	})
 
-	qs2.forkRun()
+	qs2.forkRun(context.Background())
 
 	res = qs2.Wait()
 	assert.False(t, res.IsBail())
@@ -72,13 +72,13 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs1Start, qs1StartAck := make(chan interface{}), make(chan interface{})
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(context.Context, *querySource) result.Result {
 		qs1Start <- struct{}{}
 		<-qs1StartAck
 		return nil
 	})
 
-	qs1.forkRun()
+	qs1.forkRun(context.Background())
 
 	// Wait until querySource starts, then acknowledge starting.
 	<-qs1Start
@@ -102,14 +102,14 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs2Start, qs2StartAck := make(chan interface{}), make(chan interface{})
 	resmon2 := mockQueryResmon{}
-	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) result.Result {
+	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(context.Context, *querySource) result.Result {
 		qs2Start <- struct{}{}
 		// Block forever.
 		<-qs2StartAck
 		return nil
 	})
 
-	qs2.forkRun()
+	qs2.forkRun(context.Background())
 
 	// Wait until querySource starts, then cancel.
 	<-qs2Start
@@ -148,7 +148,7 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 //
 
 func newTestQuerySource(mon SourceResourceMonitor,
-	runLangPlugin func(*querySource) result.Result) (*querySource, context.CancelFunc) {
+	runLangPlugin func(context.Context, *querySource) result.Result) (*querySource, context.CancelFunc) {
 
 	cancel, cancelFunc := context.WithCancel(context.Background())
 
@@ -156,7 +156,7 @@ func newTestQuerySource(mon SourceResourceMonitor,
 		mon:               mon,
 		runLangPlugin:     runLangPlugin,
 		langPluginFinChan: make(chan result.Result),
-		cancel:            cancel,
+		cancelContext:     cancel,
 	}, cancelFunc
 }
 

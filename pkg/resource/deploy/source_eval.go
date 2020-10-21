@@ -108,7 +108,12 @@ func (src *evalSource) Iterate(
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
+	//
+	// Note that we use the background context for cancellation here b/c the input context is only for smuggling
+	// tracing spans around.
+	cancelContext, cancel := context.WithCancel(context.Background())
 	iter := &evalSourceIterator{
+		cancel:      cancel,
 		mon:         mon,
 		src:         src,
 		regChan:     regChan,
@@ -119,13 +124,14 @@ func (src *evalSource) Iterate(
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(opts, config)
+	iter.forkRun(cancelContext, opts, config)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
 }
 
 type evalSourceIterator struct {
+	cancel      func()                             // the cancellation callback.
 	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
@@ -183,14 +189,14 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 }
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
-func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]string) {
+func (iter *evalSourceIterator) forkRun(ctx context.Context, opts Options, config map[config.Key]string) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
 		// Next, launch the language plugin.
 		run := func() result.Result {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(ctx, rt)
 			if err != nil {
 				return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
 			}
@@ -200,7 +206,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 			defer contract.IgnoreClose(langhost)
 
 			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(ctx, plugin.RunInfo{
 				MonitorAddress: iter.mon.Address(),
 				Stack:          string(iter.src.runinfo.Target.Name),
 				Project:        string(iter.src.runinfo.Proj.Name),
@@ -570,7 +576,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
-	ret, failures, err := prov.Invoke(tok, args)
+	ret, failures, err := prov.Invoke(ctx, tok, args)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
@@ -619,17 +625,18 @@ func (rm *resmon) StreamInvoke(
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
 	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
-	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
-		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
-			Label:        label,
-			KeepUnknowns: true,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failed to marshal return")
-		}
+	failures, err := prov.StreamInvoke(stream.Context(), tok, args,
+		func(ctx context.Context, event resource.PropertyMap) error {
+			mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
+				Label:        label,
+				KeepUnknowns: true,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "failed to marshal return")
+			}
 
-		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
-	})
+			return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+		})
 	if err != nil {
 		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
 	}
@@ -883,7 +890,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
 		}
-		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
+		constructResult, err := provider.Construct(ctx, rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
 			return nil, err
 		}

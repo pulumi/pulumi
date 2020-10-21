@@ -15,6 +15,8 @@
 package deploytest
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -38,12 +40,14 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
+func (p *languageRuntime) GetRequiredPlugins(ctx context.Context,
+	info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
+
 	return p.requiredPlugins, nil
 }
 
-func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
-	monitor, err := dialMonitor(info.MonitorAddress)
+func (p *languageRuntime) Run(ctx context.Context, info plugin.RunInfo) (string, bool, error) {
+	monitor, err := dialMonitor(ctx, info.MonitorAddress)
 	if err != nil {
 		return "", false, err
 	}
@@ -60,6 +64,6 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	return "", false, nil
 }
 
-func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *languageRuntime) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }

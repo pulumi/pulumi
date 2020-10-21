@@ -2096,7 +2096,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 					ConfigureF: func(news resource.PropertyMap) error {
 						go func() {
 							<-release
-							host.Log(diag.Info, "", "configuring pkgA provider...", 0)
+							host.Log(context.Background(), diag.Info, "", "configuring pkgA provider...", 0)
 							close(done)
 						}()
 						return nil

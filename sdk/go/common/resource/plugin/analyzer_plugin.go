@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -160,8 +161,12 @@ func (a *analyzer) label() string {
 	return fmt.Sprintf("Analyzer[%s]", a.name)
 }
 
+func (a *analyzer) requestContext(ctx context.Context) context.Context {
+	return a.ctx.Request(ctx)
+}
+
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
@@ -177,7 +182,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 		return nil, err
 	}
 
-	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+	resp, err := a.client.Analyze(a.requestContext(ctx), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       string(name),
@@ -202,7 +207,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -247,7 +252,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		}
 	}
 
-	resp, err := a.client.AnalyzeStack(a.ctx.Request(), &pulumirpc.AnalyzeStackRequest{
+	resp, err := a.client.AnalyzeStack(a.requestContext(ctx), &pulumirpc.AnalyzeStackRequest{
 		Resources: protoResources,
 	})
 	if err != nil {
@@ -275,10 +280,10 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 }
 
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
-func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
+func (a *analyzer) GetAnalyzerInfo(ctx context.Context) (AnalyzerInfo, error) {
 	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetAnalyzerInfo(a.requestContext(ctx), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -353,10 +358,10 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
+func (a *analyzer) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetPluginInfo(a.requestContext(ctx), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -380,7 +385,7 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
+func (a *analyzer) Configure(ctx context.Context, policyConfig map[string]AnalyzerPolicyConfig) error {
 	label := fmt.Sprintf("%s.Configure(...)", a.label())
 	logging.V(7).Infof("%s executing", label)
 
@@ -401,7 +406,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 		}
 	}
 
-	_, err := a.client.Configure(a.ctx.Request(), &pulumirpc.ConfigureAnalyzerRequest{
+	_, err := a.client.Configure(a.requestContext(ctx), &pulumirpc.ConfigureAnalyzerRequest{
 		PolicyConfig: c,
 	})
 	if err != nil {

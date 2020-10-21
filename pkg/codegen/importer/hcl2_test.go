@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -225,7 +226,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			block, err := GenerateHCL2Definition(loader, state, names)
+			block, err := GenerateHCL2Definition(context.Background(), loader, state, names)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}

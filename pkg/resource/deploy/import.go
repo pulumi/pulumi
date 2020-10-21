@@ -74,7 +74,7 @@ func NewImportPlan(ctx *plugin.Context, target *Target, projectName tokens.Packa
 	}
 
 	// Create a new provider registry.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, nil)
+	reg, err := providers.NewRegistry(context.TODO(), ctx.Host, oldResources, preview, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if v := req.Version(); v != nil {
 			inputs["version"] = resource.NewStringProperty(v.String())
 		}
-		inputs, failures, err := i.plan.providers.Check(urn, nil, inputs, false)
+		inputs, failures, err := i.plan.providers.Check(ctx, urn, nil, inputs, false)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
@@ -26,8 +27,10 @@ import (
 type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
+
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error)
+	GetRequiredPlugins(ctx context.Context, info ProgInfo) ([]workspace.PluginInfo, error)
+
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real
@@ -35,9 +38,10 @@ type LanguageRuntime interface {
 	//
 	// Returns a triple of "error message", "bail", or real "error".  If "bail", the caller should
 	// return result.Bail immediately and not print any further messages to the user.
-	Run(info RunInfo) (string, bool, error)
+	Run(ctx context.Context, info RunInfo) (string, bool, error)
+
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error)
 }
 
 // ProgInfo contains minimal information about the program to be run.

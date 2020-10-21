@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	"sync"
 
 	"github.com/blang/semver"
@@ -11,7 +12,7 @@ import (
 )
 
 type Loader interface {
-	LoadPackage(pkg string, version *semver.Version) (*Package, error)
+	LoadPackage(ctx context.Context, pkg string, version *semver.Version) (*Package, error)
 }
 
 type pluginLoader struct {
@@ -36,7 +37,7 @@ func (l *pluginLoader) getPackage(key string) (*Package, bool) {
 	return p, ok
 }
 
-func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+func (l *pluginLoader) LoadPackage(ctx context.Context, pkg string, version *semver.Version) (*Package, error) {
 	key := pkg + "@"
 	if version != nil {
 		key += version.String()
@@ -46,13 +47,13 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return p, nil
 	}
 
-	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	provider, err := l.host.Provider(ctx, tokens.Package(pkg), version)
 	if err != nil {
 		return nil, err
 	}
 
 	schemaFormatVersion := 0
-	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
+	schemaBytes, err := provider.GetSchema(ctx, schemaFormatVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -286,7 +286,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
+	reg, err := providers.NewRegistry(context.TODO(), ctx.Host, oldResources, preview, builtins)
 	if err != nil {
 		return nil, err
 	}

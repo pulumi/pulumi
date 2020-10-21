@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"context"
+	"errors"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -37,64 +39,105 @@ import (
 type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
 	// GetSchema returns the schema for the provider.
-	GetSchema(version int) ([]byte, error)
+	GetSchema(ctx context.Context, version int) ([]byte, error)
 
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
+	CheckConfig(ctx context.Context,
+		urn resource.URN,
+		olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
+
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+	DiffConfig(ctx context.Context,
+		urn resource.URN,
+		olds, news resource.PropertyMap,
+		allowUnknowns bool,
 		ignoreChanges []string) (DiffResult, error)
+
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(inputs resource.PropertyMap) error
+	Configure(ctx context.Context, inputs resource.PropertyMap) error
 
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
-	Check(urn resource.URN, olds, news resource.PropertyMap,
+	Check(ctx context.Context,
+		urn resource.URN,
+		olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
+
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+	Diff(ctx context.Context,
+		urn resource.URN,
+		id resource.ID,
+		olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
+
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
+	Create(ctx context.Context,
+		urn resource.URN,
+		news resource.PropertyMap,
+		timeout float64,
+		preview bool) (resource.ID,
 		resource.PropertyMap, resource.Status, error)
+
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
-	Read(urn resource.URN, id resource.ID,
+	Read(ctx context.Context,
+		urn resource.URN,
+		id resource.ID,
 		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
+
 	// Update updates an existing resource with new values.
-	Update(urn resource.URN, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
+	Update(ctx context.Context,
+		urn resource.URN,
+		id resource.ID,
+		olds, news resource.PropertyMap,
+		timeout float64,
+		ignoreChanges []string,
+		preview bool) (resource.PropertyMap, resource.Status, error)
+
 	// Delete tears down an existing resource.
-	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+	Delete(ctx context.Context,
+		urn resource.URN,
+		id resource.ID,
+		props resource.PropertyMap,
+		timeout float64) (resource.Status, error)
 
 	// Construct creates a new component resource.
-	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,
+	Construct(ctx context.Context,
+		info ConstructInfo,
+		typ tokens.Type,
+		name tokens.QName,
+		parent resource.URN,
+		inputs resource.PropertyMap,
 		options ConstructOptions) (ConstructResult, error)
 
 	// Invoke dynamically executes a built-in function in the provider.
-	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	Invoke(ctx context.Context,
+		tok tokens.ModuleMember,
+		args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+
 	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
 	// of responses.
-	StreamInvoke(
+	StreamInvoke(ctx context.Context,
 		tok tokens.ModuleMember,
 		args resource.PropertyMap,
-		onNext func(resource.PropertyMap) error) ([]CheckFailure, error)
+		onNext func(context.Context, resource.PropertyMap) error) ([]CheckFailure, error)
+
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
-	SignalCancellation() error
+	SignalCancellation(ctx context.Context) error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
@@ -102,6 +145,8 @@ type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
 }
+
+var ErrNotYetImplemented = errors.New("NYI")
 
 // DiffChanges represents the kind of changes detected by a diff operation.
 type DiffChanges int

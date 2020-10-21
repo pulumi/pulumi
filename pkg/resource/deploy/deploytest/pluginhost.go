@@ -148,7 +148,9 @@ func (host *pluginHost) isClosed() bool {
 	return host.closed
 }
 
-func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (host *pluginHost) Provider(ctx context.Context,
+	pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+
 	var best *ProviderLoader
 	for _, l := range host.providerLoaders {
 		if l.pkg != pkg {
@@ -187,17 +189,17 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return prov, nil
 }
 
-func (host *pluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(ctx context.Context, runtime string) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }
 
-func (host *pluginHost) SignalCancellation() error {
+func (host *pluginHost) SignalCancellation(ctx context.Context) error {
 	host.m.Lock()
 	defer host.m.Unlock()
 
 	var err error
 	for prov := range host.providers {
-		if pErr := prov.SignalCancellation(); pErr != nil {
+		if pErr := prov.SignalCancellation(ctx); pErr != nil {
 			err = pErr
 		}
 	}
@@ -214,42 +216,44 @@ func (host *pluginHost) Close() error {
 func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
 }
-func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+func (host *pluginHost) Log(ctx context.Context, sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {
 		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 	}
 }
-func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+func (host *pluginHost) LogStatus(ctx context.Context,
+	sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+
 	if !host.isClosed() {
 		host.statusSink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 	}
 }
-func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+func (host *pluginHost) Analyzer(ctx context.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
+func (host *pluginHost) CloseProvider(ctx context.Context, provider plugin.Provider) error {
 	host.m.Lock()
 	defer host.m.Unlock()
 
 	delete(host.providers, provider)
 	return nil
 }
-func (host *pluginHost) ListPlugins() []workspace.PluginInfo {
+func (host *pluginHost) LoadedPlugins() []workspace.PluginInfo {
 	return nil
 }
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
+func (host *pluginHost) EnsurePlugins(ctx context.Context, plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
 }
-func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *pluginHost) GetRequiredPlugins(ctx context.Context, info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return nil, nil
 }
 
-func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
+func (host *pluginHost) PolicyAnalyzer(ctx context.Context, name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 
-func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
+func (host *pluginHost) LoadedAnalyzers() []plugin.Analyzer {
 	return nil
 }

@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -72,10 +73,10 @@ func newPluginSet() pluginSet {
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
-func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
+func gatherPluginsFromProgram(ctx context.Context, plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := newPluginSet()
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(ctx, plugctx.Host, prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
@@ -128,9 +129,9 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
-	var installTasks errgroup.Group
+	installTasks, _ := errgroup.WithContext(ctx)
 	for _, plug := range plugins.Values() {
 		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version)
 		if err == nil && path != "" {
@@ -155,8 +156,8 @@ func ensurePluginsAreInstalled(plugins pluginSet) error {
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
 // loaded.
-func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags) error {
-	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
+func ensurePluginsAreLoaded(ctx context.Context, plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags) error {
+	return plugctx.Host.EnsurePlugins(ctx, plugins.Values(), kinds)
 }
 
 // installPlugin installs a plugin from the given backend client.

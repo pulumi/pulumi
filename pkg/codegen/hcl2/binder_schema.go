@@ -15,6 +15,7 @@
 package hcl2
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -57,13 +58,15 @@ func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
 // GetSchema method.
 //
 // TODO: schema and provider versions
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*packageSchema, error) {
+func (c *PackageCache) loadPackageSchema(ctx context.Context,
+	loader schema.Loader, name string) (*packageSchema, error) {
+
 	if s, ok := c.getPackageSchema(name); ok {
 		return s, nil
 	}
 
 	version := (*semver.Version)(nil)
-	pkg, err := loader.LoadPackage(name, version)
+	pkg, err := loader.LoadPackage(ctx, name, version)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +137,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if _, ok := b.referencedPackages[name]; ok {
 			continue
 		}
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name)
+		pkg, err := b.options.packageCache.loadPackageSchema(context.Background(), b.options.loader, name)
 		if err != nil {
 			return err
 		}

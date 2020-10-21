@@ -1,6 +1,7 @@
 package hcl2
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
@@ -12,7 +13,7 @@ func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(test.NewHost(testdataPath))
 
 	for n := 0; n < b.N; n++ {
-		_, err := NewPackageCache().loadPackageSchema(loader, "aws")
+		_, err := NewPackageCache().loadPackageSchema(context.Background(), loader, "aws")
 		contract.AssertNoError(err)
 	}
 }

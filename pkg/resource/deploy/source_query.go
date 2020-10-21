@@ -52,7 +52,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(client)
 
-	reg, err := providers.NewRegistry(plugctx.Host, nil, false, builtins)
+	reg, err := providers.NewRegistry(cancel, plugctx.Host, nil, false, builtins)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to start resource monitor")
 	}
@@ -72,6 +72,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
+	cancelContext, cancelFunc := context.WithCancel(cancel)
 	src := &querySource{
 		mon:                mon,
 		plugctx:            plugctx,
@@ -79,27 +80,29 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 		runLangPlugin:      runLangPlugin,
 		langPluginFinChan:  make(chan result.Result),
 		providerRegErrChan: make(chan result.Result),
-		cancel:             cancel,
+		cancelContext:      cancelContext,
+		cancel:             cancelFunc,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	src.forkRun()
+	src.forkRun(cancelContext)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return src, nil
 }
 
 type querySource struct {
-	mon                SourceResourceMonitor            // the resource monitor, per iterator.
-	plugctx            *plugin.Context                  // the plugin context.
-	runinfo            *EvalRunInfo                     // the directives to use when running the program.
-	runLangPlugin      func(*querySource) result.Result // runs the language plugin.
-	langPluginFinChan  chan result.Result               // communicates language plugin completion.
-	providerRegErrChan chan result.Result               // communicates errors loading providers
-	done               bool                             // set to true when the evaluation is done.
-	res                result.Result                    // result when the channel is finished.
-	cancel             context.Context
+	mon                SourceResourceMonitor                             // the resource monitor, per iterator.
+	plugctx            *plugin.Context                                   // the plugin context.
+	runinfo            *EvalRunInfo                                      // directives to use when running the program.
+	runLangPlugin      func(context.Context, *querySource) result.Result // runs the language plugin.
+	langPluginFinChan  chan result.Result                                // communicates language plugin completion.
+	providerRegErrChan chan result.Result                                // communicates errors loading providers
+	done               bool                                              // set to true when the evaluation is done.
+	res                result.Result                                     // result when the channel is finished.
+	cancelContext      context.Context
+	cancel             func()
 }
 
 func (src *querySource) Close() error {
@@ -123,7 +126,7 @@ func (src *querySource) Wait() result.Result {
 		// Provider registration has failed.
 		src.Close()
 		return src.res
-	case <-src.cancel.Done():
+	case <-src.cancelContext.Done():
 		src.Close()
 		return src.res
 	}
@@ -131,19 +134,19 @@ func (src *querySource) Wait() result.Result {
 
 // forkRun evaluate the query program in a separate goroutine. Completion or cancellation will cause
 // `Wait` to stop blocking and return.
-func (src *querySource) forkRun() {
+func (src *querySource) forkRun(ctx context.Context) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
 		// Next, launch the language plugin. Communicate the error, if it exists, or nil if the
 		// program exited cleanly.
-		src.langPluginFinChan <- src.runLangPlugin(src)
+		src.langPluginFinChan <- src.runLangPlugin(ctx, src)
 	}()
 }
 
-func runLangPlugin(src *querySource) result.Result {
+func runLangPlugin(ctx context.Context, src *querySource) result.Result {
 	rt := src.runinfo.Proj.Runtime.Name()
-	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
+	langhost, err := src.plugctx.Host.LanguageRuntime(ctx, rt)
 	if err != nil {
 		return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
 	}
@@ -167,7 +170,7 @@ func runLangPlugin(src *querySource) result.Result {
 	}
 
 	// Now run the actual program.
-	progerr, bail, err := langhost.Run(plugin.RunInfo{
+	progerr, bail, err := langhost.Run(ctx, plugin.RunInfo{
 		MonitorAddress: src.mon.Address(),
 		Stack:          name,
 		Project:        string(src.runinfo.Proj.Name),
@@ -217,16 +220,22 @@ func newQueryResourceMonitor(
 		cancel:          cancel,
 	}
 
+	cancelContext, cancelFunc := context.WithCancel(context.Background())
+	go func() {
+		<-cancel
+		cancelFunc()
+	}()
+
 	go func() {
 		for e := range providerRegChan {
 			urn := syntheticProviderURN(e.goal)
 
-			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false)
+			inputs, _, err := reg.Check(cancelContext, urn, resource.PropertyMap{}, e.goal.Properties, false)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
 			}
-			_, _, _, err = reg.Create(urn, inputs, 9999, false)
+			_, _, _, err = reg.Create(cancelContext, urn, inputs, 9999, false)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
@@ -320,7 +329,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
-	ret, failures, err := prov.Invoke(tok, args)
+	ret, failures, err := prov.Invoke(ctx, tok, args)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
@@ -364,14 +373,15 @@ func (rm *queryResmon) StreamInvoke(
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
 	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
-	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
-		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-		if err != nil {
-			return errors.Wrapf(err, "failed to marshal return")
-		}
+	failures, err := prov.StreamInvoke(stream.Context(), tok, args,
+		func(ctx context.Context, event resource.PropertyMap) error {
+			mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+			if err != nil {
+				return errors.Wrapf(err, "failed to marshal return")
+			}
 
-		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
-	})
+			return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+		})
 	if err != nil {
 		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
 	}

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
@@ -33,16 +34,16 @@ type Analyzer interface {
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	// Is called before the resource is modified.
-	Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error)
+	Analyze(ctx context.Context, r AnalyzerResource) ([]AnalyzeDiagnostic, error)
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
-	AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
+	AnalyzeStack(ctx context.Context, resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-	GetAnalyzerInfo() (AnalyzerInfo, error)
+	GetAnalyzerInfo(ctx context.Context) (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
-	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
+	Configure(ctx context.Context, policyConfig map[string]AnalyzerPolicyConfig) error
 }
 
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.

@@ -32,9 +32,9 @@ type ResourceMonitor struct {
 	resmon pulumirpc.ResourceMonitorClient
 }
 
-func dialMonitor(endpoint string) (*ResourceMonitor, error) {
+func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error) {
 	// Connect to the resource monitor and create an appropriate client.
-	conn, err := grpc.Dial(
+	conn, err := grpc.DialContext(ctx,
 		endpoint,
 		grpc.WithInsecure(),
 		rpcutil.GrpcChannelOptions(),

@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -35,9 +36,11 @@ var Null = &model.Variable{
 }
 
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
-func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names NameTable) (*model.Block, error) {
+func GenerateHCL2Definition(ctx context.Context,
+	loader schema.Loader, state *resource.State, names NameTable) (*model.Block, error) {
+
 	// TODO: pull the package version from the resource's provider
-	pkg, err := loader.LoadPackage(string(state.Type.Package()), nil)
+	pkg, err := loader.LoadPackage(ctx, string(state.Type.Package()), nil)
 	if err != nil {
 		return nil, err
 	}

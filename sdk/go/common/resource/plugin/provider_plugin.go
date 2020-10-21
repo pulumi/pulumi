@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -111,6 +112,10 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
 }
 
+func (p *provider) requestContext(ctx context.Context) context.Context {
+	return p.ctx.Request(ctx)
+}
+
 // isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
 // due to a rpc being unimplemented. Due to past mistakes, different providers returned "Unimplemented" in a variaity of
 // different ways that don't always result in an Uimplemented error code.
@@ -137,8 +142,8 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 }
 
 // GetSchema fetches the schema for this resource provider, if any.
-func (p *provider) GetSchema(version int) ([]byte, error) {
-	resp, err := p.clientRaw.GetSchema(p.ctx.Request(), &pulumirpc.GetSchemaRequest{
+func (p *provider) GetSchema(ctx context.Context, version int) ([]byte, error) {
+	resp, err := p.clientRaw.GetSchema(p.requestContext(ctx), &pulumirpc.GetSchemaRequest{
 		Version: int32(version),
 	})
 	if err != nil {
@@ -148,8 +153,8 @@ func (p *provider) GetSchema(version int) ([]byte, error) {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+func (p *provider) CheckConfig(ctx context.Context, urn resource.URN,
+	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
@@ -171,7 +176,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		return nil, nil, err
 	}
 
-	resp, err := p.clientRaw.CheckConfig(p.ctx.Request(), &pulumirpc.CheckRequest{
+	resp, err := p.clientRaw.CheckConfig(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
@@ -250,7 +255,7 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *provider) DiffConfig(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
@@ -272,7 +277,7 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		return DiffResult{}, err
 	}
 
-	resp, err := p.clientRaw.DiffConfig(p.ctx.Request(), &pulumirpc.DiffRequest{
+	resp, err := p.clientRaw.DiffConfig(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
 		Olds:          molds,
 		News:          mnews,
@@ -416,7 +421,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) Configure(inputs resource.PropertyMap) error {
+func (p *provider) Configure(ctx context.Context, inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
 
@@ -464,7 +469,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
+		resp, err := p.clientRaw.Configure(p.requestContext(ctx), &pulumirpc.ConfigureRequest{
 			AcceptSecrets: true,
 			Variables:     config,
 			Args:          minputs,
@@ -484,7 +489,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(urn resource.URN,
+func (p *provider) Check(ctx context.Context, urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
@@ -518,7 +523,7 @@ func (p *provider) Check(urn resource.URN,
 		return nil, nil, err
 	}
 
-	resp, err := client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
+	resp, err := client.Check(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
@@ -561,7 +566,7 @@ func (p *provider) Check(urn resource.URN,
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) Diff(urn resource.URN, id resource.ID,
+func (p *provider) Diff(ctx context.Context, urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string) (DiffResult, error) {
 
@@ -607,7 +612,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	resp, err := client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
+	resp, err := client.Diff(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		Olds:          molds,
@@ -649,8 +654,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+func (p *provider) Create(ctx context.Context, urn resource.URN, props resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
 
@@ -688,7 +694,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	var liveObject *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
+	resp, err := client.Create(p.requestContext(ctx), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 		Timeout:    timeout,
@@ -737,7 +743,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
-func (p *provider) Read(urn resource.URN, id resource.ID,
+func (p *provider) Read(ctx context.Context, urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 
 	contract.Assert(urn != "")
@@ -788,7 +794,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var liveInputs *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.requestContext(ctx), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mstate,
@@ -852,7 +858,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 }
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(urn resource.URN, id resource.ID,
+func (p *provider) Update(ctx context.Context, urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
@@ -902,7 +908,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	var liveObject *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
+	resp, err := client.Update(p.requestContext(ctx), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		Olds:          molds,
@@ -947,7 +953,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (p *provider) Delete(ctx context.Context, urn resource.URN, id resource.ID, props resource.PropertyMap,
 	timeout float64) (resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -973,7 +979,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
 
-	if _, err := client.Delete(p.ctx.Request(), &pulumirpc.DeleteRequest{
+	if _, err := client.Delete(p.requestContext(ctx), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mprops,
@@ -990,8 +996,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
-func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
+func (p *provider) Construct(ctx context.Context, info ConstructInfo, typ tokens.Type, name tokens.QName,
+	parent resource.URN, inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
 
 	contract.Assert(typ != "")
 	contract.Assert(name != "")
@@ -1051,7 +1057,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		config[k.String()] = v
 	}
 
-	resp, err := client.Construct(p.ctx.Request(), &pulumirpc.ConstructRequest{
+	resp, err := client.Construct(p.requestContext(ctx), &pulumirpc.ConstructRequest{
 		Project:           info.Project,
 		Stack:             info.Stack,
 		Config:            config,
@@ -1099,8 +1105,9 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 }
 
 // Invoke dynamically executes a built-in function in the provider.
-func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
-	[]CheckFailure, error) {
+func (p *provider) Invoke(ctx context.Context, tok tokens.ModuleMember,
+	args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+
 	contract.Assert(tok != "")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
@@ -1125,7 +1132,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return nil, nil, err
 	}
 
-	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	resp, err := client.Invoke(p.requestContext(ctx), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
@@ -1154,10 +1161,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of
 // responses.
-func (p *provider) StreamInvoke(
+func (p *provider) StreamInvoke(ctx context.Context,
 	tok tokens.ModuleMember,
 	args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]CheckFailure, error) {
+	onNext func(context.Context, resource.PropertyMap) error) ([]CheckFailure, error) {
 
 	contract.Assert(tok != "")
 
@@ -1172,7 +1179,7 @@ func (p *provider) StreamInvoke(
 
 	// If the provider is not fully configured, return an empty property map.
 	if !p.cfgknown {
-		return nil, onNext(resource.PropertyMap{})
+		return nil, onNext(ctx, resource.PropertyMap{})
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
@@ -1184,7 +1191,7 @@ func (p *provider) StreamInvoke(
 	}
 
 	streamClient, err := client.StreamInvoke(
-		p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+		p.requestContext(ctx), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
@@ -1221,20 +1228,20 @@ func (p *provider) StreamInvoke(
 		}
 
 		// Send stream message back to whoever is consuming the stream.
-		if err := onNext(ret); err != nil {
+		if err := onNext(streamClient.Context(), ret); err != nil {
 			return nil, err
 		}
 	}
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
 	logging.V(7).Infof("%s executing", label)
 
 	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
+	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(ctx), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -1258,8 +1265,8 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (p *provider) SignalCancellation() error {
-	_, err := p.clientRaw.Cancel(p.ctx.Request(), &pbempty.Empty{})
+func (p *provider) SignalCancellation(ctx context.Context) error {
+	_, err := p.clientRaw.Cancel(p.requestContext(ctx), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),

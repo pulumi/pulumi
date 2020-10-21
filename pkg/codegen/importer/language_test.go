@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -46,19 +47,20 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 
 			var actualState *resource.State
-			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *hcl2.Program) error {
-				if !assert.Len(t, p.Nodes, 1) {
-					t.Fatal()
-				}
+			err = GenerateLanguageDefinitions(context.Background(), ioutil.Discard, loader,
+				func(_ io.Writer, p *hcl2.Program) error {
+					if !assert.Len(t, p.Nodes, 1) {
+						t.Fatal()
+					}
 
-				res, isResource := p.Nodes[0].(*hcl2.Resource)
-				if !assert.True(t, isResource) {
-					t.Fatal()
-				}
+					res, isResource := p.Nodes[0].(*hcl2.Resource)
+					if !assert.True(t, isResource) {
+						t.Fatal()
+					}
 
-				actualState = renderResource(t, res)
-				return nil
-			}, []*resource.State{state}, names)
+					actualState = renderResource(t, res)
+					return nil
+				}, []*resource.State{state}, names)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}

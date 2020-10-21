@@ -123,7 +123,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 		select {
 		case <-callerCtx.Done():
 			logging.V(4).Infof("planExecutor.Execute(...): signalling cancellation to providers...")
-			cancelErr := pe.plan.ctx.Host.SignalCancellation()
+			cancelErr := pe.plan.ctx.Host.SignalCancellation(context.Background())
 			if cancelErr != nil {
 				logging.V(4).Infof("planExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
 			}
@@ -237,7 +237,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 					return false, pe.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
 				}
 
-				if res := pe.handleSingleEvent(event.Event); res != nil {
+				if res := pe.handleSingleEvent(ctx, event.Event); res != nil {
 					if resErr := res.Error(); resErr != nil {
 						logging.V(4).Infof("planExecutor.Execute(...): error handling event: %v", resErr)
 						pe.reportError(pe.plan.generateEventURN(event.Event), resErr)
@@ -272,7 +272,7 @@ func (pe *planExecutor) Execute(callerCtx context.Context, opts Options, preview
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if res == nil && !pe.stepExec.Errored() {
-		res := pe.stepGen.AnalyzeResources()
+		res := pe.stepGen.AnalyzeResources(callerCtx)
 		if res != nil {
 			if resErr := res.Error(); resErr != nil {
 				logging.V(4).Infof("planExecutor.Execute(...): error analyzing resources: %v", resErr)
@@ -321,7 +321,7 @@ func (pe *planExecutor) performDeletes(
 		targetsOpt = destroyTargetsOpt
 	}
 
-	deleteSteps, res := pe.stepGen.GenerateDeletes(targetsOpt)
+	deleteSteps, res := pe.stepGen.GenerateDeletes(ctx, targetsOpt)
 	if res != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return res
@@ -359,7 +359,7 @@ func (pe *planExecutor) performDeletes(
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
+func (pe *planExecutor) handleSingleEvent(ctx context.Context, event SourceEvent) result.Result {
 	contract.Require(event != nil, "event != nil")
 
 	var steps []Step
@@ -367,7 +367,7 @@ func (pe *planExecutor) handleSingleEvent(event SourceEvent) result.Result {
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = pe.stepGen.GenerateSteps(e)
+		steps, res = pe.stepGen.GenerateSteps(ctx, e)
 	case ReadResourceEvent:
 		logging.V(4).Infof("planExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, res = pe.stepGen.GenerateReadSteps(e)

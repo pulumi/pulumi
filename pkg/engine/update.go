@@ -186,15 +186,15 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}, dryRun)
 }
 
-// RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
-func RunInstallPlugins(
-	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
-	_, _, err := installPlugins(proj, pwd, main, target, plugctx)
+// InstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
+func InstallPlugins(
+	ctx context.Context, proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
+	_, _, err := installPlugins(ctx, proj, pwd, main, target, plugctx)
 	return err
 }
 
 func installPlugins(
-	proj *workspace.Project, pwd, main string, target *deploy.Target,
+	ctx context.Context, proj *workspace.Project, pwd, main string, target *deploy.Target,
 	plugctx *plugin.Context) (pluginSet, map[tokens.Package]*semver.Version, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
@@ -209,7 +209,7 @@ func installPlugins(
 	//
 	// In order to get a complete view of the set of plugins that we need for an update or query, we must
 	// consult both sources and merge their results into a list of plugins.
-	languagePlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
+	languagePlugins, err := gatherPluginsFromProgram(ctx, plugctx, plugin.ProgInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
@@ -228,7 +228,7 @@ func installPlugins(
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing.
-	if err := ensurePluginsAreInstalled(allPlugins); err != nil {
+	if err := ensurePluginsAreInstalled(ctx, allPlugins); err != nil {
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
@@ -238,7 +238,7 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
+func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
 	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions) error {
 
 	var allValidationErrors []string
@@ -257,12 +257,12 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 			return err
 		}
 
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, opts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(ctx, tokens.QName(policy.Name()), policyPath, opts)
 		if err != nil {
 			return err
 		}
 
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
+		analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 		if err != nil {
 			return err
 		}
@@ -284,7 +284,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
 		}
 		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
+		if err = analyzer.Configure(ctx, config); err != nil {
 			return errors.Wrapf(err, "configuring policy pack %q", analyzerInfo.Name)
 		}
 	}
@@ -296,7 +296,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 			return err
 		}
 
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, opts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(ctx, tokens.QName(abs), pack.Path, opts)
 		if err != nil {
 			return err
 		} else if analyzer == nil {
@@ -304,7 +304,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		}
 
 		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
+		analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 		if err != nil {
 			return err
 		}
@@ -330,7 +330,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
 		}
 		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
+		if err = analyzer.Configure(ctx, config); err != nil {
 			return errors.Wrapf(err, "configuring policy pack %q at %q", analyzerInfo.Name, pack.Path)
 		}
 	}
@@ -348,14 +348,14 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 }
 
 func newUpdateSource(
-	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+	ctx context.Context, client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	//
 	// Step 1: Install and load plugins.
 	//
 
-	allPlugins, defaultProviderVersions, err := installPlugins(proj, pwd, main, target,
+	allPlugins, defaultProviderVersions, err := installPlugins(ctx, proj, pwd, main, target,
 		plugctx)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func newUpdateSource(
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
 	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
-	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
+	if err := ensurePluginsAreLoaded(ctx, plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
 
@@ -384,7 +384,7 @@ func newUpdateSource(
 		Config:  config,
 		DryRun:  dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
+	if err := installAndLoadPolicyPlugins(ctx, plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}

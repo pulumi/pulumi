@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/joincontext"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -30,6 +31,10 @@ func newBuiltinProvider(backendClient BackendClient) *builtinProvider {
 	}
 }
 
+func (p *builtinProvider) requestContext(ctx context.Context) context.Context {
+	return joincontext.Join(p.context, ctx)
+}
+
 func (p *builtinProvider) Close() error {
 	return nil
 }
@@ -39,30 +44,30 @@ func (p *builtinProvider) Pkg() tokens.Package {
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
-func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
+func (p *builtinProvider) GetSchema(ctx context.Context, version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
+func (p *builtinProvider) CheckConfig(ctx context.Context, urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	return nil, nil, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *builtinProvider) DiffConfig(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Configure(props resource.PropertyMap) error {
+func (p *builtinProvider) Configure(ctx context.Context, props resource.PropertyMap) error {
 	return nil
 }
 
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
-func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
+func (p *builtinProvider) Check(ctx context.Context, urn resource.URN, state, inputs resource.PropertyMap,
 	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := urn.Type()
@@ -87,7 +92,8 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
+func (p *builtinProvider) Diff(ctx context.Context,
+	urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
@@ -102,12 +108,12 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+func (p *builtinProvider) Create(ctx context.Context, urn resource.URN, inputs resource.PropertyMap, timeout float64,
 	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	state, err := p.readStackReference(inputs)
+	state, err := p.readStackReference(ctx, inputs)
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
@@ -120,7 +126,8 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
+func (p *builtinProvider) Update(ctx context.Context,
+	urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
@@ -129,7 +136,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs
 	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
 
-func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
+func (p *builtinProvider) Delete(ctx context.Context, urn resource.URN, id resource.ID,
 	state resource.PropertyMap, timeout float64) (resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
@@ -137,12 +144,12 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 	return resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
+func (p *builtinProvider) Read(ctx context.Context, urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
-	outputs, err := p.readStackReference(state)
+	outputs, err := p.readStackReference(ctx, state)
 	if err != nil {
 		return plugin.ReadResult{}, resource.StatusUnknown, err
 	}
@@ -153,7 +160,8 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *builtinProvider) Construct(ctx context.Context,
+	info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
 }
@@ -161,18 +169,18 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 
-func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
+func (p *builtinProvider) Invoke(ctx context.Context, tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	switch tok {
 	case readStackOutputs:
-		outs, err := p.readStackReference(args)
+		outs, err := p.readStackReference(ctx, args)
 		if err != nil {
 			return nil, nil, err
 		}
 		return outs, nil, nil
 	case readStackResourceOutputs:
-		outs, err := p.readStackResourceOutputs(args)
+		outs, err := p.readStackResourceOutputs(ctx, args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -182,24 +190,26 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	}
 }
 
-func (p *builtinProvider) StreamInvoke(
+func (p *builtinProvider) StreamInvoke(ctx context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+	onNext func(context.Context, resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 
 	return nil, fmt.Errorf("the builtin provider does not implement streaming invokes")
 }
 
-func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *builtinProvider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the builtin provider
 	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
 }
 
-func (p *builtinProvider) SignalCancellation() error {
+func (p *builtinProvider) SignalCancellation(ctx context.Context) error {
 	p.cancel()
 	return nil
 }
 
-func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+func (p *builtinProvider) readStackReference(ctx context.Context,
+	inputs resource.PropertyMap) (resource.PropertyMap, error) {
+
 	name, ok := inputs["name"]
 	contract.Assert(ok)
 	contract.Assert(name.IsString())
@@ -208,7 +218,7 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 		return nil, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	outputs, err := p.backendClient.GetStackOutputs(p.requestContext(ctx), name.StringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +242,9 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}, nil
 }
 
-func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+func (p *builtinProvider) readStackResourceOutputs(ctx context.Context,
+	inputs resource.PropertyMap) (resource.PropertyMap, error) {
+
 	name, ok := inputs["stackName"]
 	contract.Assert(ok)
 	contract.Assert(name.IsString())
@@ -241,7 +253,7 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 		return nil, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue())
+	outputs, err := p.backendClient.GetStackResourceOutputs(p.requestContext(ctx), name.StringValue())
 	if err != nil {
 		return nil, err
 	}

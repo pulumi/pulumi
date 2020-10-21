@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -151,8 +152,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
-	steps, res := sg.generateSteps(event)
+func (sg *stepGenerator) GenerateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, result.Result) {
+	steps, res := sg.generateSteps(ctx, event)
 	if res != nil {
 		contract.Assert(len(steps) == 0)
 		return nil, res
@@ -200,7 +201,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return steps, nil
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
+func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -312,9 +313,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+			inputs, failures, err = prov.Check(ctx, urn, nil, goal.Properties, allowUnknowns)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+			inputs, failures, err = prov.Check(ctx, urn, oldInputs, inputs, allowUnknowns)
 		}
 
 		if err != nil {
@@ -326,7 +327,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	// Send the resource off to any Analyzers before being operated on.
-	analyzers := sg.plan.ctx.Host.ListAnalyzers()
+	analyzers := sg.plan.ctx.Host.LoadedAnalyzers()
 	for _, analyzer := range analyzers {
 		r := plugin.AnalyzerResource{
 			URN:        new.URN,
@@ -352,7 +353,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 
-		diagnostics, err := analyzer.Analyze(r)
+		diagnostics, err := analyzer.Analyze(ctx, r)
 		if err != nil {
 			return nil, result.FromError(err)
 		}
@@ -446,7 +447,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+				ctx, event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
 			if res != nil {
 				return nil, res
@@ -504,7 +505,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	return []Step{NewCreateStep(sg.plan, event, new)}, nil
 }
 
-func (sg *stepGenerator) generateStepsFromDiff(
+func (sg *stepGenerator) generateStepsFromDiff(ctx context.Context,
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
@@ -512,7 +513,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.plan.preview
 
-	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
+	diff, err := sg.diff(ctx, urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
 	// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 	// report the message contained in the error.
 	if _, ok := err.(plugin.DiffUnavailableError); ok {
@@ -551,7 +552,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+				inputs, failures, err = prov.Check(ctx, urn, nil, goal.Properties, allowUnknowns)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.plan, new, urn, failures) {
@@ -596,7 +597,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
 				if sg.opts.TrustDependencies {
-					toReplace, res := sg.calculateDependentReplacements(old)
+					toReplace, res := sg.calculateDependentReplacements(ctx, old)
 					if res != nil {
 						return nil, res
 					}
@@ -660,7 +661,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	return nil, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateDeletes(ctx context.Context,
+	targetsOpt map[resource.URN]bool) ([]Step, result.Result) {
+
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -717,7 +720,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
-	allowedResourcesToDelete, res := sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	allowedResourcesToDelete, res := sg.determineAllowedResourcesToDeleteFromTargets(ctx, targetsOpt)
 	if res != nil {
 		return nil, res
 	}
@@ -764,7 +767,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
-func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
+func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(ctx context.Context,
 	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
 
 	if targetsOpt == nil {
@@ -791,7 +794,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
 		// as well. Use the standard delete-before-replace computation to determine the minimal
 		// set of downstream resources that are affected.
-		deps, res := sg.calculateDependentReplacements(current)
+		deps, res := sg.calculateDependentReplacements(ctx, current)
 		if res != nil {
 			return nil, res
 		}
@@ -941,7 +944,9 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 
 // providerChanged diffs the Provider field of old and new resources, returning true if the rest of the step generator
 // should consider there to be a diff between these two resources.
-func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.State) (bool, error) {
+func (sg *stepGenerator) providerChanged(ctx context.Context,
+	urn resource.URN, old, new *resource.State) (bool, error) {
+
 	// If a resource's Provider field has changed, we may need to show a diff and we may not. This is subtle. See
 	// pulumi/pulumi#2753 for more details.
 	//
@@ -998,7 +1003,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new plan didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
+	diff, err := newProv.DiffConfig(ctx, newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
@@ -1017,9 +1022,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 }
 
 // diff returns a DiffResult for the given resource.
-func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
+func (sg *stepGenerator) diff(ctx context.Context,
+	urn resource.URN, old, new *resource.State, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	prov plugin.Provider, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn) {
@@ -1028,7 +1033,7 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
-	providerChanged, err := sg.providerChanged(urn, old, new)
+	providerChanged, err := sg.providerChanged(ctx, urn, old, new)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	} else if providerChanged {
@@ -1050,19 +1055,20 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
-	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
+	return diffResource(ctx, urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
-func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
+func diffResource(ctx context.Context,
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
 	contract.Require(prov != nil, "prov != nil")
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	diff, err := prov.Diff(ctx, urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
@@ -1180,7 +1186,9 @@ type dependentReplace struct {
 	keys []resource.PropertyKey
 }
 
-func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, result.Result) {
+func (sg *stepGenerator) calculateDependentReplacements(ctx context.Context,
+	root *resource.State) ([]dependentReplace, result.Result) {
+
 	// We need to compute the set of resources that may be replaced by a change to the resource
 	// under consideration. We do this by taking the complete set of transitive dependents on the
 	// resource under consideration and removing any resources that would not be replaced by changes
@@ -1252,7 +1260,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)
+		diff, err := prov.Diff(ctx, r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)
 		if err != nil {
 			return false, nil, result.FromError(err)
 		}
@@ -1284,7 +1292,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	return toReplace, nil
 }
 
-func (sg *stepGenerator) AnalyzeResources() result.Result {
+func (sg *stepGenerator) AnalyzeResources(ctx context.Context) result.Result {
 	resourcesSeen := sg.resourceStates
 	resources := make([]plugin.AnalyzerStackResource, 0, len(resourcesSeen))
 	for urn, v := range resourcesSeen {
@@ -1322,9 +1330,9 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 		resources = append(resources, resource)
 	}
 
-	analyzers := sg.plan.ctx.Host.ListAnalyzers()
+	analyzers := sg.plan.ctx.Host.LoadedAnalyzers()
 	for _, analyzer := range analyzers {
-		diagnostics, aErr := analyzer.AnalyzeStack(resources)
+		diagnostics, aErr := analyzer.AnalyzeStack(ctx, resources)
 		if aErr != nil {
 			return result.FromError(aErr)
 		}
