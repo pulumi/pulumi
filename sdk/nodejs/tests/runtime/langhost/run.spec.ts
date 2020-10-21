@@ -125,7 +125,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
-                assert.deepEqual(res, {
+                assert.deepStrictEqual(res, {
                     inpropB1: false,
                     inpropB2: true,
                     inpropN: 42,
@@ -170,7 +170,7 @@ describe("rpc", () => {
                 assert(!isNaN(seqnum),
                     `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
-                assert.deepEqual(res, {
+                assert.deepStrictEqual(res, {
                     inseq: seqnum,
                     inpropB1: false,
                     inpropB2: true,
@@ -207,7 +207,7 @@ describe("rpc", () => {
                 switch (t) {
                     case "test:index:ResourceA": {
                         assert.strictEqual(name, "resourceA");
-                        assert.deepEqual(res, { inprop: 777 });
+                        assert.deepStrictEqual(res, { inprop: 777 });
                         if (!dryrun) {
                             id = name;
                             props = { outprop: "output yeah" };
@@ -216,18 +216,18 @@ describe("rpc", () => {
                     }
                     case "test:index:ResourceB": {
                         assert.strictEqual(name, "resourceB");
-                        assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
+                        assert.deepStrictEqual(dependencies, ["test:index:ResourceA::resourceA"]);
 
                         if (dryrun) {
                             // If this is a dry-run, we will have no known values.
-                            assert.deepEqual(res, {
+                            assert.deepStrictEqual(res, {
                                 otherIn: runtime.unknownValue,
                                 otherOut: runtime.unknownValue,
                             });
                         }
                         else {
                             // Otherwise, we will:
-                            assert.deepEqual(res, {
+                            assert.deepStrictEqual(res, {
                                 otherIn: 777,
                                 otherOut: "output yeah",
                             });
@@ -255,7 +255,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:FileResource");
                 assert.strictEqual(name, "file1");
-                assert.deepEqual(res, {
+                assert.deepStrictEqual(res, {
                     data: {
                         [runtime.specialSigKey]: runtime.specialAssetSig,
                         __pulumiAsset: true,
@@ -271,7 +271,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:FileResource");
                 assert.strictEqual(name, "file1");
-                assert.deepEqual(res, {
+                assert.deepStrictEqual(res, {
                     data: "The test worked!\n\nIf you can see some data!\n\n",
                 });
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
@@ -307,7 +307,7 @@ describe("rpc", () => {
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "");
                 assert.strictEqual(tok, "invoke:index:echo");
-                assert.deepEqual(args, {
+                assert.deepStrictEqual(args, {
                     a: "hello",
                     b: true,
                     c: [0.99, 42, { z: "x" }],
@@ -358,7 +358,7 @@ describe("rpc", () => {
             program: path.join(base, "012.assets_archive"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-                assert.deepEqual(res, {
+                assert.deepStrictEqual(res, {
                     "archive": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
                         "__pulumiArchive": true,
@@ -423,7 +423,7 @@ describe("rpc", () => {
                 assert.strictEqual(t, "test:read:resource");
                 assert.strictEqual(name, "foo");
                 assert.strictEqual(id, "abc123");
-                assert.deepEqual(state, {
+                assert.deepStrictEqual(state, {
                     a: "fizzz",
                     b: false,
                     c: [0.73, "x", { zed: 923 }],
@@ -524,7 +524,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {
+                assert.deepStrictEqual(outputs, {
                     a: {
                         x: 99,
                         y: "z",
@@ -791,7 +791,7 @@ describe("rpc", () => {
                 propertyDeps?: any, ignoreChanges?: string[],
             ) => {
                 if (name === "testResource") {
-                    assert.deepEqual(ignoreChanges, ["ignoredProperty"]);
+                    assert.deepStrictEqual(ignoreChanges, ["ignoredProperty"]);
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -888,7 +888,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {
+                assert.deepStrictEqual(outputs, {
                     "m": { "a": { "b": 1 } },
                     "n": { "a": { "b": 1 } },
                     "o": { "b": 1 },
@@ -913,7 +913,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {
+                assert.deepStrictEqual(outputs, {
                     a: {
                         x: 99,
                         y: "z",
@@ -940,7 +940,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {
+                assert.deepStrictEqual(outputs, {
                     a: {
                         x: 99,
                         y: "z",
@@ -967,7 +967,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {
+                assert.deepStrictEqual(outputs, {
                     a: {
                         x: 99,
                         y: "z",
@@ -996,7 +996,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, {});
+                assert.deepStrictEqual(outputs, {});
             },
         },
         "resource_creation_in_function_with_result": {
@@ -1015,7 +1015,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, { a: 1 });
+                assert.deepStrictEqual(outputs, { a: 1 });
             },
         },
         "resource_creation_in_async_function_with_result": {
@@ -1034,7 +1034,7 @@ describe("rpc", () => {
             registerResourceOutputs: (ctx: any, dryrun: boolean, urn: URN,
                                       t: string, name: string, res: any, outputs: any | undefined) => {
                 assert.strictEqual(t, "pulumi:pulumi:Stack");
-                assert.deepEqual(outputs, { a: 1 });
+                assert.deepStrictEqual(outputs, { a: 1 });
             },
         },
         "provider_invokes": {
@@ -1046,7 +1046,7 @@ describe("rpc", () => {
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
-                assert.deepEqual(args, {
+                assert.deepStrictEqual(args, {
                     a: "hello",
                     b: true,
                     c: [0.99, 42, { z: "x" }],
@@ -1066,7 +1066,7 @@ describe("rpc", () => {
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
-                assert.deepEqual(args, {
+                assert.deepStrictEqual(args, {
                     a: "hello",
                     b: true,
                     c: [0.99, 42, { z: "x" }],
@@ -1085,7 +1085,7 @@ describe("rpc", () => {
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
-                assert.deepEqual(args, {
+                assert.deepStrictEqual(args, {
                     a: "hello",
                     b: true,
                     c: [0.99, 42, { z: "x" }],
@@ -1101,7 +1101,7 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
                 if (name === "c") {
-                    assert.equal(provider, "");
+                    assert.strictEqual(provider, "");
                 }
 
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
@@ -1109,7 +1109,7 @@ describe("rpc", () => {
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "pulumi:providers:test::p::1");
                 assert.strictEqual(tok, "test:index:echo");
-                assert.deepEqual(args, {
+                assert.deepStrictEqual(args, {
                     a: "hello",
                     b: true,
                     c: [0.99, 42, { z: "x" }],
@@ -1130,7 +1130,7 @@ describe("rpc", () => {
                     dependencies.sort();
                     // resources 'c' and 'd' should see resources 'a' and 'b' as dependencies (even
                     // though they are async constructed by the component)
-                    assert.deepEqual(dependencies, ["test:index:CustResource::a", "test:index:CustResource::b"]);
+                    assert.deepStrictEqual(dependencies, ["test:index:CustResource::a", "test:index:CustResource::b"]);
                 }
 
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
@@ -1144,7 +1144,7 @@ describe("rpc", () => {
                 const longString = "a".repeat(1024 * 1024 * 5);
                 assert.strictEqual(t, "test:index:MyLargeStringResource");
                 assert.strictEqual(name, "testResource1");
-                assert.deepEqual(res, { "largeStringProp": longString });
+                assert.deepStrictEqual(res, { "largeStringProp": longString });
                 return {
                     urn: makeUrn(t, name),
                     id: name,

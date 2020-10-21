@@ -38,9 +38,9 @@ describe("LocalWorkspace", () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.stackSettings("dev");
-            assert.equal(settings.secretsProvider, "abc");
-            assert.equal(settings.config!["plain"], "plain");
-            assert.equal(settings.config!["secure"].secure, "secret");
+            assert.strictEqual(settings.secretsProvider, "abc");
+            assert.strictEqual(settings.config!["plain"], "plain");
+            assert.strictEqual(settings.config!["secure"].secure, "secret");
         }
     }));
 
@@ -99,23 +99,23 @@ describe("LocalWorkspace", () => {
         } catch (error) {
             caught++;
         }
-        assert.equal(caught, 1, "expected config get on empty value to throw");
+        assert.strictEqual(caught, 1, "expected config get on empty value to throw");
 
         let values = await stack.getAllConfig();
-        assert.equal(Object.keys(values).length, 0, "expected stack config to be empty");
+        assert.strictEqual(Object.keys(values).length, 0, "expected stack config to be empty");
         await stack.setAllConfig(config);
         values = await stack.getAllConfig();
-        assert.equal(values[plainKey].value, "abc");
-        assert.equal(values[plainKey].secret, false);
-        assert.equal(values[secretKey].value, "def");
-        assert.equal(values[secretKey].secret, true);
+        assert.strictEqual(values[plainKey].value, "abc");
+        assert.strictEqual(values[plainKey].secret, false);
+        assert.strictEqual(values[secretKey].value, "def");
+        assert.strictEqual(values[secretKey].secret, true);
 
         await stack.removeConfig("plain");
         values = await stack.getAllConfig();
-        assert.equal(Object.keys(values).length, 1, "expected stack config to be empty");
+        assert.strictEqual(Object.keys(values).length, 1, "expected stack config to be empty");
         await stack.setConfig("foo", { value: "bar" });
         values = await stack.getAllConfig();
-        assert.equal(Object.keys(values).length, 2, "expected stack config to be empty");
+        assert.strictEqual(Object.keys(values).length, 2, "expected stack config to be empty");
 
         await ws.removeStack(stackName);
     }));
@@ -132,9 +132,9 @@ describe("LocalWorkspace", () => {
             stackNames[i] = stackName;
             await Stack.create(stackName, ws);
             const stackSummary = await ws.stack();
-            assert.equal(stackSummary?.current, true);
+            assert.strictEqual(stackSummary?.current, true);
             const stacks = await ws.listStacks();
-            assert.equal(stacks.length, i + 1);
+            assert.strictEqual(stacks.length, i + 1);
         }
 
         for (const name of stackNames) {
@@ -150,9 +150,9 @@ describe("LocalWorkspace", () => {
         const stackName = `int_test${getTestSuffix()}`;
         const stack = await Stack.create(stackName, ws);
         const histroy = await stack.history();
-        assert.equal(histroy.length, 0);
+        assert.strictEqual(histroy.length, 0);
         const info = await stack.info();
-        assert.equal(typeof (info), "undefined");
+        assert.strictEqual(typeof (info), "undefined");
         await ws.removeStack(stackName);
     }));
     it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
@@ -168,15 +168,15 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         const upRes = await stack.up();
-        assert.equal(Object.keys(upRes.outputs).length, 3);
-        assert.equal(upRes.outputs["exp_static"].value, "foo");
-        assert.equal(upRes.outputs["exp_static"].secret, false);
-        assert.equal(upRes.outputs["exp_cfg"].value, "abc");
-        assert.equal(upRes.outputs["exp_cfg"].secret, false);
-        assert.equal(upRes.outputs["exp_secret"].value, "secret");
-        assert.equal(upRes.outputs["exp_secret"].secret, true);
-        assert.equal(upRes.summary.kind, "update");
-        assert.equal(upRes.summary.result, "succeeded");
+        assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+        assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+        assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
         await stack.preview();
@@ -184,13 +184,13 @@ describe("LocalWorkspace", () => {
 
         // pulumi refresh
         const refRes = await stack.refresh();
-        assert.equal(refRes.summary.kind, "refresh");
-        assert.equal(refRes.summary.result, "succeeded");
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
         const destroyRes = await stack.destroy();
-        assert.equal(destroyRes.summary.kind, "destroy");
-        assert.equal(destroyRes.summary.result, "succeeded");
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
     }));
@@ -215,15 +215,15 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         const upRes = await stack.up();
-        assert.equal(Object.keys(upRes.outputs).length, 3);
-        assert.equal(upRes.outputs["exp_static"].value, "foo");
-        assert.equal(upRes.outputs["exp_static"].secret, false);
-        assert.equal(upRes.outputs["exp_cfg"].value, "abc");
-        assert.equal(upRes.outputs["exp_cfg"].secret, false);
-        assert.equal(upRes.outputs["exp_secret"].value, "secret");
-        assert.equal(upRes.outputs["exp_secret"].secret, true);
-        assert.equal(upRes.summary.kind, "update");
-        assert.equal(upRes.summary.result, "succeeded");
+        assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+        assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+        assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
         await stack.preview();
@@ -231,13 +231,13 @@ describe("LocalWorkspace", () => {
 
         // pulumi refresh
         const refRes = await stack.refresh();
-        assert.equal(refRes.summary.kind, "refresh");
-        assert.equal(refRes.summary.result, "succeeded");
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
         const destroyRes = await stack.destroy();
-        assert.equal(destroyRes.summary.kind, "destroy");
-        assert.equal(destroyRes.summary.result, "succeeded");
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
     }));

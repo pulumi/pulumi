@@ -32,7 +32,7 @@ describe("PushableAsyncIterable", () => {
         asyncTest(async () => {
             const queue = new PushableAsyncIterable<number>();
             queue.complete();
-            assert.deepEqual(await enumerate(queue), []);
+            assert.deepStrictEqual(await enumerate(queue), []);
         }),
     );
 
@@ -42,7 +42,7 @@ describe("PushableAsyncIterable", () => {
             const queue = new PushableAsyncIterable<number>();
             queue.push(1);
             queue.complete();
-            assert.deepEqual(await enumerate(queue), [1]);
+            assert.deepStrictEqual(await enumerate(queue), [1]);
         }),
     );
 
@@ -54,7 +54,7 @@ describe("PushableAsyncIterable", () => {
             queue.push(2);
             queue.push(3);
             queue.complete();
-            assert.deepEqual(await enumerate(queue), [1, 2, 3]);
+            assert.deepStrictEqual(await enumerate(queue), [1, 2, 3]);
         }),
     );
 
@@ -64,14 +64,14 @@ describe("PushableAsyncIterable", () => {
             const queue = new PushableAsyncIterable<number>();
             const queueIter = queue[Symbol.asyncIterator]();
             const terminates = new Promise(async resolve => {
-                assert.deepEqual(await queueIter.next(), { value: undefined, done: true });
-                assert.deepEqual(await queueIter.next(), { value: undefined, done: true });
-                assert.deepEqual(await queueIter.next(), { value: undefined, done: true });
+                assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
+                assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
+                assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
                 resolve();
             });
             queue.complete();
             await terminates;
-            assert.deepEqual(await queueIter.next(), { value: undefined, done: true });
+            assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
         }),
     );
 
@@ -82,20 +82,20 @@ describe("PushableAsyncIterable", () => {
             const queueIter = queue[Symbol.asyncIterator]();
             queue.push(1);
             queue.push(2);
-            assert.deepEqual(await queueIter.next(), { value: 1, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 1, done: false });
             queue.push(3);
-            assert.deepEqual(await queueIter.next(), { value: 2, done: false });
-            assert.deepEqual(await queueIter.next(), { value: 3, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 2, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 3, done: false });
             queue.push(4);
             queue.push(5);
             queue.push(6);
             queue.push(7);
-            assert.deepEqual(await queueIter.next(), { value: 4, done: false });
-            assert.deepEqual(await queueIter.next(), { value: 5, done: false });
-            assert.deepEqual(await queueIter.next(), { value: 6, done: false });
-            assert.deepEqual(await queueIter.next(), { value: 7, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 4, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 5, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 6, done: false });
+            assert.deepStrictEqual(await queueIter.next(), { value: 7, done: false });
             queue.complete();
-            assert.deepEqual(await queueIter.next(), { value: undefined, done: true });
+            assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
         }),
     );
 });
