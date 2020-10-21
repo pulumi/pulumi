@@ -793,6 +793,7 @@ type PackageSpec struct {
 
 // ImportSpec converts a serializable PackageSpec into a Package.
 func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
+	// TODO: figure out how to download external specs
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -928,6 +929,43 @@ func (t *types) bindPrimitiveType(name string) (Type, error) {
 	}
 }
 
+// typeSpecRef contains the parsed fields from a type spec reference
+type typeSpecRef struct {
+	Scheme         string // A scheme uniquely identifying an external schema, e.g. /provider/vX.Y.Z/schema.json
+	SchemeProvider string // The external schema name, e.g. random
+	SchemeVersion  string // The external schema version, e.g. v2.3.1
+	Kind           string // The kind of reference, either 'resources' or 'types'
+	Token          string // The reference token, e.g. random:index/randomPet:RandomPet
+	Package        string // The reference package, e.g. random
+	Module         string // The reference module, e.g. index/randomPet
+	Member         string // The reference member, e.g. RandomPet
+}
+
+func parseTypeSpecRef(ref string) typeSpecRef {
+	// scheme is used to reference external schemas, and is of the form `/provider/vX.Y.Z/schema.json`
+	schemeRegex := `(?P<scheme>/(?P<schemeProvider>\w+)/(?P<schemeVersion>v\d+\.\d+\.\d+)/schema\.json)?`
+	// fragment specifies a reference to another schema definition (a resource or type), and is of one of these forms:
+	// `#/resources/provider:version:type`
+	// `#/types/provider:version:type`
+	fragmentRegex := `#/(?P<kind>resources|types)/(?P<token>(?P<package>.*):(?P<module>.*):(?P<member>.*).*)`
+	// refRegex matches all valid schema references with named capture groups for further processing
+	refRegex := regexp.MustCompile(fmt.Sprintf(`^%s%s$`, schemeRegex, fragmentRegex))
+
+	match := refRegex.FindStringSubmatch(ref)
+	contract.Assertf(len(match) == 9, "failed to parse ref: %s", ref)
+
+	return typeSpecRef{
+		Scheme:         match[1],
+		SchemeProvider: match[2],
+		SchemeVersion:  match[3],
+		Kind:           match[4],
+		Token:          match[5],
+		Package:        match[6],
+		Module:         match[7],
+		Member:         match[8],
+	}
+}
+
 func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 	switch spec.Ref {
 	case "pulumi.json#/Archive":
@@ -940,31 +978,18 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 		return AnyType, nil
 	}
 
-	// scheme is used to reference external schemas, and is of the form `/provider/vX.Y.Z/schema.json`
-	schemeRegex := `(?P<scheme>/(?P<schemeProvider>\w+)/(?P<schemeVersion>v\d+\.\d+\.\d+)/schema\.json)?`
-	// fragment specifies a reference to another schema definition (a resource or type), and is of one of these forms:
-	// `#/resources/provider:version:type`
-	// `#/types/provider:version:type`
-	fragmentRegex := `#/(?P<refKind>resources|types)/(?P<token>(?P<provider>.*):(?P<version>.*):(?P<type>.*).*)`
-	// refRegex matches all valid schema references with named capture groups for further processing
-	refRegex := regexp.MustCompile(fmt.Sprintf(`^%s%s$`, schemeRegex, fragmentRegex))
+	ref := parseTypeSpecRef(spec.Ref)
 
-	match := refRegex.FindStringSubmatch(spec.Ref)
-	contract.Assertf(len(match) == 9, "failed to parse ref: %s", spec.Ref)
-
-	// TODO: remove named fields if not needed to improve readability
-
-	if scheme := match[1]; len(scheme) > 0 {
+	if len(ref.Scheme) > 0 {
 		// TODO: handle external refs
 	}
 
-	token, err := url.PathUnescape(match[5])
+	token, err := url.PathUnescape(ref.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	refKind := match[4]
-	switch refKind {
+	switch ref.Kind {
 	case "types":
 		if typ, ok := t.objects[token]; ok {
 			return typ, nil

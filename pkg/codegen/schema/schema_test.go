@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -177,6 +178,78 @@ func TestImportResourceRef(t *testing.T) {
 				return
 			}
 			tt.validator(pkg)
+		})
+	}
+}
+
+func Test_parseTypeSpecRef(t *testing.T) {
+	tests := []struct {
+		name string
+		ref  string
+		want typeSpecRef
+	}{
+		{
+			name: "resourceRef",
+			ref:  "#/resources/example::Resource",
+			want: typeSpecRef{
+				Scheme:         "",
+				SchemeProvider: "",
+				SchemeVersion:  "",
+				Kind:           "resources",
+				Token:          "example::Resource",
+				Package:        "example",
+				Module:         "",
+				Member:         "Resource",
+			},
+		},
+		{
+			name: "typeRef",
+			ref:  "#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			want: typeSpecRef{
+				Scheme:         "",
+				SchemeProvider: "",
+				SchemeVersion:  "",
+				Kind:           "types",
+				Token:          "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Package:        "kubernetes",
+				Module:         "admissionregistration.k8s.io/v1",
+				Member:         "WebhookClientConfig",
+			},
+		},
+		{
+			name: "externalResourceRef",
+			ref:  "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
+			want: typeSpecRef{
+				Scheme:         "/random/v2.3.1/schema.json",
+				SchemeProvider: "random",
+				SchemeVersion:  "v2.3.1",
+				Kind:           "resources",
+				Token:          "random:index/randomPet:RandomPet",
+				Package:        "random",
+				Module:         "index/randomPet",
+				Member:         "RandomPet",
+			},
+		},
+		{
+			name: "externalTypeRef",
+			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			want: typeSpecRef{
+				Scheme:         "/kubernetes/v2.6.3/schema.json",
+				SchemeProvider: "kubernetes",
+				SchemeVersion:  "v2.6.3",
+				Kind:           "types",
+				Token:          "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Package:        "kubernetes",
+				Module:         "admissionregistration.k8s.io/v1",
+				Member:         "WebhookClientConfig",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parseTypeSpecRef(tt.ref); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseTypeSpecRef() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
