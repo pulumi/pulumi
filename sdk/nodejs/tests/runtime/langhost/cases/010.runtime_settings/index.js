@@ -3,20 +3,20 @@
 const assert = require("assert");
 const pulumi = require("../../../../../");
 
-assert.equal(pulumi.getProject(), "runtimeSettingsProject");
-assert.equal(pulumi.getStack(), "runtimeSettingsStack");
+assert.strictEqual(pulumi.getProject(), "runtimeSettingsProject");
+assert.strictEqual(pulumi.getStack(), "runtimeSettingsStack");
 
 const config = new pulumi.Config("myBag");
-assert.equal(config.getNumber("A"), 42);
-assert.equal(config.requireNumber("A"), 42);
-assert.equal(config.get("bbbb"), "a string o' b's");
-assert.equal(config.require("bbbb"), "a string o' b's");
-assert.equal(config.get("missingC"), undefined);
+assert.strictEqual(config.getNumber("A"), 42);
+assert.strictEqual(config.requireNumber("A"), 42);
+assert.strictEqual(config.get("bbbb"), "a string o' b's");
+assert.strictEqual(config.require("bbbb"), "a string o' b's");
+assert.strictEqual(config.get("missingC"), undefined);
 
 // ensure the older format works as well
 const configOld = new pulumi.Config("myBag:config");
-assert.equal(configOld.getNumber("A"), 42);
-assert.equal(configOld.requireNumber("A"), 42);
-assert.equal(configOld.get("bbbb"), "a string o' b's");
-assert.equal(configOld.require("bbbb"), "a string o' b's");
-assert.equal(configOld.get("missingC"), undefined);
+assert.strictEqual(configOld.getNumber("A"), 42);
+assert.strictEqual(configOld.requireNumber("A"), 42);
+assert.strictEqual(configOld.get("bbbb"), "a string o' b's");
+assert.strictEqual(configOld.require("bbbb"), "a string o' b's");
+assert.strictEqual(configOld.get("missingC"), undefined);

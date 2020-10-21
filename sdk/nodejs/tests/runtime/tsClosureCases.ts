@@ -6619,7 +6619,7 @@ function compareTextWithWildcards(expected: string, actual: string) {
     if (!expected.includes(wildcard)) {
         // We get a nice diff view if we diff the entire string, so do that
         // if we didn't get a wildcard.
-        assert.equal(actual, expected);
+        assert.strictEqual(actual, expected);
         return;
     }
 
@@ -6648,7 +6648,7 @@ function compareTextWithWildcards(expected: string, actual: string) {
             const line = actualLines[actualIndex++].trim();
             const index = expectedLine.indexOf(wildcard);
             const indexAfter = index + wildcard.length;
-            assert.equal(line.substring(0, index), expectedLine.substring(0, index));
+            assert.strictEqual(line.substring(0, index), expectedLine.substring(0, index));
 
             if (indexAfter === expectedLine.length) {
                 continue;
@@ -6660,9 +6660,9 @@ function compareTextWithWildcards(expected: string, actual: string) {
                 }
             }
 
-            assert.equal(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
+            assert.strictEqual(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
         } else {
-            assert.equal(actualLines[actualIndex++].trim(), expectedLine);
+            assert.strictEqual(actualLines[actualIndex++].trim(), expectedLine);
         }
     }
 }

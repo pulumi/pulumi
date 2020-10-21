@@ -50,15 +50,15 @@ describe("testMode", () => {
             let res: FakeResource | undefined;
             assert.doesNotThrow(() => { res = new FakeResource("fake", { x: 42 }); });
             const x = await new Promise((resolve) => res!.x!.apply(resolve));
-            assert.equal(x, 42);
+            assert.strictEqual(x, 42);
             // Fetching the project name while in test mode succeeds.
             let project: string | undefined;
             assert.doesNotThrow(() => { project = runtime.getProject(); });
-            assert.equal(project, testProject);
+            assert.strictEqual(project, testProject);
             // Fetching the stack name while in test mode succeeds.
             let stack: string | undefined;
             assert.doesNotThrow(() => { stack = runtime.getStack(); });
-            assert.equal(stack, testStack);
+            assert.strictEqual(stack, testStack);
         } finally {
             runtime._setTestModeEnabled(false);
             runtime._setProject("");

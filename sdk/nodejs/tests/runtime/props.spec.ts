@@ -34,12 +34,12 @@ describe("runtime", () => {
             const transfer = gstruct.Struct.fromJavaScript(
                 await runtime.serializeProperties("test", inputs));
             const result = runtime.deserializeProperties(transfer);
-            assert.equal(result.aNum, 42);
-            assert.equal(result.bStr, "a string");
-            assert.equal(result.cUnd, undefined);
-            assert.deepEqual(result.dArr, [ "x", 42, true, null ]);
-            assert.equal(result.id, "foo");
-            assert.equal(result.urn, "bar");
+            assert.strictEqual(result.aNum, 42);
+            assert.strictEqual(result.bStr, "a string");
+            assert.strictEqual(result.cUnd, undefined);
+            assert.deepStrictEqual(result.dArr, [ "x", 42, true, null ]);
+            assert.strictEqual(result.id, "foo");
+            assert.strictEqual(result.urn, "bar");
         }));
         it("marshals secrets correctly", asyncTest(async () => {
             runtime._setTestModeEnabled(true);
@@ -51,8 +51,8 @@ describe("runtime", () => {
             const transfer = gstruct.Struct.fromJavaScript(
                 await runtime.serializeProperties("test", inputs));
             const result = runtime.deserializeProperties(transfer);
-            assert.equal(result.secret1, 1);
-            assert.equal(result.secret2, undefined);
+            assert.strictEqual(result.secret1, 1);
+            assert.strictEqual(result.secret2, undefined);
             runtime._setTestModeEnabled(false);
         }));
     });
@@ -91,29 +91,29 @@ describe("runtime", () => {
             const result = runtime.deserializeProperties(props);
 
             // Regular had no secrets in it, so it is returned as is.
-            assert.equal(result.regular, "a normal value");
+            assert.strictEqual(result.regular, "a normal value");
 
             // One of the elements in the list was a secret, so the secretness is promoted to top level.
-            assert.equal(result.list[runtime.specialSigKey], runtime.specialSecretSig);
-            assert.equal(result.list.value[0], "a normal value");
-            assert.equal(result.list.value[1], "another value");
-            assert.equal(result.list.value[2], "a secret value");
+            assert.strictEqual(result.list[runtime.specialSigKey], runtime.specialSecretSig);
+            assert.strictEqual(result.list.value[0], "a normal value");
+            assert.strictEqual(result.list.value[1], "another value");
+            assert.strictEqual(result.list.value[2], "a secret value");
 
             // One of the values of the map was a secret, so the secretness is promoted to top level.
-            assert.equal(result.map[runtime.specialSigKey], runtime.specialSecretSig);
-            assert.equal(result.map.value.regular, "a normal value");
-            assert.equal(result.map.value.secret, "a secret value");
+            assert.strictEqual(result.map[runtime.specialSigKey], runtime.specialSecretSig);
+            assert.strictEqual(result.map.value.regular, "a normal value");
+            assert.strictEqual(result.map.value.secret, "a secret value");
 
             // The nested map had a secret in one of the values, so the entire thing becomes a secret.
-            assert.equal(result.mapWithList[runtime.specialSigKey], runtime.specialSecretSig);
-            assert.equal(result.mapWithList.value.regular, "a normal value");
-            assert.equal(result.mapWithList.value.list[0], "a normal value");
-            assert.equal(result.mapWithList.value.list[1], "a secret value");
+            assert.strictEqual(result.mapWithList[runtime.specialSigKey], runtime.specialSecretSig);
+            assert.strictEqual(result.mapWithList.value.regular, "a normal value");
+            assert.strictEqual(result.mapWithList.value.list[0], "a normal value");
+            assert.strictEqual(result.mapWithList.value.list[1], "a secret value");
 
             // An array element contained a secret (via a nested map), so the entrie array becomes a secret.
-            assert.equal(result.listWithMap[runtime.specialSigKey], runtime.specialSecretSig);
-            assert.equal(result.listWithMap.value[0].regular, "a normal value");
-            assert.equal(result.listWithMap.value[0].secret, "a secret value");
+            assert.strictEqual(result.listWithMap[runtime.specialSigKey], runtime.specialSecretSig);
+            assert.strictEqual(result.listWithMap.value[0].regular, "a normal value");
+            assert.strictEqual(result.listWithMap.value[0].secret, "a secret value");
         });
     });
 });
