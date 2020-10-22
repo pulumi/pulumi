@@ -16,19 +16,67 @@ import * as assert from "assert";
 import { Inputs, runtime, secret } from "../../index";
 import { asyncTest } from "../util";
 
-
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+
+// tslint:disable-next-line:variable-name
+const TestStrEnum = {
+    Foo: "foo",
+    Bar: "bar",
+} as const;
+
+type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
+
+// tslint:disable-next-line:variable-name
+const TestIntEnum = {
+    One: 1,
+    Zero: 0,
+} as const;
+
+type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
+
+// tslint:disable-next-line:variable-name
+const TestNumEnum = {
+    One: 1.0,
+    ZeroPointOne: 0.1,
+} as const;
+
+type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
+
+// tslint:disable-next-line:variable-name
+const TestBoolEnum = {
+    One: true,
+    Zero: false,
+} as const;
+
+type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
+
+interface TestInputs {
+    aNum: number;
+    bStr: string;
+    cUnd: undefined;
+    dArr: Promise<Array<any>>;
+    id: string;
+    urn: string;
+    strEnum: TestStrEnum;
+    intEnum: TestIntEnum;
+    numEnum: TestNumEnum;
+    boolEnum: TestBoolEnum;
+}
 
 describe("runtime", () => {
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
-            const inputs: Inputs = {
+            const inputs: TestInputs = {
                 "aNum": 42,
                 "bStr": "a string",
                 "cUnd": undefined,
                 "dArr": Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
                 "id": "foo",
                 "urn": "bar",
+                "strEnum": TestStrEnum.Foo,
+                "intEnum": TestIntEnum.One,
+                "numEnum": TestNumEnum.One,
+                "boolEnum": TestBoolEnum.One,
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
@@ -40,6 +88,10 @@ describe("runtime", () => {
             assert.deepStrictEqual(result.dArr, [ "x", 42, true, null ]);
             assert.strictEqual(result.id, "foo");
             assert.strictEqual(result.urn, "bar");
+            assert.strictEqual(result.strEnum, "foo");
+            assert.strictEqual(result.intEnum, 1);
+            assert.strictEqual(result.numEnum, 1.0);
+            assert.strictEqual(result.boolEnum, true);
         }));
         it("marshals secrets correctly", asyncTest(async () => {
             runtime._setTestModeEnabled(true);
