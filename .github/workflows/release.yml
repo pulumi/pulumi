@@ -17,39 +17,61 @@ env:
   TRAVIS_PUBLISH_PACKAGES: true
 
 jobs:
+  # sends a repository dispatch to this repo, to build the docker images
+  # note, the tagging format is unfortunately different for the two sets of images
+  # FIXME: consolidate the tagging to always include a v
   docker:
-    name: Build Docker Images
+    name: Build Slim Docker Images
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set tag version
+        run: |
+          echo "PULUMI_LATEST_TAG::$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           event-type: docker-build
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          client-payload: '{"ref": "${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+  # This sends a repository dispatch job to the docs repo
+  # chocolatey build needs to be triggered from here
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set tag version
+        run: |
+          echo "PULUMI_LATEST_TAG::$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: homebrew-bump
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          repository: pulumi/docs
+          event-type: pulumi-cli
+          client-payload: '{"ref": "v${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+  # Sends a repository dispatch job to the homebrew build
   homebrew:
     name: Update Homebrew
     runs-on: macos-latest
     needs: publish-sdks
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set tag version
+        run: |
+          echo "PULUMI_LATEST_TAG::$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           event-type: homebrew-bump
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          client-payload: '{"ref": "v${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
 
   publish-sdks:
     name: Publish SDKs
@@ -92,10 +114,10 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT::$(dirname $(pwd)" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -133,7 +155,8 @@ jobs:
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set Release Version
-        run: echo "::set-env name=GORELEASER_CURRENT_TAG::v$(pulumictl get version --language generic -o)"
+        run: |
+          echo "GORELEASER_CURRENT_TAG::v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:

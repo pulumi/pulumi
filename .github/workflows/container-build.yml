@@ -33,7 +33,7 @@ jobs:
           dockerfile: docker/actions/Dockerfile
           additional-tags: ${{ env.VERSION }}
           tag-latest: true
-          build-args: PULUMI_VERSION=${{ env.VERSION }}
+          build-args: PULUMI_VERSION=v${{ env.VERSION }}
   base:
     name: base sdk image build
     runs-on: ubuntu-latest
