@@ -1,15 +1,10 @@
 {
   "name": "enum_output_ts",
-  "version": "0.0.9",
-  "license": "Apache-2.0",
   "devDependencies": {
-    "typescript": "^4.0.0"
+    "typescript": "^4.0.0",
+    "@types/node": "^8.0.0"
   },
   "peerDependencies": {
-    "pulumi": "latest"
-  },
-  "dependencies": {
-    "@pulumi/pulumi": "^2.12.0",
-    "@types/node": "^8.0.0"
+    "@pulumi/pulumi": "latest"
   }
 }

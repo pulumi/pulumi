@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 
@@ -9,7 +9,7 @@ class PlantProvider implements pulumi.dynamic.ResourceProvider {
         this.create = async (inputs: any) => {
             return {
                 id: "0",
-                outs: undefined,
+                outs: inputs,
             };
         };
     }
