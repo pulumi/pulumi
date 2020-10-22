@@ -96,11 +96,12 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	return &provider{
-		ctx:       ctx,
-		pkg:       pkg,
-		plug:      plug,
-		clientRaw: pulumirpc.NewResourceProviderClient(plug.Conn),
-		cfgdone:   make(chan bool),
+		ctx:                    ctx,
+		pkg:                    pkg,
+		plug:                   plug,
+		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
+		cfgdone:                make(chan bool),
+		disableProviderPreview: disableProviderPreview,
 	}, nil
 }
 
