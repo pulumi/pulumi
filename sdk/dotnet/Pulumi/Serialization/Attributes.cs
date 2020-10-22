@@ -76,4 +76,12 @@ namespace Pulumi
     public sealed class OutputConstructorAttribute : Attribute
     {
     }
+
+    /// <summary>
+    /// Attribute used by a Pulumi Cloud Provider Package to mark enum types.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Struct)]
+    public sealed class EnumTypeAttribute : Attribute
+    {
+    }
 }

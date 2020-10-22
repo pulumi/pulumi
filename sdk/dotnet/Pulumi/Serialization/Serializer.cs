@@ -218,6 +218,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             if (prop is IList list)
                 return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
 
+            if (prop is System.Enum)
+                return (int)prop;
+
             throw new InvalidOperationException($"{prop.GetType().FullName} is not a supported argument type.\n\t{ctx}");
         }
 
