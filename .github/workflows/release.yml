@@ -17,6 +17,21 @@ env:
   TRAVIS_PUBLISH_PACKAGES: true
 
 jobs:
+  chocolatey:
+    name: Chocolatey update
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set tag version
+        run: |
+          echo "PULUMI_LATEST_TAG::$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Repository Dispatch
+        run: |
+          pulumictl create choco-deploy ${{ env.PULUMI_LATEST_TAG }}
+         env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   # sends a repository dispatch to this repo, to build the docker images
   # note, the tagging format is unfortunately different for the two sets of images
   # FIXME: consolidate the tagging to always include a v
@@ -55,6 +70,8 @@ jobs:
           repository: pulumi/docs
           event-type: pulumi-cli
           client-payload: '{"ref": "v${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   # Sends a repository dispatch job to the homebrew build
   homebrew:
     name: Update Homebrew
