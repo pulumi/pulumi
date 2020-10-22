@@ -181,6 +181,9 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			// need to come up with a scheme for matching the failure to the associated step.
 
 		// Events ocurring late:
+		case engine.PolicyViolationEvent:
+			// At this point in time, we don't handle policy events in JSON serialization
+			continue
 		case engine.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
 			p := e.Payload().(engine.SummaryEventPayload)
