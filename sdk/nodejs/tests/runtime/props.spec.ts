@@ -88,10 +88,10 @@ describe("runtime", () => {
             assert.deepStrictEqual(result.dArr, [ "x", 42, true, null ]);
             assert.strictEqual(result.id, "foo");
             assert.strictEqual(result.urn, "bar");
-            assert.strictEqual(result.strEnum, "foo");
-            assert.strictEqual(result.intEnum, 1);
-            assert.strictEqual(result.numEnum, 1.0);
-            assert.strictEqual(result.boolEnum, true);
+            assert.strictEqual(result.strEnum, TestStrEnum.Foo);
+            assert.strictEqual(result.intEnum, TestIntEnum.One);
+            assert.strictEqual(result.numEnum, TestNumEnum.One);
+            assert.strictEqual(result.boolEnum, TestBoolEnum.One);
         }));
         it("marshals secrets correctly", asyncTest(async () => {
             runtime._setTestModeEnabled(true);
