@@ -9,8 +9,30 @@
         },
         "type": {
           "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        },
+        "farm": {
+          "oneOf": [
+            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"type": "string"}
+          ]
         }
-      }
+      },
+      "properties": {
+        "container": {
+          "$ref": "#/types/plant-provider::Container"
+        },
+        "type": {
+          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        },
+        "farm": {
+          "oneOf": [
+            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"type": "string"}
+          ]
+        }
+      },
+      "required": ["type"],
+      "requiredInputs": ["type"]
     }
   },
   "types": {
@@ -81,6 +103,17 @@
         {
           "value": "Tineke",
           "description": "A tineke rubber tree."
+        }
+      ]
+    },
+    "plant-provider:tree/v1:Farm": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "Pulumi Planters Inc."
+        },
+        {
+          "value": "Plants'R'Us"
         }
       ]
     }

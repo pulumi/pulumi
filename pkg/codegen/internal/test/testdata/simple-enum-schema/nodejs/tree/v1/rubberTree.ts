@@ -34,6 +34,9 @@ export class RubberTree extends pulumi.CustomResource {
         return obj['__pulumiType'] === RubberTree.__pulumiType;
     }
 
+    public readonly container!: pulumi.Output<outputs.Container | undefined>;
+    public readonly farm!: pulumi.Output<enums.tree.v1.Farm | string | undefined>;
+    public readonly type!: pulumi.Output<enums.tree.v1.RubberTreeVariety>;
 
     /**
      * Create a RubberTree resource with the given unique name, arguments, and options.
@@ -42,12 +45,19 @@ export class RubberTree extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
         if (!(opts && opts.id)) {
+            if (!args || args.type === undefined) {
+                throw new Error("Missing required property 'type'");
+            }
             inputs["container"] = args ? args.container : undefined;
+            inputs["farm"] = args ? args.farm : undefined;
             inputs["type"] = args ? args.type : undefined;
         } else {
+            inputs["container"] = undefined /*out*/;
+            inputs["farm"] = undefined /*out*/;
+            inputs["type"] = undefined /*out*/;
         }
         if (!opts) {
             opts = {}
@@ -65,5 +75,6 @@ export class RubberTree extends pulumi.CustomResource {
  */
 export interface RubberTreeArgs {
     readonly container?: pulumi.Input<inputs.Container>;
-    readonly type?: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
+    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
+    readonly type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

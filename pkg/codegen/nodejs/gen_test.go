@@ -32,6 +32,7 @@ func TestGeneratePackage(t *testing.T) {
 				"tree/v1/index.ts",
 				"tree/index.ts",
 				"types/input.ts",
+				"types/output.ts",
 				"types/index.ts",
 				"types/enums/index.ts",
 				"types/enums/tree/index.ts",
