@@ -11,7 +11,7 @@ namespace Pulumi
     /// <see cref="Stack"/> resources.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public sealed class OutputAttribute : Attribute 
+    public sealed class OutputAttribute : Attribute
     {
         public string? Name { get; }
 
@@ -27,10 +27,10 @@ namespace Pulumi
     /// <para/>
     /// Note: for simple inputs (i.e. <see cref="Input{T}"/> this should just be placed on the
     /// property itself.  i.e. <c>[Input] Input&lt;string&gt; Acl</c>.
-    /// 
+    ///
     /// For collection inputs (i.e. <see cref="InputList{T}"/> this should be placed on the
     /// backing field for the property.  i.e.
-    /// 
+    ///
     /// <code>
     ///     [Input] private InputList&lt;string&gt; _acls;
     ///     public InputList&lt;string&gt; Acls
@@ -57,7 +57,7 @@ namespace Pulumi
 
     /// <summary>
     /// Attribute used by a Pulumi Cloud Provider Package to mark complex types used for a Resource
-    /// output property.  A complex type must have a single constructor in it marked with the 
+    /// output property.  A complex type must have a single constructor in it marked with the
     /// <see cref="OutputConstructorAttribute"/> attribute.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
@@ -68,7 +68,7 @@ namespace Pulumi
     /// <summary>
     /// Attribute used by a Pulumi Cloud Provider Package to marks the constructor for a complex
     /// property type so that it can be instantiated by the Pulumi runtime.
-    /// 
+    ///
     /// The constructor should contain parameters that map to the resultant <see
     /// cref="Struct.Fields"/> returned by the engine.
     /// </summary>
