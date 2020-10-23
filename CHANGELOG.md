@@ -2,10 +2,14 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.12.1 (2020-10-23)
+
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
   [#5569](https://github.com/pulumi/pulumi/pull/5569)
-  
-- [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews 
+
+- [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews
   and policies are enabled
   [#5610](https://github.com/pulumi/pulumi/pull/5610)
 
