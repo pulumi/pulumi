@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
@@ -218,10 +219,23 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             if (prop is IList list)
                 return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
 
-            if (prop is System.Enum)
+            if (prop is System.Enum e && e.GetTypeCode() == TypeCode.Int32)
+            {
                 return (int)prop;
+            }
 
-            throw new InvalidOperationException($"{prop.GetType().FullName} is not a supported argument type.\n\t{ctx}");
+            var propType = prop.GetType();
+            if (propType.IsValueType && propType.GetCustomAttribute<EnumTypeAttribute>() != null)
+            {
+                MethodInfo? mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
+                if (mi == null || (mi.ReturnType != typeof(string) && mi.ReturnType != typeof(double)))
+                {
+                    throw new InvalidOperationException($"Expected {propType.FullName} to have an explicit conversion operator to String or Double.\n\t{ctx}");
+                }
+                return mi.Invoke(null, new object[] { prop });
+            }
+
+            throw new InvalidOperationException($"{propType.FullName} is not a supported argument type.\n\t{ctx}");
         }
 
         private object? SerializeJson(string ctx, JsonElement element)

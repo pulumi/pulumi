@@ -106,6 +106,36 @@ namespace Pulumi.Serialization
             if (targetType == typeof(JsonElement))
                 return TryConvertJsonElement(context, val);
 
+            if (targetType.IsEnum)
+            {
+                var underlyingType = targetType.GetEnumUnderlyingType();
+                var (value, exception) = TryConvertObject(context, val, underlyingType);
+                if (exception != null || value is null)
+                    return (null, exception);
+
+                return (System.Enum.ToObject(targetType, value), null);
+            }
+
+            if (targetType.IsValueType && targetType.GetCustomAttribute<EnumTypeAttribute>() != null)
+            {
+                var valType = val.GetType();
+                if (valType != typeof(string) &&
+                    valType != typeof(double))
+                {
+                    return (null, new InvalidOperationException(
+                        $"Expected {typeof(string).FullName} or {typeof(double).FullName} but got {valType.FullName} deserializing {context}"));
+                }
+
+                var enumTypeConstructor = targetType.GetConstructor(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { valType }, null);
+                if (enumTypeConstructor == null)
+                {
+                    return (null, new InvalidOperationException(
+                        $"Expected target type {targetType.FullName} to have a constructor with a single {valType.FullName} parameter."));
+                }
+                return (enumTypeConstructor.Invoke(new object[] { val }), null);
+            }
+
             if (targetType.IsConstructedGenericType)
             {
                 if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
@@ -342,6 +372,41 @@ namespace Pulumi.Serialization
                 // immutable dictionaries.  This is the 2nd out of 2 places that `object` should
                 // appear as a legal value.
                 return;
+            }
+
+            if (targetType.IsEnum && targetType.GetEnumUnderlyingType() == typeof(int))
+            {
+                return;
+            }
+
+            if (targetType.IsValueType && targetType.GetCustomAttribute<EnumTypeAttribute>() != null)
+            {
+                if (CheckEnumType(targetType, typeof(string)) ||
+                    CheckEnumType(targetType, typeof(double)))
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException(
+                    $"{targetType.FullName} had [{nameof(EnumTypeAttribute)}], but did not contain constructor with a single String or Double parameter.");
+
+                static bool CheckEnumType(System.Type targetType, System.Type underlyingType)
+                {
+                    var constructor = targetType.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { underlyingType }, null);
+                    if (constructor == null)
+                    {
+                        return false;
+                    }
+
+                    var op = targetType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { targetType }, null);
+                    if (op != null && op.ReturnType == underlyingType)
+                    {
+                        return true;
+                    }
+
+                    throw new InvalidOperationException(
+                        $"{targetType.FullName} had [{nameof(EnumTypeAttribute)}], but did not contain an explicit conversion operator to {underlyingType.FullName}.");
+                }
             }
 
             if (targetType.IsConstructedGenericType)
