@@ -30,7 +30,7 @@ jobs:
       - name: Repository Dispatch
         run: |
           pulumictl create choco-deploy ${{ env.PULUMI_LATEST_TAG }}
-         env:
+        env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   # sends a repository dispatch to this repo, to build the docker images
   # note, the tagging format is unfortunately different for the two sets of images
