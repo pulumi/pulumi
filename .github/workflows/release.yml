@@ -134,7 +134,7 @@ jobs:
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Set Go Dep path
         run: |
-          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd)" >> $GITHUB_ENV
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
