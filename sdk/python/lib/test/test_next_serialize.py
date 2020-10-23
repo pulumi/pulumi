@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import unittest
+from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from google.protobuf import struct_pb2
@@ -222,7 +223,7 @@ class NextSerializationTests(unittest.TestCase):
 
         other = TestCustomResource("some-other-resource")
         other_fut = asyncio.Future()
-        other_fut.set_result(UNKNOWN) # <- not known
+        other_fut.set_result(UNKNOWN)  # <- not known
         other_known_fut = asyncio.Future()
         other_known_fut.set_result(False)
         other_out = Output({other}, other_fut, other_known_fut)
@@ -235,7 +236,6 @@ class NextSerializationTests(unittest.TestCase):
         # The contents of the list are unknown if any of the Outputs used to
         # create it were unknown.
         self.assertEqual(rpc.UNKNOWN, prop)
-
 
     @async_test
     async def test_unknown_output(self):
@@ -835,7 +835,7 @@ class NextSerializationTests(unittest.TestCase):
 
         fut = asyncio.Future()
         fut.set_result(UNKNOWN)
-        out = Output.from_input({ "foo": "foo", "bar": UNKNOWN, "baz": fut})
+        out = Output.from_input({"foo": "foo", "bar": UNKNOWN, "baz": fut})
 
         self.assertFalse(await out.is_known())
 
@@ -855,7 +855,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertFalse(await r4.is_known())
         self.assertEqual(await r4.future(with_unknowns=True), UNKNOWN)
 
-        out = Output.from_input([ "foo", UNKNOWN ])
+        out = Output.from_input(["foo", UNKNOWN])
 
         r5 = out[0]
         self.assertTrue(await r5.is_known())
@@ -866,7 +866,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(await r6.future(with_unknowns=True), UNKNOWN)
 
         out = Output.all(Output.from_input("foo"), Output.from_input(UNKNOWN),
-            Output.from_input([ Output.from_input(UNKNOWN), Output.from_input("bar") ]))
+                         Output.from_input([Output.from_input(UNKNOWN), Output.from_input("bar")]))
 
         self.assertFalse(await out.is_known())
 
@@ -889,7 +889,6 @@ class NextSerializationTests(unittest.TestCase):
         self.assertTrue(await r11.is_known())
         self.assertEqual(await r11.future(with_unknowns=True), "bar")
 
-
     @async_test
     async def test_output_coros(self):
         # Ensure that Outputs function properly when the input value and is_known are coroutines. If the implementation
@@ -898,6 +897,7 @@ class NextSerializationTests(unittest.TestCase):
         async def value():
             await asyncio.sleep(0)
             return 42
+
         async def is_known():
             await asyncio.sleep(0)
             return True
@@ -922,14 +922,13 @@ class DeserializationTests(unittest.TestCase):
         self.assertIsNotNone(error)
 
     def test_secret_push_up(self):
-        secret_value = {rpc._special_sig_key: rpc._special_secret_sig, "value": "a secret value" }
+        secret_value = {rpc._special_sig_key: rpc._special_secret_sig, "value": "a secret value"}
         all_props = struct_pb2.Struct()
         all_props["regular"] = "a normal value"
         all_props["list"] = ["a normal value", "another value", secret_value]
         all_props["map"] = {"regular": "a normal value", "secret": secret_value}
         all_props["mapWithList"] = {"regular": "a normal value", "list": ["a normal value", secret_value]}
         all_props["listWithMap"] = [{"regular": "a normal value", "secret": secret_value}]
-
 
         val = rpc.deserialize_properties(all_props)
         self.assertEqual(all_props["regular"], val["regular"])
@@ -971,14 +970,16 @@ class DeserializationTests(unittest.TestCase):
             "__provider": "serialized_dynamic_provider",
         }, val)
 
+
 @input_type
 class FooArgs:
     first_arg: Input[str] = pulumi.property("firstArg")
     second_arg: Optional[Input[float]] = pulumi.property("secondArg")
 
-    def __init__(self, first_arg: Input[str], second_arg: Optional[Input[float]]=None):
+    def __init__(self, first_arg: Input[str], second_arg: Optional[Input[float]] = None):
         pulumi.set(self, "first_arg", first_arg)
         pulumi.set(self, "second_arg", second_arg)
+
 
 @input_type
 class ListDictInputArgs:
@@ -1043,3 +1044,39 @@ class InputTypeSerializationTests(unittest.TestCase):
                 "foo_baz": "world",
             },
         }, prop)
+
+
+class StrEnum(str, Enum):
+    ONE = "one"
+    ZERO = "zero"
+
+
+class IntEnum(int, Enum):
+    ONE = 1
+    ZERO = 0
+
+
+class FloatEnum(float, Enum):
+    ONE = 1.0
+    ZERO_POINT_ONE = 0.1
+
+
+class EnumSerializationTests(unittest.TestCase):
+    @async_test
+    async def test_string_enum(self):
+        one = StrEnum.ONE
+        prop = await rpc.serialize_property(one, [])
+        self.assertEqual(StrEnum.ONE, prop)
+
+    @async_test
+    async def test_int_enum(self):
+        one = IntEnum.ONE
+        prop = await rpc.serialize_property(one, [])
+        self.assertEqual(IntEnum.ONE, prop)
+
+    @async_test
+    async def test_float_enum(self):
+        one = FloatEnum.ZERO_POINT_ONE
+        prop = await rpc.serialize_property(one, [])
+        self.assertEqual(FloatEnum.ZERO_POINT_ONE, prop)
+
