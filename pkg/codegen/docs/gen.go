@@ -114,6 +114,7 @@ var (
 		"spotinst":      "Spotinst",
 		"tls":           "TLS",
 		"vault":         "Vault",
+		"venafi":        "Venafi",
 		"vsphere":       "vSphere",
 		"wavefront":     "Wavefront",
 	}
