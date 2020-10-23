@@ -24,12 +24,13 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - name: Set tag version
-        run: |
-          echo "PULUMI_LATEST_TAG=$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        with:
+          repo: pulumi/pulumictl
       - name: Repository Dispatch
         run: |
-          pulumictl create choco-deploy ${{ env.PULUMI_LATEST_TAG }}
+          pulumictl create choco-deploy $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   # sends a repository dispatch to this repo, to build the docker images
@@ -50,7 +51,7 @@ jobs:
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           event-type: docker-build
-          client-payload: '{"ref": "${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+          client-payload: "{\"ref\": \"$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
   # This sends a repository dispatch job to the docs repo
   # chocolatey build needs to be triggered from here
   docs:
@@ -69,7 +70,7 @@ jobs:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: pulumi/docs
           event-type: pulumi-cli
-          client-payload: '{"ref": "v${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+          client-payload: "{\"ref\": \"v$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   # Sends a repository dispatch job to the homebrew build
@@ -88,7 +89,7 @@ jobs:
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           event-type: homebrew-bump
-          client-payload: '{"ref": "v${{ env.PULUMI_LATEST_TAG }}", "sha": "${{ github.sha }}"}'
+          client-payload: "{\"ref\": \"v$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
 
   publish-sdks:
     name: Publish SDKs
