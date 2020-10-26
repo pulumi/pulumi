@@ -55,13 +55,10 @@ class Stack extends ComponentResource<Inputs> {
      */
     public readonly outputs: Output<Inputs>;
 
-    private _init: () => Promise<Inputs>;
-
     constructor(init: () => Promise<Inputs>) {
-        super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
+        super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`, { init });
         const data = this.getData();
         this.outputs = output(data);
-        this._init = init;
     }
 
     /**
@@ -70,7 +67,7 @@ class Stack extends ComponentResource<Inputs> {
      *
      * @param init The callback to run in the context of this Pulumi stack
      */
-    async initialize(): Promise<Inputs> {
+    async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
         const parent = await getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
@@ -82,7 +79,7 @@ class Stack extends ComponentResource<Inputs> {
 
         let outputs: Inputs | undefined;
         try {
-            const inputs = await this._init();
+            const inputs = await args.init();
             outputs = await massage(inputs, []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
