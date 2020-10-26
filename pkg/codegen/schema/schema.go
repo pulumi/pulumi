@@ -975,18 +975,24 @@ type typeSpecRef struct {
 }
 
 // Regexs used to parse type spec refs. These are declared at the package scope to avoid repeatedly recompiling them.
-var refPathRegex = regexp.MustCompile(`^/(?P<package>\w+)/v?(?P<version>\d+\.\d+\.\d+)/schema\.json$`)
+var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/v?(?P<version>\d+\.\d+\.\d+)/schema\.json$`)
 var refFragmentRegex = regexp.MustCompile(`^/(?P<kind>resources|types)/(?P<token>.*:.*:.*)$`)
 
-func parseTypeSpecRef(ref string) typeSpecRef {
+func parseTypeSpecRef(ref string) (typeSpecRef, error) {
 	parsedURL, err := url.Parse(ref)
-	contract.AssertNoErrorf(err, "failed to parse ref URL: %s", ref)
+	if err != nil {
+		return typeSpecRef{}, errors.Wrapf(err, "failed to parse ref URL: %s", ref)
+	}
 
 	fragment, err := url.PathUnescape(parsedURL.Fragment)
-	contract.AssertNoError(err)
+	if err != nil {
+		return typeSpecRef{}, errors.Wrapf(err, "failed to unescape fragment: %s", parsedURL.Fragment)
+	}
 
 	fragmentMatch := refFragmentRegex.FindStringSubmatch(fragment)
-	contract.Assertf(len(fragmentMatch) == 3, "failed to parse fragment: %s", fragment)
+	if len(fragmentMatch) != 3 {
+		return typeSpecRef{}, fmt.Errorf("failed to parse fragment: %s", fragment)
+	}
 
 	result := typeSpecRef{
 		URL:   parsedURL,
@@ -995,12 +1001,21 @@ func parseTypeSpecRef(ref string) typeSpecRef {
 	}
 
 	if len(parsedURL.Path) > 0 {
-		pathMatch := refPathRegex.FindStringSubmatch(parsedURL.Path)
-		contract.Assert(len(pathMatch) == 3)
+		path, err := url.PathUnescape(parsedURL.Path)
+		if err != nil {
+			return typeSpecRef{}, errors.Wrapf(err, "failed to unescape path: %s", parsedURL.Path)
+		}
+
+		pathMatch := refPathRegex.FindStringSubmatch(path)
+		if len(pathMatch) != 3 {
+			return typeSpecRef{}, fmt.Errorf("failed to parse path: %s", path)
+		}
 
 		pkg, versionToken := pathMatch[1], pathMatch[2]
 		version, err := semver.Parse(versionToken)
-		contract.AssertNoErrorf(err, "failed to parse package version: %s", versionToken)
+		if err != nil {
+			return typeSpecRef{}, errors.Wrapf(err, "failed to parse package version: %s", versionToken)
+		}
 
 		result.externalSchemaRef = &externalSchemaRef{
 			Package: pkg,
@@ -1008,7 +1023,7 @@ func parseTypeSpecRef(ref string) typeSpecRef {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
@@ -1024,12 +1039,15 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 		return AnyType, nil
 	}
 
-	ref := parseTypeSpecRef(spec.Ref)
+	ref, err := parseTypeSpecRef(spec.Ref)
+	if err != nil {
+		return nil, err
+	}
 
 	if ref.externalSchemaRef != nil {
 		pkg, err := t.loader.LoadPackage(ref.externalSchemaRef.Package, ref.externalSchemaRef.Version)
 		if err != nil {
-			return nil, fmt.Errorf("resolving package %v: %w", ref.URL, err)
+			return nil, errors.Wrapf(err, "resolving package %v", ref.URL)
 		}
 
 		switch ref.Kind {

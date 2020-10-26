@@ -208,9 +208,10 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		ref  string
-		want typeSpecRef
+		name    string
+		ref     string
+		want    typeSpecRef
+		wantErr bool
 	}{
 		{
 			name: "resourceRef",
@@ -244,6 +245,11 @@ func Test_parseTypeSpecRef(t *testing.T) {
 			},
 		},
 		{
+			name:    "invalid externalResourceRef",
+			ref:     "/random/schema.json#/resources/random:index/randomPet:RandomPet",
+			wantErr: true,
+		},
+		{
 			name: "externalTypeRef",
 			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			want: typeSpecRef{
@@ -272,8 +278,13 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := parseTypeSpecRef(tt.ref); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseTypeSpecRef() = %v, want %v", got, tt.want)
+			got, err := parseTypeSpecRef(tt.ref)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseTypeSpecRef() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
