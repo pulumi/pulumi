@@ -621,9 +621,11 @@ type TypeSpec struct {
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
 	// types are referenced as "pulumi.json#/Archive", "pulumi.json#/Asset", and "pulumi.json#/Any", respectively.
 	// A type from this document is referenced as "#/types/pulumi:type:token".
-	// A type from another document is referenced as "/provider/vX.Y.Z/schema.json#/types/pulumi:type:token".
+	// A type from another document is referenced as "path#/types/pulumi:type:token", where path is of the form:
+	//   "/provider/vX.Y.Z/schema.json" or "pulumi.json" or "http[s]://example.com/provider/vX.Y.Z/schema.json"
 	// A resource from this document is referenced as "#/resources/pulumi:type:token".
-	// A resource from another document is referenced as "/provider/vX.Y.Z/schema.json#/resources/pulumi:type:token".
+	// A resource from another document is referenced as "path#/resources/pulumi:type:token", where path is of the form:
+	//   "/provider/vX.Y.Z/schema.json" or "pulumi.json" or "http[s]://example.com/provider/vX.Y.Z/schema.json"
 	Ref string `json:"$ref,omitempty"`
 	// AdditionalProperties, if set, describes the element type of an "object" (i.e. a string -> value map).
 	AdditionalProperties *TypeSpec `json:"additionalProperties,omitempty"`
