@@ -804,7 +804,7 @@ type PackageSpec struct {
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package.
-func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
+func ImportSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, error) {
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -827,7 +827,23 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 
 	pkg := &Package{}
 
-	types, err := bindTypes(pkg, spec.Types)
+	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
+	// reference is nil.
+	if loader == nil {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+		if err != nil {
+			return nil, err
+		}
+		defer contract.IgnoreClose(ctx)
+
+		loader = NewPluginLoader(ctx.Host)
+	}
+
+	types, err := bindTypes(pkg, spec.Types, loader)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding types")
 	}
@@ -1411,21 +1427,11 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, err
 	return enum, nil
 }
 
-func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: do we need to manually close the context?
-	//defer contract.IgnoreClose(ctx)
+func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loader) (*types, error) {
 
 	typs := &types{
 		pkg:       pkg,
-		loader:    NewPluginLoader(ctx.Host),
+		loader:    loader,
 		resources: map[string]*ResourceType{},
 		objects:   map[string]*ObjectType{},
 		arrays:    map[Type]*ArrayType{},

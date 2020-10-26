@@ -62,7 +62,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, err := ImportSpec(spec, nil)
+	p, err := ImportSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

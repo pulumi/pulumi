@@ -261,7 +261,7 @@ func initTestPackageSpec(t *testing.T) {
 func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 	initTestPackageSpec(t)
 
-	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil, nil)
 	assert.NoError(t, err, "importing spec")
 
 	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg, true)
@@ -350,7 +350,7 @@ func getResourceFromModule(resource string, mod *modContext) *schema.Resource {
 func TestResourceDocHeader(t *testing.T) {
 	initTestPackageSpec(t)
 
-	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil, nil)
 	assert.NoError(t, err, "importing spec")
 
 	tests := []struct {
