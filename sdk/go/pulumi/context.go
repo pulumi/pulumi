@@ -241,7 +241,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return ferr
 	}
 
-	// Otherwsie, simply unmarshal the output properties and return the result.
+	// Otherwise, simply unmarshal the output properties and return the result.
 	outProps, err := plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{KeepSecrets: true, KeepResources: true, KeepUnknowns: keepUnknowns},
