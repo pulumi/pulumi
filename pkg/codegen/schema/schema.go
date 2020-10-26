@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -220,6 +222,8 @@ func (*ObjectType) isType() {}
 type ResourceType struct {
 	// Token is the type's Pulumi type token.
 	Token string
+	// Resource is the type's underlying resource.
+	Resource *Resource
 }
 
 func (t *ResourceType) String() string {
@@ -370,6 +374,7 @@ type Package struct {
 
 	resourceTable map[string]*Resource
 	functionTable map[string]*Function
+	typeTable     map[string]Type
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -603,6 +608,11 @@ func (pkg *Package) GetFunction(token string) (*Function, bool) {
 	return f, ok
 }
 
+func (pkg *Package) GetType(token string) (Type, bool) {
+	t, ok := pkg.typeTable[token]
+	return t, ok
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -793,7 +803,6 @@ type PackageSpec struct {
 
 // ImportSpec converts a serializable PackageSpec into a Package.
 func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
-	// TODO: figure out how to download external specs
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -893,6 +902,7 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		Language:          language,
 		resourceTable:     resourceTable,
 		functionTable:     functionTable,
+		typeTable:         types.named,
 	}
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, err
@@ -903,7 +913,8 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
-	pkg *Package
+	pkg    *Package
+	loader Loader
 
 	resources map[string]*ResourceType
 	objects   map[string]*ObjectType
@@ -912,6 +923,7 @@ type types struct {
 	unions    map[string]*UnionType
 	tokens    map[string]*TokenType
 	enums     map[string]*EnumType
+	named     map[string]Type
 }
 
 func (t *types) bindPrimitiveType(name string) (Type, error) {
@@ -929,49 +941,56 @@ func (t *types) bindPrimitiveType(name string) (Type, error) {
 	}
 }
 
-// typeSpecRef contains the parsed fields from a type spec reference
-type typeSpecRef struct {
-	Scheme      string // The optional URL scheme, e.g. https
-	Host        string // The optional URL host, e.g. example.com
-	Path        string // A path uniquely identifying an external schema, e.g. /provider/vX.Y.Z/schema.json
-	PathPackage string // The external package name, e.g. random
-	PathVersion string // The external package version, e.g. v2.3.1
-	Kind        string // The kind of reference, either 'resources' or 'types'
-	Token       string // The reference token, e.g. random:index/randomPet:RandomPet
-	Package     string // The reference package, e.g. random
-	Module      string // The reference module, e.g. index/randomPet
-	Member      string // The reference member, e.g. RandomPet
+// externalSchemaRef contains the parsed fields for an external schema ref.
+type externalSchemaRef struct {
+	Package string          // The package component of the schema ref
+	Version *semver.Version // The version component of the schema ref
 }
 
-func parseTypeSpecRef(ref string) typeSpecRef {
-	pathRegex := regexp.MustCompile(`^/(?P<package>\w+)/(?P<version>v\d+\.\d+\.\d+)/schema\.json$`)
-	fragmentRegex := regexp.MustCompile(`^/(?P<kind>resources|types)/(?P<token>(?P<package>.*):(?P<module>.*):(?P<member>.*).*)$`)
+// typeSpecRef contains the parsed fields from a type spec reference.
+type typeSpecRef struct {
+	*externalSchemaRef
 
-	result, err := url.Parse(ref)
+	URL   *url.URL // The parsed URL
+	Token string   // The type token
+	Kind  string   // The kind of reference, either 'resources' or 'types'
+}
+
+// Regexs used to parse type spec refs. These are declared at the package scope to avoid repeatedly recompiling them.
+var refPathRegex = regexp.MustCompile(`^/(?P<package>\w+)/v?(?P<version>\d+\.\d+\.\d+)/schema\.json$`)
+var refFragmentRegex = regexp.MustCompile(`^/(?P<kind>resources|types)/(?P<token>.*:.*:.*)$`)
+
+func parseTypeSpecRef(ref string) typeSpecRef {
+	parsedURL, err := url.Parse(ref)
 	contract.AssertNoErrorf(err, "failed to parse ref URL: %s", ref)
 
-	fragmentMatch := fragmentRegex.FindStringSubmatch(result.Fragment)
-	contract.Assertf(len(fragmentMatch) == 6, "failed to parse fragment: %s", result.Fragment)
+	fragment, err := url.PathUnescape(parsedURL.Fragment)
+	contract.AssertNoError(err)
 
-	parsed := typeSpecRef{
-		Scheme:  result.Scheme,
-		Host:    result.Host,
-		Path:    result.Path,
-		Kind:    fragmentMatch[1],
-		Token:   fragmentMatch[2],
-		Package: fragmentMatch[3],
-		Module:  fragmentMatch[4],
-		Member:  fragmentMatch[5],
+	fragmentMatch := refFragmentRegex.FindStringSubmatch(fragment)
+	contract.Assertf(len(fragmentMatch) == 3, "failed to parse fragment: %s", fragment)
+
+	result := typeSpecRef{
+		URL:   parsedURL,
+		Kind:  fragmentMatch[1],
+		Token: fragmentMatch[2],
 	}
 
-	// Attempt to parse out a package and version from the path.
-	pathMatch := pathRegex.FindStringSubmatch(result.Path)
-	if len(pathMatch) == 3 {
-		parsed.PathPackage = pathMatch[1]
-		parsed.PathVersion = pathMatch[2]
+	if len(parsedURL.Path) > 0 {
+		pathMatch := refPathRegex.FindStringSubmatch(parsedURL.Path)
+		contract.Assert(len(pathMatch) == 3)
+
+		pkg, versionToken := pathMatch[1], pathMatch[2]
+		version, err := semver.Parse(versionToken)
+		contract.AssertNoErrorf(err, "failed to parse package version: %s", versionToken)
+
+		result.externalSchemaRef = &externalSchemaRef{
+			Package: pkg,
+			Version: &version,
+		}
 	}
 
-	return parsed
+	return result
 }
 
 func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
@@ -989,26 +1008,56 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 
 	ref := parseTypeSpecRef(spec.Ref)
 
-	if len(ref.Path) > 0 {
-		// TODO: handle external refs
-	}
+	if ref.externalSchemaRef != nil {
+		pkg, err := t.loader.LoadPackage(ref.externalSchemaRef.Package, ref.externalSchemaRef.Version)
+		if err != nil {
+			return nil, fmt.Errorf("resolving package %v: %w", ref.URL, err)
+		}
 
-	token, err := url.PathUnescape(ref.Token)
-	if err != nil {
-		return nil, err
+		switch ref.Kind {
+		case "types":
+			typ, ok := t.named[ref.Token]
+			if !ok {
+				typ, ok = pkg.GetType(ref.Token)
+				if !ok {
+					return nil, fmt.Errorf("type %v not found in package %v",
+						ref.Token, ref.externalSchemaRef.Package)
+				}
+				// TODO: not sure if we also need to update the objects/enums/tokens maps?
+
+				t.named[ref.Token] = typ
+			}
+			return typ, nil
+		case "resources":
+			typ, ok := t.resources[ref.Token]
+			if !ok {
+				res, ok := pkg.GetResource(ref.Token)
+				if !ok {
+					return nil, fmt.Errorf("resource %v not found in package %v",
+						ref.Token, ref.externalSchemaRef.Package)
+				}
+
+				typ = &ResourceType{
+					Token:    ref.Token,
+					Resource: res,
+				}
+				t.resources[ref.Token] = typ
+			}
+			return typ, nil
+		}
 	}
 
 	switch ref.Kind {
 	case "types":
-		if typ, ok := t.objects[token]; ok {
+		if typ, ok := t.objects[ref.Token]; ok {
 			return typ, nil
 		}
-		if typ, ok := t.enums[token]; ok {
+		if typ, ok := t.enums[ref.Token]; ok {
 			return typ, nil
 		}
-		typ, ok := t.tokens[token]
+		typ, ok := t.tokens[ref.Token]
 		if !ok {
-			typ = &TokenType{Token: token}
+			typ = &TokenType{Token: ref.Token}
 			if spec.Type != "" {
 				ut, err := t.bindType(TypeSpec{Type: spec.Type})
 				if err != nil {
@@ -1016,14 +1065,14 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 				}
 				typ.UnderlyingType = ut
 			}
-			t.tokens[token] = typ
+			t.tokens[ref.Token] = typ
 		}
 		return typ, nil
 	case "resources":
-		typ, ok := t.resources[token]
+		typ, ok := t.resources[ref.Token]
 		if !ok {
-			typ = &ResourceType{Token: token}
-			t.resources[token] = typ
+			typ = &ResourceType{Token: ref.Token}
+			t.resources[ref.Token] = typ
 		}
 		return typ, nil
 	default:
@@ -1361,8 +1410,20 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, err
 }
 
 func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: do we need to manually close the context?
+	//defer contract.IgnoreClose(ctx)
+
 	typs := &types{
 		pkg:       pkg,
+		loader:    NewPluginLoader(ctx.Host),
 		resources: map[string]*ResourceType{},
 		objects:   map[string]*ObjectType{},
 		arrays:    map[Type]*ArrayType{},
@@ -1370,6 +1431,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 		unions:    map[string]*UnionType{},
 		tokens:    map[string]*TokenType{},
 		enums:     map[string]*EnumType{},
+		named:     map[string]Type{},
 	}
 
 	// Declare object and enum types before processing properties.
@@ -1379,15 +1441,21 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec) (*types, e
 			// for identity. Types are interned based on their string representation, and the string representation of an
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 			// that reference object types (e.g. arrays, maps, unions)
-			typs.objects[token] = &ObjectType{Token: token}
+			typ := &ObjectType{Token: token}
+			typs.objects[token] = typ
+			typs.named[token] = typ
 		} else if len(spec.Enum) > 0 {
-			typs.enums[token] = &EnumType{Token: token}
+			typ := &EnumType{Token: token}
+			typs.enums[token] = typ
+			typs.named[token] = typ
 		}
 	}
 
 	// Process resources.
 	for _, r := range pkg.Resources {
-		typs.resources[r.Token] = &ResourceType{Token: r.Token}
+		typ := &ResourceType{Token: r.Token}
+		typs.resources[r.Token] = typ
+		typs.named[r.Token] = typ
 	}
 
 	// Process properties.
@@ -1473,6 +1541,11 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, ma
 			return nil, nil, errors.Wrapf(err, "error binding resource %v", token)
 		}
 		resourceTable[token] = res
+
+		if _, ok := types.resources[token]; ok && types.resources[token].Resource == nil {
+			types.resources[token].Resource = res
+		}
+
 		resources = append(resources, res)
 	}
 

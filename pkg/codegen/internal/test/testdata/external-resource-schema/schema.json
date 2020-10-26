@@ -27,6 +27,14 @@
         }
       },
       "type": "object"
+    },
+    "example::Workload": {
+      "properties": {
+        "pod": {
+          "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:core%2Fv1:Pod"
+        }
+      },
+      "type": "object"
     }
   },
   "functions": {

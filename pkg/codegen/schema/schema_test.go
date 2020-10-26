@@ -17,10 +17,12 @@ package schema
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -129,7 +131,7 @@ func TestImportResourceRef(t *testing.T) {
 		validator  func(pkg *Package)
 	}{
 		{
-			"valid",
+			"simple",
 			"simple-resource-schema/schema.json",
 			false,
 			func(pkg *Package) {
@@ -150,10 +152,23 @@ func TestImportResourceRef(t *testing.T) {
 			false,
 			func(pkg *Package) {
 				for _, r := range pkg.Resources {
-					if r.Token == "example::Cat" {
+					switch r.Token {
+					case "example::Cat":
 						for _, p := range r.Properties {
 							if p.Name == "name" {
 								assert.IsType(t, &ResourceType{}, p.Type)
+
+								resource := p.Type.(*ResourceType)
+								assert.NotNil(t, resource.Resource)
+							}
+						}
+					case "example::Workload":
+						for _, p := range r.Properties {
+							if p.Name == "pod" {
+								assert.IsType(t, &ObjectType{}, p.Type)
+
+								obj := p.Type.(*ObjectType)
+								assert.NotNil(t, obj.Properties)
 							}
 						}
 					}
@@ -183,6 +198,14 @@ func TestImportResourceRef(t *testing.T) {
 }
 
 func Test_parseTypeSpecRef(t *testing.T) {
+	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
+	toURL := func(rawurl string) *url.URL {
+		parsed, err := url.Parse(rawurl)
+		assert.NoError(t, err, "failed to parse ref")
+
+		return parsed
+	}
+
 	tests := []struct {
 		name string
 		ref  string
@@ -192,80 +215,57 @@ func Test_parseTypeSpecRef(t *testing.T) {
 			name: "resourceRef",
 			ref:  "#/resources/example::Resource",
 			want: typeSpecRef{
-				Scheme:      "",
-				Host:        "",
-				Path:        "",
-				PathPackage: "",
-				PathVersion: "",
-				Kind:        "resources",
-				Token:       "example::Resource",
-				Package:     "example",
-				Module:      "",
-				Member:      "Resource",
+				URL:   toURL("#/resources/example::Resource"),
+				Token: "example::Resource",
+				Kind:  "resources",
 			},
 		},
 		{
 			name: "typeRef",
 			ref:  "#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			want: typeSpecRef{
-				Scheme:      "",
-				Host:        "",
-				Path:        "",
-				PathPackage: "",
-				PathVersion: "",
-				Kind:        "types",
-				Token:       "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
-				Package:     "kubernetes",
-				Module:      "admissionregistration.k8s.io/v1",
-				Member:      "WebhookClientConfig",
+				URL:   toURL("#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
+				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Kind:  "types",
 			},
 		},
 		{
 			name: "externalResourceRef",
 			ref:  "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
 			want: typeSpecRef{
-				Scheme:      "",
-				Host:        "",
-				Path:        "/random/v2.3.1/schema.json",
-				PathPackage: "random",
-				PathVersion: "v2.3.1",
-				Kind:        "resources",
-				Token:       "random:index/randomPet:RandomPet",
-				Package:     "random",
-				Module:      "index/randomPet",
-				Member:      "RandomPet",
+				externalSchemaRef: &externalSchemaRef{
+					Package: "random",
+					Version: toVersionPtr("2.3.1"),
+				},
+				URL:   toURL("/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
+				Token: "random:index/randomPet:RandomPet",
+				Kind:  "resources",
 			},
 		},
 		{
 			name: "externalTypeRef",
 			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			want: typeSpecRef{
-				Scheme:      "",
-				Host:        "",
-				Path:        "/kubernetes/v2.6.3/schema.json",
-				PathPackage: "kubernetes",
-				PathVersion: "v2.6.3",
-				Kind:        "types",
-				Token:       "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
-				Package:     "kubernetes",
-				Module:      "admissionregistration.k8s.io/v1",
-				Member:      "WebhookClientConfig",
+				externalSchemaRef: &externalSchemaRef{
+					Package: "kubernetes",
+					Version: toVersionPtr("2.6.3"),
+				},
+				URL:   toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
+				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Kind:  "types",
 			},
 		},
 		{
 			name: "externalHostResourceRef",
 			ref:  "https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
 			want: typeSpecRef{
-				Scheme:      "https",
-				Host:        "example.com",
-				Path:        "/random/v2.3.1/schema.json",
-				PathPackage: "random",
-				PathVersion: "v2.3.1",
-				Kind:        "resources",
-				Token:       "random:index/randomPet:RandomPet",
-				Package:     "random",
-				Module:      "index/randomPet",
-				Member:      "RandomPet",
+				externalSchemaRef: &externalSchemaRef{
+					Package: "random",
+					Version: toVersionPtr("2.3.1"),
+				},
+				URL:   toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
+				Token: "random:index/randomPet:RandomPet",
+				Kind:  "resources",
 			},
 		},
 	}
