@@ -1059,23 +1059,17 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 
 		switch ref.Kind {
 		case "types":
-			typ, ok := t.named[ref.Token]
+			typ, ok := pkg.GetType(ref.Token)
 			if !ok {
-				typ, ok = pkg.GetType(ref.Token)
-				if !ok {
-					return nil, fmt.Errorf("type %v not found in package %v",
-						ref.Token, ref.externalSchemaRef.Package)
-				}
+				return nil, fmt.Errorf("type %v not found in package %v",
+					ref.Token, ref.externalSchemaRef.Package)
 			}
 			return typ, nil
 		case "resources":
-			typ, ok := t.resources[ref.Token]
+			typ, ok := pkg.GetResourceType(ref.Token)
 			if !ok {
-				typ, ok = pkg.GetResourceType(ref.Token)
-				if !ok {
-					return nil, fmt.Errorf("resource type %v not found in package %v",
-						ref.Token, ref.externalSchemaRef.Package)
-				}
+				return nil, fmt.Errorf("resource type %v not found in package %v",
+					ref.Token, ref.externalSchemaRef.Package)
 			}
 			return typ, nil
 		}
