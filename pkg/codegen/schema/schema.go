@@ -372,9 +372,10 @@ type Package struct {
 	// Language specifies additional language-specific data about the package.
 	Language map[string]interface{}
 
-	resourceTable map[string]*Resource
-	functionTable map[string]*Function
-	typeTable     map[string]Type
+	resourceTable     map[string]*Resource
+	resourceTypeTable map[string]*ResourceType
+	functionTable     map[string]*Function
+	typeTable         map[string]Type
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -606,6 +607,11 @@ func (pkg *Package) GetResource(token string) (*Resource, bool) {
 func (pkg *Package) GetFunction(token string) (*Function, bool) {
 	f, ok := pkg.functionTable[token]
 	return f, ok
+}
+
+func (pkg *Package) GetResourceType(token string) (*ResourceType, bool) {
+	t, ok := pkg.resourceTypeTable[token]
+	return t, ok
 }
 
 func (pkg *Package) GetType(token string) (Type, bool) {
@@ -921,6 +927,7 @@ func ImportSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		resourceTable:     resourceTable,
 		functionTable:     functionTable,
 		typeTable:         types.named,
+		resourceTypeTable: types.resources,
 	}
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, err
@@ -941,7 +948,7 @@ type types struct {
 	unions    map[string]*UnionType
 	tokens    map[string]*TokenType
 	enums     map[string]*EnumType
-	named     map[string]Type
+	named     map[string]Type // objects and enums
 }
 
 func (t *types) bindPrimitiveType(name string) (Type, error) {
@@ -975,7 +982,7 @@ type typeSpecRef struct {
 }
 
 // Regexs used to parse type spec refs. These are declared at the package scope to avoid repeatedly recompiling them.
-var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/v?(?P<version>\d+\.\d+\.\d+)/schema\.json$`)
+var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/(?P<version>v?\d+\.\d+\.\d+)/schema\.json$`)
 var refFragmentRegex = regexp.MustCompile(`^/(?P<kind>resources|types)/(?P<token>.*:.*:.*)$`)
 
 func parseTypeSpecRef(ref string) (typeSpecRef, error) {
@@ -1012,7 +1019,7 @@ func parseTypeSpecRef(ref string) (typeSpecRef, error) {
 		}
 
 		pkg, versionToken := pathMatch[1], pathMatch[2]
-		version, err := semver.Parse(versionToken)
+		version, err := semver.ParseTolerant(versionToken)
 		if err != nil {
 			return typeSpecRef{}, errors.Wrapf(err, "failed to parse package version: %s", versionToken)
 		}
@@ -1059,25 +1066,16 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 					return nil, fmt.Errorf("type %v not found in package %v",
 						ref.Token, ref.externalSchemaRef.Package)
 				}
-				// TODO: not sure if we also need to update the objects/enums/tokens maps?
-
-				t.named[ref.Token] = typ
 			}
 			return typ, nil
 		case "resources":
 			typ, ok := t.resources[ref.Token]
 			if !ok {
-				res, ok := pkg.GetResource(ref.Token)
+				typ, ok = pkg.GetResourceType(ref.Token)
 				if !ok {
-					return nil, fmt.Errorf("resource %v not found in package %v",
+					return nil, fmt.Errorf("resource type %v not found in package %v",
 						ref.Token, ref.externalSchemaRef.Package)
 				}
-
-				typ = &ResourceType{
-					Token:    ref.Token,
-					Resource: res,
-				}
-				t.resources[ref.Token] = typ
 			}
 			return typ, nil
 		}
@@ -1479,9 +1477,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 
 	// Process resources.
 	for _, r := range pkg.Resources {
-		typ := &ResourceType{Token: r.Token}
-		typs.resources[r.Token] = typ
-		typs.named[r.Token] = typ
+		typs.resources[r.Token] = &ResourceType{Token: r.Token}
 	}
 
 	// Process properties.
@@ -1568,8 +1564,11 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, ma
 		}
 		resourceTable[token] = res
 
-		if _, ok := types.resources[token]; ok && types.resources[token].Resource == nil {
-			types.resources[token].Resource = res
+		if _, ok := types.resources[token]; !ok {
+			types.resources[token] = &ResourceType{
+				Token:    res.Token,
+				Resource: res,
+			}
 		}
 
 		resources = append(resources, res)
